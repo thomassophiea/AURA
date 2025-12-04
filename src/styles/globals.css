@@ -1,0 +1,857 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500&family=Roboto:wght@300;400;500;700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Material Design Typography Scale */
+  --font-family-sans: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-family-mono: 'Roboto Mono', 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px */
+  --text-6xl: 6rem;        /* 96px */
+  
+  /* Material Design Dark Theme Colors */
+  --background: #121212; /* Material Dark Surface */
+  --foreground: rgba(255, 255, 255, 0.87); /* High emphasis text */
+  
+  /* Material Design Surface Elevations */
+  --card: #121212; /* Same as background for consistency */
+  --card-foreground: rgba(255, 255, 255, 0.87);
+  --popover: #121212;
+  --popover-foreground: rgba(255, 255, 255, 0.87);
+  
+  /* Material Design Primary: Violet 200 */
+  --primary: #BB86FC; /* Material Design violet primary */
+  --primary-foreground: rgba(0, 0, 0, 0.87);
+  
+  /* Material Design Secondary: Teal 200 */
+  --secondary: #03DAC5; /* Material Design teal secondary */
+  --secondary-foreground: rgba(0, 0, 0, 0.87);
+  
+  /* Material Design Muted Surfaces */
+  --muted: #121212; /* Same as background */
+  --muted-foreground: rgba(255, 255, 255, 0.60); /* Medium emphasis text */
+  
+  /* Material Design Accent */
+  --accent: #121212; /* Background with white overlay for elevation */
+  --accent-foreground: rgba(255, 255, 255, 0.87);
+  
+  /* Material Design Status Colors */
+  --destructive: #CF6679; /* Material Design error color */
+  --destructive-foreground: rgba(0, 0, 0, 0.87);
+  --success: #81C784; /* Material Design success green */
+  --success-foreground: rgba(0, 0, 0, 0.87);
+  --warning: #FFB74D; /* Material Design warning amber */
+  --warning-foreground: rgba(0, 0, 0, 0.87);
+  --info: #03DAC5; /* Using secondary for info */
+  --info-foreground: rgba(0, 0, 0, 0.87);
+  
+  /* Material Design Interactive Elements */
+  --border: rgba(255, 255, 255, 0.12); /* Material Design divider opacity */
+  --input: #121212; /* Same as background */
+  --input-background: #121212; /* With white overlay for elevation */
+  --switch-background: rgba(255, 255, 255, 0.12);
+  --ring: #BB86FC; /* Primary for focus rings */
+  
+  /* Material Design Font Weights */
+  --font-weight-light: 300;    /* Light */
+  --font-weight-normal: 400;   /* Regular */
+  --font-weight-medium: 500;   /* Medium */
+  --font-weight-semibold: 600; /* Semi Bold */
+  --font-weight-bold: 700;     /* Bold */
+  
+  /* Material Design Chart Colors */
+  --chart-1: #BB86FC; /* Primary violet */
+  --chart-2: #03DAC5; /* Secondary teal */
+  --chart-3: #FFB74D; /* Warning amber */
+  --chart-4: #CF6679; /* Error red */
+  --chart-5: #81C784; /* Success green */
+  
+  --radius: 0.25rem; /* Material Design border radius (4px) */
+  
+  /* Material Design Sidebar */
+  --sidebar: #121212; /* Same as background */
+  --sidebar-foreground: rgba(255, 255, 255, 0.87);
+  --sidebar-primary: #BB86FC;
+  --sidebar-primary-foreground: rgba(0, 0, 0, 0.87);
+  --sidebar-accent: #121212;
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.87);
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #BB86FC;
+  
+  /* Material Design Surface Elevation Overlays */
+  --surface-0dp: #121212; /* Base Material Dark background */
+  --surface-1dp: rgba(255, 255, 255, 0.05); /* 5% white overlay */
+  --surface-2dp: rgba(255, 255, 255, 0.07); /* 7% white overlay */
+  --surface-3dp: rgba(255, 255, 255, 0.08); /* 8% white overlay */
+  --surface-4dp: rgba(255, 255, 255, 0.09); /* 9% white overlay */
+  --surface-6dp: rgba(255, 255, 255, 0.11); /* 11% white overlay */
+  --surface-8dp: rgba(255, 255, 255, 0.12); /* 12% white overlay */
+  --surface-12dp: rgba(255, 255, 255, 0.14); /* 14% white overlay */
+  --surface-16dp: rgba(255, 255, 255, 0.15); /* 15% white overlay */
+  --surface-24dp: rgba(255, 255, 255, 0.16); /* 16% white overlay */
+}
+
+.dark {
+  /* Material Design Dark Theme */
+  --background: #121212;
+  --foreground: rgba(255, 255, 255, 0.87);
+  --card: #121212;
+  --card-foreground: rgba(255, 255, 255, 0.87);
+  --popover: #121212;
+  --popover-foreground: rgba(255, 255, 255, 0.87);
+  --primary: #BB86FC;
+  --primary-foreground: rgba(0, 0, 0, 0.87);
+  --secondary: #03DAC5;
+  --secondary-foreground: rgba(0, 0, 0, 0.87);
+  --muted: #121212;
+  --muted-foreground: rgba(255, 255, 255, 0.60);
+  --accent: #121212;
+  --accent-foreground: rgba(255, 255, 255, 0.87);
+  --destructive: #CF6679;
+  --destructive-foreground: rgba(0, 0, 0, 0.87);
+  --border: rgba(255, 255, 255, 0.12);
+  --input: #121212;
+  --input-background: #121212;
+  --ring: #BB86FC;
+  --chart-1: #BB86FC;
+  --chart-2: #03DAC5;
+  --chart-3: #FFB74D;
+  --chart-4: #CF6679;
+  --chart-5: #81C784;
+  --success: #81C784;
+  --success-foreground: rgba(0, 0, 0, 0.87);
+  --warning: #FFB74D;
+  --warning-foreground: rgba(0, 0, 0, 0.87);
+  --info: #03DAC5;
+  --info-foreground: rgba(0, 0, 0, 0.87);
+  --sidebar: #121212;
+  --sidebar-foreground: rgba(255, 255, 255, 0.87);
+  --sidebar-primary: #BB86FC;
+  --sidebar-primary-foreground: rgba(0, 0, 0, 0.87);
+  --sidebar-accent: #121212;
+  --sidebar-accent-foreground: rgba(255, 255, 255, 0.87);
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: #BB86FC;
+}
+
+/* Material Design Light Theme */
+.light {
+  --background: #ffffff;
+  --foreground: rgba(0, 0, 0, 0.87);
+  --card: #ffffff;
+  --card-foreground: rgba(0, 0, 0, 0.87);
+  --popover: #ffffff;
+  --popover-foreground: rgba(0, 0, 0, 0.87);
+  --primary: #6200EE; /* Material Design violet primary (light mode) */
+  --primary-foreground: #ffffff;
+  --secondary: #018786; /* Material Design teal secondary (light mode) */
+  --secondary-foreground: #ffffff;
+  --muted: #ffffff;
+  --muted-foreground: rgba(0, 0, 0, 0.60);
+  --accent: #ffffff;
+  --accent-foreground: rgba(0, 0, 0, 0.87);
+  --destructive: #B00020; /* Material Design error (light mode) */
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.12);
+  --input: #ffffff;
+  --input-background: #ffffff;
+  --ring: #6200EE;
+  --chart-1: #6200EE;
+  --chart-2: #018786;
+  --chart-3: #FF6F00;
+  --chart-4: #B00020;
+  --chart-5: #00C853;
+  --success: #00C853;
+  --success-foreground: #ffffff;
+  --warning: #FF6F00;
+  --warning-foreground: #ffffff;
+  --info: #018786;
+  --info-foreground: #ffffff;
+  --sidebar: #ffffff;
+  --sidebar-foreground: rgba(0, 0, 0, 0.87);
+  --sidebar-primary: #6200EE;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #ffffff;
+  --sidebar-accent-foreground: rgba(0, 0, 0, 0.87);
+  --sidebar-border: rgba(0, 0, 0, 0.12);
+  --sidebar-ring: #6200EE;
+}
+
+@theme inline {
+  --font-size-xs: var(--text-xs);
+  --font-size-sm: var(--text-sm);
+  --font-size-base: var(--text-base);
+  --font-size-lg: var(--text-lg);
+  --font-size-xl: var(--text-xl);
+  --font-size-2xl: var(--text-2xl);
+  --font-size-3xl: var(--text-3xl);
+  --font-size-4xl: var(--text-4xl);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Surface elevation utilities */
+  --color-surface-0dp: var(--surface-0dp);
+  --color-surface-1dp: var(--surface-1dp);
+  --color-surface-2dp: var(--surface-2dp);
+  --color-surface-3dp: var(--surface-3dp);
+  --color-surface-4dp: var(--surface-4dp);
+  --color-surface-6dp: var(--surface-6dp);
+  --color-surface-8dp: var(--surface-8dp);
+  --color-surface-12dp: var(--surface-12dp);
+  --color-surface-16dp: var(--surface-16dp);
+  --color-surface-24dp: var(--surface-24dp);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    /* Material Design smooth theme transitions */
+    transition: background-color 200ms cubic-bezier(0.4, 0, 0.2, 1), 
+                color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-family-sans);
+  }
+}
+
+/**
+ * Material Design Typography Scale
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    /* Material Design Headlines */
+    h1 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-6xl); /* H1 - 96px */
+      font-weight: var(--font-weight-light);
+      line-height: 1.167;
+      letter-spacing: -0.01562em;
+      color: var(--foreground);
+    }
+
+    h2 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-5xl); /* H2 - 60px */
+      font-weight: var(--font-weight-light);
+      line-height: 1.2;
+      letter-spacing: -0.00833em;
+      color: var(--foreground);
+    }
+
+    h3 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-4xl); /* H3 - 48px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.167;
+      letter-spacing: 0;
+      color: var(--foreground);
+    }
+
+    h4 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-3xl); /* H4 - 34px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.235;
+      letter-spacing: 0.00735em;
+      color: var(--foreground);
+    }
+
+    h5 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-2xl); /* H5 - 24px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.334;
+      letter-spacing: 0;
+      color: var(--foreground);
+    }
+
+    h6 {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-xl); /* H6 - 20px */
+      font-weight: var(--font-weight-medium);
+      line-height: 1.6;
+      letter-spacing: 0.0075em;
+      color: var(--foreground);
+    }
+
+    /* Material Design Body Text */
+    p {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-base); /* Body1 - 16px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+      letter-spacing: 0.00938em;
+      color: var(--foreground);
+    }
+
+    /* Material Design Labels */
+    label {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-sm); /* Body2 - 14px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.43;
+      letter-spacing: 0.01071em;
+      color: var(--foreground);
+    }
+
+    /* Material Design Buttons */
+    button {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-sm); /* Button - 14px */
+      font-weight: var(--font-weight-medium);
+      line-height: 1.75;
+      letter-spacing: 0.02857em;
+      text-transform: uppercase;
+    }
+
+    /* Material Design Input Fields */
+    input, textarea, select {
+      font-family: var(--font-family-sans);
+      font-size: var(--text-base); /* 16px */
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+      letter-spacing: 0.00938em;
+      color: var(--foreground);
+    }
+  }
+}
+
+html {
+  font-size: 16px; /* Material Design base font size */
+  font-family: var(--font-family-sans);
+}
+
+/* Material Design Elevation Utility Classes */
+.surface-0dp {
+  background-color: var(--background);
+  box-shadow: none;
+}
+
+.surface-1dp {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0px 2px 1px -1px rgba(0, 0, 0, 0.2), 0px 1px 1px 0px rgba(0, 0, 0, 0.14), 0px 1px 3px 0px rgba(0, 0, 0, 0.12);
+}
+
+.surface-1dp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-1dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.surface-2dp {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+}
+
+.surface-2dp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-2dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.surface-4dp {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
+}
+
+.surface-4dp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-4dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.surface-8dp {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0px 5px 5px -3px rgba(0, 0, 0, 0.2), 0px 8px 10px 1px rgba(0, 0, 0, 0.14), 0px 3px 14px 2px rgba(0, 0, 0, 0.12);
+}
+
+.surface-8dp::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-8dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Custom utility classes for network status colors using UniFi approach */
+.status-healthy {
+  color: var(--success);
+}
+
+.status-warning {
+  color: var(--warning);
+}
+
+.status-critical {
+  color: var(--destructive);
+}
+
+.bg-status-healthy {
+  background-color: var(--success);
+  color: var(--success-foreground);
+}
+
+.bg-status-warning {
+  background-color: var(--warning);
+  color: var(--warning-foreground);
+}
+
+.bg-status-critical {
+  background-color: var(--destructive);
+  color: var(--destructive-foreground);
+}
+
+/* Extreme inspired component styling */
+.card-elevated {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.card-elevated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-2dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.card-floating {
+  background-color: var(--background);
+  position: relative;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+.card-floating::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-8dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.navigation-elevated {
+  background-color: var(--background);
+  position: relative;
+}
+
+.navigation-elevated::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-4dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Material Design Interaction States */
+.interactive-surface {
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-surface:hover {
+  background-color: rgba(187, 134, 252, 0.08); /* Material Design primary hover (dark) */
+}
+
+.interactive-surface:focus {
+  background-color: rgba(187, 134, 252, 0.24); /* Material Design primary focus (dark) */
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.interactive-surface:active {
+  background-color: rgba(187, 134, 252, 0.16); /* Material Design primary pressed (dark) */
+}
+
+/* Light mode interaction states */
+.light .interactive-surface:hover {
+  background-color: rgba(98, 0, 238, 0.04); /* Material Design primary hover (light) */
+}
+
+.light .interactive-surface:focus {
+  background-color: rgba(98, 0, 238, 0.12); /* Material Design primary focus (light) */
+}
+
+.light .interactive-surface:active {
+  background-color: rgba(98, 0, 238, 0.08); /* Material Design primary pressed (light) */
+}
+
+/* Material Design Component States */
+.material-button-primary {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+}
+
+.material-button-primary:hover {
+  background-color: var(--primary);
+  box-shadow: 0px 2px 4px -1px rgba(0, 0, 0, 0.2), 0px 4px 5px 0px rgba(0, 0, 0, 0.14), 0px 1px 10px 0px rgba(0, 0, 0, 0.12);
+}
+
+.material-button-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: inherit;
+  opacity: 0;
+  transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.material-button-primary:hover::before {
+  opacity: 1;
+}
+
+/* Material Design Gradients */
+.material-gradient-primary {
+  background: linear-gradient(135deg, #BB86FC 0%, #6200EE 100%);
+}
+
+.material-gradient-secondary {
+  background: linear-gradient(135deg, #03DAC5 0%, #018786 100%);
+}
+
+/* Material Design High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --foreground: rgba(255, 255, 255, 1.0); /* Full opacity for high contrast */
+    --primary: #D1C4E9; /* Higher contrast violet */
+    --secondary: #B2DFDB; /* Higher contrast teal */
+    --border: rgba(255, 255, 255, 0.38); /* More visible borders */
+    --muted-foreground: rgba(255, 255, 255, 0.87); /* Higher contrast secondary text */
+  }
+}
+
+/* Material Design Fallback Styles */
+:root {
+  /* Material Design dark theme fallbacks */
+  --safe-background: var(--background, #121212);
+  --safe-foreground: var(--foreground, rgba(255, 255, 255, 0.87));
+  --safe-primary: var(--primary, #BB86FC);
+  --safe-secondary: var(--secondary, #03DAC5);
+}
+
+/* Material Design light theme fallbacks */
+:root.light {
+  --safe-background: var(--background, #ffffff);
+  --safe-foreground: var(--foreground, rgba(0, 0, 0, 0.87));
+  --safe-primary: var(--primary, #6200EE);
+  --safe-secondary: var(--secondary, #018786);
+}
+
+/* Ensure body styles use Material Design colors */
+html, body {
+  background-color: var(--safe-background) !important;
+  color: var(--safe-foreground) !important;
+  font-family: var(--font-family-sans) !important;
+}
+
+/* Material Design theme enforcement */
+html.dark, html.dark body, .dark {
+  background-color: #121212 !important;
+  color: rgba(255, 255, 255, 0.87) !important;
+}
+
+html.light, html.light body, .light {
+  background-color: #ffffff !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Material Design data attribute support */
+html[data-theme="dark"], html.dark {
+  background: #121212 !important;
+  color: rgba(255, 255, 255, 0.87) !important;
+}
+
+html[data-theme="light"], html.light {
+  background: #ffffff !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Material Design Browser Compatibility */
+@supports not (color: var(--background)) {
+  /* Material Design fallback for browsers without CSS custom properties */
+  html, body {
+    background-color: #121212 !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  }
+  
+  .light {
+    background-color: #ffffff !important;
+    color: rgba(0, 0, 0, 0.87) !important;
+  }
+}
+
+/* Material Design Box Model */
+* {
+  box-sizing: border-box;
+  /* Material Design font smoothing */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Material Design Security Safeguards */
+@media all {
+  html {
+    /* Material Design base styles always accessible */
+    background-color: #121212;
+    color: rgba(255, 255, 255, 0.87);
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  
+  html.light {
+    background-color: #ffffff;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+/* Material Design Text Emphasis Classes */
+.text-high-emphasis {
+  color: rgba(255, 255, 255, 0.87);
+}
+
+.text-medium-emphasis {
+  color: rgba(255, 255, 255, 0.60);
+}
+
+.text-disabled {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.light .text-high-emphasis {
+  color: rgba(0, 0, 0, 0.87);
+}
+
+.light .text-medium-emphasis {
+  color: rgba(0, 0, 0, 0.60);
+}
+
+.light .text-disabled {
+  color: rgba(0, 0, 0, 0.38);
+}
+
+/* Material Design Typography Classes */
+.text-headline-1 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-6xl);
+  font-weight: var(--font-weight-light);
+  line-height: 1.167;
+  letter-spacing: -0.01562em;
+}
+
+.text-headline-2 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-5xl);
+  font-weight: var(--font-weight-light);
+  line-height: 1.2;
+  letter-spacing: -0.00833em;
+}
+
+.text-headline-3 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-4xl);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.167;
+  letter-spacing: 0;
+}
+
+.text-headline-4 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.235;
+  letter-spacing: 0.00735em;
+}
+
+.text-headline-5 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.334;
+  letter-spacing: 0;
+}
+
+.text-headline-6 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-xl);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.6;
+  letter-spacing: 0.0075em;
+}
+
+.text-subtitle-1 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.75;
+  letter-spacing: 0.00938em;
+}
+
+.text-subtitle-2 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.57;
+  letter-spacing: 0.00714em;
+}
+
+.text-body-1 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.5;
+  letter-spacing: 0.00938em;
+}
+
+.text-body-2 {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.43;
+  letter-spacing: 0.01071em;
+}
+
+.text-button {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: 1.75;
+  letter-spacing: 0.02857em;
+  text-transform: uppercase;
+}
+
+.text-caption {
+  font-family: var(--font-family-sans);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-normal);
+  line-height: 1.66;
+  letter-spacing: 0.03333em;
+}
+
+.text-overline {
+  font-family: var(--font-family-sans);
+  font-size: 0.625rem; /* 10px */
+  font-weight: var(--font-weight-normal);
+  line-height: 2.66;
+  letter-spacing: 0.08333em;
+  text-transform: uppercase;
+}
+
+/* Material Design Surface Container Classes */
+.material-surface-container {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+.material-surface-container-low {
+  background-color: var(--background);
+  position: relative;
+}
+
+.material-surface-container-low::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-1dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.material-surface-container-high {
+  background-color: var(--background);
+  position: relative;
+}
+
+.material-surface-container-high::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-2dp);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.material-surface-container-highest {
+  background-color: var(--background);
+  position: relative;
+}
+
+.material-surface-container-highest::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-color: var(--surface-4dp);
+  border-radius: inherit;
+  pointer-events: none;
+}

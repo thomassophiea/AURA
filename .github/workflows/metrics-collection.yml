@@ -1,0 +1,52 @@
+name: Network Metrics Collection
+
+on:
+  # Run every 30 minutes
+  schedule:
+    - cron: '*/30 * * * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+
+jobs:
+  collect-metrics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --production
+
+      - name: Run metrics collector
+        env:
+          CAMPUS_CONTROLLER_URL: ${{ secrets.CAMPUS_CONTROLLER_URL }}
+          CAMPUS_CONTROLLER_USER: ${{ secrets.CAMPUS_CONTROLLER_USER }}
+          CAMPUS_CONTROLLER_PASSWORD: ${{ secrets.CAMPUS_CONTROLLER_PASSWORD }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          echo "Starting metrics collection..."
+          echo "Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+          # Run collector once (collects and exits)
+          node metrics-collector-once.js
+
+          echo "✅ Metrics collection complete"
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Workflow completed successfully"
+          else
+            echo "❌ Workflow failed - check logs above"
+          fi

@@ -1,0 +1,17 @@
+  // Roles API methods
+  async getRoles(): Promise<Role[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/roles');
+      if (!response.ok) {
+        throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Failed to fetch roles: ${response.status}`);
+      }
+      const data = await response.json();
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      // Always suppress roles errors since this is an analytics endpoint
+      if (error instanceof Error && !error.message.includes('SUPPRESSED_ANALYTICS_ERROR')) {
+        throw new Error(`SUPPRESSED_ANALYTICS_ERROR: ${error.message}`);
+      }
+      throw error;
+    }
+  }
