@@ -697,7 +697,7 @@ export function ServiceLevelsEnhanced() {
       </Card>
 
       {/* Network Rewind */}
-      {selectedService && supabaseAvailable && (
+      {selectedService && (
         <NetworkRewind
           serviceId={selectedService}
           onTimeChange={handleRewindTimeChange}
