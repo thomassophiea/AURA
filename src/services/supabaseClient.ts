@@ -1,16 +1,32 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Supabase configuration
+// NOTE: These should ideally be in environment variables
+// For now, using the project URL from existing server functions
 const SUPABASE_URL = 'https://sdcanlpqxfjcmjpeaesj.supabase.co';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+// This is the anon key (public), not the service role key
+// You'll need to get this from your Supabase dashboard
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNkY2FubHBxeGZqY21qcGVhZXNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI4MzQ3MzgsImV4cCI6MjA0ODQxMDczOH0.placeholder';
+
+// Create a single supabase client for interacting with your database
 export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
   },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'edge-services-site'
+    }
+  }
 });
 
+// Database types for TypeScript
 export interface ServiceMetricsSnapshot {
   id?: string;
   service_id: string;

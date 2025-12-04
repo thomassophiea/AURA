@@ -41,6 +41,7 @@ import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Cartesia
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
 import { useMetricsCollection } from '../hooks/useMetricsCollection';
+import { metricsStorage } from '../services/metricsStorage';
 
 interface Service {
   id: string;
@@ -126,9 +127,27 @@ export function ServiceLevelsEnhanced() {
   // Network Rewind
   const [isLive, setIsLive] = useState(true);
   const [historicalTimestamp, setHistoricalTimestamp] = useState<Date | null>(null);
+  const [historicalMetrics, setHistoricalMetrics] = useState<ServiceReport | null>(null);
 
-  // Start metrics collection
-  useMetricsCollection(services, isLive);
+  // Metrics collection function
+  const getCurrentMetrics = () => {
+    if (!selectedService || !serviceReport) return null;
+
+    return {
+      serviceId: selectedService,
+      serviceName: services.find(s => s.id === selectedService)?.name || 'Unknown',
+      metrics: serviceReport.metrics || {}
+    };
+  };
+
+  // Start metrics collection for Network Rewind
+  const { collectionCount, supabaseAvailable } = useMetricsCollection(
+    getCurrentMetrics,
+    {
+      enabled: selectedService !== null && isLive,
+      intervalMinutes: 15
+    }
+  );
 
   useEffect(() => {
     loadServices();
@@ -422,6 +441,44 @@ export function ServiceLevelsEnhanced() {
     loadServiceDetails(serviceId);
   };
 
+  // Handle Network Rewind time changes
+  const handleRewindTimeChange = async (timestamp: Date | null) => {
+    setHistoricalTimestamp(timestamp);
+
+    if (timestamp === null) {
+      // Live mode - use current serviceReport
+      setIsLive(true);
+      setHistoricalMetrics(null);
+    } else {
+      // Historical mode - fetch data from Supabase
+      setIsLive(false);
+
+      if (!selectedService) return;
+
+      try {
+        const snapshot = await metricsStorage.getServiceMetricsAtTime(
+          selectedService,
+          timestamp,
+          15 // tolerance in minutes
+        );
+
+        if (snapshot) {
+          setHistoricalMetrics({
+            serviceId: snapshot.service_id,
+            serviceName: snapshot.service_name,
+            metrics: snapshot.metrics
+          });
+        } else {
+          console.log('[ServiceLevels] No historical data found for', timestamp);
+          setHistoricalMetrics(null);
+        }
+      } catch (error) {
+        console.error('[ServiceLevels] Error fetching historical data:', error);
+        setHistoricalMetrics(null);
+      }
+    }
+  };
+
   const getMetricStatus = (value: number | undefined, threshold: { good: number; warn: number }): 'good' | 'warn' | 'poor' => {
     if (value === undefined) return 'good';
     if (value >= threshold.good) return 'good';
@@ -464,9 +521,12 @@ export function ServiceLevelsEnhanced() {
     return Math.round((bytes * 8 / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
+  // Use historical data if in rewind mode, otherwise use live data
+  const displayMetrics = isLive ? serviceReport : (historicalMetrics || serviceReport);
+
   // Generate historical time-series data (simulated based on current metrics)
   const generateTimeSeries = () => {
-    if (!serviceReport?.metrics) return [];
+    if (!displayMetrics?.metrics) return [];
 
     const points = [];
     const now = Date.now();
@@ -484,9 +544,9 @@ export function ServiceLevelsEnhanced() {
           minute: '2-digit',
           ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {})
         }),
-        clientCount: Math.round((serviceReport.metrics.clientCount || 0) * variation),
-        latency: (serviceReport.metrics.latency || 10) * (0.8 + Math.random() * 0.4),
-        reliability: Math.min(100, (serviceReport.metrics.reliability || 95) * (0.98 + Math.random() * 0.02))
+        clientCount: Math.round((displayMetrics.metrics.clientCount || 0) * variation),
+        latency: (displayMetrics.metrics.latency || 10) * (0.8 + Math.random() * 0.4),
+        reliability: Math.min(100, (displayMetrics.metrics.reliability || 95) * (0.98 + Math.random() * 0.02))
       });
     }
 
@@ -496,30 +556,30 @@ export function ServiceLevelsEnhanced() {
   const timeSeries = generateTimeSeries();
 
   // Prepare radar chart data
-  const radarData = serviceReport?.metrics ? [
+  const radarData = displayMetrics?.metrics ? [
     {
       metric: 'Reliability',
-      value: serviceReport.metrics.reliability || 0,
+      value: displayMetrics.metrics.reliability || 0,
       fullMark: 100
     },
     {
       metric: 'Uptime',
-      value: serviceReport.metrics.uptime || 0,
+      value: displayMetrics.metrics.uptime || 0,
       fullMark: 100
     },
     {
       metric: 'Success Rate',
-      value: serviceReport.metrics.successRate || 0,
+      value: displayMetrics.metrics.successRate || 0,
       fullMark: 100
     },
     {
       metric: 'Signal Quality',
-      value: serviceReport.metrics.averageSnr ? Math.min(100, (serviceReport.metrics.averageSnr + 100) / 2) : 80,
+      value: displayMetrics.metrics.averageSnr ? Math.min(100, (displayMetrics.metrics.averageSnr + 100) / 2) : 80,
       fullMark: 100
     },
     {
       metric: 'Performance',
-      value: 100 - (serviceReport.metrics.errorRate || 0),
+      value: 100 - (displayMetrics.metrics.errorRate || 0),
       fullMark: 100
     }
   ] : [];
@@ -633,10 +693,10 @@ export function ServiceLevelsEnhanced() {
       </Card>
 
       {/* Network Rewind */}
-      {selectedService && (
+      {selectedService && supabaseAvailable && (
         <NetworkRewind
           serviceId={selectedService}
-          onTimeChange={setHistoricalTimestamp}
+          onTimeChange={handleRewindTimeChange}
           isLive={isLive}
           onLiveToggle={() => setIsLive(!isLive)}
         />
@@ -653,10 +713,10 @@ export function ServiceLevelsEnhanced() {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(serviceReport.metrics?.reliability, { good: 95, warn: 90 }))}`}>
-                  {serviceReport.metrics?.reliability?.toFixed(2) || 'N/A'}%
+                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics.metrics?.reliability, { good: 95, warn: 90 }))}`}>
+                  {displayMetrics.metrics?.reliability?.toFixed(2) || 'N/A'}%
                 </div>
-                {getMetricBadge(getMetricStatus(serviceReport.metrics?.reliability, { good: 95, warn: 90 }))}
+                {getMetricBadge(getMetricStatus(displayMetrics.metrics?.reliability, { good: 95, warn: 90 }))}
               </CardContent>
             </Card>
 
@@ -667,10 +727,10 @@ export function ServiceLevelsEnhanced() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(serviceReport.metrics?.uptime, { good: 99, warn: 95 }))}`}>
-                  {serviceReport.metrics?.uptime?.toFixed(2) || 'N/A'}%
+                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics.metrics?.uptime, { good: 99, warn: 95 }))}`}>
+                  {displayMetrics.metrics?.uptime?.toFixed(2) || 'N/A'}%
                 </div>
-                {getMetricBadge(getMetricStatus(serviceReport.metrics?.uptime, { good: 99, warn: 95 }))}
+                {getMetricBadge(getMetricStatus(displayMetrics.metrics?.uptime, { good: 99, warn: 95 }))}
               </CardContent>
             </Card>
 
@@ -681,7 +741,7 @@ export function ServiceLevelsEnhanced() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{serviceReport.metrics?.clientCount || serviceStations.length}</div>
+                <div className="text-2xl font-bold">{displayMetrics.metrics?.clientCount || serviceStations.length}</div>
                 <p className="text-xs text-muted-foreground">
                   Active connections
                 </p>
@@ -699,7 +759,7 @@ export function ServiceLevelsEnhanced() {
               </CardHeader>
               <CardContent className="space-y-5">
                 {/* Latency */}
-                {serviceReport.metrics?.latency !== undefined && (
+                {displayMetrics.metrics?.latency !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -722,7 +782,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* Jitter */}
-                {serviceReport.metrics?.jitter !== undefined && (
+                {displayMetrics.metrics?.jitter !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -745,7 +805,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* Packet Loss */}
-                {serviceReport.metrics?.packetLoss !== undefined && (
+                {displayMetrics.metrics?.packetLoss !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -769,7 +829,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* RSSI */}
-                {serviceReport.metrics?.averageRssi !== undefined && (
+                {displayMetrics.metrics?.averageRssi !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -797,7 +857,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* SNR */}
-                {serviceReport.metrics?.averageSnr !== undefined && (
+                {displayMetrics.metrics?.averageSnr !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -824,7 +884,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* Success Rate */}
-                {serviceReport.metrics?.successRate !== undefined && (
+                {displayMetrics.metrics?.successRate !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -845,7 +905,7 @@ export function ServiceLevelsEnhanced() {
                 )}
 
                 {/* Error Rate */}
-                {serviceReport.metrics?.errorRate !== undefined && (
+                {displayMetrics.metrics?.errorRate !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
