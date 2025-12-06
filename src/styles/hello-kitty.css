@@ -257,7 +257,408 @@
 }
 
 /* App icon replacements - Hello Kitty style */
-.theme-hello-kitty [class*="lucide"] {
+/* Replace Lucide SVG icons with cute emoji */
+.theme-hello-kitty .lucide-home,
+.theme-hello-kitty .lucide-house {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-home::before,
+.theme-hello-kitty .lucide-house::before {
+  content: "🏠";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-wifi,
+.theme-hello-kitty .lucide-signal {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-wifi::before,
+.theme-hello-kitty .lucide-signal::before {
+  content: "📡";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-network,
+.theme-hello-kitty .lucide-globe {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-network::before,
+.theme-hello-kitty .lucide-globe::before {
+  content: "🌐";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-server,
+.theme-hello-kitty .lucide-database {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-server::before,
+.theme-hello-kitty .lucide-database::before {
+  content: "💻";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-cloud {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-cloud::before {
+  content: "☁️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-check,
+.theme-hello-kitty .lucide-check-circle {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-check::before,
+.theme-hello-kitty .lucide-check-circle::before {
+  content: "✅";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-x,
+.theme-hello-kitty .lucide-x-circle {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-x::before,
+.theme-hello-kitty .lucide-x-circle::before {
+  content: "❌";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-alert-triangle,
+.theme-hello-kitty .lucide-alert-circle {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-alert-triangle::before,
+.theme-hello-kitty .lucide-alert-circle::before {
+  content: "⚠️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-info {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-info::before {
+  content: "ℹ️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-heart {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-heart::before {
+  content: "💖";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-star {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-star::before {
+  content: "⭐";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-settings,
+.theme-hello-kitty .lucide-gear {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-settings::before,
+.theme-hello-kitty .lucide-gear::before {
+  content: "⚙️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-user {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-user::before {
+  content: "👤";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-users {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-users::before {
+  content: "👥";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-bell {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-bell::before {
+  content: "🔔";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-search {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-search::before {
+  content: "🔍";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-menu {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-menu::before {
+  content: "📋";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-edit,
+.theme-hello-kitty .lucide-pencil {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-edit::before,
+.theme-hello-kitty .lucide-pencil::before {
+  content: "✏️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-trash,
+.theme-hello-kitty .lucide-trash-2 {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-trash::before,
+.theme-hello-kitty .lucide-trash-2::before {
+  content: "🗑️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-plus {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-plus::before {
+  content: "➕";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-minus {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-minus::before {
+  content: "➖";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-download {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-download::before {
+  content: "⬇️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-upload {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-upload::before {
+  content: "⬆️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-refresh-cw,
+.theme-hello-kitty .lucide-rotate-cw {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-refresh-cw::before,
+.theme-hello-kitty .lucide-rotate-cw::before {
+  content: "🔄";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-chevron-right {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-chevron-right::before {
+  content: "▶️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-chevron-left {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-chevron-left::before {
+  content: "◀️";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-chevron-up {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-chevron-up::before {
+  content: "🔼";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-chevron-down {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-chevron-down::before {
+  content: "🔽";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+.theme-hello-kitty .lucide-sparkles {
+  opacity: 0;
+  width: 0;
+}
+
+.theme-hello-kitty .lucide-sparkles::before {
+  content: "✨";
+  opacity: 1;
+  font-size: 1.2em;
+  display: inline-block;
+  width: auto;
+}
+
+/* Fallback for other Lucide icons - make them pink */
+.theme-hello-kitty [class*="lucide"]:not([class*="::before"]) {
   filter: hue-rotate(300deg) saturate(1.5);
 }
 
