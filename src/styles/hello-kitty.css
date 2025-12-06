@@ -4,6 +4,20 @@
 .theme-hello-kitty {
   /* Cute cursor */
   cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="%23ff69b4"><circle cx="12" cy="12" r="10" fill="%23ff69b4"/></svg>'), auto;
+
+  /* Smooth transitions */
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .theme-hello-kitty * {
@@ -193,4 +207,146 @@
 /* Pink progress bars */
 .theme-hello-kitty [role="progressbar"] {
   background: linear-gradient(90deg, #ff69b4, #ffb6d9) !important;
+}
+
+/* Floating cute elements around the page */
+.theme-hello-kitty body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(255, 182, 217, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 105, 180, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 20%, rgba(255, 192, 203, 0.1) 0%, transparent 50%);
+}
+
+/* Hello Kitty logo/icon effect on page title */
+.theme-hello-kitty h1::before,
+.theme-hello-kitty h2::before {
+  content: "🎀 ";
+  font-size: 0.8em;
+}
+
+/* Cute dividers */
+.theme-hello-kitty hr {
+  border: none !important;
+  height: 20px !important;
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent,
+    transparent 10px,
+    #ffb6d9 10px,
+    #ffb6d9 20px
+  ) !important;
+  position: relative;
+}
+
+.theme-hello-kitty hr::after {
+  content: "🎀";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: white;
+  padding: 0 10px;
+}
+
+/* App icon replacements - Hello Kitty style */
+.theme-hello-kitty [class*="lucide"] {
+  filter: hue-rotate(300deg) saturate(1.5);
+}
+
+/* Cute tooltips */
+.theme-hello-kitty [title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff69b4, #ffb6d9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(255, 105, 180, 0.3);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+/* Sparkle trail on mouse movement */
+.theme-hello-kitty {
+  --sparkle-color: #ff69b4;
+}
+
+/* Table headers get bows */
+.theme-hello-kitty th::before {
+  content: "🎀 ";
+  font-size: 0.8em;
+}
+
+/* Links get hearts */
+.theme-hello-kitty a:hover::before {
+  content: "💕 ";
+  font-size: 0.8em;
+}
+
+/* Success states get extra cute */
+.theme-hello-kitty [class*="success"]::before,
+.theme-hello-kitty [data-state="success"]::before {
+  content: "🎉 ";
+}
+
+/* Error states get sympathy */
+.theme-hello-kitty [class*="error"]::before,
+.theme-hello-kitty [class*="destructive"]::before {
+  content: "😿 ";
+}
+
+/* Loading states get patience */
+.theme-hello-kitty [class*="loading"] {
+  position: relative;
+}
+
+.theme-hello-kitty [class*="loading"]::before {
+  content: "🎀 Loading... ";
+  color: #ff69b4;
+  font-weight: bold;
+}
+
+/* Make everything a bit rounder and cuter */
+.theme-hello-kitty input,
+.theme-hello-kitty textarea,
+.theme-hello-kitty select {
+  border-radius: 20px !important;
+  border: 2px solid #ffb6d9 !important;
+}
+
+.theme-hello-kitty input:focus,
+.theme-hello-kitty textarea:focus,
+.theme-hello-kitty select:focus {
+  border-color: #ff69b4 !important;
+  box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.2) !important;
+}
+
+/* Page transition effect */
+.theme-hello-kitty [class*="page"],
+.theme-hello-kitty main {
+  animation: pageSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

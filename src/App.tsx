@@ -31,6 +31,7 @@ import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { DevModePanel } from './components/DevModePanel';
 import { ThemeSwitcher } from './components/ThemeSwitcher';
+import { HelloKittyMusic } from './components/HelloKittyMusic';
 import { toast } from 'sonner';
 
 const pageInfo = {
@@ -867,10 +868,13 @@ export default function App() {
       </div>
       
       {/* Network Assistant Chatbot - Outside main container for proper viewport positioning */}
-      <NetworkChatbot 
+      <NetworkChatbot
         isOpen={isChatbotOpen}
         onToggle={() => setIsChatbotOpen(!isChatbotOpen)}
       />
+
+      {/* Hello Kitty Music Player */}
+      <HelloKittyMusic />
       
       {/* Developer Mode Panel */}
       <DevModePanel
