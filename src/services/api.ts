@@ -1,3 +1,5 @@
+import { handleApiError } from '../lib/magic-word';
+
 const BASE_URL = 'https://tsophiea.ddns.net:443/management';
 
 export interface LoginCredentials {
@@ -852,7 +854,10 @@ class ApiService {
       const duration = Date.now() - startTime;
       clearTimeout(timeoutId);
       this.pendingRequests.delete(controller);
-      
+
+      // 🦖 Play Jurassic Park "magic word" sound on API errors!
+      handleApiError(error);
+
       // Update API log with error
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.updateApiLog(requestId, {
