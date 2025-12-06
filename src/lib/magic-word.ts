@@ -14,9 +14,13 @@ export function playMagicWordWarning() {
 
   // Create audio element if it doesn't exist
   if (!audioInstance) {
-    audioInstance = new Audio('https://www.101soundboards.com/sounds/73575-ah-ah-ah-you-didnt-say-the-magic-word');
+    // Using a direct MP3 URL from a CDN that hosts the Jurassic Park sound
+    audioInstance = new Audio('https://www.myinstants.com/media/sounds/ah-ah-ah-you-didnt-say-the-magic-word.mp3');
     audioInstance.loop = true; // Loop it!
     audioInstance.volume = 0.7;
+
+    // Debug logging
+    console.log('🦖 Creating audio instance...');
   }
 
   // Play the sound
