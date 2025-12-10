@@ -45,14 +45,21 @@ export function SiteWLANAssignmentDialog({
     setError(null);
 
     try {
-      console.log(`Loading WLAN assignment summary for site ${siteId}`);
+      console.log(`[SiteWLANDialog] Loading WLAN assignment summary for site ${siteId}`);
       const data = await apiService.getSiteWLANAssignmentSummary(siteId);
       setSummary(data);
-      console.log('Assignment summary loaded:', data);
+      console.log('[SiteWLANDialog] Assignment summary loaded successfully:', data);
+      console.log('[SiteWLANDialog] Summary breakdown:');
+      console.log(`  - Device Groups: ${data.deviceGroupCount}`);
+      console.log(`  - Profiles: ${data.profileCount}`);
+      console.log(`  - WLANs: ${data.wlanCount}`);
+      console.log('[SiteWLANDialog] Device Groups:', data.deviceGroups);
+      console.log('[SiteWLANDialog] Profiles:', data.profiles);
+      console.log('[SiteWLANDialog] WLANs:', data.wlans);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load WLAN assignments';
       setError(errorMessage);
-      console.error('Error loading WLAN assignments:', err);
+      console.error('[SiteWLANDialog] Error loading WLAN assignments:', err);
       toast.error('Failed to load WLAN assignments', {
         description: errorMessage
       });
