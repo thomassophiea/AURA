@@ -2678,16 +2678,32 @@ class ApiService {
    * Returns: { site, deviceGroups, profiles, wlans, assignments }
    */
   async getSiteWLANAssignmentSummary(siteId: string): Promise<any> {
-    console.log(`Fetching WLAN assignment summary for site ${siteId}`);
+    console.log(`[API] Fetching WLAN assignment summary for site ${siteId}`);
 
     try {
-      const [deviceGroups, profilesWithWLANs, services] = await Promise.all([
-        this.getDeviceGroupsBySite(siteId),
-        this.getProfilesWithWLANsBySite(siteId),
-        this.getServicesBySite(siteId)
+      // First, fetch the site details to get device groups (they're nested in the site object)
+      console.log(`[API] Fetching site details for ${siteId}...`);
+      const siteResponse = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`);
+
+      if (!siteResponse.ok) {
+        throw new Error(`Failed to fetch site details: ${siteResponse.status}`);
+      }
+
+      const site = await siteResponse.json();
+      console.log(`[API] Site details fetched:`, site);
+      console.log(`[API] Site.deviceGroups:`, site.deviceGroups);
+
+      // Device groups are nested in the site object
+      const deviceGroups = site.deviceGroups || [];
+      console.log(`[API] Using ${deviceGroups.length} device groups from site data`);
+
+      // Now get profiles and services using these device groups
+      const [profilesWithWLANs, services] = await Promise.all([
+        this.getProfilesWithWLANsBySiteData(siteId, deviceGroups),
+        this.getServicesBySiteData(siteId, deviceGroups)
       ]);
 
-      return {
+      const result = {
         siteId,
         deviceGroupCount: deviceGroups.length,
         profileCount: profilesWithWLANs.length,
@@ -2697,9 +2713,140 @@ class ApiService {
         wlans: services
       };
 
+      console.log(`[API] Summary complete:`, result);
+      return result;
+
     } catch (error) {
-      console.error(`Failed to fetch WLAN assignment summary for site ${siteId}:`, error);
+      console.error(`[API] Failed to fetch WLAN assignment summary for site ${siteId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Get services/WLANs for a site using device groups from site data
+   */
+  private async getServicesBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
+    console.log(`[API] Fetching services for site ${siteId} using ${deviceGroups.length} device groups`);
+
+    if (deviceGroups.length === 0) {
+      console.log(`[API] No device groups provided`);
+      return [];
+    }
+
+    try {
+      // Get all profiles for these device groups
+      const allProfiles: any[] = [];
+      for (const group of deviceGroups) {
+        try {
+          const profiles = await this.getProfilesByDeviceGroup(group.id);
+          console.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
+          allProfiles.push(...profiles);
+        } catch (error) {
+          console.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
+        }
+      }
+
+      console.log(`[API] Total profiles found: ${allProfiles.length}`);
+
+      // Extract unique services from all profiles
+      const serviceIds = new Set<string>();
+      allProfiles.forEach(profile => {
+        console.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
+        console.log(`[API]   Profile.services:`, profile.services);
+
+        if (profile.services && Array.isArray(profile.services)) {
+          profile.services.forEach((serviceId: string) => {
+            console.log(`[API]   Found service ID: ${serviceId}`);
+            serviceIds.add(serviceId);
+          });
+        } else {
+          console.log(`[API]   No services array found on profile`);
+        }
+      });
+
+      console.log(`[API] Unique service IDs found: ${serviceIds.size}`, Array.from(serviceIds));
+
+      // Fetch full service details
+      const services: any[] = [];
+      for (const serviceId of serviceIds) {
+        try {
+          console.log(`[API] Fetching service details for ${serviceId}...`);
+          const service = await this.getServiceById(serviceId);
+          if (service) {
+            console.log(`[API] Service ${serviceId} fetched successfully:`, service);
+            services.push(service);
+          } else {
+            console.log(`[API] Service ${serviceId} returned null`);
+          }
+        } catch (error) {
+          console.warn(`[API] Failed to fetch service ${serviceId}:`, error);
+        }
+      }
+
+      console.log(`[API] Found ${services.length} services for site ${siteId}`);
+      return services;
+
+    } catch (error) {
+      console.error(`[API] Failed to fetch services for site ${siteId}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get profiles with WLANs for a site using device groups from site data
+   */
+  private async getProfilesWithWLANsBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
+    console.log(`[API] Fetching profiles with WLANs for site ${siteId} using ${deviceGroups.length} device groups`);
+
+    if (deviceGroups.length === 0) {
+      console.log(`[API] No device groups provided`);
+      return [];
+    }
+
+    try {
+      // Get all profiles with their service assignments
+      const profilesWithWLANs: any[] = [];
+
+      for (const group of deviceGroups) {
+        try {
+          const profiles = await this.getProfilesByDeviceGroup(group.id);
+          console.log(`[API] Found ${profiles.length} profiles in device group ${group.id}`);
+
+          // Enrich each profile with WLAN details
+          for (const profile of profiles) {
+            const wlans: any[] = [];
+
+            if (profile.services && Array.isArray(profile.services)) {
+              for (const serviceId of profile.services) {
+                try {
+                  const wlan = await this.getServiceById(serviceId);
+                  if (wlan) {
+                    wlans.push(wlan);
+                  }
+                } catch (error) {
+                  console.warn(`[API] Failed to fetch WLAN ${serviceId}:`, error);
+                }
+              }
+            }
+
+            profilesWithWLANs.push({
+              ...profile,
+              deviceGroupId: group.id,
+              deviceGroupName: group.name || group.id,
+              wlans
+            });
+          }
+        } catch (error) {
+          console.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
+        }
+      }
+
+      console.log(`[API] Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
+      return profilesWithWLANs;
+
+    } catch (error) {
+      console.error(`[API] Failed to fetch profiles with WLANs for site ${siteId}:`, error);
+      return [];
     }
   }
 }
