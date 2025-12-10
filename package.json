@@ -60,7 +60,8 @@
       },
       "scripts": {
             "dev": "vite",
-            "build": "vite build",
+            "build": "node scripts/generate-version.js && vite build",
+            "generate-version": "node scripts/generate-version.js",
             "start": "serve build -s -l 3000",
             "collect-metrics": "node metrics-collector.js",
             "collect-metrics:daemon": "nohup node metrics-collector.js > metrics-collector.log 2>&1 &"

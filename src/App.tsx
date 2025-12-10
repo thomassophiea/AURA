@@ -30,6 +30,7 @@ import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { DevModePanel } from './components/DevModePanel';
+import { VersionDisplay } from './components/VersionDisplay';
 import { toast } from 'sonner';
 
 const pageInfo = {
@@ -876,6 +877,8 @@ export default function App() {
         onClearLogs={handleClearApiLogs}
         onHeightChange={setDevPanelHeight}
       />
+      {/* Version Display - Fixed to bottom-left */}
+      <VersionDisplay position="bottom-left" />
     </>
   );
 }
