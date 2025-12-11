@@ -2814,6 +2814,20 @@ class ApiService {
 
           // Enrich each profile with WLAN details
           for (const profile of profiles) {
+            console.log(`[API] ========== PROFILE STRUCTURE DEBUG ==========`);
+            console.log(`[API] Profile ID: ${profile.id || profile.profileId || 'unknown'}`);
+            console.log(`[API] Profile Name: ${profile.name || profile.profileName || 'unknown'}`);
+            console.log(`[API] Profile Keys:`, Object.keys(profile));
+            console.log(`[API] Full Profile Object:`, JSON.stringify(profile, null, 2));
+            console.log(`[API] Checking for WLANs in various field names...`);
+            console.log(`[API]   - profile.services:`, profile.services);
+            console.log(`[API]   - profile.wlans:`, profile.wlans);
+            console.log(`[API]   - profile.ssids:`, profile.ssids);
+            console.log(`[API]   - profile.networks:`, profile.networks);
+            console.log(`[API]   - profile.serviceIds:`, profile.serviceIds);
+            console.log(`[API]   - profile.wirelessServices:`, profile.wirelessServices);
+            console.log(`[API] ===============================================`);
+
             const wlans: any[] = [];
 
             if (profile.services && Array.isArray(profile.services)) {
