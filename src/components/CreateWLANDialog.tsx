@@ -424,7 +424,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     value={formData.security}
                     onValueChange={(value: any) => setFormData({ ...formData, security: value })}
                   >
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
