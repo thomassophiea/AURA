@@ -487,14 +487,14 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <div className="space-y-2">
                   <Label htmlFor="role">User Role</Label>
                   <Select
-                    value={formData.authenticatedUserDefaultRoleID || ''}
-                    onValueChange={(value) => setFormData({ ...formData, authenticatedUserDefaultRoleID: value || null })}
+                    value={formData.authenticatedUserDefaultRoleID || 'none'}
+                    onValueChange={(value) => setFormData({ ...formData, authenticatedUserDefaultRoleID: value === 'none' ? null : value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder={loadingRoles ? "Loading roles..." : "Select role..."} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No Role</SelectItem>
+                      <SelectItem value="none">No Role</SelectItem>
                       {roles.map((role) => (
                         <SelectItem key={role.id} value={role.id}>
                           {role.name}
