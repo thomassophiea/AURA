@@ -124,41 +124,53 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   const discoverProfiles = async () => {
+    console.log('=== PROFILE DISCOVERY START ===');
+    console.log('Selected sites to discover:', formData.selectedSites);
+
     setDiscoveringProfiles(true);
     try {
       const assignmentService = new WLANAssignmentService();
+      console.log('Calling discoverProfilesForSites...');
       const profileMap = await assignmentService.discoverProfilesForSites(formData.selectedSites);
+      console.log('Profile Map Received:', profileMap);
 
       const newProfilesBySite = new Map<string, Profile[]>();
       const newSiteConfigs = new Map(siteConfigs);
 
       for (const siteId of formData.selectedSites) {
         const profiles = profileMap[siteId] || [];
+        console.log(`Site ${siteId}: Found ${profiles.length} profiles`, profiles);
         newProfilesBySite.set(siteId, profiles);
 
         // Initialize site config if not exists (default to ALL_PROFILES_AT_SITE)
         if (!newSiteConfigs.has(siteId)) {
           const site = sites.find(s => s.id === siteId);
-          newSiteConfigs.set(siteId, {
+          const config = {
             siteId,
             siteName: site?.name || site?.siteName || siteId,
-            deploymentMode: 'ALL_PROFILES_AT_SITE',
+            deploymentMode: 'ALL_PROFILES_AT_SITE' as const,
             includedProfiles: [],
             excludedProfiles: [],
             profiles
-          });
+          };
+          console.log(`Creating new site config for ${siteId}:`, config);
+          newSiteConfigs.set(siteId, config);
         } else {
           // Update profiles for existing config
           const config = newSiteConfigs.get(siteId)!;
           newSiteConfigs.set(siteId, { ...config, profiles });
+          console.log(`Updated existing site config for ${siteId}:`, { ...config, profiles });
         }
       }
 
       setProfilesBySite(newProfilesBySite);
       setSiteConfigs(newSiteConfigs);
-      console.log(`Discovered profiles for ${formData.selectedSites.length} sites`);
+      console.log(`✅ Discovered profiles for ${formData.selectedSites.length} sites`);
+      console.log('Final site configs:', Array.from(newSiteConfigs.entries()));
+      console.log('=== PROFILE DISCOVERY END ===');
     } catch (error) {
-      console.error('Failed to discover profiles:', error);
+      console.error('❌ Failed to discover profiles:', error);
+      console.error('Error details:', error);
       toast.error('Failed to discover profiles');
     } finally {
       setDiscoveringProfiles(false);
@@ -242,6 +254,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   const handleSubmit = async () => {
+    console.log('=== WLAN CREATION DEBUG START ===');
+    console.log('1. Form Data:', formData);
+    console.log('2. Selected Sites:', formData.selectedSites);
+    console.log('3. Site Configs:', Array.from(siteConfigs.entries()));
+    console.log('4. Profiles By Site:', Array.from(profilesBySite.entries()));
+    console.log('5. Effective Sets:', effectiveSets);
+
     // Validation
     if (!formData.ssid.trim()) {
       toast.error('SSID is required');
@@ -258,9 +277,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       return;
     }
 
+    console.log('6. Validation passed, site configs count:', siteConfigs.size);
+
     // Validate site configurations
     for (const config of siteConfigs.values()) {
+      console.log('7. Validating config for site:', config.siteName, config);
       const validation = effectiveSetCalculator.validateSiteAssignment(config);
+      console.log('8. Validation result:', validation);
       if (!validation.valid) {
         toast.error(`Invalid configuration for ${config.siteName}`, {
           description: validation.errors.join(', ')
@@ -282,6 +305,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         excludedProfiles: config.excludedProfiles
       }));
 
+      console.log('9. Site Assignments Prepared:', siteAssignments);
+      console.log('10. Calling createWLANWithSiteCentricDeployment...');
+
       // Use new site-centric deployment method
       const result = await assignmentService.createWLANWithSiteCentricDeployment(
         {
@@ -297,6 +323,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         siteAssignments
       );
 
+      console.log('11. WLAN Creation Result:', result);
+      console.log('=== WLAN CREATION DEBUG END ===');
+
       toast.success('WLAN Created Successfully', {
         description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`
       });
@@ -305,7 +334,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       onOpenChange(false);
 
     } catch (error) {
-      console.error('Failed to create WLAN:', error);
+      console.error('!!! WLAN Creation Failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       toast.error('Failed to create WLAN', {
         description: error instanceof Error ? error.message : 'Unknown error'
       });
