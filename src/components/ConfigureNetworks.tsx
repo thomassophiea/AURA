@@ -12,7 +12,7 @@ import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Trash2, Eye, 
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
-import { CreateNetworkDialog } from './CreateNetworkDialog';
+import { CreateWLANDialog } from './CreateWLANDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
 
@@ -598,8 +598,21 @@ export function ConfigureNetworks() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <CreateNetworkDialog onNetworkCreated={loadNetworks} />
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create WLAN
+              </Button>
             </div>
+
+            {/* Create WLAN Dialog */}
+            <CreateWLANDialog
+              open={showCreateDialog}
+              onOpenChange={setShowCreateDialog}
+              onSuccess={() => {
+                setShowCreateDialog(false);
+                loadNetworks();
+              }}
+            />
           </div>
         </CardHeader>
         
