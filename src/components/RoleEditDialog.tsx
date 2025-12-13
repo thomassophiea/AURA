@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -10,7 +10,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { apiService, Role, ClassOfService, Topology } from '../services/api';
-import { Settings, Shield, Network, Globe, Layers, Plus, Trash2, Lock, Unlock, RefreshCw } from 'lucide-react';
+import { Settings, Shield, Network, Globe, Layers, Plus, Trash2, Lock, Unlock, RefreshCw, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RoleEditDialogProps {
@@ -26,6 +26,12 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('basic');
+
+  // Draggable state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   // Debug logging
   useEffect(() => {
@@ -60,6 +66,9 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
 
   useEffect(() => {
     if (isOpen) {
+      // Reset position when opening
+      setPosition({ x: 0, y: 0 });
+
       // Load reference data when dialog opens
       loadReferenceData();
       
@@ -204,6 +213,41 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
       setIsSaving(false);
     }
   };
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-drag-handle]')) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
 
   const handleCancel = () => {
     resetForm();
@@ -836,9 +880,21 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   // Dialog mode (original behavior)
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
-      <DialogContent className="surface-2dp max-w-5xl max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col top-[10vh]">
-        <DialogHeader>
+      <DialogContent
+        ref={dialogRef}
+        className="surface-2dp max-w-5xl max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col"
+        style={{
+          position: 'fixed',
+          top: '50%',
+          left: '50%',
+          transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
+          cursor: isDragging ? 'grabbing' : 'auto'
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        <DialogHeader className="px-6 py-4 border-b" data-drag-handle style={{ cursor: 'grab' }}>
           <DialogTitle className="flex items-center gap-3">
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
             <Shield className="h-5 w-5 text-primary" />
             {isEditing ? `Edit Role: ${role?.name}` : 'Create New Role'}
             {isLoading && (

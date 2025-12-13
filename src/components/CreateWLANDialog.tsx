@@ -508,7 +508,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {/* Service Name */}
                 <div className="space-y-2">
                   <Label htmlFor="serviceName">
-                    Service Name <span className="text-red-500">*</span>
+                    Service Name {!formData.serviceName.trim() && <span className="text-red-500">*</span>}
                   </Label>
                   <Input
                     id="serviceName"
@@ -522,7 +522,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {/* SSID */}
                 <div className="space-y-2">
                   <Label htmlFor="ssid">
-                    SSID <span className="text-red-500">*</span>
+                    SSID {!formData.ssid.trim() && <span className="text-red-500">*</span>}
                   </Label>
                   <Input
                     id="ssid"
@@ -536,7 +536,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {/* Security Type */}
                 <div className="space-y-2">
                   <Label htmlFor="security">
-                    Security <span className="text-red-500">*</span>
+                    Security
                   </Label>
                   <Select
                     value={formData.security}
@@ -557,7 +557,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {/* Band */}
                 <div className="space-y-2">
                   <Label htmlFor="band">
-                    Band <span className="text-red-500">*</span>
+                    Band
                   </Label>
                   <Select
                     value={formData.band}
@@ -578,7 +578,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {formData.security !== 'open' && (
                   <div className="space-y-2">
                     <Label htmlFor="passphrase">
-                      Passphrase <span className="text-red-500">*</span>
+                      Passphrase {formData.security !== 'open' && !formData.passphrase.trim() && <span className="text-red-500">*</span>}
                     </Label>
                     <Input
                       id="passphrase"
@@ -693,7 +693,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-medium">
-                      Site Assignment <span className="text-red-500">*</span>
+                      Site Assignment {formData.selectedSites.length === 0 && <span className="text-red-500">*</span>}
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
                       Select at least one site (required)
@@ -709,7 +709,33 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               </CardHeader>
               <CardContent>
               <div className="space-y-3">
-                <Label>Select Sites</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Select Sites</Label>
+                  {sites.length > 0 && (
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setFormData({ ...formData, selectedSites: sites.map(s => s.id) })}
+                        disabled={formData.selectedSites.length === sites.length}
+                      >
+                        Select All
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setFormData({ ...formData, selectedSites: [] })}
+                        disabled={formData.selectedSites.length === 0}
+                      >
+                        Clear All
+                      </Button>
+                    </div>
+                  )}
+                </div>
                 {loadingSites ? (
                   <div className="space-y-2">
                     {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
