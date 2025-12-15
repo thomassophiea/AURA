@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, AlertCircle, Wifi, MapPin, Users, GripVertical, Settings, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, CheckCircle, AlertCircle, Wifi, MapPin, Users, GripVertical, Settings, Info, ChevronDown, ChevronUp, Folder, FolderOpen } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -16,8 +16,10 @@ import { effectiveSetCalculator } from '../services/effectiveSetCalculator';
 import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
 import { ProfilePicker } from './wlans/ProfilePicker';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
+import { SiteGroupManagementDialog } from './SiteGroupManagementDialog';
 import type {
   Site,
+  SiteGroup,
   Profile,
   AutoAssignmentResponse,
   WLANFormData,
@@ -51,6 +53,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     band: 'dual',
     enabled: true,
     selectedSites: [],
+    selectedSiteGroups: [],
     authenticatedUserDefaultRoleID: null,
     // Advanced options defaults
     hidden: false,
@@ -61,6 +64,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   // Sites data
   const [sites, setSites] = useState<Site[]>([]);
   const [loadingSites, setLoadingSites] = useState(false);
+
+  // Site groups
+  const [siteGroups, setSiteGroups] = useState<SiteGroup[]>([]);
+  const [siteGroupDialogOpen, setSiteGroupDialogOpen] = useState(false);
 
   // Roles
   const [roles, setRoles] = useState<any[]>([]);
@@ -92,6 +99,18 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   // Advanced options state
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Load site groups from localStorage
+  useEffect(() => {
+    const savedGroups = localStorage.getItem('siteGroups');
+    if (savedGroups) {
+      try {
+        setSiteGroups(JSON.parse(savedGroups));
+      } catch (error) {
+        console.error('Failed to load site groups:', error);
+      }
+    }
+  }, []);
+
   // Load sites and roles when dialog opens
   useEffect(() => {
     if (open) {
@@ -99,6 +118,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       loadRoles();
       // Reset form and position
       setFormData({
+        serviceName: '',
         ssid: '',
         security: 'wpa2-psk',
         passphrase: '',
@@ -106,6 +126,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         band: 'dual',
         enabled: true,
         selectedSites: [],
+        selectedSiteGroups: [],
         authenticatedUserDefaultRoleID: null // Will be set to 'bridged' after roles load
       });
       setSiteConfigs(new Map());
@@ -150,15 +171,16 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     }
   }, [isDragging, dragStart]);
 
-  // Discover profiles when sites change
+  // Discover profiles when sites or site groups change
   useEffect(() => {
-    if (formData.selectedSites.length > 0) {
-      discoverProfiles();
+    const expandedSites = getExpandedSiteIds();
+    if (expandedSites.length > 0) {
+      discoverProfiles(expandedSites);
     } else {
       setProfilesBySite(new Map());
       setEffectiveSets([]);
     }
-  }, [formData.selectedSites]);
+  }, [formData.selectedSites, formData.selectedSiteGroups]);
 
   // Recalculate effective sets when site configs change
   useEffect(() => {
@@ -203,21 +225,22 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     }
   };
 
-  const discoverProfiles = async () => {
+  const discoverProfiles = async (siteIds?: string[]) => {
+    const sitesToDiscover = siteIds || formData.selectedSites;
     console.log('=== PROFILE DISCOVERY START ===');
-    console.log('Selected sites to discover:', formData.selectedSites);
+    console.log('Selected sites to discover:', sitesToDiscover);
 
     setDiscoveringProfiles(true);
     try {
       const assignmentService = new WLANAssignmentService();
       console.log('Calling discoverProfilesForSites...');
-      const profileMap = await assignmentService.discoverProfilesForSites(formData.selectedSites);
+      const profileMap = await assignmentService.discoverProfilesForSites(sitesToDiscover);
       console.log('Profile Map Received:', profileMap);
 
       const newProfilesBySite = new Map<string, Profile[]>();
       const newSiteConfigs = new Map(siteConfigs);
 
-      for (const siteId of formData.selectedSites) {
+      for (const siteId of sitesToDiscover) {
         const profiles = profileMap[siteId] || [];
         console.log(`Site ${siteId}: Found ${profiles.length} profiles`, profiles);
         newProfilesBySite.set(siteId, profiles);
@@ -245,7 +268,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
       setProfilesBySite(newProfilesBySite);
       setSiteConfigs(newSiteConfigs);
-      console.log(`✅ Discovered profiles for ${formData.selectedSites.length} sites`);
+      console.log(`✅ Discovered profiles for ${sitesToDiscover.length} sites`);
       console.log('Final site configs:', Array.from(newSiteConfigs.entries()));
       console.log('=== PROFILE DISCOVERY END ===');
     } catch (error) {
@@ -271,6 +294,21 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     setEffectiveSets(sets);
   };
 
+  // Get all sites from selected site groups
+  const getExpandedSiteIds = (): string[] => {
+    const groupSites = formData.selectedSiteGroups.flatMap(groupId => {
+      const group = siteGroups.find(g => g.id === groupId);
+      return group?.siteIds || [];
+    });
+    return [...new Set([...formData.selectedSites, ...groupSites])];
+  };
+
+  // Save site groups to localStorage
+  const handleSaveSiteGroups = (groups: SiteGroup[]) => {
+    setSiteGroups(groups);
+    localStorage.setItem('siteGroups', JSON.stringify(groups));
+  };
+
   const toggleSite = (siteId: string) => {
     setFormData(prev => ({
       ...prev,
@@ -285,6 +323,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       newConfigs.delete(siteId);
       setSiteConfigs(newConfigs);
     }
+  };
+
+  const toggleSiteGroup = (groupId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      selectedSiteGroups: prev.selectedSiteGroups.includes(groupId)
+        ? prev.selectedSiteGroups.filter(id => id !== groupId)
+        : [...prev.selectedSiteGroups, groupId]
+    }));
   };
 
   const handleModeChange = (siteId: string, mode: DeploymentMode) => {
@@ -340,7 +387,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     if (!formData.security) return false;
     if (!formData.band) return false;
     if (formData.security !== 'open' && !formData.passphrase?.trim()) return false;
-    if (formData.selectedSites.length === 0) return false;
+    // At least one site or site group must be selected
+    const expandedSites = getExpandedSiteIds();
+    if (expandedSites.length === 0) return false;
     return true;
   };
 
@@ -375,8 +424,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       errors.push('Passphrase is required for secured networks');
     }
 
-    if (formData.selectedSites.length === 0) {
-      errors.push('At least one site must be selected');
+    const expandedSites = getExpandedSiteIds();
+    if (expandedSites.length === 0) {
+      errors.push('At least one site or site group must be selected');
     }
 
     // If there are validation errors, show them all
@@ -406,6 +456,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     setSubmitting(true);
     try {
       const assignmentService = new WLANAssignmentService();
+      const expandedSites = getExpandedSiteIds();
 
       // Prepare site assignments
       const siteAssignments = Array.from(siteConfigs.values()).map(config => ({
@@ -417,7 +468,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       }));
 
       console.log('9. Site Assignments Prepared:', siteAssignments);
-      console.log('10. Calling createWLANWithSiteCentricDeployment...');
+      console.log('10. Expanded Sites (from groups + individual):', expandedSites);
+      console.log('11. Calling createWLANWithSiteCentricDeployment...');
 
       // Use new site-centric deployment method
       const result = await assignmentService.createWLANWithSiteCentricDeployment(
@@ -430,7 +482,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           vlan: formData.vlan || undefined,
           band: formData.band,
           enabled: formData.enabled,
-          sites: formData.selectedSites,
+          sites: expandedSites, // Use expanded site IDs (includes both individual sites and sites from groups)
           authenticatedUserDefaultRoleID: formData.authenticatedUserDefaultRoleID || undefined,
           // Advanced options
           hidden: formData.hidden || undefined,
@@ -473,7 +525,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           ref={dialogRef}
-          className="max-w-7xl w-[95vw] max-h-[95vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
+          className="max-w-7xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
           style={{
             position: 'fixed',
             left: '50%',
@@ -481,7 +533,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
             transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
             cursor: isDragging ? 'grabbing' : 'auto',
             minWidth: '800px',
-            minHeight: '600px'
+            minHeight: '500px',
+            maxHeight: '90vh'
           }}
           onMouseDown={handleMouseDown}
         >
@@ -695,10 +748,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-medium">
-                      Site Assignment {formData.selectedSites.length === 0 && <span className="text-red-500">*</span>}
+                      Site Assignment {getExpandedSiteIds().length === 0 && <span className="text-red-500">*</span>}
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
-                      Select at least one site (required)
+                      Select sites or site groups ({getExpandedSiteIds().length} total sites selected)
                     </CardDescription>
                   </div>
                   {discoveringProfiles && (
@@ -711,8 +764,79 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               </CardHeader>
               <CardContent>
               <div className="space-y-3">
+                {/* Site Groups Section */}
+                {siteGroups.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="flex items-center gap-2">
+                        <Folder className="h-4 w-4" />
+                        Site Groups
+                      </Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setSiteGroupDialogOpen(true)}
+                      >
+                        <Settings className="h-3 w-3 mr-1" />
+                        Manage
+                      </Button>
+                    </div>
+                    <div className="space-y-1">
+                      {siteGroups.map(group => (
+                        <div
+                          key={group.id}
+                          className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                            formData.selectedSiteGroups.includes(group.id)
+                              ? 'border-primary bg-primary/5'
+                              : 'hover:bg-accent/50'
+                          }`}
+                          onClick={() => toggleSiteGroup(group.id)}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={formData.selectedSiteGroups.includes(group.id)}
+                            onChange={() => {}}
+                            className="h-4 w-4"
+                          />
+                          <div
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: group.color }}
+                          />
+                          <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium">{group.name}</span>
+                            {group.description && (
+                              <p className="text-xs text-muted-foreground truncate">{group.description}</p>
+                            )}
+                          </div>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+                            {group.siteIds.length} {group.siteIds.length === 1 ? 'site' : 'sites'}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manage Site Groups Button (when no groups exist) */}
+                {siteGroups.length === 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => setSiteGroupDialogOpen(true)}
+                  >
+                    <Folder className="h-4 w-4 mr-2" />
+                    Create Site Groups
+                  </Button>
+                )}
+
+                {/* Individual Sites Section */}
                 <div className="flex items-center justify-between">
-                  <Label>Select Sites</Label>
+                  <Label>Individual Sites</Label>
                   {sites.length > 0 && (
                     <div className="flex gap-2">
                       <Button
@@ -849,6 +973,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           onConfirm={handleProfileSelection}
         />
       )}
+
+      {/* Site Group Management Dialog */}
+      <SiteGroupManagementDialog
+        open={siteGroupDialogOpen}
+        onOpenChange={setSiteGroupDialogOpen}
+        sites={sites}
+        siteGroups={siteGroups}
+        onSave={handleSaveSiteGroups}
+      />
     </>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Input } from './ui/input';
@@ -6,7 +6,7 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
-import { AlertCircle, Plus, Wifi, Shield, Network, Eye, EyeOff, Unlock, RefreshCw } from 'lucide-react';
+import { AlertCircle, Plus, Wifi, Shield, Network, Eye, EyeOff, Unlock, RefreshCw, GripVertical } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { apiService, Service, Role } from '../services/api';
@@ -47,14 +47,56 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
   const [topologies, setTopologies] = useState<any[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
-  
+
+  // Draggable state
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   // Load available options when dialog opens
   useEffect(() => {
     if (open) {
       loadOptions();
+      setPosition({ x: 0, y: 0 }); // Reset position when opening
     }
   }, [open]);
-  
+
+  // Drag handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('[data-drag-handle]')) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        setPosition({
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
+        });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
+
   const loadOptions = async () => {
     setLoadingOptions(true);
     try {
@@ -228,25 +270,41 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
           Create Network
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+      <DialogContent
+        ref={dialogRef}
+        className="max-w-2xl w-[90vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
+        style={{
+          position: 'fixed',
+          left: '50%',
+          top: '50%',
+          transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
+          cursor: isDragging ? 'grabbing' : 'auto',
+          minWidth: '600px',
+          minHeight: '500px',
+          maxHeight: '90vh'
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        <DialogHeader className="px-6 py-4 border-b" data-drag-handle style={{ cursor: 'grab' }}>
+          <DialogTitle className="flex items-center gap-2">
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
             <Wifi className="h-5 w-5" />
             <span>Create New Network</span>
           </DialogTitle>
           <DialogDescription>
-            Configure a new wireless network (SSID) with security and access settings.
+            Configure a new wireless network (SSID) with security and access settings (drag to move)
           </DialogDescription>
         </DialogHeader>
-        
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+
+        <div className="flex-1 overflow-y-auto hide-scrollbar px-6 py-6">
+          {error && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
@@ -560,8 +618,9 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
             </div>
           </TabsContent>
         </Tabs>
-        
-        <DialogFooter>
+        </div>
+
+        <DialogFooter className="px-6 py-4 border-t mt-auto">
           <Button
             variant="outline"
             onClick={() => setOpen(false)}

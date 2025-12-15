@@ -29,6 +29,16 @@ export interface Site {
   status?: string;
 }
 
+export interface SiteGroup {
+  id: string;
+  name: string;
+  description?: string;
+  siteIds: string[];
+  createdAt?: string;
+  lastModified?: string;
+  color?: string; // For visual grouping in UI
+}
+
 export interface DeviceGroup {
   id: string;
   name: string;
@@ -100,6 +110,7 @@ export interface WLANFormData {
   band: '2.4GHz' | '5GHz' | 'dual';
   enabled: boolean;
   selectedSites: string[];
+  selectedSiteGroups: string[]; // Site groups selected for deployment
   authenticatedUserDefaultRoleID?: string | null;
 
   // Advanced options (fields that exist in Service API)
@@ -164,9 +175,27 @@ export interface WLANSiteAssignment {
   wlanName: string;
   siteId: string;
   siteName: string;
+  siteGroupId?: string;            // Optional: site group this assignment belongs to
+  siteGroupName?: string;
   deploymentMode: DeploymentMode;
   includedProfiles: string[];      // Profile IDs to include (INCLUDE_ONLY mode)
   excludedProfiles: string[];      // Profile IDs to exclude (EXCLUDE_SOME mode)
+  createdAt: string;
+  lastModified: string;
+}
+
+/**
+ * Site group-level WLAN assignment tracking
+ * Stores the user's intent for which site groups should receive a WLAN
+ */
+export interface WLANSiteGroupAssignment {
+  wlanId: string;
+  wlanName: string;
+  siteGroupId: string;
+  siteGroupName: string;
+  deploymentMode: DeploymentMode;   // Applied to all sites in the group
+  includedProfiles: string[];       // Profile IDs to include (INCLUDE_ONLY mode)
+  excludedProfiles: string[];       // Profile IDs to exclude (EXCLUDE_SOME mode)
   createdAt: string;
   lastModified: string;
 }

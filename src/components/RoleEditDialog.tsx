@@ -312,7 +312,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
 
   // Render content (shared between dialog and inline modes)
   const renderContent = () => (
-    <div className={isInline ? "space-y-4" : "flex-1 overflow-y-auto py-4"}>
+    <div className={isInline ? "space-y-4" : "flex-1 overflow-y-auto hide-scrollbar px-6 py-6"}>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="basic" className="flex items-center gap-2">
@@ -816,7 +816,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
 
   // Render footer buttons (shared between dialog and inline modes)
   const renderFooter = () => (
-    <div className={isInline ? "flex justify-end space-x-2 pt-4 border-t" : "border-t border-border pt-4 flex justify-end space-x-2"}>
+    <div className={isInline ? "flex justify-end space-x-2 pt-4 border-t" : "flex justify-end space-x-2"}>
       <Button
         variant="outline"
         onClick={handleCancel}
@@ -882,13 +882,16 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent
         ref={dialogRef}
-        className="surface-2dp max-w-5xl max-h-[calc(100vh-4rem)] overflow-hidden flex flex-col"
+        className="surface-2dp max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
         style={{
           position: 'fixed',
-          top: '50%',
           left: '50%',
+          top: '50%',
           transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
-          cursor: isDragging ? 'grabbing' : 'auto'
+          cursor: isDragging ? 'grabbing' : 'auto',
+          minWidth: '800px',
+          minHeight: '600px',
+          maxHeight: '90vh'
         }}
         onMouseDown={handleMouseDown}
       >
@@ -903,14 +906,14 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
           </DialogTitle>
           <DialogDescription>
             {isEditing
-              ? 'Modify network policy role configuration and access rules'
-              : 'Create a new network policy role with custom access rules and settings'}
+              ? 'Modify network policy role configuration and access rules (drag to move)'
+              : 'Create a new network policy role with custom access rules and settings (drag to move)'}
           </DialogDescription>
         </DialogHeader>
 
         {renderContent()}
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-4 border-t mt-auto">
           {renderFooter()}
         </DialogFooter>
       </DialogContent>
