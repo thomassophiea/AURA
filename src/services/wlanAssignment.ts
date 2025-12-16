@@ -52,13 +52,13 @@ export class WLANAssignmentService {
       if (serviceData.maxClients) servicePayload.maxClients = serviceData.maxClients;
       if (serviceData.description) servicePayload.description = serviceData.description;
 
-      // Explicitly remove timeout fields that might have been included with invalid values
-      // These should be omitted to let the API use its defaults
-      delete servicePayload.preAuthenticatedIdleTimeout;
-      delete servicePayload.postAuthenticatedIdleTimeout;
-      delete servicePayload.sessionTimeout;
+      // IMPORTANT: Campus Controller API bug - if timeout fields are omitted, it defaults them to 0, then fails validation
+      // We must explicitly set valid default values (min valid value is 5)
+      servicePayload.preAuthenticatedIdleTimeout = 300;  // 5 minutes default
+      servicePayload.postAuthenticatedIdleTimeout = 1800; // 30 minutes default
+      servicePayload.sessionTimeout = 86400; // 24 hours default
 
-      console.log('[WLANAssignment] Service payload after cleanup:', JSON.stringify(servicePayload));
+      console.log('[WLANAssignment] Service payload with defaults:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
@@ -403,13 +403,13 @@ export class WLANAssignmentService {
       if (serviceData.maxClients) servicePayload.maxClients = serviceData.maxClients;
       if (serviceData.description) servicePayload.description = serviceData.description;
 
-      // Explicitly remove timeout fields that might have been included with invalid values
-      // These should be omitted to let the API use its defaults
-      delete servicePayload.preAuthenticatedIdleTimeout;
-      delete servicePayload.postAuthenticatedIdleTimeout;
-      delete servicePayload.sessionTimeout;
+      // IMPORTANT: Campus Controller API bug - if timeout fields are omitted, it defaults them to 0, then fails validation
+      // We must explicitly set valid default values (min valid value is 5)
+      servicePayload.preAuthenticatedIdleTimeout = 300;  // 5 minutes default
+      servicePayload.postAuthenticatedIdleTimeout = 1800; // 30 minutes default
+      servicePayload.sessionTimeout = 86400; // 24 hours default
 
-      console.log('[WLANAssignment] Service payload after cleanup:', JSON.stringify(servicePayload));
+      console.log('[WLANAssignment] Service payload with defaults:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
