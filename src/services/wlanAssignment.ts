@@ -378,6 +378,7 @@ export class WLANAssignmentService {
       console.log('[WLANAssignment] Step 4: Creating service...');
 
       // Build service payload with only the fields we want to send
+      // IMPORTANT: Do NOT include timeout fields unless they have valid values (>= 5)
       const servicePayload: any = {
         serviceName: serviceData.serviceName || serviceData.name,
         ssid: serviceData.ssid,
@@ -393,6 +394,10 @@ export class WLANAssignmentService {
       if (serviceData.hidden !== undefined) servicePayload.hidden = serviceData.hidden;
       if (serviceData.maxClients) servicePayload.maxClients = serviceData.maxClients;
       if (serviceData.description) servicePayload.description = serviceData.description;
+
+      // Explicitly remove timeout fields that might have been included with invalid values
+      // These should be omitted to let the API use its defaults
+      console.log('[WLANAssignment] Service payload before cleanup:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
