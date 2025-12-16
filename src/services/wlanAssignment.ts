@@ -52,6 +52,14 @@ export class WLANAssignmentService {
       if (serviceData.maxClients) servicePayload.maxClients = serviceData.maxClients;
       if (serviceData.description) servicePayload.description = serviceData.description;
 
+      // Explicitly remove timeout fields that might have been included with invalid values
+      // These should be omitted to let the API use its defaults
+      delete servicePayload.preAuthenticatedIdleTimeout;
+      delete servicePayload.postAuthenticatedIdleTimeout;
+      delete servicePayload.sessionTimeout;
+
+      console.log('[WLANAssignment] Service payload after cleanup:', JSON.stringify(servicePayload));
+
       const service = await apiService.createService(servicePayload);
 
       console.log('[WLANAssignment] Service created:', service.id);
@@ -397,7 +405,11 @@ export class WLANAssignmentService {
 
       // Explicitly remove timeout fields that might have been included with invalid values
       // These should be omitted to let the API use its defaults
-      console.log('[WLANAssignment] Service payload before cleanup:', JSON.stringify(servicePayload));
+      delete servicePayload.preAuthenticatedIdleTimeout;
+      delete servicePayload.postAuthenticatedIdleTimeout;
+      delete servicePayload.sessionTimeout;
+
+      console.log('[WLANAssignment] Service payload after cleanup:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
