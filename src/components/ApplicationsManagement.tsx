@@ -31,14 +31,11 @@ interface Application {
   id: string;
   name: string;
   description: string;
-  clientId: string;
-  clientSecret: string;
-  grantType: 'client_credentials' | 'password' | 'authorization_code';
-  scopes: string[];
+  url?: string;
+  version?: string;
+  status: 'installed' | 'available' | 'running' | 'stopped';
   enabled: boolean;
-  createdAt: string;
-  lastUsed?: string;
-  requestCount: number;
+  icon?: string;
 }
 
 export function ApplicationsManagement() {
@@ -78,9 +75,9 @@ export function ApplicationsManagement() {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      console.log('[ApplicationsManagement] Fetching applications from /v1/oauth/applications...');
+      console.log('[ApplicationsManagement] Fetching applications from /platformmanager/v1/apps...');
 
-      const response = await apiService.makeAuthenticatedRequest('/v1/oauth/applications', {
+      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/apps', {
         method: 'GET'
       });
 
@@ -120,26 +117,25 @@ export function ApplicationsManagement() {
 
         // Transform Campus Controller format to our interface
         const appList: Application[] = rawApps.map((app: any, index: number) => {
-          // Map grant type from Campus Controller
-          let grantType: Application['grantType'] = 'client_credentials';
-          if (app.grantType === 'password' || app.grant_type === 'password') {
-            grantType = 'password';
-          } else if (app.grantType === 'authorization_code' || app.grant_type === 'authorization_code') {
-            grantType = 'authorization_code';
+          // Map status from Campus Controller
+          let status: Application['status'] = 'available';
+          if (app.status === 'installed' || app.state === 'installed' || app.installed === true) {
+            status = 'installed';
+          } else if (app.status === 'running' || app.state === 'running' || app.running === true) {
+            status = 'running';
+          } else if (app.status === 'stopped' || app.state === 'stopped') {
+            status = 'stopped';
           }
 
           return {
-            id: app.id || app.clientId || app.client_id || `app-${index}`,
-            name: app.name || app.applicationName || app.client_name || `Application ${index + 1}`,
-            description: app.description || app.desc || '',
-            clientId: app.clientId || app.client_id || app.id || 'unknown',
-            clientSecret: app.clientSecret || app.client_secret || '••••••••',
-            grantType: grantType,
-            scopes: app.scopes || app.scope?.split(' ') || [],
-            enabled: app.enabled !== undefined ? app.enabled : app.status === 'active' || app.status === 'ACTIVE',
-            createdAt: app.createdAt || app.created_at || app.createTime || new Date().toISOString(),
-            lastUsed: app.lastUsed || app.last_used || app.lastAccessTime || undefined,
-            requestCount: app.requestCount || app.request_count || app.accessCount || 0
+            id: app.id || app.appId || app.applicationId || `app-${index}`,
+            name: app.name || app.applicationName || app.title || `Application ${index + 1}`,
+            description: app.description || app.desc || app.summary || '',
+            url: app.url || app.endpoint || app.dashboardUrl || undefined,
+            version: app.version || app.appVersion || undefined,
+            status: status,
+            enabled: app.enabled !== undefined ? app.enabled : app.status === 'running' || app.status === 'installed',
+            icon: app.icon || app.iconUrl || undefined
           };
         });
 
