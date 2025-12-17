@@ -6334,3 +6334,51 @@ html[data-theme="light"], html.light {
   ) !important;
   border: 1px solid rgba(211, 0, 0, 0.50) !important;
 }
+
+/* ========================================
+   GLOBAL FIX: Ensure Radix UI Dialogs/Sheets Work in All Themes
+   ======================================== */
+
+/* Ensure Radix UI portals appear above everything */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
+
+/* Ensure Sheet overlays and content have proper z-index */
+[data-radix-dialog-overlay],
+[data-slot="sheet-overlay"] {
+  z-index: 9998 !important;
+}
+
+[data-radix-dialog-content],
+[data-slot="sheet-content"] {
+  z-index: 9999 !important;
+}
+
+/* Ensure all themes allow portals to render */
+.synthwave [data-radix-portal],
+.pirate [data-radix-portal],
+.mi5 [data-radix-portal] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  pointer-events: none !important;
+  z-index: 9999 !important;
+}
+
+/* Allow clicks through portal to overlay and content */
+.synthwave [data-radix-portal] > *,
+.pirate [data-radix-portal] > *,
+.mi5 [data-radix-portal] > * {
+  pointer-events: auto !important;
+}
+
+/* Ensure sheet triggers are always clickable */
+.synthwave button[data-state],
+.pirate button[data-state],
+.mi5 button[data-state] {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
