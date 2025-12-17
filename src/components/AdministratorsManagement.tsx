@@ -77,30 +77,56 @@ export function AdministratorsManagement() {
         console.log('[AdministratorsManagement] Response type:', typeof data, 'isArray:', Array.isArray(data));
 
         // Parse administrators data with flexible schema detection
-        let adminList: Administrator[] = [];
+        let rawAdmins: any[] = [];
 
         if (Array.isArray(data)) {
-          adminList = data;
+          rawAdmins = data;
         } else if (data && typeof data === 'object') {
           // Check for nested arrays in common property names
           const possibleKeys = ['administrators', 'admins', 'users', 'data', 'items', 'results'];
           for (const key of possibleKeys) {
             if (data[key] && Array.isArray(data[key])) {
               console.log('[AdministratorsManagement] Found administrators array at key:', key);
-              adminList = data[key];
+              rawAdmins = data[key];
               break;
             }
           }
 
-          if (adminList.length === 0) {
+          if (rawAdmins.length === 0) {
             console.log('[AdministratorsManagement] No admins found. Available keys:', Object.keys(data));
           }
         }
 
-        console.log('[AdministratorsManagement] Parsed administrators count:', adminList.length);
-        if (adminList.length > 0) {
-          console.log('[AdministratorsManagement] Sample admin:', adminList[0]);
+        console.log('[AdministratorsManagement] Parsed administrators count:', rawAdmins.length);
+        if (rawAdmins.length > 0) {
+          console.log('[AdministratorsManagement] Sample admin:', rawAdmins[0]);
         }
+
+        // Transform Campus Controller format to our interface
+        const adminList: Administrator[] = rawAdmins.map((admin: any) => {
+          // Map adminRole from Campus Controller to our role format
+          let role: Administrator['role'] = 'viewer';
+          if (admin.adminRole === 'FULL' || admin.adminRole === 'SUPER_ADMIN') {
+            role = 'super_admin';
+          } else if (admin.adminRole === 'ADMIN' || admin.adminRole === 'NETWORK_ADMIN') {
+            role = 'admin';
+          } else if (admin.adminRole === 'OPERATOR' || admin.adminRole === 'NETWORK_OPERATOR') {
+            role = 'operator';
+          }
+
+          return {
+            id: admin.userId || admin.id || admin.username || 'unknown',
+            username: admin.userId || admin.username || admin.name || 'unknown',
+            email: admin.email || admin.properties?.email || `${admin.userId}@unknown.local`,
+            role: role,
+            enabled: admin.accountState === 'ENABLED' || admin.enabled === true,
+            lastLogin: admin.lastLogin || admin.lastLoginTime || undefined,
+            createdAt: admin.createdAt || admin.createTime || new Date().toISOString(),
+            twoFactorEnabled: admin.twoFactorEnabled || admin.properties?.twoFactorEnabled || false
+          };
+        });
+
+        console.log('[AdministratorsManagement] Transformed administrators:', adminList);
 
         setAdministrators(adminList);
         setApiNotAvailable(false);
