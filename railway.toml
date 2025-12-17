@@ -1,6 +1,11 @@
 [build]
 builder = "nixpacks"
 
+[build.nixpacksPlan]
+phases.setup.nixPkgs = ["nodejs"]
+phases.install.cmds = ["npm ci"]
+phases.build.cmds = ["npm run build"]
+
 [deploy]
 startCommand = "node server.js"
 restartPolicyType = "on_failure"
