@@ -230,6 +230,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     console.log('=== PROFILE DISCOVERY START ===');
     console.log('Selected sites to discover:', sitesToDiscover);
 
+    if (sitesToDiscover.length === 0) {
+      console.warn('⚠️ No sites to discover profiles for');
+      return;
+    }
+
     setDiscoveringProfiles(true);
     try {
       const assignmentService = new WLANAssignmentService();
@@ -239,10 +244,17 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
       const newProfilesBySite = new Map<string, Profile[]>();
       const newSiteConfigs = new Map(siteConfigs);
+      let totalProfilesFound = 0;
 
       for (const siteId of sitesToDiscover) {
         const profiles = profileMap[siteId] || [];
+        totalProfilesFound += profiles.length;
         console.log(`Site ${siteId}: Found ${profiles.length} profiles`, profiles);
+
+        if (profiles.length === 0) {
+          console.warn(`⚠️ No profiles found for site ${siteId}. This site may not have device groups or profiles configured.`);
+        }
+
         newProfilesBySite.set(siteId, profiles);
 
         // Initialize site config if not exists (default to ALL_PROFILES_AT_SITE)
@@ -268,13 +280,24 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
       setProfilesBySite(newProfilesBySite);
       setSiteConfigs(newSiteConfigs);
-      console.log(`✅ Discovered profiles for ${sitesToDiscover.length} sites`);
+
+      if (totalProfilesFound === 0) {
+        console.error(`❌ No profiles found across ${sitesToDiscover.length} site(s)`);
+        toast.warning('No Profiles Found', {
+          description: `No profiles were discovered at the selected site(s). Please ensure the site(s) have device groups with profiles configured.`
+        });
+      } else {
+        console.log(`✅ Discovered ${totalProfilesFound} total profiles across ${sitesToDiscover.length} sites`);
+      }
+
       console.log('Final site configs:', Array.from(newSiteConfigs.entries()));
       console.log('=== PROFILE DISCOVERY END ===');
     } catch (error) {
       console.error('❌ Failed to discover profiles:', error);
       console.error('Error details:', error);
-      toast.error('Failed to discover profiles');
+      toast.error('Failed to discover profiles', {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
     } finally {
       setDiscoveringProfiles(false);
     }
@@ -440,9 +463,26 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
     console.log('6. Validation passed, site configs count:', siteConfigs.size);
 
+    // Ensure site configs exist for all selected sites
+    if (siteConfigs.size === 0) {
+      toast.error('No site configurations found', {
+        description: 'Please wait for profile discovery to complete before creating the WLAN'
+      });
+      return;
+    }
+
     // Validate site configurations
     for (const config of siteConfigs.values()) {
       console.log('7. Validating config for site:', config.siteName, config);
+
+      // Check if profiles were discovered
+      if (!config.profiles || config.profiles.length === 0) {
+        toast.error(`No profiles found at site "${config.siteName}"`, {
+          description: 'Cannot deploy WLAN to a site with no profiles. Please check if this site has device groups with profiles configured.'
+        });
+        return;
+      }
+
       const validation = effectiveSetCalculator.validateSiteAssignment(config);
       console.log('8. Validation result:', validation);
       if (!validation.valid) {
