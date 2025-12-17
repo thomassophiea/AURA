@@ -41,6 +41,7 @@ import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Cartesia
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
 import { ApplicationWidgets } from './ApplicationWidgets';
+import { ApplicationEndpointTester } from './ApplicationEndpointTester';
 import { useMetricsCollection } from '../hooks/useMetricsCollection';
 import { metricsStorage } from '../services/metricsStorage';
 
@@ -1060,6 +1061,9 @@ export function ServiceLevelsEnhanced() {
 
           {/* Best Practices Widget */}
           <BestPracticesWidget />
+
+          {/* DEBUG: Application Endpoint Tester */}
+          <ApplicationEndpointTester />
 
           {/* Application Analytics Widgets */}
           <ApplicationWidgets selectedService={selectedService || undefined} timeRange={timeRange} />
