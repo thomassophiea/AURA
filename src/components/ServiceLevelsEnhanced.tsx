@@ -40,6 +40,7 @@ import { toast } from 'sonner';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
+import { ApplicationWidgets } from './ApplicationWidgets';
 import { useMetricsCollection } from '../hooks/useMetricsCollection';
 import { metricsStorage } from '../services/metricsStorage';
 
@@ -1061,6 +1062,9 @@ export function ServiceLevelsEnhanced() {
           <BestPracticesWidget />
 
           {/* Application Analytics Widgets */}
+          <ApplicationWidgets selectedService={selectedService || undefined} timeRange={timeRange} />
+
+          {/* Client Analytics Widgets */}
           {serviceStations.length > 0 && (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {/* Top Manufacturers by Client Count */}
