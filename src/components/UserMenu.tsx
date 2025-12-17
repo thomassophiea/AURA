@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { 
-  User, 
-  Settings, 
-  Shield, 
-  HelpCircle, 
-  Key, 
-  ExternalLink, 
-  Sun, 
-  Moon, 
+import {
+  User,
+  Settings,
+  Shield,
+  HelpCircle,
+  Key,
+  ExternalLink,
+  Sun,
+  Moon,
   Monitor,
   ChevronRight,
   LogOut,
-  Building2
+  Building2,
+  Sunset
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -20,7 +21,7 @@ import { Separator } from './ui/separator';
 
 interface UserMenuProps {
   onLogout: () => void;
-  theme: 'light' | 'dark' | 'system';
+  theme: 'light' | 'dark' | 'synthwave' | 'system';
   onThemeToggle: () => void;
 }
 
@@ -107,8 +108,17 @@ export function UserMenu({ onLogout, theme, onThemeToggle }: UserMenuProps) {
     },
     {
       type: 'item',
-      label: `Theme (${theme === 'system' ? 'Auto' : theme === 'dark' ? 'Dark' : 'Light'})`,
-      icon: theme === 'system' ? Monitor : theme === 'dark' ? Sun : Moon,
+      label: `Theme (${
+        theme === 'system' ? 'Auto' :
+        theme === 'dark' ? 'Dark' :
+        theme === 'synthwave' ? 'Synthwave' :
+        'Light'
+      })`,
+      icon:
+        theme === 'system' ? Monitor :
+        theme === 'dark' ? Sun :
+        theme === 'synthwave' ? Sunset :
+        Moon,
       action: onThemeToggle,
       hasSubmenu: false
     },

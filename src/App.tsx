@@ -62,7 +62,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('service-levels');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'system'>('system');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
@@ -76,9 +76,9 @@ export default function App() {
   useEffect(() => {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'system' | null;
       const initialTheme = savedTheme || 'system';
-      
+
       setTheme(initialTheme);
       applyThemeForMode(initialTheme);
     };
@@ -534,25 +534,25 @@ export default function App() {
   }, []);
 
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'dark') => {
+  const applyTheme = (newTheme: 'light' | 'dark' | 'synthwave') => {
     const root = document.documentElement;
-    
+
     // Remove existing theme classes
-    root.classList.remove('light', 'dark');
-    
+    root.classList.remove('light', 'dark', 'synthwave');
+
     // Add new theme class
     root.classList.add(newTheme);
-    
+
     // Set data attribute for theme as well (for compatibility)
     root.setAttribute('data-theme', newTheme);
-    
+
     // Ensure body also gets the theme class
-    document.body.classList.remove('light', 'dark');
+    document.body.classList.remove('light', 'dark', 'synthwave');
     document.body.classList.add(newTheme);
   };
 
   // Helper function to apply theme based on mode (handles system detection)
-  const applyThemeForMode = (mode: 'light' | 'dark' | 'system') => {
+  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'system') => {
     if (mode === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
@@ -562,19 +562,30 @@ export default function App() {
   };
 
   const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light';
+    const newTheme =
+      theme === 'light' ? 'dark' :
+      theme === 'dark' ? 'synthwave' :
+      theme === 'synthwave' ? 'system' :
+      'light';
     setTheme(newTheme);
     applyThemeForMode(newTheme);
-    
+
     // Save to localStorage
     localStorage.setItem('theme', newTheme);
-    
+
     // Show a toast notification
-    const themeLabel = newTheme === 'system' ? 'system (auto)' : newTheme;
+    const themeLabel =
+      newTheme === 'system' ? 'System (Auto)' :
+      newTheme === 'synthwave' ? 'Synthwave (80s Retro)' :
+      newTheme.charAt(0).toUpperCase() + newTheme.slice(1);
+
+    const themeDescription =
+      newTheme === 'system' ? 'The interface will now follow your system preference.' :
+      newTheme === 'synthwave' ? 'Get ready for some neon vibes! 🌆✨' :
+      `The interface is now using ${newTheme} theme.`;
+
     toast.success(`Switched to ${themeLabel} mode`, {
-      description: newTheme === 'system' 
-        ? 'The interface will now follow your system preference.'
-        : `The interface is now using ${newTheme} theme.`,
+      description: themeDescription,
       duration: 2000
     });
   };

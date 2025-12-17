@@ -5143,3 +5143,130 @@ html[data-theme="light"], html.light {
   display: none; /* Chrome, Safari, and Opera */
 }
 
+/* ========================================
+   SYNTHWAVE THEME STYLES (80s Retro)
+   ======================================== */
+
+.synthwave {
+  /* Neon glow effect on primary elements */
+  --neon-pink: #FF006E;
+  --neon-cyan: #00D9FF;
+  --neon-purple: #B026FF;
+  --neon-yellow: #FFD700;
+}
+
+/* Synthwave Card Neon Glow */
+.synthwave .surface-4dp,
+.synthwave [class*="Card"] {
+  box-shadow: 0 0 10px rgba(255, 0, 110, 0.3),
+              0 0 20px rgba(255, 0, 110, 0.1);
+  border: 1px solid rgba(255, 0, 110, 0.5);
+}
+
+/* Synthwave Button Glow */
+.synthwave button:not([disabled]):hover {
+  box-shadow: 0 0 15px rgba(255, 0, 110, 0.5),
+              0 0 25px rgba(255, 0, 110, 0.2);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+/* Synthwave Primary Buttons */
+.synthwave .bg-primary {
+  box-shadow: 0 0 20px rgba(255, 0, 110, 0.4);
+}
+
+/* Synthwave Text Glow for Headings */
+.synthwave h1,
+.synthwave h2,
+.synthwave h3 {
+  text-shadow: 0 0 10px rgba(0, 217, 255, 0.5),
+               0 0 20px rgba(0, 217, 255, 0.3);
+}
+
+/* Synthwave Input Fields */
+.synthwave input:focus,
+.synthwave textarea:focus {
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.4),
+              0 0 0 2px rgba(255, 0, 110, 0.3);
+}
+
+/* Synthwave Badge Glow */
+.synthwave .bg-green-500,
+.synthwave .bg-yellow-500,
+.synthwave .bg-blue-500 {
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* Synthwave Grid Background Pattern (subtle) */
+.synthwave::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image:
+    linear-gradient(rgba(255, 0, 110, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 0, 110, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15;
+}
+
+/* Ensure content stays above the grid */
+.synthwave > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Synthwave Neon Borders for Active Elements */
+.synthwave [aria-selected="true"],
+.synthwave [data-state="active"] {
+  border-color: var(--neon-cyan) !important;
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
+}
+
+/* Synthwave Alert/Warning Glow */
+.synthwave .border-yellow-500 {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+}
+
+/* Synthwave Link Hover */
+.synthwave a:hover {
+  text-shadow: 0 0 8px currentColor;
+}
+
+/* Synthwave Switch/Toggle Glow */
+.synthwave [role="switch"][data-state="checked"] {
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.6);
+}
+
+/* Synthwave Table Row Hover */
+.synthwave tr:hover {
+  background: rgba(255, 0, 110, 0.05);
+  box-shadow: inset 0 0 10px rgba(255, 0, 110, 0.1);
+}
+
+/* Synthwave Scrollbar */
+.synthwave ::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #FF006E, #B026FF);
+  box-shadow: 0 0 10px rgba(255, 0, 110, 0.5);
+}
+
+/* Synthwave Avatar Glow */
+.synthwave [class*="Avatar"] {
+  box-shadow: 0 0 15px rgba(0, 217, 255, 0.4);
+}
+
+/* Synthwave Badge Neon Effect */
+.synthwave [class*="Badge"] {
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Synthwave Divider Glow */
+.synthwave hr,
+.synthwave [class*="Separator"] {
+  box-shadow: 0 0 5px rgba(255, 0, 110, 0.5);
+}

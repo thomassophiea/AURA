@@ -1,9 +1,9 @@
 /**
  * Theme Configuration
- * Supports: Default and Dark themes
+ * Supports: Default, Dark, and Synthwave (80s neon) themes
  */
 
-export type ThemeMode = 'default' | 'dark';
+export type ThemeMode = 'default' | 'dark' | 'synthwave';
 
 export interface Theme {
   name: string;
@@ -84,6 +84,40 @@ export const themes: Record<ThemeMode, Theme> = {
       input: '217.2 32.6% 17.5%',
       ring: '212.7 26.8% 83.9%'
     }
+  },
+  synthwave: {
+    name: 'synthwave',
+    displayName: 'Synthwave',
+    emoji: '🌆',
+    colors: {
+      // Hot pink primary (neon magenta)
+      primary: '328 100% 54%', // #FF006E
+      primaryForeground: '0 0% 100%',
+      // Deep purple secondary
+      secondary: '276 100% 25%', // Dark purple
+      secondaryForeground: '328 100% 70%', // Light pink
+      // Deep purple background with dark tint
+      background: '265 100% 8%', // Very dark purple, almost black
+      foreground: '180 100% 90%', // Light cyan
+      // Card with purple gradient feel
+      card: '270 50% 12%', // Dark purple card
+      cardForeground: '180 100% 90%',
+      popover: '270 60% 10%',
+      popoverForeground: '180 100% 90%',
+      // Muted purple
+      muted: '276 60% 20%',
+      mutedForeground: '280 40% 70%',
+      // Cyan accent
+      accent: '186 100% 50%', // Electric cyan #00D9FF
+      accentForeground: '270 100% 10%',
+      // Hot pink destructive
+      destructive: '348 100% 60%',
+      destructiveForeground: '0 0% 100%',
+      // Neon pink borders
+      border: '328 100% 40%',
+      input: '276 60% 20%',
+      ring: '328 100% 54%' // Hot pink ring
+    }
   }
 };
 
@@ -101,7 +135,7 @@ export function applyTheme(theme: ThemeMode) {
   localStorage.setItem('theme', theme);
 
   // Add theme class for additional styling
-  root.classList.remove('theme-default', 'theme-dark');
+  root.classList.remove('theme-default', 'theme-dark', 'theme-synthwave');
   root.classList.add(`theme-${theme}`);
 }
 
