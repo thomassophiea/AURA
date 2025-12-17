@@ -235,21 +235,21 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             )}
             title={`Switch theme (current: ${theme === 'system' ? 'auto' : theme})`}
           >
-            {theme === 'system' ? (
-              <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'dark' ? (
-              <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'synthwave' ? (
-              <Sunset className={cn("h-4 w-4 text-pink-400 animate-pulse", !isCollapsed && "mr-2")} />
-            ) : (
+            {theme === 'light' ? (
               <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            ) : theme === 'dark' ? (
+              <Sunset className={cn("h-4 w-4 text-pink-400", !isCollapsed && "mr-2")} />
+            ) : theme === 'synthwave' ? (
+              <Monitor className={cn("h-4 w-4 text-cyan-400", !isCollapsed && "mr-2")} />
+            ) : (
+              <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
             {!isCollapsed && (
-              <span className={theme === 'synthwave' ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 font-bold' : ''}>
-                {theme === 'system' ? 'Auto Theme' :
-                 theme === 'dark' ? 'Light Mode' :
-                 theme === 'synthwave' ? '80s SYNTHWAVE 🌆' :
-                 'Dark Mode'}
+              <span className={theme === 'synthwave' ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 font-bold animate-pulse' : ''}>
+                {theme === 'light' ? 'Dark Mode' :
+                 theme === 'dark' ? '80s SYNTHWAVE 🌆' :
+                 theme === 'synthwave' ? 'Auto Theme' :
+                 'Light Mode'}
               </span>
             )}
           </Button>
