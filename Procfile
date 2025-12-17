@@ -1,2 +1,2 @@
-web: npx serve build -s -l $PORT
+web: node server.js
 worker: node metrics-collector.js

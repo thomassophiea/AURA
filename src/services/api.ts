@@ -1,5 +1,12 @@
 
-const BASE_URL = 'https://tsophiea.ddns.net:443/management';
+// Use proxy in production, direct connection in development
+const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+const BASE_URL = isProduction
+  ? '/api/management'  // Proxy through our Express server
+  : 'https://tsophiea.ddns.net:443/management';  // Direct connection in development
+
+console.log('[API Service] Environment:', isProduction ? 'Production (using proxy)' : 'Development (direct)');
+console.log('[API Service] BASE_URL:', BASE_URL);
 
 export interface LoginCredentials {
   grantType: string;
