@@ -2,9 +2,23 @@
 
 The Synthwave theme includes a retro music player that can play your .mp3 files!
 
-## 📁 How to Add Your Music
+## 📥 Quick Setup with Google Drive Music
 
-1. Create a `music` folder in the `public` directory:
+**Music Files Location:** https://drive.google.com/drive/folders/1MUeKQOGKPpLzbcWhr5Ay0xlYSTi8YULE
+
+### Option 1: Using the Setup Script (Recommended)
+
+```bash
+./setup-music.sh
+```
+
+Then follow the prompts to download and set up your music!
+
+### Option 2: Manual Setup
+
+1. **Download the music files** from the Google Drive link above
+
+2. **Move the files** to the `public/music/` folder:
    ```
    public/
    └── music/
@@ -13,9 +27,14 @@ The Synthwave theme includes a retro music player that can play your .mp3 files!
        └── track3.mp3
    ```
 
-2. Add your .mp3 files to the `public/music/` folder
+3. **Rename files** to match the expected names:
+   - `track1.mp3`
+   - `track2.mp3`
+   - `track3.mp3`
 
-3. The music player will automatically detect and play these tracks when you're in Synthwave mode!
+4. **Restart the app** if it's running
+
+5. **Toggle to Synthwave mode** and enjoy! 🎵
 
 ## 🎵 Default Tracks
 
