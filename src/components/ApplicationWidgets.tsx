@@ -213,14 +213,52 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
   // If no applications found, show EP1 not available message
   if (applications.length === 0 && !loading) {
     return (
-      <div className="p-6">
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            We are waiting for EP1 support: application analytics endpoints are not available on this Extreme Platform ONE version. This feature requires Campus Controller API endpoints for application traffic data (tested: /v1/applications, /v1/analytics/applications, /platformmanager/v1/applications, and 9 other variations - all returned 404).
-          </AlertDescription>
-        </Alert>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5" />
+            Application Analytics
+          </CardTitle>
+          <CardDescription>
+            Top applications by network traffic and session data
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              onClick={() => loadApplications(true)}
+              variant="outline"
+              size="sm"
+              disabled={true}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+          </div>
+
+          <Alert className="border-2">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Application analytics API endpoints are not available on this Extreme Platform ONE version. This feature requires Extreme Platform ONE API v1/applications support.
+            </AlertDescription>
+          </Alert>
+
+          <div className="flex gap-2 pt-2 border-t">
+            <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+              By Traffic
+            </Button>
+            <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+              By Sessions
+            </Button>
+            <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+              By Category
+            </Button>
+            <Button variant="ghost" size="sm" disabled className="text-muted-foreground">
+              Summary
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
