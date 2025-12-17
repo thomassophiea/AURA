@@ -90,33 +90,33 @@ export const themes: Record<ThemeMode, Theme> = {
     displayName: 'Synthwave',
     emoji: '🌆',
     colors: {
-      // Hot pink primary (neon magenta)
-      primary: '328 100% 54%', // #FF006E
-      primaryForeground: '0 0% 100%',
-      // Deep purple secondary
-      secondary: '276 100% 25%', // Dark purple
-      secondaryForeground: '328 100% 70%', // Light pink
-      // Deep purple background with dark tint
-      background: '265 100% 8%', // Very dark purple, almost black
-      foreground: '180 100% 90%', // Light cyan
-      // Card with purple gradient feel
-      card: '270 50% 12%', // Dark purple card
-      cardForeground: '180 100% 90%',
-      popover: '270 60% 10%',
-      popoverForeground: '180 100% 90%',
-      // Muted purple
-      muted: '276 60% 20%',
-      mutedForeground: '280 40% 70%',
-      // Cyan accent
-      accent: '186 100% 50%', // Electric cyan #00D9FF
-      accentForeground: '270 100% 10%',
-      // Hot pink destructive
-      destructive: '348 100% 60%',
-      destructiveForeground: '0 0% 100%',
-      // Neon pink borders
-      border: '328 100% 40%',
-      input: '276 60% 20%',
-      ring: '328 100% 54%' // Hot pink ring
+      // Miami Vice inspired - #FF2BD6 (primary pink neon)
+      primary: '316 100% 58%', // #FF2BD6
+      primaryForeground: '225 50% 7%', // #070A1A (dark text on pink)
+      // Secondary with cyan neon
+      secondary: '186 100% 50%', // #00E5FF (cyan neon)
+      secondaryForeground: '225 44% 12%', // #0B1030
+      // Deep space background - #070A1A
+      background: '225 50% 7%', // #070A1A
+      foreground: '216 100% 97%', // #F2F6FF (primary text)
+      // Card surfaces - #0B1030, #101A46
+      card: '225 44% 12%', // #0B1030 (surface1)
+      cardForeground: '216 100% 97%', // #F2F6FF
+      popover: '225 44% 12%', // #0B1030
+      popoverForeground: '216 100% 97%', // #F2F6FF
+      // Muted using surface2 - #101A46
+      muted: '224 64% 17%', // #101A46 (surface2)
+      mutedForeground: '216 100% 85%', // rgba(242, 246, 255, 0.78) - secondary text
+      // Accent cyan
+      accent: '186 100% 50%', // #00E5FF (cyan neon)
+      accentForeground: '225 44% 12%', // #0B1030
+      // Danger state - #FF3B6B
+      destructive: '348 100% 62%', // #FF3B6B
+      destructiveForeground: '216 100% 97%', // #F2F6FF
+      // Border with cyan at 22% opacity - rgba(0, 229, 255, 0.22)
+      border: '186 100% 50%', // #00E5FF base (opacity applied in CSS)
+      input: '225 50% 7%', // #070A1A (dark input bg)
+      ring: '316 100% 58%' // #FF2BD6 (pink focus ring at 70% opacity)
     }
   }
 };
