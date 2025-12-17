@@ -4,7 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
-import { Loader2, Sun, Moon, Monitor, Sunset } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
@@ -52,35 +52,6 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
-        {/* Theme Toggle - positioned in top right */}
-        {onThemeToggle && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onThemeToggle}
-              className={`flex items-center space-x-2 ${theme === 'synthwave' ? 'bg-gradient-to-r from-pink-500/20 to-purple-500/20 border-pink-500' : ''}`}
-              title={`Switch theme (current: ${theme === 'system' ? 'auto' : theme})`}
-            >
-              {theme === 'system' ? (
-                <Monitor className="h-4 w-4" />
-              ) : theme === 'dark' ? (
-                <Sun className="h-4 w-4" />
-              ) : theme === 'synthwave' ? (
-                <Sunset className="h-4 w-4 text-pink-400 animate-pulse" />
-              ) : (
-                <Moon className="h-4 w-4" />
-              )}
-              <span className={theme === 'synthwave' ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 font-bold' : ''}>
-                {theme === 'system' ? 'Auto' :
-                 theme === 'dark' ? 'Light' :
-                 theme === 'synthwave' ? '80s' :
-                 'Dark'}
-              </span>
-            </Button>
-          </div>
-        )}
-        
         <Card className="w-full">
           <CardHeader className="space-y-1 text-center">
             <div className="flex justify-center mb-4">

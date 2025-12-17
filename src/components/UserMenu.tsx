@@ -6,13 +6,9 @@ import {
   HelpCircle,
   Key,
   ExternalLink,
-  Sun,
-  Moon,
-  Monitor,
   ChevronRight,
   LogOut,
-  Building2,
-  Sunset
+  Building2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -105,22 +101,6 @@ export function UserMenu({ onLogout, theme, onThemeToggle }: UserMenuProps) {
         // Handle preferences action
         console.log('Preferences');
       }
-    },
-    {
-      type: 'item',
-      label: `Theme (${
-        theme === 'system' ? 'Auto' :
-        theme === 'dark' ? 'Dark' :
-        theme === 'synthwave' ? 'Synthwave' :
-        'Light'
-      })`,
-      icon:
-        theme === 'system' ? Monitor :
-        theme === 'dark' ? Sun :
-        theme === 'synthwave' ? Sunset :
-        Moon,
-      action: onThemeToggle,
-      hasSubmenu: false
     },
     {
       type: 'separator'

@@ -236,20 +236,20 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             title={`Switch theme (current: ${theme === 'system' ? 'auto' : theme})`}
           >
             {theme === 'light' ? (
-              <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'dark' ? (
-              <Sunset className={cn("h-4 w-4 text-pink-400", !isCollapsed && "mr-2")} />
-            ) : theme === 'synthwave' ? (
-              <Monitor className={cn("h-4 w-4 text-cyan-400", !isCollapsed && "mr-2")} />
-            ) : (
               <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            ) : theme === 'dark' ? (
+              <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            ) : theme === 'synthwave' ? (
+              <Sunset className={cn("h-4 w-4 text-pink-400 animate-pulse", !isCollapsed && "mr-2")} />
+            ) : (
+              <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
             {!isCollapsed && (
               <span className={theme === 'synthwave' ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 font-bold animate-pulse' : ''}>
-                {theme === 'light' ? 'Dark Mode' :
-                 theme === 'dark' ? '80s SYNTHWAVE 🌆' :
-                 theme === 'synthwave' ? 'Auto Theme' :
-                 'Light Mode'}
+                {theme === 'light' ? 'Light' :
+                 theme === 'dark' ? 'Dark' :
+                 theme === 'synthwave' ? '80s SYNTHWAVE 🌆' :
+                 'Auto'}
               </span>
             )}
           </Button>
