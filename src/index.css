@@ -5301,7 +5301,14 @@ html[data-theme="light"], html.light {
   bottom: 0;
   width: 100vw;
   height: 100vh;
-  background-image: url('https://wallpaperaccess.com/full/513988.jpg');
+  background-image:
+    linear-gradient(
+      to bottom,
+      rgba(7, 10, 26, 0.75) 0%,
+      rgba(7, 10, 26, 0.65) 50%,
+      rgba(7, 10, 26, 0.75) 100%
+    ),
+    url('https://wallpaperaccess.com/full/513988.jpg');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -5339,9 +5346,10 @@ html[data-theme="light"], html.light {
 /* Subtle Card Glow (14px blur, 2px spread, 0.35 intensity) */
 .synthwave .surface-4dp,
 .synthwave [class*="Card"] {
-  background: rgba(16, 26, 70, 0.72);
-  border: 1px solid rgba(242, 246, 255, 0.10);
-  box-shadow: 
+  background: rgba(11, 16, 48, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(242, 246, 255, 0.15);
+  box-shadow:
     0 2px 14px rgba(255, 43, 214, 0.35),
     0 0 2px rgba(0, 229, 255, 0.20);
 }
@@ -5357,13 +5365,15 @@ html[data-theme="light"], html.light {
 /* Top Nav Styling */
 .synthwave nav,
 .synthwave header {
-  background: rgba(11, 16, 48, 0.72) !important;
+  background: rgba(11, 16, 48, 0.95) !important;
+  backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0, 229, 255, 0.22) !important;
 }
 
 /* Side Nav Styling */
 .synthwave .bg-sidebar {
-  background: rgba(11, 16, 48, 0.62) !important;
+  background: rgba(11, 16, 48, 0.95) !important;
+  backdrop-filter: blur(10px);
 }
 
 /* Active sidebar item */
