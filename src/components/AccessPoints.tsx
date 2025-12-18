@@ -182,6 +182,19 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const ap5020 = accessPointsArray.find(ap => ap.serialNumber === 'CV012408S-C0102');
       if (ap5020) {
         console.log('🔍 AP5020 (CV012408S-C0102) full data:', ap5020);
+        console.log('🔍 AP5020 - All field names:', Object.keys(ap5020));
+        console.log('🔍 AP5020 - Fields that might indicate status:', {
+          status: ap5020.status,
+          state: ap5020.state,
+          adminState: ap5020.adminState,
+          operState: ap5020.operState,
+          connected: ap5020.connected,
+          connectionState: ap5020.connectionState,
+          online: ap5020.online,
+          reachable: ap5020.reachable,
+          up: ap5020.up,
+          active: ap5020.active
+        });
       }
 
       setAccessPoints(accessPointsArray);
