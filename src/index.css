@@ -5216,10 +5216,7 @@ html[data-theme="light"], html.light {
 }
 
 /* Ensure content stays above the grid */
-.synthwave > * {
-  position: relative;
-  z-index: 1;
-}
+/* Removed problematic .synthwave > * selector - interferes with click handlers */
 
 /* Synthwave Neon Borders for Active Elements */
 .synthwave [aria-selected="true"],
