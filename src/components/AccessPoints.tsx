@@ -807,14 +807,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       {/* Column Customization Dialog */}
       <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-3xl max-h-[65vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Customize Table Columns</DialogTitle>
             <DialogDescription>
               Select which columns you want to display in the Access Points table
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[500px] pr-4">
+          <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(65vh - 180px)' }}>
             <div className="space-y-6">
               {/* Basic Columns */}
               <div>
