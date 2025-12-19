@@ -1413,10 +1413,8 @@ class ApiService {
   async getAccessPoints(): Promise<AccessPoint[]> {
     return this.makeRequestWithRetry(async () => {
       // Use /v1/aps/query instead of /v1/aps to get status information
-      const response = await this.makeAuthenticatedRequest('/v1/aps/query', {
-        method: 'POST',
-        body: JSON.stringify({})  // Empty query to get all APs with full details
-      });
+      // Using GET method (not POST) to retrieve all APs with full details
+      const response = await this.makeAuthenticatedRequest('/v1/aps/query');
       if (!response.ok) {
         throw new Error(`Failed to fetch access points: ${response.status}`);
       }
