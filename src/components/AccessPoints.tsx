@@ -168,21 +168,17 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const accessPointsArray = Array.isArray(apsData) ? apsData : [];
       console.log(`Loaded ${accessPointsArray.length} access points for site ${selectedSite || 'all'}`);
 
-      // Debug: Check what fields are available from /v1/aps/query
-      if (accessPointsArray.length > 0) {
-        const firstAP = accessPointsArray[0];
-        console.log('📊 Sample AP data from /v1/aps/query:', firstAP);
-        console.log('📊 Available fields:', Object.keys(firstAP));
-        console.log('📊 Status-related fields:', {
-          status: firstAP.status,
-          uptime: firstAP.uptime,
-          memoryUsage: firstAP.memoryUsage,
-          cpuUsage: firstAP.cpuUsage,
-          channelUtilization: firstAP.channelUtilization
-        });
-      }
+      // Map sysUptime to uptime field and format it
+      const enrichedAPs = accessPointsArray.map(ap => ({
+        ...ap,
+        uptime: ap.sysUptime ? formatUptime(ap.sysUptime) : ap.uptime,
+        // Calculate average channel utilization from all radios
+        channelUtilization: ap.radios && ap.radios.length > 0
+          ? Math.round(ap.radios.reduce((sum: number, radio: any) => sum + (radio.channelUtilization || 0), 0) / ap.radios.length)
+          : undefined
+      }));
 
-      setAccessPoints(accessPointsArray);
+      setAccessPoints(enrichedAPs);
 
       // Load client counts for filtered APs
       await loadClientCounts(accessPointsArray);
@@ -538,6 +534,24 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
+  };
+
+  // Helper function to format uptime from seconds
+  const formatUptime = (seconds: number): string => {
+    if (seconds === 0 || !seconds) return 'N/A';
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (secs > 0 && days === 0 && hours === 0) parts.push(`${secs}s`);
+
+    return parts.length > 0 ? parts.join(' ') : 'N/A';
   };
 
   if (isLoading) {

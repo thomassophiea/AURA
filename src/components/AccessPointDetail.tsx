@@ -41,7 +41,17 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         apiService.getAccessPointStations(serialNumber).catch(() => [])
       ]);
 
-      setApDetails(details);
+      // Enrich AP details with formatted uptime
+      const enrichedDetails = {
+        ...details,
+        uptime: (details as any).sysUptime ? formatUptime((details as any).sysUptime) : details.uptime,
+        // Calculate average channel utilization from all radios
+        channelUtilization: details.radios && details.radios.length > 0
+          ? Math.round(details.radios.reduce((sum, radio) => sum + (radio.channelUtilization || 0), 0) / details.radios.length)
+          : details.channelUtilization
+      };
+
+      setApDetails(enrichedDetails);
       setStations(stationsData);
       setLastRefreshTime(new Date());
     } catch (error) {
@@ -124,6 +134,24 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
 
     const days = Math.floor(hours / 24);
     return `${days}d ago`;
+  };
+
+  // Helper function to format uptime from seconds
+  const formatUptime = (seconds: number): string => {
+    if (seconds === 0 || !seconds) return 'N/A';
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (secs > 0 && days === 0 && hours === 0) parts.push(`${secs}s`);
+
+    return parts.length > 0 ? parts.join(' ') : 'N/A';
   };
 
   if (isLoading) {
