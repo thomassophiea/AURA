@@ -1,5 +1,5 @@
 // Service Worker for caching static assets
-const CACHE_NAME = 'aura-cache-v1';
+const CACHE_NAME = 'aura-cache-v2';
 const urlsToCache = [
   '/',
   '/index.html',
