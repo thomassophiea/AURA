@@ -34,7 +34,7 @@ import { Label } from './label';
 import { Input } from './input';
 import { Textarea } from './textarea';
 import { Badge } from './badge';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 
 interface ColumnCustomizationDialogProps {
   /** Table customization state and actions */
@@ -60,7 +60,6 @@ export function ColumnCustomizationDialog({
   const [activeTab, setActiveTab] = useState<string>('columns');
   const [newViewName, setNewViewName] = useState('');
   const [newViewDescription, setNewViewDescription] = useState('');
-  const { toast } = useToast();
 
   const {
     columns,
@@ -81,10 +80,8 @@ export function ColumnCustomizationDialog({
   // Save current configuration as a new view
   const handleSaveView = async () => {
     if (!newViewName.trim()) {
-      toast({
-        title: 'View name required',
-        description: 'Please enter a name for the view',
-        variant: 'destructive'
+      toast.error('View name required', {
+        description: 'Please enter a name for the view'
       });
       return;
     }
@@ -98,8 +95,7 @@ export function ColumnCustomizationDialog({
         createdBy: '' // Will be set by service
       });
 
-      toast({
-        title: 'View saved',
+      toast.success('View saved', {
         description: `"${newViewName}" has been saved successfully`
       });
 
@@ -107,10 +103,8 @@ export function ColumnCustomizationDialog({
       setNewViewDescription('');
       setActiveTab('views');
     } catch (error) {
-      toast({
-        title: 'Failed to save view',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+      toast.error('Failed to save view', {
+        description: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -118,8 +112,7 @@ export function ColumnCustomizationDialog({
   // Load a saved view
   const handleLoadView = (viewId: string) => {
     loadView(viewId);
-    toast({
-      title: 'View loaded',
+    toast.success('View loaded', {
       description: 'Column configuration has been updated'
     });
   };
@@ -128,15 +121,12 @@ export function ColumnCustomizationDialog({
   const handleDeleteView = async (viewId: string) => {
     try {
       await deleteView(viewId);
-      toast({
-        title: 'View deleted',
+      toast.success('View deleted', {
         description: 'The view has been removed'
       });
     } catch (error) {
-      toast({
-        title: 'Failed to delete view',
-        description: error instanceof Error ? error.message : 'Unknown error',
-        variant: 'destructive'
+      toast.error('Failed to delete view', {
+        description: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   };
@@ -144,8 +134,7 @@ export function ColumnCustomizationDialog({
   // Reset to default columns
   const handleReset = () => {
     resetColumns();
-    toast({
-      title: 'Reset to defaults',
+    toast.success('Reset to defaults', {
       description: 'Column configuration has been reset'
     });
   };
@@ -170,8 +159,7 @@ export function ColumnCustomizationDialog({
     a.click();
     URL.revokeObjectURL(url);
 
-    toast({
-      title: 'Configuration exported',
+    toast.success('Configuration exported', {
       description: 'Column configuration has been downloaded'
     });
   };
