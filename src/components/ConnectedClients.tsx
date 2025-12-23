@@ -380,6 +380,7 @@ export function ConnectedClients({ onShowDetail }: ConnectedClientsProps) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
+          <h2 className="text-2xl font-bold text-red-500">UPDATED v2024-12-23</h2>
           <p className="text-muted-foreground">
             Monitor and manage connected wireless client devices across your network
           </p>
