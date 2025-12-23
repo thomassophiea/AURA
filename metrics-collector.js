@@ -272,7 +272,7 @@ class MetricsCollector {
   async saveMetrics(serviceId, serviceName, metrics) {
     try {
       const { error } = await supabase
-        .from('service_metrics')
+        .from('service_metrics_snapshots')
         .insert({
           service_id: serviceId,
           service_name: serviceName,
@@ -380,12 +380,12 @@ async function main() {
   // Test Supabase connection
   console.log('\n🔍 Testing Supabase connection...');
   try {
-    const { error } = await supabase.from('service_metrics').select('count').limit(1);
+    const { error } = await supabase.from('service_metrics_snapshots').select('count').limit(1);
     if (error) throw error;
     console.log('✅ Supabase connection successful\n');
   } catch (error) {
     console.error('❌ Supabase connection failed:', error.message);
-    console.error('   Make sure you have run the database schema (supabase-schema.sql)');
+    console.error('   Make sure you have run the database schema (supabase-schema-enhanced.sql)');
     process.exit(1);
   }
 
