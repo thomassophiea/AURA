@@ -7,12 +7,15 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Label } from './ui/label';
-import { AlertCircle, Building2, Search, RefreshCw, Filter, Plus, Edit, Trash2, Copy, Globe, Clock, MapPin, Users, Radio, Network, Settings, Info, Wifi } from 'lucide-react';
+import { AlertCircle, Building2, Search, RefreshCw, Filter, Plus, Edit, Trash2, Copy, Globe, Clock, MapPin, Users, Radio, Network, Settings, Info, Wifi, Columns } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { SiteWLANAssignmentDialog } from './SiteWLANAssignmentDialog';
+import { useTableCustomization } from '@/hooks/useTableCustomization';
+import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
+import { SITES_TABLE_COLUMNS, Site as SiteColumnType } from '@/config/sitesTableColumns';
 
 interface ConfigureSitesProps {
   onShowDetail?: (siteId: string, siteName: string) => void;
@@ -72,6 +75,15 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
   });
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentLoadingStep, setCurrentLoadingStep] = useState('');
+
+  // Table customization
+  const customization = useTableCustomization({
+    tableId: 'sites',
+    columns: SITES_TABLE_COLUMNS,
+    enableViews: true,
+    enablePersistence: true,
+    userId: 'default-user' // TODO: Replace with actual user ID from auth context
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -627,6 +639,11 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
         </div>
 
         <div className="flex items-center space-x-2">
+          <ColumnCustomizationDialog
+            customization={customization}
+            triggerLabel="Customize Columns"
+            showTriggerIcon={true}
+          />
 
           <Button onClick={openCreateDialog}>
             <Plus className="h-4 w-4 mr-2" />
@@ -651,93 +668,26 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>Roles</TableHead>
-                  <TableHead>Networks</TableHead>
-                  <TableHead>Switches</TableHead>
-                  <TableHead>APs</TableHead>
-                  <TableHead>Active APs</TableHead>
-                  <TableHead>Non Active APs</TableHead>
-                  <TableHead>All Clients</TableHead>
+                  {customization.visibleColumnConfigs.map((column) => (
+                    <TableHead key={column.key} style={{ width: customization.columnWidths[column.key] }}>
+                      {column.label}
+                    </TableHead>
+                  ))}
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSites.map((site) => (
-                  <TableRow 
+                  <TableRow
                     key={site.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => onShowDetail?.(site.id, site.siteName || site.name)}
                   >
-                    <TableCell>
-                      {getStatusBadge(site.status)}
-                    </TableCell>
-                    <TableCell className="font-medium">{site.siteName || site.name || 'Unnamed Site'}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Globe className="h-3 w-3 text-muted-foreground" />
-                        <span>{site.country || '-'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Settings className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.roles || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Network className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.networks || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Network className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.switches || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Radio className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.aps || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Radio className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.activeAPs || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Radio className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.nonActiveAPs || 0}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-                        <Users className="h-4 w-4 text-secondary" />
-                        <span className="text-sm font-semibold text-secondary">
-                          {site.allClients || 0}
-                        </span>
-                      </div>
-                    </TableCell>
+                    {customization.visibleColumnConfigs.map((column) => (
+                      <TableCell key={column.key}>
+                        {column.renderCell ? column.renderCell(site) : site[column.key]}
+                      </TableCell>
+                    ))}
 
                     <TableCell>
                       <div className="flex items-center space-x-1" onClick={(e) => e.stopPropagation()}>
