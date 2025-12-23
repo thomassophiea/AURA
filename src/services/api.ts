@@ -498,6 +498,30 @@ export interface ApiCallLog {
   isPending: boolean;
 }
 
+/**
+ * Query options for API requests
+ * Supports field projection, pagination, sorting, and filtering
+ */
+export interface QueryOptions {
+  /** Specific fields to return (field projection) */
+  fields?: string[];
+
+  /** Maximum number of results to return */
+  limit?: number;
+
+  /** Number of results to skip (pagination) */
+  offset?: number;
+
+  /** Field to sort by */
+  sortBy?: string;
+
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc';
+
+  /** Additional query parameters */
+  params?: Record<string, string | number | boolean>;
+}
+
 class ApiService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -514,6 +538,46 @@ class ApiService {
     // Load tokens from localStorage on initialization
     this.accessToken = localStorage.getItem('access_token');
     this.refreshToken = localStorage.getItem('refresh_token');
+  }
+
+  /**
+   * Build query string from QueryOptions
+   * Supports field projection, pagination, sorting, and custom params
+   */
+  private buildQueryString(options?: QueryOptions): string {
+    if (!options) return '';
+
+    const params: string[] = [];
+
+    // Field projection
+    if (options.fields && options.fields.length > 0) {
+      params.push(`fields=${options.fields.join(',')}`);
+    }
+
+    // Pagination
+    if (options.limit !== undefined) {
+      params.push(`limit=${options.limit}`);
+    }
+    if (options.offset !== undefined) {
+      params.push(`offset=${options.offset}`);
+    }
+
+    // Sorting
+    if (options.sortBy) {
+      params.push(`sortBy=${options.sortBy}`);
+    }
+    if (options.sortOrder) {
+      params.push(`sortOrder=${options.sortOrder}`);
+    }
+
+    // Custom params
+    if (options.params) {
+      Object.entries(options.params).forEach(([key, value]) => {
+        params.push(`${key}=${encodeURIComponent(String(value))}`);
+      });
+    }
+
+    return params.length > 0 ? `?${params.join('&')}` : '';
   }
 
   async login(userId: string, password: string): Promise<AuthResponse> {
@@ -1062,13 +1126,18 @@ class ApiService {
   }
 
   // Sites API methods with fallback endpoints
-  async getSites(): Promise<Site[]> {
-    // Check cache first
+  async getSites(options?: QueryOptions): Promise<Site[]> {
+    // Check cache first (skip caching if custom query options are used)
     const cacheKey = 'sites';
-    const cached = cacheService.get<Site[]>(cacheKey);
-    if (cached) {
-      return cached;
+    if (!options) {
+      const cached = cacheService.get<Site[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
     }
+
+    // Build query string from options
+    const queryString = this.buildQueryString(options);
 
     // Try multiple endpoints as Campus Controller may use different versions
     const siteEndpoints = [
@@ -1080,7 +1149,7 @@ class ApiService {
     ];
 
     for (let i = 0; i < siteEndpoints.length; i++) {
-      const endpoint = siteEndpoints[i];
+      const endpoint = siteEndpoints[i] + queryString;
       try {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000); // Longer timeout for sites
         
@@ -1117,8 +1186,10 @@ class ApiService {
             });
           }
 
-          // Cache the sites for 5 minutes
-          cacheService.set(cacheKey, sites, CACHE_TTL.MEDIUM);
+          // Cache the sites for 5 minutes (only if no custom query options)
+          if (!options) {
+            cacheService.set(cacheKey, sites, CACHE_TTL.MEDIUM);
+          }
 
           return sites;
         } else {
@@ -1421,11 +1492,12 @@ class ApiService {
   }
 
   // Access Points API methods
-  async getAccessPoints(): Promise<AccessPoint[]> {
+  async getAccessPoints(options?: QueryOptions): Promise<AccessPoint[]> {
     return this.makeRequestWithRetry(async () => {
       // Use /v1/aps/query instead of /v1/aps to get status information
       // Using GET method (not POST) to retrieve all APs with full details
-      const response = await this.makeAuthenticatedRequest('/v1/aps/query');
+      const queryString = this.buildQueryString(options);
+      const response = await this.makeAuthenticatedRequest('/v1/aps/query' + queryString);
       if (!response.ok) {
         throw new Error(`Failed to fetch access points: ${response.status}`);
       }
@@ -1555,10 +1627,11 @@ class ApiService {
   }
 
   // Stations/Clients API methods
-  async getAllStations(): Promise<Station[]> {
+  async getAllStations(options?: QueryOptions): Promise<Station[]> {
     try {
       return await this.makeRequestWithRetry(async () => {
-        const response = await this.makeAuthenticatedRequest('/v1/stations');
+        const queryString = this.buildQueryString(options);
+        const response = await this.makeAuthenticatedRequest('/v1/stations' + queryString);
         if (!response.ok) {
           throw new Error(`Failed to fetch stations: ${response.status} ${response.statusText}`);
         }
@@ -1566,8 +1639,8 @@ class ApiService {
         return Array.isArray(data) ? data : [];
       });
     } catch (error) {
-      if (error instanceof Error && 
-          (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
+      if (error instanceof Error &&
+          (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
         // Return empty array for suppressed errors instead of throwing
         console.log('Returning empty stations array for suppressed endpoint');
@@ -1578,8 +1651,8 @@ class ApiService {
   }
 
   // Alias for getAllStations to maintain compatibility
-  async getStations(): Promise<Station[]> {
-    return this.getAllStations();
+  async getStations(options?: QueryOptions): Promise<Station[]> {
+    return this.getAllStations(options);
   }
 
   // Get stations with proper site correlation from access points
