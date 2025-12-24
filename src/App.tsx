@@ -64,7 +64,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('service-levels');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger' | 'system'>('system');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
@@ -78,7 +78,7 @@ export default function App() {
   useEffect(() => {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'system' | null;
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger' | 'system' | null;
       const initialTheme = savedTheme || 'system';
 
       setTheme(initialTheme);
@@ -536,14 +536,14 @@ export default function App() {
   }, []);
 
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5') => {
+  const applyTheme = (newTheme: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger') => {
     const root = document.documentElement;
 
     // Apply color variables from themes.ts
     applyThemeColors(newTheme === 'light' ? 'default' : newTheme);
 
     // Remove existing theme classes
-    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
+    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'kroger');
 
     // Add new theme class
     root.classList.add(newTheme);
@@ -552,12 +552,12 @@ export default function App() {
     root.setAttribute('data-theme', newTheme);
 
     // Ensure body also gets the theme class
-    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
+    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'kroger');
     document.body.classList.add(newTheme);
   };
 
   // Helper function to apply theme based on mode (handles system detection)
-  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'system') => {
+  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger' | 'system') => {
     if (mode === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
@@ -572,7 +572,8 @@ export default function App() {
       theme === 'dark' ? 'synthwave' :
       theme === 'synthwave' ? 'pirate' :
       theme === 'pirate' ? 'mi5' :
-      theme === 'mi5' ? 'system' :
+      theme === 'mi5' ? 'kroger' :
+      theme === 'kroger' ? 'system' :
       'light';
     setTheme(newTheme);
     applyThemeForMode(newTheme);
@@ -586,6 +587,7 @@ export default function App() {
       newTheme === 'synthwave' ? 'Miami Vice' :
       newTheme === 'pirate' ? 'Pirate' :
       newTheme === 'mi5' ? 'MI5' :
+      newTheme === 'kroger' ? 'Kroger' :
       newTheme.charAt(0).toUpperCase() + newTheme.slice(1);
 
     const themeDescription =
@@ -593,6 +595,7 @@ export default function App() {
       newTheme === 'synthwave' ? "You've got to know the rules before you can break 'em. Otherwise, it's no fun." :
       newTheme === 'pirate' ? "Arrr! Dead men tell no tales, but this UI tells all the metrics ye need!" :
       newTheme === 'mi5' ? "Your mission, should you choose to accept it, is to monitor all network metrics." :
+      newTheme === 'kroger' ? "Fresh network management for everyone!" :
       `The interface is now using ${newTheme} theme.`;
 
     toast.success(`Switched to ${themeLabel} mode`, {

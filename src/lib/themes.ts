@@ -3,7 +3,7 @@
  * Supports: Default, Dark, Miami Vice (80s neon), Pirate, and MI5 themes
  */
 
-export type ThemeMode = 'default' | 'dark' | 'synthwave' | 'pirate' | 'mi5';
+export type ThemeMode = 'default' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger';
 
 export interface Theme {
   name: string;
@@ -186,6 +186,40 @@ export const themes: Record<ThemeMode, Theme> = {
       input: '0 0% 10%', // #1A1A1A (dark input bg)
       ring: '0 100% 41%' // #D30000 (red focus ring)
     }
+  },
+  kroger: {
+    name: 'kroger',
+    displayName: 'Kroger',
+    emoji: '🛒',
+    colors: {
+      // Kroger primary blue - #084999
+      primary: '211 90% 32%', // #084999 (Kroger dark blue)
+      primaryForeground: '0 0% 100%', // #FFFFFF (white text on blue)
+      // Kroger medium blue - #396dad
+      secondary: '213 51% 45%', // #396dad (medium blue)
+      secondaryForeground: '0 0% 100%', // #FFFFFF
+      // Light background - #FFFFFF
+      background: '0 0% 100%', // #FFFFFF (white)
+      foreground: '211 90% 32%', // #084999 (dark blue text)
+      // Card surfaces - very light blue - #cedbeb
+      card: '213 42% 86%', // #cedbeb (pale blue)
+      cardForeground: '211 90% 32%', // #084999
+      popover: '0 0% 100%', // #FFFFFF
+      popoverForeground: '211 90% 32%', // #084999
+      // Muted using light blue - #9cb6d6
+      muted: '213 42% 73%', // #9cb6d6 (very light blue)
+      mutedForeground: '213 51% 45%', // #396dad (medium blue)
+      // Accent with lighter blue - #6b92c2
+      accent: '213 43% 59%', // #6b92c2 (lighter blue)
+      accentForeground: '0 0% 100%', // #FFFFFF
+      // Destructive red (Kroger uses red for alerts)
+      destructive: '0 84.2% 60.2%', // Standard red
+      destructiveForeground: '0 0% 100%', // #FFFFFF
+      // Borders with medium blue
+      border: '213 51% 45%', // #396dad (medium blue)
+      input: '213 42% 86%', // #cedbeb (pale blue input bg)
+      ring: '211 90% 32%' // #084999 (dark blue focus ring)
+    }
   }
 };
 
@@ -203,7 +237,7 @@ export function applyTheme(theme: ThemeMode) {
   localStorage.setItem('theme', theme);
 
   // Add theme class for additional styling
-  root.classList.remove('theme-default', 'theme-dark', 'theme-synthwave', 'theme-pirate', 'theme-mi5');
+  root.classList.remove('theme-default', 'theme-dark', 'theme-synthwave', 'theme-pirate', 'theme-mi5', 'theme-kroger');
   root.classList.add(`theme-${theme}`);
 }
 

@@ -44,7 +44,7 @@ export function AdoptionRulesManagement() {
         const rulesList = Array.isArray(data) ? data : (data.rules ? data.rules : []);
         setRules(rulesList);
       } else if (response.status === 404) {
-        setError('Device adoption rules API not available on this Extreme Platform ONE version');
+        setError('Device adoption rules API not available on this controller version');
         setRules([]);
       } else {
         throw new Error('Failed to load adoption rules');

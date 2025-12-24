@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { 
-  MoreHorizontal, 
-  ExternalLink, 
-  Wifi, 
-  Shield, 
-  Users, 
-  Settings, 
-  BarChart3, 
+import {
+  MoreHorizontal,
+  ExternalLink,
+  Wifi,
+  Shield,
+  Users,
+  Settings,
+  BarChart3,
   Globe,
   Network,
   MapPin,
@@ -18,6 +18,7 @@ import {
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Badge } from './ui/badge';
+import { useBranding } from '@/lib/branding';
 
 interface App {
   id: string;
@@ -92,6 +93,7 @@ const handleAppClick = (app: App, setIsOpen: (open: boolean) => void) => {
 
 export function AppsMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const branding = useBranding();
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -197,7 +199,7 @@ export function AppsMenu() {
           {/* Footer */}
           <div className="mt-4 pt-3 border-t border-border/50">
             <div className="text-xs text-muted-foreground text-center">
-              Extreme Platform ONE
+              {branding.name}
             </div>
           </div>
         </div>

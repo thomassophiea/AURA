@@ -49,7 +49,7 @@ export function RFManagementTools() {
         const profilesList = Array.isArray(data) ? data : [];
         setProfiles(profilesList);
       } else if (response.status === 404) {
-        setError('RF Management API not available on this Extreme Platform ONE version');
+        setError('RF Management API not available on this controller version');
         setProfiles([]);
       } else {
         throw new Error('Failed to load RF profiles');

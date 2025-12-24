@@ -113,7 +113,7 @@ export function SystemAdministration() {
         setApiNotAvailable(false);
       } else if (response.status === 404) {
         setApiNotAvailable(true);
-        console.warn('System configuration API endpoint not available on Extreme Platform ONE');
+        console.warn('System configuration API endpoint not available on this controller');
       }
     } catch (error) {
       console.error('Failed to load system config:', error);
@@ -197,8 +197,8 @@ export function SystemAdministration() {
         <Alert className="border-yellow-500">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            System configuration API endpoints are not available on this Extreme Platform ONE version.
-            This feature requires Extreme Platform ONE API v1/system/config support.
+            System configuration API endpoints are not available on this controller version.
+            This feature requires API v1/system/config support.
           </AlertDescription>
         </Alert>
       )}

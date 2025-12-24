@@ -40,7 +40,7 @@ export function DeviceUpgrade() {
         const imageList = Array.isArray(data) ? data : [];
         setImages(imageList);
       } else if (response.status === 404) {
-        setError('Upgrade image API not available on this Extreme Platform ONE version');
+        setError('Upgrade image API not available on this controller version');
         setImages([]);
       } else {
         throw new Error('Failed to load upgrade images');

@@ -71,7 +71,7 @@ export function LicenseManagement() {
         setApiNotAvailable(false);
       } else if (response.status === 404) {
         setApiNotAvailable(true);
-        console.warn('License API endpoint not available on Extreme Platform ONE');
+        console.warn('License API endpoint not available on this controller');
       }
     } catch (error) {
       console.error('Failed to load license info:', error);
@@ -202,8 +202,8 @@ export function LicenseManagement() {
         <Alert className="border-yellow-500">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            License management API endpoints are not available on this Extreme Platform ONE version.
-            This feature requires Extreme Platform ONE API v1/system/license support.
+            License management API endpoints are not available on this controller version.
+            This feature requires API v1/system/license support.
           </AlertDescription>
         </Alert>
       )}

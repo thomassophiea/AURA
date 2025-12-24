@@ -32,7 +32,8 @@ import {
   Map,
   Swords,
   Flag,
-  Eye
+  Eye,
+  ShoppingCart
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -40,13 +41,14 @@ import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { useState } from 'react';
 import { cn } from './ui/utils';
+import { useBranding } from '@/lib/branding';
 
 interface SidebarProps {
   onLogout: () => void;
   adminRole: string | null;
   currentPage: string;
   onPageChange: (page: string) => void;
-  theme?: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'system';
+  theme?: 'light' | 'dark' | 'synthwave' | 'pirate' | 'mi5' | 'kroger' | 'system';
   onThemeToggle?: () => void;
 }
 
@@ -69,10 +71,11 @@ const configureItems = [
 
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'system', onThemeToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  
+  const branding = useBranding();
+
   // Check if any configure sub-item is currently active
   const isConfigureActive = configureItems.some(item => currentPage === item.id);
-  
+
   // Auto-expand Configure section if a configure item is active
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
 
@@ -87,7 +90,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <div className="text-foreground">
-                <span className="text-muted-foreground text-xs">Extreme Platform ONE | AURA</span>
+                <span className="text-muted-foreground text-xs">{branding.fullName}</span>
               </div>
             </div>
           )}
@@ -247,6 +250,8 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <Skull className={cn("h-4 w-4 text-yellow-600", !isCollapsed && "mr-2")} />
             ) : theme === 'mi5' ? (
               <Eye className={cn("h-4 w-4 text-red-600", !isCollapsed && "mr-2")} />
+            ) : theme === 'kroger' ? (
+              <ShoppingCart className={cn("h-4 w-4 text-blue-700", !isCollapsed && "mr-2")} />
             ) : (
               <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
@@ -254,13 +259,15 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <span className={
                 theme === 'synthwave' ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-cyan-400 font-bold' :
                 theme === 'pirate' ? 'text-yellow-600 font-bold' :
-                theme === 'mi5' ? 'text-red-600 font-bold' : ''
+                theme === 'mi5' ? 'text-red-600 font-bold' :
+                theme === 'kroger' ? 'text-blue-700 font-bold' : ''
               }>
                 {theme === 'light' ? 'Light' :
                  theme === 'dark' ? 'Dark' :
                  theme === 'synthwave' ? 'Miami Vice' :
                  theme === 'pirate' ? 'Pirate' :
                  theme === 'mi5' ? 'MI5' :
+                 theme === 'kroger' ? 'Kroger' :
                  'Auto'}
               </span>
             )}
