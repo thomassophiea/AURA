@@ -6404,3 +6404,82 @@ html[data-theme="light"], html.light {
 .mi5 [data-radix-collection-item] {
   pointer-events: auto !important;
 }
+
+/* ========================================
+   KROGER THEME OVERRIDES
+   ======================================== */
+
+/* Kroger sidebar - Brand blue background */
+.theme-kroger .bg-sidebar,
+.kroger .bg-sidebar {
+  background-color: #0F3989 !important;
+}
+
+/* Kroger sidebar text - White */
+.theme-kroger .text-sidebar-foreground,
+.kroger .text-sidebar-foreground,
+.theme-kroger .bg-sidebar *,
+.kroger .bg-sidebar * {
+  color: #ffffff !important;
+}
+
+/* Kroger active sidebar items - Light blue */
+.theme-kroger .bg-sidebar-primary,
+.kroger .bg-sidebar-primary {
+  background-color: #64C2EA !important;
+  color: #ffffff !important;
+}
+
+/* Kroger sidebar hover - Light blue tint */
+.theme-kroger .hover\:bg-sidebar-accent:hover,
+.kroger .hover\:bg-sidebar-accent:hover {
+  background-color: rgba(100, 194, 234, 0.15) !important;
+}
+
+/* Kroger sidebar borders - Subtle white */
+.theme-kroger .bg-sidebar-border,
+.theme-kroger .border-sidebar-border,
+.kroger .bg-sidebar-border,
+.kroger .border-sidebar-border {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Kroger main background - White */
+.theme-kroger,
+.kroger {
+  background-color: #ffffff !important;
+}
+
+/* Kroger cards - Light gray */
+.theme-kroger .bg-card,
+.kroger .bg-card {
+  background-color: #F7F8F8 !important;
+}
+
+/* Kroger primary buttons - Brand blue */
+.theme-kroger .bg-primary,
+.kroger .bg-primary {
+  background-color: #0F3989 !important;
+  color: #ffffff !important;
+}
+
+/* Kroger secondary buttons - Dark gray */
+.theme-kroger .bg-secondary,
+.kroger .bg-secondary {
+  background-color: #32373c !important;
+  color: #ffffff !important;
+}
+
+/* Kroger text - Black */
+.theme-kroger .text-foreground,
+.kroger .text-foreground {
+  color: #000000 !important;
+}
+
+/* Kroger accent - Light blue */
+.theme-kroger .bg-accent,
+.kroger .bg-accent {
+  background-color: #64C2EA !important;
+  color: #ffffff !important;
+}
