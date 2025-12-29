@@ -1,5 +1,5 @@
 // Service Worker for caching static assets
-const CACHE_NAME = 'aura-cache-v13-kroger-semantic-tokens';
+const CACHE_NAME = 'aura-cache-v14-kroger-semantic-tokens-v3';
 const urlsToCache = [
   '/',
   '/index.html',
