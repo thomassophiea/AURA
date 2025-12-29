@@ -192,33 +192,33 @@ export const themes: Record<ThemeMode, Theme> = {
     displayName: 'Kroger',
     emoji: '🛒',
     colors: {
-      // Kroger brand blue from website - #0F3989
+      // Kroger brand blue - #0F3989
       primary: '217 83% 31%', // #0F3989 (Kroger brand blue)
       primaryForeground: '0 0% 100%', // #FFFFFF (white text on blue)
-      // Kroger light blue hover - #64C2EA
-      secondary: '196 75% 66%', // #64C2EA (light blue)
-      secondaryForeground: '217 83% 31%', // #0F3989 (dark blue text)
-      // Clean white background - #FFFFFF
+      // Dark gray buttons - #32373c
+      secondary: '210 10% 23%', // #32373c (dark gray for buttons)
+      secondaryForeground: '0 0% 100%', // #FFFFFF
+      // Clean white background
       background: '0 0% 100%', // #FFFFFF (white)
-      foreground: '0 0% 29%', // #4A4A4A (medium gray text)
+      foreground: '0 0% 0%', // #000000 (black text)
       // Card surfaces - light gray - #F7F8F8
-      card: '200 17% 98%', // #F7F8F8 (very light gray)
-      cardForeground: '0 0% 29%', // #4A4A4A
+      card: '200 17% 98%', // #F7F8F8 (light gray)
+      cardForeground: '0 0% 0%', // #000000
       popover: '0 0% 100%', // #FFFFFF
-      popoverForeground: '0 0% 29%', // #4A4A4A
-      // Muted using light gray
+      popoverForeground: '0 0% 0%', // #000000
+      // Muted light gray
       muted: '200 17% 98%', // #F7F8F8 (light gray)
-      mutedForeground: '0 0% 60%', // Slightly lighter gray
-      // Accent with light blue
+      mutedForeground: '0 0% 29%', // #4A4A4A (medium gray)
+      // Accent light blue - #64C2EA
       accent: '196 75% 66%', // #64C2EA (light blue)
-      accentForeground: '217 83% 31%', // #0F3989
-      // Destructive red (standard)
-      destructive: '0 84.2% 60.2%', // Standard red
+      accentForeground: '0 0% 100%', // #FFFFFF
+      // Destructive red
+      destructive: '0 84.2% 60.2%', // Red
       destructiveForeground: '0 0% 100%', // #FFFFFF
-      // Borders with light gray
-      border: '0 0% 90%', // Light gray border
+      // Subtle borders
+      border: '0 0% 92%', // Very subtle gray border
       input: '0 0% 100%', // #FFFFFF (white input bg)
-      ring: '217 83% 31%' // #0F3989 (brand blue focus ring)
+      ring: '196 75% 66%' // #64C2EA (light blue focus ring)
     }
   }
 };

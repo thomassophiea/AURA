@@ -190,25 +190,25 @@
 .theme-kroger {
   /* Kroger brand colors from thekrogerco.com */
   --background: #ffffff; /* Clean white background */
-  --foreground: #4A4A4A; /* Medium gray text */
-  --card: #F7F8F8; /* Very light gray for cards */
-  --card-foreground: #4A4A4A;
+  --foreground: #000000; /* Black text for main content */
+  --card: #F7F8F8; /* Light gray for cards */
+  --card-foreground: #000000;
   --popover: #ffffff;
-  --popover-foreground: #4A4A4A;
+  --popover-foreground: #000000;
   --primary: #0F3989; /* Kroger brand blue */
   --primary-foreground: #ffffff;
-  --secondary: #64C2EA; /* Kroger light blue (hover) */
-  --secondary-foreground: #0F3989;
+  --secondary: #32373c; /* Dark gray for buttons */
+  --secondary-foreground: #ffffff;
   --muted: #F7F8F8; /* Light gray */
-  --muted-foreground: #999999; /* Medium-light gray */
+  --muted-foreground: #4A4A4A; /* Medium gray text */
   --accent: #64C2EA; /* Light blue accent */
-  --accent-foreground: #0F3989;
-  --destructive: #ef4444; /* Standard red */
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444; /* Red */
   --destructive-foreground: #ffffff;
-  --border: #e5e5e5; /* Light gray border */
+  --border: rgba(0, 0, 0, 0.08); /* Subtle border */
   --input: #ffffff; /* White input background */
   --input-background: #ffffff;
-  --ring: #0F3989; /* Brand blue focus ring */
+  --ring: #64C2EA; /* Light blue focus ring */
   --chart-1: #0F3989;
   --chart-2: #64C2EA;
   --chart-3: #FF6F00;
@@ -217,19 +217,19 @@
   --success: #00C853;
   --success-foreground: #ffffff;
   --warning: #FF6F00;
-  --warning-foreground: #ffffff;
+  --warning-foreground: #000000;
   --info: #64C2EA;
-  --info-foreground: #0F3989;
+  --info-foreground: #ffffff;
 
-  /* Kroger Sidebar - light and clean */
-  --sidebar: #ffffff; /* White sidebar background */
-  --sidebar-foreground: #4A4A4A; /* Medium gray text */
-  --sidebar-primary: #0F3989; /* Brand blue for active items */
+  /* Kroger Sidebar - BLUE like their header/navigation */
+  --sidebar: #0F3989; /* Kroger brand blue background */
+  --sidebar-foreground: #ffffff; /* White text */
+  --sidebar-primary: #64C2EA; /* Light blue for active items */
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #F7F8F8; /* Light gray hover background */
-  --sidebar-accent-foreground: #0F3989; /* Brand blue hover text */
-  --sidebar-border: #e5e5e5; /* Light gray border */
-  --sidebar-ring: #0F3989; /* Brand blue focus ring */
+  --sidebar-accent: rgba(100, 194, 234, 0.15); /* Light blue tint hover */
+  --sidebar-accent-foreground: #ffffff; /* White hover text */
+  --sidebar-border: rgba(255, 255, 255, 0.1); /* Subtle white border */
+  --sidebar-ring: #64C2EA; /* Light blue focus ring */
 
   /* Poppins font for Kroger theme */
   --font-family-sans: 'Poppins', 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
