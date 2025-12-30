@@ -1,4 +1,4 @@
-// Version: Kroger Top Bar Background - Dec 29 2025 v5 - 19:15
+// Version: Kroger Sidebar Styling - Dec 29 2025 v6 - 19:45
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
@@ -34,11 +34,11 @@ app.get('/health', (req, res) => {
 // Version check endpoint - proves which commit is deployed
 app.get('/api/version', (req, res) => {
   res.json({
-    version: 'v5-kroger-top-bar',
-    commit: '3d4f8e62ccc418471464a95f6310e72eca615571',
+    version: 'v6-kroger-sidebar',
+    commit: 'pending',
     blue: '#084999',
-    timestamp: 'Dec 29 2025 19:15',
-    message: 'Kroger theme with logo, blue sidebar, and blue top bar'
+    timestamp: 'Dec 29 2025 19:45',
+    message: 'Kroger sidebar with comprehensive button and navigation styling'
   });
 });
 

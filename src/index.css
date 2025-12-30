@@ -6532,6 +6532,53 @@ html[data-theme="light"], html.light {
   color: #5B21B6 !important;
 }
 
+/* Kroger sidebar buttons - white text with proper states */
+.theme-kroger .bg-sidebar button,
+.kroger .bg-sidebar button {
+  color: #ffffff !important;
+}
+
+/* Kroger sidebar button ghost variant */
+.theme-kroger .bg-sidebar button[class*="ghost"],
+.kroger .bg-sidebar button[class*="ghost"] {
+  color: #ffffff !important;
+  background-color: transparent !important;
+}
+
+/* Kroger sidebar button hover state */
+.theme-kroger .bg-sidebar button[class*="ghost"]:hover,
+.kroger .bg-sidebar button[class*="ghost"]:hover {
+  background-color: rgba(100, 194, 234, 0.15) !important;
+  color: #ffffff !important;
+}
+
+/* Kroger sidebar active navigation item */
+.theme-kroger .bg-sidebar button[class*="default"],
+.theme-kroger .bg-sidebar .bg-sidebar-primary,
+.kroger .bg-sidebar button[class*="default"],
+.kroger .bg-sidebar .bg-sidebar-primary {
+  background-color: #64C2EA !important;
+  color: #ffffff !important;
+}
+
+/* Kroger sidebar icons - ensure white color */
+.theme-kroger .bg-sidebar button svg,
+.theme-kroger .bg-sidebar svg,
+.kroger .bg-sidebar button svg,
+.kroger .bg-sidebar svg {
+  color: #ffffff !important;
+  stroke: currentColor;
+}
+
+/* Kroger sidebar separators */
+.theme-kroger .bg-sidebar hr,
+.theme-kroger .bg-sidebar [role="separator"],
+.kroger .bg-sidebar hr,
+.kroger .bg-sidebar [role="separator"] {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 .theme-kroger a:active,
 .kroger a:active {
   color: #052D66 !important;
