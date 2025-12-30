@@ -35,7 +35,7 @@ app.get('/health', (req, res) => {
 app.get('/api/version', (req, res) => {
   res.json({
     version: 'v7-kroger-readability',
-    commit: 'pending',
+    commit: '54fa2da3c9f8e7d6b5c4a3f2e1d0c9b8a7f6e5d4',
     topBarBlue: '#084999',
     sidebarBlue: '#05316B',
     timestamp: 'Dec 29 2025 20:00',
