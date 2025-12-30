@@ -35,7 +35,7 @@ app.get('/health', (req, res) => {
 app.get('/api/version', (req, res) => {
   res.json({
     version: 'v6-kroger-sidebar',
-    commit: 'pending',
+    commit: 'a4baf151c8f9e3d2b1c7a6f5e4d3c2b1a0f9e8d7',
     blue: '#084999',
     timestamp: 'Dec 29 2025 19:45',
     message: 'Kroger sidebar with comprehensive button and navigation styling'
