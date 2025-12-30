@@ -835,7 +835,7 @@ export default function App() {
             {/* Top Bar with Test Tools */}
             <div className={`flex justify-between items-center kroger-top-bar ${
               theme === 'kroger'
-                ? 'bg-sidebar text-sidebar-foreground px-6 py-4 mb-6'
+                ? 'bg-sidebar text-sidebar-foreground px-6 py-[18px] mb-6'
                 : 'mb-6'
             }`}>
               <div className="flex items-center space-x-4">
