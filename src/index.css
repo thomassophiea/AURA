@@ -6532,9 +6532,42 @@ html[data-theme="light"], html.light {
   color: #5B21B6 !important;
 }
 
-/* Kroger sidebar buttons - white text with proper states */
-.theme-kroger .bg-sidebar button,
-.kroger .bg-sidebar button {
+/* Kroger top bar - Official brand blue */
+.theme-kroger .kroger-top-bar.bg-sidebar,
+.kroger .kroger-top-bar.bg-sidebar {
+  background-color: #084999 !important; /* Official Kroger brand blue for top bar */
+}
+
+/* Kroger top bar buttons - Better readability on blue background */
+.theme-kroger .kroger-top-bar button,
+.kroger .kroger-top-bar button {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #084999 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  font-weight: 500 !important;
+}
+
+.theme-kroger .kroger-top-bar button:hover,
+.kroger .kroger-top-bar button:hover {
+  background-color: #ffffff !important;
+  color: #06387A !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.theme-kroger .kroger-top-bar button svg,
+.kroger .kroger-top-bar button svg {
+  color: #084999 !important;
+}
+
+/* Kroger sidebar - darker blue for better contrast */
+.theme-kroger .bg-sidebar,
+.kroger .bg-sidebar {
+  background-color: #05316B !important; /* Darker blue for better contrast */
+}
+
+/* Kroger sidebar nav buttons - white text with proper states */
+.theme-kroger nav button,
+.kroger nav button {
   color: #ffffff !important;
 }
 

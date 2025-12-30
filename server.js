@@ -1,4 +1,4 @@
-// Version: Kroger Sidebar Styling - Dec 29 2025 v6 - 19:45
+// Version: Kroger Button Readability Fix - Dec 29 2025 v7 - 20:00
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
@@ -34,11 +34,12 @@ app.get('/health', (req, res) => {
 // Version check endpoint - proves which commit is deployed
 app.get('/api/version', (req, res) => {
   res.json({
-    version: 'v6-kroger-sidebar',
-    commit: 'a4baf151c8f9e3d2b1c7a6f5e4d3c2b1a0f9e8d7',
-    blue: '#084999',
-    timestamp: 'Dec 29 2025 19:45',
-    message: 'Kroger sidebar with comprehensive button and navigation styling'
+    version: 'v7-kroger-readability',
+    commit: 'pending',
+    topBarBlue: '#084999',
+    sidebarBlue: '#05316B',
+    timestamp: 'Dec 29 2025 20:00',
+    message: 'Top bar buttons with white background for readability, darker sidebar blue'
   });
 });
 

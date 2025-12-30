@@ -314,8 +314,8 @@ html.theme-kroger body,
   --link-visited: #5B21B6 !important;
   --link-active: #052D66 !important;
 
-  /* Kroger Sidebar - BLUE like their header/navigation */
-  --sidebar: #084999 !important; /* Official Kroger brand blue background */
+  /* Kroger Sidebar - Darker blue for better contrast */
+  --sidebar: #05316B !important; /* Darker blue for better white text contrast */
   --sidebar-foreground: #ffffff !important; /* White text */
   --sidebar-primary: #64C2EA !important; /* Light blue for active items */
   --sidebar-primary-foreground: #ffffff !important;
