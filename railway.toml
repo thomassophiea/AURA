@@ -12,6 +12,8 @@ phases.install.cmds = [
 phases.build.cmds = [
   "rm -rf node_modules/.vite build dist",
   "npm run build",
+  "echo '{\"version\":\"'$(git describe --always)'\",\"commit\":\"'$(git rev-parse --short HEAD)'\",\"commitFull\":\"'$(git rev-parse HEAD)'\",\"buildDate\":\"'$(date -u +\"%Y-%m-%dT%H:%M:%SZ\")'\",\"message\":\"API Dashboard Audit P0/P1\"}' > build/version.json",
+  "cat build/version.json",
   "echo 'Build completed at:' $(date -u)"
 ]
 
