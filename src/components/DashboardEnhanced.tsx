@@ -36,6 +36,7 @@ import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { toast } from 'sonner';
 import { getVendor, getVendorIcon, getShortVendor } from '../services/oui-lookup';
+import { formatBitsPerSecond, formatBytes as formatBytesUnit, formatThroughput, formatDataVolume, TOOLTIPS } from '../lib/units';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { OperationalHealthSummary } from './OperationalHealthSummary';
 import { FilterBar } from './FilterBar';
@@ -851,22 +852,10 @@ export function DashboardEnhanced() {
     console.log('[Dashboard] Alerts:', { critical, warning, info });
   };
 
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
-
-  const formatBps = (bitsPerSecond: number): string => {
-    if (bitsPerSecond === 0) return '0 bps';
-    const k = 1000; // Use 1000 for networking (not 1024)
-    const sizes = ['bps', 'Kbps', 'Mbps', 'Gbps'];
-    const i = Math.floor(Math.log(bitsPerSecond) / Math.log(k));
-    const value = bitsPerSecond / Math.pow(k, i);
-    return Math.round(value * 100) / 100 + ' ' + sizes[i];
-  };
+  // Using formatBitsPerSecond and formatBytesUnit from src/lib/units.ts
+  // These implement the cloud console spec for auto-scaling units
+  const formatBytes = formatBytesUnit;
+  const formatBps = formatBitsPerSecond;
 
   const COLORS = ['#BB86FC', '#03DAC5', '#CF6679', '#3700B3', '#018786', '#B00020'];
 
@@ -977,26 +966,29 @@ export function DashboardEnhanced() {
         {/* Network Throughput */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Network Throughput</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-1.5">
+              Network Throughput
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" title={TOOLTIPS.REAL_TIME_THROUGHPUT} />
+            </CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</div>
-            <p className="text-xs text-muted-foreground">Total network traffic</p>
+            <p className="text-xs text-muted-foreground">Total network traffic (Mbps/Gbps)</p>
             
             {/* Upload/Download Stats */}
             <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <TrendingUp className="h-3 w-3" />
-                  <span>Upload</span>
+                  <span title="Upload throughput in Mbps/Gbps">Upload</span>
                 </div>
                 <div className="font-medium text-blue-600">{formatBps(clientStats.throughputUpload)}</div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <TrendingDown className="h-3 w-3" />
-                  <span>Download</span>
+                  <span title="Download throughput in Mbps/Gbps">Download</span>
                 </div>
                 <div className="font-medium text-green-600">{formatBps(clientStats.throughputDownload)}</div>
               </div>
@@ -1006,7 +998,9 @@ export function DashboardEnhanced() {
             {clientStats.total > 0 && (
               <div className="mt-3 pt-3 border-t border-border">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Avg per client</span>
+                  <span className="text-muted-foreground cursor-help" title="Average throughput per connected client">
+                    Avg per client
+                  </span>
                   <span className="font-medium">
                     {formatBps((clientStats.throughputUpload + clientStats.throughputDownload) / clientStats.total)}
                   </span>
@@ -1456,15 +1450,8 @@ export function DashboardEnhanced() {
                   {/* Header Row */}
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
-                          #{idx + 1}
-                        </div>
-                        {client.vendorIcon && (
-                          <div className="text-2xl" title={client.vendor}>
-                            {client.vendorIcon}
-                          </div>
-                        )}
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
+                        #{idx + 1}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 flex-wrap">

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { RefreshCw, TrendingUp } from 'lucide-react';
 import { AnomalyDetector } from './AnomalyDetector';
@@ -8,6 +8,7 @@ import { ApplicationAnalyticsEnhancedWidget } from './ApplicationAnalyticsEnhanc
 /**
  * Network Insights Dashboard
  *
+ * Auto-loads on page render with 30-second background refresh.
  * Displays advanced analytics and insights about network performance:
  * - Anomaly Detection (What Changed?)
  * - RF Quality Index (RFQI)
@@ -16,15 +17,31 @@ import { ApplicationAnalyticsEnhancedWidget } from './ApplicationAnalyticsEnhanc
 export function NetworkInsights() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleRefresh = () => {
-    setRefreshing(true);
+  // Auto-load on page render and background refresh every 30 seconds
+  useEffect(() => {
+    // Initial load
     setLastUpdate(new Date());
 
-    // Trigger refresh on all child components by updating timestamp
+    // Background refresh every 30 seconds
+    const interval = setInterval(() => {
+      setRefreshKey(prev => prev + 1);
+      setLastUpdate(new Date());
+      console.log('[NetworkInsights] Auto-refresh triggered (30s interval)');
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Manual refresh for troubleshooting
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setRefreshKey(prev => prev + 1);
+    setLastUpdate(new Date());
+
     setTimeout(() => {
       setRefreshing(false);
-      window.location.reload(); // Force reload to refresh all widgets
     }, 500);
   };
 
@@ -57,12 +74,13 @@ export function NetworkInsights() {
 
       {/* Anomaly Detector - What Changed? */}
       <div className="widget-container">
-        <AnomalyDetector />
+        <AnomalyDetector key={`anomaly-${refreshKey}`} />
       </div>
 
       {/* RF Quality Index (RFQI) */}
       <div className="widget-container">
         <RFQualityWidget
+          key={`rfqi-${refreshKey}`}
           siteId="c7395471-aa5c-46dc-9211-3ed24c5789bd"
           duration="24H"
         />
@@ -71,6 +89,7 @@ export function NetworkInsights() {
       {/* Application Analytics */}
       <div className="widget-container">
         <ApplicationAnalyticsEnhancedWidget
+          key={`apps-${refreshKey}`}
           siteId="c7395471-aa5c-46dc-9211-3ed24c5789bd"
           duration="24H"
         />

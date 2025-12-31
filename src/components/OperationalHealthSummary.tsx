@@ -2,7 +2,7 @@
  * Operational Health Summary Widget
  *
  * Single-pane-of-glass network health overview with actionable drilldowns.
- * Displays: Fleet Health Score, Critical Alerts, Service Degradation, Client Experience
+ * Displays: Organization Health Score, Critical Alerts, Service Degradation, Client Experience
  *
  * Part of P1-001 implementation from API Dashboard Audit
  */
@@ -26,7 +26,7 @@ import { apiService, AccessPoint, Station, Service } from '../services/api';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 
 interface HealthMetrics {
-  fleetHealth: {
+  organizationHealth: {
     score: number;
     status: 'excellent' | 'good' | 'degraded' | 'critical';
     details: {
@@ -90,8 +90,8 @@ export function OperationalHealthSummary() {
         ? stations
         : stations.filter(s => s.siteName === filters.site || s.siteId === filters.site);
 
-      // Calculate Fleet Health Score (weighted composite)
-      const fleetHealth = calculateFleetHealth(filteredAPs, filteredStations);
+      // Calculate Organization Health Score (weighted composite)
+      const organizationHealth = calculateOrganizationHealth(filteredAPs, filteredStations);
 
       // Get critical alerts
       const criticalAlerts = await getCriticalAlerts();
@@ -103,7 +103,7 @@ export function OperationalHealthSummary() {
       const clientExperience = calculateClientExperience(filteredStations);
 
       setMetrics({
-        fleetHealth,
+        organizationHealth,
         criticalAlerts,
         serviceDegradation,
         clientExperience
@@ -116,7 +116,7 @@ export function OperationalHealthSummary() {
     }
   };
 
-  const calculateFleetHealth = (aps: AccessPoint[], stations: Station[]) => {
+  const calculateOrganizationHealth = (aps: AccessPoint[], stations: Station[]) => {
     // AP Uptime: percentage of APs that are "up" or "connected"
     const upAPs = aps.filter(ap =>
       ap.status?.toLowerCase() === 'up' ||
@@ -360,22 +360,22 @@ export function OperationalHealthSummary() {
       <CardContent>
         {/* 4-card KPI layout */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Fleet Health Score */}
+          {/* Organization Health Score */}
           <div className="p-4 border rounded-lg bg-card">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <div className="text-sm text-muted-foreground mb-1">Fleet Health</div>
-                <div className={`text-3xl font-bold ${getStatusColor(metrics.fleetHealth.status)}`}>
-                  {metrics.fleetHealth.score}%
+                <div className="text-sm text-muted-foreground mb-1">Organization Health</div>
+                <div className={`text-3xl font-bold ${getStatusColor(metrics.organizationHealth.status)}`}>
+                  {metrics.organizationHealth.score}%
                 </div>
                 <Badge
-                  variant={getStatusBadgeVariant(metrics.fleetHealth.status)}
+                  variant={getStatusBadgeVariant(metrics.organizationHealth.status)}
                   className="mt-2 text-xs"
                 >
-                  {metrics.fleetHealth.status.toUpperCase()}
+                  {metrics.organizationHealth.status.toUpperCase()}
                 </Badge>
               </div>
-              {getStatusIcon(metrics.fleetHealth.status)}
+              {getStatusIcon(metrics.organizationHealth.status)}
             </div>
           </div>
 
@@ -440,21 +440,21 @@ export function OperationalHealthSummary() {
         {/* Expandable Details Panel */}
         {isExpanded && (
           <div className="mt-6 pt-6 border-t space-y-4">
-            {/* Fleet Health Details */}
+            {/* Organization Health Details */}
             <div>
-              <h4 className="font-semibold mb-2">Fleet Health Breakdown</h4>
+              <h4 className="font-semibold mb-2">Organization Health Breakdown</h4>
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-muted-foreground">AP Uptime:</span>
-                  <span className="ml-2 font-medium">{metrics.fleetHealth.details.apUptime}%</span>
+                  <span className="ml-2 font-medium">{metrics.organizationHealth.details.apUptime}%</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Client Success:</span>
-                  <span className="ml-2 font-medium">{metrics.fleetHealth.details.clientSuccessRate}%</span>
+                  <span className="ml-2 font-medium">{metrics.organizationHealth.details.clientSuccessRate}%</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Throughput:</span>
-                  <span className="ml-2 font-medium">{metrics.fleetHealth.details.throughputEfficiency}%</span>
+                  <span className="ml-2 font-medium">{metrics.organizationHealth.details.throughputEfficiency}%</span>
                 </div>
               </div>
             </div>
