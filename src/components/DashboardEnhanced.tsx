@@ -903,11 +903,6 @@ export function DashboardEnhanced() {
         </div>
       </div>
 
-      {/* Version Badge - Fixed Bottom Left */}
-      <div className="fixed bottom-4 left-4 z-50">
-        <VersionBadge />
-      </div>
-
       {/* Filter Bar */}
       <FilterBar
         showSiteFilter={true}

@@ -42,6 +42,7 @@ import { Separator } from './ui/separator';
 import { useState } from 'react';
 import { cn } from './ui/utils';
 import { useBranding } from '@/lib/branding';
+import { VersionBadge } from './VersionBadge';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -235,8 +236,11 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
       {/* User Info & Theme Toggle & Logout */}
       <div className="p-4 space-y-2">
         {!isCollapsed && adminRole && (
-          <div className="text-xs text-sidebar-foreground/70">
-            Role: {adminRole}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-sidebar-foreground/70">
+              Role: {adminRole}
+            </div>
+            <VersionBadge />
           </div>
         )}
         
