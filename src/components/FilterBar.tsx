@@ -12,6 +12,7 @@ import { Building, Clock, X, Calendar } from 'lucide-react';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { apiService, Site } from '../services/api';
 import { Badge } from './ui/badge';
+import { getSiteDisplayName } from '../contexts/SiteContext';
 
 export interface FilterBarProps {
   showSiteFilter?: boolean;
@@ -86,8 +87,8 @@ export function FilterBar({
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
                 {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.name || site.id}>
-                    {site.name || site.id}
+                  <SelectItem key={site.id} value={site.id}>
+                    {getSiteDisplayName(site)}
                   </SelectItem>
                 ))}
               </SelectContent>

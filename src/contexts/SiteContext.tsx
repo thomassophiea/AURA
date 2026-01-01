@@ -3,7 +3,7 @@ import { apiService } from '../services/api';
 
 interface Site {
   id: string;
-  name?: string;
+  name?: string; // May not always be present, fallback to siteName or displayName
   siteName?: string;
   displayName?: string;
 }
