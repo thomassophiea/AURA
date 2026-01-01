@@ -55,7 +55,7 @@ interface SidebarProps {
 
 // Navigation items with pirate and MI5-themed icons and labels
 const navigationItems = [
-  { id: 'service-levels', label: 'Service Levels', pirateLabel: "Ship's Status", mi5Label: "Operations Status", icon: TrendingUp, pirateIcon: Anchor },
+  { id: 'service-levels', label: 'Context Overview', pirateLabel: "Ship's Status", mi5Label: "Operations Status", icon: TrendingUp, pirateIcon: Anchor },
   { id: 'network-insights', label: 'Network Insights', pirateLabel: "Treasure Charts", mi5Label: "Intelligence Analysis", icon: BarChart3, pirateIcon: Scroll },
   { id: 'connected-clients', label: 'Connected Clients', pirateLabel: "Crew Aboard", mi5Label: "Field Agents", icon: Users, pirateIcon: Users },
   { id: 'access-points', label: 'Access Points', pirateLabel: "Signal Beacons", mi5Label: "Assets", icon: Wifi, pirateIcon: Radio },

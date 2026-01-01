@@ -38,7 +38,7 @@ import { toast } from 'sonner';
 import { applyTheme as applyThemeColors } from './lib/themes';
 
 const pageInfo = {
-  'service-levels': { title: 'Service Levels', description: 'Monitor network SLAs and performance metrics' },
+  'service-levels': { title: 'Context Overview', description: 'Context-aware network monitoring and analytics' },
   'connected-clients': { title: 'Connected Clients', description: 'View and manage connected devices' },
   'access-points': { title: 'Access Points', description: 'Manage and monitor wireless access points' },
   'sites-overview': { title: 'Sites Overview', description: 'View and manage network sites' },
@@ -948,9 +948,6 @@ export default function App() {
                 <h2 className={`text-lg font-semibold ${
                   theme === 'kroger' ? 'text-sidebar-foreground' : 'text-[rgba(255,255,255,1)]'
                 }`}>
-                  {siteName && (
-                    <span className="opacity-70 font-normal">{siteName} · </span>
-                  )}
                   {pageInfo[currentPage as keyof typeof pageInfo]?.title || 'Mobility Engine'}
                 </h2>
               </div>
