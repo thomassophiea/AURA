@@ -196,7 +196,8 @@ export function DashboardEnhanced() {
   const [clientDistribution, setClientDistribution] = useState<Array<{ service: string; count: number; percentage: number }>>([]);
   const [networkThroughput, setNetworkThroughput] = useState<Array<{ network: string; upload: number; download: number; total: number }>>([]);
   const [vendorLookupsInProgress, setVendorLookupsInProgress] = useState(false);
-  
+  const [serviceIdToNameMap, setServiceIdToNameMap] = useState<Map<string, string>>(new Map());
+
   // Service Data
   const [services, setServices] = useState<Service[]>([]);
   const [serviceReports, setServiceReports] = useState<Map<string, ServiceReport>>(new Map());
@@ -607,16 +608,19 @@ export function DashboardEnhanced() {
 
   const processStations = (stations: Station[], servicesData: Service[] = []) => {
     setStations(stations);
-    
+
     // Create a lookup map from servicesData for quick service name resolution
-    const serviceIdToNameMap = new Map<string, string>();
+    const serviceIdToNameMapLocal = new Map<string, string>();
     servicesData.forEach(service => {
       if (service.id) {
         // Prefer SSID over name, then name, as SSID is more recognizable to users
         const displayName = service.ssid || service.name || service.id;
-        serviceIdToNameMap.set(service.id, displayName);
+        serviceIdToNameMapLocal.set(service.id, displayName);
       }
     });
+
+    // Store in state for use in other functions
+    setServiceIdToNameMap(serviceIdToNameMapLocal);
     
     // Calculate statistics
     let totalUpload = 0;
@@ -680,12 +684,12 @@ export function DashboardEnhanced() {
       // Track by service - try multiple fields to identify the service/network
       // Priority: 1) SSID (most user-friendly), 2) serviceName, 3) lookup serviceId in map, 4) raw serviceId, 5) 'Unknown'
       let serviceName = station.ssid || station.serviceName;
-      
+
       if (!serviceName && station.serviceId) {
         // Try to resolve serviceId to a friendly name using the services lookup
-        serviceName = serviceIdToNameMap.get(station.serviceId) || station.serviceId;
+        serviceName = serviceIdToNameMapLocal.get(station.serviceId) || station.serviceId;
       }
-      
+
       serviceName = serviceName || 'Unknown';
       
       serviceMap.set(serviceName, (serviceMap.get(serviceName) || 0) + 1);
@@ -930,6 +934,19 @@ export function DashboardEnhanced() {
     return formatBps(bps);
   };
 
+  // Helper function to get service name for a station (must match logic in processStations)
+  const getServiceNameForStation = (station: Station): string => {
+    // Priority: 1) SSID (most user-friendly), 2) serviceName, 3) lookup serviceId in map, 4) raw serviceId, 5) 'Unknown'
+    let serviceName = station.ssid || station.serviceName;
+
+    if (!serviceName && station.serviceId) {
+      // Try to resolve serviceId to a friendly name using the services lookup
+      serviceName = serviceIdToNameMap.get(station.serviceId) || station.serviceId;
+    }
+
+    return serviceName || 'Unknown';
+  };
+
   // Handle clicking on a service to show its clients
   const handleServiceClick = (serviceName: string) => {
     setSelectedService(serviceName);
@@ -940,7 +957,7 @@ export function DashboardEnhanced() {
   const getClientsForService = () => {
     if (!selectedService) return [];
     return stations.filter(station => {
-      const stationService = station.ssid || station.serviceName || station.serviceId || 'Unknown';
+      const stationService = getServiceNameForStation(station);
       return stationService === selectedService;
     });
   };
