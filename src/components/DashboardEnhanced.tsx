@@ -585,11 +585,14 @@ export function DashboardEnhanced() {
       let tx = 0;
       let rx = 0;
 
-      // Try to get upload rate (transmittedRate, txRate in Mbps)
+      // Try to get upload rate with smart unit detection
+      // API may return bps or Mbps depending on controller version
       if (station.transmittedRate !== undefined && station.transmittedRate !== null && station.transmittedRate > 0) {
-        tx = station.transmittedRate * 1000000; // Mbps to bps
+        // If value is very large (> 1M), assume it's already in bps
+        // Otherwise assume it's in Mbps and convert
+        tx = station.transmittedRate > 1000000 ? station.transmittedRate : station.transmittedRate * 1000000;
       } else if (station.txRate !== undefined && station.txRate !== null && station.txRate > 0) {
-        tx = station.txRate * 1000000; // Mbps to bps
+        tx = station.txRate > 1000000 ? station.txRate : station.txRate * 1000000;
       } else {
         // Estimate from cumulative bytes
         const uploadBytes = station.outBytes || station.txBytes || 0;
@@ -600,11 +603,13 @@ export function DashboardEnhanced() {
         }
       }
 
-      // Try to get download rate (receivedRate, rxRate in Mbps)
+      // Try to get download rate with smart unit detection
       if (station.receivedRate !== undefined && station.receivedRate !== null && station.receivedRate > 0) {
-        rx = station.receivedRate * 1000000; // Mbps to bps
+        // If value is very large (> 1M), assume it's already in bps
+        // Otherwise assume it's in Mbps and convert
+        rx = station.receivedRate > 1000000 ? station.receivedRate : station.receivedRate * 1000000;
       } else if (station.rxRate !== undefined && station.rxRate !== null && station.rxRate > 0) {
-        rx = station.rxRate * 1000000; // Mbps to bps
+        rx = station.rxRate > 1000000 ? station.rxRate : station.rxRate * 1000000;
       } else {
         // Estimate from cumulative bytes
         const downloadBytes = station.inBytes || station.rxBytes || 0;
@@ -926,21 +931,28 @@ export function DashboardEnhanced() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{apStats.total}</div>
-            <div className="flex items-center gap-2 mt-2">
-              <Badge variant="outline" className="text-green-600 border-green-600">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                {apStats.online} Online
-              </Badge>
-              {apStats.offline > 0 && (
-                <Badge variant="outline" className="text-red-600 border-red-600">
-                  <WifiOff className="h-3 w-3 mr-1" />
-                  {apStats.offline} Offline
+            <div className="flex flex-col gap-1.5 mt-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  {apStats.online} Online
                 </Badge>
-              )}
+                {apStats.offline > 0 && (
+                  <Badge variant="outline" className="text-red-600 border-red-600 text-xs">
+                    <WifiOff className="h-3 w-3 mr-1" />
+                    {apStats.offline} Offline
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Uptime</span>
+                <span className="font-medium">{apStats.online > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Health</span>
+                <span className="font-medium text-green-600">{apStats.offline === 0 ? 'Good' : 'Check Required'}</span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {apStats.online > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}% uptime
-            </p>
           </CardContent>
         </Card>
 
@@ -952,12 +964,19 @@ export function DashboardEnhanced() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{clientStats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {clientStats.authenticated} authenticated
-            </p>
-            <div className="mt-2 flex items-center gap-1 text-sm">
-              <TrendingUp className="h-4 w-4 text-green-600" />
-              <span className="text-green-600">Active</span>
+            <div className="flex flex-col gap-1.5 mt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Authenticated</span>
+                <span className="font-medium">{clientStats.authenticated}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">Auth Rate</span>
+                <span className="font-medium">{clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                <TrendingUp className="h-3 w-3 text-green-600" />
+                <span className="text-green-600 font-medium">Active</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -1063,21 +1082,37 @@ export function DashboardEnhanced() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</div>
-            <div className="flex gap-2 mt-2">
-              {alertCounts.critical > 0 && (
-                <Badge variant="destructive" className="text-xs">
-                  {alertCounts.critical} Critical
-                </Badge>
-              )}
-              {alertCounts.warning > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {alertCounts.warning} Warning
-                </Badge>
+            <div className="flex flex-col gap-1.5 mt-2">
+              <div className="flex gap-2">
+                {alertCounts.critical > 0 && (
+                  <Badge variant="destructive" className="text-xs">
+                    {alertCounts.critical} Critical
+                  </Badge>
+                )}
+                {alertCounts.warning > 0 && (
+                  <Badge variant="secondary" className="text-xs">
+                    {alertCounts.warning} Warning
+                  </Badge>
+                )}
+              </div>
+              {alertCounts.critical === 0 && alertCounts.warning === 0 ? (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-xs">
+                    <CheckCircle className="h-3 w-3 text-green-600" />
+                    <span className="text-green-600 font-medium">All systems normal</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Status</span>
+                    <span className="font-medium text-green-600">Healthy</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">Action needed</span>
+                  <span className="font-medium text-amber-600">Review alerts</span>
+                </div>
               )}
             </div>
-            {alertCounts.critical === 0 && alertCounts.warning === 0 && (
-              <p className="text-xs text-green-600 mt-2">All systems normal</p>
-            )}
           </CardContent>
         </Card>
       </div>
