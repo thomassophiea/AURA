@@ -502,9 +502,9 @@ export function ReportWidgets() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-headline-5 text-high-emphasis">Report Widgets</h1>
+          <h1 className="text-headline-5 text-high-emphasis">Analytics & Monitoring Hub</h1>
           <p className="text-muted-foreground">
-            Real-time analytics and monitoring widgets from Campus Controller
+            Real-time widgets and metrics from Campus Controller
           </p>
         </div>
         

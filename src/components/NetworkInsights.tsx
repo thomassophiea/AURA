@@ -127,10 +127,10 @@ export function NetworkInsights() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <TrendingUp className="h-8 w-8 text-primary" />
-            Network Insights
+            Advanced Analytics Dashboard
           </h2>
           <p className="text-muted-foreground mt-1">
-            Advanced analytics, anomaly detection, and performance insights
+            Anomaly detection, performance insights, and trend analysis
             {lastUpdate && (
               <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
             )}

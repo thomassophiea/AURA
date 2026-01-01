@@ -546,7 +546,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
       <Card className="surface-2dp">
         <CardHeader>
-          <CardTitle>Connected Clients with Traffic Statistics</CardTitle>
+          <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
           <CardDescription>
             Click any client to view detailed connection information. Traffic data loaded with optimized batch query (up to {itemsPerPage} clients per page). Signal strength (RSS/RSSI) included.
           </CardDescription>

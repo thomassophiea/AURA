@@ -1042,9 +1042,9 @@ export function DashboardEnhanced() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Context Overview</h2>
+          <h2 className="text-3xl tracking-tight">Real-Time Network Dashboard</h2>
           <p className="text-muted-foreground">
-            Real-time context-aware network monitoring and analytics
+            Context-aware network monitoring and analytics
             {lastUpdate && (
               <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
             )}
