@@ -4,6 +4,7 @@ import { RefreshCw, TrendingUp } from 'lucide-react';
 import { AnomalyDetector } from './AnomalyDetector';
 import { RFQualityWidget } from './RFQualityWidget';
 import { ApplicationAnalyticsEnhancedWidget } from './ApplicationAnalyticsEnhancedWidget';
+import { ApplicationCategoriesWidget } from './ApplicationCategoriesWidget';
 import { SmartRFWidget } from './SmartRFWidget';
 import { VenueStatsWidget } from './VenueStatsWidget';
 
@@ -92,6 +93,15 @@ export function NetworkInsights() {
       <div className="widget-container">
         <ApplicationAnalyticsEnhancedWidget
           key={`apps-${refreshKey}`}
+          siteId="c7395471-aa5c-46dc-9211-3ed24c5789bd"
+          duration="24H"
+        />
+      </div>
+
+      {/* Application Categories */}
+      <div className="widget-container">
+        <ApplicationCategoriesWidget
+          key={`categories-${refreshKey}`}
           siteId="c7395471-aa5c-46dc-9211-3ed24c5789bd"
           duration="24H"
         />
