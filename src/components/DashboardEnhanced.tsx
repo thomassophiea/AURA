@@ -424,15 +424,26 @@ export function DashboardEnhanced() {
     };
 
     aps.forEach(ap => {
-      // Determine online status
-      const status = (ap.status || ap.connectionState || ap.operationalState || '').toLowerCase();
-      if (status.includes('online') || status.includes('connected') || status.includes('up')) {
+      // Determine online status - check multiple possible fields and values
+      const status = (ap.status || ap.connectionState || ap.operationalState || (ap as any).state || '').toLowerCase();
+      const isUp = (ap as any).isUp;
+      const isOnline = (ap as any).online;
+
+      // Consider an AP online if:
+      // 1. Status contains 'up', 'online', 'connected'
+      // 2. isUp or online boolean is true
+      // 3. No status field but AP exists in list (default to online)
+      if (
+        status.includes('up') ||
+        status.includes('online') ||
+        status.includes('connected') ||
+        isUp === true ||
+        isOnline === true ||
+        (!status && isUp !== false && isOnline !== false)
+      ) {
         stats.online++;
-      } else if (status.includes('offline') || status.includes('down') || status.includes('disconnected')) {
-        stats.offline++;
       } else {
-        // Default to online if status is unclear
-        stats.online++;
+        stats.offline++;
       }
 
       // Determine role
@@ -466,6 +477,7 @@ export function DashboardEnhanced() {
 
     setApStats(stats);
     console.log('[Dashboard] AP Stats:', stats);
+    console.log(`[Dashboard] AP Uptime: ${stats.online}/${stats.total} = ${stats.total > 0 ? ((stats.online / stats.total) * 100).toFixed(1) : 0}%`);
   };
 
   const storeThroughputSnapshot = async (
