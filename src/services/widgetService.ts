@@ -44,15 +44,15 @@ export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetRes
 
     if (userGroups && siteId) {
       // Venue report endpoint
-      endpoint = `/management/v3/sites/${siteId}/report/venue`;
+      endpoint = `/v3/sites/${siteId}/report/venue`;
       params.statType = 'sites';
       params.userGroups = JSON.stringify(userGroups);
     } else if (siteId) {
       // Site-specific report endpoint
-      endpoint = `/management/v1/report/sites/${siteId}`;
+      endpoint = `/v1/report/sites/${siteId}`;
     } else {
       // Deployment-wide report endpoint
-      endpoint = '/management/v1/report/sites';
+      endpoint = '/v1/report/sites';
     }
 
     // Build query string
