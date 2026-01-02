@@ -143,10 +143,7 @@ export function FilterBar({
                 {contexts.length > 0 ? (
                   contexts.map((context) => (
                     <SelectItem key={context.id} value={context.id}>
-                      <div className="flex items-center gap-2">
-                        <span>{context.icon}</span>
-                        <span>{context.name}</span>
-                      </div>
+                      {context.name}
                     </SelectItem>
                   ))
                 ) : (

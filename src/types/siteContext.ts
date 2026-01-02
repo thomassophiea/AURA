@@ -20,7 +20,6 @@ export interface SiteContext {
   id: string;
   name: string;
   description: string;
-  icon: string;
   color: string;
   metrics: {
     apUptimeThreshold: number;        // % - Minimum acceptable AP uptime
@@ -125,7 +124,6 @@ export const DEFAULT_CONTEXTS: SiteContext[] = [
     id: 'retail-store',
     name: 'Retail Store',
     description: 'High-density customer environment with moderate throughput needs',
-    icon: '🛒',
     color: '#3b82f6',
     metrics: {
       apUptimeThreshold: 99,
@@ -145,7 +143,6 @@ export const DEFAULT_CONTEXTS: SiteContext[] = [
     id: 'warehouse',
     name: 'Warehouse',
     description: 'Large coverage area with mobile devices and scanners',
-    icon: '📦',
     color: '#f59e0b',
     metrics: {
       apUptimeThreshold: 98,
@@ -165,7 +162,6 @@ export const DEFAULT_CONTEXTS: SiteContext[] = [
     id: 'distribution-center',
     name: 'Distribution Center',
     description: 'Critical operations requiring high reliability and coverage',
-    icon: '🚚',
     color: '#8b5cf6',
     metrics: {
       apUptimeThreshold: 99.5,
@@ -185,7 +181,6 @@ export const DEFAULT_CONTEXTS: SiteContext[] = [
     id: 'headquarters',
     name: 'Headquarters',
     description: 'Office environment with high throughput and quality requirements',
-    icon: '🏢',
     color: '#10b981',
     metrics: {
       apUptimeThreshold: 99.9,

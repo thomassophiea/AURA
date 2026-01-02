@@ -48,7 +48,6 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
     const newContext: Omit<SiteContext, 'id' | 'createdAt' | 'updatedAt'> = {
       name: 'New Context',
       description: 'Custom context configuration',
-      icon: '📍',
       color: '#6b7280',
       metrics: {
         apUptimeThreshold: 95,
@@ -140,7 +139,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
           <DialogHeader className="flex-shrink-0 pb-4">
             <DialogTitle>Configure Site Contexts</DialogTitle>
             <DialogDescription>
-              Define baseline metrics for different types of sites. Contexts help you understand what "healthy" means in different environments.
+              Define baseline metrics for different types of sites. Contexts help you understand what "healthy" means in different environments. AI will automatically determine optimal baselines once sufficient data is collected.
             </DialogDescription>
           </DialogHeader>
 
@@ -171,18 +170,15 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                         setIsCreating(false);
                       }}
                     >
-                      <CardHeader className="p-3">
+                      <CardHeader className="p-4">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{context.icon}</span>
-                            <div>
-                              <CardTitle className="text-sm">{context.name}</CardTitle>
-                              {context.isCustom && (
-                                <Badge variant="secondary" className="text-xs mt-1">
-                                  Custom
-                                </Badge>
-                              )}
-                            </div>
+                          <div>
+                            <CardTitle className="text-sm font-medium">{context.name}</CardTitle>
+                            {context.isCustom && (
+                              <Badge variant="secondary" className="text-xs mt-1">
+                                Custom
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </CardHeader>
@@ -261,30 +257,23 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                       </div>
 
                       {editingContext && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-4">
                           <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
+                            <Label htmlFor="name">Context Name</Label>
                             <Input
                               id="name"
                               value={editingContext.name}
                               onChange={(e) => setEditingContext({ ...editingContext, name: e.target.value })}
+                              placeholder="e.g., Retail Store, Warehouse"
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="icon">Icon (emoji)</Label>
-                            <Input
-                              id="icon"
-                              value={editingContext.icon}
-                              onChange={(e) => setEditingContext({ ...editingContext, icon: e.target.value })}
-                              maxLength={2}
-                            />
-                          </div>
-                          <div className="col-span-2 space-y-2">
                             <Label htmlFor="description">Description</Label>
                             <Input
                               id="description"
                               value={editingContext.description}
                               onChange={(e) => setEditingContext({ ...editingContext, description: e.target.value })}
+                              placeholder="Brief description of this environment"
                             />
                           </div>
                         </div>
