@@ -443,10 +443,12 @@ export function DashboardEnhanced() {
       });
 
       // Consider an AP online if:
-      // 1. Status contains 'up', 'online', 'connected'
-      // 2. isUp or online boolean is true
-      // 3. No status field but AP exists in list (default to online)
+      // 1. Status is "inservice" (case-insensitive)
+      // 2. Status contains 'up', 'online', 'connected'
+      // 3. isUp or online boolean is true
+      // 4. No status field but AP exists in list (default to online)
       const apIsOnline = (
+        status === 'inservice' ||
         status.includes('up') ||
         status.includes('online') ||
         status.includes('connected') ||

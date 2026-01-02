@@ -511,10 +511,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     const isOnline = (ap as any).online;
 
     // Consider an AP online if:
-    // 1. Status contains 'up', 'online', 'connected'
-    // 2. isUp or online boolean is true
-    // 3. No status field but AP exists in list (default to online)
+    // 1. Status is "inservice" (case-insensitive) - this is the primary status from Campus Controller
+    // 2. Status contains 'up', 'online', 'connected'
+    // 3. isUp or online boolean is true
+    // 4. No status field but AP exists in list (default to online)
     return (
+      status === 'inservice' ||
       status.includes('up') ||
       status.includes('online') ||
       status.includes('connected') ||
