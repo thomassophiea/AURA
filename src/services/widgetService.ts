@@ -60,14 +60,28 @@ export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetRes
     const fullEndpoint = `${endpoint}?${queryString}`;
 
     // Report endpoints can take 15-30 seconds to process analytics
+    console.log(`[WidgetService] Fetching widgets from: ${fullEndpoint}`);
     const response = await apiService.makeAuthenticatedRequest(fullEndpoint, { method: 'GET' }, 30000);
+
+    console.log(`[WidgetService] Response status: ${response.status} ${response.statusText}`);
+
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      console.log(`[WidgetService] Successfully fetched widget data:`, data);
+      return data;
     } else {
-      throw new Error(`Failed to fetch widget data: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[WidgetService] Failed to fetch widget data: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Failed to fetch widget data: ${response.status} ${response.statusText}`);
     }
   } catch (error) {
     console.error('[WidgetService] Error fetching widget data:', error);
+    console.error('[WidgetService] Error details:', {
+      endpoint: fullEndpoint,
+      duration: params.duration,
+      widgets: params.widgetList,
+      error: error instanceof Error ? error.message : String(error)
+    });
     throw error;
   }
 }
