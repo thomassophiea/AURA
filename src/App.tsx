@@ -6,7 +6,7 @@ import { PlaceholderPage } from './components/PlaceholderPage';
 
 // Lazy load route components for better performance
 const DashboardEnhanced = lazy(() => import('./components/DashboardEnhanced').then(m => ({ default: m.DashboardEnhanced })));
-const NetworkInsights = lazy(() => import('./components/NetworkInsights').then(m => ({ default: m.NetworkInsights })));
+const NetworkInsights = lazy(() => import('./components/NetworkInsightsEnhanced').then(m => ({ default: m.NetworkInsightsEnhanced })));
 const AccessPoints = lazy(() => import('./components/AccessPoints').then(m => ({ default: m.AccessPoints })));
 const TrafficStatsConnectedClients = lazy(() => import('./components/TrafficStatsConnectedClients').then(m => ({ default: m.TrafficStatsConnectedClients })));
 const ServiceLevelsEnhanced = lazy(() => import('./components/ServiceLevelsEnhanced').then(m => ({ default: m.ServiceLevelsEnhanced })));
