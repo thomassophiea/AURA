@@ -129,17 +129,17 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Configure Site Contexts</DialogTitle>
             <DialogDescription>
               Define baseline metrics for different types of sites. Contexts help you understand what "healthy" means in different environments.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex gap-4 h-[600px]">
+          <div className="flex flex-col sm:flex-row gap-4 flex-1 min-h-0 overflow-hidden">
             {/* Context List */}
-            <div className="w-64 border-r pr-4">
+            <div className="w-full sm:w-64 sm:border-r sm:pr-4 flex-shrink-0">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Contexts</h3>
                 <Button
@@ -150,7 +150,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-              <ScrollArea className="h-[520px]">
+              <ScrollArea className="h-[200px] sm:h-[calc(90vh-300px)] max-h-[500px]">
                 <div className="space-y-2">
                   {contexts.map((context) => (
                     <Card
@@ -197,9 +197,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
             </div>
 
             {/* Context Editor */}
-            <div className="flex-1">
+            <div className="flex-1 min-w-0 overflow-hidden">
               {(selectedContext || editingContext) ? (
-                <ScrollArea className="h-full pr-4">
+                <ScrollArea className="h-[calc(90vh-250px)] sm:h-[calc(90vh-200px)] pr-2 sm:pr-4">
                   <div className="space-y-6">
                     {/* Context Info */}
                     <div className="space-y-4">
@@ -254,7 +254,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                       </div>
 
                       {editingContext && (
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label htmlFor="name">Name</Label>
                             <Input
@@ -272,7 +272,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                               maxLength={2}
                             />
                           </div>
-                          <div className="col-span-2 space-y-2">
+                          <div className="sm:col-span-2 space-y-2">
                             <Label htmlFor="description">Description</Label>
                             <Input
                               id="description"

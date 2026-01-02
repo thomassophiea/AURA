@@ -559,7 +559,7 @@ export function ConfigureAdoptionRules() {
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {isEditDialogOpen ? 'Edit Adoption Rule' : 'Create Adoption Rule'}

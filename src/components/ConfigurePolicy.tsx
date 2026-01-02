@@ -411,7 +411,7 @@ export function ConfigurePolicy() {
 
       {/* Role Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="surface-2dp max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="surface-2dp max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               {selectedRole?.name}

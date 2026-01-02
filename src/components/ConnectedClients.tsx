@@ -730,7 +730,7 @@ export function ConnectedClients({ onShowDetail }: ConnectedClientsProps) {
 
       {/* Station Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />

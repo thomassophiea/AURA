@@ -778,7 +778,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       {/* Column Customization Dialog */}
       <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[65vh] overflow-hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-3xl max-h-[65vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Customize Table Columns</DialogTitle>
             <DialogDescription>
@@ -1246,7 +1246,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       {/* AP Details Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl max-h-[80vh] overflow-hidden">
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-2">
               <Wifi className="h-5 w-5" />
