@@ -135,12 +135,12 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               )}
               onClick={() => onPageChange(item.id)}
             >
-              <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+              <Icon className={cn("h-4 w-4 flex-shrink-0", !isCollapsed && "mr-2")} />
               {!isCollapsed && (
-                <div className="flex items-center justify-between flex-1">
-                  <span>{theme === 'pirate' ? item.pirateLabel : theme === 'mi5' ? item.mi5Label : item.label}</span>
+                <div className="flex flex-col items-start flex-1 min-w-0">
+                  <span className="truncate w-full">{theme === 'pirate' ? item.pirateLabel : theme === 'mi5' ? item.mi5Label : item.label}</span>
                   {item.badge && (
-                    <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded">
+                    <span className="mt-0.5 px-1.5 py-0.5 text-[9px] font-semibold bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 rounded whitespace-nowrap">
                       {item.badge}
                     </span>
                   )}
