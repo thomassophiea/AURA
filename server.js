@@ -59,6 +59,8 @@ const proxyOptions = {
   secure: false, // Accept self-signed certificates
   followRedirects: true,
   logLevel: 'debug',
+  timeout: 60000, // 60 second timeout for incoming requests
+  proxyTimeout: 60000, // 60 second timeout for outgoing proxy requests
   pathRewrite: {
     '^/management': '/management', // Ensure path is preserved
   },

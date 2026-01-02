@@ -34,9 +34,11 @@ export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetRes
   // Format: widgetName|filter,widgetName|filter,...
   const widgetList = widgets.map(widget => {
     // Widgets that need |all suffix for throughput/usage reports
-    if (widget.includes('Throughput') || widget.includes('Usage') ||
-        widget.includes('User') || widget.includes('Snr') ||
-        widget.includes('ChannelUtil')) {
+    // Use case-insensitive matching since widget names have inconsistent capitalization
+    const widgetLower = widget.toLowerCase();
+    if (widgetLower.includes('throughput') || widgetLower.includes('usage') ||
+        widgetLower.includes('user') || widgetLower.includes('snr') ||
+        widgetLower.includes('channelutil')) {
       return `${widget}|all`;
     }
     // Other widgets don't need a suffix
