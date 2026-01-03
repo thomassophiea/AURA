@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
@@ -793,15 +793,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       )}
 
       {/* Column Customization Dialog */}
-      <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-3xl max-h-[65vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle>Customize Table Columns</DialogTitle>
-            <DialogDescription>
-              Select which columns you want to display in the Access Points table
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(65vh - 180px)' }}>
+      <DetailSlideOut
+        isOpen={isColumnDialogOpen}
+        onClose={() => setIsColumnDialogOpen(false)}
+        title="Customize Table Columns"
+        description="Select which columns you want to display in the Access Points table"
+        width="lg"
+      >
+        <div className="space-y-6">
             <div className="space-y-6">
               {/* Basic Columns */}
               <div>
@@ -935,8 +934,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
               </div>
             </div>
-          </ScrollArea>
-          <div className="flex justify-between items-center pt-4 border-t">
+
+          {/* Footer Actions */}
+          <div className="flex justify-between items-center pt-6 border-t mt-6">
             <Button variant="outline" onClick={resetColumns}>
               Reset to Default
             </Button>
@@ -947,8 +947,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               Done
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </DetailSlideOut>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="surface-1dp">
@@ -1261,24 +1261,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       </Card>
 
       {/* AP Details Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <Wifi className="h-5 w-5" />
-              <span>Access Point Details</span>
-              {selectedAP?.status && (
-                <Badge variant={getStatusBadgeVariant(selectedAP.status)}>
-                  {selectedAP.status}
-                </Badge>
-              )}
-            </DialogTitle>
-            <DialogDescription>
-              {getAPName(selectedAP)}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <ScrollArea className="h-[600px] w-full">
+      <DetailSlideOut
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title={`Access Point Details${selectedAP?.status ? ` - ${selectedAP.status}` : ''}`}
+        description={getAPName(selectedAP)}
+        width="xl"
+      >
+        <div className="space-y-4">
             {isLoadingDetails ? (
               <div className="space-y-4">
                 {[1, 2, 3, 4].map((i) => (
@@ -1475,9 +1465,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </TabsContent>
               </Tabs>
             ) : null}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </DetailSlideOut>
     </div>
   );
 }
