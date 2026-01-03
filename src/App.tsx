@@ -151,11 +151,10 @@ export default function App() {
             console.log('[App] Starting SLE data collection service');
             sleDataCollectionService.startCollection();
           } else if (response.status === 401 || response.status === 403) {
-            // Token is explicitly unauthorized - clear it and try auto-login
+            // Token is explicitly unauthorized - clear it and show login screen
             console.log('[App] Stored token is unauthorized - clearing session');
             apiService.logout();
             setIsAuthenticated(false);
-            await attemptAutoLogin();
           } else {
             // Other errors (404, 500, etc.) - assume session is still valid
             console.log(`[App] Session validation returned ${response.status} - keeping session`);
@@ -169,77 +168,9 @@ export default function App() {
           setAdminRole(apiService.getAdminRole());
         }
       } else {
-        // No stored session - try auto-login if credentials are available
-        console.log('[App] No valid session found - attempting auto-login');
-        await attemptAutoLogin();
-      }
-    };
-
-    // Auto-login using environment variables (for production deployments)
-    const attemptAutoLogin = async () => {
-      const autoUser = import.meta.env.VITE_CAMPUS_CONTROLLER_USER;
-      const autoPassword = import.meta.env.VITE_CAMPUS_CONTROLLER_PASSWORD;
-
-      if (autoUser && autoPassword) {
-        console.log('[App] Auto-login credentials found - logging in automatically...');
-        toast.info('Auto-login', {
-          description: 'Authenticating with Campus Controller...',
-          duration: 2000
-        });
-
-        try {
-          const authResponse = await apiService.login(autoUser, autoPassword);
-          console.log('[App] ✅ Auto-login successful');
-
-          setIsAuthenticated(true);
-          setAdminRole(authResponse.adminRole);
-
-          // Load site information
-          try {
-            const SITE_ID = 'c7395471-aa5c-46dc-9211-3ed24c5789bd';
-            const site = await apiService.getSiteById(SITE_ID);
-            if (site) {
-              const displayName = site.displayName || site.name || site.siteName || 'Production Site';
-              setSiteName(displayName);
-            }
-          } catch (error) {
-            console.error('[App] Failed to load site name:', error);
-            setSiteName('Production Site');
-          }
-
-          toast.success('Auto-login successful', {
-            description: 'Connected to Campus Controller',
-            duration: 3000
-          });
-
-          // Start SLE data collection
-          sleDataCollectionService.startCollection();
-        } catch (error) {
-          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-          console.error('[App] ❌ Auto-login failed:', errorMsg);
-
-          // Determine if it's a credentials issue or something else
-          const isCredentialError = errorMsg.includes('Invalid credentials') || errorMsg.includes('401');
-
-          if (isCredentialError) {
-            console.warn('[App] Auto-login credentials appear to be incorrect or outdated');
-            console.warn('[App] Please update VITE_CAMPUS_CONTROLLER_USER and VITE_CAMPUS_CONTROLLER_PASSWORD environment variables');
-            toast.warning('Auto-login disabled', {
-              description: 'Environment credentials are invalid. Please login manually.',
-              duration: 6000
-            });
-          } else {
-            toast.error('Auto-login failed', {
-              description: errorMsg,
-              duration: 5000
-            });
-          }
-
-          // Fall back to showing login screen
-          setIsAuthenticated(false);
-        }
-      } else {
-        console.log('[App] No auto-login credentials configured - showing login screen');
+        // No stored session - show login screen
+        console.log('[App] No valid session found - showing login screen');
+        setIsAuthenticated(false);
       }
     };
 
