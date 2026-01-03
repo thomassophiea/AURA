@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Folder, Plus, Trash2, Edit, Save, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -109,19 +109,14 @@ export function SiteGroupManagementDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl h-[80vh] p-0 flex flex-col overflow-hidden">
-        <DialogHeader className="px-6 py-4 border-b">
-          <DialogTitle className="flex items-center gap-2">
-            <Folder className="h-5 w-5" />
-            Manage Site Groups
-          </DialogTitle>
-          <DialogDescription>
-            Create and manage site groups for easier WLAN deployment at scale
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto hide-scrollbar px-6 py-6 space-y-4">
+    <DetailSlideOut
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="Manage Site Groups"
+      description="Create and manage site groups for easier WLAN deployment at scale"
+      width="xl"
+    >
+      <div className="space-y-4">
           {/* Create New Group Section */}
           {isCreating ? (
             <Card className="border-primary">
@@ -256,17 +251,17 @@ export function SiteGroupManagementDialog({
               ))
             )}
           </div>
-        </div>
 
-        <DialogFooter className="px-6 py-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        {/* Footer Actions */}
+        <div className="flex gap-2 pt-6 border-t mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             Cancel
           </Button>
-          <Button onClick={handleSave}>
+          <Button onClick={handleSave} className="flex-1">
             Save Groups
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </DetailSlideOut>
   );
 }
