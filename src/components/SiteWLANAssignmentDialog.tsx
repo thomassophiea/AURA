@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -138,19 +138,14 @@ export function SiteWLANAssignmentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            WLAN Assignments - {siteName}
-          </DialogTitle>
-          <DialogDescription>
-            View WLANs and their profile assignments for this site
-          </DialogDescription>
-        </DialogHeader>
-
-        {loading ? (
+    <DetailSlideOut
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={`WLAN Assignments - ${siteName}`}
+      description="View WLANs and their profile assignments for this site"
+      width="xl"
+    >
+      {loading ? (
           <div className="space-y-4 py-4">
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -398,7 +393,6 @@ export function SiteWLANAssignmentDialog({
             </Card>
           </div>
         )}
-      </DialogContent>
 
       {/* Reconciliation Dialog */}
       {selectedWLAN && (
@@ -418,6 +412,6 @@ export function SiteWLANAssignmentDialog({
           wlan={qrWLAN}
         />
       )}
-    </Dialog>
+    </DetailSlideOut>
   );
 }
