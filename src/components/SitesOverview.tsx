@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { 
   MapPin, 
   Wifi, 
@@ -57,6 +57,7 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isDetailSlideOutOpen, setIsDetailSlideOutOpen] = useState(false);
 
   const fetchSitesOverview = async () => {
     try {
@@ -426,107 +427,18 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
                       </div>
                       <div className="text-xs text-muted-foreground">Clients</div>
                     </div>
-                    
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => fetchSiteDetails(site.id || site.name || '')}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Details
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl">
-                        <DialogHeader>
-                          <DialogTitle className="flex items-center space-x-2">
-                            <MapPin className="h-5 w-5" />
-                            <span>{site.siteName || site.name || 'Site Details'}</span>
-                          </DialogTitle>
-                          <DialogDescription>
-                            Detailed information about this network site
-                          </DialogDescription>
-                        </DialogHeader>
-                        
-                        {detailsLoading ? (
-                          <div className="space-y-4">
-                            <Skeleton className="h-6 w-full" />
-                            <Skeleton className="h-6 w-full" />
-                            <Skeleton className="h-6 w-full" />
-                          </div>
-                        ) : selectedSite ? (
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-medium mb-2">Site Information</h4>
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Status:</span>
-                                    <Badge variant={getStatusColor(selectedSite.status || '', selectedSite.healthPercentage)}>
-                                      {selectedSite.status || 'Unknown'}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Health:</span>
-                                    <span>{selectedSite.healthPercentage || 0}%</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Location:</span>
-                                    <span>{selectedSite.location || 'Not specified'}</span>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <h4 className="font-medium mb-2">Device Summary</h4>
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Access Points:</span>
-                                    <span>{selectedSite.aps || 0}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Switches:</span>
-                                    <span>{selectedSite.switches || 0}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Total Clients:</span>
-                                    <span>{selectedSite.clients || 0}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Online Devices:</span>
-                                    <span>{selectedSite.onlineDevices || 0}/{selectedSite.totalDevices || 0}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            {selectedSite.apsData && selectedSite.apsData.length > 0 && (
-                              <div>
-                                <h4 className="font-medium mb-2">Access Points</h4>
-                                <div className="space-y-2">
-                                  {selectedSite.apsData.slice(0, 5).map((ap, index) => (
-                                    <div key={index} className="flex justify-between items-center p-2 bg-muted rounded">
-                                      <span className="text-sm">{ap.name || ap.serial}</span>
-                                      <Badge variant={ap.status === 'online' ? 'default' : 'destructive'} className="text-xs">
-                                        {ap.status}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                  {selectedSite.apsData.length > 5 && (
-                                    <p className="text-xs text-muted-foreground text-center">
-                                      +{selectedSite.apsData.length - 5} more access points
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-muted-foreground">No additional details available</p>
-                        )}
-                      </DialogContent>
-                    </Dialog>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        fetchSiteDetails(site.id || site.name || '');
+                        setIsDetailSlideOutOpen(true);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-1" />
+                      Details
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -534,6 +446,92 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Site Details Slide-out */}
+      <DetailSlideOut
+        isOpen={isDetailSlideOutOpen}
+        onClose={() => setIsDetailSlideOutOpen(false)}
+        title={selectedSite?.siteName || selectedSite?.name || 'Site Details'}
+        description="Detailed information about this network site"
+        width="lg"
+      >
+        {detailsLoading ? (
+          <div className="space-y-4">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+          </div>
+        ) : selectedSite ? (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium mb-2">Site Information</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status:</span>
+                    <Badge variant={getStatusColor(selectedSite.status || '', selectedSite.healthPercentage)}>
+                      {selectedSite.status || 'Unknown'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Health:</span>
+                    <span>{selectedSite.healthPercentage || 0}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Location:</span>
+                    <span>{selectedSite.location || 'Not specified'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-medium mb-2">Device Summary</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Access Points:</span>
+                    <span>{selectedSite.aps || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Switches:</span>
+                    <span>{selectedSite.switches || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Clients:</span>
+                    <span>{selectedSite.clients || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Online Devices:</span>
+                    <span>{selectedSite.onlineDevices || 0}/{selectedSite.totalDevices || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {selectedSite.apsData && selectedSite.apsData.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Access Points</h4>
+                <div className="space-y-2">
+                  {selectedSite.apsData.slice(0, 5).map((ap, index) => (
+                    <div key={index} className="flex justify-between items-center p-2 bg-muted rounded">
+                      <span className="text-sm">{ap.name || ap.serial}</span>
+                      <Badge variant={ap.status === 'online' ? 'default' : 'destructive'} className="text-xs">
+                        {ap.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {selectedSite.apsData.length > 5 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      +{selectedSite.apsData.length - 5} more access points
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-muted-foreground">No additional details available</p>
+        )}
+      </DetailSlideOut>
     </div>
   );
 }
