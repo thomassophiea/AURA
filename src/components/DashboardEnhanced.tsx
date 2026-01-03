@@ -1152,8 +1152,8 @@ export function DashboardEnhanced() {
                 <span className="font-medium">{apStats.online > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%</span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Health</span>
-                <span className="font-medium text-green-600">{apStats.offline === 0 ? 'Good' : 'Check Required'}</span>
+                <span className="text-muted-foreground">Status</span>
+                <span className="font-medium text-green-600">{apStats.offline === 0 ? 'Optimal' : 'Check Required'}</span>
               </div>
               {Object.keys(apStats.models).length > 0 && (
                 <div className="mt-2 pt-2 border-t border-border">
@@ -1299,7 +1299,7 @@ export function DashboardEnhanced() {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium text-green-600">Healthy</span>
+                    <span className="font-medium text-green-600">Optimal</span>
                   </div>
                 </div>
               ) : (
@@ -1315,15 +1315,15 @@ export function DashboardEnhanced() {
       </div>
 
       {/* ========================================
-          SECTION 3: PERFORMANCE AND HEALTH
+          SECTION 3: PERFORMANCE AND QUALITY
           ======================================== */}
       <div className="space-y-4">
         <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Performance and Health</h3>
-          <p className="text-sm text-muted-foreground">Network quality and distribution analytics</p>
+          <h3 className="text-lg font-semibold">Performance and Quality</h3>
+          <p className="text-sm text-muted-foreground">Network performance indicators and distribution analytics</p>
         </div>
 
-        {/* Performance Metrics and Service Health Overview */}
+        {/* Performance Metrics and Service Quality Overview */}
         <div className="grid gap-4 md:grid-cols-2">
         {/* Performance Metrics */}
         <Card>
@@ -1463,10 +1463,10 @@ export function DashboardEnhanced() {
           </CardContent>
         </Card>
 
-        {/* Service Health Radar - Multi-Dimensional Performance View */}
+        {/* Service Quality Radar - Multi-Dimensional Performance View */}
         <Card>
           <CardHeader>
-            <CardTitle>Service Health Overview</CardTitle>
+            <CardTitle>Service Quality Overview</CardTitle>
             <CardDescription>Multi-dimensional performance view</CardDescription>
           </CardHeader>
           <CardContent>
