@@ -5,7 +5,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
@@ -392,106 +392,10 @@ export function ApplicationsManagement() {
             Manage API applications and OAuth clients
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()} disabled={apiNotAvailable}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Application
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>
-                {editingApp ? 'Edit Application' : 'Create Application'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingApp
-                  ? 'Update application configuration'
-                  : 'Create a new API application'}
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Application Name</Label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="My Integration App"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Brief description of what this application does"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Grant Type</Label>
-                <Select
-                  value={formData.grantType}
-                  onValueChange={(value: Application['grantType']) => setFormData({ ...formData, grantType: value })}
-                  disabled={!!editingApp}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="client_credentials">Client Credentials (M2M)</SelectItem>
-                    <SelectItem value="password">Password (User Auth)</SelectItem>
-                    <SelectItem value="authorization_code">Authorization Code (OAuth)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>API Scopes</Label>
-                <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
-                  {availableScopes.map(scope => (
-                    <div key={scope} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id={scope}
-                        checked={formData.scopes.includes(scope)}
-                        onChange={() => handleToggleScope(scope)}
-                        className="rounded"
-                      />
-                      <label htmlFor={scope} className="text-sm cursor-pointer">
-                        {scope}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Enabled</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Allow API requests from this application
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.enabled}
-                  onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={handleCloseDialog}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveApplication}>
-                {editingApp ? 'Update' : 'Create'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button onClick={() => handleOpenDialog()} disabled={apiNotAvailable}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Application
+        </Button>
       </div>
 
       <Card>
@@ -619,6 +523,96 @@ export function ApplicationsManagement() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Application Form Slide-out */}
+      <DetailSlideOut
+        isOpen={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        title={editingApp ? 'Edit Application' : 'Create Application'}
+        description={editingApp ? 'Update application configuration' : 'Create a new API application'}
+        width="lg"
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Application Name</Label>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="My Integration App"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description of what this application does"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Grant Type</Label>
+            <Select
+              value={formData.grantType}
+              onValueChange={(value: Application['grantType']) => setFormData({ ...formData, grantType: value })}
+              disabled={!!editingApp}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="client_credentials">Client Credentials (M2M)</SelectItem>
+                <SelectItem value="password">Password (User Auth)</SelectItem>
+                <SelectItem value="authorization_code">Authorization Code (OAuth)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>API Scopes</Label>
+            <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
+              {availableScopes.map(scope => (
+                <div key={scope} className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id={scope}
+                    checked={formData.scopes.includes(scope)}
+                    onChange={() => handleToggleScope(scope)}
+                    className="rounded"
+                  />
+                  <label htmlFor={scope} className="text-sm cursor-pointer">
+                    {scope}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Enabled</Label>
+              <p className="text-xs text-muted-foreground">
+                Allow API requests from this application
+              </p>
+            </div>
+            <Switch
+              checked={formData.enabled}
+              onCheckedChange={(checked) => setFormData({ ...formData, enabled: checked })}
+            />
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex gap-2 pt-6 border-t mt-6">
+            <Button variant="outline" onClick={handleCloseDialog} className="flex-1">
+              Cancel
+            </Button>
+            <Button onClick={handleSaveApplication} className="flex-1">
+              {editingApp ? 'Update' : 'Create'}
+            </Button>
+          </div>
+        </div>
+      </DetailSlideOut>
     </div>
   );
 }
