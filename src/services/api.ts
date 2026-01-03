@@ -528,7 +528,8 @@ class ApiService {
   private pendingRequests = new Set<AbortController>();
   private requestCounter = 0;
   private sessionExpiredHandler: (() => void) | null = null;
-  
+  private isLoginInProgress = false; // Prevent simultaneous login attempts
+
   // Developer mode API logging
   private apiCallLogs: ApiCallLog[] = [];
   private apiLogSubscribers = new Set<(log: ApiCallLog) => void>();
@@ -581,16 +582,25 @@ class ApiService {
   }
 
   async login(userId: string, password: string): Promise<AuthResponse> {
-    // Validate inputs
-    if (!userId.trim()) {
-      throw new Error('User ID is required');
-    }
-    if (!password.trim()) {
-      throw new Error('Password is required');
+    // Prevent simultaneous login attempts (race condition protection)
+    if (this.isLoginInProgress) {
+      console.log('[Auth] Login already in progress, skipping duplicate attempt');
+      throw new Error('Login already in progress');
     }
 
-    // Try multiple authentication formats as different Campus Controller versions may expect different formats
-    const authFormats = [
+    this.isLoginInProgress = true;
+
+    try {
+      // Validate inputs
+      if (!userId.trim()) {
+        throw new Error('User ID is required');
+      }
+      if (!password.trim()) {
+        throw new Error('Password is required');
+      }
+
+      // Try multiple authentication formats as different Campus Controller versions may expect different formats
+      const authFormats = [
       // Format 1: JSON with camelCase grantType and userId (Extreme Networks standard)
       {
         headers: {
@@ -702,6 +712,7 @@ class ApiService {
           localStorage.setItem('admin_role', authResponse.adminRole);
 
           console.log(`✅ Login successful`);
+          this.isLoginInProgress = false;
           return authResponse;
         } else {
           const errorText = await response.text();
@@ -740,13 +751,19 @@ class ApiService {
       }
     }
 
-    // If all formats failed, throw the credential error (401) if we have one, otherwise the last error
-    if (credentialError) {
-      console.error('❌ Authentication failed: Invalid credentials');
-      throw credentialError;
-    } else {
-      console.error('❌ Authentication failed: Unable to connect to server');
-      throw lastError || new Error('Login failed with all authentication formats');
+      // If all formats failed, throw the credential error (401) if we have one, otherwise the last error
+      this.isLoginInProgress = false;
+      if (credentialError) {
+        console.error('❌ Authentication failed: Invalid credentials');
+        throw credentialError;
+      } else {
+        console.error('❌ Authentication failed: Unable to connect to server');
+        throw lastError || new Error('Login failed with all authentication formats');
+      }
+    } catch (error) {
+      // Ensure flag is cleared on any unexpected error
+      this.isLoginInProgress = false;
+      throw error;
     }
   }
 

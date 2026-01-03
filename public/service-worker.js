@@ -1,7 +1,7 @@
 // Service Worker for caching static assets with optimized strategies
-const CACHE_NAME = 'aura-cache-v15-performance-optimized';
-const STATIC_CACHE = 'aura-static-v15';
-const DYNAMIC_CACHE = 'aura-dynamic-v15';
+const CACHE_NAME = 'aura-cache-v16-fixed';
+const STATIC_CACHE = 'aura-static-v16';
+const DYNAMIC_CACHE = 'aura-dynamic-v16';
 
 const urlsToCache = [
   '/',
@@ -52,6 +52,11 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Only handle same-origin requests (skip external URLs like Supabase)
+  if (url.origin !== location.origin) {
+    return;
+  }
+
   // Stale-while-revalidate for static assets (JS, CSS, images, fonts)
   if (url.pathname.match(/\.(js|css|png|jpg|jpeg|svg|gif|woff|woff2|ttf|eot|ico)$/)) {
     event.respondWith(
@@ -63,7 +68,14 @@ self.addEventListener('fetch', (event) => {
               cache.put(request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => cachedResponse); // Fallback to cache if network fails
+          }).catch((error) => {
+            // If network fails and we have cache, return it
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // Otherwise, re-throw to let the browser handle it
+            throw error;
+          });
 
           // Return cached response immediately, update in background
           return cachedResponse || fetchPromise;
@@ -77,9 +89,14 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname === '/' || url.pathname.endsWith('.html')) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
-        return cachedResponse || fetch(request).then((response) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        return fetch(request).then((response) => {
           return caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, response.clone());
+            if (response.status === 200) {
+              cache.put(request, response.clone());
+            }
             return response;
           });
         });
@@ -88,8 +105,16 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for everything else
+  // Network-first for everything else (same-origin only)
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch((error) => {
+      return caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // No cache available, re-throw to let browser handle it
+        throw error;
+      });
+    })
   );
 });
