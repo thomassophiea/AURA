@@ -20,6 +20,37 @@ import { apiService } from '../services/api';
  *
  * Uses multiple Campus Controller APIs to provide complete configuration visibility
  */
+
+// Standard 802.1p CoS priority mappings
+const COS_NAME_MAP: Record<string, string> = {
+  '1eea4d66-2607-11e7-93ae-92361f002671': 'Background (Priority 1)',
+  '1eea4d66-2607-11e7-93ae-92361f002672': 'Best Effort (Priority 0)',
+  '1eea4d66-2607-11e7-93ae-92361f002673': 'Excellent Effort (Priority 2)',
+  '1eea4d66-2607-11e7-93ae-92361f002674': 'Critical Applications (Priority 3)',
+  '1eea4d66-2607-11e7-93ae-92361f002675': 'Video (Priority 4)',
+  '1eea4d66-2607-11e7-93ae-92361f002676': 'Voice (Priority 5)',
+  '1eea4d66-2607-11e7-93ae-92361f002677': 'Internetwork Control (Priority 6)',
+  '1eea4d66-2607-11e7-93ae-92361f002678': 'Network Control (Priority 7)',
+  '1eea4d66-2607-11e7-93ae-92361f002679': 'CoS Profile 8',
+  'b3021be1-a663-4f20-82e4-40bbd1a4e9a6': 'Custom CoS Profile 1',
+  '83080873-a72c-4aa0-af3c-41907a51c030': 'Custom CoS Profile 2'
+};
+
+function getCoSProfileName(profile: any): string {
+  // Try to get name from profile fields
+  if (profile.name) return profile.name;
+  if (profile.displayName) return profile.displayName;
+  if (profile.cosName) return profile.cosName;
+
+  // Check if this is a known standard CoS profile
+  if (profile.id && COS_NAME_MAP[profile.id]) {
+    return COS_NAME_MAP[profile.id];
+  }
+
+  // Fallback to ID
+  return profile.id || 'Unknown CoS Profile';
+}
+
 export function ConfigurationProfilesWidget() {
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState<{
@@ -307,7 +338,7 @@ export function ConfigurationProfilesWidget() {
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {profiles.cos.map((profile: any, idx: number) => (
                     <div key={idx} className="p-2 rounded border bg-card text-sm">
-                      <div className="font-medium">{profile.name || profile.id || `CoS ${idx + 1}`}</div>
+                      <div className="font-medium">{getCoSProfileName(profile)}</div>
                     </div>
                   ))}
                 </div>
