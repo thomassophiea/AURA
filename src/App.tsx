@@ -915,7 +915,9 @@ export default function App() {
             description="Detailed access point information and management"
             width="xl"
           >
-            <AccessPointDetail serialNumber={detailPanel.data.serialNumber} />
+            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+              <AccessPointDetail serialNumber={detailPanel.data.serialNumber} />
+            </Suspense>
           </DetailSlideOut>
         );
       case 'client':
@@ -927,7 +929,9 @@ export default function App() {
             description="Detailed client information and management"
             width="lg"
           >
-            <ClientDetail macAddress={detailPanel.data.macAddress} />
+            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+              <ClientDetail macAddress={detailPanel.data.macAddress} />
+            </Suspense>
           </DetailSlideOut>
         );
       case 'site':
@@ -939,7 +943,9 @@ export default function App() {
             description="Site overview, statistics, and management"
             width="lg"
           >
-            <SiteDetail siteId={detailPanel.data.siteId} siteName={detailPanel.data.siteName} />
+            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
+              <SiteDetail siteId={detailPanel.data.siteId} siteName={detailPanel.data.siteName} />
+            </Suspense>
           </DetailSlideOut>
         );
       default:
