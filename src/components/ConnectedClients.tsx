@@ -17,7 +17,7 @@ import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, S
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, Station } from '../services/api';
+import { apiService, Station, type StationEvent } from '../services/api';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { toast } from 'sonner';
 import { useTableCustomization } from '@/hooks/useTableCustomization';
@@ -45,8 +45,9 @@ export function ConnectedClients({ onShowDetail }: ConnectedClientsProps) {
   const [actionType, setActionType] = useState<string>('');
   const [groupId, setGroupId] = useState<string>('');
   const [siteId, setSiteId] = useState<string>('');
-  const [stationEvents, setStationEvents] = useState<any[]>([]);
+  const [stationEvents, setStationEvents] = useState<StationEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   const [stationTrafficData, setStationTrafficData] = useState<Map<string, any>>(new Map());
   const [isLoadingTraffic, setIsLoadingTraffic] = useState(false);
 
@@ -236,19 +237,18 @@ export function ConnectedClients({ onShowDetail }: ConnectedClientsProps) {
 
   const loadStationEvents = async (macAddress: string) => {
     if (!macAddress) return;
-    
+
+    console.log(`[ConnectedClients] Loading station events for client:`, macAddress);
     setIsLoadingEvents(true);
+    setEventTypeFilter('all'); // Reset filter when loading new events
     try {
-      const events = await apiService.getStationEvents(macAddress);
-      setStationEvents(Array.isArray(events) ? events : []);
+      const events = await apiService.fetchStationEvents(macAddress);
+      console.log(`[ConnectedClients] Received ${events.length} events:`, events.slice(0, 3));
+      setStationEvents(events);
     } catch (err) {
-      // API service now handles 422 gracefully, but catch any other errors
-      console.warn('Error loading station events:', err);
+      console.error('[ConnectedClients] Failed to load station events:', err);
       setStationEvents([]);
-      // Only show toast for unexpected errors, not 422 which is handled gracefully
-      if (err instanceof Error && !err.message.includes('422')) {
-        toast.error('Failed to load station events');
-      }
+      toast.error('Failed to load station events');
     } finally {
       setIsLoadingEvents(false);
     }
@@ -859,54 +859,119 @@ export function ConnectedClients({ onShowDetail }: ConnectedClientsProps) {
               </TabsContent>
               
               <TabsContent value="events" className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Recent Events</CardTitle>
-                    <CardDescription>
-                      Latest activity and events for this client
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoadingEvents ? (
-                      <div className="space-y-2">
-                        {[1, 2, 3].map((i) => (
-                          <Skeleton key={i} className="h-12 w-full" />
-                        ))}
+                {isLoadingEvents ? (
+                  <div className="flex items-center justify-center py-12">
+                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : stationEvents.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-muted-foreground">No station events found for this client</p>
+                    <p className="text-sm text-muted-foreground mt-1">Events from the last 30 days will appear here</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Event Type Filter */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEventTypeFilter('all')}
+                      >
+                        All Events ({stationEvents.length})
+                      </Button>
+                      {Array.from(new Set(stationEvents.map(e => e.eventType))).sort().map((type) => (
+                        <Button
+                          key={type}
+                          variant={eventTypeFilter === type ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setEventTypeFilter(type)}
+                        >
+                          {type} ({stationEvents.filter(e => e.eventType === type).length})
+                        </Button>
+                      ))}
+                    </div>
+
+                    {/* Event Timeline */}
+                    <ScrollArea className="h-[500px]">
+                      <div className="space-y-3">
+                        {stationEvents
+                          .filter(event => eventTypeFilter === 'all' || event.eventType === eventTypeFilter)
+                          .map((event, idx) => {
+                            const eventDate = new Date(parseInt(event.timestamp));
+
+                            return (
+                              <Card key={event.id || idx} className="relative pl-8">
+                                {/* Timeline dot */}
+                                <div className={`absolute left-3 top-6 w-2 h-2 rounded-full ${
+                                  event.eventType === 'Roam' ? 'bg-blue-500' :
+                                  event.eventType === 'Associate' ? 'bg-green-500' :
+                                  event.eventType === 'Disassociate' ? 'bg-red-500' :
+                                  event.eventType === 'Authenticate' ? 'bg-purple-500' :
+                                  'bg-gray-500'
+                                }`} />
+                                {idx !== stationEvents.filter(e => eventTypeFilter === 'all' || e.eventType === eventTypeFilter).length - 1 && (
+                                  <div className="absolute left-3.5 top-8 w-0.5 h-full bg-border" />
+                                )}
+
+                                <CardContent className="pt-4 pb-4">
+                                  <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-2">
+                                        <Badge
+                                          variant={
+                                            event.eventType === 'Associate' || event.eventType === 'Authenticate' ? 'default' :
+                                            event.eventType === 'Disassociate' ? 'destructive' :
+                                            'secondary'
+                                          }
+                                        >
+                                          {event.eventType}
+                                        </Badge>
+                                        <span className="text-xs text-muted-foreground">
+                                          {eventDate.toLocaleString()}
+                                        </span>
+                                      </div>
+
+                                      {event.details && (
+                                        <p className="text-sm text-foreground mb-2">{event.details}</p>
+                                      )}
+
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                        {event.apName && (
+                                          <div>
+                                            <span className="text-muted-foreground">AP: </span>
+                                            <span className="font-medium">{event.apName}</span>
+                                          </div>
+                                        )}
+                                        {event.ssid && (
+                                          <div>
+                                            <span className="text-muted-foreground">SSID: </span>
+                                            <span className="font-medium">{event.ssid}</span>
+                                          </div>
+                                        )}
+                                        {event.ipAddress && (
+                                          <div>
+                                            <span className="text-muted-foreground">IP: </span>
+                                            <span className="font-mono font-medium">{event.ipAddress}</span>
+                                          </div>
+                                        )}
+                                        {event.level && (
+                                          <div>
+                                            <span className="text-muted-foreground">Level: </span>
+                                            <span className="font-medium">{event.level}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            );
+                          })}
                       </div>
-                    ) : stationEvents.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Activity className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-medium mb-2">No Events Found</h3>
-                        <p className="text-muted-foreground">
-                          No recent events available for this client.
-                        </p>
-                      </div>
-                    ) : (
-                      <ScrollArea className="h-96">
-                        <div className="space-y-2">
-                          {stationEvents.map((event, index) => (
-                            <div key={index} className="border rounded-lg p-3">
-                              <div className="flex items-center justify-between mb-2">
-                                <Badge variant="outline">
-                                  {event.type || 'Event'}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">
-                                  {event.timestamp || 'Unknown time'}
-                                </span>
-                              </div>
-                              <p className="text-sm">{event.description || 'No description available'}</p>
-                              {event.details && (
-                                <div className="mt-2 text-xs text-muted-foreground">
-                                  <pre className="whitespace-pre-wrap">{JSON.stringify(event.details, null, 2)}</pre>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </ScrollArea>
-                    )}
-                  </CardContent>
-                </Card>
+                    </ScrollArea>
+                  </>
+                )}
               </TabsContent>
             </Tabs>
           )}
