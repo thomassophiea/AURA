@@ -3,11 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { 
-  Smartphone, 
-  Wifi, 
-  Shield, 
-  Clock, 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { ScrollArea } from './ui/scroll-area';
+import {
+  Smartphone,
+  Wifi,
+  Shield,
+  Clock,
   Activity,
   Signal,
   MapPin,
@@ -18,9 +20,10 @@ import {
   Settings,
   Download,
   Upload,
-  Package
+  Package,
+  FileText
 } from 'lucide-react';
-import { apiService, Station } from '../services/api';
+import { apiService, Station, StationEvent } from '../services/api';
 import { trafficService, StationTrafficStats } from '../services/traffic';
 import { siteMappingService } from '../services/siteMapping';
 import { simpleServiceMapping } from '../services/simpleServiceMapping';
@@ -42,6 +45,11 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const [isLoadingSiteName, setIsLoadingSiteName] = useState(false);
   const [isLoadingServiceDetails, setIsLoadingServiceDetails] = useState(false);
   const [isLoadingRoleName, setIsLoadingRoleName] = useState(false);
+
+  // Station Events state
+  const [stationEvents, setStationEvents] = useState<StationEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
   const loadClientDetails = async () => {
     try {
@@ -177,11 +185,27 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     }
   };
 
+  const loadStationEvents = async () => {
+    try {
+      setIsLoadingEvents(true);
+      console.log('[ClientDetail] Loading station events for:', macAddress);
+      const events = await apiService.fetchStationEvents(macAddress);
+      console.log('[ClientDetail] Loaded station events:', events);
+      setStationEvents(events);
+    } catch (error) {
+      console.warn('Failed to load station events:', error);
+      // Don't show error toast for events as it's supplementary data
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     await Promise.all([
       loadClientDetails(),
-      loadTrafficStats()
+      loadTrafficStats(),
+      loadStationEvents()
     ]);
     setIsRefreshing(false);
     toast.success('Client details refreshed');
@@ -213,6 +237,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     });
     loadClientDetails();
     loadTrafficStats();
+    loadStationEvents();
   }, [macAddress]);
 
   if (isLoading) {
@@ -698,6 +723,115 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 )}
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Station Events */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <FileText className="h-4 w-4" />
+              <span>Recent Events</span>
+            </div>
+            {isLoadingEvents && (
+              <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingEvents ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : stationEvents.length === 0 ? (
+            <div className="text-center py-12">
+              <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground font-medium mb-2">No station events available</p>
+              <p className="text-sm text-muted-foreground mb-2">
+                Station {macAddress}
+              </p>
+              <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
+                <p>Station events may be unavailable if:</p>
+                <p>• Your Campus Controller doesn't support the station events API</p>
+                <p>• No events have been logged for this station in the last 30 days</p>
+                <p>• Audit logging is not enabled on your controller</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={loadStationEvents}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* Event Type Filter */}
+              <div className="flex items-center gap-2 flex-wrap mb-4">
+                <Button
+                  variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setEventTypeFilter('all')}
+                >
+                  All ({stationEvents.length})
+                </Button>
+                {(() => {
+                  const eventTypes = Array.from(new Set(stationEvents.map(e => e.eventType).filter(Boolean)));
+                  return eventTypes.map((type) => (
+                    <Button
+                      key={type}
+                      variant={eventTypeFilter === type ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setEventTypeFilter(type)}
+                    >
+                      {type} ({stationEvents.filter(e => e.eventType === type).length})
+                    </Button>
+                  ));
+                })()}
+              </div>
+
+              {/* Events List */}
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2">
+                  {stationEvents
+                    .filter(event => eventTypeFilter === 'all' || event.eventType === eventTypeFilter)
+                    .map((event, idx) => (
+                      <div
+                        key={event.id || idx}
+                        className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            {event.eventType || 'Event'}
+                          </Badge>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            {event.timestamp ? new Date(event.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit'
+                            }) : 'N/A'}
+                          </div>
+                        </div>
+                        <div className="text-sm">
+                          {event.description || event.message || 'No description'}
+                        </div>
+                        {event.status && (
+                          <div className="mt-2 text-xs text-muted-foreground">
+                            Status: {event.status}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </ScrollArea>
+            </>
           )}
         </CardContent>
       </Card>
