@@ -866,14 +866,16 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 ) : stationEvents.length === 0 ? (
                   <div className="text-center py-12">
                     <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground font-medium mb-2">No station events found</p>
-                    <p className="text-sm text-muted-foreground">Events from the last 30 days will appear here</p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Searched for: {selectedStation?.macAddress}
+                    <p className="text-muted-foreground font-medium mb-2">No station events available</p>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Station {selectedStation?.macAddress}
                     </p>
-                    <p className="text-xs text-yellow-600 mt-2">
-                      💡 Check browser console for detailed API response logs
-                    </p>
+                    <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
+                      <p>Station events may be unavailable if:</p>
+                      <p>• Your Campus Controller doesn't support the station events API</p>
+                      <p>• No events have been logged for this station in the last 30 days</p>
+                      <p>• Audit logging is not enabled on your controller</p>
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"
@@ -885,7 +887,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       }}
                     >
                       <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry Loading Events
+                      Retry
                     </Button>
                   </div>
                 ) : (

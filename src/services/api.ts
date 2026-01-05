@@ -3219,7 +3219,8 @@ class ApiService {
 
   /**
    * Fetch station events (connection, roaming, authentication history)
-   * Endpoint: GET /platformmanager/v2/logging/stations/events/query
+   * Primary: GET /platformmanager/v2/logging/stations/events/query
+   * Fallback: Use audit logs filtered by MAC address
    */
   async fetchStationEvents(macAddress: string, startTime?: number, endTime?: number): Promise<StationEvent[]> {
     try {
@@ -3231,32 +3232,62 @@ class ApiService {
       const end = endTime || now;
       const noCache = Date.now();
 
-      const endpoint = `/platformmanager/v2/logging/stations/events/query?query=${encodeURIComponent(macAddress)}&startTime=${start}&endTime=${end}&noCache=${noCache}`;
+      // Try primary endpoint first
+      const primaryEndpoint = `/platformmanager/v2/logging/stations/events/query?query=${encodeURIComponent(macAddress)}&startTime=${start}&endTime=${end}&noCache=${noCache}`;
 
-      console.log(`[API] Fetching station events for MAC: ${macAddress} (${new Date(start).toLocaleDateString()} - ${new Date(end).toLocaleDateString()})`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+      console.log(`[API] Attempting to fetch station events for MAC: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(primaryEndpoint, {}, 15000);
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[API] Station events API returned ${response.status}:`, errorText);
-        console.error(`[API] Endpoint was: ${endpoint}`);
+      if (response.ok) {
+        const data = await response.json();
+        const events = data.stationEvents || (Array.isArray(data) ? data : []);
+        console.log(`[API] ✓ Loaded ${events.length} station events for ${macAddress}`);
+        return events;
+      }
+
+      // If primary endpoint fails with 404, try audit logs as fallback
+      if (response.status === 404) {
+        console.warn(`[API] Station events endpoint not available (404), trying audit logs fallback...`);
+
+        const auditLogs = await this.getAuditLogs(start, end);
+
+        // Filter audit logs for this specific MAC address
+        const stationLogs = auditLogs.filter(log => {
+          const description = (log.description || log.message || '').toLowerCase();
+          const resource = (log.resource || log.resourceType || '').toLowerCase();
+          const macLower = macAddress.toLowerCase();
+
+          return description.includes(macLower) || resource.includes(macLower);
+        });
+
+        if (stationLogs.length > 0) {
+          console.log(`[API] ✓ Found ${stationLogs.length} station-related events in audit logs`);
+
+          // Convert audit logs to station event format
+          return stationLogs.map(log => ({
+            id: log.id,
+            timestamp: log.timestamp || log.time,
+            eventType: log.action || log.actionType || 'audit',
+            description: log.description || log.message,
+            user: log.user || log.userId || log.username,
+            status: log.status,
+            details: {
+              action: log.action || log.actionType,
+              resource: log.resource || log.resourceType,
+              ipAddress: log.ipAddress
+            }
+          }));
+        }
+
+        console.warn(`[API] No station events found in audit logs for ${macAddress}`);
         return [];
       }
 
-      const data = await response.json();
-      console.log(`[API] Station events RAW response:`, data);
-      console.log(`[API] Station events response structure:`, {
-        hasStationEvents: !!data.stationEvents,
-        responseKeys: Object.keys(data),
-        dataType: typeof data,
-        isArray: Array.isArray(data),
-        sampleData: data.stationEvents ? data.stationEvents.slice(0, 2) : (Array.isArray(data) ? data.slice(0, 2) : data)
-      });
+      // Other errors
+      const errorText = await response.text();
+      console.error(`[API] Station events API returned ${response.status}:`, errorText);
+      return [];
 
-      // Handle both {stationEvents: [...]} and direct array responses
-      const events = data.stationEvents || (Array.isArray(data) ? data : []);
-      console.log(`[API] ✓ Loaded ${events.length} station events for ${macAddress}`);
-      return events;
     } catch (error) {
       console.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
       return [];
