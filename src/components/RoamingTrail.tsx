@@ -354,7 +354,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
               <svg width="24" height="3" viewBox="0 0 24 3">
                 <line x1="0" y1="1.5" x2="24" y2="1.5" stroke="#3b82f6" strokeWidth="3" strokeDasharray="4,2" />
               </svg>
-              <span className="text-sm font-medium">Band Steering</span>
+              <span className="text-sm font-medium">Interband Roam</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -363,7 +363,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
               <svg width="12" height="10" viewBox="0 0 12 10">
                 <path d="M 1.5 0 L 10.5 0 L 6 8 Z" fill="#3b82f6" stroke="#ffffff" strokeWidth="1" />
               </svg>
-              <span className="text-sm font-medium">Band Steering Event</span>
+              <span className="text-sm font-medium">Interband Roam Event</span>
             </div>
           </div>
         </div>
@@ -570,7 +570,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 </Badge>
                 {selectedEvent.isBandSteering && (
                   <Badge className="bg-blue-500 text-white">
-                    Band Steering
+                    Interband Roam
                   </Badge>
                 )}
               </div>
@@ -599,7 +599,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 <div className="p-3 bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500 rounded">
                   <div className="flex items-center gap-2 mb-2">
                     <Activity className="h-4 w-4 text-blue-500" />
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">Band Steering</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">Interband Roam</span>
                   </div>
                   <div className="ml-6 space-y-1 text-sm">
                     {selectedEvent.bandSteeringFrom && (
@@ -727,8 +727,8 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
                 // Build summary based on available information
                 if (selectedEvent.isBandSteering) {
-                  // Band steering: same AP, different frequency
-                  const summary = `Band steering on ${selectedEvent.apName}`;
+                  // Interband roam: same AP, different frequency
+                  const summary = `Interband roam on ${selectedEvent.apName}`;
                   if (selectedEvent.bandSteeringFrom && selectedEvent.bandSteeringTo) {
                     parts.push(`${summary}: ${selectedEvent.bandSteeringFrom} → ${selectedEvent.bandSteeringTo}`);
                   } else {
