@@ -97,12 +97,15 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
           else status = 'bad';
         }
 
+        // Get SSID from event or parsed details
+        const ssid = event.ssid || parsedDetails.SSID || parsedDetails.Ssid || 'N/A';
+
         return {
           timestamp: parseInt(event.timestamp),
           eventType: event.eventType,
           apName: event.apName || 'Unknown AP',
           apSerial: event.apSerial || 'N/A',
-          ssid: event.ssid || 'N/A',
+          ssid,
           details: event.details || '',
           cause: parsedDetails.Cause,
           reason: parsedDetails.Reason,
@@ -134,14 +137,9 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
       if (sameAP && (differentFrequency || differentRadio || differentBand)) {
         curr.isBandSteering = true;
-        // Store from/to information for display
-        const fromRadio = prev.radio ? `Radio ${prev.radio}` : '';
-        const fromFreq = prev.frequency || prev.band || '';
-        const toRadio = curr.radio ? `Radio ${curr.radio}` : '';
-        const toFreq = curr.frequency || curr.band || '';
-
-        curr.bandSteeringFrom = fromRadio && fromFreq ? `${fromRadio} - ${fromFreq}` : (fromFreq || fromRadio);
-        curr.bandSteeringTo = toRadio && toFreq ? `${toRadio} - ${toFreq}` : (toFreq || toRadio);
+        // Store from/to information for display - use frequency only
+        curr.bandSteeringFrom = prev.frequency || prev.band || '';
+        curr.bandSteeringTo = curr.frequency || curr.band || '';
       }
     }
 
@@ -221,9 +219,9 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
             {formatTimeShort(timeRange.min)} - {formatTimeShort(timeRange.max)}
           </p>
         </div>
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Signal Quality:</span>
+        <div className="flex items-center gap-12">
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground mr-2">Signal Quality:</span>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
               <span className="text-sm font-medium">Good</span>
@@ -237,8 +235,8 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
               <span className="text-sm font-medium">Bad</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">Roam Type:</span>
+          <div className="flex items-center gap-1">
+            <span className="text-sm text-muted-foreground mr-2">Roam Type:</span>
             <div className="flex items-center gap-2">
               <div className="w-8 h-0.5 bg-primary/40"></div>
               <span className="text-sm font-medium">AP Roam</span>
@@ -472,15 +470,13 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 </div>
               )}
 
-              {(selectedEvent.radio || selectedEvent.frequency) && !selectedEvent.isBandSteering && (
+              {selectedEvent.frequency && !selectedEvent.isBandSteering && (
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <Activity className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Radio/Frequency</span>
+                    <span className="font-medium">Frequency</span>
                   </div>
                   <div className="ml-6 text-muted-foreground">
-                    {selectedEvent.radio && `Radio ${selectedEvent.radio}`}
-                    {selectedEvent.radio && selectedEvent.frequency && ' - '}
                     {selectedEvent.frequency}
                   </div>
                 </div>
