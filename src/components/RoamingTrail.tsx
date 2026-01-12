@@ -44,14 +44,40 @@ interface RoamingEvent {
   bandSteeringTo?: string; // New band for band steering
 }
 
+type FilterType = 'time' | 'count';
+type TimeFilter = '1h' | '24h' | '7d' | 'all';
+type CountFilter = 10 | 20 | 50 | 100 | 'all';
+
 export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   const [selectedEvent, setSelectedEvent] = useState<RoamingEvent | null>(null);
+  const [filterType, setFilterType] = useState<FilterType>('time');
+  const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
+  const [countFilter, setCountFilter] = useState<CountFilter>(50);
 
   // Process and filter roaming events
   const roamingEvents = useMemo(() => {
     const roamingTypes = ['Roam', 'Registration', 'De-registration', 'Associate', 'Disassociate', 'State Change'];
-    const filtered = events
-      .filter(event => roamingTypes.includes(event.eventType))
+
+    // Apply time or count filtering first
+    let filteredByScope = events.filter(event => roamingTypes.includes(event.eventType));
+
+    if (filterType === 'time' && timeFilter !== 'all') {
+      const now = Date.now();
+      const timeLimit =
+        timeFilter === '1h' ? now - 3600000 :
+        timeFilter === '24h' ? now - 86400000 :
+        timeFilter === '7d' ? now - 604800000 :
+        0;
+
+      filteredByScope = filteredByScope.filter(event => parseInt(event.timestamp) >= timeLimit);
+    } else if (filterType === 'count' && countFilter !== 'all') {
+      // Sort by timestamp descending and take the most recent N events
+      filteredByScope = filteredByScope
+        .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp))
+        .slice(0, countFilter);
+    }
+
+    const filtered = filteredByScope
       .map(event => {
         const parseDetails = (details: string) => {
           const parsed: Record<string, string> = {};
@@ -144,7 +170,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
     }
 
     return filtered;
-  }, [events]);
+  }, [events, filterType, timeFilter, countFilter]);
 
   // Get unique APs and time range
   const { uniqueAPs, timeRange } = useMemo(() => {
@@ -212,13 +238,87 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header with legend */}
-      <div className="flex items-center justify-between p-6 border-b">
-        <div>
-          <h3 className="text-2xl font-semibold">Roaming Trail</h3>
-          <p className="text-base text-muted-foreground mt-1">
-            {formatTimeShort(timeRange.min)} - {formatTimeShort(timeRange.max)}
-          </p>
+      <div className="p-6 border-b space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-semibold">Roaming Trail</h3>
+            <p className="text-base text-muted-foreground mt-1">
+              {formatTimeShort(timeRange.min)} - {formatTimeShort(timeRange.max)}
+            </p>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Filter by:</span>
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                <button
+                  onClick={() => setFilterType('time')}
+                  className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                    filterType === 'time'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Time
+                </button>
+                <button
+                  onClick={() => setFilterType('count')}
+                  className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                    filterType === 'count'
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  Count
+                </button>
+              </div>
+            </div>
+
+            {/* Time Filter Options */}
+            {filterType === 'time' && (
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                {(['1h', '24h', '7d', 'all'] as TimeFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setTimeFilter(filter)}
+                    className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                      timeFilter === filter
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {filter === '1h' ? 'Last Hour' :
+                     filter === '24h' ? 'Last 24h' :
+                     filter === '7d' ? 'Last 7 Days' :
+                     'All Time'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Count Filter Options */}
+            {filterType === 'count' && (
+              <div className="flex gap-1 bg-muted rounded-lg p-1">
+                {([10, 20, 50, 100, 'all'] as CountFilter[]).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setCountFilter(filter)}
+                    className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                      countFilter === filter
+                        ? 'bg-background text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All' : `Last ${filter}`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
+
+        {/* Legend */}
         <div className="flex items-center gap-12">
           <div className="flex items-center gap-1">
             <span className="text-sm text-muted-foreground mr-2">Signal Quality:</span>
