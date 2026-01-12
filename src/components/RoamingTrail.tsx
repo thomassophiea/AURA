@@ -34,10 +34,14 @@ interface RoamingEvent {
   statusCode?: string;
   channel?: string;
   band?: string;
+  radio?: string;
+  frequency?: string; // 2.4GHz, 5GHz, or 6GHz
   ipAddress?: string;
   ipv6Address?: string;
   authMethod?: string;
   isBandSteering?: boolean; // True if roaming on same AP (different radio)
+  bandSteeringFrom?: string; // Previous band for band steering
+  bandSteeringTo?: string; // New band for band steering
 }
 
 export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
@@ -65,6 +69,24 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
         const rssiStr = parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI;
         const rssi = rssiStr ? parseInt(rssiStr) : undefined;
 
+        // Parse channel and determine frequency
+        const channel = parsedDetails.Channel;
+        const radio = parsedDetails.Radio;
+        let frequency = parsedDetails.Band;
+
+        // Determine frequency from channel if not explicitly provided
+        if (channel && !frequency) {
+          const channelNum = parseInt(channel);
+          if (channelNum >= 1 && channelNum <= 14) {
+            frequency = '2.4GHz';
+          } else if (channelNum >= 36 && channelNum <= 165) {
+            frequency = '5GHz';
+          } else if (channelNum >= 1 && channelNum <= 233) {
+            // 6GHz uses UNII-5 through UNII-8 bands
+            frequency = '6GHz';
+          }
+        }
+
         // Determine status based on RSSI and event type
         let status: 'good' | 'warning' | 'bad' = 'good';
         if (event.eventType === 'De-registration' || event.eventType === 'Disassociate') {
@@ -86,8 +108,10 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
           reason: parsedDetails.Reason,
           code: parsedDetails.Code,
           statusCode: parsedDetails.Status,
-          channel: parsedDetails.Channel,
+          channel,
           band: parsedDetails.Band,
+          radio,
+          frequency,
           authMethod: parsedDetails.Auth || parsedDetails.AuthMethod,
           ipAddress: event.ipAddress,
           ipv6Address: event.ipv6Address,
@@ -102,13 +126,22 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
       const prev = filtered[i - 1];
       const curr = filtered[i];
 
-      // Check if same AP (by name or serial) but different band/channel
+      // Check if same AP (by name or serial) but different frequency/radio
       const sameAP = (prev.apName === curr.apName || prev.apSerial === curr.apSerial);
+      const differentFrequency = prev.frequency !== curr.frequency && prev.frequency && curr.frequency;
+      const differentRadio = prev.radio !== curr.radio && prev.radio && curr.radio;
       const differentBand = prev.band !== curr.band && prev.band && curr.band;
-      const differentChannel = prev.channel !== curr.channel && prev.channel && curr.channel;
 
-      if (sameAP && (differentBand || differentChannel)) {
+      if (sameAP && (differentFrequency || differentRadio || differentBand)) {
         curr.isBandSteering = true;
+        // Store from/to information for display
+        const fromRadio = prev.radio ? `Radio ${prev.radio}` : '';
+        const fromFreq = prev.frequency || prev.band || '';
+        const toRadio = curr.radio ? `Radio ${curr.radio}` : '';
+        const toFreq = curr.frequency || curr.band || '';
+
+        curr.bandSteeringFrom = fromRadio && fromFreq ? `${fromRadio} - ${fromFreq}` : (fromFreq || fromRadio);
+        curr.bandSteeringTo = toRadio && toFreq ? `${toRadio} - ${toFreq}` : (toFreq || toRadio);
       }
     }
 
@@ -414,6 +447,44 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 </div>
                 <div className="ml-6 text-muted-foreground">{selectedEvent.ssid}</div>
               </div>
+
+              {/* Band Steering Information */}
+              {selectedEvent.isBandSteering && (selectedEvent.bandSteeringFrom || selectedEvent.bandSteeringTo) && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950 border-l-4 border-blue-500 rounded">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Activity className="h-4 w-4 text-blue-500" />
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">Band Steering</span>
+                  </div>
+                  <div className="ml-6 space-y-1 text-sm">
+                    {selectedEvent.bandSteeringFrom && (
+                      <div>
+                        <span className="text-muted-foreground">From: </span>
+                        <span className="font-medium">{selectedEvent.bandSteeringFrom}</span>
+                      </div>
+                    )}
+                    {selectedEvent.bandSteeringTo && (
+                      <div>
+                        <span className="text-muted-foreground">To: </span>
+                        <span className="font-medium">{selectedEvent.bandSteeringTo}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {(selectedEvent.radio || selectedEvent.frequency) && !selectedEvent.isBandSteering && (
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Activity className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Radio/Frequency</span>
+                  </div>
+                  <div className="ml-6 text-muted-foreground">
+                    {selectedEvent.radio && `Radio ${selectedEvent.radio}`}
+                    {selectedEvent.radio && selectedEvent.frequency && ' - '}
+                    {selectedEvent.frequency}
+                  </div>
+                </div>
+              )}
 
               {selectedEvent.rssi && (
                 <div>
