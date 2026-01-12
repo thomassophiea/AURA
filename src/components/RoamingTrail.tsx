@@ -704,6 +704,73 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 </div>
               )}
 
+              {/* Simplified Summary */}
+              {selectedEvent.details && (() => {
+                const parseDetails = (details: string) => {
+                  const parsed: Record<string, string> = {};
+                  const regex = /(\w+)\[([^\]]+)\]/g;
+                  let match;
+                  while ((match = regex.exec(details)) !== null) {
+                    parsed[match[1]] = match[2];
+                  }
+                  return parsed;
+                };
+
+                const parsed = parseDetails(selectedEvent.details);
+                const parts: string[] = [];
+
+                // Build summary based on available information
+                if (selectedEvent.isBandSteering) {
+                  parts.push(`Band steering on ${selectedEvent.apName}`);
+                  if (selectedEvent.bandSteeringFrom && selectedEvent.bandSteeringTo) {
+                    parts.push(`from ${selectedEvent.bandSteeringFrom} to ${selectedEvent.bandSteeringTo}`);
+                  }
+                } else if (parsed.from || parsed.From) {
+                  const fromAP = parsed.from || parsed.From;
+                  parts.push(`Roamed from ${fromAP} to ${selectedEvent.apName}`);
+                }
+
+                if (parsed.Network) {
+                  parts.push(`Network: ${parsed.Network}`);
+                }
+
+                if (parsed.DevFamily || parsed.DevType) {
+                  const device = parsed.DevFamily || parsed.DevType;
+                  parts.push(`Device: ${device}`);
+                }
+
+                if (parsed.Hostname && parsed.Hostname !== selectedEvent.apName) {
+                  parts.push(`Hostname: ${parsed.Hostname}`);
+                }
+
+                if (parsed.FT && parsed.FT !== 'None') {
+                  parts.push(`Fast Transition: ${parsed.FT}`);
+                }
+
+                // Add frequency information using proper language
+                if (selectedEvent.frequency) {
+                  parts.push(`Frequency: ${selectedEvent.frequency}`);
+                } else if (parsed.Radio) {
+                  const radio = parsed.Radio;
+                  let freq = '';
+                  if (radio === '1' || radio === 'Radio1') freq = '2.4GHz';
+                  else if (radio === '2' || radio === 'Radio2') freq = '5GHz';
+                  else if (radio === '3' || radio === 'Radio3') freq = '6GHz';
+                  if (freq) parts.push(`Frequency: ${freq}`);
+                }
+
+                return parts.length > 0 ? (
+                  <div className="p-3 bg-accent/50 rounded border border-border">
+                    <div className="font-medium mb-2 text-foreground">Summary</div>
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      {parts.map((part, idx) => (
+                        <div key={idx}>{part}</div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })()}
+
               {selectedEvent.details && (
                 <div>
                   <div className="font-medium mb-1">Raw Details</div>

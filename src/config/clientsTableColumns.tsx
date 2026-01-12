@@ -78,17 +78,35 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
   },
 
   {
-    key: 'clientInfo',
-    label: 'Client Info',
+    key: 'hostname',
+    label: 'Hostname',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'hostName',
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => {
+      const hostname = station.hostName || station.hostname;
       return (
-        <div className="font-medium">
-          {station.hostName || station.hostname || station.macAddress || 'Unknown'}
+        <div className="text-base font-semibold text-foreground">
+          {hostname || '—'}
+        </div>
+      );
+    }
+  },
+
+  {
+    key: 'clientInfo',
+    label: 'Client Info',
+    category: 'basic',
+    dataType: 'string',
+    fieldPath: 'macAddress',
+    defaultVisible: true,
+    sortable: true,
+    renderCell: (station) => {
+      return (
+        <div className="font-mono text-sm text-muted-foreground">
+          {station.macAddress || 'Unknown'}
         </div>
       );
     }
@@ -405,17 +423,6 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     renderCell: (station) => (
       <code className="text-xs">{station.ipv6Address || '—'}</code>
     )
-  },
-
-  {
-    key: 'hostname',
-    label: 'Hostname',
-    category: 'advanced',
-    dataType: 'string',
-    fieldPath: 'hostName',
-    defaultVisible: false,
-    sortable: true,
-    renderCell: (station) => station.hostName || station.hostname || '—'
   },
 
   {
