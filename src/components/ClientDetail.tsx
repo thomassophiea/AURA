@@ -21,9 +21,12 @@ import {
   Download,
   Upload,
   Package,
-  FileText
+  FileText,
+  Route
 } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { apiService, Station, StationEvent } from '../services/api';
+import { RoamingTrail } from './RoamingTrail';
 import { trafficService, StationTrafficStats } from '../services/traffic';
 import { siteMappingService } from '../services/siteMapping';
 import { simpleServiceMapping } from '../services/simpleServiceMapping';
@@ -50,6 +53,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const [stationEvents, setStationEvents] = useState<StationEvent[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
+  const [showRoamingTrail, setShowRoamingTrail] = useState(false);
 
   const loadClientDetails = async () => {
     try {
@@ -770,28 +774,39 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             </div>
           ) : (
             <>
-              {/* Event Type Filter */}
-              <div className="flex items-center gap-2 flex-wrap mb-4">
+              {/* Event Type Filter and Roaming Trail Button */}
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-4">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setEventTypeFilter('all')}
+                  >
+                    All ({stationEvents.length})
+                  </Button>
+                  {(() => {
+                    const eventTypes = Array.from(new Set(stationEvents.map(e => e.eventType).filter(Boolean)));
+                    return eventTypes.map((type) => (
+                      <Button
+                        key={type}
+                        variant={eventTypeFilter === type ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEventTypeFilter(type)}
+                      >
+                        {type} ({stationEvents.filter(e => e.eventType === type).length})
+                      </Button>
+                    ));
+                  })()}
+                </div>
                 <Button
-                  variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
+                  variant="default"
                   size="sm"
-                  onClick={() => setEventTypeFilter('all')}
+                  onClick={() => setShowRoamingTrail(true)}
+                  className="flex items-center gap-2"
                 >
-                  All ({stationEvents.length})
+                  <Route className="h-4 w-4" />
+                  View Roaming Trail
                 </Button>
-                {(() => {
-                  const eventTypes = Array.from(new Set(stationEvents.map(e => e.eventType).filter(Boolean)));
-                  return eventTypes.map((type) => (
-                    <Button
-                      key={type}
-                      variant={eventTypeFilter === type ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setEventTypeFilter(type)}
-                    >
-                      {type} ({stationEvents.filter(e => e.eventType === type).length})
-                    </Button>
-                  ));
-                })()}
               </div>
 
               {/* Events List */}
@@ -1011,6 +1026,27 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Roaming Trail Dialog */}
+      <Dialog open={showRoamingTrail} onOpenChange={setShowRoamingTrail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Route className="h-5 w-5" />
+              Roaming Trail - {clientDetails?.hostName || macAddress}
+            </DialogTitle>
+            <DialogDescription>
+              Visual timeline showing how this client roamed between access points
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            <RoamingTrail
+              events={stationEvents}
+              macAddress={macAddress}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

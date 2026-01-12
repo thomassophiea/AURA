@@ -13,11 +13,13 @@ import { DetailSlideOut } from './DetailSlideOut';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
+import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, Station, type StationEvent } from '../services/api';
+import { RoamingTrail } from './RoamingTrail';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { toast } from 'sonner';
 import { useTableCustomization } from '@/hooks/useTableCustomization';
@@ -50,6 +52,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
   const [stationTrafficData, setStationTrafficData] = useState<Map<string, any>>(new Map());
   const [isLoadingTraffic, setIsLoadingTraffic] = useState(false);
+  const [showRoamingTrail, setShowRoamingTrail] = useState(false);
 
   // Table customization
   const customization = useTableCustomization({
@@ -892,25 +895,36 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                   </div>
                 ) : (
                   <>
-                    {/* Event Type Filter */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Button
-                        variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setEventTypeFilter('all')}
-                      >
-                        All Events ({stationEvents.length})
-                      </Button>
-                      {Array.from(new Set(stationEvents.map(e => e.eventType))).sort().map((type) => (
+                    {/* Event Type Filter and Roaming Trail Button */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Button
-                          key={type}
-                          variant={eventTypeFilter === type ? 'default' : 'outline'}
+                          variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setEventTypeFilter(type)}
+                          onClick={() => setEventTypeFilter('all')}
                         >
-                          {type} ({stationEvents.filter(e => e.eventType === type).length})
+                          All Events ({stationEvents.length})
                         </Button>
-                      ))}
+                        {Array.from(new Set(stationEvents.map(e => e.eventType))).sort().map((type) => (
+                          <Button
+                            key={type}
+                            variant={eventTypeFilter === type ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setEventTypeFilter(type)}
+                          >
+                            {type} ({stationEvents.filter(e => e.eventType === type).length})
+                          </Button>
+                        ))}
+                      </div>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => setShowRoamingTrail(true)}
+                        className="flex items-center gap-2"
+                      >
+                        <Route className="h-4 w-4" />
+                        View Roaming Trail
+                      </Button>
                     </div>
 
                     {/* Event Timeline */}
@@ -1093,6 +1107,29 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </Tabs>
           )}
       </DetailSlideOut>
+
+      {/* Roaming Trail Dialog */}
+      <Dialog open={showRoamingTrail} onOpenChange={setShowRoamingTrail}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Route className="h-5 w-5" />
+              Roaming Trail - {selectedStation?.hostName || selectedStation?.macAddress}
+            </DialogTitle>
+            <DialogDescription>
+              Visual timeline showing how this client roamed between access points
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto">
+            {selectedStation && (
+              <RoamingTrail
+                events={stationEvents}
+                macAddress={selectedStation.macAddress}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
