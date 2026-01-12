@@ -382,13 +382,13 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                       className="absolute z-20 pointer-events-none"
                       style={{
                         left: `${x}%`,
-                        top: `${y - 18}px`,
+                        top: `${y + 18}px`,
                         transform: 'translate(-50%, 0)'
                       }}
                     >
                       <svg width="16" height="12" viewBox="0 0 16 12">
                         <path
-                          d="M 8 0 L 14 10 L 2 10 Z"
+                          d="M 2 0 L 14 0 L 8 10 Z"
                           fill="#3b82f6"
                           stroke="#ffffff"
                           strokeWidth="1.5"
