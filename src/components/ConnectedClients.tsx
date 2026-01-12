@@ -1110,8 +1110,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
 
       {/* Roaming Trail Dialog */}
       <Dialog open={showRoamingTrail} onOpenChange={setShowRoamingTrail}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex items-center gap-2">
               <Route className="h-5 w-5" />
               Roaming Trail - {selectedStation?.hostName || selectedStation?.macAddress}
@@ -1120,7 +1120,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               Visual timeline showing how this client roamed between access points
             </DialogDescription>
           </DialogHeader>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-hidden">
             {selectedStation && (
               <RoamingTrail
                 events={stationEvents}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
@@ -6,17 +6,11 @@ import {
   MapPin,
   Radio,
   Clock,
-  ArrowRight,
   Wifi,
   Activity,
-  ChevronDown
+  Signal
 } from 'lucide-react';
 import { StationEvent } from '../services/api';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "./ui/collapsible";
 
 interface RoamingTrailProps {
   events: StationEvent[];
@@ -32,11 +26,14 @@ interface RoamingEvent {
   details: string;
   cause?: string;
   reason?: string;
-  signalStrength?: string;
-  duration?: number;
+  signalStrength?: number;
+  rssi?: number;
+  status: 'good' | 'warning' | 'bad';
 }
 
 export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
+  const [selectedEvent, setSelectedEvent] = useState<RoamingEvent | null>(null);
+
   // Process and filter roaming events
   const roamingEvents = useMemo(() => {
     const roamingTypes = ['Roam', 'Registration', 'De-registration', 'Associate', 'Disassociate', 'State Change'];
@@ -55,6 +52,20 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
         const parsedDetails = event.details ? parseDetails(event.details) : {};
 
+        // Parse RSSI/signal strength
+        const rssiStr = parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI;
+        const rssi = rssiStr ? parseInt(rssiStr) : undefined;
+
+        // Determine status based on RSSI and event type
+        let status: 'good' | 'warning' | 'bad' = 'good';
+        if (event.eventType === 'De-registration' || event.eventType === 'Disassociate') {
+          status = 'bad';
+        } else if (rssi) {
+          if (rssi >= -60) status = 'good';
+          else if (rssi >= -70) status = 'warning';
+          else status = 'bad';
+        }
+
         return {
           timestamp: parseInt(event.timestamp),
           eventType: event.eventType,
@@ -64,77 +75,32 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
           details: event.details || '',
           cause: parsedDetails.Cause,
           reason: parsedDetails.Reason,
-          signalStrength: parsedDetails.Signal || parsedDetails.RSS,
-          duration: 0
+          rssi,
+          status
         } as RoamingEvent;
       })
       .sort((a, b) => a.timestamp - b.timestamp);
 
-    for (let i = 0; i < filtered.length - 1; i++) {
-      filtered[i].duration = filtered[i + 1].timestamp - filtered[i].timestamp;
-    }
-
     return filtered;
   }, [events]);
 
-  // Group consecutive events at the same AP
-  const groupedEvents = useMemo(() => {
-    const groups: Array<{
-      apName: string;
-      apSerial: string;
-      ssid: string;
-      events: RoamingEvent[];
-      startTime: number;
-      endTime: number;
-      duration: number;
-    }> = [];
+  // Get unique APs and time range
+  const { uniqueAPs, timeRange } = useMemo(() => {
+    const apSet = new Set<string>();
+    let minTime = Infinity;
+    let maxTime = -Infinity;
 
-    let currentGroup: RoamingEvent[] = [];
-    let currentAP = '';
-
-    roamingEvents.forEach((event, index) => {
-      if (event.apName !== currentAP && currentGroup.length > 0) {
-        const startTime = currentGroup[0].timestamp;
-        const endTime = currentGroup[currentGroup.length - 1].timestamp;
-        groups.push({
-          apName: currentAP,
-          apSerial: currentGroup[0].apSerial,
-          ssid: currentGroup[0].ssid,
-          events: currentGroup,
-          startTime,
-          endTime,
-          duration: endTime - startTime
-        });
-        currentGroup = [];
-      }
-
-      currentAP = event.apName;
-      currentGroup.push(event);
-
-      if (index === roamingEvents.length - 1 && currentGroup.length > 0) {
-        const startTime = currentGroup[0].timestamp;
-        const endTime = currentGroup[currentGroup.length - 1].timestamp;
-        groups.push({
-          apName: currentAP,
-          apSerial: currentGroup[0].apSerial,
-          ssid: currentGroup[0].ssid,
-          events: currentGroup,
-          startTime,
-          endTime,
-          duration: endTime - startTime
-        });
-      }
+    roamingEvents.forEach(event => {
+      apSet.add(event.apName);
+      minTime = Math.min(minTime, event.timestamp);
+      maxTime = Math.max(maxTime, event.timestamp);
     });
 
-    return groups;
+    return {
+      uniqueAPs: Array.from(apSet),
+      timeRange: { min: minTime, max: maxTime }
+    };
   }, [roamingEvents]);
-
-  const formatDuration = (ms: number) => {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-    if (ms < 3600000) return `${Math.round(ms / 60000)}m`;
-    return `${Math.round(ms / 3600000)}h ${Math.round((ms % 3600000) / 60000)}m`;
-  };
 
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('en-US', {
@@ -144,6 +110,26 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
       minute: '2-digit',
       second: '2-digit'
     });
+  };
+
+  const formatTimeShort = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  // Calculate position on timeline (0-100%)
+  const getTimelinePosition = (timestamp: number) => {
+    if (timeRange.max === timeRange.min) return 50;
+    return ((timestamp - timeRange.min) / (timeRange.max - timeRange.min)) * 100;
+  };
+
+  // Get AP row index
+  const getAPRow = (apName: string) => {
+    return uniqueAPs.indexOf(apName);
   };
 
   if (roamingEvents.length === 0) {
@@ -158,158 +144,229 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
     );
   }
 
+  const TIMELINE_HEIGHT = 60; // Height per AP row
+  const CHART_HEIGHT = uniqueAPs.length * TIMELINE_HEIGHT + 100;
+
   return (
-    <div className="space-y-6 p-4">
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{groupedEvents.length}</div>
-              <div className="text-sm text-muted-foreground">Access Points</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">{roamingEvents.length}</div>
-              <div className="text-sm text-muted-foreground">Total Events</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold">
-                {groupedEvents.length > 1 ? groupedEvents.length - 1 : 0}
-              </div>
-              <div className="text-sm text-muted-foreground">Roams</div>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="flex flex-col h-full">
+      {/* Header with legend */}
+      <div className="flex items-center justify-between p-4 border-b">
+        <div>
+          <h3 className="text-lg font-semibold">Roaming Trail</h3>
+          <p className="text-sm text-muted-foreground">
+            {formatTimeShort(timeRange.min)} - {formatTimeShort(timeRange.max)}
+          </p>
+        </div>
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            <span>Good</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span>Warning</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span>Bad</span>
+          </div>
+        </div>
       </div>
 
-      {/* Horizontal Roaming Timeline */}
-      <ScrollArea className="w-full">
-        <div className="flex items-start gap-4 pb-4 min-w-max">
-          {groupedEvents.map((group, idx) => {
-            const isFirst = idx === 0;
-            const isLast = idx === groupedEvents.length - 1;
-            const nextGroup = groupedEvents[idx + 1];
-
-            return (
-              <div key={idx} className="flex items-center">
-                {/* AP Card */}
-                <Card className={`
-                  w-80 border-2
-                  ${isFirst ? 'border-green-500 bg-green-50 dark:bg-green-950' :
-                    isLast ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' :
-                    'border-purple-500 bg-purple-50 dark:bg-purple-950'}
-                `}>
-                  <CardContent className="pt-4 pb-4">
-                    {/* AP Icon and Status Badge */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className={`
-                        w-12 h-12 rounded-full flex items-center justify-center
-                        ${isFirst ? 'bg-green-500' :
-                          isLast ? 'bg-blue-500' :
-                          'bg-purple-500'}
-                      `}>
-                        <Radio className="h-6 w-6 text-white" />
-                      </div>
-                      {isFirst && (
-                        <Badge className="bg-green-500">Start</Badge>
-                      )}
-                      {isLast && (
-                        <Badge className="bg-blue-500">Current</Badge>
-                      )}
-                    </div>
-
-                    {/* AP Name & SSID */}
-                    <div className="mb-3">
-                      <div className="flex items-center gap-2 mb-1">
-                        <MapPin className="h-4 w-4 text-primary" />
-                        <h4 className="font-bold text-base truncate">{group.apName}</h4>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Wifi className="h-3 w-3" />
-                        <span className="truncate">{group.ssid}</span>
-                      </div>
-                    </div>
-
-                    {/* Duration Box */}
-                    <div className="bg-background/50 rounded p-2 mb-3 text-center">
-                      <div className="text-lg font-bold">
-                        {formatDuration(group.duration)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Duration</div>
-                    </div>
-
-                    {/* Timestamps */}
-                    <div className="space-y-1 text-xs mb-3">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-muted-foreground">Arrived:</span>
-                        <span className="font-medium text-xs">{formatTime(group.startTime)}</span>
-                      </div>
-                      {!isLast && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">Left:</span>
-                          <span className="font-medium text-xs">{formatTime(group.endTime)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Events Collapsible */}
-                    <Collapsible>
-                      <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-primary hover:underline">
-                        <ChevronDown className="h-3 w-3" />
-                        {group.events.length} Events
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2 space-y-1">
-                        {group.events.map((event, eventIdx) => (
-                          <div key={eventIdx} className="flex flex-col gap-1 text-xs bg-background/30 rounded p-1.5">
-                            <Badge
-                              variant={
-                                event.eventType === 'Registration' || event.eventType === 'Associate' ? 'default' :
-                                event.eventType === 'De-registration' || event.eventType === 'Disassociate' ? 'destructive' :
-                                'secondary'
-                              }
-                              className="text-xs w-fit"
-                            >
-                              {event.eventType}
-                            </Badge>
-                            {event.cause && (
-                              <span className="text-muted-foreground">
-                                Cause: <span className="font-medium">{event.cause}</span>
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                      </CollapsibleContent>
-                    </Collapsible>
-
-                    {/* AP Serial */}
-                    <div className="text-xs text-muted-foreground mt-3 pt-2 border-t truncate">
-                      Serial: <span className="font-mono">{group.apSerial}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Arrow to Next AP */}
-                {!isLast && nextGroup && (
-                  <div className="flex flex-col items-center mx-2">
-                    <ArrowRight className="h-8 w-8 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground mt-1">Roam</span>
-                  </div>
-                )}
+      {/* Main timeline view */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* AP Names sidebar */}
+        <div className="w-64 border-r bg-muted/20 overflow-y-auto">
+          <div className="sticky top-0 bg-muted/40 border-b p-3 font-semibold text-sm">
+            Associated APs
+          </div>
+          {uniqueAPs.map((ap, idx) => (
+            <div
+              key={ap}
+              className="p-3 border-b flex items-center gap-2 hover:bg-accent/50 transition-colors"
+              style={{ height: `${TIMELINE_HEIGHT}px` }}
+            >
+              <Radio className="h-4 w-4 text-primary flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm truncate">{ap}</div>
+                <div className="text-xs text-muted-foreground">
+                  {roamingEvents.filter(e => e.apName === ap).length} events
+                </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
-      </ScrollArea>
+
+        {/* Timeline chart */}
+        <div className="flex-1 overflow-auto relative">
+          <div
+            className="relative min-w-full"
+            style={{ height: `${CHART_HEIGHT}px`, minWidth: '1200px' }}
+          >
+            {/* Vertical time grid lines */}
+            {[0, 25, 50, 75, 100].map(percent => (
+              <div
+                key={percent}
+                className="absolute top-0 bottom-0 border-l border-border/30"
+                style={{ left: `${percent}%` }}
+              >
+                <div className="sticky top-0 text-xs text-muted-foreground p-1 bg-background/80">
+                  {formatTimeShort(timeRange.min + (timeRange.max - timeRange.min) * (percent / 100))}
+                </div>
+              </div>
+            ))}
+
+            {/* Horizontal AP row lines */}
+            {uniqueAPs.map((ap, idx) => (
+              <div
+                key={ap}
+                className="absolute left-0 right-0 border-b border-border/30"
+                style={{
+                  top: `${idx * TIMELINE_HEIGHT + 60}px`,
+                  height: `${TIMELINE_HEIGHT}px`
+                }}
+              />
+            ))}
+
+            {/* Connection lines between events */}
+            {roamingEvents.map((event, idx) => {
+              if (idx === roamingEvents.length - 1) return null;
+              const nextEvent = roamingEvents[idx + 1];
+
+              const x1 = getTimelinePosition(event.timestamp);
+              const y1 = getAPRow(event.apName) * TIMELINE_HEIGHT + 90;
+              const x2 = getTimelinePosition(nextEvent.timestamp);
+              const y2 = getAPRow(nextEvent.apName) * TIMELINE_HEIGHT + 90;
+
+              return (
+                <svg
+                  key={`line-${idx}`}
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: 0,
+                    top: 0,
+                    width: '100%',
+                    height: '100%'
+                  }}
+                >
+                  <line
+                    x1={`${x1}%`}
+                    y1={y1}
+                    x2={`${x2}%`}
+                    y2={y2}
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    className="text-primary/40"
+                  />
+                </svg>
+              );
+            })}
+
+            {/* Event dots */}
+            {roamingEvents.map((event, idx) => {
+              const x = getTimelinePosition(event.timestamp);
+              const y = getAPRow(event.apName) * TIMELINE_HEIGHT + 90;
+
+              const dotColor =
+                event.status === 'good' ? 'bg-green-500' :
+                event.status === 'warning' ? 'bg-orange-500' :
+                'bg-red-500';
+
+              return (
+                <button
+                  key={idx}
+                  onClick={() => setSelectedEvent(event)}
+                  className={`
+                    absolute w-3 h-3 rounded-full border-2 border-background
+                    hover:scale-150 transition-transform cursor-pointer z-10
+                    ${dotColor}
+                    ${selectedEvent === event ? 'ring-2 ring-primary ring-offset-2 scale-150' : ''}
+                  `}
+                  style={{
+                    left: `${x}%`,
+                    top: `${y}px`,
+                    transform: 'translate(-50%, -50%)'
+                  }}
+                  title={`${event.eventType} - ${formatTime(event.timestamp)}`}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Event details sidebar */}
+        {selectedEvent && (
+          <div className="w-96 border-l bg-muted/20 p-4 overflow-y-auto">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h4 className="font-semibold">Event Details</h4>
+                <p className="text-xs text-muted-foreground">{formatTime(selectedEvent.timestamp)}</p>
+              </div>
+              <Badge
+                variant={
+                  selectedEvent.eventType === 'Registration' || selectedEvent.eventType === 'Associate' ? 'default' :
+                  selectedEvent.eventType === 'De-registration' || selectedEvent.eventType === 'Disassociate' ? 'destructive' :
+                  'secondary'
+                }
+              >
+                {selectedEvent.eventType}
+              </Badge>
+            </div>
+
+            <div className="space-y-3 text-sm">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Access Point</span>
+                </div>
+                <div className="ml-6 text-muted-foreground">{selectedEvent.apName}</div>
+                <div className="ml-6 text-xs text-muted-foreground font-mono">{selectedEvent.apSerial}</div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Wifi className="h-4 w-4 text-primary" />
+                  <span className="font-medium">SSID</span>
+                </div>
+                <div className="ml-6 text-muted-foreground">{selectedEvent.ssid}</div>
+              </div>
+
+              {selectedEvent.rssi && (
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Signal className="h-4 w-4 text-primary" />
+                    <span className="font-medium">Signal Strength</span>
+                  </div>
+                  <div className="ml-6 text-muted-foreground">{selectedEvent.rssi} dBm</div>
+                </div>
+              )}
+
+              {selectedEvent.cause && (
+                <div>
+                  <span className="font-medium">Cause: </span>
+                  <span className="text-muted-foreground">{selectedEvent.cause}</span>
+                </div>
+              )}
+
+              {selectedEvent.reason && (
+                <div>
+                  <span className="font-medium">Reason: </span>
+                  <span className="text-muted-foreground">{selectedEvent.reason}</span>
+                </div>
+              )}
+
+              {selectedEvent.details && (
+                <div>
+                  <div className="font-medium mb-1">Details</div>
+                  <div className="ml-0 text-xs text-muted-foreground font-mono bg-background/50 p-2 rounded">
+                    {selectedEvent.details}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
