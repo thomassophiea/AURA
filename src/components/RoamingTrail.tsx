@@ -437,12 +437,16 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
               return (
                 <svg
                   key={`line-${idx}`}
-                  className="absolute pointer-events-none"
+                  className="absolute cursor-pointer z-5"
                   style={{
                     left: 0,
                     top: 0,
                     width: '100%',
                     height: '100%'
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedEvent(nextEvent);
                   }}
                 >
                   <line
@@ -451,9 +455,10 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                     x2={`${x2}%`}
                     y2={y2}
                     stroke={isBandSteering ? '#3b82f6' : 'currentColor'}
-                    strokeWidth="3"
+                    strokeWidth="6"
                     strokeDasharray={isBandSteering ? '8,4' : 'none'}
                     className={isBandSteering ? '' : 'text-primary/40'}
+                    style={{ cursor: 'pointer' }}
                   />
                 </svg>
               );
@@ -477,11 +482,11 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                       setSelectedEvent(event);
                     }}
                     className={`
-                      absolute w-6 h-6 rounded-full border-4 border-background
+                      absolute w-4 h-4 rounded-full border-2 border-background
                       hover:scale-125 transition-transform cursor-pointer z-10
                       overflow-hidden
                       ${dotColor}
-                      ${selectedEvent === event ? 'ring-4 ring-primary ring-offset-2 scale-125' : ''}
+                      ${selectedEvent === event ? 'ring-2 ring-primary ring-offset-1 scale-125' : ''}
                     `}
                     style={{
                       left: `${x}%`,
@@ -500,16 +505,20 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                   {/* Band steering indicator */}
                   {event.isBandSteering && (
                     <div
-                      className="absolute z-20 pointer-events-none"
+                      className="absolute z-20 cursor-pointer"
                       style={{
                         left: `${x}%`,
-                        top: `${y + 18}px`,
+                        top: `${y + 14}px`,
                         transform: 'translate(-50%, 0)'
                       }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEvent(event);
+                      }}
                     >
-                      <svg width="16" height="12" viewBox="0 0 16 12">
+                      <svg width="14" height="10" viewBox="0 0 14 10">
                         <path
-                          d="M 2 0 L 14 0 L 8 10 Z"
+                          d="M 7 0 L 13 9 L 1 9 Z"
                           fill="#3b82f6"
                           stroke="#ffffff"
                           strokeWidth="1.5"
