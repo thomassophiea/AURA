@@ -1,4 +1,6 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo } from 'react';
+import { useGlobalFilters } from './hooks/useGlobalFilters';
+import type { AssistantContext } from './components/NetworkChatbot';
 import { LoginForm } from './components/LoginForm';
 import { Sidebar } from './components/Sidebar';
 import { DetailSlideOut } from './components/DetailSlideOut';
@@ -88,6 +90,57 @@ export default function App() {
   const [apiLogs, setApiLogs] = useState<ApiCallLog[]>([]);
   const [devPanelHeight, setDevPanelHeight] = useState(0);
   const [siteName, setSiteName] = useState<string>('');
+
+  // Global filters for site context
+  const { filters } = useGlobalFilters();
+
+  // Compute assistant context based on current state
+  const assistantContext = useMemo((): AssistantContext | undefined => {
+    // If a detail panel is open, use that as context
+    if (detailPanel.isOpen && detailPanel.type && detailPanel.data) {
+      if (detailPanel.type === 'client') {
+        return {
+          type: 'client',
+          entityId: detailPanel.data.macAddress,
+          entityName: detailPanel.data.hostName || detailPanel.data.macAddress,
+          siteId: filters.site !== 'all' ? filters.site : undefined,
+          siteName: siteName || undefined,
+          timeRange: filters.timeRange
+        };
+      }
+      if (detailPanel.type === 'access-point') {
+        return {
+          type: 'access-point',
+          entityId: detailPanel.data.serialNumber,
+          entityName: detailPanel.data.displayName || detailPanel.data.serialNumber,
+          siteId: filters.site !== 'all' ? filters.site : undefined,
+          siteName: siteName || undefined,
+          timeRange: filters.timeRange
+        };
+      }
+      if (detailPanel.type === 'site') {
+        return {
+          type: 'site',
+          entityId: detailPanel.data.siteId,
+          entityName: detailPanel.data.siteName,
+          siteId: detailPanel.data.siteId,
+          siteName: detailPanel.data.siteName,
+          timeRange: filters.timeRange
+        };
+      }
+    }
+    // If a site is selected in global filters, use site context
+    if (filters.site && filters.site !== 'all') {
+      return {
+        type: 'site',
+        siteId: filters.site,
+        siteName: siteName || undefined,
+        timeRange: filters.timeRange
+      };
+    }
+    // No specific context
+    return undefined;
+  }, [detailPanel, filters, siteName]);
 
   useEffect(() => {
     // Initialize theme from localStorage or system preference
@@ -933,6 +986,10 @@ export default function App() {
       <NetworkChatbot
         isOpen={isChatbotOpen}
         onToggle={() => setIsChatbotOpen(!isChatbotOpen)}
+        context={assistantContext}
+        onShowClientDetail={handleShowClientDetail}
+        onShowAccessPointDetail={handleShowAccessPointDetail}
+        onShowSiteDetail={handleShowSiteDetail}
       />
 
       {/* Developer Mode Panel */}

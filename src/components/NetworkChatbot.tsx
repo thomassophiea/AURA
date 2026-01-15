@@ -24,13 +24,36 @@ import {
 import { chatbotService, ChatMessage } from '../services/chatbot';
 import { toast } from 'sonner';
 
+// Context types for the Network Assistant
+export interface AssistantContext {
+  type: 'site' | 'client' | 'access-point' | 'wlan' | null;
+  entityId?: string;
+  entityName?: string;
+  siteId?: string;
+  siteName?: string;
+  timeRange?: string;
+}
+
 interface NetworkChatbotProps {
   isOpen?: boolean;
   onToggle?: () => void;
   className?: string;
+  // Context-aware props
+  context?: AssistantContext;
+  onShowClientDetail?: (macAddress: string, hostName?: string) => void;
+  onShowAccessPointDetail?: (serialNumber: string, displayName?: string) => void;
+  onShowSiteDetail?: (siteId: string, siteName: string) => void;
 }
 
-export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: NetworkChatbotProps) {
+export function NetworkChatbot({
+  isOpen = false,
+  onToggle,
+  className = '',
+  context,
+  onShowClientDetail,
+  onShowAccessPointDetail,
+  onShowSiteDetail
+}: NetworkChatbotProps) {
   // Debug logging
   console.log('NetworkChatbot render:', { isOpen, onToggle: !!onToggle });
 
@@ -186,14 +209,87 @@ export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: Net
     }
   };
 
-  const getSuggestedQuestions = () => [
-    "How many access points are online?",
-    "Show me connected clients",
-    "Find client by name or MAC",
-    "Roaming history of a client",
-    "Are there any offline devices?",
-    "Show me site health status"
-  ];
+  const getSuggestedQuestions = () => {
+    // Context-aware suggested questions
+    if (context?.type === 'client') {
+      return [
+        "Is this client healthy?",
+        "Why is this client slow?",
+        "Show roaming history",
+        "Is it a Wi-Fi issue or upstream?",
+        "What AP is this client on?",
+        "Show connection details"
+      ];
+    }
+    if (context?.type === 'access-point') {
+      return [
+        "How is this AP performing?",
+        "Are clients having issues?",
+        "Is any radio overloaded?",
+        "Show connected clients",
+        "Is this an RF or uplink issue?",
+        "Show AP health status"
+      ];
+    }
+    if (context?.type === 'site' || context?.siteId) {
+      return [
+        "Show worst clients at this site",
+        "Are any APs unhealthy?",
+        "What changed recently?",
+        "Show offline devices",
+        "Find client by name or MAC",
+        "Show site health status"
+      ];
+    }
+    // Default questions (no context)
+    return [
+      "How many access points are online?",
+      "Show me connected clients",
+      "Find client by name or MAC",
+      "Roaming history of a client",
+      "Are there any offline devices?",
+      "Show me site health status"
+    ];
+  };
+
+  const getContextBanner = () => {
+    if (!context?.type) return null;
+
+    const contextInfo = {
+      'client': { icon: '👤', label: 'Client', name: context.entityName || context.entityId },
+      'access-point': { icon: '📡', label: 'AP', name: context.entityName || context.entityId },
+      'site': { icon: '🏢', label: 'Site', name: context.siteName || context.entityName },
+      'wlan': { icon: '📶', label: 'WLAN', name: context.entityName }
+    }[context.type];
+
+    if (!contextInfo) return null;
+
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full text-xs">
+        <span>{contextInfo.icon}</span>
+        <span className="text-muted-foreground">{contextInfo.label}:</span>
+        <span className="font-medium truncate max-w-[150px]">{contextInfo.name}</span>
+        {context.siteName && context.type !== 'site' && (
+          <>
+            <span className="text-muted-foreground">at</span>
+            <span className="truncate max-w-[100px]">{context.siteName}</span>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const getContextPrompt = () => {
+    if (!context?.type) return "What would you like to know about your network?";
+
+    const prompts = {
+      'client': `What would you like to know about ${context.entityName || 'this client'}?`,
+      'access-point': `What would you like to know about ${context.entityName || 'this AP'}?`,
+      'site': `What would you like to troubleshoot at ${context.siteName || 'this site'}?`,
+      'wlan': `What would you like to know about ${context.entityName || 'this network'}?`
+    };
+    return prompts[context.type] || "What would you like to know?";
+  };
 
   const formatMessageContent = (content: string) => {
     // Convert markdown-style formatting to HTML-like JSX
@@ -295,6 +391,7 @@ export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: Net
               <Sparkles className="h-3 w-3 text-secondary absolute -top-1 -right-1" />
             </div>
             <CardTitle className="text-lg font-semibold">Network Assistant</CardTitle>
+            {getContextBanner()}
             {isInitializing && (
               <Badge variant="secondary" className="text-xs">
                 <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
@@ -348,7 +445,7 @@ export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: Net
                     <Bot className="h-16 w-16 mx-auto mb-4 text-primary opacity-50" />
                     <h3 className="text-xl font-semibold mb-2">Network Assistant</h3>
                     <p className="text-muted-foreground mb-6">
-                      Ask me anything about your network infrastructure
+                      {getContextPrompt()}
                     </p>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto">
                       {getSuggestedQuestions().map((question, index) => (
@@ -506,20 +603,21 @@ export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: Net
           flexDirection: 'column'
         }}
       >
-        <CardHeader className={`flex flex-row items-center justify-between space-y-0 pb-2 border-b border-border ${isMobile ? 'px-3 py-2' : 'px-4 py-3'}`}>
-          <div className="flex items-center space-x-2">
-            <div className="relative">
-              <Bot className="h-5 w-5 text-primary" />
-              <Sparkles className="h-2 w-2 text-secondary absolute -top-1 -right-1" />
+        <CardHeader className={`flex flex-col space-y-2 pb-2 border-b border-border ${isMobile ? 'px-3 py-2' : 'px-4 py-3'}`}>
+          <div className="flex flex-row items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="relative">
+                <Bot className="h-5 w-5 text-primary" />
+                <Sparkles className="h-2 w-2 text-secondary absolute -top-1 -right-1" />
+              </div>
+              <CardTitle className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>Network Assistant</CardTitle>
+              {isInitializing && (
+                <Badge variant="secondary" className="text-xs">
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Initializing
+                </Badge>
+              )}
             </div>
-            <CardTitle className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>Network Assistant</CardTitle>
-            {isInitializing && (
-              <Badge variant="secondary" className="text-xs">
-                <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
-                Initializing
-              </Badge>
-            )}
-          </div>
           
           <div className="flex items-center space-x-1">
             <Button
@@ -567,6 +665,17 @@ export function NetworkChatbot({ isOpen = false, onToggle, className = '' }: Net
               <X className="h-3 w-3" />
             </Button>
           </div>
+          </div>
+          {context?.type && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span>
+                {context.type === 'client' ? '👤' : context.type === 'access-point' ? '📡' : '🏢'}
+              </span>
+              <span className="text-muted-foreground truncate max-w-[200px]">
+                {context.entityName || context.entityId}
+              </span>
+            </div>
+          )}
         </CardHeader>
 
         {!isMinimized && (
