@@ -27,12 +27,31 @@ export function BestPracticesWidget() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'All' | 'Good' | 'Warning' | 'Error'>('Error');
+  const [statusFilter, setStatusFilter] = useState<'All' | 'Good' | 'Warning' | 'Error'>('All');
   const [sortBy, setSortBy] = useState<'severity' | 'name'>('severity');
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
 
   useEffect(() => {
     loadBestPractices();
   }, []);
+
+  // Auto-select the most relevant filter based on practice status counts
+  useEffect(() => {
+    if (!hasAutoSelected && practices.length > 0) {
+      const errorCount = practices.filter(p => p.status === 'Error').length;
+      const warningCount = practices.filter(p => p.status === 'Warning').length;
+
+      // Prioritize showing issues: Errors > Warnings > All
+      if (errorCount > 0) {
+        setStatusFilter('Error');
+      } else if (warningCount > 0) {
+        setStatusFilter('Warning');
+      } else {
+        setStatusFilter('All');
+      }
+      setHasAutoSelected(true);
+    }
+  }, [practices, hasAutoSelected]);
 
   const loadBestPractices = async () => {
     setLoading(true);
