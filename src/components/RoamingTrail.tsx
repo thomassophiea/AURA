@@ -14,7 +14,11 @@ import {
   TrendingUp,
   Timer,
   ArrowLeftRight,
-  Info
+  Info,
+  ChevronDown,
+  ChevronRight,
+  PanelRightClose,
+  PanelRightOpen
 } from 'lucide-react';
 import { StationEvent } from '../services/api';
 import { getReasonCodeInfo, isFailureReasonCode, ROAMING_ISSUES, ISSUE_DESCRIPTIONS, type RoamingIssue } from '../lib/wifi-codes';
@@ -93,6 +97,9 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('7d');
   const [countFilter, setCountFilter] = useState<CountFilter>(50);
   const [showStats, setShowStats] = useState(true);
+  const [showAlerts, setShowAlerts] = useState(true);
+  const [showLegend, setShowLegend] = useState(false);
+  const [showDetails, setShowDetails] = useState(true);
 
   // Process and filter roaming events
   const roamingEvents = useMemo(() => {
@@ -414,271 +421,227 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header with filters */}
-      <div className="p-6 border-b space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-semibold">Roaming Trail</h3>
-            <p className="text-base text-muted-foreground mt-1">
+      {/* Compact Header */}
+      <div className="px-4 py-2 border-b bg-muted/30">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Title and time range */}
+          <div className="flex items-center gap-4 min-w-0">
+            <h3 className="text-lg font-semibold whitespace-nowrap">Roaming Trail</h3>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">
               {formatTimeShort(timeRange.min)} - {formatTimeShort(timeRange.max)}
-            </p>
+            </span>
           </div>
 
-          {/* Filter Controls */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setShowStats(!showStats)}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                showStats ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {showStats ? 'Hide' : 'Show'} Stats
-            </button>
+          {/* Center: Quick stats (always visible) */}
+          <div className="flex items-center gap-4 text-xs">
+            <span><strong>{stats.totalEvents}</strong> events</span>
+            <span><strong>{stats.totalRoams}</strong> roams</span>
+            <span><strong>{stats.roamsPerHour.toFixed(1)}</strong>/hr</span>
+            {stats.failedRoams > 0 && (
+              <span className="text-red-500"><strong>{stats.failedRoams}</strong> failed</span>
+            )}
+            {stats.bandSteers > 0 && (
+              <span className="text-blue-500"><strong>{stats.bandSteers}</strong> band steers</span>
+            )}
+          </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filter by:</span>
-              <div className="flex gap-1 bg-muted rounded-lg p-1">
-                <button
-                  onClick={() => setFilterType('time')}
-                  className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                    filterType === 'time'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Time
-                </button>
-                <button
-                  onClick={() => setFilterType('count')}
-                  className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                    filterType === 'count'
-                      ? 'bg-background text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Count
-                </button>
-              </div>
+          {/* Right: Controls */}
+          <div className="flex items-center gap-2">
+            {/* Section toggles */}
+            <div className="flex gap-1 bg-muted rounded p-0.5">
+              <button
+                onClick={() => setShowStats(!showStats)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  showStats ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Toggle stats panel"
+              >
+                Stats
+              </button>
+              <button
+                onClick={() => setShowAlerts(!showAlerts)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  showAlerts ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Toggle alerts"
+              >
+                Alerts
+              </button>
+              <button
+                onClick={() => setShowLegend(!showLegend)}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  showLegend ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Toggle legend"
+              >
+                Legend
+              </button>
             </div>
 
-            {filterType === 'time' && (
-              <div className="flex gap-1 bg-muted rounded-lg p-1">
-                {(['1h', '24h', '7d', 'all'] as TimeFilter[]).map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setTimeFilter(filter)}
-                    className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                      timeFilter === filter
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {filter === '1h' ? '1 Hour' :
-                     filter === '24h' ? '24 Hours' :
-                     filter === '7d' ? '7 Days' :
-                     'All Time'}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {filterType === 'count' && (
-              <div className="flex gap-1 bg-muted rounded-lg p-1">
-                {([10, 20, 50, 100, 'all'] as CountFilter[]).map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => setCountFilter(filter)}
-                    className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                      countFilter === filter
-                        ? 'bg-background text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {filter === 'all' ? 'All' : `Last ${filter}`}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Stats Panel */}
-        {showStats && (
-          <div className="space-y-4">
-            {/* Issues/Alerts */}
-            {stats.issues.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {stats.issues.map((issue) => {
-                  const info = ISSUE_DESCRIPTIONS[issue];
-                  return (
-                    <div
-                      key={issue}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${
-                        info.severity === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
-                        info.severity === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400' :
-                        'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400'
+            {/* Filter controls */}
+            <div className="flex gap-1 bg-muted rounded p-0.5">
+              {filterType === 'time' ? (
+                <>
+                  {(['1h', '24h', '7d', 'all'] as TimeFilter[]).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setTimeFilter(filter)}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                        timeFilter === filter
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {info.severity === 'error' ? <XCircle className="h-4 w-4" /> :
-                       info.severity === 'warning' ? <AlertTriangle className="h-4 w-4" /> :
-                       <Info className="h-4 w-4" />}
-                      <span className="text-sm font-medium">{info.title}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Ping-pong alerts */}
-            {stats.pingPongPairs.length > 0 && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowLeftRight className="h-4 w-4 text-amber-600" />
-                  <span className="font-medium text-amber-700 dark:text-amber-400">Ping-Pong Detected</span>
-                </div>
-                <div className="text-sm text-amber-700 dark:text-amber-400 space-y-1">
-                  {stats.pingPongPairs.slice(0, 3).map((pair, idx) => (
-                    <div key={idx}>
-                      {pair.ap1} ↔ {pair.ap2}: <strong>{pair.count} transitions</strong>
-                    </div>
+                      {filter === '1h' ? '1H' : filter === '24h' ? '24H' : filter === '7d' ? '7D' : 'All'}
+                    </button>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Activity className="h-4 w-4" />
-                  <span className="text-xs">Total Events</span>
-                </div>
-                <div className="text-xl font-bold">{stats.totalEvents}</div>
-              </div>
-
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Radio className="h-4 w-4" />
-                  <span className="text-xs">AP Roams</span>
-                </div>
-                <div className="text-xl font-bold">{stats.totalRoams}</div>
-              </div>
-
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className="text-xs">Roams/Hour</span>
-                </div>
-                <div className="text-xl font-bold">{stats.roamsPerHour.toFixed(1)}</div>
-              </div>
-
-              <div className="p-3 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Timer className="h-4 w-4" />
-                  <span className="text-xs">Avg Dwell</span>
-                </div>
-                <div className="text-xl font-bold">{formatDuration(stats.avgDwellTime)}</div>
-              </div>
-
-              {stats.failedRoams > 0 && (
-                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <div className="flex items-center gap-2 text-red-600 mb-1">
-                    <XCircle className="h-4 w-4" />
-                    <span className="text-xs">Failed</span>
-                  </div>
-                  <div className="text-xl font-bold text-red-600">{stats.failedRoams}</div>
-                </div>
+                </>
+              ) : (
+                <>
+                  {([10, 50, 100, 'all'] as CountFilter[]).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setCountFilter(filter)}
+                      className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                        countFilter === filter
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {filter === 'all' ? 'All' : filter}
+                    </button>
+                  ))}
+                </>
               )}
+              <button
+                onClick={() => setFilterType(filterType === 'time' ? 'count' : 'time')}
+                className="px-2 py-1 text-xs font-medium rounded text-muted-foreground hover:text-foreground transition-colors border-l border-border ml-1"
+                title={`Switch to ${filterType === 'time' ? 'count' : 'time'} filter`}
+              >
+                {filterType === 'time' ? '#' : 'T'}
+              </button>
+            </div>
 
-              {stats.bandSteers > 0 && (
-                <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                  <div className="flex items-center gap-2 text-blue-600 mb-1">
-                    <Wifi className="h-4 w-4" />
-                    <span className="text-xs">Band Steers</span>
-                  </div>
-                  <div className="text-xl font-bold text-blue-600">{stats.bandSteers}</div>
-                </div>
-              )}
+            {/* Details panel toggle */}
+            <button
+              onClick={() => setShowDetails(!showDetails)}
+              className={`p-1.5 rounded transition-colors ${
+                showDetails ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+              title={showDetails ? 'Hide details panel' : 'Show details panel'}
+            >
+              {showDetails ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Collapsible Alerts Section */}
+      {showAlerts && (stats.issues.length > 0 || stats.pingPongPairs.length > 0) && (
+        <div className="px-4 py-2 border-b bg-muted/20 flex flex-wrap gap-2">
+          {stats.issues.map((issue) => {
+            const info = ISSUE_DESCRIPTIONS[issue];
+            return (
+              <div
+                key={issue}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border ${
+                  info.severity === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
+                  info.severity === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400' :
+                  'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400'
+                }`}
+              >
+                {info.severity === 'error' ? <XCircle className="h-3 w-3" /> :
+                 info.severity === 'warning' ? <AlertTriangle className="h-3 w-3" /> :
+                 <Info className="h-3 w-3" />}
+                <span className="font-medium">{info.title}</span>
+              </div>
+            );
+          })}
+          {stats.pingPongPairs.slice(0, 2).map((pair, idx) => (
+            <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
+              <ArrowLeftRight className="h-3 w-3" />
+              <span>{pair.ap1.split('-').pop()} ↔ {pair.ap2.split('-').pop()}: {pair.count}x</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Collapsible Stats Panel */}
+      {showStats && (
+        <div className="px-4 py-2 border-b bg-muted/10">
+          <div className="flex items-center gap-6">
+            {/* Stats row */}
+            <div className="flex items-center gap-4 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Timer className="h-3 w-3 text-muted-foreground" />
+                <span className="text-muted-foreground">Avg Dwell:</span>
+                <span className="font-semibold">{formatDuration(stats.avgDwellTime)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Min:</span>
+                <span className="font-medium">{formatDuration(stats.minDwellTime)}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-muted-foreground">Max:</span>
+                <span className="font-medium">{formatDuration(stats.maxDwellTime)}</span>
+              </div>
             </div>
 
             {/* Signal Quality Bar */}
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-foreground">Signal Quality:</span>
-              <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden flex">
+            <div className="flex-1 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Signal:</span>
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden flex max-w-xs">
                 {stats.signalQuality.good > 0 && (
-                  <div
-                    className="h-full bg-green-500"
-                    style={{ width: `${(stats.signalQuality.good / stats.totalEvents) * 100}%` }}
-                    title={`Good: ${stats.signalQuality.good}`}
-                  />
+                  <div className="h-full bg-green-500" style={{ width: `${(stats.signalQuality.good / stats.totalEvents) * 100}%` }} />
                 )}
                 {stats.signalQuality.warning > 0 && (
-                  <div
-                    className="h-full bg-orange-500"
-                    style={{ width: `${(stats.signalQuality.warning / stats.totalEvents) * 100}%` }}
-                    title={`Warning: ${stats.signalQuality.warning}`}
-                  />
+                  <div className="h-full bg-orange-500" style={{ width: `${(stats.signalQuality.warning / stats.totalEvents) * 100}%` }} />
                 )}
                 {stats.signalQuality.bad > 0 && (
-                  <div
-                    className="h-full bg-red-500"
-                    style={{ width: `${(stats.signalQuality.bad / stats.totalEvents) * 100}%` }}
-                    title={`Bad: ${stats.signalQuality.bad}`}
-                  />
+                  <div className="h-full bg-red-500" style={{ width: `${(stats.signalQuality.bad / stats.totalEvents) * 100}%` }} />
                 )}
               </div>
-              <div className="flex gap-3 text-xs">
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-green-500" />
+              <div className="flex gap-2 text-[10px]">
+                <span className="flex items-center gap-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   {Math.round((stats.signalQuality.good / stats.totalEvents) * 100)}%
                 </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-orange-500" />
+                <span className="flex items-center gap-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                   {Math.round((stats.signalQuality.warning / stats.totalEvents) * 100)}%
                 </span>
-                <span className="flex items-center gap-1">
-                  <div className="w-2 h-2 rounded-full bg-red-500" />
+                <span className="flex items-center gap-0.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
                   {Math.round((stats.signalQuality.bad / stats.totalEvents) * 100)}%
                 </span>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Legend */}
-        <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Signal:</span>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-sm mr-2">Good</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-orange-500" />
-              <span className="text-sm mr-2">Warning</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="w-3 h-3 rounded-full bg-red-500" />
-              <span className="text-sm">Bad/Failed</span>
-            </div>
+      {/* Collapsible Legend */}
+      {showLegend && (
+        <div className="px-4 py-1.5 border-b bg-muted/5 flex items-center gap-6 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Signal:</span>
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500" />Good</span>
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-500" />Warning</span>
+            <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500" />Bad</span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Lines:</span>
-            <div className="flex items-center gap-1">
-              <svg width="24" height="3" viewBox="0 0 24 3">
-                <line x1="0" y1="1.5" x2="24" y2="1.5" stroke="currentColor" strokeWidth="3" className="text-primary/40" />
-              </svg>
-              <span className="text-sm mr-2">AP Roam</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <svg width="24" height="3" viewBox="0 0 24 3">
-                <line x1="0" y1="1.5" x2="24" y2="1.5" stroke="#3b82f6" strokeWidth="3" strokeDasharray="4,2" />
-              </svg>
-              <span className="text-sm">Band Steer</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground">Lines:</span>
+            <span className="flex items-center gap-1">
+              <svg width="16" height="2" viewBox="0 0 16 2"><line x1="0" y1="1" x2="16" y2="1" stroke="currentColor" strokeWidth="2" className="text-primary/40" /></svg>
+              Roam
+            </span>
+            <span className="flex items-center gap-1">
+              <svg width="16" height="2" viewBox="0 0 16 2"><line x1="0" y1="1" x2="16" y2="1" stroke="#3b82f6" strokeWidth="2" strokeDasharray="3,2" /></svg>
+              Band Steer
+            </span>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Main timeline view */}
       <div className="flex-1 flex min-h-0">
@@ -783,14 +746,24 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                   />
                   {/* Dwell time label */}
                   {nextEvent.dwell && nextEvent.dwell > 60000 && (
-                    <text
-                      x={`${(x1 + x2) / 2}%`}
-                      y={(y1 + y2) / 2 - 8}
-                      textAnchor="middle"
-                      className="fill-muted-foreground text-[10px]"
-                    >
-                      {formatDuration(nextEvent.dwell)}
-                    </text>
+                    <>
+                      <rect
+                        x={`${(x1 + x2) / 2 - 3}%`}
+                        y={(y1 + y2) / 2 - 18}
+                        width="6%"
+                        height="16"
+                        rx="3"
+                        className="fill-background/80"
+                      />
+                      <text
+                        x={`${(x1 + x2) / 2}%`}
+                        y={(y1 + y2) / 2 - 6}
+                        textAnchor="middle"
+                        className="fill-foreground text-[10px] font-medium"
+                      >
+                        {formatDuration(nextEvent.dwell)}
+                      </text>
+                    </>
                   )}
                 </svg>
               );
@@ -873,25 +846,22 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
         </div>
 
         {/* Event details sidebar */}
-        {selectedEvent && (
+        {showDetails && selectedEvent && (
           <div
             className="w-80 border-l bg-muted/20 p-4 flex-shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-semibold">Event Details</h4>
-                  <button
-                    onClick={() => setSelectedEvent(null)}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <p className="text-xs text-muted-foreground">{formatTime(selectedEvent.timestamp)}</p>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h4 className="font-semibold text-sm">Event Details</h4>
+                <button
+                  onClick={() => setSelectedEvent(null)}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div className="flex flex-col gap-1 items-end">
+              <div className="flex flex-wrap gap-1 items-end justify-end">
                 <Badge
                   variant={
                     selectedEvent.isFailedRoam ? 'destructive' :
