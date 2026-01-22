@@ -129,6 +129,33 @@ const mapAuthType = (service: Service): string => {
     }
   }
 
+  // Priority 3b: Check for WpaEnterpriseElement existence without mode (802.1X)
+  // Some enterprise configs may not have a mode property but still indicate 802.1X
+  if (service.WpaEnterpriseElement || service.privacy?.WpaEnterpriseElement) {
+    const enterpriseElement = service.WpaEnterpriseElement || service.privacy?.WpaEnterpriseElement;
+    // Check PMF mode to determine WPA2 vs WPA3 Enterprise
+    if (enterpriseElement?.pmfMode === 'required') {
+      return 'WPA3-Enterprise';
+    }
+    return 'WPA2-Enterprise';
+  }
+
+  // Priority 3c: Check for other 802.1X / EAP authentication indicators
+  // Various API formats may use different field names for enterprise auth
+  const eapElement = service.WpaEapElement
+    || service.privacy?.WpaEapElement
+    || service.eapElement
+    || service.privacy?.eapElement
+    || service.dot1xElement
+    || service.privacy?.dot1xElement
+    || service['802.1x']
+    || service.privacy?.['802.1x'];
+
+  if (eapElement) {
+    console.log(`✅ Found 802.1X/EAP element for "${serviceName}":`, eapElement);
+    return 'WPA2-Enterprise (802.1X)';
+  }
+
   // Priority 4: Check WpaPskElement at service level (for PSK networks)
   if (service.WpaPskElement?.mode) {
     const mode = service.WpaPskElement.mode.toLowerCase();
@@ -232,7 +259,24 @@ const mapAuthType = (service: Service): string => {
     return 'Open';
   }
 
-  // Default to Open if no auth information is found
+  // Priority 13: If there's a privacy object with content, it's NOT open - it's secured but unknown type
+  // Having a privacy object typically indicates some form of security is configured
+  if (service.privacy && typeof service.privacy === 'object' && Object.keys(service.privacy).length > 0) {
+    console.log(`🔐 "${serviceName}" has privacy config but unknown type. Privacy keys:`, Object.keys(service.privacy));
+    // Check for any key that suggests enterprise/802.1X authentication
+    const privacyKeys = Object.keys(service.privacy).map(k => k.toLowerCase());
+    if (privacyKeys.some(k => k.includes('enterprise') || k.includes('eap') || k.includes('802') || k.includes('1x') || k.includes('radius'))) {
+      return 'WPA2-Enterprise';
+    }
+    // Check for PSK-related keys
+    if (privacyKeys.some(k => k.includes('psk') || k.includes('passphrase') || k.includes('key'))) {
+      return 'WPA2-PSK';
+    }
+    // Unknown secured network
+    return 'Secured (Unknown)';
+  }
+
+  // Default to Open only if no auth information is found AND no privacy object
   console.log(`⚠️ "${serviceName}" defaulting to Open - No security config found. Available fields:`, {
     topLevelKeys: Object.keys(service),
     privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
