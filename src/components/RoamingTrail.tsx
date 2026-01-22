@@ -91,6 +91,12 @@ function formatDuration(ms: number): string {
   return `${hours}h ${mins}m`;
 }
 
+type AlertFilter = {
+  type: 'issue' | 'pingpong' | 'none';
+  issue?: RoamingIssue;
+  apPair?: { ap1: string; ap2: string };
+};
+
 export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   const [selectedEvent, setSelectedEvent] = useState<RoamingEvent | null>(null);
   const [filterType, setFilterType] = useState<FilterType>('time');
@@ -100,6 +106,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   const [showAlerts, setShowAlerts] = useState(true);
   const [showLegend, setShowLegend] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>({ type: 'none' });
 
   // Process and filter roaming events
   const roamingEvents = useMemo(() => {
@@ -396,6 +403,75 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
     return uniqueAPs.indexOf(apName);
   };
 
+  // Check if an event matches the current alert filter
+  const isEventHighlighted = (event: RoamingEvent, idx: number): boolean => {
+    if (alertFilter.type === 'none') return false;
+
+    if (alertFilter.type === 'issue' && alertFilter.issue) {
+      switch (alertFilter.issue) {
+        case ROAMING_ISSUES.PING_PONG:
+          // Highlight events involved in ping-pong (handled by apPair filter)
+          return false;
+        case ROAMING_ISSUES.LATE_ROAM:
+          return event.isLateRoam === true;
+        case ROAMING_ISSUES.AUTH_FAILURE:
+          return event.isFailedRoam === true;
+        case ROAMING_ISSUES.BAND_BOUNCE:
+          return event.isBandSteering === true;
+        case ROAMING_ISSUES.STICKY_CLIENT:
+          return (event.dwell && event.dwell > 600000 && event.previousRssi && event.previousRssi < -75) === true;
+        default:
+          return false;
+      }
+    }
+
+    if (alertFilter.type === 'pingpong' && alertFilter.apPair) {
+      const { ap1, ap2 } = alertFilter.apPair;
+      // Highlight events that are part of the ping-pong pattern
+      if (idx > 0) {
+        const prevEvent = roamingEvents[idx - 1];
+        const isPingPongTransition =
+          (prevEvent.apName === ap1 && event.apName === ap2) ||
+          (prevEvent.apName === ap2 && event.apName === ap1);
+        if (isPingPongTransition) return true;
+      }
+      if (idx < roamingEvents.length - 1) {
+        const nextEvent = roamingEvents[idx + 1];
+        const isPingPongTransition =
+          (event.apName === ap1 && nextEvent.apName === ap2) ||
+          (event.apName === ap2 && nextEvent.apName === ap1);
+        if (isPingPongTransition) return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Get highlighted events for the details panel
+  const highlightedEvents = useMemo(() => {
+    if (alertFilter.type === 'none') return [];
+    return roamingEvents.filter((event, idx) => isEventHighlighted(event, idx));
+  }, [alertFilter, roamingEvents]);
+
+  // Toggle alert filter
+  const toggleAlertFilter = (issue: RoamingIssue) => {
+    if (alertFilter.type === 'issue' && alertFilter.issue === issue) {
+      setAlertFilter({ type: 'none' });
+    } else {
+      setAlertFilter({ type: 'issue', issue });
+      setSelectedEvent(null);
+    }
+  };
+
+  const togglePingPongFilter = (ap1: string, ap2: string) => {
+    if (alertFilter.type === 'pingpong' && alertFilter.apPair?.ap1 === ap1 && alertFilter.apPair?.ap2 === ap2) {
+      setAlertFilter({ type: 'none' });
+    } else {
+      setAlertFilter({ type: 'pingpong', apPair: { ap1, ap2 } });
+      setSelectedEvent(null);
+    }
+  };
+
   if (roamingEvents.length === 0) {
     return (
       <div className="text-center py-12">
@@ -538,13 +614,33 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
       {/* Collapsible Alerts Section */}
       {showAlerts && (stats.issues.length > 0 || stats.pingPongPairs.length > 0) && (
-        <div className="px-4 py-2 border-b bg-muted/20 flex flex-wrap gap-2">
+        <div className="px-4 py-2 border-b bg-muted/20 flex flex-wrap items-center gap-2">
+          {alertFilter.type !== 'none' && (
+            <button
+              onClick={() => setAlertFilter({ type: 'none' })}
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-muted hover:bg-muted/80 text-muted-foreground"
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </button>
+          )}
           {stats.issues.map((issue) => {
             const info = ISSUE_DESCRIPTIONS[issue];
+            const isSelected = alertFilter.type === 'issue' && alertFilter.issue === issue;
+            const matchCount = roamingEvents.filter((e, i) => {
+              if (issue === ROAMING_ISSUES.LATE_ROAM) return e.isLateRoam;
+              if (issue === ROAMING_ISSUES.AUTH_FAILURE) return e.isFailedRoam;
+              if (issue === ROAMING_ISSUES.BAND_BOUNCE) return e.isBandSteering;
+              if (issue === ROAMING_ISSUES.STICKY_CLIENT) return e.dwell && e.dwell > 600000 && e.previousRssi && e.previousRssi < -75;
+              return false;
+            }).length;
             return (
-              <div
+              <button
                 key={issue}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border ${
+                onClick={() => toggleAlertFilter(issue)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border cursor-pointer transition-all ${
+                  isSelected ? 'ring-2 ring-offset-1 ring-primary scale-105' : 'hover:scale-105'
+                } ${
                   info.severity === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
                   info.severity === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400' :
                   'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400'
@@ -554,15 +650,31 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                  info.severity === 'warning' ? <AlertTriangle className="h-3 w-3" /> :
                  <Info className="h-3 w-3" />}
                 <span className="font-medium">{info.title}</span>
-              </div>
+                {matchCount > 0 && <span className="opacity-70">({matchCount})</span>}
+              </button>
             );
           })}
-          {stats.pingPongPairs.slice(0, 2).map((pair, idx) => (
-            <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400">
-              <ArrowLeftRight className="h-3 w-3" />
-              <span>{pair.ap1.split('-').pop()} ↔ {pair.ap2.split('-').pop()}: {pair.count}x</span>
-            </div>
-          ))}
+          {stats.pingPongPairs.slice(0, 3).map((pair, idx) => {
+            const isSelected = alertFilter.type === 'pingpong' &&
+              alertFilter.apPair?.ap1 === pair.ap1 && alertFilter.apPair?.ap2 === pair.ap2;
+            return (
+              <button
+                key={idx}
+                onClick={() => togglePingPongFilter(pair.ap1, pair.ap2)}
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 cursor-pointer transition-all ${
+                  isSelected ? 'ring-2 ring-offset-1 ring-primary scale-105' : 'hover:scale-105'
+                }`}
+              >
+                <ArrowLeftRight className="h-3 w-3" />
+                <span>{pair.ap1.split('-').pop()} ↔ {pair.ap2.split('-').pop()}: {pair.count}x</span>
+              </button>
+            );
+          })}
+          {alertFilter.type !== 'none' && highlightedEvents.length > 0 && (
+            <span className="text-xs text-muted-foreground ml-2">
+              {highlightedEvents.length} event{highlightedEvents.length !== 1 ? 's' : ''} highlighted
+            </span>
+          )}
         </div>
       )}
 
@@ -687,13 +799,13 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
             className="relative w-full h-full"
           >
             {/* Time grid lines */}
-            {[0, 25, 50, 75, 100].map(percent => (
+            {[0, 25, 50, 75].map(percent => (
               <div
                 key={percent}
                 className="absolute top-0 bottom-0 border-l border-border/40"
                 style={{ left: `${percent}%` }}
               >
-                <div className="text-[10px] text-muted-foreground px-1 py-2 bg-background/90 whitespace-nowrap" style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
+                <div className="text-[10px] text-muted-foreground px-1 py-2 whitespace-nowrap" style={{ height: '40px', display: 'flex', alignItems: 'center' }}>
                   {formatTimeShort(timeRange.min + (timeRange.max - timeRange.min) * (percent / 100))}
                 </div>
               </div>
@@ -744,27 +856,6 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                     strokeDasharray={isBandSteering ? '6,3' : isFailedConnection ? '3,3' : 'none'}
                     className={!isBandSteering && !isFailedConnection ? 'text-primary/40' : ''}
                   />
-                  {/* Dwell time label */}
-                  {nextEvent.dwell && nextEvent.dwell > 60000 && (
-                    <>
-                      <rect
-                        x={`${(x1 + x2) / 2 - 3}%`}
-                        y={(y1 + y2) / 2 - 18}
-                        width="6%"
-                        height="16"
-                        rx="3"
-                        className="fill-background/80"
-                      />
-                      <text
-                        x={`${(x1 + x2) / 2}%`}
-                        y={(y1 + y2) / 2 - 6}
-                        textAnchor="middle"
-                        className="fill-foreground text-[10px] font-medium"
-                      >
-                        {formatDuration(nextEvent.dwell)}
-                      </text>
-                    </>
-                  )}
                 </svg>
               );
             })}
@@ -773,6 +864,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
             {roamingEvents.map((event, idx) => {
               const x = getTimelinePosition(event.timestamp);
               const y = getAPRow(event.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+              const isHighlighted = isEventHighlighted(event, idx);
 
               const dotColor = event.isFailedRoam ? 'bg-red-500 ring-2 ring-red-300' :
                 event.isLateRoam ? 'bg-orange-500 ring-2 ring-orange-300' :
@@ -780,18 +872,24 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                 event.status === 'warning' ? 'bg-orange-500' :
                 'bg-red-500';
 
+              // Dim non-highlighted events when a filter is active
+              const dimmed = alertFilter.type !== 'none' && !isHighlighted;
+
               return (
                 <React.Fragment key={idx}>
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedEvent(event);
+                      setAlertFilter({ type: 'none' });
                     }}
                     className={`
-                      absolute w-4 h-4 rounded-full border-2 border-background
-                      hover:scale-125 transition-transform cursor-pointer z-10
+                      absolute rounded-full border-2 border-background
+                      hover:scale-125 transition-all cursor-pointer z-10
                       ${dotColor}
                       ${selectedEvent === event ? 'ring-2 ring-primary ring-offset-1 scale-125' : ''}
+                      ${isHighlighted ? 'w-5 h-5 ring-2 ring-yellow-400 ring-offset-1 scale-110 z-20' : 'w-4 h-4'}
+                      ${dimmed ? 'opacity-30' : ''}
                     `}
                     style={{
                       left: `${x}%`,
@@ -848,7 +946,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
         {/* Event details sidebar */}
         {showDetails && selectedEvent && (
           <div
-            className="w-80 border-l bg-muted/20 p-4 flex-shrink-0"
+            className="w-72 border-l bg-background p-3 flex-shrink-0 z-20 overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between mb-3">
@@ -1014,6 +1112,51 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                   <div className="font-medium mb-1 text-xs text-muted-foreground">Raw Details</div>
                   <div className="text-xs text-muted-foreground font-mono bg-background/50 p-2 rounded break-words">
                     {selectedEvent.details}
+                  </div>
+                </div>
+              )}
+
+              {/* Alert Analysis */}
+              {(selectedEvent.isFailedRoam || selectedEvent.isLateRoam || selectedEvent.isBandSteering ||
+                (selectedEvent.dwell && selectedEvent.dwell > 600000 && selectedEvent.previousRssi && selectedEvent.previousRssi < -75)) && (
+                <div className="border-t pt-3 mt-3">
+                  <div className="font-medium mb-2 text-xs text-muted-foreground flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3" />
+                    Alert Analysis
+                  </div>
+                  <div className="space-y-2">
+                    {selectedEvent.isFailedRoam && (
+                      <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
+                        <div className="font-medium text-red-700 dark:text-red-400">Authentication Failure</div>
+                        <div className="text-red-600/80 dark:text-red-400/80 mt-1">
+                          Client failed to authenticate. Check RADIUS logs, verify credentials, and ensure PMK caching is working properly.
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.isLateRoam && (
+                      <div className="p-2 bg-orange-500/10 border border-orange-500/30 rounded text-xs">
+                        <div className="font-medium text-orange-700 dark:text-orange-400">Late Roaming</div>
+                        <div className="text-orange-600/80 dark:text-orange-400/80 mt-1">
+                          Client roamed at {selectedEvent.rssi} dBm (below -75 dBm threshold). Consider adjusting client roaming aggressiveness or AP coverage overlap.
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.isBandSteering && (
+                      <div className="p-2 bg-blue-500/10 border border-blue-500/30 rounded text-xs">
+                        <div className="font-medium text-blue-700 dark:text-blue-400">Band Steering Event</div>
+                        <div className="text-blue-600/80 dark:text-blue-400/80 mt-1">
+                          Client moved from {selectedEvent.bandSteeringFrom} to {selectedEvent.bandSteeringTo}. Frequent band changes may indicate coverage or interference issues.
+                        </div>
+                      </div>
+                    )}
+                    {selectedEvent.dwell && selectedEvent.dwell > 600000 && selectedEvent.previousRssi && selectedEvent.previousRssi < -75 && (
+                      <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs">
+                        <div className="font-medium text-amber-700 dark:text-amber-400">Sticky Client Behavior</div>
+                        <div className="text-amber-600/80 dark:text-amber-400/80 mt-1">
+                          Client stayed at {selectedEvent.previousApName} for {formatDuration(selectedEvent.dwell)} with poor signal ({selectedEvent.previousRssi} dBm). Consider enabling 802.11v BSS Transition Management or adjusting minimum RSSI thresholds.
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
