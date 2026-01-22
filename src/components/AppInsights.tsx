@@ -491,7 +491,7 @@ export function AppInsights({ api }: AppInsightsProps) {
     );
   };
 
-  // Donut Chart Widget Component
+  // Donut Chart Widget Component - Vertical Layout to prevent overlap
   const DonutChartWidget = ({
     title,
     description,
@@ -527,18 +527,19 @@ export function AppInsights({ api }: AppInsightsProps) {
           </div>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="flex items-start gap-4">
-            {/* Donut Chart */}
-            <div className="relative w-[110px] h-[110px] flex-shrink-0">
+          {/* Vertical stacked layout */}
+          <div className="flex flex-col items-center">
+            {/* Donut Chart - Centered */}
+            <div className="relative w-[130px] h-[130px]">
               <ResponsiveContainer width="100%" height="100%">
                 <RechartsPieChart>
                   <Pie
                     data={data.slice(0, 8)}
                     cx="50%"
                     cy="50%"
-                    innerRadius={30}
-                    outerRadius={50}
-                    paddingAngle={3}
+                    innerRadius={38}
+                    outerRadius={60}
+                    paddingAngle={2}
                     dataKey="value"
                     nameKey="name"
                     strokeWidth={0}
@@ -556,37 +557,36 @@ export function AppInsights({ api }: AppInsightsProps) {
               </ResponsiveContainer>
               {/* Center text */}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-sm font-bold leading-none">{centerValue}</span>
-                <span className="text-[8px] text-muted-foreground uppercase tracking-wider mt-0.5">{centerLabel}</span>
+                <span className="text-base font-bold leading-none">{centerValue}</span>
+                <span className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">{centerLabel}</span>
               </div>
             </div>
 
-            {/* Legend */}
-            <div className="flex-1 space-y-1.5 min-w-0 overflow-hidden">
-              {data.slice(0, 5).map((item, index) => {
+            {/* Legend - Below chart in 2 columns */}
+            <div className="w-full mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
+              {data.slice(0, 6).map((item, index) => {
                 const CategoryIcon = getCategoryIcon(item.name);
                 const color = getCategoryColor(item.name, index);
                 const percent = total > 0 ? ((item.value / total) * 100).toFixed(0) : '0';
                 return (
-                  <div key={item.id} className="flex items-center gap-1.5 text-xs group cursor-default overflow-hidden">
+                  <div key={item.id} className="flex items-center gap-1 text-[11px] group cursor-default overflow-hidden">
                     <div
-                      className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                      className="w-2 h-2 rounded-sm flex-shrink-0"
                       style={{ backgroundColor: color }}
                     />
-                    <CategoryIcon className="h-3 w-3 flex-shrink-0" style={{ color }} />
-                    <span className="truncate group-hover:text-foreground transition-colors text-muted-foreground flex-1" title={item.name}>
-                      {item.name}
+                    <CategoryIcon className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+                    <span className="truncate group-hover:text-foreground transition-colors text-muted-foreground" title={item.name}>
+                      {item.name.length > 14 ? item.name.substring(0, 14) + '...' : item.name}
                     </span>
-                    <span className="text-[10px] font-medium tabular-nums">{percent}%</span>
                   </div>
                 );
               })}
-              {data.length > 5 && (
-                <p className="text-[10px] text-muted-foreground pl-4">
-                  +{data.length - 5} more
-                </p>
-              )}
             </div>
+            {data.length > 6 && (
+              <p className="text-[10px] text-muted-foreground mt-1">
+                +{data.length - 6} more categories
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
