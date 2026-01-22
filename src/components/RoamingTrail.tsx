@@ -92,6 +92,20 @@ function formatDuration(ms: number): string {
   return `${hours}h ${mins}m`;
 }
 
+// Derive band name from radio identifier
+function getBandFromRadio(radio: string | undefined): string {
+  if (!radio) return '';
+  const radioLower = radio.toLowerCase();
+  if (radioLower.includes('2g') || radioLower.includes('2.4') || radioLower === 'wifi0' || radioLower === 'radio0') {
+    return '2.4GHz';
+  } else if (radioLower.includes('5g') || radioLower.includes('5.') || radioLower === 'wifi1' || radioLower === 'radio1') {
+    return '5GHz';
+  } else if (radioLower.includes('6g') || radioLower.includes('6.') || radioLower === 'wifi2' || radioLower === 'radio2') {
+    return '6GHz';
+  }
+  return radio; // Return original if can't determine
+}
+
 type AlertFilter = {
   type: 'issue' | 'pingpong' | 'none';
   issue?: RoamingIssue;
@@ -105,7 +119,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
   const [countFilter, setCountFilter] = useState<CountFilter>(50);
   const [showStats, setShowStats] = useState(true);
   const [showAlerts, setShowAlerts] = useState(true);
-  const [showLegend, setShowLegend] = useState(false);
+  const [showLegend, setShowLegend] = useState(true);
   const [showDetails, setShowDetails] = useState(true);
   const [alertFilter, setAlertFilter] = useState<AlertFilter>({ type: 'none' });
 
@@ -175,6 +189,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
         const radio = parsedDetails.Radio;
         let frequency = parsedDetails.Band || event.band;
 
+        // Derive frequency from channel if not already set
         if (channel && !frequency) {
           const channelNum = parseInt(channel);
           if (channelNum >= 1 && channelNum <= 14) {
@@ -182,6 +197,18 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
           } else if (channelNum >= 36 && channelNum <= 165) {
             frequency = '5GHz';
           } else if (channelNum >= 1 && channelNum <= 233) {
+            frequency = '6GHz';
+          }
+        }
+
+        // Derive frequency from radio field if still not set
+        if (!frequency && radio) {
+          const radioLower = radio.toLowerCase();
+          if (radioLower.includes('2g') || radioLower.includes('2.4') || radioLower === 'wifi0' || radioLower === 'radio0') {
+            frequency = '2.4GHz';
+          } else if (radioLower.includes('5g') || radioLower.includes('5.') || radioLower === 'wifi1' || radioLower === 'radio1') {
+            frequency = '5GHz';
+          } else if (radioLower.includes('6g') || radioLower.includes('6.') || radioLower === 'wifi2' || radioLower === 'radio2') {
             frequency = '6GHz';
           }
         }
@@ -254,8 +281,9 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
 
       if (sameAP && (differentFrequency || differentRadio || differentBand)) {
         curr.isBandSteering = true;
-        curr.bandSteeringFrom = prev.frequency || prev.band || '';
-        curr.bandSteeringTo = curr.frequency || curr.band || '';
+        // Use frequency, band, or derive from radio - ensure we have readable band names
+        curr.bandSteeringFrom = prev.frequency || prev.band || getBandFromRadio(prev.radio) || '2.4GHz';
+        curr.bandSteeringTo = curr.frequency || curr.band || getBandFromRadio(curr.radio) || '5GHz';
       }
     }
 
@@ -855,6 +883,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedEvent(nextEvent);
+                    setShowDetails(true);
                   }}
                 >
                   <line
@@ -892,6 +921,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedEvent(event);
+                      setShowDetails(true);
                       setAlertFilter({ type: 'none' });
                     }}
                     className={`
@@ -913,6 +943,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.stopPropagation();
                         setSelectedEvent(event);
+                        setShowDetails(true);
                       }
                     }}
                   />
@@ -941,6 +972,7 @@ export function RoamingTrail({ events, macAddress }: RoamingTrailProps) {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedEvent(event);
+                        setShowDetails(true);
                       }}
                     >
                       <svg width="12" height="8" viewBox="0 0 12 8">

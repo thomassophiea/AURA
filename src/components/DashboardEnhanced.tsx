@@ -918,18 +918,27 @@ function DashboardEnhancedComponent() {
   const processServices = async (services: Service[]) => {
     setServices(services);
     
-    // Fetch detailed reports for each service
+    // Fetch detailed reports for each service IN PARALLEL (not sequentially)
     const reports = new Map<string, ServiceReport>();
     const poor: Service[] = [];
+    const servicesToFetch = services.slice(0, 10); // Limit to first 10 to avoid too many requests
 
-    for (const service of services.slice(0, 10)) { // Limit to first 10 to avoid too many requests
+    // Create parallel fetch promises for all services
+    const servicePromises = servicesToFetch.map(async (service) => {
       try {
-        // Try to fetch service report
-        const reportResponse = await apiService.makeAuthenticatedRequest(
-          `/v1/services/${service.id}/report`,
-          { method: 'GET' },
-          8000
-        );
+        // Fetch report and stations in parallel for this service
+        const [reportResponse, stationsResponse] = await Promise.all([
+          apiService.makeAuthenticatedRequest(
+            `/v1/services/${service.id}/report`,
+            { method: 'GET' },
+            8000
+          ),
+          apiService.makeAuthenticatedRequest(
+            `/v1/services/${service.id}/stations`,
+            { method: 'GET' },
+            8000
+          )
+        ]);
 
         if (reportResponse.ok) {
           const reportData = await reportResponse.json();
@@ -938,31 +947,26 @@ function DashboardEnhancedComponent() {
           // Check if service has poor metrics
           const reliability = reportData.metrics?.reliability || service.reliability || 100;
           const uptime = reportData.metrics?.uptime || service.uptime || 100;
-          
+
           if (reliability < 95 || uptime < 95) {
             poor.push(service);
           }
         }
 
-        // Also try to fetch station count for this service
-        const stationsResponse = await apiService.makeAuthenticatedRequest(
-          `/v1/services/${service.id}/stations`,
-          { method: 'GET' },
-          8000
-        );
-
         if (stationsResponse.ok) {
           const stationsData = await stationsResponse.json();
           const stationList = Array.isArray(stationsData) ? stationsData : (stationsData.stations || []);
-          
+
           // Update service with client count
           service.clientCount = stationList.length;
         }
-
       } catch (error) {
         console.log(`[Dashboard] Could not fetch report for service ${service.id}:`, error);
       }
-    }
+    });
+
+    // Wait for all service fetches to complete in parallel
+    await Promise.allSettled(servicePromises);
 
     setServiceReports(reports);
     setPoorServices(poor);

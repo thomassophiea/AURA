@@ -109,22 +109,26 @@ export const RankingWidget: React.FC<RankingWidgetProps> = ({
  * Format values with appropriate units
  */
 function formatValue(value: number, unit?: string): string {
-  if (!unit) {
-    // Auto-format large numbers
-    if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
-    if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
+  // Handle missing, empty, or invalid units
+  const validUnit = unit && unit !== 'undefined' && unit !== 'null' ? unit : undefined;
+
+  if (!validUnit) {
+    // Auto-format large numbers with appropriate unit
+    if (value >= 1e12) return `${(value / 1e12).toFixed(2)} TB`;
+    if (value >= 1e9) return `${(value / 1e9).toFixed(2)} GB`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(2)} MB`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(2)} KB`;
     return value.toFixed(2);
   }
 
-  if (unit === 'bps') {
+  if (validUnit === 'bps') {
     if (value >= 1e9) return `${(value / 1e9).toFixed(2)} Gbps`;
     if (value >= 1e6) return `${(value / 1e6).toFixed(2)} Mbps`;
     if (value >= 1e3) return `${(value / 1e3).toFixed(2)} Kbps`;
     return `${value.toFixed(0)} bps`;
   }
 
-  if (unit === 'bytes') {
+  if (validUnit === 'bytes') {
     if (value >= 1e12) return `${(value / 1e12).toFixed(2)} TB`;
     if (value >= 1e9) return `${(value / 1e9).toFixed(2)} GB`;
     if (value >= 1e6) return `${(value / 1e6).toFixed(2)} MB`;
@@ -132,28 +136,27 @@ function formatValue(value: number, unit?: string): string {
     return `${value.toFixed(0)} B`;
   }
 
-  if (unit === 'users' || unit === 'count' || unit === 'clients') {
+  if (validUnit === 'users' || validUnit === 'count' || validUnit === 'clients') {
     return value.toFixed(0);
   }
 
-  if (unit === '%' || unit === 'percent') {
+  if (validUnit === '%' || validUnit === 'percent') {
     return `${value.toFixed(1)}%`;
   }
 
-  if (unit === 'ms' || unit === 'milliseconds') {
+  if (validUnit === 'ms' || validUnit === 'milliseconds') {
     if (value >= 1000) return `${(value / 1000).toFixed(2)} s`;
     return `${value.toFixed(0)} ms`;
   }
 
-  if (unit === 'dBm') {
+  if (validUnit === 'dBm') {
     return `${value.toFixed(0)} dBm`;
   }
 
-  if (unit === 'dB') {
+  if (validUnit === 'dB') {
     return `${value.toFixed(0)} dB`;
   }
 
-  // Default: append unit (if provided)
-  if (!unit) return value.toFixed(2);
-  return `${value.toFixed(2)} ${unit}`;
+  // Default: append unit
+  return `${value.toFixed(2)} ${validUnit}`;
 }
