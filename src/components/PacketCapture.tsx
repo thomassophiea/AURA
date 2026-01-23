@@ -76,10 +76,16 @@ export function PacketCapture() {
 
   // Filters
   const [filters, setFilters] = useState<CaptureFilter[]>([]);
-  const [newFilterType, setNewFilterType] = useState<'mac' | 'ip' | 'protocol'>('mac');
+  const [newFilterType, setNewFilterType] = useState<'mac' | 'ip'>('mac');
   const [newFilterValue, setNewFilterValue] = useState('');
-  const [selectedProtocol, setSelectedProtocol] = useState<string>('any');
-  const [packetDestination, setPacketDestination] = useState<string>('');
+  const [selectedProtocol, setSelectedProtocol] = useState<string>('all');
+
+  // Packet Destination
+  const [packetDestination, setPacketDestination] = useState<'file' | 'scp'>('file');
+  const [scpIpAddress, setScpIpAddress] = useState('');
+  const [scpUsername, setScpUsername] = useState('');
+  const [scpPassword, setScpPassword] = useState('');
+  const [scpDestinationPath, setScpDestinationPath] = useState('');
 
   // State
   const [loading, setLoading] = useState(true);
@@ -92,16 +98,10 @@ export function PacketCapture() {
 
   // Protocol options
   const protocols = [
-    { value: 'any', label: 'Any' },
+    { value: 'all', label: 'All' },
     { value: 'tcp', label: 'TCP' },
     { value: 'udp', label: 'UDP' },
     { value: 'icmp', label: 'ICMP' },
-    { value: 'arp', label: 'ARP' },
-    { value: 'dhcp', label: 'DHCP' },
-    { value: 'dns', label: 'DNS' },
-    { value: 'http', label: 'HTTP' },
-    { value: 'https', label: 'HTTPS' },
-    { value: 'eapol', label: 'EAPOL (802.1X)' },
   ];
 
   // Radio options for wireless capture
@@ -314,68 +314,53 @@ export function PacketCapture() {
     setStarting(true);
 
     try {
-      const captureConfig = {
-        location: captureLocation,
-        includeWiredClients: captureLocation === 'wired' ? includeWiredClients : undefined,
-        radio: captureLocation === 'wireless' ? selectedRadio : undefined,
-        accessPoint: captureLocation === 'wireless' && selectedAP !== 'all' ? selectedAP : undefined,
-        direction,
-        duration: duration * 60, // Convert to seconds
-        truncatePackets: truncatePackets > 0 ? truncatePackets : undefined,
-        protocol: selectedProtocol !== 'any' ? selectedProtocol : undefined,
-        destination: packetDestination || undefined,
+      // Build capture config matching Campus Controller API
+      const captureConfig: Record<string, any> = {
+        captureWired: captureLocation === 'wired' || captureLocation === 'appliance',
+        captureWireless: captureLocation === 'wireless',
+        captureWiredClients: includeWiredClients,
+        duration: duration,
+        truncationSize: truncatePackets > 0 ? truncatePackets : 3001,
+        protocol: selectedProtocol !== 'all' ? selectedProtocol.toUpperCase() : undefined,
+        destination: packetDestination,
         filters: filters.map(f => ({ type: f.type, value: f.value }))
       };
 
-      console.log('[PacketCapture] Starting capture with config:', captureConfig);
-
-      // Try multiple API endpoints
-      const endpoints = ['/v1/packetcapture/start', '/v1/pcap/start', '/v1/capture/start'];
-      let success = false;
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {
-            method: 'POST',
-            body: JSON.stringify(captureConfig)
-          }, 30000);
-
-          if (response.ok) {
-            const result = await response.json();
-            toast.success('Packet capture started');
-
-            // Add to active captures
-            const newCapture: ActiveCapture = {
-              id: result.id || `capture-${Date.now()}`,
-              location: captureLocation,
-              direction,
-              duration: duration * 60,
-              startTime: Date.now(),
-              filters: filters.map(f => `${f.type}:${f.value}`),
-              status: 'running'
-            };
-            setActiveCaptures([...activeCaptures, newCapture]);
-            success = true;
-            break;
-          } else if (response.status === 404) {
-            continue;
-          } else {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.message || `Failed to start capture: ${response.status}`);
-          }
-        } catch (err) {
-          if (err instanceof Error && !err.message.includes('404')) {
-            throw err;
-          }
-          continue;
+      // Add wireless-specific options
+      if (captureLocation === 'wireless') {
+        if (selectedRadio !== 'all') {
+          captureConfig.radio = selectedRadio;
+        }
+        if (selectedAP !== 'all') {
+          captureConfig.apSerial = selectedAP;
         }
       }
 
-      if (!success) {
-        // For demo/testing - show that the UI works even if API isn't available
-        toast.info('Packet capture API not available on this controller. Configuration saved locally.');
+      // Add SCP credentials if SCP destination is selected
+      if (packetDestination === 'scp') {
+        captureConfig.scpServer = {
+          ipAddress: scpIpAddress,
+          username: scpUsername,
+          password: scpPassword,
+          destinationPath: scpDestinationPath
+        };
+      }
+
+      console.log('[PacketCapture] Starting capture with config:', captureConfig);
+
+      // Use the correct Campus Controller API endpoint
+      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/startappacketcapture', {
+        method: 'POST',
+        body: JSON.stringify(captureConfig)
+      }, 30000);
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success('Packet capture started');
+
+        // Add to active captures
         const newCapture: ActiveCapture = {
-          id: `capture-${Date.now()}`,
+          id: result.id || result.captureId || `capture-${Date.now()}`,
           location: captureLocation,
           direction,
           duration: duration * 60,
@@ -384,6 +369,12 @@ export function PacketCapture() {
           status: 'running'
         };
         setActiveCaptures([...activeCaptures, newCapture]);
+
+        // Refresh capture list
+        await loadActiveCaptures();
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to start capture: ${response.status}`);
       }
     } catch (err) {
       console.error('[PacketCapture] Error starting capture:', err);
@@ -400,39 +391,47 @@ export function PacketCapture() {
         captures.map(c => c.id === captureId ? { ...c, status: 'stopping' as const } : c)
       );
 
-      const endpoints = [
-        `/v1/packetcapture/stop/${captureId}`,
-        `/v1/pcap/stop/${captureId}`,
-        `/v1/capture/stop/${captureId}`
-      ];
+      // Use the correct Campus Controller API endpoint
+      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/stopappacketcapture', {
+        method: 'PUT',
+        body: JSON.stringify({ captureId })
+      }, 10000);
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {
-            method: 'POST'
-          }, 10000);
-
-          if (response.ok) {
-            toast.success('Capture stopped');
-            // Remove from active and refresh files
-            setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
-            await loadCaptureFiles();
-            return;
-          }
-        } catch {
-          continue;
-        }
+      if (response.ok) {
+        toast.success('Capture stopped');
+        // Remove from active and refresh files
+        setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
+        await loadCaptureFiles();
+      } else {
+        throw new Error(`Failed to stop capture: ${response.status}`);
       }
-
-      // If API not available, just remove from local state
-      setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
-      toast.info('Capture stopped (local)');
     } catch (err) {
+      console.error('[PacketCapture] Error stopping capture:', err);
       toast.error('Failed to stop capture');
       // Reset status on error
       setActiveCaptures(captures =>
         captures.map(c => c.id === captureId ? { ...c, status: 'running' as const } : c)
       );
+    }
+  };
+
+  const stopAllCaptures = async () => {
+    try {
+      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/stopappacketcapture', {
+        method: 'PUT',
+        body: JSON.stringify({ stopAll: true })
+      }, 10000);
+
+      if (response.ok) {
+        toast.success('All captures stopped');
+        setActiveCaptures([]);
+        await loadCaptureFiles();
+      } else {
+        throw new Error(`Failed to stop captures: ${response.status}`);
+      }
+    } catch (err) {
+      console.error('[PacketCapture] Error stopping all captures:', err);
+      toast.error('Failed to stop all captures');
     }
   };
 
@@ -584,7 +583,7 @@ export function PacketCapture() {
                 <Label className="text-sm font-medium">Capture Location</Label>
 
                 <div className="space-y-3">
-                  {/* Appliance Data Ports */}
+                  {/* Edge Service Data Ports */}
                   <div
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                       captureLocation === 'appliance' ? 'border-primary bg-primary/5' : 'hover:bg-accent'
@@ -593,7 +592,7 @@ export function PacketCapture() {
                   >
                     <Router className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
-                      <div className="font-medium">Appliance Data Ports</div>
+                      <div className="font-medium">Edge Service Data Ports</div>
                       <div className="text-xs text-muted-foreground">Capture traffic on controller data ports</div>
                     </div>
                     <div className={`w-4 h-4 rounded-full border-2 ${
@@ -770,12 +769,58 @@ export function PacketCapture() {
               {/* Packet Destination */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Packet Destination</Label>
-                <Input
-                  placeholder="e.g., 192.168.1.0/24 or any"
-                  value={packetDestination}
-                  onChange={(e) => setPacketDestination(e.target.value)}
-                />
+                <Select value={packetDestination} onValueChange={(v) => setPacketDestination(v as 'file' | 'scp')}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="file">File</SelectItem>
+                    <SelectItem value="scp">SCP</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* SCP Server Credentials */}
+              {packetDestination === 'scp' && (
+                <div className="space-y-3 p-3 rounded-lg border bg-muted/30">
+                  <Label className="text-sm font-medium">SCP Server Credentials</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">IP Address</Label>
+                      <Input
+                        placeholder="192.168.1.100"
+                        value={scpIpAddress}
+                        onChange={(e) => setScpIpAddress(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Username</Label>
+                      <Input
+                        placeholder="admin"
+                        value={scpUsername}
+                        onChange={(e) => setScpUsername(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Password</Label>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        value={scpPassword}
+                        onChange={(e) => setScpPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Destination Path</Label>
+                      <Input
+                        placeholder="/home/user/captures"
+                        value={scpDestinationPath}
+                        onChange={(e) => setScpDestinationPath(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* MAC/IP Filters */}
               <div className="space-y-2">
@@ -833,59 +878,74 @@ export function PacketCapture() {
           </Card>
         </div>
 
-        {/* Active Captures */}
+        {/* Packet Capture Instances */}
         {activeCaptures.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                Active Captures
-              </CardTitle>
-              <CardDescription>
-                Currently running packet captures
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    Packet Capture Instances
+                  </CardTitle>
+                  <CardDescription>
+                    Currently running packet captures
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={stopAllCaptures}
+                  className="bg-primary"
+                >
+                  Stop All Captures
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {activeCaptures.map((capture) => (
-                  <div
-                    key={capture.id}
-                    className="flex items-center justify-between p-4 rounded-lg border bg-card"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        {capture.location === 'wireless' ? (
-                          <Wifi className="h-5 w-5 text-primary" />
-                        ) : capture.location === 'wired' ? (
-                          <Monitor className="h-5 w-5 text-primary" />
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Capture Name</TableHead>
+                    <TableHead>Destination</TableHead>
+                    <TableHead>Start Time</TableHead>
+                    <TableHead>Stop Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {activeCaptures.map((capture) => (
+                    <TableRow key={capture.id}>
+                      <TableCell>
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                          <span className="text-xs">−</span>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div className={`w-3 h-3 rounded-full ${capture.status === 'running' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                      </TableCell>
+                      <TableCell className="font-medium">{capture.id}</TableCell>
+                      <TableCell>{packetDestination === 'scp' ? 'SCP' : 'File'}</TableCell>
+                      <TableCell>{new Date(capture.startTime).toLocaleString()}</TableCell>
+                      <TableCell>
+                        {capture.status === 'running' ? (
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => stopCapture(capture.id)}
+                            disabled={capture.status === 'stopping'}
+                          >
+                            <Square className="h-3 w-3 mr-1" />
+                            Stop
+                          </Button>
                         ) : (
-                          <Router className="h-5 w-5 text-primary" />
+                          '-'
                         )}
-                      </div>
-                      <div>
-                        <div className="font-medium capitalize">
-                          {capture.location} Capture
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {capture.direction}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Running for {getElapsedTime(capture.startTime)} / {Math.floor(capture.duration / 60)}:00
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => stopCapture(capture.id)}
-                      disabled={capture.status === 'stopping'}
-                    >
-                      <Square className="h-4 w-4 mr-2" />
-                      {capture.status === 'stopping' ? 'Stopping...' : 'Stop'}
-                    </Button>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}
@@ -894,12 +954,9 @@ export function PacketCapture() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Capture Files
+              <Download className="h-5 w-5" />
+              Download Capture
             </CardTitle>
-            <CardDescription>
-              Downloaded packet capture files
-            </CardDescription>
           </CardHeader>
           <CardContent>
             {captureFiles.length > 0 ? (
@@ -907,36 +964,40 @@ export function PacketCapture() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Filename</TableHead>
+                      <TableHead className="w-20"></TableHead>
+                      <TableHead>Capture Files</TableHead>
                       <TableHead>Size</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {captureFiles.map((file) => (
                       <TableRow key={file.id}>
-                        <TableCell className="font-medium">{file.filename}</TableCell>
-                        <TableCell>{formatFileSize(file.size)}</TableCell>
-                        <TableCell>{formatDate(file.date)}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
+                        <TableCell>
+                          <div className="flex gap-1">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={() => downloadFile(file)}
+                              title="Download"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="sm"
+                              className="h-8 w-8 p-0"
                               onClick={() => deleteFile(file)}
+                              title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
+                        <TableCell className="font-medium">{file.filename}</TableCell>
+                        <TableCell>{formatFileSize(file.size)}</TableCell>
+                        <TableCell>{formatDate(file.date)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
