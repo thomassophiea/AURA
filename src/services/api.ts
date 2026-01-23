@@ -333,6 +333,9 @@ export interface ClientInsightsResponse {
   baseliningRxRate?: APInsightsReport[];
   baseliningTxRate?: APInsightsReport[];
   muEvent?: APInsightsReport[];
+  // Troubleshoot view reports
+  dlRetries?: APInsightsReport[];
+  stationEvents?: APInsightsReport[];
 }
 
 export interface APRadio {
@@ -1883,13 +1886,13 @@ class ApiService {
    * @param macAddress Client MAC address
    * @param duration Duration string (3H, 24H, 7D, 30D)
    * @param resolution Data resolution in minutes (15 for 3H, 60 for 24H, etc.)
-   * @param mode 'default' for basic metrics, 'expert' for advanced metrics, 'all' for both
+   * @param mode 'default', 'expert', 'troubleshoot', or 'all'
    */
   async getClientInsights(
     macAddress: string,
     duration: string = '3H',
     resolution: number = 15,
-    mode: 'default' | 'expert' | 'all' = 'all'
+    mode: 'default' | 'expert' | 'troubleshoot' | 'all' = 'all'
   ): Promise<ClientInsightsResponse> {
     const noCache = Date.now();
 
@@ -1908,8 +1911,15 @@ class ApiService {
       'baseliningNetworkRTT',
       'baseliningRss',
       'baseliningRxRate',
-      'baseliningTxRate',
-      'muEvent'
+      'baseliningTxRate'
+    ];
+
+    // Troubleshoot view widgets
+    const troubleshootWidgets = [
+      'rfQuality|all',
+      'baseliningRFQI',
+      'muEvent',
+      'dlRetries'
     ];
 
     let widgets: string[];
@@ -1917,8 +1927,12 @@ class ApiService {
       widgets = defaultWidgets;
     } else if (mode === 'expert') {
       widgets = expertWidgets;
+    } else if (mode === 'troubleshoot') {
+      widgets = troubleshootWidgets;
     } else {
-      widgets = [...defaultWidgets, ...expertWidgets];
+      // 'all' mode - combine all unique widgets
+      const allWidgets = new Set([...defaultWidgets, ...expertWidgets, ...troubleshootWidgets]);
+      widgets = Array.from(allWidgets);
     }
 
     const widgetList = encodeURIComponent(widgets.join(','));

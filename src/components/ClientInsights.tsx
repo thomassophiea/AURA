@@ -2,7 +2,7 @@
  * Client Insights Component
  *
  * Displays performance metrics charts for a Client/Station
- * Shows throughput, RF quality, app groups, RFQI, RTT, RSS, rates
+ * Shows throughput, RF quality, app groups, RFQI, RTT, RSS, rates, events, retries
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -16,6 +16,8 @@ import {
   Area,
   LineChart,
   Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
@@ -255,7 +257,6 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
   const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
-  const [viewMode, setViewMode] = useState<'default' | 'expert'>('default');
 
   const durationOption = DURATION_OPTIONS.find(d => d.value === duration) || DURATION_OPTIONS[0];
 
@@ -275,7 +276,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     loadInsights();
   }, [macAddress, duration]);
 
-  // Transform data for each chart - Default View
+  // Transform data for all charts
   const throughputData = useMemo(() => {
     const report = insights?.throughputReport?.[0];
     return transformReportData(report, duration);
@@ -300,7 +301,6 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     return transformReportData(report, duration);
   }, [insights, duration]);
 
-  // Transform data for Expert View
   const rfqiData = useMemo(() => {
     const report = insights?.baseliningRFQI?.[0];
     return transformReportData(report, duration);
@@ -331,6 +331,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     return transformReportData(report, duration);
   }, [insights, duration]);
 
+  const eventsData = useMemo(() => {
+    const report = insights?.muEvent?.[0];
+    return transformReportData(report, duration);
+  }, [insights, duration]);
+
+  const dlRetriesData = useMemo(() => {
+    const report = insights?.dlRetries?.[0];
+    return transformReportData(report, duration);
+  }, [insights, duration]);
+
   return (
     <div className="fixed inset-0 z-50 bg-background">
       <div className="h-full flex flex-col">
@@ -347,24 +357,6 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border bg-muted/30 p-0.5">
-              <Button
-                variant={viewMode === 'default' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('default')}
-                className="h-7 text-xs"
-              >
-                Default
-              </Button>
-              <Button
-                variant={viewMode === 'expert' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => setViewMode('expert')}
-                className="h-7 text-xs"
-              >
-                Expert
-              </Button>
-            </div>
             <Select value={duration} onValueChange={setDuration}>
               <SelectTrigger className="w-[150px] h-8">
                 <Clock className="h-4 w-4 mr-2" />
@@ -383,7 +375,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
           </div>
         </div>
 
-        {/* Content */}
+        {/* Content - All charts on one page */}
         <div className="flex-1 scrollbar-auto-hide">
           <div className="p-6 space-y-6 pb-12">
             {isLoading ? (
@@ -392,15 +384,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
+                <Skeleton className="h-64" />
               </div>
-            ) : viewMode === 'default' ? (
-              /* Default View */
+            ) : (
               <div className="grid grid-cols-2 gap-6">
                 {/* Throughput */}
                 {throughputData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Throughput</CardTitle>
+                      <CardTitle className="text-sm font-medium">Throughput (Band: All)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -431,7 +424,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {rfQualityData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RF Quality</CardTitle>
+                      <CardTitle className="text-sm font-medium">RF Quality (Band: All)</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -500,7 +493,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {appGroupsDetailData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">App Group Throughput Detail</CardTitle>
+                      <CardTitle className="text-sm font-medium">App Group Detail</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -531,15 +524,12 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     </CardContent>
                   </Card>
                 )}
-              </div>
-            ) : (
-              /* Expert View */
-              <div className="grid grid-cols-2 gap-6">
+
                 {/* RFQI */}
                 {rfqiData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RF Quality Index (RFQI)</CardTitle>
+                      <CardTitle className="text-sm font-medium">RFQI</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -570,7 +560,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {wirelessRttData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Wireless RTT</CardTitle>
+                      <CardTitle className="text-sm font-medium">WirelessRTT</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -601,7 +591,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {networkRttData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Network RTT</CardTitle>
+                      <CardTitle className="text-sm font-medium">NetworkRTT</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -632,7 +622,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {rssData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RSS (Signal Strength)</CardTitle>
+                      <CardTitle className="text-sm font-medium">RSS</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -663,7 +653,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {rxRateData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RX Rate</CardTitle>
+                      <CardTitle className="text-sm font-medium">RxRate</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -694,7 +684,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 {txRateData.length > 0 && (
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">TX Rate</CardTitle>
+                      <CardTitle className="text-sm font-medium">TxRate</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-64">
@@ -714,6 +704,79 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                             <Area type="monotone" dataKey="TxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
                             <Area type="monotone" dataKey="TxRate" stroke={CHART_COLORS.pink} fill="url(#colorTxRate)" name="TX Rate" />
                             <Area type="monotone" dataKey="TxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Events */}
+                {eventsData.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">Events</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={eventsData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} width={40} />
+                            <Tooltip />
+                            <Legend />
+                            {Object.keys(eventsData[0] || {})
+                              .filter(k => k !== 'timestamp' && k !== 'time')
+                              .slice(0, 5)
+                              .map((key, i) => (
+                                <Bar
+                                  key={key}
+                                  dataKey={key}
+                                  fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                                  stackId="events"
+                                />
+                              ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* DL Retries */}
+                {dlRetriesData.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium">DL Retries</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={dlRetriesData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                            <defs>
+                              <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={CHART_COLORS.warning} stopOpacity={0.2}/>
+                                <stop offset="95%" stopColor={CHART_COLORS.warning} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
+                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
+                            <Legend />
+                            {Object.keys(dlRetriesData[0] || {})
+                              .filter(k => k !== 'timestamp' && k !== 'time')
+                              .map((key, i) => (
+                                <Area
+                                  key={key}
+                                  type="monotone"
+                                  dataKey={key}
+                                  stroke={i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary}
+                                  fill={i === 0 ? "url(#colorDlRetries)" : "transparent"}
+                                  strokeDasharray={i === 0 ? undefined : "3 3"}
+                                />
+                              ))}
                           </AreaChart>
                         </ResponsiveContainer>
                       </div>
