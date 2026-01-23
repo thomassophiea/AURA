@@ -603,7 +603,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto scrollbar-auto-hide">
+        <div className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6 pb-12">
             {isLoading ? (
               <div className="grid grid-cols-2 gap-6">
