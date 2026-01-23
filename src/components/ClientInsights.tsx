@@ -341,6 +341,450 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     return transformReportData(report, duration);
   }, [insights, duration]);
 
+  // Define all charts with their data and render functions
+  // Charts with data will appear first, empty charts at the bottom
+  const chartConfigs = useMemo(() => {
+    const configs = [
+      { id: 'throughput', title: 'Throughput (Band: All)', data: throughputData, hasData: throughputData.length > 0 },
+      { id: 'rfQuality', title: 'RF Quality (Band: All)', data: rfQualityData, hasData: rfQualityData.length > 0 },
+      { id: 'appGroups', title: 'Top Categories by Throughput', data: appGroupsData, hasData: appGroupsData.length > 0 },
+      { id: 'appGroupsDetail', title: 'App Group Detail', data: appGroupsDetailData, hasData: appGroupsDetailData.length > 0 },
+      { id: 'rfqi', title: 'RFQI', data: rfqiData, hasData: rfqiData.length > 0 },
+      { id: 'wirelessRtt', title: 'WirelessRTT', data: wirelessRttData, hasData: wirelessRttData.length > 0 },
+      { id: 'networkRtt', title: 'NetworkRTT', data: networkRttData, hasData: networkRttData.length > 0 },
+      { id: 'rss', title: 'RSS', data: rssData, hasData: rssData.length > 0 },
+      { id: 'rxRate', title: 'RxRate', data: rxRateData, hasData: rxRateData.length > 0 },
+      { id: 'txRate', title: 'TxRate', data: txRateData, hasData: txRateData.length > 0 },
+      { id: 'events', title: 'Events', data: eventsData, hasData: eventsData.length > 0 },
+      { id: 'dlRetries', title: 'DL Retries', data: dlRetriesData, hasData: dlRetriesData.length > 0 },
+    ];
+
+    // Sort: charts with data first, empty charts last
+    return configs.sort((a, b) => {
+      if (a.hasData && !b.hasData) return -1;
+      if (!a.hasData && b.hasData) return 1;
+      return 0;
+    });
+  }, [throughputData, rfQualityData, appGroupsData, appGroupsDetailData, rfqiData, wirelessRttData, networkRttData, rssData, rxRateData, txRateData, eventsData, dlRetriesData]);
+
+  // Render individual chart based on id
+  const renderChart = (config: { id: string; title: string; data: any[]; hasData: boolean }) => {
+    if (!config.hasData) {
+      return (
+        <Card key={config.id} className="opacity-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{config.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">No data available</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    switch (config.id) {
+      case 'throughput':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={throughputData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Total" stroke={CHART_COLORS.blue} fill="url(#colorTotalClient)" name="Total" />
+                    <Area type="monotone" dataKey="Upload" stroke={CHART_COLORS.cyan} fill="transparent" name="Upload" />
+                    <Area type="monotone" dataKey="Download" stroke={CHART_COLORS.pink} fill="transparent" name="Download" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'rfQuality':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rfQualityData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="rfQuality" stroke={CHART_COLORS.success} fill="url(#colorRfQuality)" name="RF Quality" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'appGroups':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 flex items-center">
+                <ResponsiveContainer width="50%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={appGroupsData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={80}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {appGroupsData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-1 max-h-56 overflow-auto">
+                  {appGroupsData.slice(0, 8).map((entry, index) => (
+                    <div key={index} className="flex items-center gap-2 text-xs">
+                      <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                      <span className="truncate flex-1">{entry.name}</span>
+                      <span className="text-muted-foreground">{formatValue(entry.value, 'bps')}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'appGroupsDetail':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={appGroupsDetailData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Legend />
+                    {Object.keys(appGroupsDetailData[0] || {})
+                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .slice(0, 5)
+                      .map((key, i) => (
+                        <Area
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          stackId="1"
+                          stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
+                          fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                          fillOpacity={0.6}
+                        />
+                      ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'rfqi':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rfqiData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.purple} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.purple} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
+                    <Tooltip />
+                    <Legend />
+                    <Area type="monotone" dataKey="Rfqi Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="Rfqi" stroke={CHART_COLORS.purple} fill="url(#colorRfqi)" name="RFQI" />
+                    <Area type="monotone" dataKey="Rfqi Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'wirelessRtt':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={wirelessRttData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="WirelessRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="WirelessRtt" stroke={CHART_COLORS.cyan} fill="url(#colorWirelessRtt)" name="Wireless RTT" />
+                    <Area type="monotone" dataKey="WirelessRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'networkRtt':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={networkRttData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.orange} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.orange} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="NetworkRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="NetworkRtt" stroke={CHART_COLORS.orange} fill="url(#colorNetworkRtt)" name="Network RTT" />
+                    <Area type="monotone" dataKey="NetworkRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'rss':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rssData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Rss Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="Rss" stroke={CHART_COLORS.blue} fill="url(#colorRssClient)" name="RSS" />
+                    <Area type="monotone" dataKey="Rss Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'rxRate':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rxRateData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="RxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="RxRate" stroke={CHART_COLORS.success} fill="url(#colorRxRate)" name="RX Rate" />
+                    <Area type="monotone" dataKey="RxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'txRate':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={txRateData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.pink} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.pink} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="TxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="TxRate" stroke={CHART_COLORS.pink} fill="url(#colorTxRate)" name="TX Rate" />
+                    <Area type="monotone" dataKey="TxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'events':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={eventsData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={40} />
+                    <Tooltip />
+                    <Legend />
+                    {Object.keys(eventsData[0] || {})
+                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .slice(0, 5)
+                      .map((key, i) => (
+                        <Bar
+                          key={key}
+                          dataKey={key}
+                          fill={DONUT_COLORS[i % DONUT_COLORS.length]}
+                          stackId="events"
+                        />
+                      ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'dlRetries':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dlRetriesData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.warning} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.warning} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
+                    <Legend />
+                    {Object.keys(dlRetriesData[0] || {})
+                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .map((key, i) => (
+                        <Area
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          stroke={i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary}
+                          fill={i === 0 ? "url(#colorDlRetries)" : "transparent"}
+                          strokeDasharray={i === 0 ? undefined : "3 3"}
+                        />
+                      ))}
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-background">
       <div className="h-full flex flex-col">
@@ -389,400 +833,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-6">
-                {/* Throughput */}
-                {throughputData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Throughput (Band: All)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={throughputData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                            <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Total" stroke={CHART_COLORS.blue} fill="url(#colorTotalClient)" name="Total" />
-                            <Area type="monotone" dataKey="Upload" stroke={CHART_COLORS.cyan} fill="transparent" name="Upload" />
-                            <Area type="monotone" dataKey="Download" stroke={CHART_COLORS.pink} fill="transparent" name="Download" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* RF Quality */}
-                {rfQualityData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RF Quality (Band: All)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={rfQualityData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="rfQuality" stroke={CHART_COLORS.success} fill="url(#colorRfQuality)" name="RF Quality" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Top App Groups (Donut) */}
-                {appGroupsData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Top Categories by Throughput</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64 flex items-center">
-                        <ResponsiveContainer width="50%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={appGroupsData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={50}
-                              outerRadius={80}
-                              paddingAngle={2}
-                              dataKey="value"
-                            >
-                              {appGroupsData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="flex-1 space-y-1 max-h-56 overflow-auto">
-                          {appGroupsData.slice(0, 8).map((entry, index) => (
-                            <div key={index} className="flex items-center gap-2 text-xs">
-                              <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: entry.color }} />
-                              <span className="truncate flex-1">{entry.name}</span>
-                              <span className="text-muted-foreground">{formatValue(entry.value, 'bps')}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* App Groups Detail */}
-                {appGroupsDetailData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">App Group Detail</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={appGroupsDetailData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                            <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
-                            <Legend />
-                            {Object.keys(appGroupsDetailData[0] || {})
-                              .filter(k => k !== 'timestamp' && k !== 'time')
-                              .slice(0, 5)
-                              .map((key, i) => (
-                                <Area
-                                  key={key}
-                                  type="monotone"
-                                  dataKey={key}
-                                  stackId="1"
-                                  stroke={DONUT_COLORS[i % DONUT_COLORS.length]}
-                                  fill={DONUT_COLORS[i % DONUT_COLORS.length]}
-                                  fillOpacity={0.6}
-                                />
-                              ))}
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* RFQI */}
-                {rfqiData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RFQI</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={rfqiData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.purple} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.purple} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
-                            <Tooltip />
-                            <Legend />
-                            <Area type="monotone" dataKey="Rfqi Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="Rfqi" stroke={CHART_COLORS.purple} fill="url(#colorRfqi)" name="RFQI" />
-                            <Area type="monotone" dataKey="Rfqi Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Wireless RTT */}
-                {wirelessRttData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">WirelessRTT</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={wirelessRttData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="WirelessRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="WirelessRtt" stroke={CHART_COLORS.cyan} fill="url(#colorWirelessRtt)" name="Wireless RTT" />
-                            <Area type="monotone" dataKey="WirelessRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Network RTT */}
-                {networkRttData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">NetworkRTT</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={networkRttData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.orange} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.orange} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="NetworkRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="NetworkRtt" stroke={CHART_COLORS.orange} fill="url(#colorNetworkRtt)" name="Network RTT" />
-                            <Area type="monotone" dataKey="NetworkRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* RSS */}
-                {rssData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RSS</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={rssData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Rss Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="Rss" stroke={CHART_COLORS.blue} fill="url(#colorRssClient)" name="RSS" />
-                            <Area type="monotone" dataKey="Rss Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* RX Rate */}
-                {rxRateData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RxRate</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={rxRateData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="RxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="RxRate" stroke={CHART_COLORS.success} fill="url(#colorRxRate)" name="RX Rate" />
-                            <Area type="monotone" dataKey="RxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* TX Rate */}
-                {txRateData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">TxRate</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={txRateData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.pink} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.pink} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="TxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="TxRate" stroke={CHART_COLORS.pink} fill="url(#colorTxRate)" name="TX Rate" />
-                            <Area type="monotone" dataKey="TxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Events */}
-                {eventsData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Events</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={eventsData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} width={40} />
-                            <Tooltip />
-                            <Legend />
-                            {Object.keys(eventsData[0] || {})
-                              .filter(k => k !== 'timestamp' && k !== 'time')
-                              .slice(0, 5)
-                              .map((key, i) => (
-                                <Bar
-                                  key={key}
-                                  dataKey={key}
-                                  fill={DONUT_COLORS[i % DONUT_COLORS.length]}
-                                  stackId="events"
-                                />
-                              ))}
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* DL Retries */}
-                {dlRetriesData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">DL Retries</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={dlRetriesData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.warning} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.warning} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
-                            <Legend />
-                            {Object.keys(dlRetriesData[0] || {})
-                              .filter(k => k !== 'timestamp' && k !== 'time')
-                              .map((key, i) => (
-                                <Area
-                                  key={key}
-                                  type="monotone"
-                                  dataKey={key}
-                                  stroke={i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary}
-                                  fill={i === 0 ? "url(#colorDlRetries)" : "transparent"}
-                                  strokeDasharray={i === 0 ? undefined : "3 3"}
-                                />
-                              ))}
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {chartConfigs.map(config => renderChart(config))}
               </div>
             )}
           </div>
