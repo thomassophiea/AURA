@@ -227,6 +227,32 @@ export interface StationEventsResponse {
   smartRfEvents: RRMEvent[];  // API returns as smartRfEvents, we display as RRM Events
 }
 
+// AP Alarm/Event - individual alarm from the AP alarms endpoint
+export interface APAlarm {
+  log: string;                // Message/description
+  ts: number;                 // Timestamp in milliseconds
+  pos: number;                // Position/order
+  ApSerial: string;           // AP Serial number
+  ApName: string;             // AP Name
+  Id: number;                 // Event ID
+  Context: string;            // Context (ConnectDetails, ChannelChange, etc.)
+  Category: string;           // Category (Discovery, AlarmCleared, etc.)
+  Level: string;              // Severity level (Critical, Major, etc.)
+}
+
+// AP Alarm Type - groups alarms by type
+export interface APAlarmType {
+  id: string;                 // Alarm type ID (ChannelChange, ConnectDetails, etc.)
+  severity: string;           // Severity level
+  alarms: APAlarm[];          // List of alarms
+}
+
+// AP Alarm Category - groups alarm types by category
+export interface APAlarmCategory {
+  category: string[];         // Category names
+  alarmTypes: APAlarmType[];  // List of alarm types
+}
+
 export interface APRadio {
   radioName: string;
   radioIndex: number;
@@ -1677,6 +1703,51 @@ class ApiService {
     }
     const data = await response.json();
     return Array.isArray(data) ? data : [];
+  }
+
+  /**
+   * Fetch AP events/alarms for a specific access point
+   * @param serialNumber - AP serial number
+   * @param duration - Duration in days (default: 14)
+   * @returns Array of alarm categories with nested alarm types and alarms
+   */
+  async getAccessPointEvents(serialNumber: string, duration: number = 14): Promise<APAlarmCategory[]> {
+    const endTime = Date.now();
+    const startTime = endTime - (duration * 24 * 60 * 60 * 1000);
+    const noCache = Date.now();
+
+    const endpoint = `/v1/aps/${encodeURIComponent(serialNumber)}/alarms?startTime=${startTime}&endTime=${endTime}&noCache=${noCache}`;
+
+    console.log(`[API] Fetching AP events for ${serialNumber} (${duration}D)`);
+
+    const response = await this.makeAuthenticatedRequest(endpoint);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch AP events: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
+
+    return Array.isArray(data) ? data : [];
+  }
+
+  /**
+   * Get flattened list of AP events from the nested category/alarmType structure
+   * Useful for displaying events in a timeline
+   */
+  flattenAPEvents(categories: APAlarmCategory[]): APAlarm[] {
+    const events: APAlarm[] = [];
+
+    for (const category of categories) {
+      for (const alarmType of category.alarmTypes) {
+        for (const alarm of alarmType.alarms) {
+          events.push(alarm);
+        }
+      }
+    }
+
+    // Sort by timestamp descending (most recent first)
+    return events.sort((a, b) => b.ts - a.ts);
   }
 
   async updateAccessPoint(serialNumber: string, config: Partial<APDetails>): Promise<APDetails> {
