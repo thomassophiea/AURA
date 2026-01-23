@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Wrench, Radio, Upload, GitBranch, TestTube, Zap } from 'lucide-react';
+import { Wrench, Radio, Upload, GitBranch, TestTube, Zap, Network } from 'lucide-react';
 import { AFCPlanningTool } from './AFCPlanningTool';
 import { ApiTestTool } from './ApiTestTool';
 import { RFManagementTools } from './RFManagementTools';
 import { DeviceUpgrade } from './DeviceUpgrade';
 import { AdoptionRulesManagement } from './AdoptionRulesManagement';
+import { PacketCapture } from './PacketCapture';
 
 export function Tools() {
   const [activeTab, setActiveTab] = useState('rf-management');
@@ -35,6 +36,10 @@ export function Tools() {
               <TestTube className="h-4 w-4" />
               API Test
             </TabsTrigger>
+            <TabsTrigger value="packet-capture" className="flex items-center gap-2">
+              <Network className="h-4 w-4" />
+              Packet Capture
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -56,6 +61,10 @@ export function Tools() {
 
         <TabsContent value="api-test" className="m-0 h-[calc(100%-3rem)]">
           <ApiTestTool />
+        </TabsContent>
+
+        <TabsContent value="packet-capture" className="m-0 h-[calc(100%-3rem)]">
+          <PacketCapture />
         </TabsContent>
       </Tabs>
     </div>
