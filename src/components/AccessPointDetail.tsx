@@ -479,13 +479,14 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
               </Select>
               {events.length > 0 && (
                 <Button
-                  variant="outline"
-                  size="icon"
+                  variant="default"
+                  size="sm"
                   onClick={() => setShowEventsTimeline(true)}
-                  className="h-8 w-8"
-                  title="Open Full Timeline View"
+                  className="flex items-center gap-2"
+                  title="Karl Mode"
                 >
                   <Maximize2 className="h-4 w-4" />
+                  View PRO Timeline
                 </Button>
               )}
               <Button

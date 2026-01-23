@@ -760,10 +760,27 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             <div className="flex items-center space-x-2">
               <FileText className="h-4 w-4" />
               <span>Recent Events</span>
+              {stationEvents.length > 0 && (
+                <Badge variant="secondary" className="ml-2">{stationEvents.length}</Badge>
+              )}
             </div>
-            {isLoadingEvents && (
-              <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
-            )}
+            <div className="flex items-center space-x-2">
+              {isLoadingEvents && (
+                <RefreshCw className="h-3 w-3 animate-spin text-muted-foreground" />
+              )}
+              {stationEvents.length > 0 && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={() => setShowRoamingTrail(true)}
+                  className="flex items-center gap-2"
+                  title="Karl Mode"
+                >
+                  <Route className="h-4 w-4" />
+                  View PRO Timeline
+                </Button>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
