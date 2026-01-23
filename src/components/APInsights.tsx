@@ -203,11 +203,15 @@ export function APInsights({ serialNumber, apName, onOpenFullScreen }: APInsight
           </div>
           <div className="flex items-center space-x-2" onClick={(e) => e.stopPropagation()}>
             <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger className="w-[130px] h-8 text-xs">
+              <SelectTrigger
+                className="w-[130px] h-8 text-xs"
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
                 <Clock className="h-3 w-3 mr-1" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent onPointerDownOutside={(e) => e.stopPropagation()}>
                 {DURATION_OPTIONS.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
