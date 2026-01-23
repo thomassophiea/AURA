@@ -304,6 +304,234 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     return transformReportData(report, duration);
   }, [insights, duration]);
 
+  // Define all charts with their data - charts with data appear first, empty charts at bottom
+  const chartConfigs = useMemo(() => {
+    const configs = [
+      { id: 'throughput', title: 'Throughput', data: throughputData, hasData: throughputData.length > 0 },
+      { id: 'power', title: 'Power Consumption', data: powerData, hasData: powerData.length > 0 },
+      { id: 'clients', title: 'Unique Client Count', data: clientData, hasData: clientData.length > 0 },
+      { id: 'rss', title: 'RSS (Signal Strength)', data: rssData, hasData: rssData.length > 0 },
+      { id: 'channelUtil5', title: 'Channel Utilization 5GHz', data: channelUtil5Data, hasData: channelUtil5Data.length > 0 },
+      { id: 'channelUtil24', title: 'Channel Utilization 2.4GHz', data: channelUtil24Data, hasData: channelUtil24Data.length > 0 },
+      { id: 'noise', title: 'Noise Per Channel', data: noiseData, hasData: noiseData.length > 0 },
+    ];
+
+    // Sort: charts with data first, empty charts last
+    return configs.sort((a, b) => {
+      if (a.hasData && !b.hasData) return -1;
+      if (!a.hasData && b.hasData) return 1;
+      return 0;
+    });
+  }, [throughputData, powerData, clientData, rssData, channelUtil5Data, channelUtil24Data, noiseData]);
+
+  // Render individual chart based on id
+  const renderChart = (config: { id: string; title: string; data: any[]; hasData: boolean }) => {
+    if (!config.hasData) {
+      return (
+        <Card key={config.id} className="opacity-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">{config.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64 flex items-center justify-center">
+              <p className="text-sm text-muted-foreground">No data available</p>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    switch (config.id) {
+      case 'throughput':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={throughputData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorTotalFull" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Total" stroke={CHART_COLORS.blue} fill="url(#colorTotalFull)" name="Total" />
+                    <Area type="monotone" dataKey="Upload" stroke={CHART_COLORS.cyan} fill="transparent" name="Upload" />
+                    <Area type="monotone" dataKey="Download" stroke={CHART_COLORS.pink} fill="transparent" name="Download" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'power':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={powerData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} W`} width={50} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="monotone" dataKey="Power Consumption" stroke={CHART_COLORS.blue} dot={false} name="Power" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'clients':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={clientData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} width={40} />
+                    <Tooltip />
+                    <Legend />
+                    <Line type="stepAfter" dataKey="tntUniqueUsers" stroke={CHART_COLORS.blue} dot={false} name="Unique Users" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'rss':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={rssData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <defs>
+                      <linearGradient id="colorRss" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Rss Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
+                    <Area type="monotone" dataKey="Rss" stroke={CHART_COLORS.blue} fill="url(#colorRss)" name="RSS" />
+                    <Area type="monotone" dataKey="Rss Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'channelUtil5':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={channelUtil5Data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Available" stackId="1" stroke={CHART_COLORS.warning} fill={CHART_COLORS.warning} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="ClientData" stackId="1" stroke={CHART_COLORS.purple} fill={CHART_COLORS.purple} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="CoChannel" stackId="1" stroke={CHART_COLORS.cyan} fill={CHART_COLORS.cyan} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="Interference" stackId="1" stroke={CHART_COLORS.blue} fill={CHART_COLORS.blue} fillOpacity={0.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'channelUtil24':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={channelUtil24Data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
+                    <Legend />
+                    <Area type="monotone" dataKey="Available" stackId="1" stroke={CHART_COLORS.warning} fill={CHART_COLORS.warning} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="ClientData" stackId="1" stroke={CHART_COLORS.purple} fill={CHART_COLORS.purple} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="CoChannel" stackId="1" stroke={CHART_COLORS.cyan} fill={CHART_COLORS.cyan} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="Interference" stackId="1" stroke={CHART_COLORS.blue} fill={CHART_COLORS.blue} fillOpacity={0.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case 'noise':
+        return (
+          <Card key={config.id}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={noiseData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="time" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
+                    <Legend />
+                    <Line type="monotone" dataKey="R1" stroke={CHART_COLORS.blue} dot={false} name="R1" />
+                    <Line type="monotone" dataKey="R2" stroke={CHART_COLORS.cyan} dot={false} name="R2" />
+                    <Line type="monotone" dataKey="R3" stroke={CHART_COLORS.pink} dot={false} name="R3" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-background">
       <div className="h-full flex flex-col">
@@ -350,190 +578,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-6">
-                {/* Throughput */}
-                {throughputData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Throughput</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={throughputData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorTotalFull" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                            <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Total" stroke={CHART_COLORS.blue} fill="url(#colorTotalFull)" name="Total" />
-                            <Area type="monotone" dataKey="Upload" stroke={CHART_COLORS.cyan} fill="transparent" name="Upload" />
-                            <Area type="monotone" dataKey="Download" stroke={CHART_COLORS.pink} fill="transparent" name="Download" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Power Consumption */}
-                {powerData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Power Consumption</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={powerData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} W`} width={50} />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="Power Consumption" stroke={CHART_COLORS.blue} dot={false} name="Power" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Unique Clients */}
-                {clientData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Unique Client Count</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={clientData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} width={40} />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="stepAfter" dataKey="tntUniqueUsers" stroke={CHART_COLORS.blue} dot={false} name="Unique Users" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* RSS */}
-                {rssData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">RSS (Signal Strength)</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={rssData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <defs>
-                              <linearGradient id="colorRss" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Rss Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                            <Area type="monotone" dataKey="Rss" stroke={CHART_COLORS.blue} fill="url(#colorRss)" name="RSS" />
-                            <Area type="monotone" dataKey="Rss Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Channel Utilization 5GHz */}
-                {channelUtil5Data.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Channel Utilization 5GHz</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={channelUtil5Data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Available" stackId="1" stroke={CHART_COLORS.warning} fill={CHART_COLORS.warning} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="ClientData" stackId="1" stroke={CHART_COLORS.purple} fill={CHART_COLORS.purple} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="CoChannel" stackId="1" stroke={CHART_COLORS.cyan} fill={CHART_COLORS.cyan} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="Interference" stackId="1" stroke={CHART_COLORS.blue} fill={CHART_COLORS.blue} fillOpacity={0.5} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Channel Utilization 2.4GHz */}
-                {channelUtil24Data.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Channel Utilization 2.4GHz</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={channelUtil24Data} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
-                            <Legend />
-                            <Area type="monotone" dataKey="Available" stackId="1" stroke={CHART_COLORS.warning} fill={CHART_COLORS.warning} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="ClientData" stackId="1" stroke={CHART_COLORS.purple} fill={CHART_COLORS.purple} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="CoChannel" stackId="1" stroke={CHART_COLORS.cyan} fill={CHART_COLORS.cyan} fillOpacity={0.5} />
-                            <Area type="monotone" dataKey="Interference" stackId="1" stroke={CHART_COLORS.blue} fill={CHART_COLORS.blue} fillOpacity={0.5} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Noise Per Radio */}
-                {noiseData.length > 0 && (
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Noise Per Channel</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={noiseData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
-                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                            <XAxis dataKey="time" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} />
-                            <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
-                            <Legend />
-                            <Line type="monotone" dataKey="R1" stroke={CHART_COLORS.blue} dot={false} name="R1" />
-                            <Line type="monotone" dataKey="R2" stroke={CHART_COLORS.cyan} dot={false} name="R2" />
-                            <Line type="monotone" dataKey="R3" stroke={CHART_COLORS.pink} dot={false} name="R3" />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {chartConfigs.map(config => renderChart(config))}
               </div>
             )}
           </div>
