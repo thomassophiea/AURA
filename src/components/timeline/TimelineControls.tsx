@@ -2,6 +2,7 @@ import { Lock, Unlock, X, Copy, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { useState } from 'react';
+import { cn } from '../ui/utils';
 
 interface TimelineControlsProps {
   currentTime: number | null;
@@ -47,36 +48,43 @@ export function TimelineControls({
   return (
     <div className="flex flex-col border-b border-border">
       <div className="flex items-center justify-between px-4 py-2 bg-muted/30">
-        <div className="flex items-center gap-4">
-          <div className="text-sm">
-            <span className="text-muted-foreground">Timeline: </span>
+        <div className="flex items-center gap-3">
+          <div className="text-sm min-w-[180px]">
+            <span className="text-muted-foreground">Time: </span>
             <span className="font-medium">{formatTimestamp(currentTime)}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant={isLocked ? 'default' : 'secondary'}
+              size="sm"
+              onClick={onToggleLock}
+              className={cn(
+                "gap-2 min-w-[100px] font-semibold transition-all",
+                isLocked && "bg-violet-600 hover:bg-violet-700 text-white shadow-md",
+                !isLocked && currentTime !== null && "border-violet-400 hover:border-violet-600"
+              )}
+              title={isLocked ? 'Click to unlock and enable hover tracking' : currentTime === null ? 'Hover over a chart first, then click to lock' : 'Click to lock at this time'}
+            >
+              {isLocked ? (
+                <>
+                  <Lock className="h-4 w-4" />
+                  Locked
+                </>
+              ) : (
+                <>
+                  <Unlock className="h-4 w-4" />
+                  {currentTime === null ? 'Hover Chart' : 'Click to Lock'}
+                </>
+              )}
+            </Button>
+
             {hasTimeWindow && (
-              <Badge variant="secondary" className="ml-2 text-xs">
+              <Badge variant="secondary" className="text-xs px-2 py-1">
                 Window: {formatTimeWindow(currentTime, currentTime)}
               </Badge>
             )}
           </div>
-
-          <Button
-            variant={isLocked ? 'default' : 'outline'}
-            size="sm"
-            onClick={onToggleLock}
-            className="gap-2"
-            title={isLocked ? 'Unlock to enable hover tracking' : 'Lock to freeze current time'}
-          >
-            {isLocked ? (
-              <>
-                <Lock className="h-4 w-4" />
-                Locked
-              </>
-            ) : (
-              <>
-                <Unlock className="h-4 w-4" />
-                {currentTime === null ? 'Lock (hover to select)' : 'Unlocked'}
-              </>
-            )}
-          </Button>
 
           <Button
             variant="ghost"
@@ -86,6 +94,7 @@ export function TimelineControls({
             title="Show timeline help"
           >
             <Info className="h-4 w-4" />
+            {showHelp ? 'Hide' : 'Help'}
           </Button>
         </div>
 

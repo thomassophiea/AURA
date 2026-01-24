@@ -174,12 +174,12 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "border-border/50 bg-background/95 backdrop-blur-sm grid items-start gap-0.5 rounded-md border px-1.5 py-1 text-xs shadow-lg",
+        "border-border/50 bg-background/95 backdrop-blur-sm grid items-start gap-0 rounded border px-1 py-0.5 text-[10px] shadow-md",
         className,
       )}
     >
       {!nestLabel ? tooltipLabel : null}
-      <div className="grid gap-0.5">
+      <div className="grid gap-0">
         {payload.map((item, index) => {
           const key = `${nameKey || item.name || item.dataKey || "value"}`;
           const itemConfig = getPayloadConfigFromPayload(config, item, key);
@@ -189,7 +189,7 @@ function ChartTooltipContent({
             <div
               key={item.dataKey}
               className={cn(
-                "[&>svg]:text-muted-foreground flex w-full flex-nowrap items-stretch gap-1.5 [&>svg]:h-2.5 [&>svg]:w-2.5",
+                "[&>svg]:text-muted-foreground flex w-full flex-nowrap items-stretch gap-1 [&>svg]:h-2 [&>svg]:w-2",
                 indicator === "dot" && "items-center",
               )}
             >
@@ -203,11 +203,11 @@ function ChartTooltipContent({
                     !hideIndicator && (
                       <div
                         className={cn(
-                          "shrink-0 rounded-[2px] border-(--color-border) bg-(--color-bg)",
+                          "shrink-0 rounded-[1px] border-(--color-border) bg-(--color-bg)",
                           {
-                            "h-2.5 w-2.5": indicator === "dot",
-                            "w-1": indicator === "line",
-                            "w-0 border-[1.5px] border-dashed bg-transparent":
+                            "h-2 w-2": indicator === "dot",
+                            "w-0.5": indicator === "line",
+                            "w-0 border-[1px] border-dashed bg-transparent":
                               indicator === "dashed",
                             "my-0.5": nestLabel && indicator === "dashed",
                           },
@@ -223,18 +223,15 @@ function ChartTooltipContent({
                   )}
                   <div
                     className={cn(
-                      "flex flex-1 justify-between leading-none",
+                      "flex flex-1 justify-between leading-tight gap-1.5",
                       nestLabel ? "items-end" : "items-center",
                     )}
                   >
-                    <div className="grid gap-1.5">
-                      {nestLabel ? tooltipLabel : null}
-                      <span className="text-muted-foreground">
-                        {itemConfig?.label || item.name}
-                      </span>
-                    </div>
+                    <span className="text-muted-foreground truncate max-w-[60px]">
+                      {itemConfig?.label || item.name}:
+                    </span>
                     {item.value && (
-                      <span className="text-foreground font-mono font-medium tabular-nums">
+                      <span className="text-foreground font-mono font-semibold tabular-nums">
                         {formatCompactNumber(item.value)}
                       </span>
                     )}
