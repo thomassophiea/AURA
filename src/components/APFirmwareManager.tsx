@@ -28,6 +28,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { TouchButton } from './TouchButton';
+import { DesktopOnly } from './MobileOptimized';
 
 interface AccessPoint {
   serialNumber: string;
@@ -202,21 +204,23 @@ export function APFirmwareManager() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Download className="h-6 w-6" />
+          <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+            <Download className="h-6 w-6 md:h-8 md:w-8" />
             AP Firmware Management
           </h2>
-          <p className="text-muted-foreground">
-            Manage access point firmware upgrades and schedules
-          </p>
+          <DesktopOnly>
+            <p className="text-muted-foreground">
+              Manage access point firmware upgrades and schedules
+            </p>
+          </DesktopOnly>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} aria-label="Refresh AP firmware data">
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <TouchButton variant="outline" size="sm" onClick={loadData} aria-label="Refresh AP firmware data">
+          <RefreshCw className="h-4 w-4 md:mr-2" />
+          <span className="hidden md:inline">Refresh</span>
+        </TouchButton>
       </div>
 
       {/* Statistics */}

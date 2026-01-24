@@ -17,6 +17,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { TouchButton } from './TouchButton';
+import { DesktopOnly } from './MobileOptimized';
 import { apiService } from '../services/api';
 
 interface PingResult {
@@ -167,7 +169,7 @@ export function NetworkDiagnostics() {
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-4 md:p-6">
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Activity className="h-6 w-6" />

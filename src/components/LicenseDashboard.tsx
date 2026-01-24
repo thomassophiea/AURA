@@ -27,6 +27,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from './ui/dialog';
+import { TouchButton } from './TouchButton';
+import { ResponsiveDialog } from './ResponsiveDialog';
+import { DesktopOnly } from './MobileOptimized';
 
 interface LicenseInfo {
   licenses: Array<{
@@ -172,35 +175,37 @@ export function LicenseDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-bold flex items-center gap-3 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-            <Key className="h-8 w-8 text-primary" />
+          <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            <Key className="h-6 w-6 md:h-8 md:w-8 text-primary" />
             License Management
           </h2>
-          <p className="text-muted-foreground mt-2 text-base">
-            Manage and monitor system licenses
-          </p>
+          <DesktopOnly>
+            <p className="text-muted-foreground mt-2 text-base">
+              Manage and monitor system licenses
+            </p>
+          </DesktopOnly>
         </div>
         <div className="flex gap-2">
-          <Button
+          <TouchButton
             variant="outline"
             size="sm"
             onClick={loadLicenseData}
             aria-label="Refresh license data"
           >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button
+            <RefreshCw className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Refresh</span>
+          </TouchButton>
+          <TouchButton
             size="sm"
             onClick={() => setShowInstallDialog(true)}
             aria-label="Install new license"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Install License
-          </Button>
+            <Plus className="h-4 w-4 md:mr-2" />
+            <span className="hidden md:inline">Install License</span>
+          </TouchButton>
         </div>
       </div>
 
@@ -416,60 +421,57 @@ export function LicenseDashboard() {
       </Card>
 
       {/* Install License Dialog */}
-      <Dialog open={showInstallDialog} onOpenChange={setShowInstallDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Install License</DialogTitle>
-            <DialogDescription>
-              Enter the license key provided by Extreme Networks
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="license-key">License Key</Label>
-              <Input
-                id="license-key"
-                value={licenseKey}
-                onChange={(e) => setLicenseKey(e.target.value)}
-                placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
-                onKeyPress={(e) => e.key === 'Enter' && handleInstallLicense()}
-                aria-describedby="license-key-hint"
-                aria-label="Enter license key"
-              />
-              <p id="license-key-hint" className="text-xs text-muted-foreground">
-                Enter the complete license key including dashes
-              </p>
-            </div>
+      <ResponsiveDialog
+        open={showInstallDialog}
+        onOpenChange={setShowInstallDialog}
+        title="Install License"
+        description="Enter the license key provided by Extreme Networks"
+      >
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="license-key">License Key</Label>
+            <Input
+              id="license-key"
+              value={licenseKey}
+              onChange={(e) => setLicenseKey(e.target.value)}
+              placeholder="XXXX-XXXX-XXXX-XXXX-XXXX"
+              onKeyPress={(e) => e.key === 'Enter' && handleInstallLicense()}
+              aria-describedby="license-key-hint"
+              aria-label="Enter license key"
+            />
+            <p id="license-key-hint" className="text-xs text-muted-foreground">
+              Enter the complete license key including dashes
+            </p>
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setShowInstallDialog(false)}
-              disabled={installing}
-              aria-label="Cancel license installation"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleInstallLicense}
-              disabled={installing}
-              aria-label="Install license key"
-            >
-              {installing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                  Installing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Install License
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+        <div className="flex gap-2 justify-end pt-4 border-t">
+          <TouchButton
+            variant="outline"
+            onClick={() => setShowInstallDialog(false)}
+            disabled={installing}
+            aria-label="Cancel license installation"
+          >
+            Cancel
+          </TouchButton>
+          <TouchButton
+            onClick={handleInstallLicense}
+            disabled={installing}
+            aria-label="Install license key"
+          >
+            {installing ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Installing...
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Install License
+              </>
+            )}
+          </TouchButton>
+        </div>
+      </ResponsiveDialog>
     </div>
   );
 }
