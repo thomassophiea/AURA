@@ -1179,13 +1179,17 @@ function DashboardEnhancedComponent() {
         {/* Key Metrics Grid */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {/* Total APs */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Access Points</CardTitle>
-            <Wifi className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-semibold">Access Points</CardTitle>
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md group-hover:scale-110 transition-transform">
+              <Wifi className="h-3.5 w-3.5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{apStats.total}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{apStats.total}</div>
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
@@ -1227,13 +1231,17 @@ function DashboardEnhancedComponent() {
         </Card>
 
         {/* Connected Clients */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Connected Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <div className="absolute -right-8 -top-8 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-semibold">Connected Clients</CardTitle>
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md group-hover:scale-110 transition-transform">
+              <Users className="h-3.5 w-3.5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{clientStats.total}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">{clientStats.total}</div>
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Authenticated</span>
@@ -1252,16 +1260,20 @@ function DashboardEnhancedComponent() {
         </Card>
 
         {/* Network Throughput */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm flex items-center gap-1.5">
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <div className="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm flex items-center gap-1.5 font-semibold">
               Network Throughput
               <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" title={TOOLTIPS.REAL_TIME_THROUGHPUT} />
             </CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md group-hover:scale-110 transition-transform">
+              <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</div>
             <p className="text-xs text-muted-foreground">Total network traffic (Mbps/Gbps)</p>
             
             {/* Upload/Download Stats */}
@@ -1323,13 +1335,17 @@ function DashboardEnhancedComponent() {
         </Card>
 
         {/* Active Alerts */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm">Active Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <div className="absolute -right-8 -top-8 w-24 h-24 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-semibold">Active Alerts</CardTitle>
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md group-hover:scale-110 transition-transform">
+              <AlertTriangle className="h-3.5 w-3.5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</div>
+          <CardContent className="relative">
+            <div className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">{alertCounts.critical + alertCounts.warning}</div>
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex gap-2">
                 {alertCounts.critical > 0 && (
