@@ -19,7 +19,13 @@ import {
   BarChart3,
   Wrench,
   AppWindow,
-  FileCheck
+  FileCheck,
+  Database,
+  Key,
+  Download,
+  Activity,
+  Bell,
+  HardDrive
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -58,15 +64,28 @@ const configureItems = [
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
 ];
 
+// System Management items
+const systemItems = [
+  { id: 'system-backup', label: 'Backup & Storage', icon: Database },
+  { id: 'license-dashboard', label: 'License Management', icon: Key },
+  { id: 'firmware-manager', label: 'Firmware Manager', icon: Download },
+  { id: 'network-diagnostics', label: 'Network Diagnostics', icon: Activity },
+  { id: 'event-alarm-dashboard', label: 'Events & Alarms', icon: Bell },
+  { id: 'security-dashboard', label: 'Security', icon: Shield },
+  { id: 'guest-management', label: 'Guest Access', icon: UserPlus },
+];
+
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'system', onThemeToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const branding = useBranding();
 
   // Check if any configure sub-item is currently active
   const isConfigureActive = configureItems.some(item => currentPage === item.id);
+  const isSystemActive = systemItems.some(item => currentPage === item.id);
 
-  // Auto-expand Configure section if a configure item is active
+  // Auto-expand sections if an item is active
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
+  const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
 
   return (
     <div className={cn(
@@ -173,7 +192,64 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             </div>
           )}
         </div>
-        
+
+        {/* System Section */}
+        <div className="space-y-1">
+          <Button
+            variant={isSystemActive ? "default" : "ghost"}
+            className={cn(
+              "w-full justify-start h-10",
+              isCollapsed ? "px-2" : "px-3",
+              isSystemActive
+                ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+            onClick={() => {
+              if (!isCollapsed) {
+                setIsSystemExpanded(!isSystemExpanded);
+              }
+            }}
+          >
+            <HardDrive className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            {!isCollapsed && (
+              <>
+                <span className="flex-1 text-left">System</span>
+                {isSystemExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </>
+            )}
+          </Button>
+
+          {/* System Sub-items */}
+          {!isCollapsed && isSystemExpanded && (
+            <div className="ml-6 space-y-1">
+              {systemItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.id}
+                    variant={currentPage === item.id ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start h-9 text-sm",
+                      "px-3",
+                      currentPage === item.id
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    onClick={() => onPageChange(item.id)}
+                  >
+                    <Icon className="h-3 w-3 mr-2" />
+                    <span>{item.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Administration - Bottom Navigation Item */}
         
         {/* Tools - Navigation Item */}

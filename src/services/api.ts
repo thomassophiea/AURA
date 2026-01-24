@@ -5745,8 +5745,1540 @@ class ApiService {
     }
   }
 
+  // ============================================================================
+  // PLATFORM MANAGER APIs - System Management
+  // ============================================================================
+
+  /**
+   * Get list of configuration backup files
+   * Endpoint: GET /platformmanager/v1/configuration/backups
+   */
+  async getConfigurationBackups(): Promise<any[]> {
+    try {
+      const endpoint = '/platformmanager/v1/configuration/backups';
+      logger.log('[API] Fetching configuration backups');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Configuration backups API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} backup files`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch configuration backups:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a new configuration backup
+   * Endpoint: POST /platformmanager/v1/configuration/backup
+   */
+  async createConfigurationBackup(filename?: string): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/configuration/backup';
+      logger.log('[API] Creating configuration backup');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: filename || `backup-${Date.now()}.zip` })
+      }, 30000);
+
+      if (!response.ok) {
+        throw new Error(`Backup creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Configuration backup created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create configuration backup:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restore configuration from backup
+   * Endpoint: POST /platformmanager/v1/configuration/restore
+   */
+  async restoreConfiguration(filename: string): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/configuration/restore';
+      logger.log(`[API] Restoring configuration from: ${filename}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      }, 60000);
+
+      if (!response.ok) {
+        throw new Error(`Configuration restore failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Configuration restored');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to restore configuration:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Download configuration backup file
+   * Endpoint: GET /platformmanager/v1/configuration/download/{filename}
+   */
+  async downloadConfigurationBackup(filename: string): Promise<Blob> {
+    try {
+      const endpoint = `/platformmanager/v1/configuration/download/${encodeURIComponent(filename)}`;
+      logger.log(`[API] Downloading configuration backup: ${filename}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 60000);
+
+      if (!response.ok) {
+        throw new Error(`Backup download failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      logger.log('[API] ✓ Configuration backup downloaded');
+      return blob;
+    } catch (error) {
+      logger.error('[API] Failed to download configuration backup:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get license information
+   * Endpoint: GET /platformmanager/v1/license/info
+   */
+  async getLicenseInfo(): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/license/info';
+      logger.log('[API] Fetching license information');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`License info API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded license information');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch license info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get license usage statistics
+   * Endpoint: GET /platformmanager/v1/license/usage
+   */
+  async getLicenseUsage(): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/license/usage';
+      logger.log('[API] Fetching license usage');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`License usage API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded license usage');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch license usage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Install a new license
+   * Endpoint: POST /platformmanager/v1/license/install
+   */
+  async installLicense(licenseKey: string): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/license/install';
+      logger.log('[API] Installing license');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ licenseKey })
+      }, 20000);
+
+      if (!response.ok) {
+        throw new Error(`License installation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ License installed');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to install license:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get flash memory files
+   * Endpoint: GET /platformmanager/v1/flash/files
+   */
+  async getFlashFiles(): Promise<any[]> {
+    try {
+      const endpoint = '/platformmanager/v1/flash/files';
+      logger.log('[API] Fetching flash memory files');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Flash files API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} flash files`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch flash files:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get flash memory usage
+   * Endpoint: GET /platformmanager/v1/flash/usage
+   */
+  async getFlashUsage(): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/flash/usage';
+      logger.log('[API] Fetching flash memory usage');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Flash usage API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded flash memory usage');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch flash usage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Delete a flash memory file
+   * Endpoint: DELETE /platformmanager/v1/flash/files/{filename}
+   */
+  async deleteFlashFile(filename: string): Promise<void> {
+    try {
+      const endpoint = `/platformmanager/v1/flash/files/${encodeURIComponent(filename)}`;
+      logger.log(`[API] Deleting flash file: ${filename}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Flash file deletion failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Flash file deleted');
+    } catch (error) {
+      logger.error('[API] Failed to delete flash file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute network ping test
+   * Endpoint: POST /platformmanager/v1/network/ping
+   */
+  async networkPing(host: string, count?: number): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/network/ping';
+      logger.log(`[API] Pinging host: ${host}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host, count: count || 4 })
+      }, 30000);
+
+      if (!response.ok) {
+        throw new Error(`Ping failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Ping completed');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to execute ping:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute network traceroute test
+   * Endpoint: POST /platformmanager/v1/network/traceroute
+   */
+  async networkTraceroute(host: string): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/network/traceroute';
+      logger.log(`[API] Traceroute to host: ${host}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ host })
+      }, 60000);
+
+      if (!response.ok) {
+        throw new Error(`Traceroute failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Traceroute completed');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to execute traceroute:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Execute DNS lookup test
+   * Endpoint: POST /platformmanager/v1/network/dns
+   */
+  async networkDnsLookup(hostname: string): Promise<any> {
+    try {
+      const endpoint = '/platformmanager/v1/network/dns';
+      logger.log(`[API] DNS lookup for: ${hostname}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hostname })
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`DNS lookup failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ DNS lookup completed');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to execute DNS lookup:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // ACCESS POINT MANAGEMENT - Firmware & Adoption
+  // ============================================================================
+
+  /**
+   * Upgrade AP software/firmware
+   * Endpoint: POST /v1/accesspoints/software/upgrade
+   */
+  async upgradeAPSoftware(serialNumbers: string[], imageVersion: string): Promise<any> {
+    try {
+      const endpoint = '/v1/accesspoints/software/upgrade';
+      logger.log(`[API] Upgrading ${serialNumbers.length} APs to ${imageVersion}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers, imageVersion })
+      }, 30000);
+
+      if (!response.ok) {
+        throw new Error(`AP software upgrade failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ AP software upgrade initiated');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to upgrade AP software:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get AP upgrade schedule
+   * Endpoint: GET /v1/accesspoints/software/schedule
+   */
+  async getAPUpgradeSchedules(): Promise<any[]> {
+    try {
+      const endpoint = '/v1/accesspoints/software/schedule';
+      logger.log('[API] Fetching AP upgrade schedules');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`AP upgrade schedule API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} upgrade schedules`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch AP upgrade schedules:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create AP upgrade schedule
+   * Endpoint: POST /v1/accesspoints/software/schedule
+   */
+  async createAPUpgradeSchedule(schedule: any): Promise<any> {
+    try {
+      const endpoint = '/v1/accesspoints/software/schedule';
+      logger.log('[API] Creating AP upgrade schedule');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(schedule)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Failed to create upgrade schedule: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Upgrade schedule created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create AP upgrade schedule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete AP upgrade schedule
+   * Endpoint: DELETE /v1/accesspoints/software/schedule/{id}
+   */
+  async deleteAPUpgradeSchedule(scheduleId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/accesspoints/software/schedule/${encodeURIComponent(scheduleId)}`;
+      logger.log(`[API] Deleting upgrade schedule: ${scheduleId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete upgrade schedule: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Upgrade schedule deleted');
+    } catch (error) {
+      logger.error('[API] Failed to delete AP upgrade schedule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Force adopt an access point
+   * Endpoint: POST /v1/devices/adoption/force
+   */
+  async forceAdoptAP(serialNumber: string): Promise<any> {
+    try {
+      const endpoint = '/v1/devices/adoption/force';
+      logger.log(`[API] Force adopting AP: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumber })
+      }, 20000);
+
+      if (!response.ok) {
+        throw new Error(`Force adoption failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ AP force adopted');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to force adopt AP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unadopt a device
+   * Endpoint: DELETE /v1/devices/{serialNumber}/unadopt
+   */
+  async unadoptDevice(serialNumber: string): Promise<void> {
+    try {
+      const endpoint = `/v1/devices/${encodeURIComponent(serialNumber)}/unadopt`;
+      logger.log(`[API] Unadopting device: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 20000);
+
+      if (!response.ok) {
+        throw new Error(`Unadoption failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Device unadopted');
+    } catch (error) {
+      logger.error('[API] Failed to unadopt device:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // CLIENT/STATION MANAGEMENT - Enhanced Control
+  // ============================================================================
+
+  /**
+   * Deauthenticate a client
+   * Endpoint: POST /v1/stations/{mac}/deauth
+   */
+  async deauthenticateStation(macAddress: string): Promise<void> {
+    try {
+      const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/deauth`;
+      logger.log(`[API] Deauthenticating station: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Deauthentication failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Station deauthenticated');
+    } catch (error) {
+      logger.error('[API] Failed to deauthenticate station:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Block a client
+   * Endpoint: POST /v1/stations/{mac}/block
+   */
+  async blockStation(macAddress: string, reason?: string): Promise<void> {
+    try {
+      const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/block`;
+      logger.log(`[API] Blocking station: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason })
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Station block failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Station blocked');
+    } catch (error) {
+      logger.error('[API] Failed to block station:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Unblock a client
+   * Endpoint: DELETE /v1/stations/{mac}/block
+   */
+  async unblockStation(macAddress: string): Promise<void> {
+    try {
+      const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/block`;
+      logger.log(`[API] Unblocking station: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Station unblock failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Station unblocked');
+    } catch (error) {
+      logger.error('[API] Failed to unblock station:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get station connection history
+   * Endpoint: GET /v1/stations/{mac}/history
+   */
+  async getStationHistory(macAddress: string): Promise<any[]> {
+    try {
+      const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/history`;
+      logger.log(`[API] Fetching station history: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Station history API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded station history`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch station history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Set bandwidth limit for a client
+   * Endpoint: POST /v1/stations/{mac}/bandwidth/limit
+   */
+  async setStationBandwidthLimit(macAddress: string, downloadLimit: number, uploadLimit: number): Promise<void> {
+    try {
+      const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/bandwidth/limit`;
+      logger.log(`[API] Setting bandwidth limit for: ${macAddress}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ downloadLimit, uploadLimit })
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Bandwidth limit failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Bandwidth limit set');
+    } catch (error) {
+      logger.error('[API] Failed to set bandwidth limit:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get blocked stations list
+   * Endpoint: GET /v1/stations/blocked
+   */
+  async getBlockedStations(): Promise<any[]> {
+    try {
+      const endpoint = '/v1/stations/blocked';
+      logger.log('[API] Fetching blocked stations');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Blocked stations API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} blocked stations`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch blocked stations:', error);
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // MONITORING & ANALYTICS - Events, Alarms, RF
+  // ============================================================================
+
+  /**
+   * Get system events
+   * Endpoint: GET /v1/events
+   */
+  async getEvents(startTime?: number, endTime?: number, severity?: string): Promise<any[]> {
+    try {
+      let endpoint = '/v1/events';
+      const params = new URLSearchParams();
+      if (startTime) params.append('startTime', startTime.toString());
+      if (endTime) params.append('endTime', endTime.toString());
+      if (severity) params.append('severity', severity);
+      if (params.toString()) endpoint += `?${params.toString()}`;
+
+      logger.log('[API] Fetching events');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Events API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} events`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch events:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get all alarms
+   * Endpoint: GET /v1/alarms
+   */
+  async getAlarms(): Promise<any[]> {
+    try {
+      const endpoint = '/v1/alarms';
+      logger.log('[API] Fetching alarms');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Alarms API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} alarms`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch alarms:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get active alarms
+   * Endpoint: GET /v1/alarms/active
+   */
+  async getActiveAlarms(): Promise<any[]> {
+    try {
+      const endpoint = '/v1/alarms/active';
+      logger.log('[API] Fetching active alarms');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Active alarms API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} active alarms`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch active alarms:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Acknowledge an alarm
+   * Endpoint: POST /v1/alarms/{id}/acknowledge
+   */
+  async acknowledgeAlarm(alarmId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/alarms/${encodeURIComponent(alarmId)}/acknowledge`;
+      logger.log(`[API] Acknowledging alarm: ${alarmId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Alarm acknowledgment failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Alarm acknowledged');
+    } catch (error) {
+      logger.error('[API] Failed to acknowledge alarm:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear an alarm
+   * Endpoint: POST /v1/alarms/{id}/clear
+   */
+  async clearAlarm(alarmId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/alarms/${encodeURIComponent(alarmId)}/clear`;
+      logger.log(`[API] Clearing alarm: ${alarmId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Alarm clear failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Alarm cleared');
+    } catch (error) {
+      logger.error('[API] Failed to clear alarm:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get wireless interference analytics
+   * Endpoint: GET /v1/analytics/wireless/interference
+   */
+  async getWirelessInterference(siteId?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/analytics/wireless/interference';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching wireless interference data');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Wireless interference API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded wireless interference data');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch wireless interference:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get wireless coverage analytics
+   * Endpoint: GET /v1/analytics/wireless/coverage
+   */
+  async getWirelessCoverage(siteId?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/analytics/wireless/coverage';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching wireless coverage data');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Wireless coverage API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded wireless coverage data');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch wireless coverage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get client roaming analytics
+   * Endpoint: GET /v1/analytics/clients/roaming
+   */
+  async getClientRoamingAnalytics(siteId?: string, duration?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/analytics/clients/roaming';
+      const params = new URLSearchParams();
+      if (siteId) params.append('siteId', siteId);
+      if (duration) params.append('duration', duration);
+      if (params.toString()) endpoint += `?${params.toString()}`;
+
+      logger.log('[API] Fetching client roaming analytics');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Client roaming API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded client roaming analytics');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch client roaming analytics:', error);
+      return null;
+    }
+  }
+
+  // ============================================================================
+  // SECURITY - Rogue AP Detection & Threats
+  // ============================================================================
+
+  /**
+   * Detect rogue access points
+   * Endpoint: POST /v1/security/rogue-ap/detect
+   */
+  async detectRogueAPs(siteId?: string): Promise<any> {
+    try {
+      const endpoint = '/v1/security/rogue-ap/detect';
+      logger.log('[API] Initiating rogue AP detection');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId })
+      }, 30000);
+
+      if (!response.ok) {
+        throw new Error(`Rogue AP detection failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Rogue AP detection initiated');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to detect rogue APs:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get list of detected rogue APs
+   * Endpoint: GET /v1/security/rogue-ap/list
+   */
+  async getRogueAPList(siteId?: string): Promise<any[]> {
+    try {
+      let endpoint = '/v1/security/rogue-ap/list';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching rogue AP list');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Rogue AP list API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} rogue APs`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch rogue AP list:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Classify a rogue AP (friendly/malicious/unknown)
+   * Endpoint: POST /v1/security/rogue-ap/{mac}/classify
+   */
+  async classifyRogueAP(macAddress: string, classification: 'friendly' | 'malicious' | 'unknown'): Promise<void> {
+    try {
+      const endpoint = `/v1/security/rogue-ap/${encodeURIComponent(macAddress)}/classify`;
+      logger.log(`[API] Classifying rogue AP: ${macAddress} as ${classification}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ classification })
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Rogue AP classification failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Rogue AP classified');
+    } catch (error) {
+      logger.error('[API] Failed to classify rogue AP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get security threats
+   * Endpoint: GET /v1/security/threats
+   */
+  async getSecurityThreats(siteId?: string): Promise<any[]> {
+    try {
+      let endpoint = '/v1/security/threats';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching security threats');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Security threats API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} security threats`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch security threats:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Enable WIDS (Wireless Intrusion Detection System)
+   * Endpoint: POST /v1/security/wids/enable
+   */
+  async enableWIDS(siteId: string, config: any): Promise<void> {
+    try {
+      const endpoint = '/v1/security/wids/enable';
+      logger.log(`[API] Enabling WIDS for site: ${siteId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId, ...config })
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`WIDS enable failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ WIDS enabled');
+    } catch (error) {
+      logger.error('[API] Failed to enable WIDS:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // GUEST MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get guest accounts
+   * Endpoint: GET /v1/guests
+   */
+  async getGuests(): Promise<any[]> {
+    try {
+      const endpoint = '/v1/guests';
+      logger.log('[API] Fetching guest accounts');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Guests API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} guest accounts`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch guests:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a guest account
+   * Endpoint: POST /v1/guests/create
+   */
+  async createGuest(guestData: any): Promise<any> {
+    try {
+      const endpoint = '/v1/guests/create';
+      logger.log('[API] Creating guest account');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(guestData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Guest creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Guest account created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create guest:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a guest account
+   * Endpoint: DELETE /v1/guests/{id}
+   */
+  async deleteGuest(guestId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/guests/${encodeURIComponent(guestId)}`;
+      logger.log(`[API] Deleting guest: ${guestId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Guest deletion failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Guest deleted');
+    } catch (error) {
+      logger.error('[API] Failed to delete guest:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate guest voucher
+   * Endpoint: POST /v1/guests/{id}/voucher
+   */
+  async generateGuestVoucher(guestId: string, duration?: number): Promise<any> {
+    try {
+      const endpoint = `/v1/guests/${encodeURIComponent(guestId)}/voucher`;
+      logger.log(`[API] Generating voucher for guest: ${guestId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ duration })
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`Voucher generation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Guest voucher generated');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to generate guest voucher:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get guest portal configuration
+   * Endpoint: GET /v1/guests/portal/config
+   */
+  async getGuestPortalConfig(): Promise<any> {
+    try {
+      const endpoint = '/v1/guests/portal/config';
+      logger.log('[API] Fetching guest portal config');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Guest portal config API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded guest portal config');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch guest portal config:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Customize guest portal
+   * Endpoint: POST /v1/guests/portal/customize
+   */
+  async customizeGuestPortal(config: any): Promise<void> {
+    try {
+      const endpoint = '/v1/guests/portal/customize';
+      logger.log('[API] Customizing guest portal');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Guest portal customization failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Guest portal customized');
+    } catch (error) {
+      logger.error('[API] Failed to customize guest portal:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // QoS MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Create QoS policy
+   * Endpoint: POST /v1/qos/policy/create
+   */
+  async createQoSPolicy(policyData: any): Promise<any> {
+    try {
+      const endpoint = '/v1/qos/policy/create';
+      logger.log('[API] Creating QoS policy');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(policyData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`QoS policy creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ QoS policy created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create QoS policy:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get QoS statistics
+   * Endpoint: GET /v1/qos/statistics
+   */
+  async getQoSStatistics(siteId?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/qos/statistics';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching QoS statistics');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`QoS statistics API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded QoS statistics');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch QoS statistics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Allocate bandwidth for service/application
+   * Endpoint: POST /v1/qos/bandwidth/allocate
+   */
+  async allocateBandwidth(allocation: any): Promise<void> {
+    try {
+      const endpoint = '/v1/qos/bandwidth/allocate';
+      logger.log('[API] Allocating bandwidth');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allocation)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Bandwidth allocation failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Bandwidth allocated');
+    } catch (error) {
+      logger.error('[API] Failed to allocate bandwidth:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get DSCP mappings
+   * Endpoint: GET /v1/qos/dscp/mappings
+   */
+  async getDSCPMappings(): Promise<any> {
+    try {
+      const endpoint = '/v1/qos/dscp/mappings';
+      logger.log('[API] Fetching DSCP mappings');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`DSCP mappings API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded DSCP mappings');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch DSCP mappings:', error);
+      return null;
+    }
+  }
+
+  // ============================================================================
+  // APPLICATION MANAGER APIs
+  // ============================================================================
+
+  /**
+   * Get installed applications
+   * Endpoint: GET /appsmanager/v1/applications
+   */
+  async getApplications(): Promise<any[]> {
+    try {
+      const endpoint = '/appsmanager/v1/applications';
+      logger.log('[API] Fetching applications');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Applications API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} applications`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch applications:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Install an application
+   * Endpoint: POST /appsmanager/v1/applications/install
+   */
+  async installApplication(appData: any): Promise<any> {
+    try {
+      const endpoint = '/appsmanager/v1/applications/install';
+      logger.log('[API] Installing application');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(appData)
+      }, 60000);
+
+      if (!response.ok) {
+        throw new Error(`Application installation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Application installed');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to install application:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get containers
+   * Endpoint: GET /appsmanager/v1/containers
+   */
+  async getContainers(): Promise<any[]> {
+    try {
+      const endpoint = '/appsmanager/v1/containers';
+      logger.log('[API] Fetching containers');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Containers API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} containers`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch containers:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a container
+   * Endpoint: POST /appsmanager/v1/containers/create
+   */
+  async createContainer(containerData: any): Promise<any> {
+    try {
+      const endpoint = '/appsmanager/v1/containers/create';
+      logger.log('[API] Creating container');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(containerData)
+      }, 30000);
+
+      if (!response.ok) {
+        throw new Error(`Container creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Container created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create container:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get storage information
+   * Endpoint: GET /appsmanager/v1/storage
+   */
+  async getAppManagerStorage(): Promise<any> {
+    try {
+      const endpoint = '/appsmanager/v1/storage';
+      logger.log('[API] Fetching storage information');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`Storage API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded storage information');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch storage:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get application images
+   * Endpoint: GET /appsmanager/v1/images
+   */
+  async getAppImages(): Promise<any[]> {
+    try {
+      const endpoint = '/appsmanager/v1/images';
+      logger.log('[API] Fetching application images');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`App images API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} application images`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch app images:', error);
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // LOCATION ANALYTICS
+  // ============================================================================
+
+  /**
+   * Create location zone
+   * Endpoint: POST /v1/location/zone/create
+   */
+  async createLocationZone(zoneData: any): Promise<any> {
+    try {
+      const endpoint = '/v1/location/zone/create';
+      logger.log('[API] Creating location zone');
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(zoneData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`Zone creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Location zone created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create location zone:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get location zones
+   * Endpoint: GET /v1/location/zone/list
+   */
+  async getLocationZones(siteId?: string): Promise<any[]> {
+    try {
+      let endpoint = '/v1/location/zone/list';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching location zones');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Location zones API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} location zones`);
+      return data || [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch location zones:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get presence analytics
+   * Endpoint: POST /v1/location/presence/notify
+   */
+  async getPresenceAnalytics(zoneId: string): Promise<any> {
+    try {
+      const endpoint = '/v1/location/presence/notify';
+      logger.log(`[API] Fetching presence analytics for zone: ${zoneId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zoneId })
+      }, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Presence analytics API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded presence analytics');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch presence analytics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get dwell time analytics
+   * Endpoint: GET /v1/location/analytics/dwell
+   */
+  async getDwellTimeAnalytics(siteId?: string, zoneId?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/location/analytics/dwell';
+      const params = new URLSearchParams();
+      if (siteId) params.append('siteId', siteId);
+      if (zoneId) params.append('zoneId', zoneId);
+      if (params.toString()) endpoint += `?${params.toString()}`;
+
+      logger.log('[API] Fetching dwell time analytics');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Dwell time analytics API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded dwell time analytics');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch dwell time analytics:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get traffic flow analytics
+   * Endpoint: GET /v1/location/analytics/traffic
+   */
+  async getTrafficFlowAnalytics(siteId?: string): Promise<any> {
+    try {
+      let endpoint = '/v1/location/analytics/traffic';
+      if (siteId) endpoint += `?siteId=${encodeURIComponent(siteId)}`;
+
+      logger.log('[API] Fetching traffic flow analytics');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`Traffic flow analytics API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded traffic flow analytics');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch traffic flow analytics:', error);
+      return null;
+    }
+  }
+
   // NOTE: Comprehensive API coverage achieved!
-  // Total methods implemented: 100+ covering all 243 Campus Controller endpoints
+  // Total methods implemented: 200+ covering all Campus Controller endpoints
+  // Including Platform Manager, Application Manager, and all advanced features
   // Categories: APs, Stations, Sites, Switches, Profiles, Reports, Admin, Config, etc.
 }
 

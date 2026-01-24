@@ -38,6 +38,13 @@ const SiteDetail = lazy(() => import('./components/SiteDetail').then(m => ({ def
 const NetworkChatbot = lazy(() => import('./components/NetworkChatbot').then(m => ({ default: m.NetworkChatbot })));
 const AppInsights = lazy(() => import('./components/AppInsights').then(m => ({ default: m.AppInsights })));
 const PCIReport = lazy(() => import('./components/PCIReport').then(m => ({ default: m.PCIReport })));
+const SystemBackupManager = lazy(() => import('./components/SystemBackupManager').then(m => ({ default: m.SystemBackupManager })));
+const LicenseDashboard = lazy(() => import('./components/LicenseDashboard').then(m => ({ default: m.LicenseDashboard })));
+const APFirmwareManager = lazy(() => import('./components/APFirmwareManager').then(m => ({ default: m.APFirmwareManager })));
+const NetworkDiagnostics = lazy(() => import('./components/NetworkDiagnostics').then(m => ({ default: m.NetworkDiagnostics })));
+const EventAlarmDashboard = lazy(() => import('./components/EventAlarmDashboard').then(m => ({ default: m.EventAlarmDashboard })));
+const SecurityDashboard = lazy(() => import('./components/SecurityDashboard').then(m => ({ default: m.SecurityDashboard })));
+const GuestManagement = lazy(() => import('./components/GuestManagement').then(m => ({ default: m.GuestManagement })));
 import { apiService, ApiCallLog } from './services/api';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
@@ -65,6 +72,13 @@ const pageInfo = {
   'network-visualization': { title: 'Network Visualization', description: 'Visualize network topology and connections' },
   'report-widgets': { title: 'Report Widgets', description: 'Real-time analytics and monitoring widgets' },
   'pci-report': { title: 'PCI DSS Report', description: 'Generate PCI DSS compliance reports for cardholder data environments' },
+  'system-backup': { title: 'Backup & Storage', description: 'Manage configuration backups and flash memory storage' },
+  'license-dashboard': { title: 'License Management', description: 'View and manage system licenses' },
+  'firmware-manager': { title: 'Firmware Manager', description: 'Manage AP firmware upgrades and schedules' },
+  'network-diagnostics': { title: 'Network Diagnostics', description: 'Test network connectivity with ping, traceroute, and DNS' },
+  'event-alarm-dashboard': { title: 'Events & Alarms', description: 'Monitor system events and manage alarms' },
+  'security-dashboard': { title: 'Security Dashboard', description: 'Rogue AP detection and security threat monitoring' },
+  'guest-management': { title: 'Guest Access', description: 'Manage guest wireless access accounts' },
   'administration': { title: 'Administration', description: 'System administration, users, applications, and licensing' },
   'api-test': { title: 'API Test Tool', description: 'Test and explore EDGE API endpoints' },
   'configure-sites': { title: 'Sites', description: 'Manage and configure network sites and locations' },
@@ -833,6 +847,20 @@ export default function App() {
         return <ReportWidgets />;
       case 'pci-report':
         return <PCIReport />;
+      case 'system-backup':
+        return <SystemBackupManager />;
+      case 'license-dashboard':
+        return <LicenseDashboard />;
+      case 'firmware-manager':
+        return <APFirmwareManager />;
+      case 'network-diagnostics':
+        return <NetworkDiagnostics />;
+      case 'event-alarm-dashboard':
+        return <EventAlarmDashboard />;
+      case 'security-dashboard':
+        return <SecurityDashboard />;
+      case 'guest-management':
+        return <GuestManagement />;
       case 'configure-networks':
         return <ConfigureNetworks />;
       case 'configure-policy':
