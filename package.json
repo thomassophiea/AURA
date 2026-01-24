@@ -60,9 +60,22 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
     "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.20.0",
+    "@typescript-eslint/parser": "^8.20.0",
     "@vitejs/plugin-react-swc": "^3.10.2",
-    "vite": "^6.4.1"
+    "@vitest/ui": "^3.0.6",
+    "eslint": "^9.20.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "jsdom": "^25.0.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.4.1",
+    "vitest": "^3.0.6"
   },
   "scripts": {
     "dev": "vite",
@@ -72,6 +85,15 @@
     "start": "node server.js",
     "start:old": "serve build -s -l 3000",
     "collect-metrics": "node metrics-collector.js",
-    "collect-metrics:daemon": "nohup node metrics-collector.js > metrics-collector.log 2>&1 &"
+    "collect-metrics:daemon": "nohup node metrics-collector.js > metrics-collector.log 2>&1 &",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css,json}\"",
+    "type-check": "tsc --noEmit"
   }
 }

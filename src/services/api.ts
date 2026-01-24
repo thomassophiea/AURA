@@ -1,14 +1,16 @@
 
 import { cacheService, CACHE_TTL } from './cache';
+import { logger } from './logger';
 
 // Use proxy in production, direct connection in development
 const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+const devBaseUrl = import.meta.env.VITE_DEV_CAMPUS_CONTROLLER_URL || 'https://localhost:443';
 const BASE_URL = isProduction
   ? '/api/management'  // Proxy through our Express server
-  : 'https://tsophiea.ddns.net:443/management';  // Direct connection in development
+  : `${devBaseUrl}/management`;  // Direct connection in development from env var
 
-console.log('[API Service] Environment:', isProduction ? 'Production (using proxy)' : 'Development (direct)');
-console.log('[API Service] BASE_URL:', BASE_URL);
+logger.log('[API Service] Environment:', isProduction ? 'Production (using proxy)' : 'Development (direct)');
+logger.log('[API Service] BASE_URL:', BASE_URL);
 
 export interface LoginCredentials {
   grantType: string;
@@ -763,7 +765,7 @@ class ApiService {
   async login(userId: string, password: string): Promise<AuthResponse> {
     // If a login is already in progress, return the existing promise
     if (this.loginPromise) {
-      console.log('[Auth] Login already in progress, returning existing promise');
+      logger.log('[Auth] Login already in progress, returning existing promise');
       return this.loginPromise;
     }
 
@@ -877,7 +879,7 @@ class ApiService {
       try {
         // Only log first format attempt to reduce console noise
         if (i === 0) {
-          console.log(`Attempting authentication...`);
+          logger.log(`Attempting authentication...`);
         }
         
         // Add timeout for login requests
@@ -903,7 +905,7 @@ class ApiService {
           localStorage.setItem('admin_role', authResponse.adminRole);
           localStorage.setItem('user_email', userId.trim()); // Store the username/email
 
-          console.log(`✅ Login successful`);
+          logger.log(`✅ Login successful`);
           return authResponse;
         } else {
           const errorText = await response.text();
@@ -944,10 +946,10 @@ class ApiService {
 
       // If all formats failed, throw the credential error (401) if we have one, otherwise the last error
       if (credentialError) {
-        console.error('❌ Authentication failed: Invalid credentials');
+        logger.error('❌ Authentication failed: Invalid credentials');
         throw credentialError;
       } else {
-        console.error('❌ Authentication failed: Unable to connect to server');
+        logger.error('❌ Authentication failed: Unable to connect to server');
         throw lastError || new Error('Login failed with all authentication formats');
       }
     } catch (error) {
@@ -970,7 +972,7 @@ class ApiService {
           },
         });
       } catch (error) {
-        console.error('Logout error:', error);
+        logger.error('Logout error:', error);
       }
     }
 
@@ -1027,7 +1029,7 @@ class ApiService {
       endpoint.includes('/services'); // Services may not be available on all systems
 
     if (!isAnalyticsEndpoint) {
-      console.log(`[Request ${requestId}] Starting: ${endpoint}`);
+      logger.log(`[Request ${requestId}] Starting: ${endpoint}`);
     }
 
     // Log API call for developer mode
@@ -1051,7 +1053,7 @@ class ApiService {
       const duration = Date.now() - startTime;
       
       if (!isAnalyticsEndpoint) {
-        console.log(`[Request ${requestId}] Completed: ${endpoint} (${response.status})`);
+        logger.log(`[Request ${requestId}] Completed: ${endpoint} (${response.status})`);
       }
       
       // Clone response to read body without consuming it
@@ -1097,7 +1099,7 @@ class ApiService {
             return this.makeAuthenticatedRequest(endpoint, options, timeoutMs);
           } catch (refreshError) {
             // Refresh failed, user needs to login again
-            console.log('Token refresh failed, clearing authentication state');
+            logger.log('Token refresh failed, clearing authentication state');
             await this.logout();
             // Notify the app about session expiration
             if (this.sessionExpiredHandler) {
@@ -1107,7 +1109,7 @@ class ApiService {
           }
         } else if (isNonCriticalEndpoint) {
           // For non-critical endpoints, just throw an error without logging out
-          console.warn(`Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`);
+          logger.warn(`Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`);
           if (isAnalyticsEndpoint) {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Authentication required for ${endpoint}`);
           }
@@ -1118,7 +1120,7 @@ class ApiService {
             // Silently suppress analytics authentication errors
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Authentication required for ${endpoint}`);
           }
-          console.log('Authentication required, clearing authentication state');
+          logger.log('Authentication required, clearing authentication state');
           await this.logout();
           // Notify the app about session expiration
           if (this.sessionExpiredHandler) {
@@ -1145,7 +1147,7 @@ class ApiService {
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
           if (!isAnalyticsEndpoint) {
-            console.warn(`Request to ${endpoint} timed out after ${timeoutMs}ms`);
+            logger.warn(`Request to ${endpoint} timed out after ${timeoutMs}ms`);
           }
           
           if (isAnalyticsEndpoint) {
@@ -1162,13 +1164,13 @@ class ApiService {
           }
           
           // Log network errors for debugging
-          console.warn(`Network error for ${endpoint}: ${error.message}`);
+          logger.warn(`Network error for ${endpoint}: ${error.message}`);
           
           throw new Error(`Network error: Unable to connect to Campus Controller. Please check your connection and server availability.`);
         }
         
         if (!isAnalyticsEndpoint) {
-          console.warn(`Request to ${endpoint} failed:`, error.message);
+          logger.warn(`Request to ${endpoint} failed:`, error.message);
         }
         throw error;
       }
@@ -1226,7 +1228,7 @@ class ApiService {
     
     // If we have a token in storage but not in memory, reload it
     if (!memoryToken && storageToken) {
-      console.log('[Auth] Reloading tokens from localStorage into memory');
+      logger.log('[Auth] Reloading tokens from localStorage into memory');
       this.accessToken = localStorage.getItem('access_token');
       this.refreshToken = localStorage.getItem('refresh_token');
       return true;
@@ -1234,7 +1236,7 @@ class ApiService {
     
     // If we have token in memory but not storage, clear memory (storage is source of truth)
     if (memoryToken && !storageToken) {
-      console.log('[Auth] Token in memory but not storage - clearing authentication');
+      logger.log('[Auth] Token in memory but not storage - clearing authentication');
       this.accessToken = null;
       this.refreshToken = null;
       return false;
@@ -1265,13 +1267,13 @@ class ApiService {
       
       return response.ok;
     } catch (error) {
-      console.log('Session validation failed:', error instanceof Error ? error.message : 'Unknown error');
+      logger.log('Session validation failed:', error instanceof Error ? error.message : 'Unknown error');
       
       // If the error indicates session expiration, clear authentication
       if (error instanceof Error && 
           (error.message.includes('Session expired') || 
            error.message.includes('Authentication required'))) {
-        console.log('Clearing invalid session');
+        logger.log('Clearing invalid session');
         await this.logout();
         // Notify the app about session expiration
         if (this.sessionExpiredHandler) {
@@ -1313,7 +1315,7 @@ class ApiService {
         
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
-        console.log(`Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
+        logger.log(`Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
       }
     }
     
@@ -1324,7 +1326,7 @@ class ApiService {
   cancelAllRequests(): void {
     const requestCount = this.pendingRequests.size;
     if (requestCount > 0) {
-      console.log(`Canceling ${requestCount} pending request(s)`);
+      logger.log(`Canceling ${requestCount} pending request(s)`);
     }
     for (const controller of this.pendingRequests) {
       controller.abort();
@@ -1361,11 +1363,11 @@ class ApiService {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000); // Longer timeout for sites
         
         if (!response.ok) {
-          console.warn(`Sites API ${endpoint} returned status ${response.status}: ${response.statusText}`);
+          logger.warn(`Sites API ${endpoint} returned status ${response.status}: ${response.statusText}`);
           
           // If it's 404, try the next endpoint
           if (response.status === 404) {
-            console.log(`Endpoint ${endpoint} not found, trying next...`);
+            logger.log(`Endpoint ${endpoint} not found, trying next...`);
             continue;
           }
           
@@ -1373,11 +1375,11 @@ class ApiService {
         }
         
         const sites = await response.json();
-        console.log(`Successfully fetched ${sites ? sites.length : 0} sites from ${endpoint}`);
+        logger.log(`Successfully fetched ${sites ? sites.length : 0} sites from ${endpoint}`);
         
         // Debug log the first few sites to verify structure
         if (sites && sites.length > 0) {
-          console.log('Sample site structure:', {
+          logger.log('Sample site structure:', {
             endpoint: endpoint,
             firstSite: sites[0],
             totalSites: sites.length,
@@ -1387,7 +1389,7 @@ class ApiService {
           // Specifically look for the problematic site ID
           const targetSite = sites.find((site: Site) => site.id === 'c7395471-aa5c-46dc-9211-3ed24c5789bd');
           if (targetSite) {
-            console.log('Found target site in response:', {
+            logger.log('Found target site in response:', {
               endpoint: endpoint,
               site: targetSite
             });
@@ -1400,17 +1402,17 @@ class ApiService {
 
           return sites;
         } else {
-          console.warn(`${endpoint} returned empty or null sites array`);
+          logger.warn(`${endpoint} returned empty or null sites array`);
           // Continue to next endpoint if this one returns empty
           continue;
         }
         
       } catch (error) {
-        console.warn(`Failed to load sites from ${endpoint}:`, error);
+        logger.warn(`Failed to load sites from ${endpoint}:`, error);
         
         // Provide more detailed error information
         if (error instanceof Error) {
-          console.warn(`Sites API ${endpoint} error details:`, {
+          logger.warn(`Sites API ${endpoint} error details:`, {
             message: error.message,
             stack: error.stack?.split('\n')[0] // Just first line of stack
           });
@@ -1419,14 +1421,14 @@ class ApiService {
           if (error.message.includes('404') || 
               error.message.includes('Not Found') || 
               error.message.includes('Failed to fetch')) {
-            console.log(`Network/404 error for ${endpoint}, trying next endpoint...`);
+            logger.log(`Network/404 error for ${endpoint}, trying next endpoint...`);
             continue;
           }
           
           // Check if it's a suppressed error (which shouldn't happen for sites but just in case)
           if (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
               error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR')) {
-            console.log(`Sites endpoint ${endpoint} was marked as suppressed endpoint - this should not happen`);
+            logger.log(`Sites endpoint ${endpoint} was marked as suppressed endpoint - this should not happen`);
             continue;
           }
         }
@@ -1438,7 +1440,7 @@ class ApiService {
       }
     }
     
-    console.warn('All site endpoints failed or returned empty results');
+    logger.warn('All site endpoints failed or returned empty results');
     return [];
   }
 
@@ -1461,26 +1463,26 @@ class ApiService {
       
       for (const endpoint of individualEndpoints) {
         try {
-          console.log(`Trying individual site lookup: ${endpoint}`);
+          logger.log(`Trying individual site lookup: ${endpoint}`);
           const response = await this.makeAuthenticatedRequest(endpoint, {}, 5000);
           
           if (response.ok) {
             const site = await response.json();
-            console.log(`Found individual site via ${endpoint}:`, site);
+            logger.log(`Found individual site via ${endpoint}:`, site);
             return site;
           } else if (response.status === 404) {
-            console.log(`Individual site endpoint ${endpoint} not found, trying next...`);
+            logger.log(`Individual site endpoint ${endpoint} not found, trying next...`);
             continue;
           }
         } catch (error) {
-          console.warn(`Individual site lookup failed for ${endpoint}:`, error);
+          logger.warn(`Individual site lookup failed for ${endpoint}:`, error);
           continue;
         }
       }
       
       return null;
     } catch (error) {
-      console.warn(`Failed to find site with ID ${siteId}:`, error);
+      logger.warn(`Failed to find site with ID ${siteId}:`, error);
       return null;
     }
   }
@@ -1491,21 +1493,21 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest('/v1/services', {}, 8000);
       
       if (!response.ok) {
-        console.warn(`Services API returned status ${response.status}: ${response.statusText}`);
+        logger.warn(`Services API returned status ${response.status}: ${response.statusText}`);
         return [];
       }
       
       const services = await response.json();
       
       if (services && Array.isArray(services)) {
-        console.log(`Successfully fetched ${services.length} services`);
+        logger.log(`Successfully fetched ${services.length} services`);
         return services;
       } else {
-        console.warn('Invalid services response format');
+        logger.warn('Invalid services response format');
         return [];
       }
     } catch (error) {
-      console.warn('Failed to load services:', error);
+      logger.warn('Failed to load services:', error);
       return [];
     }
   }
@@ -1516,7 +1518,7 @@ class ApiService {
     const cacheKey = 'roles';
     const cached = cacheService.get<Role[]>(cacheKey);
     if (cached) {
-      console.log(`✓ Returned ${cached.length} roles from cache`);
+      logger.log(`✓ Returned ${cached.length} roles from cache`);
       return cached;
     }
 
@@ -1524,23 +1526,23 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest('/v3/roles', {}, 8000);
 
       if (!response.ok) {
-        console.warn(`Failed to fetch roles: ${response.status} ${response.statusText}`);
+        logger.warn(`Failed to fetch roles: ${response.status} ${response.statusText}`);
         return [];
       }
 
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        console.log(`✓ Successfully loaded ${data.length} network roles from /v3/roles`);
+        logger.log(`✓ Successfully loaded ${data.length} network roles from /v3/roles`);
         // Cache for 30 minutes
         cacheService.set(cacheKey, data, CACHE_TTL.VERY_LONG);
         return data;
       } else {
-        console.warn('Roles response is not an array:', data);
+        logger.warn('Roles response is not an array:', data);
         return [];
       }
     } catch (error) {
-      console.error('Error fetching roles:', error);
+      logger.error('Error fetching roles:', error);
       return [];
     }
   }
@@ -1551,15 +1553,15 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest('/v3/roles/nametoidmap', {}, 8000);
       
       if (!response.ok) {
-        console.warn(`Failed to fetch role name map: ${response.status} ${response.statusText}`);
+        logger.warn(`Failed to fetch role name map: ${response.status} ${response.statusText}`);
         return {};
       }
       
       const data = await response.json();
-      console.log(`✓ Successfully loaded role name to ID mapping`);
+      logger.log(`✓ Successfully loaded role name to ID mapping`);
       return data;
     } catch (error) {
-      console.error('Error fetching role name map:', error);
+      logger.error('Error fetching role name map:', error);
       return {};
     }
   }
@@ -1647,7 +1649,7 @@ class ApiService {
   // Test basic connectivity to the Campus Controller
   async testConnectivity(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
-      console.log('Testing connectivity to Campus Controller...');
+      logger.log('Testing connectivity to Campus Controller...');
       
       // Test basic HTTPS connectivity with shorter timeout
       const controller = new AbortController();
@@ -1803,7 +1805,7 @@ class ApiService {
 
     const endpoint = `/v1/aps/${encodeURIComponent(serialNumber)}/alarms?startTime=${startTime}&endTime=${endTime}&noCache=${noCache}`;
 
-    console.log(`[API] Fetching AP events for ${serialNumber} (${duration}D)`);
+    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D)`);
 
     const response = await this.makeAuthenticatedRequest(endpoint);
     if (!response.ok) {
@@ -1811,7 +1813,7 @@ class ApiService {
     }
 
     const data = await response.json();
-    console.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
+    logger.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
 
     return Array.isArray(data) ? data : [];
   }
@@ -1864,7 +1866,7 @@ class ApiService {
     const widgetList = encodeURIComponent(widgets.join(','));
     const endpoint = `/v1/report/aps/${encodeURIComponent(serialNumber)}?noCache=${noCache}&duration=${duration}&resolution=${resolution}&widgetList=${widgetList}`;
 
-    console.log('[API] Fetching AP insights:', { serialNumber, duration, resolution });
+    logger.log('[API] Fetching AP insights:', { serialNumber, duration, resolution });
 
     try {
       const response = await this.makeAuthenticatedRequest(endpoint);
@@ -1872,10 +1874,10 @@ class ApiService {
         throw new Error(`Failed to fetch AP insights: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      console.log('[API] AP insights data received');
+      logger.log('[API] AP insights data received');
       return data;
     } catch (error) {
-      console.error('[API] Error fetching AP insights:', error);
+      logger.error('[API] Error fetching AP insights:', error);
       throw error;
     }
   }
@@ -1938,7 +1940,7 @@ class ApiService {
     const widgetList = encodeURIComponent(widgets.join(','));
     const endpoint = `/v1/report/stations/${encodeURIComponent(macAddress)}?noCache=${noCache}&duration=${duration}&resolution=${resolution}&widgetList=${widgetList}`;
 
-    console.log('[API] Fetching Client insights:', { macAddress, duration, resolution, mode });
+    logger.log('[API] Fetching Client insights:', { macAddress, duration, resolution, mode });
 
     try {
       const response = await this.makeAuthenticatedRequest(endpoint);
@@ -1946,10 +1948,10 @@ class ApiService {
         throw new Error(`Failed to fetch Client insights: ${response.status} ${response.statusText}`);
       }
       const data = await response.json();
-      console.log('[API] Client insights data received');
+      logger.log('[API] Client insights data received');
       return data;
     } catch (error) {
-      console.error('[API] Error fetching Client insights:', error);
+      logger.error('[API] Error fetching Client insights:', error);
       throw error;
     }
   }
@@ -2024,7 +2026,7 @@ class ApiService {
           (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
         // Return empty array for suppressed errors instead of throwing
-        console.log('Returning empty stations array for suppressed endpoint');
+        logger.log('Returning empty stations array for suppressed endpoint');
         return [];
       }
       throw error;
@@ -2039,7 +2041,7 @@ class ApiService {
   // Get stations with proper site correlation from access points
   async getStationsWithSiteCorrelation(): Promise<Station[]> {
     try {
-      console.log('Fetching stations with site correlation...');
+      logger.log('Fetching stations with site correlation...');
       
       // Fetch both stations and access points in parallel
       const [stations, accessPoints] = await Promise.all([
@@ -2055,8 +2057,8 @@ class ApiService {
         }
       });
       
-      console.log(`Found ${accessPoints.length} access points with site mappings`);
-      console.log(`Processing ${stations.length} stations for site correlation`);
+      logger.log(`Found ${accessPoints.length} access points with site mappings`);
+      logger.log(`Processing ${stations.length} stations for site correlation`);
       
       // Correlate stations with their sites
       const stationsWithSites = stations.map(station => {
@@ -2085,19 +2087,19 @@ class ApiService {
       });
       
       const correlatedCount = stationsWithSites.filter(s => s.correlationSource === 'AP-correlation').length;
-      console.log(`Successfully correlated ${correlatedCount} stations with sites via AP mapping`);
+      logger.log(`Successfully correlated ${correlatedCount} stations with sites via AP mapping`);
       
       return stationsWithSites;
     } catch (error) {
       if (error instanceof Error && 
           (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
-        console.log('Returning empty stations array for suppressed endpoint');
+        logger.log('Returning empty stations array for suppressed endpoint');
         return [];
       }
       
       // If correlation fails, fall back to regular stations
-      console.warn('Site correlation failed, falling back to regular station data:', error);
+      logger.warn('Site correlation failed, falling back to regular station data:', error);
       return this.getAllStations();
     }
   }
@@ -2113,7 +2115,7 @@ class ApiService {
         }
       } catch (error) {
         // If specific endpoint doesn't exist, fall back to filtering all stations
-        console.log('Specific station endpoint not available, searching in all stations');
+        logger.log('Specific station endpoint not available, searching in all stations');
       }
 
       // Fallback: get all stations and filter for the specific MAC address
@@ -2130,7 +2132,7 @@ class ApiService {
           (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
         // Return a default station object for suppressed errors
-        console.log('Returning default station object for suppressed endpoint');
+        logger.log('Returning default station object for suppressed endpoint');
         return {
           macAddress,
           status: 'Unknown',
@@ -2198,7 +2200,7 @@ class ApiService {
       // Get all APs
       const allAPs = await this.getAccessPoints();
 
-      console.log(`Filtering ${allAPs.length} access points for site ID: ${siteId}, site name: ${siteName}`);
+      logger.log(`Filtering ${allAPs.length} access points for site ID: ${siteId}, site name: ${siteName}`);
 
       // Filter APs by matching hostSite against the site name OR site ID
       const filteredAPs = allAPs.filter(ap => {
@@ -2238,13 +2240,13 @@ class ApiService {
         return matches;
       });
 
-      console.log(`Found ${filteredAPs.length} access points for site ${siteId} (${siteName})`);
+      logger.log(`Found ${filteredAPs.length} access points for site ${siteId} (${siteName})`);
 
       // If no APs found with site filtering, log the available location/site values for debugging
       if (filteredAPs.length === 0 && allAPs.length > 0) {
-        console.log('No APs found for site. Available location/site values in APs:');
+        logger.log('No APs found for site. Available location/site values in APs:');
         allAPs.slice(0, 5).forEach(ap => {
-          console.log(`AP ${ap.serialNumber}:`, {
+          logger.log(`AP ${ap.serialNumber}:`, {
             hostSite: ap.hostSite,
             location: ap.location,
             locationName: ap.locationName,
@@ -2316,7 +2318,7 @@ class ApiService {
               errorDetails = firstError.details || firstError.resource || firstError.field || '';
               
               // Log all error details for debugging
-              console.error('Detailed error info:', {
+              logger.error('Detailed error info:', {
                 errorMessage: firstError.errorMessage,
                 message: firstError.message,
                 details: firstError.details,
@@ -2337,7 +2339,7 @@ class ApiService {
             }
             
           } catch (parseError) {
-            console.error('Failed to parse error response as JSON:', parseError);
+            logger.error('Failed to parse error response as JSON:', parseError);
             // If parsing fails, use the raw error text if it's reasonable length
             if (errorResponse.length > 0 && errorResponse.length < 1000) {
               errorDetails = errorResponse;
@@ -2364,7 +2366,7 @@ class ApiService {
         }
         
       } catch (textError) {
-        console.error('Error reading response text:', textError);
+        logger.error('Error reading response text:', textError);
         errorMessage += ` (Unable to read error details: ${textError.message})`;
       }
       
@@ -2372,12 +2374,12 @@ class ApiService {
     }
     
     const result = await response.json();
-    console.log('Service updated successfully:', result);
+    logger.log('Service updated successfully:', result);
     return result;
   }
 
   async createService(serviceData: Partial<Service>): Promise<Service> {
-    console.log('Creating service:', serviceData);
+    logger.log('Creating service:', serviceData);
     
     const response = await this.makeAuthenticatedRequest('/v1/services', {
       method: 'POST',
@@ -2398,12 +2400,12 @@ class ApiService {
               const firstError = errorData.errors[0];
               errorMessage = firstError.errorMessage || firstError.message || errorMessage;
               
-              console.error('Detailed error info:', firstError);
+              logger.error('Detailed error info:', firstError);
             } else if (errorData.message) {
               errorMessage = errorData.message;
             }
           } catch (parseError) {
-            console.error('Failed to parse error response:', parseError);
+            logger.error('Failed to parse error response:', parseError);
           }
         }
         
@@ -2416,19 +2418,19 @@ class ApiService {
         }
         
       } catch (textError) {
-        console.error('Error reading response text:', textError);
+        logger.error('Error reading response text:', textError);
       }
       
       throw new Error(errorMessage);
     }
     
     const result = await response.json();
-    console.log('Service created successfully:', result);
+    logger.log('Service created successfully:', result);
     return result;
   }
 
   async deleteService(serviceId: string): Promise<void> {
-    console.log('Deleting service:', serviceId);
+    logger.log('Deleting service:', serviceId);
     
     const response = await this.makeAuthenticatedRequest(`/v1/services/${encodeURIComponent(serviceId)}`, {
       method: 'DELETE'
@@ -2438,7 +2440,7 @@ class ApiService {
       throw new Error(`Failed to delete service: ${response.status} ${response.statusText}`);
     }
     
-    console.log('Service deleted successfully');
+    logger.log('Service deleted successfully');
   }
 
   async getServiceStations(serviceId: string): Promise<Station[]> {
@@ -2457,7 +2459,7 @@ class ApiService {
     timezone: string;
     description?: string;
   }): Promise<Site> {
-    console.log('Creating site:', {
+    logger.log('Creating site:', {
       url: `${BASE_URL}/v3/sites`,
       payload: siteData
     });
@@ -2467,7 +2469,7 @@ class ApiService {
       body: JSON.stringify(siteData)
     });
     
-    console.log('Site creation response:', {
+    logger.log('Site creation response:', {
       status: response.status,
       statusText: response.statusText,
       headers: Object.fromEntries(response.headers.entries())
@@ -2481,7 +2483,7 @@ class ApiService {
       try {
         const errorResponse = await response.text();
         fullErrorResponse = errorResponse;
-        console.error('Full site creation error response:', {
+        logger.error('Full site creation error response:', {
           status: response.status,
           statusText: response.statusText,
           responseText: errorResponse,
@@ -2492,7 +2494,7 @@ class ApiService {
         if (errorResponse) {
           try {
             const errorData = JSON.parse(errorResponse);
-            console.error('Parsed error data:', errorData);
+            logger.error('Parsed error data:', errorData);
             
             if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
               const firstError = errorData.errors[0];
@@ -2500,7 +2502,7 @@ class ApiService {
               errorDetails = firstError.details || firstError.resource || firstError.field || '';
               
               // Log all error details for debugging
-              console.error('Detailed error info:', {
+              logger.error('Detailed error info:', {
                 errorMessage: firstError.errorMessage,
                 message: firstError.message,
                 details: firstError.details,
@@ -2521,7 +2523,7 @@ class ApiService {
             }
             
           } catch (parseError) {
-            console.error('Failed to parse error response as JSON:', parseError);
+            logger.error('Failed to parse error response as JSON:', parseError);
             // If parsing fails, use the raw error text if it's reasonable length
             if (errorResponse.length > 0 && errorResponse.length < 1000) {
               errorDetails = errorResponse;
@@ -2548,7 +2550,7 @@ class ApiService {
         }
         
       } catch (textError) {
-        console.error('Error reading response text:', textError);
+        logger.error('Error reading response text:', textError);
         errorMessage += ` (Unable to read error details: ${textError.message})`;
       }
       
@@ -2556,7 +2558,7 @@ class ApiService {
     }
     
     const result = await response.json();
-    console.log('Site created successfully:', result);
+    logger.log('Site created successfully:', result);
     return result;
   }
 
@@ -2578,7 +2580,7 @@ class ApiService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Create role error:', errorText);
+      logger.error('Create role error:', errorText);
       throw new Error(`Failed to create role: ${response.status} ${response.statusText}`);
     }
     
@@ -2593,7 +2595,7 @@ class ApiService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Update role error:', errorText);
+      logger.error('Update role error:', errorText);
       throw new Error(`Failed to update role: ${response.status} ${response.statusText}`);
     }
     
@@ -2607,7 +2609,7 @@ class ApiService {
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Delete role error:', errorText);
+      logger.error('Delete role error:', errorText);
       throw new Error(`Failed to delete role: ${response.status} ${response.statusText}`);
     }
   }
@@ -2627,21 +2629,21 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest('/v3/cos', {}, 8000);
       
       if (!response.ok) {
-        console.warn(`Failed to fetch CoS: ${response.status} ${response.statusText}`);
+        logger.warn(`Failed to fetch CoS: ${response.status} ${response.statusText}`);
         return [];
       }
       
       const data = await response.json();
       
       if (Array.isArray(data)) {
-        console.log(`✓ Successfully loaded ${data.length} Class of Service options`);
+        logger.log(`✓ Successfully loaded ${data.length} Class of Service options`);
         return data;
       } else {
-        console.warn('CoS response is not an array:', data);
+        logger.warn('CoS response is not an array:', data);
         return [];
       }
     } catch (error) {
-      console.error('Error fetching CoS:', error);
+      logger.error('Error fetching CoS:', error);
       return [];
     }
   }
@@ -2652,7 +2654,7 @@ class ApiService {
     const cacheKey = 'topologies';
     const cached = cacheService.get<Topology[]>(cacheKey);
     if (cached) {
-      console.log(`✓ Returned ${cached.length} topologies from cache`);
+      logger.log(`✓ Returned ${cached.length} topologies from cache`);
       return cached;
     }
 
@@ -2660,23 +2662,23 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest('/v3/topologies', {}, 8000);
 
       if (!response.ok) {
-        console.warn(`Failed to fetch topologies: ${response.status} ${response.statusText}`);
+        logger.warn(`Failed to fetch topologies: ${response.status} ${response.statusText}`);
         return [];
       }
 
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        console.log(`✓ Successfully loaded ${data.length} topology/VLAN options`);
+        logger.log(`✓ Successfully loaded ${data.length} topology/VLAN options`);
         // Cache for 30 minutes
         cacheService.set(cacheKey, data, CACHE_TTL.VERY_LONG);
         return data;
       } else {
-        console.warn('Topologies response is not an array:', data);
+        logger.warn('Topologies response is not an array:', data);
         return [];
       }
     } catch (error) {
-      console.error('Error fetching topologies:', error);
+      logger.error('Error fetching topologies:', error);
       return [];
     }
   }
@@ -2695,13 +2697,13 @@ class ApiService {
     try {
       const response = await this.makeAuthenticatedRequest('/v1/aaa-policies', {}, 8000);
       if (!response.ok) {
-        console.warn(`AAA Policies API returned status ${response.status}`);
+        logger.warn(`AAA Policies API returned status ${response.status}`);
         return [];
       }
       const data = await response.json();
       return Array.isArray(data) ? data : [];
     } catch (error) {
-      console.warn('Failed to fetch AAA policies:', error);
+      logger.warn('Failed to fetch AAA policies:', error);
       return [];
     }
   }
@@ -2726,7 +2728,7 @@ class ApiService {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`Found device groups at ${endpoint}`);
+          logger.log(`Found device groups at ${endpoint}`);
           return Array.isArray(data) ? data : [];
         }
       } catch (error) {
@@ -2734,7 +2736,7 @@ class ApiService {
       }
     }
 
-    console.warn('No device groups endpoint found');
+    logger.warn('No device groups endpoint found');
     return [];
   }
 
@@ -2743,27 +2745,27 @@ class ApiService {
    */
   async getDeviceGroupsBySite(siteId: string): Promise<any[]> {
     try {
-      console.log(`[API] Fetching site details to get device groups for site ${siteId}...`);
+      logger.log(`[API] Fetching site details to get device groups for site ${siteId}...`);
 
       // Fetch the full site object - device groups are nested in it
       const siteResponse = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`);
 
       if (!siteResponse.ok) {
-        console.warn(`Failed to fetch site details: ${siteResponse.status}`);
+        logger.warn(`Failed to fetch site details: ${siteResponse.status}`);
         return [];
       }
 
       const site = await siteResponse.json();
-      console.log(`[API] Site details fetched for ${siteId}`);
-      console.log(`[API] Site.deviceGroups:`, site.deviceGroups);
+      logger.log(`[API] Site details fetched for ${siteId}`);
+      logger.log(`[API] Site.deviceGroups:`, site.deviceGroups);
 
       // Device groups are nested in the site object
       const deviceGroups = site.deviceGroups || [];
-      console.log(`[API] Found ${deviceGroups.length} device groups for site ${siteId}`);
+      logger.log(`[API] Found ${deviceGroups.length} device groups for site ${siteId}`);
 
       return deviceGroups;
     } catch (error) {
-      console.error(`[API] Error fetching device groups for site ${siteId}:`, error);
+      logger.error(`[API] Error fetching device groups for site ${siteId}:`, error);
       return [];
     }
   }
@@ -2789,7 +2791,7 @@ class ApiService {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`Found profiles at ${endpoint}`);
+          logger.log(`Found profiles at ${endpoint}`);
           return Array.isArray(data) ? data : [];
         }
       } catch (error) {
@@ -2797,7 +2799,7 @@ class ApiService {
       }
     }
 
-    console.warn('No profiles endpoint found');
+    logger.warn('No profiles endpoint found');
     return [];
   }
 
@@ -2818,7 +2820,7 @@ class ApiService {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`Found profiles for device group ${deviceGroupId} at ${endpoint}`);
+          logger.log(`Found profiles for device group ${deviceGroupId} at ${endpoint}`);
           return Array.isArray(data) ? data : [];
         }
       } catch (error) {
@@ -2826,7 +2828,7 @@ class ApiService {
       }
     }
 
-    console.warn(`No profiles found for device group ${deviceGroupId}`);
+    logger.warn(`No profiles found for device group ${deviceGroupId}`);
     return [];
   }
 
@@ -2862,7 +2864,7 @@ class ApiService {
    * This tries multiple methods since the exact API pattern is unknown
    */
   async assignServiceToProfile(serviceId: string, profileId: string): Promise<void> {
-    console.log(`Assigning service ${serviceId} to profile ${profileId}`);
+    logger.log(`Assigning service ${serviceId} to profile ${profileId}`);
 
     // Method 1: Try dedicated assignment endpoint
     const assignmentEndpoints = [
@@ -2879,7 +2881,7 @@ class ApiService {
         });
 
         if (response.ok) {
-          console.log(`Successfully assigned via ${endpoint}`);
+          logger.log(`Successfully assigned via ${endpoint}`);
           return;
         }
       } catch (error) {
@@ -2908,7 +2910,7 @@ class ApiService {
               });
 
               if (response.ok) {
-                console.log(`Successfully assigned via profile update at ${endpoint}`);
+                logger.log(`Successfully assigned via profile update at ${endpoint}`);
                 return;
               }
             } catch (error) {
@@ -2918,7 +2920,7 @@ class ApiService {
         }
       }
     } catch (error) {
-      console.error('Failed to assign via profile update:', error);
+      logger.error('Failed to assign via profile update:', error);
     }
 
     throw new Error(`Failed to assign service ${serviceId} to profile ${profileId} - no working endpoint found`);
@@ -2928,7 +2930,7 @@ class ApiService {
    * Trigger profile synchronization
    */
   async syncProfile(profileId: string): Promise<void> {
-    console.log(`Triggering sync for profile ${profileId}`);
+    logger.log(`Triggering sync for profile ${profileId}`);
 
     const syncEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/sync`,
@@ -2944,7 +2946,7 @@ class ApiService {
         });
 
         if (response.ok) {
-          console.log(`Successfully triggered sync via ${endpoint}`);
+          logger.log(`Successfully triggered sync via ${endpoint}`);
           return;
         }
       } catch (error) {
@@ -2954,14 +2956,14 @@ class ApiService {
 
     // If no sync endpoint works, log warning but don't fail
     // (some systems may sync automatically)
-    console.warn(`No sync endpoint found for profile ${profileId} - profile may sync automatically`);
+    logger.warn(`No sync endpoint found for profile ${profileId} - profile may sync automatically`);
   }
 
   /**
    * Sync multiple profiles (batch operation)
    */
   async syncMultipleProfiles(profileIds: string[]): Promise<void> {
-    console.log(`Triggering sync for ${profileIds.length} profiles`);
+    logger.log(`Triggering sync for ${profileIds.length} profiles`);
 
     // Try batch sync endpoint first
     const batchEndpoints = [
@@ -2978,7 +2980,7 @@ class ApiService {
         });
 
         if (response.ok) {
-          console.log(`Successfully triggered batch sync via ${endpoint}`);
+          logger.log(`Successfully triggered batch sync via ${endpoint}`);
           return;
         }
       } catch (error) {
@@ -2987,7 +2989,7 @@ class ApiService {
     }
 
     // Fall back to individual syncs
-    console.log('Batch sync not available, falling back to individual syncs');
+    logger.log('Batch sync not available, falling back to individual syncs');
     await Promise.all(profileIds.map(id => this.syncProfile(id)));
   }
 
@@ -3014,19 +3016,19 @@ class ApiService {
   ): Promise<T> {
     try {
       if (checkAvailability && !(await this.checkEndpointAvailability(endpoint))) {
-        console.log(`Endpoint ${endpoint} not available, using fallback`);
+        logger.log(`Endpoint ${endpoint} not available, using fallback`);
         return fallback;
       }
 
       const response = await this.makeAuthenticatedRequest(endpoint, options);
       if (!response.ok) {
-        console.warn(`API call to ${endpoint} failed with status ${response.status}, using fallback`);
+        logger.warn(`API call to ${endpoint} failed with status ${response.status}, using fallback`);
         return fallback;
       }
 
       return await response.json();
     } catch (error) {
-      console.log(`API call to ${endpoint} failed, using fallback:`, error instanceof Error ? error.message : 'Unknown error');
+      logger.log(`API call to ${endpoint} failed, using fallback:`, error instanceof Error ? error.message : 'Unknown error');
       return fallback;
     }
   }
@@ -3040,15 +3042,15 @@ class ApiService {
    * This discovers which WLANs are active in a site by checking profiles
    */
   async getServicesBySite(siteId: string): Promise<any[]> {
-    console.log(`[API] Fetching services for site ${siteId}`);
+    logger.log(`[API] Fetching services for site ${siteId}`);
 
     try {
       // Get device groups for this site
       const deviceGroups = await this.getDeviceGroupsBySite(siteId);
-      console.log(`[API] Found ${deviceGroups.length} device groups for site ${siteId}:`, deviceGroups);
+      logger.log(`[API] Found ${deviceGroups.length} device groups for site ${siteId}:`, deviceGroups);
 
       if (deviceGroups.length === 0) {
-        console.log(`[API] No device groups found for site ${siteId}`);
+        logger.log(`[API] No device groups found for site ${siteId}`);
         return [];
       }
 
@@ -3057,55 +3059,55 @@ class ApiService {
       for (const group of deviceGroups) {
         try {
           const profiles = await this.getProfilesByDeviceGroup(group.id);
-          console.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
+          logger.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
           allProfiles.push(...profiles);
         } catch (error) {
-          console.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
+          logger.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
         }
       }
 
-      console.log(`[API] Total profiles found: ${allProfiles.length}`);
+      logger.log(`[API] Total profiles found: ${allProfiles.length}`);
 
       // Extract unique services from all profiles
       const serviceIds = new Set<string>();
       allProfiles.forEach(profile => {
-        console.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
-        console.log(`[API]   Profile.services:`, profile.services);
+        logger.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
+        logger.log(`[API]   Profile.services:`, profile.services);
 
         if (profile.services && Array.isArray(profile.services)) {
           profile.services.forEach((serviceId: string) => {
-            console.log(`[API]   Found service ID: ${serviceId}`);
+            logger.log(`[API]   Found service ID: ${serviceId}`);
             serviceIds.add(serviceId);
           });
         } else {
-          console.log(`[API]   No services array found on profile`);
+          logger.log(`[API]   No services array found on profile`);
         }
       });
 
-      console.log(`[API] Unique service IDs found: ${serviceIds.size}`, Array.from(serviceIds));
+      logger.log(`[API] Unique service IDs found: ${serviceIds.size}`, Array.from(serviceIds));
 
       // Fetch full service details
       const services: any[] = [];
       for (const serviceId of serviceIds) {
         try {
-          console.log(`[API] Fetching service details for ${serviceId}...`);
+          logger.log(`[API] Fetching service details for ${serviceId}...`);
           const service = await this.getServiceById(serviceId);
           if (service) {
-            console.log(`[API] Service ${serviceId} fetched successfully:`, service);
+            logger.log(`[API] Service ${serviceId} fetched successfully:`, service);
             services.push(service);
           } else {
-            console.log(`[API] Service ${serviceId} returned null`);
+            logger.log(`[API] Service ${serviceId} returned null`);
           }
         } catch (error) {
-          console.warn(`[API] Failed to fetch service ${serviceId}:`, error);
+          logger.warn(`[API] Failed to fetch service ${serviceId}:`, error);
         }
       }
 
-      console.log(`[API] Found ${services.length} services for site ${siteId}`);
+      logger.log(`[API] Found ${services.length} services for site ${siteId}`);
       return services;
 
     } catch (error) {
-      console.error(`[API] Failed to fetch services for site ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch services for site ${siteId}:`, error);
       return [];
     }
   }
@@ -3114,14 +3116,14 @@ class ApiService {
    * Get profiles for a site with their assigned WLANs
    */
   async getProfilesWithWLANsBySite(siteId: string): Promise<any[]> {
-    console.log(`Fetching profiles with WLANs for site ${siteId}`);
+    logger.log(`Fetching profiles with WLANs for site ${siteId}`);
 
     try {
       // Get device groups for this site
       const deviceGroups = await this.getDeviceGroupsBySite(siteId);
 
       if (deviceGroups.length === 0) {
-        console.log(`No device groups found for site ${siteId}`);
+        logger.log(`No device groups found for site ${siteId}`);
         return [];
       }
 
@@ -3144,7 +3146,7 @@ class ApiService {
                     wlans.push(wlan);
                   }
                 } catch (error) {
-                  console.warn(`Failed to fetch WLAN ${serviceId}:`, error);
+                  logger.warn(`Failed to fetch WLAN ${serviceId}:`, error);
                 }
               }
             }
@@ -3157,15 +3159,15 @@ class ApiService {
             });
           }
         } catch (error) {
-          console.warn(`Failed to fetch profiles for device group ${group.id}:`, error);
+          logger.warn(`Failed to fetch profiles for device group ${group.id}:`, error);
         }
       }
 
-      console.log(`Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
+      logger.log(`Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
       return profilesWithWLANs;
 
     } catch (error) {
-      console.error(`Failed to fetch profiles with WLANs for site ${siteId}:`, error);
+      logger.error(`Failed to fetch profiles with WLANs for site ${siteId}:`, error);
       return [];
     }
   }
@@ -3175,11 +3177,11 @@ class ApiService {
    * Returns: { site, deviceGroups, profiles, wlans, assignments }
    */
   async getSiteWLANAssignmentSummary(siteId: string): Promise<any> {
-    console.log(`[API] Fetching WLAN assignment summary for site ${siteId}`);
+    logger.log(`[API] Fetching WLAN assignment summary for site ${siteId}`);
 
     try {
       // First, fetch the site details to get device groups (they're nested in the site object)
-      console.log(`[API] Fetching site details for ${siteId}...`);
+      logger.log(`[API] Fetching site details for ${siteId}...`);
       const siteResponse = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`);
 
       if (!siteResponse.ok) {
@@ -3187,12 +3189,12 @@ class ApiService {
       }
 
       const site = await siteResponse.json();
-      console.log(`[API] Site details fetched:`, site);
-      console.log(`[API] Site.deviceGroups:`, site.deviceGroups);
+      logger.log(`[API] Site details fetched:`, site);
+      logger.log(`[API] Site.deviceGroups:`, site.deviceGroups);
 
       // Device groups are nested in the site object
       const deviceGroups = site.deviceGroups || [];
-      console.log(`[API] Using ${deviceGroups.length} device groups from site data`);
+      logger.log(`[API] Using ${deviceGroups.length} device groups from site data`);
 
       // Now get profiles and services using these device groups
       const [profilesWithWLANs, services] = await Promise.all([
@@ -3210,11 +3212,11 @@ class ApiService {
         wlans: services
       };
 
-      console.log(`[API] Summary complete:`, result);
+      logger.log(`[API] Summary complete:`, result);
       return result;
 
     } catch (error) {
-      console.error(`[API] Failed to fetch WLAN assignment summary for site ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch WLAN assignment summary for site ${siteId}:`, error);
       throw error;
     }
   }
@@ -3223,10 +3225,10 @@ class ApiService {
    * Get services/WLANs for a site using device groups from site data
    */
   private async getServicesBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
-    console.log(`[API] Fetching services for site ${siteId} using ${deviceGroups.length} device groups`);
+    logger.log(`[API] Fetching services for site ${siteId} using ${deviceGroups.length} device groups`);
 
     if (deviceGroups.length === 0) {
-      console.log(`[API] No device groups provided`);
+      logger.log(`[API] No device groups provided`);
       return [];
     }
 
@@ -3236,55 +3238,55 @@ class ApiService {
       for (const group of deviceGroups) {
         try {
           const profiles = await this.getProfilesByDeviceGroup(group.id);
-          console.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
+          logger.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
           allProfiles.push(...profiles);
         } catch (error) {
-          console.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
+          logger.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
         }
       }
 
-      console.log(`[API] Total profiles found: ${allProfiles.length}`);
+      logger.log(`[API] Total profiles found: ${allProfiles.length}`);
 
       // Extract unique services from all profiles
       const serviceIds = new Set<string>();
       allProfiles.forEach(profile => {
-        console.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
-        console.log(`[API]   Profile.services:`, profile.services);
+        logger.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
+        logger.log(`[API]   Profile.services:`, profile.services);
 
         if (profile.services && Array.isArray(profile.services)) {
           profile.services.forEach((serviceId: string) => {
-            console.log(`[API]   Found service ID: ${serviceId}`);
+            logger.log(`[API]   Found service ID: ${serviceId}`);
             serviceIds.add(serviceId);
           });
         } else {
-          console.log(`[API]   No services array found on profile`);
+          logger.log(`[API]   No services array found on profile`);
         }
       });
 
-      console.log(`[API] Unique service IDs found: ${serviceIds.size}`, Array.from(serviceIds));
+      logger.log(`[API] Unique service IDs found: ${serviceIds.size}`, Array.from(serviceIds));
 
       // Fetch full service details
       const services: any[] = [];
       for (const serviceId of serviceIds) {
         try {
-          console.log(`[API] Fetching service details for ${serviceId}...`);
+          logger.log(`[API] Fetching service details for ${serviceId}...`);
           const service = await this.getServiceById(serviceId);
           if (service) {
-            console.log(`[API] Service ${serviceId} fetched successfully:`, service);
+            logger.log(`[API] Service ${serviceId} fetched successfully:`, service);
             services.push(service);
           } else {
-            console.log(`[API] Service ${serviceId} returned null`);
+            logger.log(`[API] Service ${serviceId} returned null`);
           }
         } catch (error) {
-          console.warn(`[API] Failed to fetch service ${serviceId}:`, error);
+          logger.warn(`[API] Failed to fetch service ${serviceId}:`, error);
         }
       }
 
-      console.log(`[API] Found ${services.length} services for site ${siteId}`);
+      logger.log(`[API] Found ${services.length} services for site ${siteId}`);
       return services;
 
     } catch (error) {
-      console.error(`[API] Failed to fetch services for site ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch services for site ${siteId}:`, error);
       return [];
     }
   }
@@ -3293,10 +3295,10 @@ class ApiService {
    * Get profiles with WLANs for a site using device groups from site data
    */
   private async getProfilesWithWLANsBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
-    console.log(`[API] Fetching profiles with WLANs for site ${siteId} using ${deviceGroups.length} device groups`);
+    logger.log(`[API] Fetching profiles with WLANs for site ${siteId} using ${deviceGroups.length} device groups`);
 
     if (deviceGroups.length === 0) {
-      console.log(`[API] No device groups provided`);
+      logger.log(`[API] No device groups provided`);
       return [];
     }
 
@@ -3307,23 +3309,23 @@ class ApiService {
       for (const group of deviceGroups) {
         try {
           const profiles = await this.getProfilesByDeviceGroup(group.id);
-          console.log(`[API] Found ${profiles.length} profiles in device group ${group.id}`);
+          logger.log(`[API] Found ${profiles.length} profiles in device group ${group.id}`);
 
           // Enrich each profile with WLAN details
           for (const profile of profiles) {
-            console.log(`[API] ========== PROFILE STRUCTURE DEBUG ==========`);
-            console.log(`[API] Profile ID: ${profile.id || profile.profileId || 'unknown'}`);
-            console.log(`[API] Profile Name: ${profile.name || profile.profileName || 'unknown'}`);
-            console.log(`[API] Profile Keys:`, Object.keys(profile));
-            console.log(`[API] Full Profile Object:`, JSON.stringify(profile, null, 2));
-            console.log(`[API] Checking for WLANs in various field names...`);
-            console.log(`[API]   - profile.services:`, profile.services);
-            console.log(`[API]   - profile.wlans:`, profile.wlans);
-            console.log(`[API]   - profile.ssids:`, profile.ssids);
-            console.log(`[API]   - profile.networks:`, profile.networks);
-            console.log(`[API]   - profile.serviceIds:`, profile.serviceIds);
-            console.log(`[API]   - profile.wirelessServices:`, profile.wirelessServices);
-            console.log(`[API] ===============================================`);
+            logger.log(`[API] ========== PROFILE STRUCTURE DEBUG ==========`);
+            logger.log(`[API] Profile ID: ${profile.id || profile.profileId || 'unknown'}`);
+            logger.log(`[API] Profile Name: ${profile.name || profile.profileName || 'unknown'}`);
+            logger.log(`[API] Profile Keys:`, Object.keys(profile));
+            logger.log(`[API] Full Profile Object:`, JSON.stringify(profile, null, 2));
+            logger.log(`[API] Checking for WLANs in various field names...`);
+            logger.log(`[API]   - profile.services:`, profile.services);
+            logger.log(`[API]   - profile.wlans:`, profile.wlans);
+            logger.log(`[API]   - profile.ssids:`, profile.ssids);
+            logger.log(`[API]   - profile.networks:`, profile.networks);
+            logger.log(`[API]   - profile.serviceIds:`, profile.serviceIds);
+            logger.log(`[API]   - profile.wirelessServices:`, profile.wirelessServices);
+            logger.log(`[API] ===============================================`);
 
             const wlans: any[] = [];
 
@@ -3335,7 +3337,7 @@ class ApiService {
                     wlans.push(wlan);
                   }
                 } catch (error) {
-                  console.warn(`[API] Failed to fetch WLAN ${serviceId}:`, error);
+                  logger.warn(`[API] Failed to fetch WLAN ${serviceId}:`, error);
                 }
               }
             }
@@ -3348,15 +3350,15 @@ class ApiService {
             });
           }
         } catch (error) {
-          console.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
+          logger.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
         }
       }
 
-      console.log(`[API] Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
+      logger.log(`[API] Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
       return profilesWithWLANs;
 
     } catch (error) {
-      console.error(`[API] Failed to fetch profiles with WLANs for site ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch profiles with WLANs for site ${siteId}:`, error);
       return [];
     }
   }
@@ -3390,8 +3392,8 @@ class ApiService {
         `resolution=${resolution}&` +
         `widgetList=${encodeURIComponent(widgetList)}`;
 
-      console.log(`[API] Fetching widget data: ${widgetIds.join(', ')}`);
-      console.log(`[API] Endpoint: ${endpoint}`);
+      logger.log(`[API] Fetching widget data: ${widgetIds.join(', ')}`);
+      logger.log(`[API] Endpoint: ${endpoint}`);
 
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
@@ -3400,12 +3402,12 @@ class ApiService {
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Widget data fetched successfully`);
+      logger.log(`[API] ✓ Widget data fetched successfully`);
 
       return data;
 
     } catch (error) {
-      console.error(`[API] Failed to fetch widget data:`, error);
+      logger.error(`[API] Failed to fetch widget data:`, error);
       throw error;
     }
   }
@@ -3420,7 +3422,7 @@ class ApiService {
       const data = await this.fetchWidgetData(siteId, ['rfQuality'], duration);
       return data.rfQuality || data;
     } catch (error) {
-      console.error(`[API] Failed to fetch RF quality data:`, error);
+      logger.error(`[API] Failed to fetch RF quality data:`, error);
       return null;
     }
   }
@@ -3447,7 +3449,7 @@ class ApiService {
         worstByThroughput: data.worstAppGroupsByThroughputReport || []
       };
     } catch (error) {
-      console.error(`[API] Failed to fetch application analytics:`, error);
+      logger.error(`[API] Failed to fetch application analytics:`, error);
       return null;
     }
   }
@@ -3478,7 +3480,7 @@ class ApiService {
         qoe: data.siteQoE || {}
       };
     } catch (error) {
-      console.error(`[API] Failed to fetch site performance summary:`, error);
+      logger.error(`[API] Failed to fetch site performance summary:`, error);
       return null;
     }
   }
@@ -3509,7 +3511,7 @@ class ApiService {
         : `/v1/report/sites`;
       const endpoint = `${baseEndpoint}?noCache=${noCache}&duration=${duration}&resolution=15&widgetList=${encodeURIComponent(widgetList)}`;
 
-      console.log(`[API] Fetching app insights data for duration: ${duration}${siteId ? `, site: ${siteId}` : ' (org-wide)'}`);
+      logger.log(`[API] Fetching app insights data for duration: ${duration}${siteId ? `, site: ${siteId}` : ' (org-wide)'}`);
 
 
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 30000);
@@ -3519,7 +3521,7 @@ class ApiService {
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ App insights data fetched successfully`);
+      logger.log(`[API] ✓ App insights data fetched successfully`);
 
       return {
         topAppGroupsByUsage: data.topAppGroupsByUsage || [],
@@ -3530,7 +3532,7 @@ class ApiService {
         worstAppGroupsByThroughputReport: data.worstAppGroupsByThroughputReport || []
       };
     } catch (error) {
-      console.error(`[API] Failed to fetch app insights:`, error);
+      logger.error(`[API] Failed to fetch app insights:`, error);
       throw error;
     }
   }
@@ -3567,7 +3569,7 @@ class ApiService {
 
       return await this.fetchWidgetData(siteId, widgetIds, duration);
     } catch (error) {
-      console.error(`[API] Failed to fetch comprehensive site report:`, error);
+      logger.error(`[API] Failed to fetch comprehensive site report:`, error);
       return null;
     }
   }
@@ -3581,7 +3583,7 @@ class ApiService {
       const noCache = Date.now();
       const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}?noCache=${noCache}`;
 
-      console.log(`[API] Fetching station details for MAC: ${macAddress}`);
+      logger.log(`[API] Fetching station details for MAC: ${macAddress}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
@@ -3589,10 +3591,10 @@ class ApiService {
       }
 
       const data = await response.json();
-      console.log(`[API] Station details loaded for ${macAddress}:`, data);
+      logger.log(`[API] Station details loaded for ${macAddress}:`, data);
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch station details for ${macAddress}:`, error);
+      logger.error(`[API] Failed to fetch station details for ${macAddress}:`, error);
       throw error;
     }
   }
@@ -3614,24 +3616,24 @@ class ApiService {
       const end = endTime || now;
       const noCache = Date.now();
 
-      console.log(`[API] Attempting to fetch station events for MAC: ${macAddress}`);
+      logger.log(`[API] Attempting to fetch station events for MAC: ${macAddress}`);
 
       // Try the direct v1 endpoint first
       try {
         const directEndpoint = `/v1/stations/events/${encodeURIComponent(macAddress)}`;
-        console.log(`[API] Trying direct endpoint: ${directEndpoint}`);
+        logger.log(`[API] Trying direct endpoint: ${directEndpoint}`);
         const directResponse = await this.makeAuthenticatedRequest(directEndpoint, {}, 10000);
 
         if (directResponse.ok) {
           const data = await directResponse.json();
           const events = Array.isArray(data) ? data : (data.events || data.stationEvents || []);
           if (events.length > 0) {
-            console.log(`[API] ✓ Loaded ${events.length} station events from direct endpoint`);
+            logger.log(`[API] ✓ Loaded ${events.length} station events from direct endpoint`);
             return this.normalizeStationEvents(events);
           }
         }
       } catch (e) {
-        console.log('[API] Direct endpoint failed, trying platformmanager endpoint...');
+        logger.log('[API] Direct endpoint failed, trying platformmanager endpoint...');
       }
 
       // Try platformmanager endpoint
@@ -3642,13 +3644,13 @@ class ApiService {
         const data = await response.json();
         const events = data.stationEvents || (Array.isArray(data) ? data : []);
         if (events.length > 0) {
-          console.log(`[API] ✓ Loaded ${events.length} station events from platformmanager endpoint`);
+          logger.log(`[API] ✓ Loaded ${events.length} station events from platformmanager endpoint`);
           return this.normalizeStationEvents(events);
         }
       }
 
       // Try audit logs as fallback
-      console.warn(`[API] Station events endpoints returned no data, trying audit logs fallback...`);
+      logger.warn(`[API] Station events endpoints returned no data, trying audit logs fallback...`);
 
       const auditLogs = await this.getAuditLogs(start, end);
 
@@ -3662,7 +3664,7 @@ class ApiService {
       });
 
       if (stationLogs.length > 0) {
-        console.log(`[API] ✓ Found ${stationLogs.length} station-related events in audit logs`);
+        logger.log(`[API] ✓ Found ${stationLogs.length} station-related events in audit logs`);
 
         // Convert audit logs to station event format
         return stationLogs.map(log => ({
@@ -3677,11 +3679,11 @@ class ApiService {
         } as StationEvent));
       }
 
-      console.warn(`[API] No station events found for ${macAddress}`);
+      logger.warn(`[API] No station events found for ${macAddress}`);
       return [];
 
     } catch (error) {
-      console.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
+      logger.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
       return [];
     }
   }
@@ -3786,11 +3788,11 @@ class ApiService {
       const noCache = Date.now();
       const endpoint = `/v1/report/stations/${encodeURIComponent(macAddress)}?noCache=${noCache}&duration=${duration}&resolution=${resolution}&widgetList=muEvent`;
 
-      console.log(`[API] Fetching correlated events for MAC: ${macAddress}`);
+      logger.log(`[API] Fetching correlated events for MAC: ${macAddress}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`[API] Correlated events API returned ${response.status}`);
+        logger.warn(`[API] Correlated events API returned ${response.status}`);
         // Fall back to regular station events
         const stationEvents = await this.fetchStationEvents(macAddress);
         return { ...emptyResponse, stationEvents };
@@ -3836,7 +3838,7 @@ class ApiService {
         level: event.level || event.severity
       }));
 
-      console.log(`[API] ✓ Loaded ${stationEvents.length} station, ${apEvents.length} AP, ${smartRfEvents.length} RRM events`);
+      logger.log(`[API] ✓ Loaded ${stationEvents.length} station, ${apEvents.length} AP, ${smartRfEvents.length} RRM events`);
 
       return {
         stationEvents,
@@ -3844,7 +3846,7 @@ class ApiService {
         smartRfEvents
       };
     } catch (error) {
-      console.error(`[API] Failed to fetch correlated events for ${macAddress}:`, error);
+      logger.error(`[API] Failed to fetch correlated events for ${macAddress}:`, error);
       // Fall back to regular station events
       try {
         const stationEvents = await this.fetchStationEvents(macAddress);
@@ -3863,19 +3865,19 @@ class ApiService {
    */
   async getAPStates(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AP states (real-time)');
+      logger.log('[API] Fetching AP states (real-time)');
       const response = await this.makeAuthenticatedRequest('/v1/state/aps', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP states API returned ${response.status}`);
+        logger.warn(`AP states API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} AP states`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} AP states`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AP states:', error);
+      logger.error('[API] Failed to fetch AP states:', error);
       return [];
     }
   }
@@ -3886,19 +3888,19 @@ class ApiService {
    */
   async getSiteStates(): Promise<any[]> {
     try {
-      console.log('[API] Fetching site states (real-time)');
+      logger.log('[API] Fetching site states (real-time)');
       const response = await this.makeAuthenticatedRequest('/v1/state/sites', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Site states API returned ${response.status}`);
+        logger.warn(`Site states API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} site states`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} site states`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch site states:', error);
+      logger.error('[API] Failed to fetch site states:', error);
       return [];
     }
   }
@@ -3920,19 +3922,19 @@ class ApiService {
 
       const endpoint = `/v3/sites/${siteId}/report/venue?duration=${duration}&resolution=${resolution}&statType=sites&widgetList=${encodeURIComponent(widgetList)}`;
 
-      console.log(`[API] Fetching venue statistics for site: ${siteId}`);
+      logger.log(`[API] Fetching venue statistics for site: ${siteId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Venue statistics API returned ${response.status}`);
+        logger.warn(`Venue statistics API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded venue statistics:', Object.keys(data || {}));
+      logger.log('[API] ✓ Loaded venue statistics:', Object.keys(data || {}));
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch venue statistics for site ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch venue statistics for site ${siteId}:`, error);
       return null;
     }
   }
@@ -3943,19 +3945,19 @@ class ApiService {
    */
   async getSwitches(): Promise<any[]> {
     try {
-      console.log('[API] Fetching switches');
+      logger.log('[API] Fetching switches');
       const response = await this.makeAuthenticatedRequest('/v1/switches', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Switches API returned ${response.status}`);
+        logger.warn(`Switches API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} switches`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} switches`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch switches:', error);
+      logger.error('[API] Failed to fetch switches:', error);
       return [];
     }
   }
@@ -3969,19 +3971,19 @@ class ApiService {
   async getAPReport(apSerialNumber: string, duration: string = '24H', resolution: number = 15): Promise<any> {
     try {
       const endpoint = `/v1/report/aps/${encodeURIComponent(apSerialNumber)}?duration=${duration}&resolution=${resolution}`;
-      console.log(`[API] Fetching AP report for: ${apSerialNumber}`);
+      logger.log(`[API] Fetching AP report for: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`AP report API returned ${response.status}`);
+        logger.warn(`AP report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP report');
+      logger.log('[API] ✓ Loaded AP report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP report for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP report for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -3993,19 +3995,19 @@ class ApiService {
   async getSiteReport(siteId: string, duration: string = '24H', resolution: number = 15): Promise<any> {
     try {
       const endpoint = `/v1/report/sites/${encodeURIComponent(siteId)}?duration=${duration}&resolution=${resolution}`;
-      console.log(`[API] Fetching site report for: ${siteId}`);
+      logger.log(`[API] Fetching site report for: ${siteId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Site report API returned ${response.status}`);
+        logger.warn(`Site report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded site report');
+      logger.log('[API] ✓ Loaded site report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch site report for ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch site report for ${siteId}:`, error);
       return null;
     }
   }
@@ -4017,19 +4019,19 @@ class ApiService {
   async getStationReport(stationId: string, duration: string = '24H'): Promise<any> {
     try {
       const endpoint = `/v1/report/stations/${encodeURIComponent(stationId)}?duration=${duration}`;
-      console.log(`[API] Fetching station report for: ${stationId}`);
+      logger.log(`[API] Fetching station report for: ${stationId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Station report API returned ${response.status}`);
+        logger.warn(`Station report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded station report');
+      logger.log('[API] ✓ Loaded station report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch station report for ${stationId}:`, error);
+      logger.error(`[API] Failed to fetch station report for ${stationId}:`, error);
       return null;
     }
   }
@@ -4041,19 +4043,19 @@ class ApiService {
   async getSwitchReport(switchSerialNumber: string, duration: string = '24H'): Promise<any> {
     try {
       const endpoint = `/v1/report/switches/${encodeURIComponent(switchSerialNumber)}?duration=${duration}`;
-      console.log(`[API] Fetching switch report for: ${switchSerialNumber}`);
+      logger.log(`[API] Fetching switch report for: ${switchSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Switch report API returned ${response.status}`);
+        logger.warn(`Switch report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded switch report');
+      logger.log('[API] ✓ Loaded switch report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch switch report for ${switchSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch switch report for ${switchSerialNumber}:`, error);
       return null;
     }
   }
@@ -4065,19 +4067,19 @@ class ApiService {
   async getServiceReport(serviceId: string, duration: string = '24H'): Promise<any> {
     try {
       const endpoint = `/v1/report/services/${encodeURIComponent(serviceId)}?duration=${duration}`;
-      console.log(`[API] Fetching service report for: ${serviceId}`);
+      logger.log(`[API] Fetching service report for: ${serviceId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Service report API returned ${response.status}`);
+        logger.warn(`Service report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded service report');
+      logger.log('[API] ✓ Loaded service report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch service report for ${serviceId}:`, error);
+      logger.error(`[API] Failed to fetch service report for ${serviceId}:`, error);
       return null;
     }
   }
@@ -4090,19 +4092,19 @@ class ApiService {
    */
   async getRFManagementProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching RF management profiles');
+      logger.log('[API] Fetching RF management profiles');
       const response = await this.makeAuthenticatedRequest('/v3/rfmgmt', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`RF management API returned ${response.status}`);
+        logger.warn(`RF management API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} RF management profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} RF management profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch RF management profiles:', error);
+      logger.error('[API] Failed to fetch RF management profiles:', error);
       return [];
     }
   }
@@ -4113,19 +4115,19 @@ class ApiService {
    */
   async getIoTProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching IoT profiles');
+      logger.log('[API] Fetching IoT profiles');
       const response = await this.makeAuthenticatedRequest('/v3/iotprofile', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`IoT profiles API returned ${response.status}`);
+        logger.warn(`IoT profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} IoT profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} IoT profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch IoT profiles:', error);
+      logger.error('[API] Failed to fetch IoT profiles:', error);
       return [];
     }
   }
@@ -4136,19 +4138,19 @@ class ApiService {
    */
   async getADSPProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching ADSP profiles');
+      logger.log('[API] Fetching ADSP profiles');
       const response = await this.makeAuthenticatedRequest('/v3/adsp', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`ADSP profiles API returned ${response.status}`);
+        logger.warn(`ADSP profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} ADSP profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} ADSP profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch ADSP profiles:', error);
+      logger.error('[API] Failed to fetch ADSP profiles:', error);
       return [];
     }
   }
@@ -4159,19 +4161,19 @@ class ApiService {
    */
   async getAnalyticsProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching analytics profiles');
+      logger.log('[API] Fetching analytics profiles');
       const response = await this.makeAuthenticatedRequest('/v3/analytics', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Analytics profiles API returned ${response.status}`);
+        logger.warn(`Analytics profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} analytics profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} analytics profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch analytics profiles:', error);
+      logger.error('[API] Failed to fetch analytics profiles:', error);
       return [];
     }
   }
@@ -4182,19 +4184,19 @@ class ApiService {
    */
   async getPositioningProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching positioning profiles');
+      logger.log('[API] Fetching positioning profiles');
       const response = await this.makeAuthenticatedRequest('/v3/positioning', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Positioning profiles API returned ${response.status}`);
+        logger.warn(`Positioning profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} positioning profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} positioning profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch positioning profiles:', error);
+      logger.error('[API] Failed to fetch positioning profiles:', error);
       return [];
     }
   }
@@ -4205,19 +4207,19 @@ class ApiService {
    */
   async getMeshPoints(): Promise<any[]> {
     try {
-      console.log('[API] Fetching mesh points');
+      logger.log('[API] Fetching mesh points');
       const response = await this.makeAuthenticatedRequest('/v3/meshpoints', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Mesh points API returned ${response.status}`);
+        logger.warn(`Mesh points API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} mesh points`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} mesh points`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch mesh points:', error);
+      logger.error('[API] Failed to fetch mesh points:', error);
       return [];
     }
   }
@@ -4228,19 +4230,19 @@ class ApiService {
    */
   async getSwitchPortProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching switch port profiles');
+      logger.log('[API] Fetching switch port profiles');
       const response = await this.makeAuthenticatedRequest('/v3/switchportprofile', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Switch port profiles API returned ${response.status}`);
+        logger.warn(`Switch port profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} switch port profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} switch port profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch switch port profiles:', error);
+      logger.error('[API] Failed to fetch switch port profiles:', error);
       return [];
     }
   }
@@ -4257,19 +4259,19 @@ class ApiService {
       if (endTime) params.push(`endTime=${endTime}`);
       if (params.length > 0) endpoint += '?' + params.join('&');
 
-      console.log('[API] Fetching audit logs');
+      logger.log('[API] Fetching audit logs');
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Audit logs API returned ${response.status}`);
+        logger.warn(`Audit logs API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} audit logs`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} audit logs`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch audit logs:', error);
+      logger.error('[API] Failed to fetch audit logs:', error);
       return [];
     }
   }
@@ -4280,19 +4282,19 @@ class ApiService {
    */
   async getDPISignatures(): Promise<any[]> {
     try {
-      console.log('[API] Fetching DPI signatures');
+      logger.log('[API] Fetching DPI signatures');
       const response = await this.makeAuthenticatedRequest('/v1/dpisignatures', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`DPI signatures API returned ${response.status}`);
+        logger.warn(`DPI signatures API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} DPI signatures`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} DPI signatures`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch DPI signatures:', error);
+      logger.error('[API] Failed to fetch DPI signatures:', error);
       return [];
     }
   }
@@ -4303,19 +4305,19 @@ class ApiService {
    */
   async getRateLimiters(): Promise<any[]> {
     try {
-      console.log('[API] Fetching rate limiters');
+      logger.log('[API] Fetching rate limiters');
       const response = await this.makeAuthenticatedRequest('/v1/ratelimiters', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Rate limiters API returned ${response.status}`);
+        logger.warn(`Rate limiters API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} rate limiters`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} rate limiters`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch rate limiters:', error);
+      logger.error('[API] Failed to fetch rate limiters:', error);
       return [];
     }
   }
@@ -4326,19 +4328,19 @@ class ApiService {
    */
   async getCoSProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching CoS profiles');
+      logger.log('[API] Fetching CoS profiles');
       const response = await this.makeAuthenticatedRequest('/v1/cos', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`CoS profiles API returned ${response.status}`);
+        logger.warn(`CoS profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} CoS profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} CoS profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch CoS profiles:', error);
+      logger.error('[API] Failed to fetch CoS profiles:', error);
       return [];
     }
   }
@@ -4349,19 +4351,19 @@ class ApiService {
    */
   async getRadioChannels(): Promise<any> {
     try {
-      console.log('[API] Fetching radio channels');
+      logger.log('[API] Fetching radio channels');
       const response = await this.makeAuthenticatedRequest('/v1/radios/channels', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Radio channels API returned ${response.status}`);
+        logger.warn(`Radio channels API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded radio channels');
+      logger.log('[API] ✓ Loaded radio channels');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch radio channels:', error);
+      logger.error('[API] Failed to fetch radio channels:', error);
       return null;
     }
   }
@@ -4373,19 +4375,19 @@ class ApiService {
   async getSmartRFChannels(siteId?: string): Promise<any> {
     try {
       const endpoint = siteId ? `/v3/radios/smartrfchannels?siteId=${encodeURIComponent(siteId)}` : '/v3/radios/smartrfchannels';
-      console.log('[API] Fetching SmartRF channels');
+      logger.log('[API] Fetching SmartRF channels');
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`SmartRF channels API returned ${response.status}`);
+        logger.warn(`SmartRF channels API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded SmartRF channels');
+      logger.log('[API] ✓ Loaded SmartRF channels');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch SmartRF channels:', error);
+      logger.error('[API] Failed to fetch SmartRF channels:', error);
       return null;
     }
   }
@@ -4396,19 +4398,19 @@ class ApiService {
    */
   async getAPUpgradeImageList(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AP upgrade image list');
+      logger.log('[API] Fetching AP upgrade image list');
       const response = await this.makeAuthenticatedRequest('/v1/aps/upgradeimagelist', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP upgrade image list API returned ${response.status}`);
+        logger.warn(`AP upgrade image list API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} upgrade images`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} upgrade images`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AP upgrade image list:', error);
+      logger.error('[API] Failed to fetch AP upgrade image list:', error);
       return [];
     }
   }
@@ -4419,19 +4421,19 @@ class ApiService {
    */
   async getEntityDistribution(): Promise<any> {
     try {
-      console.log('[API] Fetching entity distribution');
+      logger.log('[API] Fetching entity distribution');
       const response = await this.makeAuthenticatedRequest('/v1/state/entityDistribution', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Entity distribution API returned ${response.status}`);
+        logger.warn(`Entity distribution API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded entity distribution');
+      logger.log('[API] ✓ Loaded entity distribution');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch entity distribution:', error);
+      logger.error('[API] Failed to fetch entity distribution:', error);
       return null;
     }
   }
@@ -4444,7 +4446,7 @@ class ApiService {
    */
   async queryStations(filters?: any): Promise<any[]> {
     try {
-      console.log('[API] Querying stations with filters');
+      logger.log('[API] Querying stations with filters');
       const response = await this.makeAuthenticatedRequest('/v1/stations/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -4452,15 +4454,15 @@ class ApiService {
       }, 15000);
 
       if (!response.ok) {
-        console.warn(`Station query API returned ${response.status}`);
+        logger.warn(`Station query API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Query returned ${data?.length || 0} stations`);
+      logger.log(`[API] ✓ Query returned ${data?.length || 0} stations`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to query stations:', error);
+      logger.error('[API] Failed to query stations:', error);
       return [];
     }
   }
@@ -4472,19 +4474,19 @@ class ApiService {
   async getAPQueryVisualization(params?: string): Promise<any> {
     try {
       const endpoint = params ? `/v1/aps/query/visualize?${params}` : '/v1/aps/query/visualize';
-      console.log('[API] Fetching AP query visualization');
+      logger.log('[API] Fetching AP query visualization');
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP query visualization API returned ${response.status}`);
+        logger.warn(`AP query visualization API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP query visualization');
+      logger.log('[API] ✓ Loaded AP query visualization');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch AP query visualization:', error);
+      logger.error('[API] Failed to fetch AP query visualization:', error);
       return null;
     }
   }
@@ -4495,19 +4497,19 @@ class ApiService {
    */
   async getStationQueryColumns(): Promise<any[]> {
     try {
-      console.log('[API] Fetching station query columns');
+      logger.log('[API] Fetching station query columns');
       const response = await this.makeAuthenticatedRequest('/v1/stations/query/columns', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Station query columns API returned ${response.status}`);
+        logger.warn(`Station query columns API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} query columns`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} query columns`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch station query columns:', error);
+      logger.error('[API] Failed to fetch station query columns:', error);
       return [];
     }
   }
@@ -4521,19 +4523,19 @@ class ApiService {
   async getAPLocationReport(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/report/location/aps/${encodeURIComponent(apSerialNumber)}`;
-      console.log(`[API] Fetching location report for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching location report for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP location report API returned ${response.status}`);
+        logger.warn(`AP location report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP location report');
+      logger.log('[API] ✓ Loaded AP location report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP location report for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP location report for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -4545,19 +4547,19 @@ class ApiService {
   async getFloorLocationReport(floorId: string): Promise<any> {
     try {
       const endpoint = `/v1/report/location/floor/${encodeURIComponent(floorId)}`;
-      console.log(`[API] Fetching location report for floor: ${floorId}`);
+      logger.log(`[API] Fetching location report for floor: ${floorId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Floor location report API returned ${response.status}`);
+        logger.warn(`Floor location report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded floor location report');
+      logger.log('[API] ✓ Loaded floor location report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch floor location report for ${floorId}:`, error);
+      logger.error(`[API] Failed to fetch floor location report for ${floorId}:`, error);
       return null;
     }
   }
@@ -4569,19 +4571,19 @@ class ApiService {
   async getStationLocationReport(stationId: string): Promise<any> {
     try {
       const endpoint = `/v1/report/location/stations/${encodeURIComponent(stationId)}`;
-      console.log(`[API] Fetching location report for station: ${stationId}`);
+      logger.log(`[API] Fetching location report for station: ${stationId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Station location report API returned ${response.status}`);
+        logger.warn(`Station location report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded station location report');
+      logger.log('[API] ✓ Loaded station location report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch station location report for ${stationId}:`, error);
+      logger.error(`[API] Failed to fetch station location report for ${stationId}:`, error);
       return null;
     }
   }
@@ -4592,19 +4594,19 @@ class ApiService {
    */
   async getXLocationProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching XLocation profiles');
+      logger.log('[API] Fetching XLocation profiles');
       const response = await this.makeAuthenticatedRequest('/v3/xlocation', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`XLocation profiles API returned ${response.status}`);
+        logger.warn(`XLocation profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} XLocation profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} XLocation profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch XLocation profiles:', error);
+      logger.error('[API] Failed to fetch XLocation profiles:', error);
       return [];
     }
   }
@@ -4616,19 +4618,19 @@ class ApiService {
   async getStationLocation(stationId: string): Promise<any> {
     try {
       const endpoint = `/v1/stations/${encodeURIComponent(stationId)}/location`;
-      console.log(`[API] Fetching location for station: ${stationId}`);
+      logger.log(`[API] Fetching location for station: ${stationId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Station location API returned ${response.status}`);
+        logger.warn(`Station location API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded station location');
+      logger.log('[API] ✓ Loaded station location');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch station location for ${stationId}:`, error);
+      logger.error(`[API] Failed to fetch station location for ${stationId}:`, error);
       return null;
     }
   }
@@ -4640,19 +4642,19 @@ class ApiService {
   async getAPLocation(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/aps/${encodeURIComponent(apSerialNumber)}/location`;
-      console.log(`[API] Fetching location for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching location for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP location API returned ${response.status}`);
+        logger.warn(`AP location API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP location');
+      logger.log('[API] ✓ Loaded AP location');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP location for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP location for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -4665,19 +4667,19 @@ class ApiService {
    */
   async getDeviceAdoptionRules(): Promise<any[]> {
     try {
-      console.log('[API] Fetching device adoption rules');
+      logger.log('[API] Fetching device adoption rules');
       const response = await this.makeAuthenticatedRequest('/v1/devices/adoptionrules', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Device adoption rules API returned ${response.status}`);
+        logger.warn(`Device adoption rules API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} adoption rules`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} adoption rules`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch device adoption rules:', error);
+      logger.error('[API] Failed to fetch device adoption rules:', error);
       return [];
     }
   }
@@ -4688,19 +4690,19 @@ class ApiService {
    */
   async getAPAdoptionRules(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AP adoption rules');
+      logger.log('[API] Fetching AP adoption rules');
       const response = await this.makeAuthenticatedRequest('/v1/aps/adoptionrules', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP adoption rules API returned ${response.status}`);
+        logger.warn(`AP adoption rules API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} AP adoption rules`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} AP adoption rules`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AP adoption rules:', error);
+      logger.error('[API] Failed to fetch AP adoption rules:', error);
       return [];
     }
   }
@@ -4711,19 +4713,19 @@ class ApiService {
    */
   async getAPUpgradeSchedule(): Promise<any> {
     try {
-      console.log('[API] Fetching AP upgrade schedule');
+      logger.log('[API] Fetching AP upgrade schedule');
       const response = await this.makeAuthenticatedRequest('/v1/aps/upgradeschedule', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP upgrade schedule API returned ${response.status}`);
+        logger.warn(`AP upgrade schedule API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP upgrade schedule');
+      logger.log('[API] ✓ Loaded AP upgrade schedule');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch AP upgrade schedule:', error);
+      logger.error('[API] Failed to fetch AP upgrade schedule:', error);
       return null;
     }
   }
@@ -4735,19 +4737,19 @@ class ApiService {
   async getDeviceImages(hwType: string): Promise<any[]> {
     try {
       const endpoint = `/v1/deviceimages/${encodeURIComponent(hwType)}`;
-      console.log(`[API] Fetching device images for: ${hwType}`);
+      logger.log(`[API] Fetching device images for: ${hwType}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Device images API returned ${response.status}`);
+        logger.warn(`Device images API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} device images`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} device images`);
       return data || [];
     } catch (error) {
-      console.error(`[API] Failed to fetch device images for ${hwType}:`, error);
+      logger.error(`[API] Failed to fetch device images for ${hwType}:`, error);
       return [];
     }
   }
@@ -4760,19 +4762,19 @@ class ApiService {
    */
   async getEGuestProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching eGuest profiles');
+      logger.log('[API] Fetching eGuest profiles');
       const response = await this.makeAuthenticatedRequest('/v1/eguest', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`eGuest profiles API returned ${response.status}`);
+        logger.warn(`eGuest profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} eGuest profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} eGuest profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch eGuest profiles:', error);
+      logger.error('[API] Failed to fetch eGuest profiles:', error);
       return [];
     }
   }
@@ -4783,19 +4785,19 @@ class ApiService {
    */
   async getAAAPolicies(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AAA policies');
+      logger.log('[API] Fetching AAA policies');
       const response = await this.makeAuthenticatedRequest('/v1/aaapolicy', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AAA policies API returned ${response.status}`);
+        logger.warn(`AAA policies API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} AAA policies`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} AAA policies`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AAA policies:', error);
+      logger.error('[API] Failed to fetch AAA policies:', error);
       return [];
     }
   }
@@ -4808,19 +4810,19 @@ class ApiService {
    */
   async getAdministrators(): Promise<any[]> {
     try {
-      console.log('[API] Fetching administrators');
+      logger.log('[API] Fetching administrators');
       const response = await this.makeAuthenticatedRequest('/v1/administrators', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Administrators API returned ${response.status}`);
+        logger.warn(`Administrators API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} administrators`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} administrators`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch administrators:', error);
+      logger.error('[API] Failed to fetch administrators:', error);
       return [];
     }
   }
@@ -4831,19 +4833,19 @@ class ApiService {
    */
   async getAppKeys(): Promise<any[]> {
     try {
-      console.log('[API] Fetching app keys');
+      logger.log('[API] Fetching app keys');
       const response = await this.makeAuthenticatedRequest('/v1/appkeys', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`App keys API returned ${response.status}`);
+        logger.warn(`App keys API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} app keys`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} app keys`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch app keys:', error);
+      logger.error('[API] Failed to fetch app keys:', error);
       return [];
     }
   }
@@ -4856,19 +4858,19 @@ class ApiService {
    */
   async getReportTemplates(): Promise<any[]> {
     try {
-      console.log('[API] Fetching report templates');
+      logger.log('[API] Fetching report templates');
       const response = await this.makeAuthenticatedRequest('/v1/reports/templates', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Report templates API returned ${response.status}`);
+        logger.warn(`Report templates API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} report templates`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} report templates`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch report templates:', error);
+      logger.error('[API] Failed to fetch report templates:', error);
       return [];
     }
   }
@@ -4879,19 +4881,19 @@ class ApiService {
    */
   async getScheduledReports(): Promise<any[]> {
     try {
-      console.log('[API] Fetching scheduled reports');
+      logger.log('[API] Fetching scheduled reports');
       const response = await this.makeAuthenticatedRequest('/v1/reports/scheduled', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Scheduled reports API returned ${response.status}`);
+        logger.warn(`Scheduled reports API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} scheduled reports`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} scheduled reports`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch scheduled reports:', error);
+      logger.error('[API] Failed to fetch scheduled reports:', error);
       return [];
     }
   }
@@ -4902,19 +4904,19 @@ class ApiService {
    */
   async getGeneratedReports(): Promise<any[]> {
     try {
-      console.log('[API] Fetching generated reports');
+      logger.log('[API] Fetching generated reports');
       const response = await this.makeAuthenticatedRequest('/v1/reports/generated', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Generated reports API returned ${response.status}`);
+        logger.warn(`Generated reports API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} generated reports`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} generated reports`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch generated reports:', error);
+      logger.error('[API] Failed to fetch generated reports:', error);
       return [];
     }
   }
@@ -4925,19 +4927,19 @@ class ApiService {
    */
   async getReportWidgets(): Promise<any[]> {
     try {
-      console.log('[API] Fetching report widgets');
+      logger.log('[API] Fetching report widgets');
       const response = await this.makeAuthenticatedRequest('/v1/reports/widgets', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Report widgets API returned ${response.status}`);
+        logger.warn(`Report widgets API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} report widgets`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} report widgets`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch report widgets:', error);
+      logger.error('[API] Failed to fetch report widgets:', error);
       return [];
     }
   }
@@ -4950,19 +4952,19 @@ class ApiService {
    */
   async evaluateBestPractices(): Promise<any> {
     try {
-      console.log('[API] Evaluating best practices');
+      logger.log('[API] Evaluating best practices');
       const response = await this.makeAuthenticatedRequest('/v1/bestpractices/evaluate', {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Best practices evaluation API returned ${response.status}`);
+        logger.warn(`Best practices evaluation API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Completed best practices evaluation');
+      logger.log('[API] ✓ Completed best practices evaluation');
       return data;
     } catch (error) {
-      console.error('[API] Failed to evaluate best practices:', error);
+      logger.error('[API] Failed to evaluate best practices:', error);
       return null;
     }
   }
@@ -4973,19 +4975,19 @@ class ApiService {
    */
   async getWorkflowStatus(): Promise<any> {
     try {
-      console.log('[API] Fetching workflow status');
+      logger.log('[API] Fetching workflow status');
       const response = await this.makeAuthenticatedRequest('/v1/workflow', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Workflow status API returned ${response.status}`);
+        logger.warn(`Workflow status API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded workflow status');
+      logger.log('[API] ✓ Loaded workflow status');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch workflow status:', error);
+      logger.error('[API] Failed to fetch workflow status:', error);
       return null;
     }
   }
@@ -4996,19 +4998,19 @@ class ApiService {
    */
   async getSNMPConfig(): Promise<any> {
     try {
-      console.log('[API] Fetching SNMP configuration');
+      logger.log('[API] Fetching SNMP configuration');
       const response = await this.makeAuthenticatedRequest('/v1/snmp', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`SNMP config API returned ${response.status}`);
+        logger.warn(`SNMP config API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded SNMP configuration');
+      logger.log('[API] ✓ Loaded SNMP configuration');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch SNMP configuration:', error);
+      logger.error('[API] Failed to fetch SNMP configuration:', error);
       return null;
     }
   }
@@ -5019,19 +5021,19 @@ class ApiService {
    */
   async getGlobalSettings(): Promise<any> {
     try {
-      console.log('[API] Fetching global settings');
+      logger.log('[API] Fetching global settings');
       const response = await this.makeAuthenticatedRequest('/v1/globalsettings', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Global settings API returned ${response.status}`);
+        logger.warn(`Global settings API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded global settings');
+      logger.log('[API] ✓ Loaded global settings');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch global settings:', error);
+      logger.error('[API] Failed to fetch global settings:', error);
       return null;
     }
   }
@@ -5042,19 +5044,19 @@ class ApiService {
    */
   async getAccessControl(): Promise<any> {
     try {
-      console.log('[API] Fetching access control configuration');
+      logger.log('[API] Fetching access control configuration');
       const response = await this.makeAuthenticatedRequest('/v1/accesscontrol', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Access control API returned ${response.status}`);
+        logger.warn(`Access control API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded access control configuration');
+      logger.log('[API] ✓ Loaded access control configuration');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch access control configuration:', error);
+      logger.error('[API] Failed to fetch access control configuration:', error);
       return null;
     }
   }
@@ -5065,19 +5067,19 @@ class ApiService {
    */
   async getNSightConfig(): Promise<any> {
     try {
-      console.log('[API] Fetching NSight configuration');
+      logger.log('[API] Fetching NSight configuration');
       const response = await this.makeAuthenticatedRequest('/v1/nsightconfig', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`NSight config API returned ${response.status}`);
+        logger.warn(`NSight config API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded NSight configuration');
+      logger.log('[API] ✓ Loaded NSight configuration');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch NSight configuration:', error);
+      logger.error('[API] Failed to fetch NSight configuration:', error);
       return null;
     }
   }
@@ -5088,19 +5090,19 @@ class ApiService {
    */
   async getSiteCountryList(): Promise<any[]> {
     try {
-      console.log('[API] Fetching site country list');
+      logger.log('[API] Fetching site country list');
       const response = await this.makeAuthenticatedRequest('/v3/sites/countrylist', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Site country list API returned ${response.status}`);
+        logger.warn(`Site country list API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} countries`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} countries`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch site country list:', error);
+      logger.error('[API] Failed to fetch site country list:', error);
       return [];
     }
   }
@@ -5111,19 +5113,19 @@ class ApiService {
    */
   async getRTLSProfiles(): Promise<any[]> {
     try {
-      console.log('[API] Fetching RTLS profiles');
+      logger.log('[API] Fetching RTLS profiles');
       const response = await this.makeAuthenticatedRequest('/v1/rtlsprofile', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`RTLS profiles API returned ${response.status}`);
+        logger.warn(`RTLS profiles API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} RTLS profiles`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} RTLS profiles`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch RTLS profiles:', error);
+      logger.error('[API] Failed to fetch RTLS profiles:', error);
       return [];
     }
   }
@@ -5134,19 +5136,19 @@ class ApiService {
    */
   async getRadioModes(): Promise<any[]> {
     try {
-      console.log('[API] Fetching radio modes');
+      logger.log('[API] Fetching radio modes');
       const response = await this.makeAuthenticatedRequest('/v1/radios/modes', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Radio modes API returned ${response.status}`);
+        logger.warn(`Radio modes API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} radio modes`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} radio modes`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch radio modes:', error);
+      logger.error('[API] Failed to fetch radio modes:', error);
       return [];
     }
   }
@@ -5160,19 +5162,19 @@ class ApiService {
   async getAPLLDP(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/aps/${encodeURIComponent(apSerialNumber)}/lldp`;
-      console.log(`[API] Fetching LLDP info for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching LLDP info for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP LLDP API returned ${response.status}`);
+        logger.warn(`AP LLDP API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP LLDP information');
+      logger.log('[API] ✓ Loaded AP LLDP information');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP LLDP for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP LLDP for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -5184,19 +5186,19 @@ class ApiService {
   async getAPEnvironment(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/ap/environment/${encodeURIComponent(apSerialNumber)}`;
-      console.log(`[API] Fetching environment data for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching environment data for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP environment API returned ${response.status}`);
+        logger.warn(`AP environment API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP environment data');
+      logger.log('[API] ✓ Loaded AP environment data');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP environment for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP environment for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -5208,19 +5210,19 @@ class ApiService {
   async getAPSmartRFReport(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/report/aps/${encodeURIComponent(apSerialNumber)}/smartrf`;
-      console.log(`[API] Fetching SmartRF report for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching SmartRF report for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP SmartRF report API returned ${response.status}`);
+        logger.warn(`AP SmartRF report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP SmartRF report');
+      logger.log('[API] ✓ Loaded AP SmartRF report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP SmartRF report for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP SmartRF report for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -5232,19 +5234,19 @@ class ApiService {
   async getAPInterfaceStats(apSerialNumber: string): Promise<any> {
     try {
       const endpoint = `/v1/aps/ifstats/${encodeURIComponent(apSerialNumber)}`;
-      console.log(`[API] Fetching interface stats for AP: ${apSerialNumber}`);
+      logger.log(`[API] Fetching interface stats for AP: ${apSerialNumber}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP interface stats API returned ${response.status}`);
+        logger.warn(`AP interface stats API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP interface statistics');
+      logger.log('[API] ✓ Loaded AP interface statistics');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch AP interface stats for ${apSerialNumber}:`, error);
+      logger.error(`[API] Failed to fetch AP interface stats for ${apSerialNumber}:`, error);
       return null;
     }
   }
@@ -5255,19 +5257,19 @@ class ApiService {
    */
   async getAllAPInterfaceStats(): Promise<any[]> {
     try {
-      console.log('[API] Fetching all AP interface statistics');
+      logger.log('[API] Fetching all AP interface statistics');
       const response = await this.makeAuthenticatedRequest('/v1/aps/ifstats', {}, 15000);
 
       if (!response.ok) {
-        console.warn(`All AP interface stats API returned ${response.status}`);
+        logger.warn(`All AP interface stats API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded interface stats for ${data?.length || 0} APs`);
+      logger.log(`[API] ✓ Loaded interface stats for ${data?.length || 0} APs`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch all AP interface stats:', error);
+      logger.error('[API] Failed to fetch all AP interface stats:', error);
       return [];
     }
   }
@@ -5279,19 +5281,19 @@ class ApiService {
   async getStationEvents(macAddress: string): Promise<any[]> {
     try {
       const endpoint = `/v1/stations/events/${encodeURIComponent(macAddress)}`;
-      console.log(`[API] Fetching events for station: ${macAddress}`);
+      logger.log(`[API] Fetching events for station: ${macAddress}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Station events API returned ${response.status}`);
+        logger.warn(`Station events API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} station events`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} station events`);
       return data || [];
     } catch (error) {
-      console.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
+      logger.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
       return [];
     }
   }
@@ -5303,19 +5305,19 @@ class ApiService {
   async getSiteSmartRFReport(siteId: string): Promise<any> {
     try {
       const endpoint = `/v1/report/sites/${encodeURIComponent(siteId)}/smartrf`;
-      console.log(`[API] Fetching SmartRF report for site: ${siteId}`);
+      logger.log(`[API] Fetching SmartRF report for site: ${siteId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Site SmartRF report API returned ${response.status}`);
+        logger.warn(`Site SmartRF report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded site SmartRF report');
+      logger.log('[API] ✓ Loaded site SmartRF report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch site SmartRF report for ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch site SmartRF report for ${siteId}:`, error);
       return null;
     }
   }
@@ -5327,19 +5329,19 @@ class ApiService {
   async getSiteVenueReport(siteId: string, duration: string = '24H', resolution: number = 15): Promise<any> {
     try {
       const endpoint = `/v3/sites/${encodeURIComponent(siteId)}/report/venue?duration=${duration}&resolution=${resolution}&statType=sites`;
-      console.log(`[API] Fetching venue report for site: ${siteId}`);
+      logger.log(`[API] Fetching venue report for site: ${siteId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`Site venue report API returned ${response.status}`);
+        logger.warn(`Site venue report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded site venue report');
+      logger.log('[API] ✓ Loaded site venue report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch site venue report for ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch site venue report for ${siteId}:`, error);
       return null;
     }
   }
@@ -5351,19 +5353,19 @@ class ApiService {
   async getAllSitesVenueReport(duration: string = '24H'): Promise<any> {
     try {
       const endpoint = `/v3/sites/report/venue?duration=${duration}`;
-      console.log('[API] Fetching venue report for all sites');
+      logger.log('[API] Fetching venue report for all sites');
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
       if (!response.ok) {
-        console.warn(`All sites venue report API returned ${response.status}`);
+        logger.warn(`All sites venue report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded all sites venue report');
+      logger.log('[API] ✓ Loaded all sites venue report');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch all sites venue report:', error);
+      logger.error('[API] Failed to fetch all sites venue report:', error);
       return null;
     }
   }
@@ -5375,19 +5377,19 @@ class ApiService {
   async getSiteImpactReport(siteId: string): Promise<any> {
     try {
       const endpoint = `/v3/sites/${encodeURIComponent(siteId)}/report/impact`;
-      console.log(`[API] Fetching impact report for site: ${siteId}`);
+      logger.log(`[API] Fetching impact report for site: ${siteId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Site impact report API returned ${response.status}`);
+        logger.warn(`Site impact report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded site impact report');
+      logger.log('[API] ✓ Loaded site impact report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch site impact report for ${siteId}:`, error);
+      logger.error(`[API] Failed to fetch site impact report for ${siteId}:`, error);
       return null;
     }
   }
@@ -5398,19 +5400,19 @@ class ApiService {
    */
   async getAllSitesImpactReport(): Promise<any> {
     try {
-      console.log('[API] Fetching impact report for all sites');
+      logger.log('[API] Fetching impact report for all sites');
       const response = await this.makeAuthenticatedRequest('/v3/sites/report/impact', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`All sites impact report API returned ${response.status}`);
+        logger.warn(`All sites impact report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded all sites impact report');
+      logger.log('[API] ✓ Loaded all sites impact report');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch all sites impact report:', error);
+      logger.error('[API] Failed to fetch all sites impact report:', error);
       return null;
     }
   }
@@ -5421,19 +5423,19 @@ class ApiService {
    */
   async getSitesReport(): Promise<any> {
     try {
-      console.log('[API] Fetching sites report');
+      logger.log('[API] Fetching sites report');
       const response = await this.makeAuthenticatedRequest('/v1/report/sites', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Sites report API returned ${response.status}`);
+        logger.warn(`Sites report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded sites report');
+      logger.log('[API] ✓ Loaded sites report');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch sites report:', error);
+      logger.error('[API] Failed to fetch sites report:', error);
       return null;
     }
   }
@@ -5445,19 +5447,19 @@ class ApiService {
   async getFlexReport(duration: string): Promise<any> {
     try {
       const endpoint = `/v1/report/flex/${encodeURIComponent(duration)}`;
-      console.log(`[API] Fetching flex report for duration: ${duration}`);
+      logger.log(`[API] Fetching flex report for duration: ${duration}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Flex report API returned ${response.status}`);
+        logger.warn(`Flex report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded flex report');
+      logger.log('[API] ✓ Loaded flex report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch flex report for ${duration}:`, error);
+      logger.error(`[API] Failed to fetch flex report for ${duration}:`, error);
       return null;
     }
   }
@@ -5468,19 +5470,19 @@ class ApiService {
    */
   async getSiteFlexReport(): Promise<any> {
     try {
-      console.log('[API] Fetching site flex report');
+      logger.log('[API] Fetching site flex report');
       const response = await this.makeAuthenticatedRequest('/v3/sites/report/flex', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Site flex report API returned ${response.status}`);
+        logger.warn(`Site flex report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded site flex report');
+      logger.log('[API] ✓ Loaded site flex report');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch site flex report:', error);
+      logger.error('[API] Failed to fetch site flex report:', error);
       return null;
     }
   }
@@ -5492,19 +5494,19 @@ class ApiService {
   async getPortReport(portId: string): Promise<any> {
     try {
       const endpoint = `/v1/report/ports/${encodeURIComponent(portId)}`;
-      console.log(`[API] Fetching port report for: ${portId}`);
+      logger.log(`[API] Fetching port report for: ${portId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Port report API returned ${response.status}`);
+        logger.warn(`Port report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded port report');
+      logger.log('[API] ✓ Loaded port report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch port report for ${portId}:`, error);
+      logger.error(`[API] Failed to fetch port report for ${portId}:`, error);
       return null;
     }
   }
@@ -5516,19 +5518,19 @@ class ApiService {
   async getRoleReport(roleId: string): Promise<any> {
     try {
       const endpoint = `/v1/report/roles/${encodeURIComponent(roleId)}`;
-      console.log(`[API] Fetching role report for: ${roleId}`);
+      logger.log(`[API] Fetching role report for: ${roleId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Role report API returned ${response.status}`);
+        logger.warn(`Role report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded role report');
+      logger.log('[API] ✓ Loaded role report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch role report for ${roleId}:`, error);
+      logger.error(`[API] Failed to fetch role report for ${roleId}:`, error);
       return null;
     }
   }
@@ -5539,19 +5541,19 @@ class ApiService {
    */
   async getUpgradeDevicesReport(): Promise<any> {
     try {
-      console.log('[API] Fetching upgrade devices report');
+      logger.log('[API] Fetching upgrade devices report');
       const response = await this.makeAuthenticatedRequest('/v2/report/upgrade/devices', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Upgrade devices report API returned ${response.status}`);
+        logger.warn(`Upgrade devices report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded upgrade devices report');
+      logger.log('[API] ✓ Loaded upgrade devices report');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch upgrade devices report:', error);
+      logger.error('[API] Failed to fetch upgrade devices report:', error);
       return null;
     }
   }
@@ -5563,19 +5565,19 @@ class ApiService {
   async getSwitchPortReport(serialNumber: string, portId: string): Promise<any> {
     try {
       const endpoint = `/v1/switches/${encodeURIComponent(serialNumber)}/ports/${encodeURIComponent(portId)}/report`;
-      console.log(`[API] Fetching port report for switch ${serialNumber}, port ${portId}`);
+      logger.log(`[API] Fetching port report for switch ${serialNumber}, port ${portId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Switch port report API returned ${response.status}`);
+        logger.warn(`Switch port report API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded switch port report');
+      logger.log('[API] ✓ Loaded switch port report');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch switch port report for ${serialNumber}/${portId}:`, error);
+      logger.error(`[API] Failed to fetch switch port report for ${serialNumber}/${portId}:`, error);
       return null;
     }
   }
@@ -5586,19 +5588,19 @@ class ApiService {
    */
   async getAPDisplayNames(): Promise<any> {
     try {
-      console.log('[API] Fetching AP display names');
+      logger.log('[API] Fetching AP display names');
       const response = await this.makeAuthenticatedRequest('/v1/aps/displaynames', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP display names API returned ${response.status}`);
+        logger.warn(`AP display names API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded AP display names');
+      logger.log('[API] ✓ Loaded AP display names');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch AP display names:', error);
+      logger.error('[API] Failed to fetch AP display names:', error);
       return null;
     }
   }
@@ -5609,19 +5611,19 @@ class ApiService {
    */
   async getSwitchDisplayNames(): Promise<any> {
     try {
-      console.log('[API] Fetching switch display names');
+      logger.log('[API] Fetching switch display names');
       const response = await this.makeAuthenticatedRequest('/v1/switches/displaynames', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Switch display names API returned ${response.status}`);
+        logger.warn(`Switch display names API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded switch display names');
+      logger.log('[API] ✓ Loaded switch display names');
       return data;
     } catch (error) {
-      console.error('[API] Failed to fetch switch display names:', error);
+      logger.error('[API] Failed to fetch switch display names:', error);
       return null;
     }
   }
@@ -5632,19 +5634,19 @@ class ApiService {
    */
   async getAPSoftwareVersions(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AP software versions');
+      logger.log('[API] Fetching AP software versions');
       const response = await this.makeAuthenticatedRequest('/v1/aps/swversion', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP software versions API returned ${response.status}`);
+        logger.warn(`AP software versions API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} AP software versions`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} AP software versions`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AP software versions:', error);
+      logger.error('[API] Failed to fetch AP software versions:', error);
       return [];
     }
   }
@@ -5655,19 +5657,19 @@ class ApiService {
    */
   async getAPList(): Promise<any[]> {
     try {
-      console.log('[API] Fetching AP list');
+      logger.log('[API] Fetching AP list');
       const response = await this.makeAuthenticatedRequest('/v1/aps/list', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`AP list API returned ${response.status}`);
+        logger.warn(`AP list API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} APs (list)`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} APs (list)`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch AP list:', error);
+      logger.error('[API] Failed to fetch AP list:', error);
       return [];
     }
   }
@@ -5678,19 +5680,19 @@ class ApiService {
    */
   async getSwitchList(): Promise<any[]> {
     try {
-      console.log('[API] Fetching switch list');
+      logger.log('[API] Fetching switch list');
       const response = await this.makeAuthenticatedRequest('/v1/switches/list', {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Switch list API returned ${response.status}`);
+        logger.warn(`Switch list API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} switches (list)`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} switches (list)`);
       return data || [];
     } catch (error) {
-      console.error('[API] Failed to fetch switch list:', error);
+      logger.error('[API] Failed to fetch switch list:', error);
       return [];
     }
   }
@@ -5702,19 +5704,19 @@ class ApiService {
   async getMSPBriefSites(tenantId: string): Promise<any[]> {
     try {
       const endpoint = `/v1/msp/briefsites/${encodeURIComponent(tenantId)}`;
-      console.log(`[API] Fetching MSP brief sites for tenant: ${tenantId}`);
+      logger.log(`[API] Fetching MSP brief sites for tenant: ${tenantId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`MSP brief sites API returned ${response.status}`);
+        logger.warn(`MSP brief sites API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      console.log(`[API] ✓ Loaded ${data?.length || 0} MSP sites`);
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} MSP sites`);
       return data || [];
     } catch (error) {
-      console.error(`[API] Failed to fetch MSP brief sites for ${tenantId}:`, error);
+      logger.error(`[API] Failed to fetch MSP brief sites for ${tenantId}:`, error);
       return [];
     }
   }
@@ -5726,19 +5728,19 @@ class ApiService {
   async getMeshPointTree(meshpointId: string): Promise<any> {
     try {
       const endpoint = `/v3/meshpoints/tree/${encodeURIComponent(meshpointId)}`;
-      console.log(`[API] Fetching mesh point tree for: ${meshpointId}`);
+      logger.log(`[API] Fetching mesh point tree for: ${meshpointId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        console.warn(`Mesh point tree API returned ${response.status}`);
+        logger.warn(`Mesh point tree API returned ${response.status}`);
         return null;
       }
 
       const data = await response.json();
-      console.log('[API] ✓ Loaded mesh point tree');
+      logger.log('[API] ✓ Loaded mesh point tree');
       return data;
     } catch (error) {
-      console.error(`[API] Failed to fetch mesh point tree for ${meshpointId}:`, error);
+      logger.error(`[API] Failed to fetch mesh point tree for ${meshpointId}:`, error);
       return null;
     }
   }

@@ -1,8 +1,4 @@
 import { useState, useEffect, memo } from 'react';
-
-// DEPLOYMENT VERIFICATION - Module load timestamp
-console.error('🚨 CONNECTED CLIENTS MODULE LOADED - BUILD TIMESTAMP: 2024-12-23-20:05 🚨');
-console.error('🚨 If you see this, new code is deployed! 🚨');
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
