@@ -373,12 +373,15 @@ edge-services-site/
 - Color contrast compliance
 - Focus indicators
 
-### Responsive Design
-- Mobile-first approach
-- Breakpoint optimization (sm, md, lg, xl, 2xl)
-- Touch-friendly interface
-- Adaptive layouts
-- Progressive enhancement
+### Responsive Design & Mobile Optimization
+- **Mobile-first approach** - Optimized for smartphones and tablets
+- **Device detection** - Smart device and touch capability detection
+- **Adaptive layouts** - Card layouts on mobile, tables on desktop
+- **Touch-friendly interface** - 44px minimum tap targets on touch devices
+- **Responsive modals** - Sheets/drawers on mobile, dialogs on desktop
+- **Breakpoint optimization** - Tailwind breakpoints (sm, md, lg, xl, 2xl)
+- **Progressive enhancement** - Enhanced mobile UX without compromising desktop
+- See [MOBILE_OPTIMIZATION_GUIDE.md](./MOBILE_OPTIMIZATION_GUIDE.md) for implementation details
 
 ## 🔌 API Integration
 
