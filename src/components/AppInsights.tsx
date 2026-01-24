@@ -4,7 +4,7 @@
  * Displays application visibility and control metrics with unified top/bottom view
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -202,7 +202,7 @@ export function AppInsights({ api }: AppInsightsProps) {
   };
 
   // Fetch data
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -215,10 +215,10 @@ export function AppInsights({ api }: AppInsightsProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, duration, selectedSite]);
 
   useEffect(() => { loadSites(); }, []);
-  useEffect(() => { fetchData(); }, [duration, selectedSite]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
@@ -485,7 +485,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       {/* Summary Cards */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-lg transition-all duration-300 group">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
             <CardContent className="p-3 relative">
@@ -505,7 +505,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-lg transition-all duration-300 group">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
             <CardContent className="p-3 relative">
@@ -525,7 +525,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-lg transition-all duration-300 group">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all" />
             <CardContent className="p-3 relative">
@@ -545,7 +545,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-lg transition-all duration-300 group">
+          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all" />
             <CardContent className="p-3 relative">
@@ -616,8 +616,34 @@ export function AppInsights({ api }: AppInsightsProps) {
                       outerRadius={90}
                       paddingAngle={2}
                       dataKey="value"
-                      label={(entry) => entry.name.length > 15 ? entry.name.substring(0, 15) + '...' : entry.name}
-                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 0.5 }}
+                      label={({ name, cx, cy, midAngle, innerRadius, outerRadius }) => {
+                        const RADIAN = Math.PI / 180;
+                        const radius = outerRadius + 25;
+                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                        const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name;
+
+                        return (
+                          <text
+                            x={x}
+                            y={y}
+                            fill="hsl(var(--foreground))"
+                            textAnchor={x > cx ? 'start' : 'end'}
+                            dominantBaseline="central"
+                            className="text-xs font-medium"
+                            style={{
+                              paintOrder: 'stroke',
+                              stroke: 'hsl(var(--background))',
+                              strokeWidth: 3,
+                              strokeLinecap: 'round',
+                              strokeLinejoin: 'round'
+                            }}
+                          >
+                            {displayName}
+                          </text>
+                        );
+                      }}
+                      labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                     >
                       {chartData.topUsage.slice(0, 6).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} />

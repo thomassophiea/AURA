@@ -42,7 +42,7 @@ const mapAuthType = (service: Service): string => {
   const serviceName = service.name || service.serviceName || service.ssid || 'Unknown';
 
   // Debug: Log what we're checking with FULL privacy object structure
-  console.log(`🔍 Checking auth for "${serviceName}":`, {
+  console.log(`[ConfigureNetworks] Checking auth for "${serviceName}":`, {
     hasWpaSaeElement: !!service.WpaSaeElement,
     hasPrivacyWpaSaeElement: !!service.privacy?.WpaSaeElement,
     WpaSaeElement: service.WpaSaeElement,
@@ -63,7 +63,7 @@ const mapAuthType = (service: Service): string => {
     || service.privacy?.WpaSae;
 
   if (saeElement) {
-    console.log(`✅ Found WPA3-SAE for "${serviceName}":`, {
+    console.log(`[ConfigureNetworks] Found WPA3-SAE for "${serviceName}":`, {
       saeElement,
       location: service.WpaSaeElement ? 'service.WpaSaeElement' : 
                 service.privacy?.WpaSaeElement ? 'service.privacy.WpaSaeElement' :
@@ -304,7 +304,7 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
   const authType = mapAuthType(service);
   
   // Debug: Always log service mapping for troubleshooting auth type issues
-  console.log(`📡 Network: "${networkSSID}" → Auth: "${authType}"`, {
+  console.log(`[ConfigureNetworks] Network: "${networkSSID}" -> Auth: "${authType}"`, {
     id: service.id,
     serviceName: service.serviceName,
     name: service.name,

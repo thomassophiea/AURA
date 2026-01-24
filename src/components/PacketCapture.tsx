@@ -27,6 +27,13 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import {
+  validateMacAddress,
+  validateIPAddress,
+  validateCaptureConfig,
+  formatMacAddress,
+  estimateCaptureFileSize
+} from '../lib/packetCaptureValidation';
 
 interface CaptureFile {
   id: string;
@@ -95,6 +102,8 @@ export function PacketCapture() {
   const [captureFiles, setCaptureFiles] = useState<CaptureFile[]>([]);
   const [activeCaptures, setActiveCaptures] = useState<ActiveCapture[]>([]);
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [progressTick, setProgressTick] = useState(0); // Force re-render for progress bars
 
   // Protocol options
   const protocols = [
@@ -144,60 +153,19 @@ export function PacketCapture() {
 
         if (cancelled) return;
 
-        // Load capture files - these endpoints likely don't exist yet, so just skip silently
-        const fileEndpoints = ['/v1/packetcapture/files', '/v1/pcap/files', '/v1/capture/files'];
-        for (const endpoint of fileEndpoints) {
-          if (cancelled) break;
-          try {
-            const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 5000);
-            if (response.ok) {
-              const data = await response.json();
-              const files = Array.isArray(data) ? data : (data.files || []);
-              if (!cancelled) {
-                setCaptureFiles(files.map((f: any, idx: number) => ({
-                  id: f.id || `file-${idx}`,
-                  filename: f.filename || f.name || `capture-${idx}.pcap`,
-                  size: f.size || 0,
-                  date: f.date || f.created || new Date(f.timestamp || Date.now()).toISOString(),
-                  timestamp: f.timestamp || Date.now(),
-                  status: f.status
-                })));
-              }
-              break;
-            }
-          } catch {
-            // Expected - endpoint may not exist
-            continue;
-          }
-        }
+        // Load capture files using new API method
+        await loadCaptureFiles();
 
         if (cancelled) return;
 
-        // Load active captures - these endpoints likely don't exist yet, so just skip silently
-        const captureEndpoints = ['/v1/packetcapture/active', '/v1/pcap/active', '/v1/capture/active'];
-        for (const endpoint of captureEndpoints) {
-          if (cancelled) break;
-          try {
-            const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 5000);
-            if (response.ok) {
-              const data = await response.json();
-              const captures = Array.isArray(data) ? data : (data.captures || []);
-              if (!cancelled) {
-                setActiveCaptures(captures.map((c: any, idx: number) => ({
-                  id: c.id || `capture-${idx}`,
-                  location: c.location || c.interface || 'unknown',
-                  direction: c.direction || 'both',
-                  duration: c.duration || 0,
-                  startTime: c.startTime || Date.now(),
-                  filters: c.filters || [],
-                  status: c.status || 'running'
-                })));
-              }
-              break;
-            }
-          } catch {
-            // Expected - endpoint may not exist
-            continue;
+        // Load active captures using new API method
+        await loadActiveCaptures();
+
+        // Start polling if there are active captures
+        if (!cancelled) {
+          const activeCount = await apiService.getActivePacketCaptures();
+          if (activeCount.length > 0) {
+            startStatusPolling();
           }
         }
       } catch (err) {
@@ -219,70 +187,89 @@ export function PacketCapture() {
     };
   }, []);
 
-  const loadCaptureFiles = async () => {
-    try {
-      // Try multiple API endpoints for capture files
-      const endpoints = ['/v1/packetcapture/files', '/v1/pcap/files', '/v1/capture/files'];
-
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 10000);
-          if (response.ok) {
-            const data = await response.json();
-            const files = Array.isArray(data) ? data : (data.files || []);
-            setCaptureFiles(files.map((f: any, idx: number) => ({
-              id: f.id || `file-${idx}`,
-              filename: f.filename || f.name || `capture-${idx}.pcap`,
-              size: f.size || 0,
-              date: f.date || f.created || new Date(f.timestamp || Date.now()).toISOString(),
-              timestamp: f.timestamp || Date.now(),
-              status: f.status
-            })));
-            return;
-          }
-        } catch {
-          continue;
-        }
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
       }
+    };
+  }, [pollingInterval]);
 
-      // If no endpoint works, set empty array (API may not be available)
-      setCaptureFiles([]);
-    } catch (err) {
-      console.warn('Failed to load capture files:', err);
-      setCaptureFiles([]);
+  // Update progress bars every second for active captures
+  useEffect(() => {
+    if (activeCaptures.length > 0) {
+      const progressInterval = setInterval(() => {
+        setProgressTick(tick => tick + 1);
+      }, 1000);
+
+      return () => clearInterval(progressInterval);
+    }
+  }, [activeCaptures.length]);
+
+  // Start polling for capture status updates
+  const startStatusPolling = () => {
+    // Clear any existing interval
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+    }
+
+    // Poll every 3 seconds
+    const interval = setInterval(async () => {
+      await loadActiveCaptures();
+      await loadCaptureFiles();
+    }, 3000);
+
+    setPollingInterval(interval);
+  };
+
+  // Stop polling
+  const stopStatusPolling = () => {
+    if (pollingInterval) {
+      clearInterval(pollingInterval);
+      setPollingInterval(null);
     }
   };
 
+  // Load capture files using new API method
+  const loadCaptureFiles = async () => {
+    try {
+      const files = await apiService.getPacketCaptureFiles();
+      setCaptureFiles(files.map((f: any, idx: number) => ({
+        id: f.id || `file-${idx}`,
+        filename: f.filename || f.name || `capture-${idx}.pcap`,
+        size: f.size || 0,
+        date: f.date || f.created || new Date(f.timestamp || Date.now()).toISOString(),
+        timestamp: f.timestamp || Date.now(),
+        status: f.status
+      })));
+    } catch (err) {
+      console.warn('[PacketCapture] Failed to load capture files:', err);
+    }
+  };
+
+  // Load active captures using new API method
   const loadActiveCaptures = async () => {
     try {
-      const endpoints = ['/v1/packetcapture/active', '/v1/pcap/active', '/v1/capture/active'];
+      const captures = await apiService.getActivePacketCaptures();
+      const mappedCaptures = captures.map((c: any, idx: number) => ({
+        id: c.id || c.captureId || c.sessionId || `capture-${idx}`,
+        location: c.location || c.captureType || c.interface || 'unknown',
+        direction: c.direction || 'both',
+        duration: c.duration || 0,
+        startTime: c.startTime || c.start || Date.now(),
+        filters: c.filters || [],
+        status: (c.status || 'running') as ActiveCapture['status']
+      }));
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 10000);
-          if (response.ok) {
-            const data = await response.json();
-            const captures = Array.isArray(data) ? data : (data.captures || []);
-            setActiveCaptures(captures.map((c: any, idx: number) => ({
-              id: c.id || `capture-${idx}`,
-              location: c.location || c.interface || 'unknown',
-              direction: c.direction || 'both',
-              duration: c.duration || 0,
-              startTime: c.startTime || Date.now(),
-              filters: c.filters || [],
-              status: c.status || 'running'
-            })));
-            return;
-          }
-        } catch {
-          continue;
-        }
+      setActiveCaptures(mappedCaptures);
+
+      // Stop polling if no active captures
+      if (mappedCaptures.length === 0 && pollingInterval) {
+        stopStatusPolling();
       }
-
-      setActiveCaptures([]);
     } catch (err) {
-      console.warn('Failed to load active captures:', err);
-      setActiveCaptures([]);
+      console.warn('[PacketCapture] Failed to load active captures:', err);
     }
   };
 
@@ -304,10 +291,27 @@ export function PacketCapture() {
       return;
     }
 
+    const trimmedValue = newFilterValue.trim();
+
+    // Validate the filter value
+    if (newFilterType === 'mac') {
+      const validation = validateMacAddress(trimmedValue);
+      if (!validation.valid) {
+        toast.error(`Invalid MAC address: ${validation.error}`);
+        return;
+      }
+    } else if (newFilterType === 'ip') {
+      const validation = validateIPAddress(trimmedValue);
+      if (!validation.valid) {
+        toast.error(`Invalid IP address: ${validation.error}`);
+        return;
+      }
+    }
+
     const newFilter: CaptureFilter = {
       id: `filter-${Date.now()}`,
       type: newFilterType,
-      value: newFilterValue.trim()
+      value: newFilterType === 'mac' ? formatMacAddress(trimmedValue) : trimmedValue
     };
 
     setFilters([...filters, newFilter]);
@@ -320,73 +324,101 @@ export function PacketCapture() {
   };
 
   const startCapture = async () => {
-    // Validation for wireless capture - need at least one AP
-    if (captureLocation === 'wireless' && accessPoints.length === 0) {
-      toast.error('No access points available for wireless capture');
+    // Comprehensive validation using validation utilities
+    const configValidation = validateCaptureConfig({
+      captureLocation,
+      selectedAP,
+      accessPointsAvailable: accessPoints.length,
+      duration,
+      truncatePackets,
+      packetDestination,
+      scpConfig: packetDestination === 'scp' ? {
+        serverIp: scpIpAddress,
+        username: scpUsername,
+        password: scpPassword,
+        path: scpDestinationPath
+      } : undefined,
+      filters
+    });
+
+    if (!configValidation.valid) {
+      toast.error(configValidation.error || 'Invalid configuration');
       return;
     }
 
-    // Validation for SCP destination
-    if (packetDestination === 'scp' && (!scpIpAddress || !scpUsername)) {
-      toast.error('SCP server IP and username are required');
-      return;
+    // Show file size estimate
+    const sizeEstimate = estimateCaptureFileSize({
+      duration,
+      truncatePackets
+    });
+
+    if (sizeEstimate.warning) {
+      toast.warning(sizeEstimate.warning);
+    } else if (sizeEstimate.estimatedSizeMB > 50) {
+      toast.info(`Estimated file size: ~${sizeEstimate.estimatedSizeMB}MB`);
     }
 
     setStarting(true);
 
     try {
-      // Build capture config matching Campus Controller API format
-      // The startappacketcapture endpoint expects specific field structure
-      const captureConfig: Record<string, any> = {
-        duration: duration,
-        truncation: truncatePackets > 0 ? truncatePackets : 3001,
+      // Build capture config using new API method types
+      const captureType: 'DATA_PORT' | 'WIRED' | 'WIRELESS' =
+        captureLocation === 'appliance' ? 'DATA_PORT' :
+        captureLocation === 'wired' ? 'WIRED' : 'WIRELESS';
+
+      const captureConfig: Parameters<typeof apiService.startPacketCapture>[0] = {
+        captureType,
+        duration,
+        truncation: truncatePackets > 0 ? truncatePackets : undefined,
+        destination: packetDestination.toUpperCase() as 'FILE' | 'SCP'
       };
 
-      // Set capture type/interface
-      if (captureLocation === 'appliance') {
-        captureConfig.captureType = 'DATA_PORT';
-      } else if (captureLocation === 'wired') {
-        captureConfig.captureType = 'WIRED';
-        captureConfig.includeWiredClients = includeWiredClients;
-      } else if (captureLocation === 'wireless') {
-        captureConfig.captureType = 'WIRELESS';
-        // AP serial is required for wireless capture
+      // Wireless-specific configuration
+      if (captureLocation === 'wireless') {
         if (selectedAP !== 'all') {
           captureConfig.apSerialNumber = selectedAP;
         } else if (accessPoints.length > 0) {
-          // Use first AP if "all" is selected
           captureConfig.apSerialNumber = accessPoints[0].serialNumber;
+          toast.info(`Using AP: ${accessPoints[0].displayName || accessPoints[0].serialNumber}`);
         }
         if (selectedRadio !== 'all') {
           captureConfig.radio = selectedRadio;
         }
       }
 
-      // Direction
+      // Wired-specific configuration
+      if (captureLocation === 'wired') {
+        captureConfig.includeWiredClients = includeWiredClients;
+      }
+
+      // Direction filter
       if (direction !== 'both') {
-        captureConfig.direction = direction.toUpperCase();
+        captureConfig.direction = direction.toUpperCase() as 'INGRESS' | 'EGRESS';
       }
 
       // Protocol filter
       if (selectedProtocol !== 'all') {
-        captureConfig.protocol = selectedProtocol.toUpperCase();
+        captureConfig.protocol = selectedProtocol.toUpperCase() as 'TCP' | 'UDP' | 'ICMP';
       }
 
-      // Address filters - Campus Controller format
-      const macFilters = filters.filter(f => f.type === 'mac').map(f => f.value);
-      const ipFilters = filters.filter(f => f.type === 'ip').map(f => f.value);
+      // Address filters
+      const macFilters = filters.filter(f => f.type === 'mac');
+      const ipFilters = filters.filter(f => f.type === 'ip');
 
       if (macFilters.length > 0) {
-        captureConfig.macAddress = macFilters[0]; // API typically takes single value
+        captureConfig.macAddress = macFilters[0].value;
+        if (macFilters.length > 1) {
+          toast.info('Only first MAC filter will be applied');
+        }
       }
       if (ipFilters.length > 0) {
-        captureConfig.ipAddress = ipFilters[0]; // API typically takes single value
+        captureConfig.ipAddress = ipFilters[0].value;
+        if (ipFilters.length > 1) {
+          toast.info('Only first IP filter will be applied');
+        }
       }
 
-      // Destination
-      captureConfig.destination = packetDestination.toUpperCase();
-
-      // SCP credentials if SCP destination is selected
+      // SCP configuration
       if (packetDestination === 'scp') {
         captureConfig.scpConfig = {
           serverIp: scpIpAddress,
@@ -398,40 +430,32 @@ export function PacketCapture() {
 
       console.log('[PacketCapture] Starting capture with config:', captureConfig);
 
-      // Use the correct Campus Controller API endpoint
-      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/startappacketcapture', {
-        method: 'POST',
-        body: JSON.stringify(captureConfig)
-      }, 30000);
+      // Use new API service method
+      const result = await apiService.startPacketCapture(captureConfig);
 
-      if (response.ok) {
-        const result = await response.json();
-        toast.success('Packet capture started');
+      toast.success('Packet capture started successfully');
 
-        // Add to active captures
-        const newCapture: ActiveCapture = {
-          id: result.id || result.captureId || result.sessionId || `capture-${Date.now()}`,
-          location: captureLocation,
-          direction,
-          duration: duration * 60,
-          startTime: Date.now(),
-          filters: filters.map(f => `${f.type}:${f.value}`),
-          status: 'running'
-        };
-        setActiveCaptures([...activeCaptures, newCapture]);
+      // Add to active captures
+      const newCapture: ActiveCapture = {
+        id: result.id || `capture-${Date.now()}`,
+        location: captureLocation,
+        direction,
+        duration: duration * 60,
+        startTime: Date.now(),
+        filters: filters.map(f => `${f.type}:${f.value}`),
+        status: 'running'
+      };
+      setActiveCaptures([...activeCaptures, newCapture]);
 
-        // Refresh capture list
-        await loadActiveCaptures();
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('[PacketCapture] API error response:', errorData);
-        const errorMsg = errorData.message || errorData.error || errorData.details ||
-          (typeof errorData === 'string' ? errorData : `Failed to start capture: ${response.status}`);
-        throw new Error(errorMsg);
-      }
+      // Refresh capture list
+      await loadActiveCaptures();
+
+      // Start polling for status updates
+      startStatusPolling();
     } catch (err) {
       console.error('[PacketCapture] Error starting capture:', err);
-      toast.error(err instanceof Error ? err.message : 'Failed to start capture');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to start capture';
+      toast.error(errorMsg);
     } finally {
       setStarting(false);
     }
@@ -444,23 +468,23 @@ export function PacketCapture() {
         captures.map(c => c.id === captureId ? { ...c, status: 'stopping' as const } : c)
       );
 
-      // Use the correct Campus Controller API endpoint
-      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/stopappacketcapture', {
-        method: 'PUT',
-        body: JSON.stringify({ captureId })
-      }, 10000);
+      // Use new API service method
+      await apiService.stopPacketCapture(captureId);
 
-      if (response.ok) {
-        toast.success('Capture stopped');
-        // Remove from active and refresh files
-        setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
-        await loadCaptureFiles();
-      } else {
-        throw new Error(`Failed to stop capture: ${response.status}`);
+      toast.success('Capture stopped successfully');
+
+      // Remove from active and refresh files
+      setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
+      await loadCaptureFiles();
+
+      // Stop polling if no more active captures
+      if (activeCaptures.length <= 1) {
+        stopStatusPolling();
       }
     } catch (err) {
       console.error('[PacketCapture] Error stopping capture:', err);
-      toast.error('Failed to stop capture');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to stop capture';
+      toast.error(errorMsg);
       // Reset status on error
       setActiveCaptures(captures =>
         captures.map(c => c.id === captureId ? { ...c, status: 'running' as const } : c)
@@ -470,89 +494,56 @@ export function PacketCapture() {
 
   const stopAllCaptures = async () => {
     try {
-      const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/stopappacketcapture', {
-        method: 'PUT',
-        body: JSON.stringify({ stopAll: true })
-      }, 10000);
+      // Use new API service method with stopAll flag
+      await apiService.stopPacketCapture(undefined, true);
 
-      if (response.ok) {
-        toast.success('All captures stopped');
-        setActiveCaptures([]);
-        await loadCaptureFiles();
-      } else {
-        throw new Error(`Failed to stop captures: ${response.status}`);
-      }
+      toast.success('All captures stopped successfully');
+      setActiveCaptures([]);
+      stopStatusPolling();
+      await loadCaptureFiles();
     } catch (err) {
       console.error('[PacketCapture] Error stopping all captures:', err);
-      toast.error('Failed to stop all captures');
+      const errorMsg = err instanceof Error ? err.message : 'Failed to stop all captures';
+      toast.error(errorMsg);
     }
   };
 
   const downloadFile = async (file: CaptureFile) => {
     try {
-      const endpoints = [
-        `/v1/packetcapture/download/${file.id}`,
-        `/v1/pcap/download/${file.id}`,
-        `/v1/capture/download/${file.filename}`
-      ];
+      toast.info('Preparing download...');
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 30000);
+      // Use new API service method
+      const blob = await apiService.downloadPacketCaptureFile(file.id, file.filename);
 
-          if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = file.filename;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            toast.success('Download started');
-            return;
-          }
-        } catch {
-          continue;
-        }
-      }
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.filename;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
-      toast.error('Download not available');
+      toast.success('Download started');
     } catch (err) {
-      toast.error('Failed to download file');
+      console.error('[PacketCapture] Error downloading file:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to download file';
+      toast.error(errorMsg);
     }
   };
 
   const deleteFile = async (file: CaptureFile) => {
     try {
-      const endpoints = [
-        `/v1/packetcapture/delete/${file.id}`,
-        `/v1/pcap/delete/${file.id}`,
-        `/v1/capture/delete/${file.filename}`
-      ];
+      // Use new API service method
+      await apiService.deletePacketCaptureFile(file.id, file.filename);
 
-      for (const endpoint of endpoints) {
-        try {
-          const response = await apiService.makeAuthenticatedRequest(endpoint, {
-            method: 'DELETE'
-          }, 10000);
-
-          if (response.ok) {
-            setCaptureFiles(files => files.filter(f => f.id !== file.id));
-            toast.success('File deleted');
-            return;
-          }
-        } catch {
-          continue;
-        }
-      }
-
-      // If API not available, just remove from local state
       setCaptureFiles(files => files.filter(f => f.id !== file.id));
-      toast.info('File removed (local)');
+      toast.success('File deleted successfully');
     } catch (err) {
-      toast.error('Failed to delete file');
+      console.error('[PacketCapture] Error deleting file:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete file';
+      toast.error(errorMsg);
     }
   };
 
@@ -958,45 +949,100 @@ export function PacketCapture() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-8"></TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Capture Name</TableHead>
-                    <TableHead>Destination</TableHead>
-                    <TableHead>Start Time</TableHead>
-                    <TableHead>Stop Time</TableHead>
+                    <TableHead>ID / Location</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Filters</TableHead>
+                    <TableHead>Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {activeCaptures.map((capture) => (
-                    <TableRow key={capture.id}>
-                      <TableCell>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
-                          <span className="text-xs">−</span>
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        <div className={`w-3 h-3 rounded-full ${capture.status === 'running' ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                      </TableCell>
-                      <TableCell className="font-medium">{capture.id}</TableCell>
-                      <TableCell>{packetDestination === 'scp' ? 'SCP' : 'File'}</TableCell>
-                      <TableCell>{new Date(capture.startTime).toLocaleString()}</TableCell>
-                      <TableCell>
-                        {capture.status === 'running' ? (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => stopCapture(capture.id)}
-                            disabled={capture.status === 'stopping'}
-                          >
-                            <Square className="h-3 w-3 mr-1" />
-                            Stop
-                          </Button>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {activeCaptures.map((capture) => {
+                    const elapsed = Math.floor((Date.now() - capture.startTime) / 1000);
+                    const remaining = Math.max(0, capture.duration - elapsed);
+                    const progress = Math.min(100, (elapsed / capture.duration) * 100);
+                    const elapsedMin = Math.floor(elapsed / 60);
+                    const elapsedSec = elapsed % 60;
+                    const remainingMin = Math.floor(remaining / 60);
+                    const remainingSec = remaining % 60;
+
+                    return (
+                      <TableRow key={capture.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full animate-pulse ${
+                              capture.status === 'running' ? 'bg-green-500' :
+                              capture.status === 'stopping' ? 'bg-yellow-500' :
+                              'bg-gray-400'
+                            }`} />
+                            <Badge variant={
+                              capture.status === 'running' ? 'default' :
+                              capture.status === 'stopping' ? 'secondary' :
+                              'outline'
+                            } className="text-xs">
+                              {capture.status}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium text-sm">{capture.id}</div>
+                            <div className="text-xs text-muted-foreground capitalize">
+                              {capture.location} • {capture.direction}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1.5 min-w-[140px]">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                {elapsedMin}:{elapsedSec.toString().padStart(2, '0')} elapsed
+                              </span>
+                              <span className="text-muted-foreground">
+                                {remainingMin}:{remainingSec.toString().padStart(2, '0')} left
+                              </span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                              <div
+                                className="bg-primary h-full transition-all duration-300"
+                                style={{ width: `${progress}%` }}
+                              />
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {capture.filters && capture.filters.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {capture.filters.map((filter, idx) => (
+                                <Badge key={idx} variant="outline" className="text-xs font-mono">
+                                  {filter}
+                                </Badge>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">No filters</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {capture.status === 'running' ? (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => stopCapture(capture.id)}
+                              disabled={capture.status === 'stopping'}
+                            >
+                              <Square className="h-3 w-3 mr-1.5" />
+                              Stop
+                            </Button>
+                          ) : capture.status === 'stopping' ? (
+                            <Badge variant="secondary" className="text-xs">Stopping...</Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Completed</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -1017,40 +1063,63 @@ export function PacketCapture() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-20"></TableHead>
-                      <TableHead>Capture Files</TableHead>
+                      <TableHead className="w-24">Actions</TableHead>
+                      <TableHead>Filename</TableHead>
                       <TableHead>Size</TableHead>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {captureFiles.map((file) => (
-                      <TableRow key={file.id}>
+                      <TableRow key={file.id} className="hover:bg-muted/50">
                         <TableCell>
                           <div className="flex gap-1">
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 hover:bg-primary/10 hover:text-primary"
                               onClick={() => downloadFile(file)}
-                              title="Download"
+                              title="Download PCAP file"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0"
+                              className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
                               onClick={() => deleteFile(file)}
-                              title="Delete"
+                              title="Delete capture file"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">{file.filename}</TableCell>
-                        <TableCell>{formatFileSize(file.size)}</TableCell>
-                        <TableCell>{formatDate(file.date)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium font-mono text-sm">{file.filename}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {formatFileSize(file.size)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">{formatDate(file.date)}</div>
+                        </TableCell>
+                        <TableCell>
+                          {file.status ? (
+                            <Badge variant="secondary" className="text-xs">
+                              {file.status}
+                            </Badge>
+                          ) : (
+                            <Badge variant="default" className="text-xs bg-green-500">
+                              Ready
+                            </Badge>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

@@ -61,6 +61,16 @@ const DURATION_OPTIONS = [
   { value: '30D', label: 'Last 30 Days', resolution: 1440 }
 ];
 
+// Compact tooltip styling for consistency
+const COMPACT_TOOLTIP_STYLE = {
+  backgroundColor: 'hsl(var(--background) / 0.9)',
+  border: '1px solid hsl(var(--border) / 0.3)',
+  borderRadius: '4px',
+  padding: '4px 6px',
+  fontSize: '9px',
+  backdropFilter: 'blur(8px)'
+};
+
 // Format timestamp for chart
 function formatTime(timestamp: number, duration: string): string {
   const date = new Date(timestamp);
@@ -224,17 +234,19 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Client Insights</span>
           </div>
-          <div className="flex items-center gap-1.5 ml-auto mr-1" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-1.5 ml-auto mr-1">
             <Select value={duration} onValueChange={setDuration}>
               <SelectTrigger
                 className="w-[110px] h-7 text-xs"
-                onClick={(e) => e.stopPropagation()}
-                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
               >
                 <Clock className="h-3 w-3 mr-1" />
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent onPointerDownOutside={(e) => e.stopPropagation()}>
+              <SelectContent>
                 {DURATION_OPTIONS.map(opt => (
                   <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                 ))}
@@ -495,23 +507,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={throughputData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
@@ -522,7 +538,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -565,23 +581,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rfQualityData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
@@ -592,7 +612,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -643,7 +663,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-1 max-h-56 overflow-auto">
@@ -673,28 +693,32 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={appGroupsDetailData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -748,23 +772,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rfqiData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
@@ -775,7 +803,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
-                    <Tooltip />
+                    <Tooltip contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -818,23 +846,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={wirelessRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
@@ -845,7 +877,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -888,23 +920,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={networkRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
@@ -915,7 +951,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -958,23 +994,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rssData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
@@ -985,7 +1025,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1028,23 +1068,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rxRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1055,7 +1099,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1098,23 +1142,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={txRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1125,7 +1173,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1168,28 +1216,32 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={eventsData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} width={40} />
-                    <Tooltip />
+                    <Tooltip contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1240,23 +1292,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={dlRetriesData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
+                    onClick={(e: any) => {
+                      // Click to toggle lock at current position
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.toggleLock();
+                      }
+                    }}
                     onMouseDown={(e: any) => {
                       if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
                         timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
                     onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
+                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
                         const timestamp = e.activePayload[0].payload.timestamp;
                         timeline.setCurrentTime(timestamp);
                         timeline.updateTimeWindow(timestamp);
                       }
                     }}
                     onMouseUp={() => timeline.endTimeWindow()}
-                    onMouseLeave={() => {
-                      timeline.setCurrentTime(null);
-                      timeline.endTimeWindow();
-                    }}
                   >
                     <defs>
                       <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
@@ -1267,7 +1323,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1328,7 +1384,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
           </div>
           <div className="flex items-center gap-2">
             <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger className="w-[150px] h-8">
+              <SelectTrigger className="w-[150px] h-8 text-xs">
                 <Clock className="h-4 w-4 mr-2" />
                 <SelectValue />
               </SelectTrigger>

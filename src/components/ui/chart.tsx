@@ -174,74 +174,43 @@ function ChartTooltipContent({
   return (
     <div
       className={cn(
-        "border-border/50 bg-background/95 backdrop-blur-sm grid items-start gap-0 rounded border px-1 py-0.5 text-[10px] shadow-md",
+        "border-border/20 bg-background/60 backdrop-blur-sm flex flex-col gap-0 rounded px-1 py-0.5 text-[8px] shadow-sm",
         className,
       )}
     >
-      {!nestLabel ? tooltipLabel : null}
-      <div className="grid gap-0">
-        {payload.map((item, index) => {
-          const key = `${nameKey || item.name || item.dataKey || "value"}`;
-          const itemConfig = getPayloadConfigFromPayload(config, item, key);
-          const indicatorColor = color || item.payload.fill || item.color;
+      {payload.map((item, index) => {
+        const key = `${nameKey || item.name || item.dataKey || "value"}`;
+        const itemConfig = getPayloadConfigFromPayload(config, item, key);
+        const indicatorColor = color || item.payload.fill || item.color;
 
-          return (
-            <div
-              key={item.dataKey}
-              className={cn(
-                "[&>svg]:text-muted-foreground flex w-full flex-nowrap items-stretch gap-1 [&>svg]:h-2 [&>svg]:w-2",
-                indicator === "dot" && "items-center",
-              )}
-            >
-              {formatter && item?.value !== undefined && item.name ? (
-                formatter(item.value, item.name, item, index, item.payload)
-              ) : (
-                <>
-                  {itemConfig?.icon ? (
-                    <itemConfig.icon />
-                  ) : (
-                    !hideIndicator && (
-                      <div
-                        className={cn(
-                          "shrink-0 rounded-[1px] border-(--color-border) bg-(--color-bg)",
-                          {
-                            "h-2 w-2": indicator === "dot",
-                            "w-0.5": indicator === "line",
-                            "w-0 border-[1px] border-dashed bg-transparent":
-                              indicator === "dashed",
-                            "my-0.5": nestLabel && indicator === "dashed",
-                          },
-                        )}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor,
-                          } as React.CSSProperties
-                        }
-                      />
-                    )
-                  )}
+        return (
+          <div
+            key={item.dataKey}
+            className="flex items-center gap-1 leading-none"
+          >
+            {formatter && item?.value !== undefined && item.name ? (
+              formatter(item.value, item.name, item, index, item.payload)
+            ) : (
+              <>
+                {!hideIndicator && (
                   <div
-                    className={cn(
-                      "flex flex-1 justify-between leading-tight gap-1.5",
-                      nestLabel ? "items-end" : "items-center",
-                    )}
-                  >
-                    <span className="text-muted-foreground truncate max-w-[60px]">
-                      {itemConfig?.label || item.name}:
-                    </span>
-                    {item.value && (
-                      <span className="text-foreground font-mono font-semibold tabular-nums">
-                        {formatCompactNumber(item.value)}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: indicatorColor }}
+                  />
+                )}
+                <span className="text-muted-foreground text-[8px] shrink-0">
+                  {itemConfig?.label || item.name}:
+                </span>
+                {item.value && (
+                  <span className="text-foreground font-mono font-bold tabular-nums text-[9px] ml-auto">
+                    {formatCompactNumber(item.value)}
+                  </span>
+                )}
+              </>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

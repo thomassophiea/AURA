@@ -93,6 +93,7 @@ interface ConfigureDevicesProps {
 export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   const [devices, setDevices] = useState<Device[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [availableDeviceTypes, setAvailableDeviceTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -217,10 +218,28 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     }
   }, []);
 
+  const fetchDeviceTypes = useCallback(async () => {
+    try {
+      const types = await apiService.getDeviceTypes();
+      setAvailableDeviceTypes(types);
+    } catch (error) {
+      console.error('Failed to fetch device types:', error);
+      // Set default types if API fails
+      setAvailableDeviceTypes([
+        'Access Point',
+        'Switch',
+        'Router',
+        'Gateway',
+        'Controller'
+      ]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchDevices();
     fetchSites();
-  }, [fetchDevices, fetchSites]);
+    fetchDeviceTypes();
+  }, [fetchDevices, fetchSites, fetchDeviceTypes]);
 
   // Get device status badge variant
   const getStatusBadgeVariant = (status?: string) => {
@@ -276,8 +295,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     return matchesSearch && matchesStatus && matchesType && matchesSite;
   });
 
-  // Get unique device types for filter
-  const deviceTypes = Array.from(new Set(devices.map(device => device.deviceType).filter(Boolean)));
+  // Use available device types from API, plus any types from existing devices
+  const deviceTypesFromDevices = Array.from(new Set(devices.map(device => device.deviceType).filter(Boolean)));
+  const deviceTypes = availableDeviceTypes.length > 0
+    ? Array.from(new Set([...availableDeviceTypes, ...deviceTypesFromDevices]))
+    : deviceTypesFromDevices;
   
   // Get unique statuses for filter
   const deviceStatuses = Array.from(new Set(devices.map(device => device.status || device.operationalStatus).filter(Boolean)));

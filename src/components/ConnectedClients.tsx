@@ -58,7 +58,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     columns: CLIENTS_TABLE_COLUMNS,
     enableViews: true,
     enablePersistence: true,
-    userId: 'default-user' // TODO: Replace with actual user ID from auth context
+    userId: localStorage.getItem('user_email') || 'default-user'
   });
 
   useEffect(() => {

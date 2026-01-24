@@ -14,6 +14,7 @@ import { Checkbox } from './ui/checkbox';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
+import { toast } from 'sonner';
 
 // Define available columns with friendly labels
 interface ColumnConfig {
@@ -1207,58 +1208,127 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                                 Manage Certificate
                               </DropdownMenuSubTrigger>
                               <DropdownMenuSubContent>
-                                <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    const result = await apiService.generateCSR(ap.serialNumber);
+                                    toast.success('CSR generated successfully');
+                                    console.log('[AccessPoints] Generated CSR:', result);
+                                  } catch (err) {
+                                    toast.error(err instanceof Error ? err.message : 'Failed to generate CSR');
+                                  }
+                                }}>
                                   <Key className="mr-2 h-4 w-4" />
                                   Generate CSR
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info('Certificate upload feature coming soon');
+                                }}>
                                   <Shield className="mr-2 h-4 w-4" />
                                   Apply Signed Certificates
                                 </DropdownMenuItem>
                               </DropdownMenuSubContent>
                             </DropdownMenuSub>
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              toast.info('Site assignment dialog coming soon');
+                            }}>
                               <MapPin className="mr-2 h-4 w-4" />
                               Assign to Site
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              toast.info('Adoption preference dialog coming soon');
+                            }}>
                               <Settings className="mr-2 h-4 w-4" />
                               Adoption Preference
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              toast.info('Event level dialog coming soon');
+                            }}>
                               <AlertTriangle className="mr-2 h-4 w-4" />
                               Event Level
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await apiService.upgradeAPImage(ap.serialNumber);
+                                toast.success('Firmware upgrade initiated');
+                              } catch (err) {
+                                toast.error(err instanceof Error ? err.message : 'Failed to upgrade firmware');
+                              }
+                            }}>
                               <Download className="mr-2 h-4 w-4" />
                               Image Upgrade
                             </DropdownMenuItem>
-                            
+
                             <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={async (e) => {
+                              e.stopPropagation();
+                              if (confirm(`Reset ${getAPName(ap)} to factory defaults? This cannot be undone.`)) {
+                                try {
+                                  await apiService.resetAPToDefault(ap.serialNumber);
+                                  toast.success('Factory reset initiated');
+                                } catch (err) {
+                                  toast.error(err instanceof Error ? err.message : 'Failed to reset AP');
+                                }
+                              }
+                            }}>
                               <RotateCcw className="mr-2 h-4 w-4" />
                               Reset to Default
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={async (e) => {
+                              e.stopPropagation();
+                              try {
+                                await apiService.rebootAP(ap.serialNumber);
+                                toast.success('AP reboot initiated');
+                              } catch (err) {
+                                toast.error(err instanceof Error ? err.message : 'Failed to reboot AP');
+                              }
+                            }}>
                               <Power className="mr-2 h-4 w-4" />
                               Reboot
                             </DropdownMenuItem>
-                            
+
                             <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+
+                            <DropdownMenuItem onClick={async (e) => {
+                              e.stopPropagation();
+                              if (confirm(`Release ${getAPName(ap)} to cloud management?`)) {
+                                try {
+                                  await apiService.releaseToCloud(ap.serialNumber);
+                                  toast.success('AP released to cloud');
+                                } catch (err) {
+                                  toast.error(err instanceof Error ? err.message : 'Failed to release to cloud');
+                                }
+                              }
+                            }}>
                               <Cloud className="mr-2 h-4 w-4" />
                               Release to Cloud
                             </DropdownMenuItem>
-                            
-                            <DropdownMenuItem 
-                              onClick={(e) => e.stopPropagation()}
+
+                            <DropdownMenuItem
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (confirm(`Delete ${getAPName(ap)}? This will remove the AP from the controller.`)) {
+                                  try {
+                                    await apiService.deleteAP(ap.serialNumber);
+                                    toast.success('AP deleted successfully');
+                                    // Refresh AP list
+                                    loadAccessPoints();
+                                  } catch (err) {
+                                    toast.error(err instanceof Error ? err.message : 'Failed to delete AP');
+                                  }
+                                }
+                              }}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />

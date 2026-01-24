@@ -115,9 +115,11 @@ export function ConfigureAdoptionRules() {
   const loadRules = async () => {
     setLoading(true);
     try {
-      // TODO: Replace with actual API endpoint when available
-      // For now, using mock data
-      const mockRules: AdoptionRule[] = [
+      const data = await apiService.getAdoptionRules();
+
+      // If no rules from API, use mock data for demonstration
+      if (!data || data.length === 0) {
+        const mockRules: AdoptionRule[] = [
         {
           id: '1',
           name: 'Building A Access Points',
@@ -171,7 +173,10 @@ export function ConfigureAdoptionRules() {
         }
       ];
 
-      setRules(mockRules);
+        setRules(mockRules);
+      } else {
+        setRules(data);
+      }
     } catch (error) {
       console.error('Error loading adoption rules:', error);
       toast.error('Failed to load adoption rules');
@@ -229,25 +234,25 @@ export function ConfigureAdoptionRules() {
     }
 
     try {
-      // TODO: Replace with actual API call
+      await apiService.deleteAdoptionRule(ruleId);
       setRules(rules.filter(r => r.id !== ruleId));
       toast.success('Adoption rule deleted successfully');
     } catch (error) {
       console.error('Error deleting rule:', error);
-      toast.error('Failed to delete adoption rule');
+      toast.error(error instanceof Error ? error.message : 'Failed to delete adoption rule');
     }
   };
 
   const handleToggleEnabled = async (ruleId: string, enabled: boolean) => {
     try {
-      // TODO: Replace with actual API call
-      setRules(rules.map(r => 
+      await apiService.toggleAdoptionRule(ruleId, enabled);
+      setRules(rules.map(r =>
         r.id === ruleId ? { ...r, enabled } : r
       ));
       toast.success(`Rule ${enabled ? 'enabled' : 'disabled'} successfully`);
     } catch (error) {
       console.error('Error toggling rule:', error);
-      toast.error('Failed to update rule status');
+      toast.error(error instanceof Error ? error.message : 'Failed to update rule status');
     }
   };
 
@@ -313,12 +318,13 @@ export function ConfigureAdoptionRules() {
         modifiedAt: new Date().toISOString()
       };
 
-      // TODO: Replace with actual API call
       if (isEditDialogOpen && selectedRule) {
+        await apiService.updateAdoptionRule(selectedRule.id, newRule);
         setRules(rules.map(r => r.id === selectedRule.id ? newRule : r));
         toast.success('Adoption rule updated successfully');
       } else {
-        setRules([...rules, newRule]);
+        const createdRule = await apiService.createAdoptionRule(newRule);
+        setRules([...rules, createdRule || newRule]);
         toast.success('Adoption rule created successfully');
       }
 

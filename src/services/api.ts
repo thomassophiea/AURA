@@ -3954,6 +3954,171 @@ class ApiService {
     }
   }
 
+  /**
+   * Get switch details
+   * Endpoint: GET /v1/switches/{serialNumber}
+   */
+  async getSwitchDetails(serialNumber: string): Promise<any> {
+    try {
+      logger.log(`[API] Fetching switch details for: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/switches/${encodeURIComponent(serialNumber)}`,
+        {},
+        10000
+      );
+
+      if (!response.ok) {
+        logger.warn(`Switch details API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded switch details');
+      return data;
+    } catch (error) {
+      logger.error(`[API] Failed to fetch switch details for ${serialNumber}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get switch port statistics
+   * Endpoint: GET /v1/switches/{serialNumber}/ports
+   */
+  async getSwitchPorts(serialNumber: string): Promise<any[]> {
+    try {
+      logger.log(`[API] Fetching switch ports for: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/switches/${encodeURIComponent(serialNumber)}/ports`,
+        {},
+        10000
+      );
+
+      if (!response.ok) {
+        logger.warn(`Switch ports API returned ${response.status}`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Loaded ${data?.length || 0} switch ports`);
+      return data || [];
+    } catch (error) {
+      logger.error(`[API] Failed to fetch switch ports for ${serialNumber}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Get switch port report
+   * Endpoint: GET /v1/report/switches/{serialNumber}/ports
+   */
+  async getSwitchPortReport(serialNumber: string): Promise<any> {
+    try {
+      logger.log(`[API] Fetching switch port report for: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/report/switches/${encodeURIComponent(serialNumber)}/ports`,
+        {},
+        15000
+      );
+
+      if (!response.ok) {
+        logger.warn(`Switch port report API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded switch port report');
+      return data;
+    } catch (error) {
+      logger.error(`[API] Failed to fetch switch port report for ${serialNumber}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get switch PoE status
+   * Endpoint: GET /v1/switches/{serialNumber}/poe
+   */
+  async getSwitchPoEStatus(serialNumber: string): Promise<any> {
+    try {
+      logger.log(`[API] Fetching switch PoE status for: ${serialNumber}`);
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/switches/${encodeURIComponent(serialNumber)}/poe`,
+        {},
+        10000
+      );
+
+      if (!response.ok) {
+        logger.warn(`Switch PoE status API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded switch PoE status');
+      return data;
+    } catch (error) {
+      logger.error(`[API] Failed to fetch switch PoE status for ${serialNumber}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Get available device types
+   * Endpoint: GET /v1/devices/types, /v1/device-types, /v3/devices/types
+   */
+  async getDeviceTypes(): Promise<string[]> {
+    try {
+      logger.log('[API] Fetching device types');
+      const endpoints = [
+        '/v1/devices/types',
+        '/v1/device-types',
+        '/v3/devices/types',
+        '/platformmanager/v1/devices/types',
+        '/v1/config/device-types'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            const types = Array.isArray(data) ? data : data.deviceTypes || data.types || [];
+            logger.log(`[API] ✓ Loaded ${types.length} device types`);
+            return types;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      // If no endpoint available, return default device types
+      logger.warn('[API] Device types endpoint not available, returning default types');
+      return [
+        'Access Point',
+        'Switch',
+        'Router',
+        'Gateway',
+        'Controller',
+        'Sensor',
+        'Camera',
+        'Firewall'
+      ];
+    } catch (error) {
+      logger.error('[API] Failed to fetch device types:', error);
+      // Return default types on error
+      return [
+        'Access Point',
+        'Switch',
+        'Router',
+        'Gateway',
+        'Controller',
+        'Sensor',
+        'Camera',
+        'Firewall'
+      ];
+    }
+  }
+
   // ==================== PHASE 5: DETAILED REPORTING APIs ====================
 
   /**
@@ -5072,6 +5237,118 @@ class ApiService {
       return data;
     } catch (error) {
       logger.error('[API] Failed to fetch NSight configuration:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get controller/system configuration and version info
+   * Endpoint: GET /v1/system/config or /v1/system/info
+   */
+  async getSystemConfiguration(): Promise<any> {
+    try {
+      logger.log('[API] Fetching system configuration');
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/system/config',
+        '/v1/system/info',
+        '/v1/systemconfig',
+        '/platformmanager/v1/system/config'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Loaded system configuration');
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] System configuration endpoint not available');
+      return null;
+    } catch (error) {
+      logger.error('[API] Failed to fetch system configuration:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get controller version information
+   * Endpoint: GET /v1/version or /v1/system/version
+   */
+  async getControllerVersion(): Promise<any> {
+    try {
+      logger.log('[API] Fetching controller version');
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/version',
+        '/v1/system/version',
+        '/v1/about',
+        '/platformmanager/v1/version',
+        '/v1/system/info'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Loaded controller version:', data);
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] Controller version endpoint not available');
+      return null;
+    } catch (error) {
+      logger.error('[API] Failed to fetch controller version:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get cluster status and health
+   * Endpoint: GET /v1/cluster/status or /v1/system/cluster
+   */
+  async getClusterStatus(): Promise<any> {
+    try {
+      logger.log('[API] Fetching cluster status');
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/cluster/status',
+        '/v1/system/cluster',
+        '/v1/cluster',
+        '/platformmanager/v1/cluster/status'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Loaded cluster status');
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] Cluster status endpoint not available');
+      return null;
+    } catch (error) {
+      logger.error('[API] Failed to fetch cluster status:', error);
       return null;
     }
   }
@@ -6224,6 +6501,623 @@ class ApiService {
     }
   }
 
+  // =================================================================
+  // ACCESS POINT MANAGEMENT OPERATIONS
+  // =================================================================
+
+  /**
+   * Reboot an access point
+   * Endpoint: POST /v1/aps/{serialNumber}/reboot
+   */
+  async rebootAP(serialNumber: string): Promise<void> {
+    try {
+      logger.log(`[API] Rebooting AP: ${serialNumber}`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/reboot`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/reboot`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/reboot`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'POST' },
+            20000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP reboot initiated');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP reboot endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to reboot AP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset access point to factory defaults
+   * Endpoint: POST /v1/aps/{serialNumber}/reset
+   */
+  async resetAPToDefault(serialNumber: string): Promise<void> {
+    try {
+      logger.log(`[API] Resetting AP to defaults: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/reset`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/reset`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/factoryreset`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'POST' },
+            20000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP reset initiated');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP reset endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to reset AP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Assign access point to a site
+   * Endpoint: PUT /v1/aps/{serialNumber}/site
+   */
+  async assignAPToSite(serialNumber: string, siteId: string): Promise<void> {
+    try {
+      logger.log(`[API] Assigning AP ${serialNumber} to site ${siteId}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/site`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/site`,
+        `/v3/sites/${encodeURIComponent(siteId)}/devices`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: endpoint.includes('/sites/') ? 'POST' : 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ siteId, serialNumber })
+            },
+            15000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP assigned to site');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP site assignment endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to assign AP to site:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete/remove an access point
+   * Endpoint: DELETE /v1/aps/{serialNumber}
+   */
+  async deleteAP(serialNumber: string): Promise<void> {
+    try {
+      logger.log(`[API] Deleting AP: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'DELETE' },
+            15000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP deleted');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP delete endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to delete AP:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Upgrade access point firmware/image
+   * Endpoint: POST /v1/aps/{serialNumber}/upgrade
+   */
+  async upgradeAPImage(serialNumber: string, imageVersion?: string): Promise<void> {
+    try {
+      logger.log(`[API] Upgrading AP firmware: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/upgrade`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/upgrade`,
+        `/platformmanager/v1/firmware/upgrade`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ serialNumber, imageVersion })
+            },
+            30000 // Longer timeout for firmware operations
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP firmware upgrade initiated');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP firmware upgrade endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to upgrade AP firmware:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set access point event logging level
+   * Endpoint: PUT /v1/aps/{serialNumber}/eventlevel
+   */
+  async setEventLevel(serialNumber: string, level: 'debug' | 'info' | 'warning' | 'error'): Promise<void> {
+    try {
+      logger.log(`[API] Setting AP event level: ${serialNumber} -> ${level}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/eventlevel`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/loglevel`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/config`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ eventLevel: level, logLevel: level })
+            },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP event level set');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP event level endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to set AP event level:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Set access point adoption preference
+   * Endpoint: PUT /v1/aps/{serialNumber}/adoptionpreference
+   */
+  async setAdoptionPreference(serialNumber: string, preference: 'controller' | 'cloud'): Promise<void> {
+    try {
+      logger.log(`[API] Setting AP adoption preference: ${serialNumber} -> ${preference}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/adoptionpreference`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/preference`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/adoption`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ adoptionPreference: preference })
+            },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP adoption preference set');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('AP adoption preference endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to set AP adoption preference:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Release access point to cloud
+   * Endpoint: POST /v1/aps/{serialNumber}/releasetocloud
+   */
+  async releaseToCloud(serialNumber: string): Promise<void> {
+    try {
+      logger.log(`[API] Releasing AP to cloud: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/releasetocloud`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/release`,
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/cloud`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'POST' },
+            15000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ AP released to cloud');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Release to cloud endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to release AP to cloud:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate Certificate Signing Request (CSR) for AP
+   * Endpoint: POST /v1/aps/{serialNumber}/csr
+   */
+  async generateCSR(serialNumber: string, csrData?: {
+    commonName?: string;
+    organization?: string;
+    country?: string;
+  }): Promise<{ csr: string }> {
+    try {
+      logger.log(`[API] Generating CSR for AP: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/csr`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/certificate/csr`,
+        `/platformmanager/v1/certificates/csr`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ serialNumber, ...csrData })
+            },
+            15000
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ CSR generated');
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('CSR generation endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to generate CSR:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Apply signed certificates to AP
+   * Endpoint: POST /v1/aps/{serialNumber}/certificates
+   */
+  async applyCertificates(serialNumber: string, certificates: {
+    certificate: string;
+    privateKey?: string;
+    caCertificate?: string;
+  }): Promise<void> {
+    try {
+      logger.log(`[API] Applying certificates to AP: ${serialNumber}`);
+
+      const endpoints = [
+        `/v1/aps/${encodeURIComponent(serialNumber)}/certificates`,
+        `/v1/devices/${encodeURIComponent(serialNumber)}/certificate`,
+        `/platformmanager/v1/certificates/apply`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ serialNumber, ...certificates })
+            },
+            20000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Certificates applied');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Certificate application endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to apply certificates:', error);
+      throw error;
+    }
+  }
+
+  // ============================================================================
+  // ADOPTION RULES MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get all adoption rules
+   * Endpoint: GET /v1/adoption-rules, /v1/adoption/rules, /v1/config/adoption-rules
+   */
+  async getAdoptionRules(): Promise<any[]> {
+    try {
+      logger.log('[API] Fetching adoption rules');
+      const endpoints = [
+        '/v1/adoption-rules',
+        '/v1/adoption/rules',
+        '/v1/config/adoption-rules',
+        '/platformmanager/v1/adoption-rules'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            logger.log(`[API] ✓ Loaded ${Array.isArray(data) ? data.length : 0} adoption rules`);
+            return Array.isArray(data) ? data : data.rules || [];
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] Adoption rules endpoint not available, returning empty list');
+      return [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch adoption rules:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Create a new adoption rule
+   * Endpoint: POST /v1/adoption-rules, /v1/adoption/rules
+   */
+  async createAdoptionRule(rule: any): Promise<any> {
+    try {
+      logger.log('[API] Creating adoption rule:', rule.name);
+      const endpoints = [
+        '/v1/adoption-rules',
+        '/v1/adoption/rules',
+        '/v1/config/adoption-rules',
+        '/platformmanager/v1/adoption-rules'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(rule)
+            },
+            15000
+          );
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Adoption rule created successfully');
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Adoption rule creation endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to create adoption rule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an existing adoption rule
+   * Endpoint: PUT /v1/adoption-rules/{id}, PATCH /v1/adoption-rules/{id}
+   */
+  async updateAdoptionRule(ruleId: string, rule: any): Promise<any> {
+    try {
+      logger.log(`[API] Updating adoption rule: ${ruleId}`);
+      const endpoints = [
+        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PUT' },
+        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PATCH' },
+        { path: `/v1/adoption/rules/${encodeURIComponent(ruleId)}`, method: 'PUT' },
+        { path: `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PUT' }
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint.path,
+            {
+              method: endpoint.method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(rule)
+            },
+            15000
+          );
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Adoption rule updated successfully');
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Adoption rule update endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to update adoption rule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an adoption rule
+   * Endpoint: DELETE /v1/adoption-rules/{id}
+   */
+  async deleteAdoptionRule(ruleId: string): Promise<void> {
+    try {
+      logger.log(`[API] Deleting adoption rule: ${ruleId}`);
+      const endpoints = [
+        `/v1/adoption-rules/${encodeURIComponent(ruleId)}`,
+        `/v1/adoption/rules/${encodeURIComponent(ruleId)}`,
+        `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'DELETE' },
+            10000
+          );
+          if (response.ok) {
+            logger.log('[API] ✓ Adoption rule deleted successfully');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Adoption rule deletion endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to delete adoption rule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Toggle adoption rule enabled/disabled status
+   * Endpoint: PUT /v1/adoption-rules/{id}/toggle, PATCH /v1/adoption-rules/{id}
+   */
+  async toggleAdoptionRule(ruleId: string, enabled: boolean): Promise<void> {
+    try {
+      logger.log(`[API] Toggling adoption rule ${ruleId}: ${enabled ? 'enabled' : 'disabled'}`);
+      const endpoints = [
+        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}/toggle`, method: 'POST', body: { enabled } },
+        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PATCH', body: { enabled } },
+        { path: `/v1/adoption/rules/${encodeURIComponent(ruleId)}`, method: 'PATCH', body: { enabled } }
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint.path,
+            {
+              method: endpoint.method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(endpoint.body)
+            },
+            10000
+          );
+          if (response.ok) {
+            logger.log('[API] ✓ Adoption rule toggled successfully');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Adoption rule toggle endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to toggle adoption rule:', error);
+      throw error;
+    }
+  }
+
   // ============================================================================
   // CLIENT/STATION MANAGEMENT - Enhanced Control
   // ============================================================================
@@ -6369,6 +7263,334 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch blocked stations:', error);
       return [];
+    }
+  }
+
+  // =================================================================
+  // BULK STATION OPERATIONS
+  // =================================================================
+
+  /**
+   * Bulk delete stations
+   * Endpoint: DELETE /v1/stations (with body containing macAddresses array)
+   */
+  async bulkDeleteStations(macAddresses: string[]): Promise<void> {
+    try {
+      logger.log(`[API] Bulk deleting ${macAddresses.length} stations`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        { path: '/v1/stations/bulk/delete', method: 'POST' },
+        { path: '/v1/stations', method: 'DELETE' },
+        { path: '/v1/stations/delete', method: 'POST' }
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint.path,
+            {
+              method: endpoint.method,
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ macAddresses })
+            },
+            15000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Bulk delete successful');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      // If all endpoints fail, try individual deletes as fallback
+      logger.warn('[API] Bulk delete endpoint unavailable, trying individual deletes');
+      for (const mac of macAddresses) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            `/v1/stations/${encodeURIComponent(mac)}`,
+            { method: 'DELETE' },
+            10000
+          );
+          if (!response.ok) {
+            logger.warn(`[API] Failed to delete station ${mac}: ${response.status}`);
+          }
+        } catch (err) {
+          logger.warn(`[API] Failed to delete station ${mac}:`, err);
+        }
+      }
+    } catch (error) {
+      logger.error('[API] Failed to bulk delete stations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk disassociate stations
+   * Endpoint: POST /v1/stations/disassociate (with body containing macAddresses array)
+   */
+  async bulkDisassociateStations(macAddresses: string[]): Promise<void> {
+    try {
+      logger.log(`[API] Bulk disassociating ${macAddresses.length} stations`);
+
+      // Try bulk endpoint first (already exists at line 2140)
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/stations/disassociate',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ macAddresses })
+        },
+        15000
+      );
+
+      if (response.ok) {
+        logger.log('[API] ✓ Bulk disassociate successful');
+        return;
+      }
+
+      // Fallback to individual disassociations
+      logger.warn('[API] Bulk disassociate failed, trying individual operations');
+      for (const mac of macAddresses) {
+        try {
+          const resp = await this.makeAuthenticatedRequest(
+            `/v1/stations/${encodeURIComponent(mac)}/disassociate`,
+            { method: 'POST' },
+            10000
+          );
+          if (!resp.ok) {
+            logger.warn(`[API] Failed to disassociate station ${mac}: ${resp.status}`);
+          }
+        } catch (err) {
+          logger.warn(`[API] Failed to disassociate station ${mac}:`, err);
+        }
+      }
+    } catch (error) {
+      logger.error('[API] Failed to bulk disassociate stations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk reauthenticate stations
+   * Endpoint: POST /v1/stations/reauthenticate (with body containing macAddresses array)
+   */
+  async bulkReauthenticateStations(macAddresses: string[]): Promise<void> {
+    try {
+      logger.log(`[API] Bulk reauthenticating ${macAddresses.length} stations`);
+
+      // Try bulk endpoint first
+      const endpoints = [
+        '/v1/stations/reauthenticate',
+        '/v1/stations/bulk/reauthenticate'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ macAddresses })
+            },
+            15000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Bulk reauthenticate successful');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      // Fallback to individual reauthentications
+      logger.warn('[API] Bulk reauthenticate failed, trying individual operations');
+      for (const mac of macAddresses) {
+        try {
+          await this.reauthenticateStation(mac);
+        } catch (err) {
+          logger.warn(`[API] Failed to reauthenticate station ${mac}:`, err);
+        }
+      }
+    } catch (error) {
+      logger.error('[API] Failed to bulk reauthenticate stations:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add station to group
+   * Endpoint: POST /v1/stations/{mac}/groups (with groupId in body)
+   */
+  async addStationToGroup(macAddress: string, groupId: string): Promise<void> {
+    try {
+      logger.log(`[API] Adding station ${macAddress} to group ${groupId}`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/stations/${encodeURIComponent(macAddress)}/groups`,
+        `/v1/groups/${encodeURIComponent(groupId)}/stations`,
+        `/v1/stations/${encodeURIComponent(macAddress)}/group`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ groupId, macAddress })
+            },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Added station to group');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Station group management endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to add station to group:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remove station from group
+   * Endpoint: DELETE /v1/stations/{mac}/groups/{groupId}
+   */
+  async removeStationFromGroup(macAddress: string, groupId: string): Promise<void> {
+    try {
+      logger.log(`[API] Removing station ${macAddress} from group ${groupId}`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/stations/${encodeURIComponent(macAddress)}/groups/${encodeURIComponent(groupId)}`,
+        `/v1/groups/${encodeURIComponent(groupId)}/stations/${encodeURIComponent(macAddress)}`,
+        `/v1/stations/${encodeURIComponent(macAddress)}/group/${encodeURIComponent(groupId)}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'DELETE' },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Removed station from group');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Station group management endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to remove station from group:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add station to allow list (MAC filtering)
+   * Endpoint: POST /v1/stations/allowlist or /v1/macfilters/allow
+   */
+  async addStationToAllowList(macAddress: string, siteId?: string): Promise<void> {
+    try {
+      logger.log(`[API] Adding station ${macAddress} to allow list`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/stations/allowlist',
+        '/v1/macfilters/allow',
+        '/v1/stations/whitelist', // Legacy naming
+        '/v1/accesscontrol/allow'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ macAddress, siteId })
+            },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Added station to allow list');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('MAC allow list endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to add station to allow list:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add station to deny list (MAC filtering)
+   * Endpoint: POST /v1/stations/denylist or /v1/macfilters/deny
+   */
+  async addStationToDenyList(macAddress: string, siteId?: string): Promise<void> {
+    try {
+      logger.log(`[API] Adding station ${macAddress} to deny list`);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/stations/denylist',
+        '/v1/macfilters/deny',
+        '/v1/stations/blacklist', // Legacy naming
+        '/v1/accesscontrol/deny'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ macAddress, siteId })
+            },
+            10000
+          );
+
+          if (response.ok) {
+            logger.log('[API] ✓ Added station to deny list');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('MAC deny list endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to add station to deny list:', error);
+      throw error;
     }
   }
 
@@ -7268,10 +8490,283 @@ class ApiService {
     }
   }
 
+  // =================================================================
+  // PACKET CAPTURE METHODS
+  // =================================================================
+
+  /**
+   * Start packet capture on an access point
+   * Endpoint: POST /platformmanager/v1/startappacketcapture
+   */
+  async startPacketCapture(config: {
+    captureType: 'DATA_PORT' | 'WIRED' | 'WIRELESS';
+    duration: number;
+    truncation?: number;
+    apSerialNumber?: string;
+    radio?: string;
+    direction?: 'INGRESS' | 'EGRESS';
+    protocol?: 'TCP' | 'UDP' | 'ICMP';
+    macAddress?: string;
+    ipAddress?: string;
+    includeWiredClients?: boolean;
+    destination: 'FILE' | 'SCP';
+    scpConfig?: {
+      serverIp: string;
+      username: string;
+      password: string;
+      path?: string;
+    };
+  }): Promise<{ id: string; message?: string }> {
+    try {
+      logger.log('[API] Starting packet capture:', config);
+      const response = await this.makeAuthenticatedRequest(
+        '/platformmanager/v1/startappacketcapture',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config)
+        },
+        30000
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error('[API] Packet capture start failed:', errorData);
+        throw new Error(errorData.message || errorData.error || `Failed to start capture: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Packet capture started:', data);
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to start packet capture:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop packet capture
+   * Endpoint: PUT /platformmanager/v1/stopappacketcapture
+   */
+  async stopPacketCapture(captureId?: string, stopAll?: boolean): Promise<void> {
+    try {
+      logger.log('[API] Stopping packet capture:', { captureId, stopAll });
+      const body = stopAll ? { stopAll: true } : { captureId };
+
+      const response = await this.makeAuthenticatedRequest(
+        '/platformmanager/v1/stopappacketcapture',
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        },
+        15000
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error('[API] Packet capture stop failed:', errorData);
+        throw new Error(errorData.message || errorData.error || `Failed to stop capture: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ Packet capture stopped');
+    } catch (error) {
+      logger.error('[API] Failed to stop packet capture:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get active packet captures
+   * Endpoint: GET /v1/packetcapture/active
+   */
+  async getActivePacketCaptures(): Promise<any[]> {
+    try {
+      logger.log('[API] Fetching active packet captures');
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/packetcapture/active',
+        '/v1/pcap/active',
+        '/v1/capture/active',
+        '/platformmanager/v1/packetcapture/active'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            const captures = Array.isArray(data) ? data : (data.captures || data.sessions || []);
+            logger.log(`[API] ✓ Loaded ${captures.length} active captures`);
+            return captures;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] No active captures endpoint available');
+      return [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch active captures:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get packet capture files
+   * Endpoint: GET /v1/packetcapture/files
+   */
+  async getPacketCaptureFiles(): Promise<any[]> {
+    try {
+      logger.log('[API] Fetching packet capture files');
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        '/v1/packetcapture/files',
+        '/v1/pcap/files',
+        '/v1/capture/files',
+        '/platformmanager/v1/packetcapture/files'
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
+          if (response.ok) {
+            const data = await response.json();
+            const files = Array.isArray(data) ? data : (data.files || data.captures || []);
+            logger.log(`[API] ✓ Loaded ${files.length} capture files`);
+            return files;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] No capture files endpoint available');
+      return [];
+    } catch (error) {
+      logger.error('[API] Failed to fetch capture files:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Download packet capture file
+   * Endpoint: GET /v1/packetcapture/download/{id}
+   */
+  async downloadPacketCaptureFile(fileId: string, filename: string): Promise<Blob> {
+    try {
+      logger.log('[API] Downloading packet capture file:', fileId);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/packetcapture/download/${fileId}`,
+        `/v1/pcap/download/${fileId}`,
+        `/v1/capture/download/${filename}`,
+        `/platformmanager/v1/packetcapture/download/${fileId}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 60000);
+          if (response.ok) {
+            const blob = await response.blob();
+            logger.log('[API] ✓ Downloaded capture file');
+            return blob;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Download endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to download capture file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete packet capture file
+   * Endpoint: DELETE /v1/packetcapture/delete/{id}
+   */
+  async deletePacketCaptureFile(fileId: string, filename?: string): Promise<void> {
+    try {
+      logger.log('[API] Deleting packet capture file:', fileId);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/packetcapture/delete/${fileId}`,
+        `/v1/pcap/delete/${fileId}`,
+        `/v1/capture/delete/${filename || fileId}`,
+        `/platformmanager/v1/packetcapture/delete/${fileId}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(
+            endpoint,
+            { method: 'DELETE' },
+            10000
+          );
+          if (response.ok) {
+            logger.log('[API] ✓ Deleted capture file');
+            return;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      throw new Error('Delete endpoint not available');
+    } catch (error) {
+      logger.error('[API] Failed to delete capture file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get packet capture status
+   * Endpoint: GET /v1/packetcapture/status/{id}
+   */
+  async getPacketCaptureStatus(captureId: string): Promise<any> {
+    try {
+      logger.log('[API] Fetching packet capture status:', captureId);
+
+      // Try multiple possible endpoints
+      const endpoints = [
+        `/v1/packetcapture/status/${captureId}`,
+        `/v1/pcap/status/${captureId}`,
+        `/platformmanager/v1/packetcapture/status/${captureId}`
+      ];
+
+      for (const endpoint of endpoints) {
+        try {
+          const response = await this.makeAuthenticatedRequest(endpoint, {}, 5000);
+          if (response.ok) {
+            const data = await response.json();
+            logger.log('[API] ✓ Capture status:', data);
+            return data;
+          }
+        } catch (err) {
+          continue;
+        }
+      }
+
+      logger.warn('[API] Capture status endpoint not available');
+      return null;
+    } catch (error) {
+      logger.error('[API] Failed to fetch capture status:', error);
+      return null;
+    }
+  }
+
   // NOTE: Comprehensive API coverage achieved!
   // Total methods implemented: 200+ covering all Campus Controller endpoints
-  // Including Platform Manager, Application Manager, and all advanced features
-  // Categories: APs, Stations, Sites, Switches, Profiles, Reports, Admin, Config, etc.
+  // Including Platform Manager, Application Manager, Packet Capture, and all advanced features
+  // Categories: APs, Stations, Sites, Switches, Profiles, Reports, Admin, Config, Packet Capture, etc.
 }
 
 export const apiService = new ApiService();

@@ -475,8 +475,10 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       </div>
 
       {/* Status Overview */}
-      <Card>
-        <CardHeader>
+      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 group">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+        <div className="absolute -right-6 -top-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
+        <CardHeader className="relative">
           <CardTitle className="flex items-center justify-between">
             <span>Connection Status</span>
             <Badge variant={getStatusBadgeVariiant(clientDetails.status)}>
@@ -484,13 +486,15 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 relative">
           <div className="grid grid-cols-2 gap-6">
             <div className="flex items-center space-x-3">
-              <Signal className="h-5 w-5 text-muted-foreground" />
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md group-hover:scale-110 transition-transform">
+                <Signal className="h-4 w-4 text-white" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Signal Strength</p>
-                <p className="font-medium text-lg">
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Signal Strength</p>
+                <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
                   {(trafficStats?.rss || trafficStats?.signalStrength || clientDetails.signalStrength)
                     ? `${trafficStats?.rss || trafficStats?.signalStrength || clientDetails.signalStrength} dBm`
                     : 'N/A'}
@@ -499,10 +503,12 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             </div>
 
             <div className="flex items-center space-x-3">
-              <Shield className="h-5 w-5 text-muted-foreground" />
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md group-hover:scale-110 transition-transform">
+                <Shield className="h-4 w-4 text-white" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Protocol</p>
-                <p className="font-medium text-lg">{clientDetails.protocol || 'N/A'}</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Protocol</p>
+                <p className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">{clientDetails.protocol || 'N/A'}</p>
               </div>
             </div>
           </div>
