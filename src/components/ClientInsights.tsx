@@ -365,10 +365,10 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     };
   }, [macAddress, duration, refreshKey]);
 
-  // Reset timeline when duration changes
+  // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
-    timeline.resetTimeline();
-  }, [duration]);
+    timeline.softReset();
+  }, [duration, timeline.softReset]);
 
   // Transform data for all charts
   const throughputData = useMemo(() => {
@@ -495,12 +495,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={throughputData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
@@ -554,12 +565,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rfQualityData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
@@ -651,12 +673,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={appGroupsDetailData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -715,12 +748,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rfqiData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
@@ -774,12 +818,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={wirelessRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
@@ -833,12 +888,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={networkRttData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
@@ -892,12 +958,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rssData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
@@ -951,12 +1028,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={rxRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1010,12 +1098,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={txRateData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
@@ -1069,12 +1168,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={eventsData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -1130,12 +1240,23 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     data={dlRetriesData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="client-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
@@ -1231,6 +1352,11 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
           hasTimeWindow={timeline.timeWindow.start !== null && timeline.timeWindow.end !== null}
           onToggleLock={timeline.toggleLock}
           onClearTimeWindow={timeline.clearTimeWindow}
+          onCopyTimeline={() => {
+            // Copy timeline FROM ap-insights TO client-insights
+            timeline.syncFromScope('ap-insights');
+          }}
+          sourceLabel="AP Insights"
         />
 
         {/* Content - All charts on one page */}

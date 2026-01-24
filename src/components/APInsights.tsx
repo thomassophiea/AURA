@@ -354,10 +354,10 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     };
   }, [serialNumber, duration, refreshKey]);
 
-  // Reset timeline when duration changes
+  // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
-    timeline.resetTimeline();
-  }, [duration]);
+    timeline.softReset();
+  }, [duration, timeline.softReset]);
 
   // Transform data for each chart
   const throughputData = useMemo(() => {
@@ -436,12 +436,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={throughputData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorTotalFull" x1="0" y1="0" x2="0" y2="1">
@@ -495,12 +506,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={powerData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -546,12 +568,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={clientData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -597,12 +630,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={rssData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <defs>
                       <linearGradient id="colorRss" x1="0" y1="0" x2="0" y2="1">
@@ -656,12 +700,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={channelUtil5Data}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -710,12 +765,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={channelUtil24Data}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -764,12 +830,23 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     data={noiseData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     syncId="ap-insights-charts"
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        timeline.setCurrentTime(e.activePayload[0].payload.timestamp);
+                    onMouseDown={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
+                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
                       }
                     }}
-                    onMouseLeave={() => timeline.setCurrentTime(null)}
+                    onMouseMove={(e: any) => {
+                      if (e && e.activePayload && e.activePayload[0]) {
+                        const timestamp = e.activePayload[0].payload.timestamp;
+                        timeline.setCurrentTime(timestamp);
+                        timeline.updateTimeWindow(timestamp);
+                      }
+                    }}
+                    onMouseUp={() => timeline.endTimeWindow()}
+                    onMouseLeave={() => {
+                      timeline.setCurrentTime(null);
+                      timeline.endTimeWindow();
+                    }}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
@@ -850,6 +927,11 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
           hasTimeWindow={timeline.timeWindow.start !== null && timeline.timeWindow.end !== null}
           onToggleLock={timeline.toggleLock}
           onClearTimeWindow={timeline.clearTimeWindow}
+          onCopyTimeline={() => {
+            // Copy timeline FROM client-insights TO ap-insights
+            timeline.syncFromScope('client-insights');
+          }}
+          sourceLabel="Client Insights"
         />
 
         {/* Content */}

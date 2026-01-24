@@ -142,6 +142,23 @@ export function useTimelineNavigation(scope: TimelineScope) {
     });
   }, [scope]);
 
+  // Soft reset - only clear time window, preserve lock and current time
+  const softReset = useCallback(() => {
+    setState(scope, {
+      timeWindow: { start: null, end: null },
+    });
+  }, [scope]);
+
+  // Sync timeline from another scope
+  const syncFromScope = useCallback((sourceScope: TimelineScope) => {
+    const sourceState = getState(sourceScope);
+    setState(scope, {
+      currentTime: sourceState.currentTime,
+      timeWindow: sourceState.timeWindow,
+      isLocked: sourceState.isLocked,
+    });
+  }, [scope]);
+
   // Cleanup RAF on unmount
   useEffect(() => {
     return () => {
@@ -165,5 +182,7 @@ export function useTimelineNavigation(scope: TimelineScope) {
     endTimeWindow,
     clearTimeWindow,
     resetTimeline,
+    softReset,
+    syncFromScope,
   };
 }
