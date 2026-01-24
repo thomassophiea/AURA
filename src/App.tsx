@@ -37,6 +37,7 @@ const ClientDetail = lazy(() => import('./components/ClientDetail').then(m => ({
 const SiteDetail = lazy(() => import('./components/SiteDetail').then(m => ({ default: m.SiteDetail })));
 const NetworkChatbot = lazy(() => import('./components/NetworkChatbot').then(m => ({ default: m.NetworkChatbot })));
 const AppInsights = lazy(() => import('./components/AppInsights').then(m => ({ default: m.AppInsights })));
+const PCIReport = lazy(() => import('./components/PCIReport').then(m => ({ default: m.PCIReport })));
 import { apiService, ApiCallLog } from './services/api';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
@@ -63,6 +64,7 @@ const pageInfo = {
   'performance-analytics': { title: 'Performance Analytics', description: 'Analyze network performance and trends' },
   'network-visualization': { title: 'Network Visualization', description: 'Visualize network topology and connections' },
   'report-widgets': { title: 'Report Widgets', description: 'Real-time analytics and monitoring widgets' },
+  'pci-report': { title: 'PCI DSS Report', description: 'Generate PCI DSS compliance reports for cardholder data environments' },
   'administration': { title: 'Administration', description: 'System administration, users, applications, and licensing' },
   'api-test': { title: 'API Test Tool', description: 'Test and explore EDGE API endpoints' },
   'configure-sites': { title: 'Sites', description: 'Manage and configure network sites and locations' },
@@ -829,6 +831,8 @@ export default function App() {
         return <PlaceholderPage title={performanceAnalyticsInfo.title} description={performanceAnalyticsInfo.description} />;
       case 'report-widgets':
         return <ReportWidgets />;
+      case 'pci-report':
+        return <PCIReport />;
       case 'configure-networks':
         return <ConfigureNetworks />;
       case 'configure-policy':

@@ -18,7 +18,8 @@ import {
   Monitor,
   BarChart3,
   Wrench,
-  AppWindow
+  AppWindow,
+  FileCheck
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -45,6 +46,7 @@ const navigationItems = [
   { id: 'connected-clients', label: 'Connected Clients', icon: Users },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
   { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
+  { id: 'pci-report', label: 'PCI DSS Report', icon: FileCheck },
 ];
 
 // Configure items
