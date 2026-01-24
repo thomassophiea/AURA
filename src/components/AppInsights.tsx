@@ -651,6 +651,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                     </Pie>
                     <Tooltip
                       formatter={(value: number) => formatBytes(value)}
+                      labelFormatter={() => ''}
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))',
@@ -696,6 +697,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                     />
                     <Tooltip
                       formatter={(value: number) => [formatThroughput(value), 'Throughput']}
+                      labelFormatter={() => ''}
                       contentStyle={{
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))',

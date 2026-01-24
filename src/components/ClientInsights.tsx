@@ -95,6 +95,31 @@ function formatValue(value: number, unit: string): string {
   return value.toFixed(1);
 }
 
+// Find value at a specific timestamp (for locked display)
+function getValueAtTimestamp(data: any[], timestamp: number, fields: string[]): Record<string, number | null> {
+  if (!data || data.length === 0 || timestamp === null) {
+    return fields.reduce((acc, field) => ({ ...acc, [field]: null }), {});
+  }
+
+  // Find the data point closest to the timestamp
+  let closest = data[0];
+  let minDiff = Math.abs(data[0].timestamp - timestamp);
+
+  for (const point of data) {
+    const diff = Math.abs(point.timestamp - timestamp);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closest = point;
+    }
+  }
+
+  // Return values for all requested fields
+  return fields.reduce((acc, field) => ({
+    ...acc,
+    [field]: closest[field] !== undefined ? closest[field] : null
+  }), {});
+}
+
 // Transform report data for charts
 function transformReportData(report: APInsightsReport | undefined, duration: string): any[] {
   if (!report || !report.statistics || report.statistics.length === 0) return [];
@@ -495,10 +520,34 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
     switch (config.id) {
       case 'throughput':
+        const lockedThroughputValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(throughputData, timeline.currentTime, ['total', 'upload', 'download'])
+          : null;
         return (
           <Card key={config.id} className="col-span-2">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedThroughputValues && (
+                  <div className="flex gap-3 text-xs">
+                    {lockedThroughputValues.total !== null && (
+                      <Badge variant="secondary" className="font-mono">
+                        <span className="text-blue-500 font-semibold mr-1">Total:</span> {formatValue(lockedThroughputValues.total, 'bps')}
+                      </Badge>
+                    )}
+                    {lockedThroughputValues.upload !== null && (
+                      <Badge variant="secondary" className="font-mono">
+                        <span className="text-cyan-500 font-semibold mr-1">Up:</span> {formatValue(lockedThroughputValues.upload, 'bps')}
+                      </Badge>
+                    )}
+                    {lockedThroughputValues.download !== null && (
+                      <Badge variant="secondary" className="font-mono">
+                        <span className="text-pink-500 font-semibold mr-1">Down:</span> {formatValue(lockedThroughputValues.download, 'bps')}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -538,7 +587,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -569,10 +618,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'rfQuality':
+        const lockedRfQualityValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(rfQualityData, timeline.currentTime, ['rfQuality'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedRfQualityValues && lockedRfQualityValues.rfQuality !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-emerald-500 font-semibold mr-1">Quality:</span> {lockedRfQualityValues.rfQuality.toFixed(0)}%
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -612,7 +671,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -663,7 +722,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-1 max-h-56 overflow-auto">
@@ -681,10 +740,29 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'appGroupsDetail':
+        const lockedAppGroupsDetailValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(appGroupsDetailData, timeline.currentTime, ['upload', 'download'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedAppGroupsDetailValues && (
+                  <div className="flex gap-2 text-xs">
+                    {lockedAppGroupsDetailValues.upload !== null && (
+                      <Badge variant="secondary" className="font-mono">
+                        <span className="text-cyan-500 font-semibold mr-1">Up:</span> {formatValue(lockedAppGroupsDetailValues.upload, 'bps')}
+                      </Badge>
+                    )}
+                    {lockedAppGroupsDetailValues.download !== null && (
+                      <Badge variant="secondary" className="font-mono">
+                        <span className="text-pink-500 font-semibold mr-1">Down:</span> {formatValue(lockedAppGroupsDetailValues.download, 'bps')}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -718,7 +796,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -760,10 +838,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'rfqi':
+        const lockedRfqiValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(rfqiData, timeline.currentTime, ['rfqi'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedRfqiValues && lockedRfqiValues.rfqi !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-purple-500 font-semibold mr-1">RFQI:</span> {lockedRfqiValues.rfqi.toFixed(1)}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -803,7 +891,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
-                    <Tooltip contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -834,10 +922,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'wirelessRtt':
+        const lockedWirelessRttValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(wirelessRttData, timeline.currentTime, ['wirelessRtt'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedWirelessRttValues && lockedWirelessRttValues.wirelessRtt !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-amber-500 font-semibold mr-1">RTT:</span> {lockedWirelessRttValues.wirelessRtt.toFixed(1)} ms
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -877,7 +975,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -908,10 +1006,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'networkRtt':
+        const lockedNetworkRttValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(networkRttData, timeline.currentTime, ['networkRtt'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedNetworkRttValues && lockedNetworkRttValues.networkRtt !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-orange-500 font-semibold mr-1">RTT:</span> {lockedNetworkRttValues.networkRtt.toFixed(1)} ms
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -951,7 +1059,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -982,10 +1090,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'rss':
+        const lockedRssValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(rssData, timeline.currentTime, ['rss'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedRssValues && lockedRssValues.rss !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-red-500 font-semibold mr-1">RSS:</span> {lockedRssValues.rss.toFixed(0)} dBm
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -1025,7 +1143,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1056,10 +1174,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'rxRate':
+        const lockedRxRateValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(rxRateData, timeline.currentTime, ['rxRate'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedRxRateValues && lockedRxRateValues.rxRate !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-green-500 font-semibold mr-1">RxRate:</span> {lockedRxRateValues.rxRate.toFixed(1)} Mbps
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -1099,7 +1227,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1130,10 +1258,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'txRate':
+        const lockedTxRateValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(txRateData, timeline.currentTime, ['txRate'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedTxRateValues && lockedTxRateValues.txRate !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-blue-500 font-semibold mr-1">TxRate:</span> {lockedTxRateValues.txRate.toFixed(1)} Mbps
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -1173,7 +1311,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1204,10 +1342,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'events':
+        const lockedEventsValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(eventsData, timeline.currentTime, ['events'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedEventsValues && lockedEventsValues.events !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-yellow-500 font-semibold mr-1">Events:</span> {lockedEventsValues.events.toFixed(0)}
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -1241,7 +1389,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} width={40} />
-                    <Tooltip contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1280,10 +1428,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'dlRetries':
+        const lockedDlRetriesValues = timeline.isLocked && timeline.currentTime !== null
+          ? getValueAtTimestamp(dlRetriesData, timeline.currentTime, ['dlRetries'])
+          : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
+                {lockedDlRetriesValues && lockedDlRetriesValues.dlRetries !== null && (
+                  <Badge variant="secondary" className="font-mono">
+                    <span className="text-rose-500 font-semibold mr-1">Retries:</span> {lockedDlRetriesValues.dlRetries.toFixed(1)}%
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -1323,7 +1481,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
