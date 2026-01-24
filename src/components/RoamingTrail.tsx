@@ -114,8 +114,13 @@ type AlertFilter = {
   apPair?: { ap1: string; ap2: string };
 };
 
+// Generate unique key for an event
+function getEventKey(event: RoamingEvent): string {
+  return `${event.timestamp}-${event.apSerial}-${event.eventType}`;
+}
+
 export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress }: RoamingTrailProps) {
-  const [selectedEvent, setSelectedEvent] = useState<RoamingEvent | null>(null);
+  const [selectedEventKey, setSelectedEventKey] = useState<string | null>(null);
   const [selectedCorrelationEvent, setSelectedCorrelationEvent] = useState<APEvent | RRMEvent | null>(null);
   const [filterType, setFilterType] = useState<FilterType>('time');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('24h');
@@ -295,6 +300,12 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
 
     return filtered;
   }, [events, filterType, timeFilter, countFilter]);
+
+  // Find the selected event from the current roamingEvents array
+  const selectedEvent = useMemo(() => {
+    if (!selectedEventKey) return null;
+    return roamingEvents.find(event => getEventKey(event) === selectedEventKey) || null;
+  }, [selectedEventKey, roamingEvents]);
 
   // Calculate roaming statistics
   const stats = useMemo((): RoamingStats => {
@@ -564,7 +575,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
       setAlertFilter({ type: 'none' });
     } else {
       setAlertFilter({ type: 'issue', issue });
-      setSelectedEvent(null);
+      setSelectedEventKey(null);
     }
   };
 
@@ -573,7 +584,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
       setAlertFilter({ type: 'none' });
     } else {
       setAlertFilter({ type: 'pingpong', apPair: { ap1, ap2 } });
-      setSelectedEvent(null);
+      setSelectedEventKey(null);
     }
   };
 
@@ -936,7 +947,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
         {/* Timeline chart */}
         <div
           className="flex-1 relative"
-          onClick={() => setSelectedEvent(null)}
+          onClick={() => setSelectedEventKey(null)}
         >
           <div
             className="relative w-full h-full"
@@ -986,7 +997,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   style={{ left: 0, top: 0, width: '100%', height: '100%', zIndex: 5 }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setSelectedEvent(nextEvent);
+                    setSelectedEventKey(getEventKey(nextEvent));
                     setShowDetails(true);
                   }}
                 >
@@ -1024,7 +1035,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   <div
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedEvent(event);
+                      setSelectedEventKey(getEventKey(event));
                       setShowDetails(true);
                       setAlertFilter({ type: 'none' });
                     }}
@@ -1032,7 +1043,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                       absolute rounded-full border-2 border-background
                       hover:scale-125 transition-all cursor-pointer z-10
                       ${dotColor}
-                      ${selectedEvent === event ? 'ring-2 ring-primary ring-offset-1 scale-125' : ''}
+                      ${selectedEventKey === getEventKey(event) ? 'ring-2 ring-primary ring-offset-1 scale-125' : ''}
                       ${isHighlighted ? 'w-5 h-5 ring-2 ring-yellow-400 ring-offset-1 scale-110 z-20' : 'w-4 h-4'}
                       ${dimmed ? 'opacity-30' : ''}
                     `}
@@ -1046,7 +1057,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.stopPropagation();
-                        setSelectedEvent(event);
+                        setSelectedEventKey(getEventKey(event));
                         setShowDetails(true);
                       }
                     }}
@@ -1075,7 +1086,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedEvent(event);
+                        setSelectedEventKey(getEventKey(event));
                         setShowDetails(true);
                       }}
                     >
@@ -1103,7 +1114,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedCorrelationEvent(event);
-                    setSelectedEvent(null);
+                    setSelectedEventKey(null);
                     setShowDetails(true);
                   }}
                   className={`
@@ -1138,7 +1149,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   onClick={(e) => {
                     e.stopPropagation();
                     setSelectedCorrelationEvent(event);
-                    setSelectedEvent(null);
+                    setSelectedEventKey(null);
                     setShowDetails(true);
                   }}
                   className={`
@@ -1171,7 +1182,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
               <div className="flex items-center gap-2">
                 <h4 className="font-semibold text-sm">Event Details</h4>
                 <button
-                  onClick={() => setSelectedEvent(null)}
+                  onClick={() => setSelectedEventKey(null)}
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <X className="h-4 w-4" />
