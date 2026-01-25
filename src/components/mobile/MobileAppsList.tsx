@@ -3,7 +3,7 @@
  * Top apps only, no complex analytics
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Search, RefreshCw } from 'lucide-react';
 import { MobileStatusList } from './MobileStatusList';
 import { MobileStatusRow } from './MobileStatusRow';
@@ -24,11 +24,19 @@ export function MobileAppsList({ currentSite }: MobileAppsListProps) {
   const { data: apps, loading, error, refresh } = useOfflineCache(
     `apps_${currentSite}`,
     async () => {
+      console.log('[MobileAppsList] Fetching applications...');
       const data = await apiService.getApplications();
+      console.log('[MobileAppsList] Received apps data:', data);
+      console.log('[MobileAppsList] Apps count:', Array.isArray(data) ? data.length : 0);
       return Array.isArray(data) ? data : [];
     },
     60000 // Apps change less frequently
   );
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[MobileAppsList] State update - apps:', apps, 'loading:', loading, 'error:', error);
+  }, [apps, loading, error]);
 
   // Format bytes
   const formatBytes = (bytes: number | undefined): string => {
@@ -85,55 +93,56 @@ export function MobileAppsList({ currentSite }: MobileAppsListProps) {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto p-4">
-        {!loading && filteredApps.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-            <p className="text-muted-foreground mb-4">
-              {error
-                ? 'Unable to load applications. The application manager may not be configured or available.'
-                : apps?.length === 0
-                ? 'No applications are currently installed or available.'
-                : 'No applications match your search.'}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                haptic.light();
-                refresh();
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
-        )}
         <MobileStatusList loading={loading} emptyMessage="">
-          {filteredApps.map((app: any, index: number) => {
-            const usage = formatBytes(app.bytes || app.totalBytes);
-            const clients = app.clientCount || app.clients || 0;
+          {filteredApps.length === 0 && !loading ? (
+            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+              <p className="text-muted-foreground mb-4">
+                {error
+                  ? 'Unable to load applications. The application manager may not be configured or available.'
+                  : apps?.length === 0
+                  ? 'No applications are currently installed or available.'
+                  : 'No applications match your search.'}
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  haptic.light();
+                  refresh();
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Retry
+              </Button>
+            </div>
+          ) : (
+            filteredApps.map((app: any, index: number) => {
+              const usage = formatBytes(app.bytes || app.totalBytes);
+              const clients = app.clientCount || app.clients || 0;
 
-            return (
-              <MobileStatusRow
-                key={app.name || index}
-                primaryText={app.name || 'Unknown Application'}
-                secondaryText={`${usage} • ${clients} client${clients !== 1 ? 's' : ''}`}
-                status={
-                  app.category
-                    ? {
-                        label: app.category,
-                        variant: 'default',
-                      }
-                    : undefined
-                }
-                rightContent={
-                  <div className="text-right flex-shrink-0">
-                    <div className="text-xs text-muted-foreground">Rank</div>
-                    <div className="text-sm font-semibold">#{index + 1}</div>
-                  </div>
-                }
-              />
-            );
-          })}
+              return (
+                <MobileStatusRow
+                  key={app.name || index}
+                  primaryText={app.name || 'Unknown Application'}
+                  secondaryText={`${usage} • ${clients} client${clients !== 1 ? 's' : ''}`}
+                  status={
+                    app.category
+                      ? {
+                          label: app.category,
+                          variant: 'default',
+                        }
+                      : undefined
+                  }
+                  rightContent={
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-xs text-muted-foreground">Rank</div>
+                      <div className="text-sm font-semibold">#{index + 1}</div>
+                    </div>
+                  }
+                />
+              );
+            })
+          )}
         </MobileStatusList>
       </div>
     </div>

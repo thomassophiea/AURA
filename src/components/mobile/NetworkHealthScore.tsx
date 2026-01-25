@@ -76,7 +76,7 @@ export function NetworkHealthScore({ score, onClick }: NetworkHealthScoreProps) 
 
         {/* Label */}
         <div className="mt-4 text-center">
-          <p className="text-sm text-muted-foreground font-medium">Network Health</p>
+          <p className="text-sm text-muted-foreground font-medium">Network Experience</p>
           <p className={`text-lg font-semibold mt-1 ${status.color}`}>
             {status.label}
           </p>

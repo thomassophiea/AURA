@@ -185,14 +185,18 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
               client.status?.toLowerCase() === 'connected' ||
               client.status?.toLowerCase() === 'associated' ||
               client.status?.toLowerCase() === 'active';
-            const signalBucket = getSignalBucket(client.rssi);
-            const signalLabels = { good: 'Good', fair: 'Fair', poor: 'Poor', unknown: 'Unknown' };
+
+            // Get band
+            const band = client.band || client.radioBand || client.frequency || '—';
+
+            // Get signal strength
+            const signalText = client.rssi ? `${client.rssi} dBm` : '—';
 
             return (
               <MobileStatusRow
                 key={client.macAddress}
-                primaryText={client.hostName || client.macAddress || 'Unknown Client'}
-                secondaryText={`${client.apName || 'No AP'} • ${signalLabels[signalBucket]} signal`}
+                primaryText={client.hostName || client.hostname || client.macAddress || 'Unknown Client'}
+                secondaryText={`${band} • ${signalText}`}
                 status={{
                   label: isOnline ? 'Online' : 'Offline',
                   variant: isOnline ? 'success' : 'destructive',
@@ -209,29 +213,46 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
       <MobileBottomSheet
         isOpen={!!selectedClient}
         onClose={() => setSelectedClient(null)}
-        title={selectedClient?.hostName || selectedClient?.macAddress || 'Client Details'}
+        title={selectedClient?.hostName || selectedClient?.hostname || selectedClient?.macAddress || 'Client Details'}
       >
         {selectedClient && (
           <div className="p-4 space-y-4">
             <div>
+              <p className="text-sm text-muted-foreground">Hostname</p>
+              <p className="text-base font-medium">{selectedClient.hostName || selectedClient.hostname || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Device Info</p>
+              <p className="text-base font-medium">{selectedClient.manufacturer || selectedClient.deviceType || '—'}</p>
+            </div>
+            <div>
               <p className="text-sm text-muted-foreground">MAC Address</p>
-              <p className="text-base font-medium">{selectedClient.macAddress}</p>
+              <p className="text-base font-medium font-mono">{selectedClient.macAddress}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">IP Address</p>
-              <p className="text-base font-medium">{selectedClient.ipAddress || 'N/A'}</p>
+              <p className="text-base font-medium">{selectedClient.ipAddress || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">User & Network</p>
+              <p className="text-base font-medium">{selectedClient.username || '—'}</p>
+              <p className="text-sm text-muted-foreground mt-1">{selectedClient.networkName || selectedClient.ssid || '—'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Access Point</p>
-              <p className="text-base font-medium">{selectedClient.apName || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Signal (RSSI)</p>
-              <p className="text-base font-medium">{selectedClient.rssi ? `${selectedClient.rssi} dBm` : 'N/A'}</p>
+              <p className="text-base font-medium">{selectedClient.apName || selectedClient.apDisplayName || '—'}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Band</p>
-              <p className="text-base font-medium">{selectedClient.band || selectedClient.frequency || 'N/A'}</p>
+              <p className="text-base font-medium">{selectedClient.band || selectedClient.radioBand || selectedClient.frequency || '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Signal Strength</p>
+              <p className="text-base font-medium">{selectedClient.rssi ? `${selectedClient.rssi} dBm` : '—'}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Status</p>
+              <p className="text-base font-medium">{selectedClient.status || selectedClient.connectionState || '—'}</p>
             </div>
           </div>
         )}

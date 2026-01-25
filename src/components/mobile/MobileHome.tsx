@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Wifi, AppWindow, AlertCircle, RefreshCw } from 'lucide-react';
 import { MobileKPITile } from './MobileKPITile';
 import { NetworkHealthScore } from './NetworkHealthScore';
+import { MobileBottomSheet } from './MobileBottomSheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { apiService } from '@/services/api';
@@ -39,6 +40,8 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
     healthScore: 0,
   });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showIssues, setShowIssues] = useState(false);
+  const [offlineAPs, setOfflineAPs] = useState<any[]>([]);
 
   // Use offline cache for stats
   const { data: cachedStats, isOffline, lastUpdated, refresh } = useOfflineCache(
@@ -53,24 +56,37 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
       const filteredClients = currentSite === 'all' ? clientsData : clientsData.filter((c: any) => c.siteId === currentSite);
       const filteredAPs = currentSite === 'all' ? apsData : apsData.filter((ap: any) => ap.siteId === currentSite);
 
-      const onlineAPs = filteredAPs.filter((ap: any) => {
+      const isAPOnline = (ap: any): boolean => {
         const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
-        return status === 'inservice' || status.includes('up') || status.includes('online') || ap.isUp === true || ap.online === true;
-      }).length;
+        return (
+          status === 'inservice' ||
+          status.includes('up') ||
+          status.includes('online') ||
+          status.includes('connected') ||
+          ap.isUp === true ||
+          ap.online === true ||
+          (!status && ap.isUp !== false && ap.online !== false)
+        );
+      };
 
-      const offlineAPs = filteredAPs.length - onlineAPs;
+      const onlineAPsList = filteredAPs.filter(isAPOnline);
+      const offlineAPsList = filteredAPs.filter((ap: any) => !isAPOnline(ap));
+
+      const onlineAPs = onlineAPsList.length;
+      const offlineAPsCount = offlineAPsList.length;
 
       // Calculate health score
       const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
-      const issueCount = offlineAPs;
+      const issueCount = offlineAPsCount;
       const healthScore = Math.round(apScore * 0.7 + (issueCount === 0 ? 30 : Math.max(0, 30 - issueCount * 10)));
 
       return {
         clients: { total: filteredClients.length },
-        aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPs },
+        aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPsCount },
         apps: { total: appsData.length },
         issues: issueCount,
         healthScore,
+        offlineAPs: offlineAPsList,
       };
     },
     30000
@@ -79,6 +95,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
   useEffect(() => {
     if (cachedStats) {
       setStats(cachedStats);
+      setOfflineAPs(cachedStats.offlineAPs || []);
     }
   }, [cachedStats]);
 
@@ -120,6 +137,11 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
   const handleTileClick = (tab: MobileTab) => {
     haptic.light();
     onNavigate(tab);
+  };
+
+  const handleIssuesClick = () => {
+    haptic.light();
+    setShowIssues(true);
   };
 
   return (
@@ -192,6 +214,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
           value={stats.issues}
           status={stats.issues > 0 ? (stats.issues > 2 ? 'critical' : 'warning') : 'good'}
           badge={stats.issues}
+          onClick={handleIssuesClick}
         />
         <MobileKPITile
           icon={AppWindow}
@@ -201,6 +224,60 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
           onClick={() => handleTileClick('apps')}
         />
       </div>
+
+      {/* Issues Bottom Sheet */}
+      <MobileBottomSheet
+        isOpen={showIssues}
+        onClose={() => setShowIssues(false)}
+        title="Network Issues"
+      >
+        <div className="p-4 space-y-3">
+          {offlineAPs.length === 0 ? (
+            <div className="text-center py-8">
+              <AlertCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+              <p className="text-lg font-semibold text-foreground">No Issues Found</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                All access points are operating normally
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="pb-2">
+                <p className="text-sm text-muted-foreground">
+                  {offlineAPs.length} offline access point{offlineAPs.length !== 1 ? 's' : ''}
+                </p>
+              </div>
+              {offlineAPs.map((ap: any) => (
+                <div
+                  key={ap.serialNumber || ap.macAddress}
+                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground truncate">
+                        {ap.displayName || ap.name || ap.serialNumber || 'Unknown AP'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {ap.serialNumber || 'No serial number'}
+                      </p>
+                      {ap.ipAddress && (
+                        <p className="text-sm text-muted-foreground">
+                          IP: {ap.ipAddress}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex-shrink-0 ml-3">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                        Offline
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </MobileBottomSheet>
     </div>
   );
 }
