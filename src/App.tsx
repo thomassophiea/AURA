@@ -1083,9 +1083,10 @@ export default function App() {
             </div>
           </div>
         </main>
-        
-        <Toaster />
-        
+
+        {/* Only show toasts on desktop - mobile uses bottom sheets for notifications */}
+        {!device.isMobile && <Toaster />}
+
         {/* Detail Slide-out Panel */}
         {renderDetailPanel()}
       </div>
