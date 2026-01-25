@@ -3,7 +3,7 @@ import { useGlobalFilters } from './hooks/useGlobalFilters';
 import type { AssistantContext } from './components/NetworkChatbot';
 import { LoginForm } from './components/LoginForm';
 import { Sidebar } from './components/Sidebar';
-import { MobileDashboard } from './components/MobileDashboard';
+import { MobileApp } from './components/mobile/MobileApp';
 import { DetailSlideOut } from './components/DetailSlideOut';
 import { PlaceholderPage } from './components/PlaceholderPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -982,69 +982,19 @@ export default function App() {
     }
   };
 
-  // Show mobile dashboard on small screens
+  // Show mobile app on small screens
   if (device.isMobile) {
     return (
-      <>
-        <MobileDashboard
-          currentPage={currentPage}
-          onNavigate={(page) => {
-            if (page === 'mobile-home') {
-              setCurrentPage('service-levels'); // Default home page
-            } else {
-              handlePageChange(page);
-            }
-          }}
-          onLogout={handleLogout}
-          theme={theme}
-          onThemeToggle={toggleTheme}
-          currentSite={filters.site}
-          onSiteChange={(siteId) => {
-            // Update global filters directly
-            updateFilter('site', siteId);
-          }}
-        />
-
-        {/* Detail panels still work on mobile */}
-        {detailPanel.isOpen && detailPanel.type === 'access-point' && detailPanel.data && (
-          <DetailSlideOut
-            isOpen={detailPanel.isOpen}
-            onClose={closeDetailPanel}
-            title={`AP: ${detailPanel.data.displayName || detailPanel.data.serialNumber}`}
-          >
-            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
-              <AccessPointDetail serialNumber={detailPanel.data.serialNumber} />
-            </Suspense>
-          </DetailSlideOut>
-        )}
-
-        {detailPanel.isOpen && detailPanel.type === 'client' && detailPanel.data && (
-          <DetailSlideOut
-            isOpen={detailPanel.isOpen}
-            onClose={closeDetailPanel}
-            title={`Client: ${detailPanel.data.hostName || detailPanel.data.macAddress}`}
-          >
-            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
-              <ClientDetail macAddress={detailPanel.data.macAddress} />
-            </Suspense>
-          </DetailSlideOut>
-        )}
-
-        {detailPanel.isOpen && detailPanel.type === 'site' && detailPanel.data && (
-          <DetailSlideOut
-            isOpen={detailPanel.isOpen}
-            onClose={closeDetailPanel}
-            title={`Site: ${detailPanel.data.siteName}`}
-          >
-            <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
-              <SiteDetail siteId={detailPanel.data.siteId} siteName={detailPanel.data.siteName} />
-            </Suspense>
-          </DetailSlideOut>
-        )}
-
-        {/* Minimal toasts for mobile - bottom position, short duration */}
-        <Toaster position="bottom-center" duration={2000} />
-      </>
+      <MobileApp
+        theme={theme}
+        onThemeToggle={toggleTheme}
+        onLogout={handleLogout}
+        userEmail={localStorage.getItem('user_email') || undefined}
+        currentSite={filters.site}
+        onSiteChange={(siteId) => {
+          updateFilter('site', siteId);
+        }}
+      />
     );
   }
 
