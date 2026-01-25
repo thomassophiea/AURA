@@ -117,7 +117,7 @@ export default function App() {
   const [siteName, setSiteName] = useState<string>('');
 
   // Global filters for site context
-  const { filters } = useGlobalFilters();
+  const { filters, updateFilter } = useGlobalFilters();
 
   // Device detection for responsive design
   const device = useDeviceDetection();
@@ -1000,11 +1000,8 @@ export default function App() {
           onThemeToggle={toggleTheme}
           currentSite={filters.site}
           onSiteChange={(siteId) => {
-            // Update global filters
-            const event = new CustomEvent('filter-change', {
-              detail: { site: siteId }
-            });
-            window.dispatchEvent(event);
+            // Update global filters directly
+            updateFilter('site', siteId);
           }}
         />
 

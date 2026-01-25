@@ -1802,3 +1802,84 @@ html[data-theme="light"], html.light {
 .scrollbar-auto-hide:hover::-webkit-scrollbar-thumb:hover {
   background: var(--muted-foreground);
 }
+
+/* ===== iOS Safe Area Support ===== */
+:root {
+  /* Safe area inset variables for iOS notch and home indicator */
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+  --safe-area-inset-right: env(safe-area-inset-right);
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Minimum touch target size for mobile (44x44px per Apple HIG) */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Ensure safe areas are respected on iOS */
+  body {
+    padding-top: var(--safe-area-inset-top);
+    padding-bottom: var(--safe-area-inset-bottom);
+    padding-left: var(--safe-area-inset-left);
+    padding-right: var(--safe-area-inset-right);
+  }
+
+  /* Prevent text size adjustment on orientation change */
+  * {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* Smooth scrolling for mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Tap highlight removal for better UX */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Pull-to-refresh indicator styles */
+.ptr-element {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.ptr-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: ptr-spin 0.8s linear infinite;
+}
+
+@keyframes ptr-spin {
+  to { transform: rotate(360deg); }
+}
+
+.ptr-refresh-text {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
