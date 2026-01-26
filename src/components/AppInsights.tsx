@@ -656,7 +656,8 @@ export function AppInsights({ api }: AppInsightsProps) {
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '6px',
-                        fontSize: '11px'
+                        fontSize: '11px',
+                        color: 'hsl(var(--foreground))'
                       }}
                     />
                   </RechartsPieChart>
@@ -702,7 +703,8 @@ export function AppInsights({ api }: AppInsightsProps) {
                         backgroundColor: 'hsl(var(--background))',
                         border: '1px solid hsl(var(--border))',
                         borderRadius: '6px',
-                        fontSize: '11px'
+                        fontSize: '11px',
+                        color: 'hsl(var(--foreground))'
                       }}
                     />
                     <Bar

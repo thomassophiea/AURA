@@ -1551,7 +1551,14 @@ function DashboardEnhancedComponent() {
                     fill="#BB86FC"
                     fillOpacity={0.6}
                   />
-                  <Tooltip />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                  />
                 </RadarChart>
               </ResponsiveContainer>
             ) : (
@@ -1699,7 +1706,14 @@ function DashboardEnhancedComponent() {
                               />
                             ))}
                           </Pie>
-                          <Tooltip />
+                          <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--background))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '6px',
+                      color: 'hsl(var(--foreground))'
+                    }}
+                  />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>

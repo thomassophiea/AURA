@@ -734,7 +734,14 @@ export function PerformanceAnalytics() {
                         label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       >
                       </Pie>
-                      <Tooltip />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
@@ -756,7 +763,14 @@ export function PerformanceAnalytics() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
+                      />
                       <Bar dataKey="clientCount" fill={CHART_COLORS[1]} name="Clients" />
                     </BarChart>
                   </ResponsiveContainer>

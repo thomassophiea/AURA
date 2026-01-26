@@ -252,7 +252,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                       />
                       <Tooltip
                         formatter={(value: number) => formatBytes(value)}
-                        contentStyle={{ fontSize: '12px' }}
+                        contentStyle={{
+                          fontSize: '12px',
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
                       />
                       <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -292,7 +298,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                       </Pie>
                       <Tooltip
                         formatter={(value: number) => `${formatNumber(value)} clients`}
-                        contentStyle={{ fontSize: '12px' }}
+                        contentStyle={{
+                          fontSize: '12px',
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -331,7 +343,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                       </Pie>
                       <Tooltip
                         formatter={(value: number) => formatBytes(value)}
-                        contentStyle={{ fontSize: '12px' }}
+                        contentStyle={{
+                          fontSize: '12px',
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
                       />
                       <Legend
                         verticalAlign="bottom"

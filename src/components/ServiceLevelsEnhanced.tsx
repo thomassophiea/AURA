@@ -1038,7 +1038,14 @@ export function ServiceLevelsEnhanced() {
                         fill="#BB86FC" 
                         fillOpacity={0.6}
                       />
-                      <Tooltip />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
+                      />
                     </RadarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1070,7 +1077,14 @@ export function ServiceLevelsEnhanced() {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="time" />
                       <YAxis />
-                      <Tooltip />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--background))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '6px',
+                          color: 'hsl(var(--foreground))'
+                        }}
+                      />
                       <Legend />
                       <Line 
                         type="monotone" 
