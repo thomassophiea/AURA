@@ -671,48 +671,41 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         </Card>
       </div>
 
-      {/* GDPR Data Rights Panel - Prominent */}
-      <Card className="border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
-        <CardContent className="py-4">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg">
-                <Shield className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">GDPR Data Rights</h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedStations.size > 0
-                    ? `${selectedStations.size} client${selectedStations.size > 1 ? 's' : ''} selected`
-                    : 'Select clients from the table below to manage their data'}
-                </p>
-              </div>
+      {/* GDPR Data Rights Panel - Compact */}
+      <Card className="border border-blue-500/50 bg-gradient-to-r from-blue-950/20 to-indigo-950/20">
+        <CardContent className="py-3 px-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-blue-400" />
+              <span className="font-medium text-sm">GDPR</span>
+              <span className="text-xs text-muted-foreground">
+                {selectedStations.size > 0
+                  ? `${selectedStations.size} selected`
+                  : 'Select clients below'}
+              </span>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex gap-2">
               <Button
-                variant="outline"
-                className="bg-white dark:bg-background border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white h-8"
                 onClick={handleDownloadClientData}
                 disabled={selectedStations.size === 0}
               >
-                <FileDown className="mr-2 h-4 w-4 text-blue-600" />
-                Download Data ({selectedStations.size})
+                <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                Download ({selectedStations.size})
               </Button>
               <Button
-                variant="outline"
-                className="bg-white dark:bg-background border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+                size="sm"
+                variant="destructive"
+                className="h-8"
                 onClick={() => setIsGdprDeleteDialogOpen(true)}
                 disabled={selectedStations.size === 0}
               >
-                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
-                Delete Data ({selectedStations.size})
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete ({selectedStations.size})
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground mt-3 border-t pt-3">
-            <strong>GDPR Compliance:</strong> Article 15 (Right of Access) allows data subjects to obtain a copy of their personal data.
-            Article 17 (Right to Erasure) allows data subjects to request deletion of their personal data.
-          </p>
         </CardContent>
       </Card>
 
