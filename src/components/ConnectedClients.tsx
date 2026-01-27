@@ -498,10 +498,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <div className="bg-red-600 text-white p-6 text-center mb-4 border-4 border-yellow-400">
-            <h1 className="text-4xl font-black">🚨 NEW BUILD ACTIVE 🚨</h1>
-            <p className="text-2xl font-bold">BUILD #3 - 20:05 UTC</p>
-          </div>
+          <h1 className="text-2xl font-bold">Connected Clients</h1>
           <p className="text-muted-foreground">
             Monitor and manage connected wireless client devices across your network
           </p>
