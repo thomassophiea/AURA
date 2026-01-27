@@ -1502,15 +1502,6 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                 </div>
               )}
 
-              {/* Raw details */}
-              {selectedEvent.details && (
-                <div>
-                  <div className="font-medium mb-1 text-xs text-muted-foreground">Raw Details</div>
-                  <div className="text-xs text-muted-foreground font-mono bg-background/50 p-2 rounded break-words">
-                    {selectedEvent.details}
-                  </div>
-                </div>
-              )}
 
               {/* Alert Analysis */}
               {(selectedEvent.isFailedRoam || selectedEvent.isLateRoam || selectedEvent.isBandSteering ||
