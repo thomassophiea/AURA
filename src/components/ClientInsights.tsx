@@ -521,7 +521,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     switch (config.id) {
       case 'throughput':
         const lockedThroughputValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(throughputData, timeline.currentTime, ['total', 'upload', 'download'])
+          ? getValueAtTimestamp(throughputData, timeline.currentTime, ['Total', 'Upload', 'Download'])
           : null;
         return (
           <Card key={config.id} className="col-span-2">
@@ -530,19 +530,19 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedThroughputValues && (
                   <div className="flex gap-3 text-xs">
-                    {lockedThroughputValues.total !== null && (
+                    {lockedThroughputValues.Total !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-blue-500 font-semibold mr-1">Total:</span> {formatValue(lockedThroughputValues.total, 'bps')}
+                        <span className="text-blue-500 font-semibold mr-1">Total:</span> {formatValue(lockedThroughputValues.Total, 'bps')}
                       </Badge>
                     )}
-                    {lockedThroughputValues.upload !== null && (
+                    {lockedThroughputValues.Upload !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-cyan-500 font-semibold mr-1">Up:</span> {formatValue(lockedThroughputValues.upload, 'bps')}
+                        <span className="text-cyan-500 font-semibold mr-1">Up:</span> {formatValue(lockedThroughputValues.Upload, 'bps')}
                       </Badge>
                     )}
-                    {lockedThroughputValues.download !== null && (
+                    {lockedThroughputValues.Download !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-pink-500 font-semibold mr-1">Down:</span> {formatValue(lockedThroughputValues.download, 'bps')}
+                        <span className="text-pink-500 font-semibold mr-1">Down:</span> {formatValue(lockedThroughputValues.Download, 'bps')}
                       </Badge>
                     )}
                   </div>
@@ -845,16 +845,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'rfqi':
         const lockedRfqiValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rfqiData, timeline.currentTime, ['rfqi'])
+          ? getValueAtTimestamp(rfqiData, timeline.currentTime, ['Rfqi'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedRfqiValues && lockedRfqiValues.rfqi !== null && (
+                {lockedRfqiValues && lockedRfqiValues.Rfqi !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-purple-500 font-semibold mr-1">RFQI:</span> {lockedRfqiValues.rfqi.toFixed(1)}
+                    <span className="text-purple-500 font-semibold mr-1">RFQI:</span> {lockedRfqiValues.Rfqi.toFixed(1)}
                   </Badge>
                 )}
               </div>
@@ -929,16 +929,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'wirelessRtt':
         const lockedWirelessRttValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(wirelessRttData, timeline.currentTime, ['wirelessRtt'])
+          ? getValueAtTimestamp(wirelessRttData, timeline.currentTime, ['WirelessRtt'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedWirelessRttValues && lockedWirelessRttValues.wirelessRtt !== null && (
+                {lockedWirelessRttValues && lockedWirelessRttValues.WirelessRtt !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-amber-500 font-semibold mr-1">RTT:</span> {lockedWirelessRttValues.wirelessRtt.toFixed(1)} ms
+                    <span className="text-amber-500 font-semibold mr-1">RTT:</span> {lockedWirelessRttValues.WirelessRtt.toFixed(1)} ms
                   </Badge>
                 )}
               </div>
@@ -1013,16 +1013,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'networkRtt':
         const lockedNetworkRttValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(networkRttData, timeline.currentTime, ['networkRtt'])
+          ? getValueAtTimestamp(networkRttData, timeline.currentTime, ['NetworkRtt'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedNetworkRttValues && lockedNetworkRttValues.networkRtt !== null && (
+                {lockedNetworkRttValues && lockedNetworkRttValues.NetworkRtt !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-orange-500 font-semibold mr-1">RTT:</span> {lockedNetworkRttValues.networkRtt.toFixed(1)} ms
+                    <span className="text-orange-500 font-semibold mr-1">RTT:</span> {lockedNetworkRttValues.NetworkRtt.toFixed(1)} ms
                   </Badge>
                 )}
               </div>
@@ -1097,16 +1097,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'rss':
         const lockedRssValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rssData, timeline.currentTime, ['rss'])
+          ? getValueAtTimestamp(rssData, timeline.currentTime, ['Rss'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedRssValues && lockedRssValues.rss !== null && (
+                {lockedRssValues && lockedRssValues.Rss !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-red-500 font-semibold mr-1">RSS:</span> {lockedRssValues.rss.toFixed(0)} dBm
+                    <span className="text-red-500 font-semibold mr-1">RSS:</span> {lockedRssValues.Rss.toFixed(0)} dBm
                   </Badge>
                 )}
               </div>
@@ -1181,16 +1181,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'rxRate':
         const lockedRxRateValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rxRateData, timeline.currentTime, ['rxRate'])
+          ? getValueAtTimestamp(rxRateData, timeline.currentTime, ['RxRate'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedRxRateValues && lockedRxRateValues.rxRate !== null && (
+                {lockedRxRateValues && lockedRxRateValues.RxRate !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-green-500 font-semibold mr-1">RxRate:</span> {lockedRxRateValues.rxRate.toFixed(1)} Mbps
+                    <span className="text-green-500 font-semibold mr-1">RxRate:</span> {lockedRxRateValues.RxRate.toFixed(1)} Mbps
                   </Badge>
                 )}
               </div>
@@ -1265,16 +1265,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
 
       case 'txRate':
         const lockedTxRateValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(txRateData, timeline.currentTime, ['txRate'])
+          ? getValueAtTimestamp(txRateData, timeline.currentTime, ['TxRate'])
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedTxRateValues && lockedTxRateValues.txRate !== null && (
+                {lockedTxRateValues && lockedTxRateValues.TxRate !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-blue-500 font-semibold mr-1">TxRate:</span> {lockedTxRateValues.txRate.toFixed(1)} Mbps
+                    <span className="text-blue-500 font-semibold mr-1">TxRate:</span> {lockedTxRateValues.TxRate.toFixed(1)} Mbps
                   </Badge>
                 )}
               </div>
@@ -1348,18 +1348,33 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'events':
-        const lockedEventsValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(eventsData, timeline.currentTime, ['events'])
+        // Get all event keys from the data (excluding timestamp/time)
+        const eventKeys = eventsData.length > 0
+          ? Object.keys(eventsData[0]).filter(k => k !== 'timestamp' && k !== 'time').slice(0, 5)
+          : [];
+        const lockedEventsValues = timeline.isLocked && timeline.currentTime !== null && eventKeys.length > 0
+          ? getValueAtTimestamp(eventsData, timeline.currentTime, eventKeys)
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedEventsValues && lockedEventsValues.events !== null && (
-                  <Badge variant="secondary" className="font-mono">
-                    <span className="text-yellow-500 font-semibold mr-1">Events:</span> {lockedEventsValues.events.toFixed(0)}
-                  </Badge>
+                {lockedEventsValues && (
+                  <div className="flex gap-2 text-xs flex-wrap">
+                    {eventKeys.map((key, i) => {
+                      const value = lockedEventsValues[key];
+                      if (value !== null && value !== undefined) {
+                        return (
+                          <Badge key={key} variant="secondary" className="font-mono">
+                            <span className="font-semibold mr-1" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}>{key}:</span>
+                            {value.toFixed(0)}
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                 )}
               </div>
             </CardHeader>
@@ -1434,18 +1449,33 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
         );
 
       case 'dlRetries':
-        const lockedDlRetriesValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(dlRetriesData, timeline.currentTime, ['dlRetries'])
+        // Get all retry keys from the data (excluding timestamp/time)
+        const retryKeys = dlRetriesData.length > 0
+          ? Object.keys(dlRetriesData[0]).filter(k => k !== 'timestamp' && k !== 'time')
+          : [];
+        const lockedDlRetriesValues = timeline.isLocked && timeline.currentTime !== null && retryKeys.length > 0
+          ? getValueAtTimestamp(dlRetriesData, timeline.currentTime, retryKeys)
           : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedDlRetriesValues && lockedDlRetriesValues.dlRetries !== null && (
-                  <Badge variant="secondary" className="font-mono">
-                    <span className="text-rose-500 font-semibold mr-1">Retries:</span> {lockedDlRetriesValues.dlRetries.toFixed(1)}%
-                  </Badge>
+                {lockedDlRetriesValues && (
+                  <div className="flex gap-2 text-xs flex-wrap">
+                    {retryKeys.slice(0, 3).map((key, i) => {
+                      const value = lockedDlRetriesValues[key];
+                      if (value !== null && value !== undefined) {
+                        return (
+                          <Badge key={key} variant="secondary" className="font-mono">
+                            <span className="font-semibold mr-1" style={{ color: i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary }}>{key}:</span>
+                            {value.toFixed(1)}%
+                          </Badge>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
                 )}
               </div>
             </CardHeader>
