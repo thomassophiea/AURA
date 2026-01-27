@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, Building, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, Building, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -45,6 +45,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [stationTrafficData, setStationTrafficData] = useState<Map<string, any>>(new Map());
   const [isLoadingTraffic, setIsLoadingTraffic] = useState(false);
+
+  // GDPR state
+  const [isGdprDeleteDialogOpen, setIsGdprDeleteDialogOpen] = useState(false);
+  const [isDeletingClientData, setIsDeletingClientData] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -410,6 +414,109 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
+  // GDPR: Download client data as JSON (supports multiple clients)
+  const handleDownloadClientData = () => {
+    const selectedStationsList = stations.filter(s => selectedStations.has(s.macAddress));
+    if (selectedStationsList.length === 0) {
+      toast.error('No clients selected');
+      return;
+    }
+
+    try {
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        gdprDataExport: true,
+        exportType: selectedStationsList.length === 1 ? 'single_client' : 'bulk_export',
+        totalClients: selectedStationsList.length,
+        clients: selectedStationsList.map(station => {
+          const trafficData = stationTrafficData.get(station.macAddress);
+          return {
+            clientIdentifier: station.macAddress,
+            basicInformation: {
+              macAddress: station.macAddress,
+              ipAddress: station.ipAddress,
+              hostname: station.hostName,
+              username: station.username,
+              deviceType: station.deviceType,
+              manufacturer: station.manufacturer,
+              osType: station.osType,
+            },
+            networkInformation: {
+              siteName: station.siteName,
+              siteId: station.siteId,
+              accessPoint: station.apName,
+              apSerial: station.apSerial,
+              network: station.network,
+              ssid: station.ssid,
+              role: station.role,
+              vlan: station.vlan,
+              radioId: station.radioId,
+              channel: station.channel,
+            },
+            connectionStatus: {
+              status: station.status,
+              lastSeen: station.lastSeen,
+            },
+            trafficStatistics: {
+              inBytes: trafficData?.inBytes || station.rxBytes || 0,
+              outBytes: trafficData?.outBytes || station.txBytes || 0,
+            },
+            signalQuality: {
+              rss: trafficData?.rss || station.rss,
+              rssi: station.rssi,
+              snr: station.snr,
+            },
+          };
+        }),
+      };
+
+      // Create and download JSON file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const filename = selectedStationsList.length === 1
+        ? `client-data-${selectedStationsList[0].macAddress.replace(/:/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
+        : `client-data-export-${selectedStationsList.length}-clients-${new Date().toISOString().split('T')[0]}.json`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported data for ${selectedStationsList.length} client${selectedStationsList.length > 1 ? 's' : ''}`);
+    } catch (error) {
+      console.error('[TrafficStatsConnectedClients] Error exporting client data:', error);
+      toast.error('Failed to export client data');
+    }
+  };
+
+  // GDPR: Delete client data
+  const handleDeleteClientData = async () => {
+    if (selectedStations.size === 0) {
+      toast.error('No clients selected');
+      return;
+    }
+
+    setIsDeletingClientData(true);
+    try {
+      const macAddresses = Array.from(selectedStations);
+      await apiService.bulkDeleteStations(macAddresses);
+
+      toast.success(`Deleted data for ${macAddresses.length} client${macAddresses.length > 1 ? 's' : ''}`);
+      setIsGdprDeleteDialogOpen(false);
+      setSelectedStations(new Set());
+
+      // Refresh the stations list
+      await loadStations();
+    } catch (error) {
+      console.error('[TrafficStatsConnectedClients] Error deleting client data:', error);
+      toast.error('Failed to delete client data');
+    } finally {
+      setIsDeletingClientData(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -564,11 +671,114 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         </Card>
       </div>
 
+      {/* GDPR Data Rights Panel - Prominent */}
+      <Card className="border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+        <CardContent className="py-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Shield className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">GDPR Data Rights</h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedStations.size > 0
+                    ? `${selectedStations.size} client${selectedStations.size > 1 ? 's' : ''} selected`
+                    : 'Select clients from the table below to manage their data'}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                className="bg-white dark:bg-background border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950"
+                onClick={handleDownloadClientData}
+                disabled={selectedStations.size === 0}
+              >
+                <FileDown className="mr-2 h-4 w-4 text-blue-600" />
+                Download Data ({selectedStations.size})
+              </Button>
+              <Button
+                variant="outline"
+                className="bg-white dark:bg-background border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+                onClick={() => setIsGdprDeleteDialogOpen(true)}
+                disabled={selectedStations.size === 0}
+              >
+                <Trash2 className="mr-2 h-4 w-4 text-red-600" />
+                Delete Data ({selectedStations.size})
+              </Button>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3 border-t pt-3">
+            <strong>GDPR Compliance:</strong> Article 15 (Right of Access) allows data subjects to obtain a copy of their personal data.
+            Article 17 (Right to Erasure) allows data subjects to request deletion of their personal data.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* GDPR Delete Confirmation Dialog */}
+      <Dialog open={isGdprDeleteDialogOpen} onOpenChange={setIsGdprDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              Confirm Data Deletion
+            </DialogTitle>
+            <DialogDescription className="pt-4 space-y-3">
+              <p>
+                You are about to permanently delete all data for <strong>{selectedStations.size} client{selectedStations.size > 1 ? 's' : ''}</strong>.
+              </p>
+              <div className="bg-muted p-3 rounded-lg font-mono text-xs max-h-32 overflow-y-auto">
+                {Array.from(selectedStations).map(mac => {
+                  const station = stations.find(s => s.macAddress === mac);
+                  return (
+                    <div key={mac} className="py-1 border-b last:border-0">
+                      <span className="font-medium">{mac}</span>
+                      {station?.hostName && <span className="text-muted-foreground ml-2">({station.hostName})</span>}
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-red-600 font-medium">
+                This action cannot be undone. All connection history, events, and statistics
+                for these devices will be permanently removed.
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsGdprDeleteDialogOpen(false)}
+              disabled={isDeletingClientData}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteClientData}
+              disabled={isDeletingClientData}
+            >
+              {isDeletingClientData ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete All Data ({selectedStations.size})
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Card className="surface-2dp">
         <CardHeader>
           <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
           <CardDescription>
-            Click any client to view detailed connection information. Traffic data loaded with optimized batch query (up to {itemsPerPage} clients per page). Signal strength (RSS/RSSI) included.
+            Select clients using checkboxes to manage GDPR data rights. Click any client to view detailed connection information. Signal strength (RSS/RSSI) included.
           </CardDescription>
           
           <div className="flex flex-col sm:flex-row gap-4">
