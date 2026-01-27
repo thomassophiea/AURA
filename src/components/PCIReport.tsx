@@ -117,38 +117,41 @@ export function PCIReport() {
   const loadWlans = async (siteId: string) => {
     setLoadingWlans(true);
     try {
-      // Try to get services/WLANs for this site
-      // First try site-specific services, then fall back to all services
-      let services: any[] = [];
+      // Fetch all services (WLANs) from the controller
+      console.log(`[PCIReport] Fetching services for site ${siteId}`);
+      const services = await apiService.getServices();
+      console.log(`[PCIReport] Raw services response:`, services);
 
-      try {
-        // Try the site-specific method first
-        services = await apiService.getServicesBySite(siteId);
-      } catch (siteError) {
-        console.log('Site-specific services not available, fetching all services');
-        // Fall back to getting all services
-        services = await apiService.getServices();
+      if (!services || services.length === 0) {
+        console.log('[PCIReport] No services returned from API');
+        setWlans([]);
+        toast.info('No WLANs/Services configured on the controller');
+        return;
       }
 
       // Transform services to WLAN format
-      const wlanList: WLAN[] = services.map((service: any) => ({
-        id: service.id,
-        ssid: service.ssid || service.serviceName || service.name || 'Unknown SSID',
-        name: service.name || service.serviceName,
-        serviceName: service.serviceName,
-        vlan: service.vlan || service.dot1dPortNumber,
-        enabled: service.enabled !== false && service.status !== 'disabled'
-      })).filter((wlan: WLAN) => wlan.ssid && wlan.ssid !== 'Unknown SSID');
+      const wlanList: WLAN[] = services.map((service: any) => {
+        const ssid = service.ssid || service.serviceName || service.name || '';
+        console.log(`[PCIReport] Processing service:`, { id: service.id, ssid, name: service.name, serviceName: service.serviceName });
+        return {
+          id: service.id,
+          ssid: ssid,
+          name: service.name || service.serviceName,
+          serviceName: service.serviceName,
+          vlan: service.vlan || service.dot1dPortNumber,
+          enabled: service.enabled !== false && service.status !== 'disabled'
+        };
+      }).filter((wlan: WLAN) => wlan.id && wlan.ssid);
 
-      console.log(`[PCIReport] Loaded ${wlanList.length} WLANs for site ${siteId}:`, wlanList);
+      console.log(`[PCIReport] Processed ${wlanList.length} WLANs:`, wlanList);
       setWlans(wlanList);
 
       if (wlanList.length === 0) {
-        toast.info('No WLANs found for this site');
+        toast.info('No WLANs found. Check browser console for API response.');
       }
     } catch (error) {
-      console.error('Failed to load WLANs:', error);
-      toast.error('Failed to load WLANs');
+      console.error('[PCIReport] Failed to load WLANs:', error);
+      toast.error('Failed to load WLANs - check console for details');
       setWlans([]);
     } finally {
       setLoadingWlans(false);
