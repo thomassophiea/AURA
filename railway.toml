@@ -1,5 +1,5 @@
 # Railway Configuration
-# Last Update: 2026-01-01 00:20:28 UTC - Commit 207a697
+# Last Update: 2026-01-27 22:30:00 UTC - Commit 7e153e2 - GDPR Panel
 [build]
 builder = "nixpacks"
 
