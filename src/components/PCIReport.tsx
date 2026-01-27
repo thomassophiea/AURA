@@ -32,6 +32,8 @@ interface Site {
 interface WLAN {
   id: string;
   ssid: string;
+  name?: string;
+  serviceName?: string;
   vlan?: number;
   enabled: boolean;
 }
@@ -115,17 +117,39 @@ export function PCIReport() {
   const loadWlans = async (siteId: string) => {
     setLoadingWlans(true);
     try {
-      const response = await apiService.makeAuthenticatedRequest(`/v1/sites/${siteId}/wlans`, {
-        method: 'GET'
-      });
+      // Try to get services/WLANs for this site
+      // First try site-specific services, then fall back to all services
+      let services: any[] = [];
 
-      if (response.ok) {
-        const data = await response.json();
-        setWlans(Array.isArray(data) ? data : []);
+      try {
+        // Try the site-specific method first
+        services = await apiService.getServicesBySite(siteId);
+      } catch (siteError) {
+        console.log('Site-specific services not available, fetching all services');
+        // Fall back to getting all services
+        services = await apiService.getServices();
+      }
+
+      // Transform services to WLAN format
+      const wlanList: WLAN[] = services.map((service: any) => ({
+        id: service.id,
+        ssid: service.ssid || service.serviceName || service.name || 'Unknown SSID',
+        name: service.name || service.serviceName,
+        serviceName: service.serviceName,
+        vlan: service.vlan || service.dot1dPortNumber,
+        enabled: service.enabled !== false && service.status !== 'disabled'
+      })).filter((wlan: WLAN) => wlan.ssid && wlan.ssid !== 'Unknown SSID');
+
+      console.log(`[PCIReport] Loaded ${wlanList.length} WLANs for site ${siteId}:`, wlanList);
+      setWlans(wlanList);
+
+      if (wlanList.length === 0) {
+        toast.info('No WLANs found for this site');
       }
     } catch (error) {
       console.error('Failed to load WLANs:', error);
       toast.error('Failed to load WLANs');
+      setWlans([]);
     } finally {
       setLoadingWlans(false);
     }
@@ -174,27 +198,43 @@ export function PCIReport() {
       const site = sites.find(s => s.id === config.siteId);
       const wlan = wlans.find(w => w.id === config.wlanId);
 
-      if (!site || !wlan) {
-        throw new Error('Site or WLAN not found');
+      if (!site) {
+        throw new Error('Site not found');
       }
 
-      // Fetch APs for the site
-      const response = await apiService.makeAuthenticatedRequest(`/v1/sites/${config.siteId}/devices`, {
-        method: 'GET'
+      if (!wlan) {
+        throw new Error('WLAN not found. Please select a valid WLAN.');
+      }
+
+      // Fetch APs for the site using the main AP API
+      const allAPs = await apiService.getAccessPoints();
+
+      // Filter APs by site
+      const siteAPs = allAPs.filter((ap: any) => {
+        const apSiteId = ap.siteId || ap.site || ap.hostSite;
+        const siteName = site.displayName || site.name || site.siteName;
+        return apSiteId === config.siteId || apSiteId === siteName;
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch access points');
-      }
+      const aps: AccessPoint[] = siteAPs.map((ap: any) => {
+        // Determine connection status
+        const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
+        const isConnected =
+          status === 'inservice' ||
+          status.includes('up') ||
+          status.includes('online') ||
+          status.includes('connected') ||
+          ap.isUp === true ||
+          ap.online === true;
 
-      const devices = await response.json();
-      const aps: AccessPoint[] = Array.isArray(devices) ? devices.map((device: any) => ({
-        id: device.id,
-        name: device.name || device.mac || 'Unknown AP',
-        mac: device.mac || 'Unknown',
-        status: device.status === 'connected' ? 'connected' : 'disconnected',
-        siteId: config.siteId
-      })) : [];
+        return {
+          id: ap.serialNumber || ap.id || ap.macAddress,
+          name: ap.apName || ap.displayName || ap.name || ap.macAddress || 'Unknown AP',
+          mac: ap.macAddress || ap.mac || 'Unknown',
+          status: isConnected ? 'connected' : 'disconnected',
+          siteId: config.siteId
+        };
+      });
 
       const connectedAPs = aps.filter(ap => ap.status === 'connected');
       const disconnectedAPs = aps.filter(ap => ap.status !== 'connected');
@@ -350,15 +390,24 @@ export function PCIReport() {
                 <SelectValue placeholder={loadingWlans ? "Loading WLANs..." : "Select a WLAN..."} />
               </SelectTrigger>
               <SelectContent>
-                {wlans.map(wlan => (
-                  <SelectItem key={wlan.id} value={wlan.id}>
-                    <div className="flex items-center gap-2">
-                      <Wifi className="h-4 w-4" />
-                      {wlan.ssid}
-                      {wlan.vlan && <Badge variant="outline">VLAN {wlan.vlan}</Badge>}
-                    </div>
+                {wlans.length === 0 ? (
+                  <SelectItem value="none" disabled>
+                    No WLANs available
                   </SelectItem>
-                ))}
+                ) : (
+                  wlans.map(wlan => (
+                    <SelectItem key={wlan.id} value={wlan.id}>
+                      <div className="flex items-center gap-2">
+                        <Wifi className="h-4 w-4" />
+                        <span>{wlan.ssid}</span>
+                        {wlan.name && wlan.name !== wlan.ssid && (
+                          <span className="text-muted-foreground text-xs">({wlan.name})</span>
+                        )}
+                        {wlan.vlan && <Badge variant="outline">VLAN {wlan.vlan}</Badge>}
+                      </div>
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
