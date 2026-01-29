@@ -49,6 +49,8 @@ const AVAILABLE_COLUMNS: ColumnConfig[] = [
   { key: 'home', label: 'Home Controller', defaultVisible: false, category: 'status' },
 
   // Performance columns
+  { key: 'cpuUsage', label: 'CPU %', defaultVisible: false, category: 'performance' },
+  { key: 'memoryUsage', label: 'Memory %', defaultVisible: false, category: 'performance' },
   { key: 'pwrUsage', label: 'Power Usage (W)', defaultVisible: false, category: 'performance' },
   { key: 'pwrSource', label: 'Power Source', defaultVisible: false, category: 'performance' },
   { key: 'channelUtilization', label: 'Avg Channel Util %', defaultVisible: false, category: 'performance' },
@@ -855,6 +857,76 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return <span className="text-sm">{(ap as any).floorName || '-'}</span>;
       case 'description':
         return <span className="text-sm">{(ap as any).description || '-'}</span>;
+      case 'cpuUsage':
+        const cpuValue = (ap as any).cpuUsage ?? (ap as any).cpuUtilization ?? (ap as any).cpu ?? null;
+        if (cpuValue === null) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-muted-foreground cursor-help">-</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">CPU data not available from AP query. Click AP for details.</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${cpuValue > 80 ? 'bg-red-500' : cpuValue > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    style={{ width: `${Math.min(cpuValue, 100)}%` }}
+                  />
+                </div>
+                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-red-600' : cpuValue > 60 ? 'text-yellow-600' : ''}`}>
+                  {cpuValue}%
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="font-medium">CPU Utilization</p>
+              <p className="text-xs opacity-80">{cpuValue > 80 ? 'High load - may impact performance' : cpuValue > 60 ? 'Moderate load' : 'Normal operation'}</p>
+            </TooltipContent>
+          </Tooltip>
+        );
+      case 'memoryUsage':
+        const memValue = (ap as any).memoryUsage ?? (ap as any).memUtilization ?? (ap as any).memory ?? null;
+        if (memValue === null) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-sm text-muted-foreground cursor-help">-</span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="text-xs">Memory data not available from AP query. Click AP for details.</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-help">
+                <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${memValue > 85 ? 'bg-red-500' : memValue > 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                    style={{ width: `${Math.min(memValue, 100)}%` }}
+                  />
+                </div>
+                <span className={`text-sm font-medium ${memValue > 85 ? 'text-red-600' : memValue > 70 ? 'text-yellow-600' : ''}`}>
+                  {memValue}%
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="font-medium">Memory Utilization</p>
+              <p className="text-xs opacity-80">{memValue > 85 ? 'High memory usage - may cause issues' : memValue > 70 ? 'Elevated memory usage' : 'Normal memory usage'}</p>
+            </TooltipContent>
+          </Tooltip>
+        );
       case 'afcAnchor':
         return isAfcAnchor(ap) ? (
           <Tooltip>
