@@ -11,10 +11,11 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Search, Sparkles, Building, Radio, Network, Users, ChevronDown, Check } from 'lucide-react';
+import { Search, Sparkles, Building, Radio, Network, Users, ChevronDown, Check, Settings2 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
 import { getSiteDisplayName } from '../contexts/SiteContext';
+import { ContextConfigModal } from './ContextConfigModal';
 
 export type SelectorTab = 'ai-insights' | 'site' | 'access-point' | 'switch' | 'client';
 
@@ -55,6 +56,7 @@ export function ContextualInsightsSelector({
   const [loading, setLoading] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(selectedId || null);
   const [selectedItemName, setSelectedItemName] = useState<string | null>(null);
+  const [isContextModalOpen, setIsContextModalOpen] = useState(false);
 
   // Load items based on active tab
   useEffect(() => {
@@ -185,25 +187,22 @@ export function ContextualInsightsSelector({
   const displayText = selectedItemName || currentTabInfo?.label || 'Select Context';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "h-10 justify-between gap-2 px-3 font-normal",
-            "min-w-[200px] max-w-[280px]",
-            className
-          )}
-        >
-          <div className="flex items-center gap-2 truncate">
-            <CurrentIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-            <span className="truncate">{displayText}</span>
-          </div>
-          <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
-        </Button>
-      </PopoverTrigger>
+    <div className={cn("flex items-center gap-1", className)}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="h-10 justify-between gap-2 px-3 font-normal min-w-[200px] max-w-[280px]"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <CurrentIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate">{displayText}</span>
+            </div>
+            <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
       <PopoverContent className="w-[420px] p-0" align="start">
         {/* Tabs - horizontal layout */}
         <div className="flex border-b overflow-x-auto">
@@ -294,5 +293,23 @@ export function ContextualInsightsSelector({
         </ScrollArea>
       </PopoverContent>
     </Popover>
+
+      {/* Context Settings Button */}
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={() => setIsContextModalOpen(true)}
+        className="h-10 w-10"
+        title="Configure Context Settings"
+      >
+        <Settings2 className="h-4 w-4" />
+      </Button>
+
+      {/* Context Configuration Modal */}
+      <ContextConfigModal
+        open={isContextModalOpen}
+        onOpenChange={setIsContextModalOpen}
+      />
+    </div>
   );
 }
