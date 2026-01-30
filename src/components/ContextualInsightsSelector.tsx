@@ -35,15 +35,15 @@ interface ContextualInsightsSelectorProps {
 }
 
 const tabs: { id: SelectorTab; label: string; shortLabel: string; icon: React.ElementType; beta?: boolean }[] = [
-  { id: 'ai-insights', label: 'AI Insights', shortLabel: 'AI Insights', icon: Sparkles },
   { id: 'site', label: 'Site', shortLabel: 'Site', icon: Building },
   { id: 'access-point', label: 'Access Point', shortLabel: 'AP', icon: Radio },
   { id: 'switch', label: 'Switch', shortLabel: 'Switch', icon: Network, beta: true },
   { id: 'client', label: 'Client', shortLabel: 'Client', icon: Users },
+  { id: 'ai-insights', label: 'AI Insights', shortLabel: 'AI Insights', icon: Sparkles },
 ];
 
 export function ContextualInsightsSelector({
-  activeTab = 'ai-insights',
+  activeTab = 'site',
   selectedId,
   onTabChange,
   onSelectionChange,

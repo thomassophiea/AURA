@@ -36,7 +36,8 @@ import {
   ChevronUp,
   Maximize2,
   Target,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import { apiService, type StationEvent } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
@@ -54,6 +55,8 @@ import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
 import { AuditLogsWidget } from './AuditLogsWidget';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { OSOneWidget } from './OSOneWidget';
+import { AccessPointDetail } from './AccessPointDetail';
+import { ClientDetail } from './ClientDetail';
 
 interface AccessPoint {
   serialNumber: string;
@@ -229,8 +232,9 @@ function DashboardEnhancedComponent() {
   const [isTopClientsCollapsed, setIsTopClientsCollapsed] = useState(true);
 
   // Contextual Insights Selector state
-  const [selectorTab, setSelectorTab] = useState<SelectorTab>('ai-insights');
+  const [selectorTab, setSelectorTab] = useState<SelectorTab>('site');
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [selectedEntityName, setSelectedEntityName] = useState<string | null>(null);
   const [isConnectedClientsCollapsed, setIsConnectedClientsCollapsed] = useState(true);
 
   useEffect(() => {
@@ -1158,10 +1162,12 @@ function DashboardEnhancedComponent() {
           onTabChange={(tab) => {
             setSelectorTab(tab);
             setSelectedEntityId(null);
+            setSelectedEntityName(null);
           }}
-          onSelectionChange={(tab, id) => {
+          onSelectionChange={(tab, id, name) => {
             setSelectedEntityId(id);
-            console.log('[Dashboard] Selection changed:', { tab, id });
+            setSelectedEntityName(name || null);
+            console.log('[Dashboard] Selection changed:', { tab, id, name });
           }}
         />
         <FilterBar
@@ -1172,12 +1178,157 @@ function DashboardEnhancedComponent() {
       </div>
 
       {/* ========================================
-          SECTION 1: OPERATIONAL CONTEXT SUMMARY
+          CONTEXTUAL CONTENT BASED ON SELECTION
           ======================================== */}
+
+      {/* AI INSIGHTS VIEW */}
+      {selectorTab === 'ai-insights' && (
+        <div className="space-y-6">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">AI-Powered Network Insights</h3>
+            <p className="text-sm text-muted-foreground">Intelligent analysis and recommendations</p>
+          </div>
+          <Card className="border-dashed border-2">
+            <CardContent className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="rounded-full bg-gradient-to-br from-purple-500/20 to-blue-500/20 p-6 mb-6">
+                <Sparkles className="h-12 w-12 text-purple-500" />
+              </div>
+              <h4 className="text-xl font-semibold mb-3">AI Insights Coming Soon</h4>
+              <p className="text-muted-foreground max-w-lg mb-6">
+                Advanced AI-powered analytics will provide intelligent network analysis,
+                anomaly detection, predictive maintenance recommendations, and optimization suggestions.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
+                  <Activity className="h-5 w-5 mb-2 text-blue-500" />
+                  <span>Anomaly Detection</span>
+                </div>
+                <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
+                  <TrendingUp className="h-5 w-5 mb-2 text-green-500" />
+                  <span>Predictive Analysis</span>
+                </div>
+                <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
+                  <Target className="h-5 w-5 mb-2 text-orange-500" />
+                  <span>Optimization Tips</span>
+                </div>
+                <div className="flex flex-col items-center p-3 rounded-lg bg-muted/50">
+                  <Shield className="h-5 w-5 mb-2 text-red-500" />
+                  <span>Security Insights</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ACCESS POINT DETAIL VIEW */}
+      {selectorTab === 'access-point' && selectedEntityId && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedEntityId(null);
+                  setSelectedEntityName(null);
+                }}
+                className="h-8 px-2"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
+                Back
+              </Button>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedEntityName || 'Access Point Details'}</h3>
+                <p className="text-sm text-muted-foreground">Detailed AP information and connected clients</p>
+              </div>
+            </div>
+          </div>
+          <AccessPointDetail serialNumber={selectedEntityId} />
+        </div>
+      )}
+
+      {/* CLIENT DETAIL VIEW */}
+      {selectorTab === 'client' && selectedEntityId && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedEntityId(null);
+                  setSelectedEntityName(null);
+                }}
+                className="h-8 px-2"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
+                Back
+              </Button>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedEntityName || 'Client Details'}</h3>
+                <p className="text-sm text-muted-foreground">Client connection and performance details</p>
+              </div>
+            </div>
+          </div>
+          <ClientDetail macAddress={selectedEntityId} />
+        </div>
+      )}
+
+      {/* SWITCH DETAIL VIEW */}
+      {selectorTab === 'switch' && selectedEntityId && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedEntityId(null);
+                  setSelectedEntityName(null);
+                }}
+                className="h-8 px-2"
+              >
+                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
+                Back
+              </Button>
+              <div>
+                <h3 className="text-lg font-semibold">{selectedEntityName || 'Switch Details'}</h3>
+                <p className="text-sm text-muted-foreground">Switch configuration and port status</p>
+              </div>
+            </div>
+          </div>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <Network className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h4 className="text-lg font-medium mb-2">Switch Details</h4>
+              <p className="text-sm text-muted-foreground">
+                Switch detail view for {selectedEntityName || selectedEntityId}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* NETWORK DASHBOARD VIEW - Shows for Site tab or when no specific entity selected */}
+      {((selectorTab === 'site') ||
+        (selectorTab === 'access-point' && !selectedEntityId) ||
+        (selectorTab === 'client' && !selectedEntityId) ||
+        (selectorTab === 'switch' && !selectedEntityId)) && (
+      <>
+      {/* SECTION 1: OPERATIONAL CONTEXT SUMMARY */}
       <div className="space-y-4">
         <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Operational Context Summary</h3>
-          <p className="text-sm text-muted-foreground">Intelligent context-aware network insights</p>
+          <h3 className="text-lg font-semibold">
+            {selectedEntityId && selectorTab === 'site'
+              ? `Site Overview: ${selectedEntityName}`
+              : 'Network Overview'}
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            {selectedEntityId && selectorTab === 'site'
+              ? 'Site-specific context and performance metrics'
+              : 'Intelligent context-aware network insights'}
+          </p>
         </div>
         <OperationalContextSummary />
       </div>
@@ -2031,7 +2182,8 @@ function DashboardEnhancedComponent() {
 
       {/* OS ONE Control - System Information */}
       <OSOneWidget compact={true} />
-
+      </>
+      )}
 
       {/* Client Detail Dialog */}
       <DetailSlideOut
