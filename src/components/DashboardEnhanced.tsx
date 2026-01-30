@@ -1150,58 +1150,36 @@ function DashboardEnhancedComponent() {
         </div>
       </div>
 
-      {/* Contextual Insights Selector + Content Layout */}
-      <div className="flex gap-6">
-        {/* Left Sidebar - Selector */}
-        <div className="w-80 flex-shrink-0">
-          <ContextualInsightsSelector
-            activeTab={selectorTab}
-            selectedId={selectedEntityId || undefined}
-            onTabChange={(tab) => {
-              setSelectorTab(tab);
-              setSelectedEntityId(null);
-            }}
-            onSelectionChange={(tab, id) => {
-              setSelectedEntityId(id);
-              console.log('[Dashboard] Selection changed:', { tab, id });
-            }}
-          />
+      {/* Filter Bar with Context Selector */}
+      <div className="flex flex-wrap items-center gap-3">
+        <ContextualInsightsSelector
+          activeTab={selectorTab}
+          selectedId={selectedEntityId || undefined}
+          onTabChange={(tab) => {
+            setSelectorTab(tab);
+            setSelectedEntityId(null);
+          }}
+          onSelectionChange={(tab, id) => {
+            setSelectedEntityId(id);
+            console.log('[Dashboard] Selection changed:', { tab, id });
+          }}
+        />
+        <FilterBar
+          showSiteFilter={true}
+          showTimeRangeFilter={true}
+          showContextFilter={false}
+        />
+      </div>
 
-          {/* Time Range Filter below selector */}
-          <div className="mt-4">
-            <FilterBar
-              showSiteFilter={false}
-              showTimeRangeFilter={true}
-              showContextFilter={false}
-            />
-          </div>
+      {/* ========================================
+          SECTION 1: OPERATIONAL CONTEXT SUMMARY
+          ======================================== */}
+      <div className="space-y-4">
+        <div className="border-b pb-2">
+          <h3 className="text-lg font-semibold">Operational Context Summary</h3>
+          <p className="text-sm text-muted-foreground">Intelligent context-aware network insights</p>
         </div>
-
-        {/* Right Content Area */}
-        <div className="flex-1 min-w-0">
-          {/* ========================================
-              SECTION 1: OPERATIONAL CONTEXT SUMMARY
-              ======================================== */}
-          <div className="space-y-4">
-            <div className="border-b pb-2">
-              <h3 className="text-lg font-semibold">
-                {selectorTab === 'ai-insights' && 'AI-Powered Network Insights'}
-                {selectorTab === 'site' && (selectedEntityId ? 'Site Details' : 'Site Overview')}
-                {selectorTab === 'access-point' && (selectedEntityId ? 'Access Point Details' : 'Access Point Overview')}
-                {selectorTab === 'switch' && (selectedEntityId ? 'Switch Details' : 'Switch Overview')}
-                {selectorTab === 'client' && (selectedEntityId ? 'Client Details' : 'Client Overview')}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {selectorTab === 'ai-insights' && 'Intelligent context-aware network analysis and recommendations'}
-                {selectorTab === 'site' && 'Site-level network performance and health metrics'}
-                {selectorTab === 'access-point' && 'Access point status, performance, and client connections'}
-                {selectorTab === 'switch' && 'Switch status and port utilization metrics'}
-                {selectorTab === 'client' && 'Client connection quality and network usage'}
-              </p>
-            </div>
-            <OperationalContextSummary />
-          </div>
-        </div>
+        <OperationalContextSummary />
       </div>
 
       {/* ========================================
