@@ -204,30 +204,28 @@ export function ContextualInsightsSelector({
           <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[380px] p-0" align="start">
-        {/* Tabs */}
-        <div className="flex border-b bg-muted/30">
+      <PopoverContent className="w-[420px] p-0" align="start">
+        {/* Tabs - horizontal layout */}
+        <div className="flex border-b overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={cn(
-                "flex-1 px-3 py-3 text-xs font-medium transition-colors relative min-w-0",
+                "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap",
                 "hover:bg-muted/50 focus:outline-none focus-visible:bg-muted",
                 currentTab === tab.id
-                  ? "text-primary bg-background border-b-2 border-primary -mb-[1px]"
+                  ? "text-primary border-b-2 border-primary -mb-[1px]"
                   : "text-muted-foreground"
               )}
             >
-              <div className="flex flex-col items-center gap-1">
-                <tab.icon className="h-4 w-4" />
-                <span className="whitespace-nowrap text-[11px]">{tab.shortLabel}</span>
-                {tab.beta && (
-                  <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-3.5 border-amber-500/50 text-amber-600 dark:text-amber-400 mt-0.5">
-                    Beta
-                  </Badge>
-                )}
-              </div>
+              <tab.icon className="h-4 w-4 flex-shrink-0" />
+              <span>{tab.shortLabel}</span>
+              {tab.beta && (
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-600 dark:text-amber-400">
+                  Beta
+                </Badge>
+              )}
             </button>
           ))}
         </div>
