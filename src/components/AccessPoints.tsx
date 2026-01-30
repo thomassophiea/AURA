@@ -80,9 +80,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
+  const [apMetrics, setApMetrics] = useState<Record<string, { cpuUsage?: number; memoryUsage?: number }>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
+  const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -262,8 +264,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       // Update last refresh time on successful load
       setLastRefreshTime(new Date());
 
-      // Load client counts in background (non-blocking)
+      // Load client counts and AP metrics in background (non-blocking)
       loadClientCounts(accessPointsArray);
+      loadAPMetrics(accessPointsArray);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load access points for selected site';
 
@@ -322,6 +325,53 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       setClientCounts(clientCountsByAP);
     } finally {
       setIsLoadingClients(false);
+    }
+  };
+
+  // Load AP metrics (CPU/Memory) in background from individual AP details
+  const loadAPMetrics = async (aps: AccessPoint[]) => {
+    if (aps.length === 0) {
+      return;
+    }
+
+    setIsLoadingMetrics(true);
+
+    const metricsByAP: Record<string, { cpuUsage?: number; memoryUsage?: number }> = {};
+
+    try {
+      // Load metrics in parallel for all APs
+      const promises = aps.map(async (ap) => {
+        try {
+          const details = await apiService.getAccessPointDetails(ap.serialNumber);
+          return {
+            serialNumber: ap.serialNumber,
+            cpuUsage: details.cpuUsage ?? (details as any).cpuUtilization ?? (details as any).cpu,
+            memoryUsage: details.memoryUsage ?? (details as any).memUtilization ?? (details as any).memory
+          };
+        } catch (error) {
+          // Return undefined for failed APs
+          return { serialNumber: ap.serialNumber, cpuUsage: undefined, memoryUsage: undefined };
+        }
+      });
+
+      // Wait for all requests to complete in parallel
+      const results = await Promise.all(promises);
+
+      // Update metrics
+      results.forEach(({ serialNumber, cpuUsage, memoryUsage }) => {
+        if (cpuUsage !== undefined || memoryUsage !== undefined) {
+          metricsByAP[serialNumber] = { cpuUsage, memoryUsage };
+        }
+      });
+
+      // Set final state once
+      setApMetrics(metricsByAP);
+
+    } catch (err) {
+      console.error('Error loading AP metrics:', err);
+      setApMetrics(metricsByAP);
+    } finally {
+      setIsLoadingMetrics(false);
     }
   };
 
@@ -467,9 +517,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       case 'noiseFloor':
         return apAny.noiseFloor || 0;
       case 'cpuUsage':
-        return apAny.cpuUsage || apAny.cpuUtilization || 0;
+        return apMetrics[ap.serialNumber]?.cpuUsage ?? apAny.cpuUsage ?? apAny.cpuUtilization ?? 0;
       case 'memoryUsage':
-        return apAny.memoryUsage || apAny.memUtilization || 0;
+        return apMetrics[ap.serialNumber]?.memoryUsage ?? apAny.memoryUsage ?? apAny.memUtilization ?? 0;
       case 'switchPorts':
         return (apAny.switchPorts || '').toLowerCase();
       case 'source':
@@ -858,15 +908,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       case 'description':
         return <span className="text-sm">{(ap as any).description || '-'}</span>;
       case 'cpuUsage':
-        const cpuValue = (ap as any).cpuUsage ?? (ap as any).cpuUtilization ?? (ap as any).cpu ?? null;
+        // First check apMetrics state (loaded from AP details), then fall back to AP object fields
+        const cpuFromMetrics = apMetrics[ap.serialNumber]?.cpuUsage;
+        const cpuValue = cpuFromMetrics ?? (ap as any).cpuUsage ?? (ap as any).cpuUtilization ?? (ap as any).cpu ?? null;
         if (cpuValue === null) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground cursor-help">-</span>
+                <div className="flex items-center gap-1">
+                  {isLoadingMetrics && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
+                  <span className="text-sm text-muted-foreground cursor-help">{isLoadingMetrics ? '...' : '-'}</span>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">CPU data not available from AP query. Click AP for details.</p>
+                <p className="text-xs">{isLoadingMetrics ? 'Loading CPU data...' : 'CPU data not available. Click AP for details.'}</p>
               </TooltipContent>
             </Tooltip>
           );
@@ -893,15 +948,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </Tooltip>
         );
       case 'memoryUsage':
-        const memValue = (ap as any).memoryUsage ?? (ap as any).memUtilization ?? (ap as any).memory ?? null;
+        // First check apMetrics state (loaded from AP details), then fall back to AP object fields
+        const memFromMetrics = apMetrics[ap.serialNumber]?.memoryUsage;
+        const memValue = memFromMetrics ?? (ap as any).memoryUsage ?? (ap as any).memUtilization ?? (ap as any).memory ?? null;
         if (memValue === null) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className="text-sm text-muted-foreground cursor-help">-</span>
+                <div className="flex items-center gap-1">
+                  {isLoadingMetrics && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
+                  <span className="text-sm text-muted-foreground cursor-help">{isLoadingMetrics ? '...' : '-'}</span>
+                </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">Memory data not available from AP query. Click AP for details.</p>
+                <p className="text-xs">{isLoadingMetrics ? 'Loading memory data...' : 'Memory data not available. Click AP for details.'}</p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1019,6 +1079,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           >
             <Users className="mr-2 h-4 w-4" />
             {isLoadingClients ? 'Loading...' : 'Refresh Clients'}
+          </Button>
+          <Button
+            onClick={() => loadAPMetrics(accessPoints)}
+            variant="outline"
+            size="sm"
+            disabled={isLoadingMetrics}
+          >
+            <Cpu className="mr-2 h-4 w-4" />
+            {isLoadingMetrics ? 'Loading...' : 'Refresh Metrics'}
           </Button>
           <Button
             onClick={() => setIsColumnDialogOpen(true)}
