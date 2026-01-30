@@ -36,7 +36,8 @@ import {
   ChevronUp,
   Maximize2,
   Target,
-  Radio
+  Radio,
+  Sparkles
 } from 'lucide-react';
 import { apiService, type StationEvent } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
@@ -47,7 +48,8 @@ import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, Cartesia
 import { OperationalContextSummary } from './OperationalContextSummary';
 import { FilterBar } from './FilterBar';
 import { VersionBadge } from './VersionBadge';
-import { ContextualInsightsSelector, SelectorTab } from './ContextualInsightsSelector';
+import { SiteScopeSelector } from './SiteScopeSelector';
+import { DashboardViewTabs, DashboardView } from './DashboardViewTabs';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { VenueStatisticsWidget } from './VenueStatisticsWidget';
 import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
@@ -228,9 +230,10 @@ function DashboardEnhancedComponent() {
   // Collapsible sections state
   const [isTopClientsCollapsed, setIsTopClientsCollapsed] = useState(true);
 
-  // Contextual Insights Selector state
-  const [selectorTab, setSelectorTab] = useState<SelectorTab>('ai-insights');
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  // Site-scoped dashboard state
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
+  const [selectedSiteName, setSelectedSiteName] = useState<string>('All Sites');
+  const [activeView, setActiveView] = useState<DashboardView>('site');
   const [isConnectedClientsCollapsed, setIsConnectedClientsCollapsed] = useState(true);
 
   useEffect(() => {
@@ -1150,18 +1153,14 @@ function DashboardEnhancedComponent() {
         </div>
       </div>
 
-      {/* Filter Bar with Context Selector */}
+      {/* Site Selector + Time Filter */}
       <div className="flex flex-wrap items-center gap-3">
-        <ContextualInsightsSelector
-          activeTab={selectorTab}
-          selectedId={selectedEntityId || undefined}
-          onTabChange={(tab) => {
-            setSelectorTab(tab);
-            setSelectedEntityId(null);
-          }}
-          onSelectionChange={(tab, id) => {
-            setSelectedEntityId(id);
-            console.log('[Dashboard] Selection changed:', { tab, id });
+        <SiteScopeSelector
+          selectedSiteId={selectedSiteId}
+          onSiteChange={(siteId, siteName) => {
+            setSelectedSiteId(siteId);
+            setSelectedSiteName(siteName);
+            console.log('[Dashboard] Site changed:', { siteId, siteName });
           }}
         />
         <FilterBar
@@ -1171,20 +1170,116 @@ function DashboardEnhancedComponent() {
         />
       </div>
 
-      {/* ========================================
-          SECTION 1: OPERATIONAL CONTEXT SUMMARY
-          ======================================== */}
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Operational Context Summary</h3>
-          <p className="text-sm text-muted-foreground">Intelligent context-aware network insights</p>
-        </div>
-        <OperationalContextSummary />
-      </div>
+      {/* Dashboard View Tabs */}
+      <DashboardViewTabs
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
 
       {/* ========================================
-          SECTION 2: CORE OPERATIONAL ACTIVITY
+          TAB CONTENT: SITE VIEW (Default)
           ======================================== */}
+      {activeView === 'site' && (
+        <>
+          {/* Operational Context Summary */}
+          <div className="space-y-4">
+            <div className="border-b pb-2">
+              <h3 className="text-lg font-semibold">Operational Context Summary</h3>
+              <p className="text-sm text-muted-foreground">
+                {selectedSiteName === 'All Sites'
+                  ? 'Network-wide context insights'
+                  : `Context insights for ${selectedSiteName}`}
+              </p>
+            </div>
+            <OperationalContextSummary />
+          </div>
+        </>
+      )}
+
+      {/* ========================================
+          TAB CONTENT: ACCESS POINTS VIEW
+          ======================================== */}
+      {activeView === 'access-points' && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">Access Points</h3>
+            <p className="text-sm text-muted-foreground">
+              {selectedSiteName === 'All Sites'
+                ? 'All access points across the network'
+                : `Access points at ${selectedSiteName}`}
+            </p>
+          </div>
+          {/* AP content will be shown in Core Operational Activity section below */}
+        </div>
+      )}
+
+      {/* ========================================
+          TAB CONTENT: CLIENTS VIEW
+          ======================================== */}
+      {activeView === 'clients' && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">Connected Clients</h3>
+            <p className="text-sm text-muted-foreground">
+              {selectedSiteName === 'All Sites'
+                ? 'All connected clients across the network'
+                : `Connected clients at ${selectedSiteName}`}
+            </p>
+          </div>
+          {/* Client content will be shown in Core Operational Activity section below */}
+        </div>
+      )}
+
+      {/* ========================================
+          TAB CONTENT: SWITCHES VIEW
+          ======================================== */}
+      {activeView === 'switches' && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">Switches</h3>
+            <p className="text-sm text-muted-foreground">
+              {selectedSiteName === 'All Sites'
+                ? 'All switches across the network'
+                : `Switches at ${selectedSiteName}`}
+            </p>
+          </div>
+          {/* Switch content will use existing dashboard data below */}
+        </div>
+      )}
+
+      {/* ========================================
+          TAB CONTENT: AI INSIGHTS VIEW (Placeholder)
+          ======================================== */}
+      {activeView === 'ai-insights' && (
+        <div className="space-y-4">
+          <div className="border-b pb-2">
+            <h3 className="text-lg font-semibold">AI Insights</h3>
+            <p className="text-sm text-muted-foreground">
+              AI-powered network analysis and recommendations
+            </p>
+          </div>
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <Sparkles className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h4 className="text-lg font-medium mb-2">Coming Soon</h4>
+              <p className="text-sm text-muted-foreground max-w-md">
+                AI-powered insights will provide intelligent analysis of your network performance,
+                anomaly detection, and predictive recommendations.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* ========================================
+          DASHBOARD CONTENT SECTIONS
+          (Shows for all views except AI Insights)
+          ======================================== */}
+      {activeView !== 'ai-insights' && (
+      <>
+      {/* SECTION 2: CORE OPERATIONAL ACTIVITY */}
       <div className="space-y-4">
         <div className="border-b pb-2">
           <h3 className="text-lg font-semibold">Core Operational Activity</h3>
@@ -2031,7 +2126,8 @@ function DashboardEnhancedComponent() {
 
       {/* OS ONE Control - System Information */}
       <OSOneWidget compact={true} />
-
+      </>
+      )}
 
       {/* Client Detail Dialog */}
       <DetailSlideOut
