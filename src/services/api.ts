@@ -682,6 +682,84 @@ export interface ApiCallLog {
   isPending: boolean;
 }
 
+// ==================== OS ONE INTERFACES ====================
+
+/**
+ * OS ONE External Service Status
+ */
+export interface OSOneExternalService {
+  service: string;
+  status: string;
+  address: string;
+}
+
+/**
+ * OS ONE Disk Partition
+ */
+export interface OSOneDiskPartition {
+  name: string;
+  totalSpace: number;
+  used: number;
+  available: number;
+  usePercent: number;
+}
+
+/**
+ * OS ONE Port Interface
+ */
+export interface OSOnePortInterface {
+  port: number;
+  state: string;
+  speed: number;
+}
+
+/**
+ * OS ONE System Information
+ * Contains CPU, memory, disk, port, and external service data
+ */
+export interface OSOneSystemInfo {
+  raw: string;
+  externalServices: OSOneExternalService[];
+  lastUpgrade?: number;
+  sysUptime?: number;
+  uptime: string;
+  cpuUtilization: number;
+  memoryFreePercent: number;
+  diskPartitions: OSOneDiskPartition[];
+  ports: OSOnePortInterface[];
+}
+
+/**
+ * OS ONE Manufacturing Information
+ * Contains hardware and software version details
+ */
+export interface OSOneManufacturingInfo {
+  raw: string;
+  smxVersion?: string;
+  guiVersion?: string;
+  nacVersion?: string;
+  softwareVersion?: string;
+  model?: string;
+  cpuType?: string;
+  cpuFrequency?: number;
+  numberOfCpus?: number;
+  totalMemory?: number;
+  hwEncryption?: boolean;
+  lan1Mac?: string;
+  lan2Mac?: string;
+  adminMac?: string;
+  lockingId?: string;
+}
+
+/**
+ * Complete OS ONE Information
+ */
+export interface OSOneInfo {
+  system: OSOneSystemInfo | null;
+  manufacturing: OSOneManufacturingInfo | null;
+  timestamp: number;
+}
+
 /**
  * Query options for API requests
  * Supports field projection, pagination, sorting, and filtering
@@ -6266,6 +6344,197 @@ class ApiService {
       logger.error('[API] Failed to delete flash file:', error);
       throw error;
     }
+  }
+
+  // ==================== OS ONE SYSTEM INFORMATION APIs ====================
+
+  /**
+   * OS ONE System Information
+   * Endpoint: GET /platformmanager/v1/reports/systeminformation
+   * Returns CPU utilization, memory usage, disk usage, port states, external services
+   */
+  async getOSOneSystemInfo(): Promise<OSOneSystemInfo | null> {
+    try {
+      const noCache = Date.now();
+      const endpoint = `/platformmanager/v1/reports/systeminformation?noCache=${noCache}`;
+      logger.log('[API] Fetching OS ONE system information');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`OS ONE system info API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded OS ONE system information');
+
+      // Parse the text-based result
+      return this.parseOSOneSystemInfo(data);
+    } catch (error) {
+      logger.error('[API] Failed to fetch OS ONE system info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * OS ONE Manufacturing Information
+   * Endpoint: GET /platformmanager/v1/reports/manufacturinginformation
+   * Returns model, software versions, CPU type, MAC addresses, etc.
+   */
+  async getOSOneManufacturingInfo(): Promise<OSOneManufacturingInfo | null> {
+    try {
+      const noCache = Date.now();
+      const endpoint = `/platformmanager/v1/reports/manufacturinginformation?noCache=${noCache}`;
+      logger.log('[API] Fetching OS ONE manufacturing information');
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+
+      if (!response.ok) {
+        logger.warn(`OS ONE manufacturing info API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded OS ONE manufacturing information');
+
+      // Parse the text-based result
+      return this.parseOSOneManufacturingInfo(data);
+    } catch (error) {
+      logger.error('[API] Failed to fetch OS ONE manufacturing info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get complete OS ONE information (system + manufacturing)
+   */
+  async getOSOneInfo(): Promise<OSOneInfo | null> {
+    try {
+      const [systemInfo, manufacturingInfo] = await Promise.all([
+        this.getOSOneSystemInfo(),
+        this.getOSOneManufacturingInfo()
+      ]);
+
+      if (!systemInfo && !manufacturingInfo) {
+        return null;
+      }
+
+      return {
+        system: systemInfo,
+        manufacturing: manufacturingInfo,
+        timestamp: Date.now()
+      };
+    } catch (error) {
+      logger.error('[API] Failed to fetch complete OS ONE info:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse OS ONE system information from text response
+   */
+  private parseOSOneSystemInfo(data: any): OSOneSystemInfo {
+    const result = data?.result?.result || data?.result || '';
+    const parsed: OSOneSystemInfo = {
+      raw: result,
+      externalServices: data?.externalServices || [],
+      lastUpgrade: data?.lastUpgrade,
+      sysUptime: data?.sysUptime,
+      uptime: '',
+      cpuUtilization: 0,
+      memoryFreePercent: 0,
+      diskPartitions: [],
+      ports: []
+    };
+
+    // Parse uptime
+    const uptimeMatch = result.match(/System Up Time:\s*(.+)/);
+    if (uptimeMatch) {
+      parsed.uptime = uptimeMatch[1].trim();
+    }
+
+    // Parse CPU utilization
+    const cpuMatch = result.match(/CPU Utilization:\s*([\d.]+)/);
+    if (cpuMatch) {
+      parsed.cpuUtilization = parseFloat(cpuMatch[1]);
+    }
+
+    // Parse memory free
+    const memMatch = result.match(/Free:\s*(\d+)\s*%/);
+    if (memMatch) {
+      parsed.memoryFreePercent = parseInt(memMatch[1], 10);
+    }
+
+    // Parse disk partitions
+    const diskRegex = /^\s*(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)%\s*$/gm;
+    let diskMatch;
+    while ((diskMatch = diskRegex.exec(result)) !== null) {
+      parsed.diskPartitions.push({
+        name: diskMatch[1],
+        totalSpace: parseInt(diskMatch[2], 10),
+        used: parseInt(diskMatch[3], 10),
+        available: parseInt(diskMatch[4], 10),
+        usePercent: parseInt(diskMatch[5], 10)
+      });
+    }
+
+    // Parse port interfaces
+    const portRegex = /Port(\d+) Interface:[\s\S]*?Interface State:\s*(\w+),\s*(\d+)Mbps/g;
+    let portMatch;
+    while ((portMatch = portRegex.exec(result)) !== null) {
+      parsed.ports.push({
+        port: parseInt(portMatch[1], 10),
+        state: portMatch[2],
+        speed: parseInt(portMatch[3], 10)
+      });
+    }
+
+    return parsed;
+  }
+
+  /**
+   * Parse OS ONE manufacturing information from text response
+   */
+  private parseOSOneManufacturingInfo(data: any): OSOneManufacturingInfo {
+    const result = data?.result || '';
+    const parsed: OSOneManufacturingInfo = {
+      raw: result
+    };
+
+    // Parse key-value pairs
+    const patterns: Record<string, RegExp> = {
+      smxVersion: /SMX Version:\s*(.+)/,
+      guiVersion: /GUI Version:\s*(.+)/,
+      nacVersion: /NAC Version:\s*(.+)/,
+      softwareVersion: /Software Version:\s*(.+)/,
+      model: /Model:\s*(.+)/,
+      cpuType: /CPU Type:\s*(.+)/,
+      cpuFrequency: /CPU Frequency \(MHz\):\s*([\d.]+)/,
+      numberOfCpus: /Number of CPUs:\s*(\d+)/,
+      totalMemory: /Total Memory:\s*(\d+)\s*KB/,
+      hwEncryption: /HW Encryption Support:\s*(\w+)/,
+      lan1Mac: /LAN 1\s+MAC address:\s*([0-9A-Fa-f:]+)/,
+      lan2Mac: /LAN 2\s+MAC address:\s*([0-9A-Fa-f:]+)/,
+      adminMac: /ADMIN\s+MAC address:\s*([0-9A-Fa-f:]+)/,
+      lockingId: /Locking ID:\s*(.+)/
+    };
+
+    for (const [key, regex] of Object.entries(patterns)) {
+      const match = result.match(regex);
+      if (match) {
+        const value = match[1].trim();
+        if (key === 'cpuFrequency') {
+          (parsed as any)[key] = parseFloat(value);
+        } else if (key === 'numberOfCpus' || key === 'totalMemory') {
+          (parsed as any)[key] = parseInt(value, 10);
+        } else if (key === 'hwEncryption') {
+          (parsed as any)[key] = value.toLowerCase() === 'yes';
+        } else {
+          (parsed as any)[key] = value;
+        }
+      }
+    }
+
+    return parsed;
   }
 
   /**
