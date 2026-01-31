@@ -52,7 +52,7 @@ import { apiService, ApiCallLog } from './services/api';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { Button } from './components/ui/button';
-import { Activity, Sun, Moon, Code, Bug } from 'lucide-react';
+import { Activity, Sun, Moon, Braces, Github } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
@@ -1039,7 +1039,7 @@ export default function App() {
                       className="flex items-center"
                       title="Toggle Developer Mode"
                     >
-                      <Bug className="h-4 w-4" />
+                      <Braces className="h-4 w-4" />
                     </Button>
 
                     {/* API Test Tool */}
@@ -1050,7 +1050,7 @@ export default function App() {
                       className="flex items-center"
                       title="API Test Tool"
                     >
-                      <Code className="h-4 w-4" />
+                      <Github className="h-4 w-4" />
                     </Button>
 
                     {/* Notifications Menu */}
