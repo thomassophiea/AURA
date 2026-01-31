@@ -489,7 +489,7 @@ export function ContextualInsightsSelector({
                     )}
 
                     {/* Site-specific details */}
-                    {currentTab === 'site' && item.subtitle && (
+                    {currentTab === 'site' && item.id !== 'all' && item.subtitle && (
                       <div className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</div>
                     )}
 
