@@ -37,7 +37,7 @@ import {
   Maximize2,
   Target,
   Radio,
-  Sparkles,
+  Brain,
   Brain,
   Eye,
   X,
@@ -1155,20 +1155,22 @@ function DashboardEnhancedComponent() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-3xl tracking-tight">Real-Time Network Dashboard</h2>
-          <p className="text-muted-foreground">
-            Context-aware network monitoring and analytics
-            {lastUpdate && (
-              <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
-            )}
-          </p>
+    <div className="space-y-4">
+      {/* Compact Header with Context Selector */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-purple-500" />
+            <h2 className="text-xl font-semibold">AI-Powered Network Insights</h2>
+          </div>
+          {lastUpdate && (
+            <span className="text-sm text-muted-foreground">
+              Updated {lastUpdate.toLocaleTimeString()}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => loadDashboardData(true)} variant="outline" disabled={refreshing}>
+          <Button onClick={() => loadDashboardData(true)} variant="outline" size="sm" disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -1205,40 +1207,30 @@ function DashboardEnhancedComponent() {
       {/* AI INSIGHTS VIEW - Bird's Eye Network Overview */}
       {/* UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line */}
       {selectorTab === 'ai-insights' && (
-        <div className="space-y-6">
-          {/* Header with View Toggle */}
-          <div className="border-b pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  <h3 className="text-lg font-semibold">AI-Powered Network Insights</h3>
-                </div>
-                <p className="text-sm text-muted-foreground">Bird's eye view of your entire network with intelligent analysis</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setHealthViewMode('clients')}
-                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                    healthViewMode === 'clients'
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  Clients
-                </button>
-                <button
-                  onClick={() => setHealthViewMode('devices')}
-                  className={`px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                    healthViewMode === 'devices'
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  Devices
-                </button>
-              </div>
-            </div>
+        <div className="space-y-4">
+          {/* Compact View Toggle */}
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-sm text-muted-foreground mr-2">View:</span>
+            <button
+              onClick={() => setHealthViewMode('clients')}
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm font-medium ${
+                healthViewMode === 'clients'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              Clients
+            </button>
+            <button
+              onClick={() => setHealthViewMode('devices')}
+              className={`px-3 py-1.5 rounded-md transition-colors text-sm font-medium ${
+                healthViewMode === 'devices'
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              Devices
+            </button>
           </div>
 
           {/* Quick Stats Overview */}
@@ -1986,7 +1978,7 @@ Last analysis: ${lastUpdate?.toLocaleTimeString() || 'Updating...'}`}
             <CardContent className="py-4">
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
-                  <Sparkles className="h-4 w-4" />
+                  <Brain className="h-4 w-4" />
                   <span>Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong> <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-600">Beta</Badge>, or <strong>Client</strong> above to drill into specific details</span>
                 </div>
                 <p className="text-xs opacity-60 mt-2">UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line</p>

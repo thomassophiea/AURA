@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Search, Sparkles, Building, Radio, Network, Users, ChevronDown, Check, Settings2, Wifi, Signal, MapPin, Clock } from 'lucide-react';
+import { Search, Brain, Building, Radio, Network, Users, ChevronDown, Check, Settings2, Wifi, Signal, MapPin, Clock } from 'lucide-react';
 import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
 import { getSiteDisplayName } from '../contexts/SiteContext';
@@ -49,7 +49,7 @@ interface ContextualInsightsSelectorProps {
 }
 
 const tabs: { id: SelectorTab; label: string; shortLabel: string; icon: React.ElementType; beta?: boolean; noSearch?: boolean }[] = [
-  { id: 'ai-insights', label: 'AI Insights', shortLabel: 'AI Insights', icon: Sparkles, noSearch: true },
+  { id: 'ai-insights', label: 'AI Insights', shortLabel: 'AI Insights', icon: Brain, noSearch: true },
   { id: 'site', label: 'Site', shortLabel: 'Site', icon: Building },
   { id: 'access-point', label: 'Access Point', shortLabel: 'AP', icon: Radio },
   { id: 'switch', label: 'Switch', shortLabel: 'Switch', icon: Network, beta: true },
@@ -309,7 +309,7 @@ export function ContextualInsightsSelector({
 
   // Get current display text for trigger
   const currentTabInfo = tabs.find(t => t.id === currentTab);
-  const CurrentIcon = currentTabInfo?.icon || Sparkles;
+  const CurrentIcon = currentTabInfo?.icon || Brain;
   const displayText = selectedItemName || currentTabInfo?.label || 'Select Context';
 
   return (

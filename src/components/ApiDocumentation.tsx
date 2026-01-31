@@ -689,8 +689,8 @@ interface ApiDocumentationProps {
 export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(() => {
-    // Start with all categories expanded
-    return new Set(apiCategories.map(cat => cat.name));
+    // Start with all categories collapsed
+    return new Set();
   });
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 

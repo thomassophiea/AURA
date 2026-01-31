@@ -3,7 +3,7 @@ import {
   Wifi,
   MapPin,
   Settings,
-  TrendingUp,
+  Brain,
   LogOut,
   Menu,
   ChevronDown,
@@ -49,7 +49,7 @@ interface SidebarProps {
 
 // Navigation items
 const navigationItems = [
-  { id: 'service-levels', label: 'Contextual Insights', icon: TrendingUp },
+  { id: 'service-levels', label: 'Contextual Insights', icon: Brain },
   { id: 'app-insights', label: 'App Insights', icon: AppWindow },
   { id: 'connected-clients', label: 'Connected Clients', icon: Users },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
