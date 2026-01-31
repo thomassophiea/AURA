@@ -1692,6 +1692,13 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
           </div>
         )}
       </div>
+
+      {/* Attribution */}
+      <div className="px-4 py-1.5 border-t bg-muted/20 text-center">
+        <p className="text-[10px] text-muted-foreground opacity-60">
+          UI Design by Metka Dragos, Sr Product Manager, Product Experience & Thomas Sophiea, Product Manager
+        </p>
+      </div>
     </div>
   );
 }
