@@ -11,11 +11,12 @@ import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Search, Sparkles, Building, Radio, Network, Users, ChevronDown, Check, Settings2 } from 'lucide-react';
+import { Search, Sparkles, Building, Radio, Network, Users, ChevronDown, Check, Settings2, Wifi, Signal, MapPin, Clock } from 'lucide-react';
 import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
 import { getSiteDisplayName } from '../contexts/SiteContext';
 import { ContextConfigModal } from './ContextConfigModal';
+import { getVendor } from '../services/oui-lookup';
 
 export type SelectorTab = 'ai-insights' | 'site' | 'access-point' | 'switch' | 'client';
 
@@ -24,6 +25,20 @@ interface SelectorItem {
   name: string;
   subtitle?: string;
   status?: 'online' | 'offline' | 'warning';
+  // Extended AP fields
+  model?: string;
+  ipAddress?: string;
+  clients?: number;
+  siteName?: string;
+  uptime?: string;
+  serialNumber?: string;
+  // Extended Client fields
+  ssid?: string;
+  apName?: string;
+  rssi?: number;
+  vendor?: string;
+  macAddress?: string;
+  band?: string;
 }
 
 interface ContextualInsightsSelectorProps {
@@ -99,10 +114,43 @@ export function ContextualInsightsSelector({
 
         case 'access-point':
           const aps = await apiService.getAccessPoints();
+          // Also fetch stations to count clients per AP
+          let stationsForAPs: any[] = [];
+          try {
+            stationsForAPs = await apiService.getStations();
+          } catch (e) {
+            console.warn('[ContextualInsightsSelector] Could not fetch stations for client count');
+          }
+
+          // Build client count map by AP serial
+          const clientCountByAP: Record<string, number> = {};
+          stationsForAPs.forEach((station: any) => {
+            const apSerial = station.apSerialNumber || station.apSerial;
+            if (apSerial) {
+              clientCountByAP[apSerial] = (clientCountByAP[apSerial] || 0) + 1;
+            }
+          });
+
+          const onlineCount = aps.filter((ap: any) => {
+            const statusStr = (ap.status || ap.connectionState || ap.operationalState || '').toLowerCase();
+            return statusStr === 'inservice' || statusStr.includes('up') || statusStr.includes('online') || statusStr.includes('connected') || ap.isUp === true || ap.online === true;
+          }).length;
+
           const apItems: SelectorItem[] = [
-            { id: 'all', name: 'All Access Points', subtitle: `${aps.length} APs` }
+            { id: 'all', name: 'All Access Points', subtitle: `${aps.length} APs (${onlineCount} online)` }
           ];
-          aps.slice(0, 50).forEach((ap: any) => {
+
+          // Format uptime helper
+          const formatUptime = (seconds: number): string => {
+            if (!seconds || seconds <= 0) return '';
+            const days = Math.floor(seconds / 86400);
+            const hours = Math.floor((seconds % 86400) / 3600);
+            if (days > 0) return `${days}d ${hours}h`;
+            const mins = Math.floor((seconds % 3600) / 60);
+            return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+          };
+
+          aps.forEach((ap: any) => {
             // Determine AP name - prioritize friendly names over serial
             const apName = ap.displayName || ap.name || ap.hostname || ap.serialNumber;
 
@@ -120,11 +168,21 @@ export function ContextualInsightsSelector({
               (!statusStr && isUp !== false && isOnline !== false)
             );
 
+            const serialNum = ap.serialNumber || ap.id;
+            const clientCount = clientCountByAP[serialNum] || 0;
+            const uptimeStr = formatUptime(ap.sysUptime || ap.uptime || 0);
+
             apItems.push({
-              id: ap.serialNumber || ap.id,
+              id: serialNum,
               name: apName,
-              subtitle: ap.siteName || ap.model || undefined,
-              status: apIsOnline ? 'online' : 'offline'
+              subtitle: ap.siteName || ap.hostSite || undefined,
+              status: apIsOnline ? 'online' : 'offline',
+              model: ap.model || ap.hardwareType || ap.platformName,
+              ipAddress: ap.ipAddress,
+              clients: clientCount,
+              siteName: ap.siteName || ap.hostSite,
+              uptime: uptimeStr,
+              serialNumber: serialNum
             });
           });
           setItems(apItems);
@@ -163,15 +221,42 @@ export function ContextualInsightsSelector({
 
         case 'client':
           const clients = await apiService.getStations();
+
+          // Determine band from channel or frequency
+          const getBandFromChannel = (channel: number | undefined, freq: string | undefined): string => {
+            if (freq) {
+              if (freq.includes('2.4') || freq.includes('2G')) return '2.4G';
+              if (freq.includes('5') && !freq.includes('6')) return '5G';
+              if (freq.includes('6')) return '6G';
+            }
+            if (channel) {
+              if (channel >= 1 && channel <= 14) return '2.4G';
+              if (channel >= 36 && channel <= 165) return '5G';
+              if (channel > 165) return '6G';
+            }
+            return '';
+          };
+
           const clientItems: SelectorItem[] = [
             { id: 'all', name: 'All Clients', subtitle: `${clients.length} connected` }
           ];
-          clients.slice(0, 50).forEach((client: any) => {
+          clients.forEach((client: any) => {
+            const mac = client.macAddress || client.id;
+            const vendorName = getVendor(mac);
+            const band = getBandFromChannel(client.channel, client.band || client.frequency);
+
             clientItems.push({
-              id: client.macAddress || client.id,
-              name: client.hostName || client.macAddress,
+              id: mac,
+              name: client.hostName || mac,
               subtitle: client.ssid || client.serviceName || undefined,
-              status: 'online' as const
+              status: 'online' as const,
+              ssid: client.ssid || client.serviceName,
+              apName: client.apName || client.apHostname,
+              rssi: client.rssi || client.signalStrength,
+              vendor: vendorName !== 'Unknown' ? vendorName : undefined,
+              macAddress: mac,
+              band: band,
+              ipAddress: client.ipAddress
             });
           });
           setItems(clientItems);
@@ -213,7 +298,15 @@ export function ContextualInsightsSelector({
     const query = searchQuery.toLowerCase();
     return items.filter(item =>
       item.name.toLowerCase().includes(query) ||
-      item.subtitle?.toLowerCase().includes(query)
+      item.subtitle?.toLowerCase().includes(query) ||
+      item.model?.toLowerCase().includes(query) ||
+      item.ipAddress?.toLowerCase().includes(query) ||
+      item.siteName?.toLowerCase().includes(query) ||
+      item.serialNumber?.toLowerCase().includes(query) ||
+      item.ssid?.toLowerCase().includes(query) ||
+      item.apName?.toLowerCase().includes(query) ||
+      item.vendor?.toLowerCase().includes(query) ||
+      item.macAddress?.toLowerCase().includes(query)
     );
   }, [items, searchQuery]);
 
@@ -239,7 +332,7 @@ export function ContextualInsightsSelector({
             <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-      <PopoverContent className="w-[420px] p-0" align="start">
+      <PopoverContent className="w-[480px] p-0" align="start">
         {/* Tabs - horizontal layout */}
         <div className="flex border-b overflow-x-auto">
           {tabs.map((tab) => (
@@ -282,7 +375,7 @@ export function ContextualInsightsSelector({
 
         {/* Items List - Not shown for AI Insights */}
         {currentTab !== 'ai-insights' && (
-        <ScrollArea className="h-[240px]">
+        <ScrollArea className="h-[320px]">
           <div className="p-1">
             {loading ? (
               <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
@@ -301,29 +394,126 @@ export function ContextualInsightsSelector({
                   key={item.id}
                   onClick={() => handleItemSelect(item)}
                   className={cn(
-                    "w-full text-left px-2 py-2 rounded-md transition-colors flex items-center gap-2",
+                    "w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3",
                     "hover:bg-muted focus:outline-none focus-visible:bg-muted",
                     selectedItemId === item.id && currentTab === tabs.find(t => t.id === currentTab)?.id && "bg-primary/5"
                   )}
                 >
+                  {/* Status indicator for non-all items */}
+                  {item.id !== 'all' && (
+                    <div className="pt-1">
+                      <span className={cn(
+                        "block w-2 h-2 rounded-full flex-shrink-0",
+                        item.status === 'online' && "bg-green-500",
+                        item.status === 'offline' && "bg-red-500",
+                        item.status === 'warning' && "bg-amber-500"
+                      )} />
+                    </div>
+                  )}
+
                   <div className="flex-1 min-w-0">
+                    {/* Main name row */}
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">{item.name}</span>
-                      {item.status && item.id !== 'all' && (
-                        <span className={cn(
-                          "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                          item.status === 'online' && "bg-green-500",
-                          item.status === 'offline' && "bg-red-500",
-                          item.status === 'warning' && "bg-amber-500"
-                        )} />
+                      {/* Band badge for clients */}
+                      {item.band && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal">
+                          {item.band}
+                        </Badge>
                       )}
                     </div>
-                    {item.subtitle && (
-                      <div className="text-xs text-muted-foreground truncate">{item.subtitle}</div>
+
+                    {/* AP-specific details */}
+                    {currentTab === 'access-point' && item.id !== 'all' && (
+                      <div className="mt-1 space-y-0.5">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.model && (
+                            <span className="truncate max-w-[120px]">{item.model}</span>
+                          )}
+                          {item.ipAddress && (
+                            <span className="font-mono text-[10px]">{item.ipAddress}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.siteName && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate max-w-[100px]">{item.siteName}</span>
+                            </span>
+                          )}
+                          {typeof item.clients === 'number' && (
+                            <span className="flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              {item.clients}
+                            </span>
+                          )}
+                          {item.uptime && (
+                            <span className="flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {item.uptime}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Client-specific details */}
+                    {currentTab === 'client' && item.id !== 'all' && (
+                      <div className="mt-1 space-y-0.5">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.ssid && (
+                            <span className="flex items-center gap-1">
+                              <Wifi className="h-3 w-3" />
+                              <span className="truncate max-w-[100px]">{item.ssid}</span>
+                            </span>
+                          )}
+                          {item.rssi !== undefined && (
+                            <span className={cn(
+                              "flex items-center gap-1",
+                              item.rssi >= -60 ? "text-green-600" : item.rssi >= -70 ? "text-amber-600" : "text-red-600"
+                            )}>
+                              <Signal className="h-3 w-3" />
+                              {item.rssi} dBm
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                          {item.apName && (
+                            <span className="flex items-center gap-1">
+                              <Radio className="h-3 w-3" />
+                              <span className="truncate max-w-[100px]">{item.apName}</span>
+                            </span>
+                          )}
+                          {item.vendor && (
+                            <span className="truncate max-w-[80px]">{item.vendor}</span>
+                          )}
+                        </div>
+                        {item.ipAddress && (
+                          <div className="text-[10px] font-mono text-muted-foreground/70">
+                            {item.ipAddress}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Site-specific details */}
+                    {currentTab === 'site' && item.subtitle && (
+                      <div className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</div>
+                    )}
+
+                    {/* Switch-specific details */}
+                    {currentTab === 'switch' && item.id !== 'all' && item.subtitle && (
+                      <div className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</div>
+                    )}
+
+                    {/* All items subtitle */}
+                    {item.id === 'all' && item.subtitle && (
+                      <div className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</div>
                     )}
                   </div>
+
                   {selectedItemId === item.id && (
-                    <Check className="h-4 w-4 text-primary flex-shrink-0" />
+                    <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                   )}
                 </button>
               ))
