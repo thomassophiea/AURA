@@ -248,13 +248,14 @@ function DashboardEnhancedComponent() {
   const [aiInsightsDetailPanel, setAiInsightsDetailPanel] = useState(true);
   const [aiActiveHealthTab, setAiActiveHealthTab] = useState<'needsAttention' | 'healthy'>('healthy');
 
-  // RFQI (RF Quality Index) Data for health visualization
+  // RFQI (RF Quality Index) Data for health visualization from controller
   const [rfqiData, setRfqiData] = useState<Array<{
     timestamp: number;
     healthy: number;
     needsAttention: number;
     rfqi: number;
   }>>([]);
+
   const [selectedNetworkEvent, setSelectedNetworkEvent] = useState<{
     id: string;
     time: string;
@@ -385,7 +386,7 @@ function DashboardEnhancedComponent() {
       fetchRFQIData().catch(err => {
         console.log('[Dashboard] Failed to load RFQI data:', err);
       });
-      
+
       if (isRefresh) {
         toast.success('Dashboard refreshed');
       }
@@ -501,7 +502,7 @@ function DashboardEnhancedComponent() {
     }
   };
 
-  // Fetch RFQI (RF Quality Index) data for health visualization
+  // Fetch RFQI (RF Quality Index) data from controller for health visualization
   const fetchRFQIData = async () => {
     const siteId = filters.site !== 'all' ? filters.site : undefined;
     console.log('[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites'));
@@ -544,13 +545,13 @@ function DashboardEnhancedComponent() {
               .sort((a: any, b: any) => a.timestamp - b.timestamp)
               .slice(-24);
             setRfqiData(sortedData);
-            console.log('[Dashboard] Processed', sortedData.length, 'RFQI data points');
+            console.log('[Dashboard] Processed', sortedData.length, 'RFQI data points from controller');
             return;
           }
         }
       }
 
-      // Fallback: generate simulated data based on current stats if no real data
+      // Fallback: generate data based on current stats if no real RFQI data
       console.log('[Dashboard] No RFQI data available, using client stats for health visualization');
       const now = Date.now();
       const hourInMs = 3600000;
@@ -579,7 +580,7 @@ function DashboardEnhancedComponent() {
 
   const processAccessPoints = (aps: AccessPoint[]) => {
     setAccessPoints(aps);
-    
+
     let stats = {
       total: aps.length,
       online: 0,
@@ -1427,7 +1428,7 @@ function DashboardEnhancedComponent() {
                     return (
                       <div
                         key={i}
-                        className={`flex-1 flex flex-col justify-end cursor-pointer transition-all duration-200 ${isCurrentHour ? 'opacity-100 scale-105' : 'opacity-60 hover:opacity-90 hover:scale-102'}`}
+                        className={`flex-1 flex flex-col justify-end cursor-pointer transition-all duration-200 ${isCurrentHour ? 'opacity-100 scale-105' : 'opacity-60 hover:opacity-90'}`}
                         onClick={() => setAiInsightsDetailPanel(true)}
                         title={`${hour.toString().padStart(2, '0')}:00 - RFQI: ${Math.round(dataPoint.rfqi)}% | Healthy: ${Math.round(healthyPct)}%`}
                       >
