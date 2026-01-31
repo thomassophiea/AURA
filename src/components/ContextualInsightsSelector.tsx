@@ -16,7 +16,6 @@ import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
 import { getSiteDisplayName } from '../contexts/SiteContext';
 import { ContextConfigModal } from './ContextConfigModal';
-import { getVendor } from '../services/oui-lookup';
 
 export type SelectorTab = 'ai-insights' | 'site' | 'access-point' | 'switch' | 'client';
 
@@ -242,7 +241,6 @@ export function ContextualInsightsSelector({
           ];
           clients.forEach((client: any) => {
             const mac = client.macAddress || client.id;
-            const vendorName = getVendor(mac);
             const band = getBandFromChannel(client.channel, client.band || client.frequency);
 
             clientItems.push({
@@ -253,7 +251,6 @@ export function ContextualInsightsSelector({
               ssid: client.ssid || client.serviceName,
               apName: client.apName || client.apHostname,
               rssi: client.rssi || client.signalStrength,
-              vendor: vendorName !== 'Unknown' ? vendorName : undefined,
               macAddress: mac,
               band: band,
               ipAddress: client.ipAddress
@@ -477,17 +474,12 @@ export function ContextualInsightsSelector({
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                          {item.apName && (
-                            <span className="flex items-center gap-1">
-                              <Radio className="h-3 w-3" />
-                              <span className="truncate max-w-[100px]">{item.apName}</span>
-                            </span>
-                          )}
-                          {item.vendor && (
-                            <span className="truncate max-w-[80px]">{item.vendor}</span>
-                          )}
-                        </div>
+                        {item.apName && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Radio className="h-3 w-3" />
+                            <span className="truncate max-w-[140px]">{item.apName}</span>
+                          </div>
+                        )}
                         {item.ipAddress && (
                           <div className="text-[10px] font-mono text-muted-foreground/70">
                             {item.ipAddress}
