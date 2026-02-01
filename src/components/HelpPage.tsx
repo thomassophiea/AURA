@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { HelpCircle, MessageSquare, Book, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
+import { identifyUserWithChatbase } from '../services/chatbaseIdentity';
 
 // Chatbase bot configuration
 const CHATBASE_BOT_ID = 'ZLVPw60JOZQsutoX-Nuyg';
@@ -16,6 +17,7 @@ const CHATBASE_BOT_ID = 'ZLVPw60JOZQsutoX-Nuyg';
 export function HelpPage() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const scriptLoadedRef = useRef(false);
+  const identifiedRef = useRef(false);
 
   useEffect(() => {
     // Only load script once
@@ -24,6 +26,12 @@ export function HelpPage() {
     // Check if Chatbase script is already loaded
     if (document.getElementById(CHATBASE_BOT_ID)) {
       scriptLoadedRef.current = true;
+      // If script was already loaded, try to identify user
+      if (!identifiedRef.current) {
+        identifyUserWithChatbase().then(() => {
+          identifiedRef.current = true;
+        });
+      }
       return;
     }
 
@@ -55,6 +63,16 @@ export function HelpPage() {
     script.onload = () => {
       console.log('[HelpPage] Chatbase script loaded');
       scriptLoadedRef.current = true;
+
+      // Identify user after script loads
+      if (!identifiedRef.current) {
+        // Small delay to ensure Chatbase is fully initialized
+        setTimeout(() => {
+          identifyUserWithChatbase().then(() => {
+            identifiedRef.current = true;
+          });
+        }, 500);
+      }
     };
 
     script.onerror = () => {

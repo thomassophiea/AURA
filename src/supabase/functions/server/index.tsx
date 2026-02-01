@@ -344,6 +344,76 @@ app.post("/make-server-efba0687/oui/batch", async (c) => {
   }
 });
 
+// ==================== Chatbase Identity Token Endpoint ====================
+
+// Generate a JWT token for Chatbase user identification
+app.post("/make-server-efba0687/chatbase/token", async (c) => {
+  try {
+    const secret = Deno.env.get("CHATBASE_IDENTITY_SECRET");
+
+    if (!secret) {
+      console.error('CHATBASE_IDENTITY_SECRET not configured');
+      return c.json({ error: "Chatbase identity not configured" }, 500);
+    }
+
+    const { user_id, email, name, role } = await c.req.json();
+
+    if (!user_id) {
+      return c.json({ error: "user_id is required" }, 400);
+    }
+
+    // Create JWT payload
+    const payload = {
+      user_id,
+      email: email || undefined,
+      name: name || undefined,
+      role: role || undefined,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiry
+    };
+
+    // Sign JWT using Web Crypto API
+    const encoder = new TextEncoder();
+    const header = { alg: "HS256", typ: "JWT" };
+
+    const base64UrlEncode = (data: Uint8Array | string): string => {
+      const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
+      const base64 = btoa(str);
+      return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    };
+
+    const headerB64 = base64UrlEncode(JSON.stringify(header));
+    const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+    const unsignedToken = `${headerB64}.${payloadB64}`;
+
+    // Import key and sign
+    const keyData = encoder.encode(secret);
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const signature = await crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      encoder.encode(unsignedToken)
+    );
+
+    const signatureB64 = base64UrlEncode(new Uint8Array(signature));
+    const token = `${unsignedToken}.${signatureB64}`;
+
+    return c.json({ token });
+  } catch (error) {
+    console.error('Failed to generate Chatbase token:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : "Failed to generate token"
+    }, 500);
+  }
+});
+
 // Error handler
 app.onError((err, c) => {
   console.error('Server error:', err);
