@@ -2046,208 +2046,6 @@ function DashboardEnhancedComponent() {
                 {/* Tab Content */}
                 {!selectedNetworkEvent ? (
                   <div className="space-y-4">
-                    {/* Events Table */}
-                    <div className="border rounded-lg">
-                      <div className="bg-muted/50 px-4 py-2 border-b flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-teal-600" />
-                        <h3 className="text-sm font-medium">Recent Events</h3>
-                      </div>
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/30">
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Time</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Event</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Affected</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Status</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">AI Explanation</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {/* Generate events based on real data */}
-                            {aiActiveHealthTab === 'needsAttention' ? (
-                              <>
-                                {apStats.offline > 0 && (
-                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                                        <span className="text-sm">Access Points Offline</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.offline} APs</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-600 bg-red-50">Requires Action</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">AI detected {apStats.offline} access point(s) are offline. Check network connectivity, PoE power delivery, or hardware status.</td>
-                                    <td className="px-4 py-3">
-                                      <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'ap-offline',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'infrastructure',
-                                          description: 'Access Points Offline',
-                                          affectedCount: apStats.offline,
-                                          aiExplanation: `${apStats.offline} access point(s) are currently offline. This may impact wireless coverage for clients in affected areas. Check cable connections, PoE power budget, and AP hardware status.`,
-                                          severity: 'high',
-                                          status: 'requires-action'
-                                        })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                )}
-                                {alertCounts.critical > 0 && (
-                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-red-500" />
-                                        <span className="text-sm">Critical Alerts Active</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{alertCounts.critical} alerts</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-600 bg-red-50">Critical</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Multiple critical alerts require immediate attention to prevent service degradation.</td>
-                                    <td className="px-4 py-3">
-                                      <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'critical-alerts',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'infrastructure',
-                                          description: 'Critical Alerts Active',
-                                          affectedCount: alertCounts.critical,
-                                          aiExplanation: `There are ${alertCounts.critical} critical alerts that require immediate attention. These may indicate hardware failures, configuration issues, or security concerns.`,
-                                          severity: 'high',
-                                          status: 'requires-action'
-                                        })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                )}
-                                {clientStats.total > clientStats.authenticated && (
-                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                    <td className="px-4 py-3">
-                                      <div className="flex items-center gap-2">
-                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                        <span className="text-sm">Unauthenticated Clients</span>
-                                      </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.total - clientStats.authenticated} clients</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-amber-600 bg-amber-50">Monitoring</span>
-                                    </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Some clients are connected but not fully authenticated. This may indicate captive portal users or authentication issues.</td>
-                                    <td className="px-4 py-3">
-                                      <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'unauth-clients',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'group',
-                                          description: 'Unauthenticated Clients',
-                                          affectedCount: clientStats.total - clientStats.authenticated,
-                                          aiExplanation: `${clientStats.total - clientStats.authenticated} client(s) are connected but not authenticated. This could be normal for guest networks with captive portals, or may indicate authentication server issues.`,
-                                          severity: 'medium',
-                                          status: 'monitoring'
-                                        })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
-                                      >
-                                        <Eye className="w-4 h-4" />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                )}
-                                {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
-                                  <tr className="border-b">
-                                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-50" />
-                                      No issues requiring attention
-                                    </td>
-                                  </tr>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                                      <span className="text-sm">Access Points Online</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.online} APs</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Stable</span>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All {apStats.online} access points are operational with normal performance metrics.</td>
-                                  <td className="px-4 py-3">
-                                    <button
-                                      onClick={() => setSelectorTab('access-point')}
-                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                  </td>
-                                </tr>
-                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                                      <span className="text-sm">Authenticated Clients</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.authenticated} clients</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Stable</span>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All authenticated clients have stable connections with good signal quality.</td>
-                                  <td className="px-4 py-3">
-                                    <button
-                                      onClick={() => setSelectorTab('client')}
-                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                  </td>
-                                </tr>
-                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
-                                  <td className="px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2 h-2 rounded-full bg-green-500" />
-                                      <span className="text-sm">Network Throughput Normal</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Optimal</span>
-                                  </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Network throughput is within normal parameters with no congestion detected.</td>
-                                  <td className="px-4 py-3">
-                                    <button className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600">
-                                      <Eye className="w-4 h-4" />
-                                    </button>
-                                  </td>
-                                </tr>
-                              </>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
                     {/* AI Assistant Panel - Flashy Design */}
                     <div className="relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900">
                       {/* Animated background effects */}
@@ -2462,6 +2260,208 @@ function DashboardEnhancedComponent() {
                             </div>
                           </div>
                         )}
+                      </div>
+                    </div>
+
+                    {/* Events Table */}
+                    <div className="border rounded-lg">
+                      <div className="bg-muted/50 px-4 py-2 border-b flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-teal-600" />
+                        <h3 className="text-sm font-medium">Recent Events</h3>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead>
+                            <tr className="border-b bg-muted/30">
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Time</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Event</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Affected</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Status</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">AI Explanation</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* Generate events based on real data */}
+                            {aiActiveHealthTab === 'needsAttention' ? (
+                              <>
+                                {apStats.offline > 0 && (
+                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                                        <span className="text-sm">Access Points Offline</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.offline} APs</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-600 bg-red-50">Requires Action</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">AI detected {apStats.offline} access point(s) are offline. Check network connectivity, PoE power delivery, or hardware status.</td>
+                                    <td className="px-4 py-3">
+                                      <button
+                                        onClick={() => setSelectedNetworkEvent({
+                                          id: 'ap-offline',
+                                          time: new Date().toLocaleTimeString(),
+                                          type: 'infrastructure',
+                                          description: 'Access Points Offline',
+                                          affectedCount: apStats.offline,
+                                          aiExplanation: `${apStats.offline} access point(s) are currently offline. This may impact wireless coverage for clients in affected areas. Check cable connections, PoE power budget, and AP hardware status.`,
+                                          severity: 'high',
+                                          status: 'requires-action'
+                                        })}
+                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )}
+                                {alertCounts.critical > 0 && (
+                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-red-500" />
+                                        <span className="text-sm">Critical Alerts Active</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{alertCounts.critical} alerts</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-600 bg-red-50">Critical</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Multiple critical alerts require immediate attention to prevent service degradation.</td>
+                                    <td className="px-4 py-3">
+                                      <button
+                                        onClick={() => setSelectedNetworkEvent({
+                                          id: 'critical-alerts',
+                                          time: new Date().toLocaleTimeString(),
+                                          type: 'infrastructure',
+                                          description: 'Critical Alerts Active',
+                                          affectedCount: alertCounts.critical,
+                                          aiExplanation: `There are ${alertCounts.critical} critical alerts that require immediate attention. These may indicate hardware failures, configuration issues, or security concerns.`,
+                                          severity: 'high',
+                                          status: 'requires-action'
+                                        })}
+                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )}
+                                {clientStats.total > clientStats.authenticated && (
+                                  <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3">
+                                      <div className="flex items-center gap-2">
+                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                        <span className="text-sm">Unauthenticated Clients</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.total - clientStats.authenticated} clients</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-amber-600 bg-amber-50">Monitoring</span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Some clients are connected but not fully authenticated. This may indicate captive portal users or authentication issues.</td>
+                                    <td className="px-4 py-3">
+                                      <button
+                                        onClick={() => setSelectedNetworkEvent({
+                                          id: 'unauth-clients',
+                                          time: new Date().toLocaleTimeString(),
+                                          type: 'group',
+                                          description: 'Unauthenticated Clients',
+                                          affectedCount: clientStats.total - clientStats.authenticated,
+                                          aiExplanation: `${clientStats.total - clientStats.authenticated} client(s) are connected but not authenticated. This could be normal for guest networks with captive portals, or may indicate authentication server issues.`,
+                                          severity: 'medium',
+                                          status: 'monitoring'
+                                        })}
+                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                      >
+                                        <Eye className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                )}
+                                {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
+                                  <tr className="border-b">
+                                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-50" />
+                                      No issues requiring attention
+                                    </td>
+                                  </tr>
+                                )}
+                              </>
+                            ) : (
+                              <>
+                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                                      <span className="text-sm">Access Points Online</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.online} APs</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Stable</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All {apStats.online} access points are operational with normal performance metrics.</td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => setSelectorTab('access-point')}
+                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                                      <span className="text-sm">Authenticated Clients</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.authenticated} clients</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Stable</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All authenticated clients have stable connections with good signal quality.</td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => setSelectorTab('client')}
+                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                                <tr className="border-b hover:bg-teal-500/5 transition-colors">
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2 h-2 rounded-full bg-green-500" />
+                                      <span className="text-sm">Network Throughput Normal</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-600 bg-green-50">Optimal</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Network throughput is within normal parameters with no congestion detected.</td>
+                                  <td className="px-4 py-3">
+                                    <button className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600">
+                                      <Eye className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              </>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
