@@ -19,6 +19,7 @@ import { identifyClient, lookupVendor, suggestDeviceType } from '../services/oui
 import { isRandomizedMac, getMacAddressInfo } from '../services/macAddressUtils';
 import { resolveClientIdentity, type ClientIdentity } from '../lib/clientIdentity';
 import { toast } from 'sonner';
+import { SaveToWorkspace } from './SaveToWorkspace';
 
 interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
@@ -770,7 +771,17 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
       <Card className="surface-2dp">
         <CardHeader>
-          <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
+            <SaveToWorkspace
+              widgetId="connected-clients-table"
+              widgetType="topn_table"
+              title="All Connected Clients"
+              endpointRefs={['clients.list']}
+              sourcePage="clients"
+              catalogId="table_clients_all"
+            />
+          </div>
           <CardDescription>
             Select clients using checkboxes to manage GDPR data rights. Click any client to view detailed connection information. Signal strength (RSS/RSSI) included.
           </CardDescription>

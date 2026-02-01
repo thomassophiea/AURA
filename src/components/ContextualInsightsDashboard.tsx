@@ -16,7 +16,7 @@ import { ScrollArea } from './ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Progress } from './ui/progress';
-import { 
+import {
   Brain, AlertTriangle, AlertCircle, Info, ChevronDown, ChevronUp,
   Radio, Activity, Zap, Users, Wifi, Clock, Lightbulb, Sparkles,
   CheckCircle2, TrendingUp, TrendingDown, Target, Wrench, BarChart3,
@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { useOperationalContext } from '../hooks/useOperationalContext';
-import { 
+import {
   generateInsights, getInsightsSummary, getInsightsByGroup,
   INSIGHT_GROUP_META,
   type InsightCard, type MetricsSnapshot, type InsightGroup
@@ -34,6 +34,7 @@ import { RFQualityWidgetAnchored } from './RFQualityWidgetAnchored';
 import { TimelineCursorControls } from './TimelineCursorControls';
 import { EnvironmentProfileSelector } from './EnvironmentProfileSelector';
 import { aiBaselineService } from '../services/aiBaselineService';
+import { SaveToWorkspace } from './SaveToWorkspace';
 
 interface ContextualInsightsDashboardProps {
   metrics: MetricsSnapshot;
@@ -261,14 +262,22 @@ export function ContextualInsightsDashboard({
             <div className="flex items-center gap-2">
               <GroupIcon className={cn("h-5 w-5", styles.iconColor)} />
               <CardTitle className="text-base">{meta.name}</CardTitle>
-              <Badge 
-                variant={groupInsights.some(i => i.severity === 'critical') ? 'destructive' : 
+              <Badge
+                variant={groupInsights.some(i => i.severity === 'critical') ? 'destructive' :
                          groupInsights.some(i => i.severity === 'warning') ? 'secondary' : 'outline'}
                 className="text-xs"
               >
                 {groupInsights.length}
               </Badge>
             </div>
+            <SaveToWorkspace
+              widgetId={`contextual-insights-${group}`}
+              widgetType="insights_card"
+              title={meta.name}
+              endpointRefs={['contextual_insights.' + group]}
+              sourcePage="contextual-insights"
+              catalogId={`insights_${group}`}
+            />
           </div>
           <CardDescription className="text-xs">{meta.description}</CardDescription>
         </CardHeader>

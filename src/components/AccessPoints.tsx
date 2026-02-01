@@ -18,6 +18,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
 import { toast } from 'sonner';
+import { SaveToWorkspace } from './SaveToWorkspace';
 
 // Define available columns with friendly labels
 interface ColumnConfig {
@@ -1603,7 +1604,17 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       <Card className="surface-2dp">
         <CardHeader>
-          <CardTitle className="text-headline-6 text-high-emphasis">Access Points</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-headline-6 text-high-emphasis">Access Points</CardTitle>
+            <SaveToWorkspace
+              widgetId="access-points-table"
+              widgetType="topn_table"
+              title="All Access Points"
+              endpointRefs={['access_points.list']}
+              sourcePage="access-points"
+              catalogId="table_aps_all"
+            />
+          </div>
           <CardDescription>
             {selectedSite !== 'all' 
               ? `Access points in ${sites.find(s => s.id === selectedSite)?.name || 'selected site'}. Click any access point for details.`

@@ -55,6 +55,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Site } from '../services/api';
+import { SaveToWorkspace } from './SaveToWorkspace';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -299,7 +300,7 @@ export function AppInsights({ api }: AppInsightsProps) {
   }, [chartData, stats]);
 
   // Unified Comparison Card
-  const ComparisonCard = ({ topData, bottomData, title, unit, icon: Icon, color }: any) => {
+  const ComparisonCard = ({ topData, bottomData, title, unit, icon: Icon, color, widgetId, endpointRef }: any) => {
     const maxTop = Math.max(...topData.map((d: any) => d.value), 1);
     const maxBottom = Math.max(...bottomData.map((d: any) => d.value), 1);
 
@@ -320,6 +321,14 @@ export function AppInsights({ api }: AppInsightsProps) {
               </div>
               <CardTitle className="text-xs font-semibold text-slate-200">{title}</CardTitle>
             </div>
+            <SaveToWorkspace
+              widgetId={widgetId}
+              widgetType="topn_table"
+              title={`App Insights: ${title}`}
+              endpointRefs={[endpointRef]}
+              sourcePage="app-insights"
+              catalogId={`app_insights_by_${unit === 'bytes' ? 'throughput' : unit === 'bps' ? 'throughput' : 'impact'}`}
+            />
           </div>
         </CardHeader>
         <CardContent className="space-y-3 pt-0 relative">
@@ -626,6 +635,14 @@ export function AppInsights({ api }: AppInsightsProps) {
                   <PieChart className="h-4 w-4 text-violet-400" />
                   Top Categories by Usage
                 </CardTitle>
+                <SaveToWorkspace
+                  widgetId="app-insights-categories-usage"
+                  widgetType="topn_table"
+                  title="Top App Categories by Usage"
+                  endpointRefs={['app_insights.by_category']}
+                  sourcePage="app-insights"
+                  catalogId="app_insights_by_category"
+                />
               </div>
             </CardHeader>
             <CardContent>
@@ -694,10 +711,20 @@ export function AppInsights({ api }: AppInsightsProps) {
           {/* Top Applications Bar Chart */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-200">
-                <BarChart3 className="h-4 w-4 text-cyan-400" />
-                Application Bandwidth Distribution
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold flex items-center gap-2 text-slate-200">
+                  <BarChart3 className="h-4 w-4 text-cyan-400" />
+                  Application Bandwidth Distribution
+                </CardTitle>
+                <SaveToWorkspace
+                  widgetId="app-insights-bandwidth-dist"
+                  widgetType="topn_table"
+                  title="Top Apps by Bandwidth"
+                  endpointRefs={['app_insights.top_apps']}
+                  sourcePage="app-insights"
+                  catalogId="app_insights_by_throughput"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="h-64">
@@ -764,6 +791,8 @@ export function AppInsights({ api }: AppInsightsProps) {
             unit="bytes"
             icon={HardDrive}
             color="bg-gradient-to-br from-blue-500 to-cyan-500"
+            widgetId="app-insights-data-usage"
+            endpointRef="app_insights.top_apps"
           />
           <ComparisonCard
             topData={chartData.topClientCount}
@@ -772,6 +801,8 @@ export function AppInsights({ api }: AppInsightsProps) {
             unit="users"
             icon={Users}
             color="bg-gradient-to-br from-violet-500 to-purple-500"
+            widgetId="app-insights-client-count"
+            endpointRef="app_insights.top_apps"
           />
           <ComparisonCard
             topData={chartData.topThroughput}
@@ -780,6 +811,8 @@ export function AppInsights({ api }: AppInsightsProps) {
             unit="bps"
             icon={Gauge}
             color="bg-gradient-to-br from-emerald-500 to-green-500"
+            widgetId="app-insights-throughput"
+            endpointRef="app_insights.top_apps"
           />
         </div>
       )}

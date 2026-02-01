@@ -18,6 +18,7 @@ import {
   Gauge
 } from 'lucide-react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadialBarChart, RadialBar } from 'recharts';
+import { SaveToWorkspace } from './SaveToWorkspace';
 
 interface ClientExperienceMetrics {
   reliability?: number;
@@ -174,7 +175,18 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
                 {serviceName && <span className="ml-2">• {serviceName}</span>}
               </CardDescription>
             </div>
-            <ExperienceIcon className={`h-16 w-16 ${experience.color}`} />
+            <div className="flex items-center gap-3">
+              <SaveToWorkspace
+                widgetId="client-experience-hero"
+                widgetType="experience_score"
+                title="Client Experience Score"
+                endpointRefs={['client_experience.metrics']}
+                sourcePage="client-experience"
+                catalogId="metric_experience_score"
+                size="md"
+              />
+              <ExperienceIcon className={`h-16 w-16 ${experience.color}`} />
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { 
+import {
   RefreshCw,
   AlertTriangle,
   CheckCircle,
@@ -19,6 +19,7 @@ import {
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { SaveToWorkspace } from './SaveToWorkspace';
 
 interface DashboardData {
   networkHealth: {
@@ -503,9 +504,19 @@ export function Dashboard() {
               <Activity className="h-5 w-5 text-primary" />
               <CardTitle>Network Health</CardTitle>
             </div>
-            <Badge variant={apHealthPercent >= 90 ? 'default' : apHealthPercent >= 70 ? 'secondary' : 'destructive'}>
-              {apHealthPercent.toFixed(0)}% Healthy
-            </Badge>
+            <div className="flex items-center gap-2">
+              <SaveToWorkspace
+                widgetId="dashboard-network-health"
+                widgetType="metric_card"
+                title="Network Health"
+                endpointRefs={['access_points.summary']}
+                sourcePage="dashboard"
+                catalogId="metric_network_health"
+              />
+              <Badge variant={apHealthPercent >= 90 ? 'default' : apHealthPercent >= 70 ? 'secondary' : 'destructive'}>
+                {apHealthPercent.toFixed(0)}% Healthy
+              </Badge>
+            </div>
           </div>
           <CardDescription>Real-time network infrastructure status</CardDescription>
         </CardHeader>
