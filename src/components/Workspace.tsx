@@ -5,30 +5,20 @@ import {
   Activity,
   AppWindow,
   Lightbulb,
-  Clock,
-  MapPin,
   X,
   Trash2,
   Plus,
   LayoutGrid,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Card, CardContent, CardHeader, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from './ui/select';
 import { cn } from './ui/utils';
 import { WorkspaceWidget } from './WorkspaceWidget';
 import {
   useWorkspace,
   getWidgetsByTopic,
   TOPIC_METADATA,
-  TIME_RANGE_OPTIONS,
   PROMPT_SUGGESTIONS,
   type WorkspaceTopic,
   type WidgetCatalogItem,
@@ -78,24 +68,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
     clearWorkspace,
     emitSignals,
   } = useWorkspace();
-
-  const [sites, setSites] = useState<Array<{ id: string; name: string }>>([]);
-  const [isLoadingSites, setIsLoadingSites] = useState(true);
-
-  // Fetch sites on mount
-  useEffect(() => {
-    async function loadSites() {
-      try {
-        const siteList = await api.getSites();
-        setSites(siteList.map((s: any) => ({ id: s.id, name: s.name || s.siteName || s.id })));
-      } catch (error) {
-        console.warn('[Workspace] Failed to load sites:', error);
-      } finally {
-        setIsLoadingSites(false);
-      }
-    }
-    loadSites();
-  }, [api]);
 
   /**
    * Handle adding a widget from catalog
@@ -158,48 +130,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
   if (!hasWidgets) {
     return (
       <div className="min-h-[calc(100vh-8rem)] flex flex-col">
-        {/* Compact Context Selectors at top */}
-        <div className="flex items-center justify-center gap-4 mb-8 pt-4">
-          <div className="flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={context.siteId || 'all'}
-              onValueChange={(value) => updateContext({ siteId: value === 'all' ? null : value })}
-              disabled={isLoadingSites}
-            >
-              <SelectTrigger className="w-[180px] h-9">
-                <SelectValue placeholder="Select site" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites</SelectItem>
-                {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <Select
-              value={context.timeRange}
-              onValueChange={(value) => updateContext({ timeRange: value })}
-            >
-              <SelectTrigger className="w-[140px] h-9">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TIME_RANGE_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
         {/* Centered content */}
         <div className="flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto px-4">
           {/* Title */}
@@ -330,51 +260,6 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
             <Trash2 className="h-4 w-4 mr-2" />
             Clear All
           </Button>
-        </div>
-      </div>
-
-      {/* Context Selectors */}
-      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-        {/* Site Selector */}
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <Select
-            value={context.siteId || 'all'}
-            onValueChange={(value) => updateContext({ siteId: value === 'all' ? null : value })}
-            disabled={isLoadingSites}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Select site" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sites</SelectItem>
-              {sites.map((site) => (
-                <SelectItem key={site.id} value={site.id}>
-                  {site.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Time Range Selector */}
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <Select
-            value={context.timeRange}
-            onValueChange={(value) => updateContext({ timeRange: value })}
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIME_RANGE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
