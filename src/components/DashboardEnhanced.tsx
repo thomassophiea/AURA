@@ -1332,6 +1332,61 @@ function DashboardEnhancedComponent() {
       {/* UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line */}
       {selectorTab === 'ai-insights' && (
         <div className="space-y-4">
+          {/* Quick Stats Overview - Always at top */}
+          <div className="grid gap-4 md:grid-cols-4">
+            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => { setSelectorTab('access-point'); }}>
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Access Points</p>
+                    <p className="text-2xl font-bold">{apStats.total}</p>
+                    <p className="text-xs text-green-600">{apStats.online} online</p>
+                  </div>
+                  <Wifi className="h-8 w-8 text-blue-500/50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => { setSelectorTab('client'); }}>
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Connected Clients</p>
+                    <p className="text-2xl font-bold">{clientStats.total}</p>
+                    <p className="text-xs text-green-600">{clientStats.authenticated} authenticated</p>
+                  </div>
+                  <Users className="h-8 w-8 text-violet-500/50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Network Throughput</p>
+                    <p className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</p>
+                    <p className="text-xs text-muted-foreground">↑{formatBps(clientStats.throughputUpload)} ↓{formatBps(clientStats.throughputDownload)}</p>
+                  </div>
+                  <Activity className="h-8 w-8 text-emerald-500/50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+              <CardContent className="pt-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Active Alerts</p>
+                    <p className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</p>
+                    <p className="text-xs">
+                      <span className="text-red-600">{alertCounts.critical} critical</span>
+                      {alertCounts.warning > 0 && <span className="text-amber-600 ml-2">{alertCounts.warning} warning</span>}
+                    </p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
           {/* Contextual Insights Dashboard - Organized by Network Health, Capacity, Anomaly, Predictive */}
           <ContextualInsightsDashboard 
             metrics={{
@@ -1388,61 +1443,6 @@ function DashboardEnhancedComponent() {
             >
               Devices
             </button>
-          </div>
-
-          {/* Quick Stats Overview */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => { setSelectorTab('access-point'); }}>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Access Points</p>
-                    <p className="text-2xl font-bold">{apStats.total}</p>
-                    <p className="text-xs text-green-600">{apStats.online} online</p>
-                  </div>
-                  <Wifi className="h-8 w-8 text-blue-500/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:shadow-lg transition-shadow cursor-pointer" onClick={() => { setSelectorTab('client'); }}>
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Connected Clients</p>
-                    <p className="text-2xl font-bold">{clientStats.total}</p>
-                    <p className="text-xs text-green-600">{clientStats.authenticated} authenticated</p>
-                  </div>
-                  <Users className="h-8 w-8 text-violet-500/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/20">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Network Throughput</p>
-                    <p className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</p>
-                    <p className="text-xs text-muted-foreground">↑{formatBps(clientStats.throughputUpload)} ↓{formatBps(clientStats.throughputDownload)}</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-emerald-500/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Alerts</p>
-                    <p className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</p>
-                    <p className="text-xs">
-                      <span className="text-red-600">{alertCounts.critical} critical</span>
-                      {alertCounts.warning > 0 && <span className="text-amber-600 ml-2">{alertCounts.warning} warning</span>}
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Client/Device Health Stacked Bar Chart */}
