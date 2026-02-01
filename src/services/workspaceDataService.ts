@@ -3,10 +3,16 @@
  *
  * Integrates workspace widgets with existing dashboard API endpoints.
  * No mock data - all data comes from production endpoints.
+ * Implements ClientIdentityDisplayPolicy for human-readable client display.
  */
 
 import type { WidgetCatalogItem, WorkspaceContext, WorkspaceWidget } from '@/hooks/useWorkspace';
 import { WIDGET_CATALOG } from '@/hooks/useWorkspace';
+import {
+  resolveClientIdentity,
+  getExperienceStateLabel,
+  type ClientIdentity,
+} from '@/lib/clientIdentity';
 
 /**
  * Normalized data response from widget data fetching
@@ -184,6 +190,7 @@ async function fetchAccessPointsTimeseries(
 
 /**
  * Fetch clients list
+ * Implements ClientIdentityDisplayPolicy - human-readable identity is prioritized
  */
 async function fetchClientsList(
   api: any,
@@ -199,29 +206,53 @@ async function fetchClientsList(
     );
   }
 
-  // Transform to expected format
-  const transformedData = clients.map((client: any) => ({
-    client_id: client.macAddress,
-    mac: client.macAddress,
-    hostname: client.hostName || client.hostname || 'Unknown',
-    device_type: client.deviceType || 'Unknown',
-    os_type: client.osType || client.os || 'Unknown',
-    ap_id: client.apSerial,
-    ap_name: client.apName || client.apSerial,
-    site_id: client.siteId,
-    ssid: client.ssid || client.network,
-    band: client.band || '5GHz',
-    rssi_dbm: client.rssi || -70,
-    snr_db: client.snr || 25,
-    tx_rate_mbps: client.txRate || 0,
-    rx_rate_mbps: client.rxRate || 0,
-    retries_percent: client.retryRate || 0,
-    roam_count: client.roamCount || 0,
-    ip: client.ipAddress,
-    vlan: client.vlan,
-    throughput_bps: (client.rxBytes || 0) + (client.txBytes || 0),
-    rfqi_score: calculateClientRfqiScore(client),
-  }));
+  // Transform to expected format with identity resolution
+  // ClientIdentityDisplayPolicy: MAC is primary key, not primary label
+  const transformedData = clients.map((client: any) => {
+    // Resolve human-readable identity
+    const identity = resolveClientIdentity(client);
+    const rfqiScore = calculateClientRfqiScore(client);
+
+    return {
+      // Human-readable identity (PRIMARY - first column)
+      display_name: identity.displayName,
+      identity_source: identity.identitySource,
+
+      // Experience context (required to be visible)
+      rfqi_score: rfqiScore,
+      experience_state: getExperienceStateLabel(rfqiScore),
+
+      // Device classification
+      device_type: identity.deviceType || 'Unknown',
+      device_category: identity.deviceCategory,
+      manufacturer: identity.manufacturer,
+      os_type: identity.osType || 'Unknown',
+
+      // Network context
+      ap_name: identity.apName || client.apSerial,
+      ssid: identity.ssid || client.network,
+      site_name: identity.siteName,
+      band: client.band || '5GHz',
+
+      // RF metrics
+      rssi_dbm: client.rssi || -70,
+      snr_db: client.snr || 25,
+      retries_percent: client.retryRate || 0,
+      roam_count: client.roamCount || 0,
+      throughput_bps: (client.rxBytes || 0) + (client.txBytes || 0),
+
+      // Network metadata (MAC is secondary, not primary label)
+      mac_address: identity.macAddress,
+      ip_address: identity.ipAddress,
+      vlan: identity.vlan,
+
+      // Legacy fields for compatibility
+      client_id: client.macAddress,
+      hostname: identity.hostname,
+      ap_id: client.apSerial,
+      site_id: client.siteId,
+    };
+  });
 
   // Sort if specified
   if (catalogItem.dataBinding.sortField) {

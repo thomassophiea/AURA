@@ -266,7 +266,26 @@ const KPITileContent: React.FC<{ data: any }> = ({ data }) => {
 };
 
 /**
+ * Get experience state styling
+ */
+const getExperienceStyle = (state: string): string => {
+  switch (state?.toLowerCase()) {
+    case 'excellent':
+      return 'text-green-500';
+    case 'good':
+      return 'text-blue-500';
+    case 'fair':
+      return 'text-amber-500';
+    case 'poor':
+      return 'text-red-500';
+    default:
+      return 'text-muted-foreground';
+  }
+};
+
+/**
  * Table content for TopN widgets
+ * Implements ClientIdentityDisplayPolicy for human-readable display
  */
 const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: boolean }> = ({
   data,
@@ -309,6 +328,23 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
   };
 
   const formatHeader = (column: string): string => {
+    // ClientIdentityDisplayPolicy: Friendly column names
+    const headerMappings: Record<string, string> = {
+      'display_name': 'Client',
+      'experience_state': 'Experience',
+      'device_type': 'Device',
+      'device_category': 'Category',
+      'ap_name': 'Access Point',
+      'site_name': 'Site',
+      'mac_address': 'MAC',
+      'ip_address': 'IP',
+      'rfqi_score': 'RFQI',
+    };
+
+    if (headerMappings[column]) {
+      return headerMappings[column];
+    }
+
     return column
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase())
@@ -316,6 +352,37 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
       .replace(/Db/g, 'dB')
       .replace(/Bps/g, 'bps')
       .replace(/Rfqi/g, 'RFQI');
+  };
+
+  // Render cell with special handling for identity and experience columns
+  const renderCell = (value: any, column: string, row: any): React.ReactNode => {
+    // ClientIdentityDisplayPolicy: display_name is primary, styled prominently
+    if (column === 'display_name') {
+      return (
+        <span className="font-medium" title={row.mac_address || row.client_id}>
+          {value || 'Unknown Device'}
+        </span>
+      );
+    }
+
+    // Experience state gets color coding
+    if (column === 'experience_state') {
+      return (
+        <span className={cn('font-medium', getExperienceStyle(value))}>
+          {value || '-'}
+        </span>
+      );
+    }
+
+    // RFQI score gets color based on value
+    if (column === 'rfqi_score' && typeof value === 'number') {
+      const color = value >= 90 ? 'text-green-500' :
+                   value >= 75 ? 'text-blue-500' :
+                   value >= 60 ? 'text-amber-500' : 'text-red-500';
+      return <span className={cn('font-medium', color)}>{value.toFixed(0)}</span>;
+    }
+
+    return formatValue(value, column);
   };
 
   return (
@@ -332,10 +399,10 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
         </TableHeader>
         <TableBody>
           {displayData.map((row, index) => (
-            <TableRow key={index}>
+            <TableRow key={row.client_id || row.mac_address || index}>
               {visibleColumns.map((col) => (
                 <TableCell key={col} className="text-xs py-2">
-                  {formatValue(row[col], col)}
+                  {renderCell(row[col], col, row)}
                 </TableCell>
               ))}
             </TableRow>

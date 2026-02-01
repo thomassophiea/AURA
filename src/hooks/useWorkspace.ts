@@ -369,7 +369,8 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 50,
     },
-    columns: ['hostname', 'mac', 'ap_name', 'ssid', 'band', 'rssi_dbm', 'snr_db', 'retries_percent', 'roam_count', 'rfqi_score'],
+    // ClientIdentityDisplayPolicy: display_name first, experience visible, MAC secondary
+    columns: ['display_name', 'experience_state', 'rfqi_score', 'device_type', 'ap_name', 'ssid', 'rssi_dbm', 'snr_db', 'retries_percent'],
   },
 
   // Access Points widgets
@@ -445,7 +446,8 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['hostname', 'mac', 'device_type', 'ap_name', 'ssid', 'throughput_bps', 'rssi_dbm'],
+    // ClientIdentityDisplayPolicy: display_name first, experience visible
+    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'throughput_bps', 'rssi_dbm'],
   },
   {
     id: 'table_roaming_clients',
@@ -459,7 +461,8 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['hostname', 'mac', 'ap_name', 'ssid', 'roam_count', 'rssi_dbm', 'throughput_bps'],
+    // ClientIdentityDisplayPolicy: display_name first, experience visible
+    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'roam_count', 'rssi_dbm'],
   },
 
   // App Insights widgets

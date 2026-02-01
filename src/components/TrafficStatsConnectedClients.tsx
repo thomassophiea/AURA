@@ -17,6 +17,7 @@ import { apiService, Station } from '../services/api';
 import { trafficService } from '../services/traffic';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { isRandomizedMac, getMacAddressInfo } from '../services/macAddressUtils';
+import { resolveClientIdentity, type ClientIdentity } from '../lib/clientIdentity';
 import { toast } from 'sonner';
 
 interface ConnectedClientsProps {
@@ -917,32 +918,59 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         </TableCell>
                         
                         <TableCell className="p-1">
-                          <div>
-                            <div className="flex items-center gap-1 mb-0.5">
-                              <span className="font-medium text-[12px] leading-none">
-                                {station.hostName || station.macAddress}
-                              </span>
-                              {isRandomizedMac(station.macAddress) && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Shuffle className="h-3 w-3 text-purple-500 flex-shrink-0" />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="font-medium">Randomized MAC Address</p>
-                                    <p className="text-xs">Privacy feature - prevents device tracking</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                            </div>
-                            {station.hostName && (
-                              <div className="font-mono text-[10px] text-muted-foreground leading-none mb-0.5">
-                                {station.macAddress}
+                          {/* ClientIdentityDisplayPolicy: Human-readable identity first, MAC secondary */}
+                          {(() => {
+                            const identity = resolveClientIdentity(station);
+                            return (
+                              <div>
+                                <div className="flex items-center gap-1 mb-0.5">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="font-medium text-[12px] leading-none cursor-help">
+                                        {identity.displayName}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <div className="space-y-1">
+                                        <p className="font-medium">{identity.displayName}</p>
+                                        {identity.deviceType && <p className="text-xs">{identity.deviceType}</p>}
+                                        {identity.manufacturer && <p className="text-xs text-muted-foreground">{identity.manufacturer}</p>}
+                                        <p className="font-mono text-xs">{identity.macAddress}</p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  {isRandomizedMac(station.macAddress) && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Shuffle className="h-3 w-3 text-purple-500 flex-shrink-0" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="font-medium">Randomized MAC Address</p>
+                                        <p className="text-xs">Privacy feature - prevents device tracking</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                  {!identity.isResolved && (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Info className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        <p className="text-xs">Identity not resolved - showing derived label</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </div>
+                                {/* MAC address shown as secondary info, not primary */}
+                                <div className="font-mono text-[10px] text-muted-foreground leading-none mb-0.5">
+                                  {identity.macAddress}
+                                </div>
+                                <div className="font-mono text-[10px] text-muted-foreground leading-none">
+                                  {identity.ipAddress || 'No IP'}
+                                </div>
                               </div>
-                            )}
-                            <div className="font-mono text-[10px] text-muted-foreground leading-none">
-                              {station.ipAddress || 'No IP'}
-                            </div>
-                          </div>
+                            );
+                          })()}
                         </TableCell>
                         
                         <TableCell className="p-0.5 w-16">
