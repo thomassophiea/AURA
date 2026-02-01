@@ -325,16 +325,19 @@ export function useWorkspace() {
 }
 
 /**
- * Widget Catalog - All available wireless widgets
+ * Widget Catalog - Comprehensive wireless widgets with all available data fields
+ * Organized by topic: ClientExperience, AccessPoints, Clients, AppInsights, ContextualInsights
  */
 export const WIDGET_CATALOG: WidgetCatalogItem[] = [
-  // Client Experience widgets
+  // ========================================
+  // CLIENT EXPERIENCE WIDGETS
+  // ========================================
   {
     id: 'kpi_rfqi_overview',
     topic: 'ClientExperience',
     type: 'kpi_tile_group',
     title: 'Client Experience Overview',
-    description: 'RFQI score and component breakdown for site or global scope',
+    description: 'RFQI score with component breakdown (RSSI, SNR, retries, latency)',
     dataBinding: {
       endpointRef: 'client_experience.rfqi',
       metrics: ['score', 'score_components'],
@@ -346,7 +349,7 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     topic: 'ClientExperience',
     type: 'timeseries_with_brush',
     title: 'RFQI Over Time',
-    description: 'Client experience score over time with time brush selection',
+    description: 'Client experience score trending with time brush selection',
     dataBinding: {
       endpointRef: 'client_experience.rfqi',
       metrics: ['score'],
@@ -362,38 +365,79 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     topic: 'ClientExperience',
     type: 'topn_table',
     title: 'Clients With Worst Experience',
-    description: 'Top clients with lowest RFQI scores',
+    description: 'Clients with lowest RFQI scores showing RF metrics',
     dataBinding: {
       endpointRef: 'clients.list',
       sortField: 'rfqi_score',
       sortDirection: 'asc',
       limit: 50,
     },
-    // ClientIdentityDisplayPolicy: display_name first, experience visible, MAC secondary
     columns: ['display_name', 'experience_state', 'rfqi_score', 'device_type', 'ap_name', 'ssid', 'rssi_dbm', 'snr_db', 'retries_percent'],
   },
+  {
+    id: 'kpi_experience_distribution',
+    topic: 'ClientExperience',
+    type: 'kpi_tile_group',
+    title: 'Experience Distribution',
+    description: 'Count of clients in Good/Fair/Poor experience states',
+    dataBinding: {
+      endpointRef: 'client_experience.distribution',
+      metrics: ['good_count', 'fair_count', 'poor_count', 'total_clients'],
+    },
+  },
+  {
+    id: 'timeseries_rf_quality_components',
+    topic: 'ClientExperience',
+    type: 'timeseries_multi_metric',
+    title: 'RF Quality Components Over Time',
+    description: 'RSSI, SNR, channel utilization, noise floor trends',
+    dataBinding: {
+      endpointRef: 'client_experience.rf_components',
+      metrics: ['avg_rssi', 'avg_snr', 'channel_utilization', 'noise_floor', 'retry_rate'],
+    },
+    interaction: {
+      brushEnabled: true,
+      linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'table_experience_by_ssid',
+    topic: 'ClientExperience',
+    type: 'topn_table',
+    title: 'Experience By SSID',
+    description: 'Client experience scores grouped by wireless network',
+    dataBinding: {
+      endpointRef: 'client_experience.by_ssid',
+      sortField: 'avg_rfqi',
+      sortDirection: 'asc',
+      limit: 20,
+    },
+    columns: ['ssid', 'client_count', 'avg_rfqi', 'avg_rssi', 'avg_snr', 'avg_retries'],
+  },
 
-  // Access Points widgets
+  // ========================================
+  // ACCESS POINTS WIDGETS
+  // ========================================
   {
     id: 'table_aps_degrading_experience',
     topic: 'AccessPoints',
     type: 'topn_table',
-    title: 'Access Points With Highest Client Pain',
-    description: 'APs causing the most client experience degradation',
+    title: 'APs With Highest Client Pain',
+    description: 'Access points causing client experience degradation',
     dataBinding: {
       endpointRef: 'access_points.list',
       sortField: 'rfqi_score',
       sortDirection: 'asc',
       limit: 50,
     },
-    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'channel_utilization_percent', 'noise_floor_dbm', 'retries_percent', 'throughput_bps', 'rfqi_score'],
+    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'channel_utilization_percent', 'noise_floor_dbm', 'retries_percent', 'rfqi_score'],
   },
   {
     id: 'timeseries_ap_radio_health',
     topic: 'AccessPoints',
     type: 'timeseries_multi_metric',
     title: 'AP Radio Health Over Time',
-    description: 'Channel utilization, noise, retries, throughput over time',
+    description: 'Channel utilization, noise, retries, throughput trends',
     dataBinding: {
       endpointRef: 'access_points.timeseries',
       metrics: ['channel_utilization_percent', 'noise_floor_dbm', 'retries_percent', 'throughput_bps', 'client_count'],
@@ -407,27 +451,139 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     id: 'table_aps_by_client_count',
     topic: 'AccessPoints',
     type: 'topn_table',
-    title: 'Access Points By Client Count',
-    description: 'APs ranked by number of connected clients',
+    title: 'APs By Client Count',
+    description: 'Access points ranked by connected clients',
     dataBinding: {
       endpointRef: 'access_points.list',
       sortField: 'client_count',
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'throughput_bps'],
+    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'channel_utilization_percent', 'throughput_bps'],
+  },
+  {
+    id: 'table_aps_by_throughput',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'APs By Throughput',
+    description: 'Access points ranked by data throughput',
+    dataBinding: {
+      endpointRef: 'access_points.list',
+      sortField: 'throughput_bps',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['ap_name', 'site_name', 'model', 'client_count', 'throughput_bps', 'channel', 'tx_power_dbm'],
+  },
+  {
+    id: 'table_aps_high_channel_util',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'APs With High Channel Utilization',
+    description: 'Access points with congested channels',
+    dataBinding: {
+      endpointRef: 'access_points.list',
+      sortField: 'channel_utilization_percent',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['ap_name', 'site_name', 'channel', 'band', 'channel_utilization_percent', 'noise_floor_dbm', 'client_count', 'retries_percent'],
+  },
+  {
+    id: 'table_aps_high_noise',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'APs With High Noise Floor',
+    description: 'Access points experiencing RF interference',
+    dataBinding: {
+      endpointRef: 'access_points.list',
+      sortField: 'noise_floor_dbm',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['ap_name', 'site_name', 'channel', 'band', 'noise_floor_dbm', 'channel_utilization_percent', 'retries_percent'],
+  },
+  {
+    id: 'table_aps_high_retries',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'APs With High Retry Rates',
+    description: 'Access points with frequent retransmissions',
+    dataBinding: {
+      endpointRef: 'access_points.list',
+      sortField: 'retries_percent',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['ap_name', 'site_name', 'retries_percent', 'channel_utilization_percent', 'noise_floor_dbm', 'client_count', 'rssi_avg'],
+  },
+  {
+    id: 'kpi_ap_status_summary',
+    topic: 'AccessPoints',
+    type: 'kpi_tile_group',
+    title: 'AP Status Summary',
+    description: 'Count of online, offline, and degraded APs',
+    dataBinding: {
+      endpointRef: 'access_points.status_summary',
+      metrics: ['online_count', 'offline_count', 'degraded_count', 'total_count'],
+    },
+  },
+  {
+    id: 'table_aps_offline',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'Offline Access Points',
+    description: 'Access points currently not reachable',
+    dataBinding: {
+      endpointRef: 'access_points.list',
+      sortField: 'last_seen',
+      sortDirection: 'desc',
+      limit: 50,
+    },
+    columns: ['ap_name', 'site_name', 'model', 'serial', 'status', 'last_seen', 'uptime_seconds'],
+  },
+  {
+    id: 'timeseries_channel_utilization',
+    topic: 'AccessPoints',
+    type: 'timeseries_with_brush',
+    title: 'Channel Utilization Over Time',
+    description: '2.4GHz and 5GHz channel utilization trends',
+    dataBinding: {
+      endpointRef: 'access_points.channel_util_timeseries',
+      metrics: ['channel_util_2_4ghz', 'channel_util_5ghz'],
+    },
+    interaction: {
+      brushEnabled: true,
+      linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'table_aps_by_model',
+    topic: 'AccessPoints',
+    type: 'topn_table',
+    title: 'APs By Model',
+    description: 'Access point inventory grouped by model',
+    dataBinding: {
+      endpointRef: 'access_points.by_model',
+      sortField: 'count',
+      sortDirection: 'desc',
+      limit: 20,
+    },
+    columns: ['model', 'count', 'online_count', 'avg_clients', 'avg_throughput'],
   },
 
-  // Clients widgets
+  // ========================================
+  // CLIENTS WIDGETS
+  // ========================================
   {
     id: 'timeseries_client_link_quality',
     topic: 'Clients',
     type: 'timeseries_multi_metric',
     title: 'Client Link Quality Over Time',
-    description: 'RSSI, SNR, retries, latency, packet loss over time',
+    description: 'RSSI, SNR, retries, throughput trends for selected client',
     dataBinding: {
       endpointRef: 'clients.timeseries',
-      metrics: ['rssi_dbm', 'snr_db', 'retries_percent', 'latency_ms', 'packet_loss_percent', 'throughput_bps'],
+      metrics: ['rssi_dbm', 'snr_db', 'retries_percent', 'throughput_bps'],
     },
     interaction: {
       brushEnabled: true,
@@ -439,38 +595,175 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     topic: 'Clients',
     type: 'topn_table',
     title: 'Top Clients By Bandwidth',
-    description: 'Clients consuming the most bandwidth',
+    description: 'Clients consuming the most network bandwidth',
     dataBinding: {
       endpointRef: 'clients.list',
       sortField: 'throughput_bps',
       sortDirection: 'desc',
       limit: 25,
     },
-    // ClientIdentityDisplayPolicy: display_name first, experience visible
-    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'throughput_bps', 'rssi_dbm'],
+    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'ssid', 'throughput_bps', 'rx_bytes', 'tx_bytes'],
   },
   {
     id: 'table_roaming_clients',
     topic: 'Clients',
     type: 'topn_table',
-    title: 'Roaming Clients',
-    description: 'Clients with frequent roaming events',
+    title: 'Frequent Roaming Clients',
+    description: 'Clients with high roaming event counts',
     dataBinding: {
       endpointRef: 'clients.list',
       sortField: 'roam_count',
       sortDirection: 'desc',
       limit: 25,
     },
-    // ClientIdentityDisplayPolicy: display_name first, experience visible
-    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'roam_count', 'rssi_dbm'],
+    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'roam_count', 'rssi_dbm', 'snr_db'],
+  },
+  {
+    id: 'table_clients_low_rssi',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients With Low Signal',
+    description: 'Clients with weak RSSI signal strength',
+    dataBinding: {
+      endpointRef: 'clients.list',
+      sortField: 'rssi_dbm',
+      sortDirection: 'asc',
+      limit: 25,
+    },
+    columns: ['display_name', 'experience_state', 'rssi_dbm', 'snr_db', 'device_type', 'ap_name', 'band'],
+  },
+  {
+    id: 'table_clients_low_snr',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients With Low SNR',
+    description: 'Clients with poor signal-to-noise ratio',
+    dataBinding: {
+      endpointRef: 'clients.list',
+      sortField: 'snr_db',
+      sortDirection: 'asc',
+      limit: 25,
+    },
+    columns: ['display_name', 'experience_state', 'snr_db', 'rssi_dbm', 'device_type', 'ap_name', 'band'],
+  },
+  {
+    id: 'table_clients_high_retries',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients With High Retries',
+    description: 'Clients experiencing frequent retransmissions',
+    dataBinding: {
+      endpointRef: 'clients.list',
+      sortField: 'retries_percent',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['display_name', 'experience_state', 'retries_percent', 'rssi_dbm', 'snr_db', 'device_type', 'ap_name'],
+  },
+  {
+    id: 'table_clients_by_device_type',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients By Device Type',
+    description: 'Client inventory grouped by device type',
+    dataBinding: {
+      endpointRef: 'clients.by_device_type',
+      sortField: 'count',
+      sortDirection: 'desc',
+      limit: 20,
+    },
+    columns: ['device_type', 'count', 'avg_rssi', 'avg_snr', 'avg_throughput'],
+  },
+  {
+    id: 'table_clients_by_manufacturer',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients By Manufacturer',
+    description: 'Client inventory grouped by device manufacturer (OUI)',
+    dataBinding: {
+      endpointRef: 'clients.by_manufacturer',
+      sortField: 'count',
+      sortDirection: 'desc',
+      limit: 20,
+    },
+    columns: ['manufacturer', 'count', 'avg_rssi', 'avg_experience'],
+  },
+  {
+    id: 'table_clients_by_band',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients By Band',
+    description: 'Client distribution across 2.4GHz, 5GHz, 6GHz bands',
+    dataBinding: {
+      endpointRef: 'clients.by_band',
+      sortField: 'count',
+      sortDirection: 'desc',
+    },
+    columns: ['band', 'count', 'avg_rssi', 'avg_throughput', 'avg_experience'],
+  },
+  {
+    id: 'table_clients_by_ssid',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'Clients By SSID',
+    description: 'Client count per wireless network',
+    dataBinding: {
+      endpointRef: 'clients.by_ssid',
+      sortField: 'count',
+      sortDirection: 'desc',
+      limit: 20,
+    },
+    columns: ['ssid', 'count', 'avg_rssi', 'avg_throughput', 'avg_experience'],
+  },
+  {
+    id: 'kpi_client_count_summary',
+    topic: 'Clients',
+    type: 'kpi_tile_group',
+    title: 'Client Count Summary',
+    description: 'Total, unique, and active client counts',
+    dataBinding: {
+      endpointRef: 'clients.count_summary',
+      metrics: ['total_count', 'unique_count', 'active_count', 'idle_count'],
+    },
+  },
+  {
+    id: 'timeseries_client_count',
+    topic: 'Clients',
+    type: 'timeseries_with_brush',
+    title: 'Client Count Over Time',
+    description: 'Connected client count trending',
+    dataBinding: {
+      endpointRef: 'clients.count_timeseries',
+      metrics: ['client_count'],
+    },
+    interaction: {
+      brushEnabled: true,
+      linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'table_clients_all',
+    topic: 'Clients',
+    type: 'topn_table',
+    title: 'All Connected Clients',
+    description: 'Complete list of currently connected clients',
+    dataBinding: {
+      endpointRef: 'clients.list',
+      sortField: 'display_name',
+      sortDirection: 'asc',
+      limit: 100,
+    },
+    columns: ['display_name', 'experience_state', 'device_type', 'manufacturer', 'ap_name', 'ssid', 'band', 'rssi_dbm', 'snr_db', 'throughput_bps', 'ip_address', 'mac_address'],
   },
 
-  // App Insights widgets
+  // ========================================
+  // APP INSIGHTS WIDGETS
+  // ========================================
   {
     id: 'app_insights_top_apps_impact',
     topic: 'AppInsights',
     type: 'topn_table',
-    title: 'Top Applications By Impact',
+    title: 'Top Apps By Client Impact',
     description: 'Applications impacting the most clients',
     dataBinding: {
       endpointRef: 'app_insights.top_apps',
@@ -478,14 +771,14 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['app_name', 'category', 'clients_impacted', 'latency_ms', 'packet_loss_percent', 'jitter_ms', 'bytes'],
+    columns: ['app_name', 'category', 'clients_impacted', 'bytes', 'latency_ms', 'packet_loss_percent'],
   },
   {
     id: 'timeseries_app_performance',
     topic: 'AppInsights',
     type: 'timeseries_multi_metric',
-    title: 'Application Performance Over Time',
-    description: 'Application latency, packet loss, jitter over time',
+    title: 'App Performance Over Time',
+    description: 'Application latency, packet loss, jitter trends',
     dataBinding: {
       endpointRef: 'app_insights.app_timeseries',
       metrics: ['latency_ms', 'packet_loss_percent', 'jitter_ms', 'bytes'],
@@ -499,7 +792,7 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     id: 'app_insights_by_throughput',
     topic: 'AppInsights',
     type: 'topn_table',
-    title: 'Top Applications By Throughput',
+    title: 'Top Apps By Throughput',
     description: 'Applications by bandwidth consumption',
     dataBinding: {
       endpointRef: 'app_insights.top_apps',
@@ -507,22 +800,148 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['app_name', 'category', 'bytes', 'clients_impacted', 'latency_ms'],
+    columns: ['app_name', 'category', 'bytes', 'flows', 'clients_impacted'],
+  },
+  {
+    id: 'app_insights_by_latency',
+    topic: 'AppInsights',
+    type: 'topn_table',
+    title: 'Apps With Highest Latency',
+    description: 'Applications experiencing highest latency',
+    dataBinding: {
+      endpointRef: 'app_insights.top_apps',
+      sortField: 'latency_ms',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['app_name', 'category', 'latency_ms', 'jitter_ms', 'packet_loss_percent', 'clients_impacted'],
+  },
+  {
+    id: 'app_insights_by_packet_loss',
+    topic: 'AppInsights',
+    type: 'topn_table',
+    title: 'Apps With Packet Loss',
+    description: 'Applications experiencing packet loss',
+    dataBinding: {
+      endpointRef: 'app_insights.top_apps',
+      sortField: 'packet_loss_percent',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['app_name', 'category', 'packet_loss_percent', 'latency_ms', 'bytes', 'clients_impacted'],
+  },
+  {
+    id: 'app_insights_by_category',
+    topic: 'AppInsights',
+    type: 'topn_table',
+    title: 'App Usage By Category',
+    description: 'Application traffic grouped by category',
+    dataBinding: {
+      endpointRef: 'app_insights.by_category',
+      sortField: 'bytes',
+      sortDirection: 'desc',
+      limit: 15,
+    },
+    columns: ['category', 'app_count', 'bytes', 'clients_impacted', 'avg_latency_ms'],
+  },
+  {
+    id: 'kpi_app_summary',
+    topic: 'AppInsights',
+    type: 'kpi_tile_group',
+    title: 'Application Summary',
+    description: 'Total apps, flows, and aggregate bandwidth',
+    dataBinding: {
+      endpointRef: 'app_insights.summary',
+      metrics: ['app_count', 'total_flows', 'total_bytes', 'avg_latency_ms'],
+    },
   },
 
-  // Contextual Insights widgets
+  // ========================================
+  // CONTEXTUAL INSIGHTS WIDGETS
+  // ========================================
   {
     id: 'insights_contextual_timeline',
     topic: 'ContextualInsights',
     type: 'timeline_feed',
-    title: 'Contextual Insights Timeline',
-    description: 'Insights and anomalies tied to time and scope',
+    title: 'Insights Timeline',
+    description: 'Network insights and anomalies over time',
     dataBinding: {
       endpointRef: 'contextual_insights.insights_feed',
     },
     interaction: {
       brushEnabled: false,
       linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'insights_roaming_events',
+    topic: 'ContextualInsights',
+    type: 'timeline_feed',
+    title: 'Roaming Events',
+    description: 'Client roaming activity and AP transitions',
+    dataBinding: {
+      endpointRef: 'contextual_insights.roaming_events',
+    },
+    interaction: {
+      linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'insights_association_events',
+    topic: 'ContextualInsights',
+    type: 'timeline_feed',
+    title: 'Association Events',
+    description: 'Client association and disassociation activity',
+    dataBinding: {
+      endpointRef: 'contextual_insights.association_events',
+    },
+  },
+  {
+    id: 'insights_rf_events',
+    topic: 'ContextualInsights',
+    type: 'timeline_feed',
+    title: 'RF Change Events',
+    description: 'Channel changes and power adjustments',
+    dataBinding: {
+      endpointRef: 'contextual_insights.rf_events',
+    },
+  },
+  {
+    id: 'insights_failed_associations',
+    topic: 'ContextualInsights',
+    type: 'topn_table',
+    title: 'Failed Associations',
+    description: 'Clients failing to connect to the network',
+    dataBinding: {
+      endpointRef: 'contextual_insights.failed_associations',
+      sortField: 'failure_count',
+      sortDirection: 'desc',
+      limit: 25,
+    },
+    columns: ['display_name', 'mac_address', 'failure_count', 'last_failure_reason', 'target_ap', 'target_ssid'],
+  },
+  {
+    id: 'insights_anomalies',
+    topic: 'ContextualInsights',
+    type: 'timeline_feed',
+    title: 'Network Anomalies',
+    description: 'Detected anomalies in RF and performance metrics',
+    dataBinding: {
+      endpointRef: 'contextual_insights.anomalies',
+    },
+    interaction: {
+      linkTargets: 'all_widgets',
+    },
+  },
+  {
+    id: 'kpi_insights_summary',
+    topic: 'ContextualInsights',
+    type: 'kpi_tile_group',
+    title: 'Insights Summary',
+    description: 'Count of critical, warning, and info insights',
+    dataBinding: {
+      endpointRef: 'contextual_insights.summary',
+      metrics: ['critical_count', 'warning_count', 'info_count', 'total_count'],
     },
   },
 ];
@@ -535,32 +954,43 @@ export function getWidgetsByTopic(topic: WorkspaceTopic): WidgetCatalogItem[] {
 }
 
 /**
- * Prompt suggestions organized by topic
+ * Prompt suggestions organized by topic - expanded for comprehensive widget catalog
  */
 export const PROMPT_SUGGESTIONS: Record<WorkspaceTopic, string[]> = {
   AccessPoints: [
-    'Show access points with the lowest client experience score',
-    'Show access points with rising channel utilization and rising retries',
-    'Show noise floor spikes by access point over the last 24 hours',
-    'Show access points with the most roaming clients',
+    'Which APs have the worst client experience?',
+    'Show APs with high channel utilization',
+    'Which APs have high noise floor or interference?',
+    'Show offline or degraded access points',
+    'APs with the most connected clients',
   ],
   Clients: [
-    'Show clients with the worst experience in the last 1 hour',
-    'Show clients that are roaming frequently and losing throughput',
-    'Show clients with low RSSI and high retries',
+    'Clients with the worst signal strength',
+    'Which clients are roaming frequently?',
+    'Show clients consuming the most bandwidth',
+    'Clients grouped by device type or manufacturer',
+    'Show client distribution by band (2.4/5/6 GHz)',
   ],
   ClientExperience: [
-    'Show RFQI over time and correlate with contextual insights',
-    'Show the worst client experience and the access points involved',
-    'Show the top drivers of poor RFQI in this site',
+    'Show overall RFQI score and components',
+    'Clients with the worst experience right now',
+    'Experience breakdown by SSID',
+    'RF quality trends over time',
+    'Distribution of good/fair/poor experience',
   ],
   AppInsights: [
-    'Show which applications correlate with high latency and poor experience',
-    'Show top apps impacting clients on this access point',
+    'Top applications by bandwidth usage',
+    'Which apps have the highest latency?',
+    'Apps experiencing packet loss',
+    'Application usage by category',
+    'Apps impacting the most clients',
   ],
   ContextualInsights: [
-    'Show anomalies impacting client experience in this site',
-    'Show wireless insights that overlap RFQI drops',
+    'Recent network anomalies',
+    'Client roaming activity',
+    'Failed association attempts',
+    'Channel and power change events',
+    'Critical insights and alerts',
   ],
 };
 

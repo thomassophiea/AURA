@@ -45,29 +45,71 @@ export async function fetchWidgetData(
 
   // Route to appropriate data fetcher based on endpoint reference
   switch (endpointRef) {
+    // Access Points endpoints
     case 'access_points.list':
       return fetchAccessPointsList(api, effectiveSiteId, catalogItem);
-
     case 'access_points.timeseries':
       return fetchAccessPointsTimeseries(api, effectiveSiteId, effectiveTimeRange, catalogItem);
+    case 'access_points.status_summary':
+      return fetchAccessPointsStatusSummary(api, effectiveSiteId);
+    case 'access_points.channel_util_timeseries':
+      return fetchAccessPointsChannelUtilTimeseries(api, effectiveSiteId, effectiveTimeRange);
+    case 'access_points.by_model':
+      return fetchAccessPointsByModel(api, effectiveSiteId);
 
+    // Clients endpoints
     case 'clients.list':
       return fetchClientsList(api, effectiveSiteId, catalogItem);
-
     case 'clients.timeseries':
       return fetchClientsTimeseries(api, effectiveSiteId, effectiveTimeRange, widget.localFilters?.clientId, catalogItem);
+    case 'clients.by_device_type':
+      return fetchClientsByDeviceType(api, effectiveSiteId);
+    case 'clients.by_manufacturer':
+      return fetchClientsByManufacturer(api, effectiveSiteId);
+    case 'clients.by_band':
+      return fetchClientsByBand(api, effectiveSiteId);
+    case 'clients.by_ssid':
+      return fetchClientsBySSID(api, effectiveSiteId);
+    case 'clients.count_summary':
+      return fetchClientsCountSummary(api, effectiveSiteId);
+    case 'clients.count_timeseries':
+      return fetchClientsCountTimeseries(api, effectiveSiteId, effectiveTimeRange);
 
-    case 'app_insights.top_apps':
-      return fetchAppInsightsTopApps(api, effectiveSiteId, effectiveTimeRange, catalogItem);
-
-    case 'app_insights.app_timeseries':
-      return fetchAppInsightsTimeseries(api, effectiveSiteId, effectiveTimeRange, catalogItem);
-
+    // Client Experience endpoints
     case 'client_experience.rfqi':
       return fetchClientExperienceRFQI(api, effectiveSiteId, effectiveTimeRange, catalogItem);
+    case 'client_experience.distribution':
+      return fetchClientExperienceDistribution(api, effectiveSiteId);
+    case 'client_experience.rf_components':
+      return fetchClientExperienceRFComponents(api, effectiveSiteId, effectiveTimeRange);
+    case 'client_experience.by_ssid':
+      return fetchClientExperienceBySSID(api, effectiveSiteId);
 
+    // App Insights endpoints
+    case 'app_insights.top_apps':
+      return fetchAppInsightsTopApps(api, effectiveSiteId, effectiveTimeRange, catalogItem);
+    case 'app_insights.app_timeseries':
+      return fetchAppInsightsTimeseries(api, effectiveSiteId, effectiveTimeRange, catalogItem);
+    case 'app_insights.by_category':
+      return fetchAppInsightsByCategory(api, effectiveSiteId, effectiveTimeRange);
+    case 'app_insights.summary':
+      return fetchAppInsightsSummary(api, effectiveSiteId, effectiveTimeRange);
+
+    // Contextual Insights endpoints
     case 'contextual_insights.insights_feed':
       return fetchContextualInsights(api, effectiveSiteId, effectiveTimeRange);
+    case 'contextual_insights.roaming_events':
+      return fetchRoamingEvents(api, effectiveSiteId, effectiveTimeRange);
+    case 'contextual_insights.association_events':
+      return fetchAssociationEvents(api, effectiveSiteId, effectiveTimeRange);
+    case 'contextual_insights.rf_events':
+      return fetchRFEvents(api, effectiveSiteId, effectiveTimeRange);
+    case 'contextual_insights.failed_associations':
+      return fetchFailedAssociations(api, effectiveSiteId, effectiveTimeRange, catalogItem);
+    case 'contextual_insights.anomalies':
+      return fetchAnomalies(api, effectiveSiteId, effectiveTimeRange);
+    case 'contextual_insights.summary':
+      return fetchInsightsSummary(api, effectiveSiteId, effectiveTimeRange);
 
     default:
       throw new Error(`Unknown endpoint reference: ${endpointRef}`);
@@ -664,3 +706,723 @@ function transformEventsToInsights(apEvents: any[], clientEvents: any[]): any[] 
 
   return insights.slice(0, 50);
 }
+
+// ========================================
+// ADDITIONAL ACCESS POINTS FETCHERS
+// ========================================
+
+async function fetchAccessPointsStatusSummary(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let accessPoints = await api.getAccessPoints();
+
+  if (siteId) {
+    accessPoints = accessPoints.filter((ap: any) =>
+      ap.hostSite === siteId || ap.siteId === siteId
+    );
+  }
+
+  const online = accessPoints.filter((ap: any) => ap.status === 'online' || ap.status === 'up').length;
+  const offline = accessPoints.filter((ap: any) => ap.status === 'offline' || ap.status === 'down').length;
+  const degraded = accessPoints.filter((ap: any) => ap.status === 'degraded' || ap.status === 'warning').length;
+
+  return {
+    data: {
+      online_count: online,
+      offline_count: offline,
+      degraded_count: degraded,
+      total_count: accessPoints.length,
+    },
+    metadata: { source: 'access_points.status_summary' },
+  };
+}
+
+async function fetchAccessPointsChannelUtilTimeseries(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  if (!siteId) {
+    const sites = await api.getSites();
+    siteId = sites[0]?.id;
+  }
+  if (!siteId) {
+    return { data: {}, metadata: { source: 'access_points.channel_util_timeseries' } };
+  }
+
+  try {
+    const widgetData = await api.fetchWidgetData(siteId, ['channelUtilization5', 'channelUtilization2_4'], timeRange);
+    return {
+      data: {
+        channel_util_5ghz: extractTimeseries(widgetData.channelUtilization5),
+        channel_util_2_4ghz: extractTimeseries(widgetData.channelUtilization2_4),
+      },
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'access_points.channel_util_timeseries' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch channel utilization timeseries:', error);
+    return { data: {}, metadata: { source: 'access_points.channel_util_timeseries' } };
+  }
+}
+
+async function fetchAccessPointsByModel(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let accessPoints = await api.getAccessPoints();
+
+  if (siteId) {
+    accessPoints = accessPoints.filter((ap: any) =>
+      ap.hostSite === siteId || ap.siteId === siteId
+    );
+  }
+
+  // Group by model
+  const byModel = new Map<string, { count: number; online: number; clients: number; throughput: number }>();
+
+  for (const ap of accessPoints) {
+    const model = ap.model || 'Unknown';
+    const existing = byModel.get(model) || { count: 0, online: 0, clients: 0, throughput: 0 };
+    existing.count++;
+    if (ap.status === 'online' || ap.status === 'up') existing.online++;
+    existing.clients += ap.clientCount || 0;
+    existing.throughput += ap.throughput || 0;
+    byModel.set(model, existing);
+  }
+
+  const data = Array.from(byModel.entries()).map(([model, stats]) => ({
+    model,
+    count: stats.count,
+    online_count: stats.online,
+    avg_clients: Math.round(stats.clients / stats.count),
+    avg_throughput: Math.round(stats.throughput / stats.count),
+  }));
+
+  data.sort((a, b) => b.count - a.count);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'access_points.by_model' },
+  };
+}
+
+// ========================================
+// ADDITIONAL CLIENTS FETCHERS
+// ========================================
+
+async function fetchClientsByDeviceType(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const byType = new Map<string, { count: number; rssi: number; snr: number; throughput: number }>();
+
+  for (const client of clients) {
+    const identity = resolveClientIdentity(client);
+    const deviceType = identity.deviceType || 'Unknown';
+    const existing = byType.get(deviceType) || { count: 0, rssi: 0, snr: 0, throughput: 0 };
+    existing.count++;
+    existing.rssi += client.rssi || -70;
+    existing.snr += client.snr || 25;
+    existing.throughput += (client.rxBytes || 0) + (client.txBytes || 0);
+    byType.set(deviceType, existing);
+  }
+
+  const data = Array.from(byType.entries()).map(([deviceType, stats]) => ({
+    device_type: deviceType,
+    count: stats.count,
+    avg_rssi: Math.round(stats.rssi / stats.count),
+    avg_snr: Math.round(stats.snr / stats.count),
+    avg_throughput: Math.round(stats.throughput / stats.count),
+  }));
+
+  data.sort((a, b) => b.count - a.count);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'clients.by_device_type' },
+  };
+}
+
+async function fetchClientsByManufacturer(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const byManufacturer = new Map<string, { count: number; rssi: number; rfqi: number }>();
+
+  for (const client of clients) {
+    const identity = resolveClientIdentity(client);
+    const manufacturer = identity.manufacturer || 'Unknown';
+    const existing = byManufacturer.get(manufacturer) || { count: 0, rssi: 0, rfqi: 0 };
+    existing.count++;
+    existing.rssi += client.rssi || -70;
+    existing.rfqi += calculateClientRfqiScore(client);
+    byManufacturer.set(manufacturer, existing);
+  }
+
+  const data = Array.from(byManufacturer.entries()).map(([manufacturer, stats]) => ({
+    manufacturer,
+    count: stats.count,
+    avg_rssi: Math.round(stats.rssi / stats.count),
+    avg_experience: Math.round(stats.rfqi / stats.count),
+  }));
+
+  data.sort((a, b) => b.count - a.count);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'clients.by_manufacturer' },
+  };
+}
+
+async function fetchClientsByBand(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const byBand = new Map<string, { count: number; rssi: number; throughput: number; rfqi: number }>();
+
+  for (const client of clients) {
+    const band = client.band || client.radioBand || '5GHz';
+    const existing = byBand.get(band) || { count: 0, rssi: 0, throughput: 0, rfqi: 0 };
+    existing.count++;
+    existing.rssi += client.rssi || -70;
+    existing.throughput += (client.rxBytes || 0) + (client.txBytes || 0);
+    existing.rfqi += calculateClientRfqiScore(client);
+    byBand.set(band, existing);
+  }
+
+  const data = Array.from(byBand.entries()).map(([band, stats]) => ({
+    band,
+    count: stats.count,
+    avg_rssi: Math.round(stats.rssi / stats.count),
+    avg_throughput: Math.round(stats.throughput / stats.count),
+    avg_experience: Math.round(stats.rfqi / stats.count),
+  }));
+
+  data.sort((a, b) => b.count - a.count);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'clients.by_band' },
+  };
+}
+
+async function fetchClientsBySSID(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const bySSID = new Map<string, { count: number; rssi: number; throughput: number; rfqi: number }>();
+
+  for (const client of clients) {
+    const ssid = client.network || client.ssid || 'Unknown';
+    const existing = bySSID.get(ssid) || { count: 0, rssi: 0, throughput: 0, rfqi: 0 };
+    existing.count++;
+    existing.rssi += client.rssi || -70;
+    existing.throughput += (client.rxBytes || 0) + (client.txBytes || 0);
+    existing.rfqi += calculateClientRfqiScore(client);
+    bySSID.set(ssid, existing);
+  }
+
+  const data = Array.from(bySSID.entries()).map(([ssid, stats]) => ({
+    ssid,
+    count: stats.count,
+    avg_rssi: Math.round(stats.rssi / stats.count),
+    avg_throughput: Math.round(stats.throughput / stats.count),
+    avg_experience: Math.round(stats.rfqi / stats.count),
+  }));
+
+  data.sort((a, b) => b.count - a.count);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'clients.by_ssid' },
+  };
+}
+
+async function fetchClientsCountSummary(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const uniqueMacs = new Set(clients.map((c: any) => c.macAddress));
+  const activeClients = clients.filter((c: any) => {
+    const throughput = (c.rxBytes || 0) + (c.txBytes || 0);
+    return throughput > 0;
+  });
+
+  return {
+    data: {
+      total_count: clients.length,
+      unique_count: uniqueMacs.size,
+      active_count: activeClients.length,
+      idle_count: clients.length - activeClients.length,
+    },
+    metadata: { source: 'clients.count_summary' },
+  };
+}
+
+async function fetchClientsCountTimeseries(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  if (!siteId) {
+    const sites = await api.getSites();
+    siteId = sites[0]?.id;
+  }
+  if (!siteId) {
+    return { data: {}, metadata: { source: 'clients.count_timeseries' } };
+  }
+
+  try {
+    const widgetData = await api.fetchWidgetData(siteId, ['countOfUniqueUsersReport'], timeRange);
+    return {
+      data: {
+        client_count: extractTimeseries(widgetData.countOfUniqueUsersReport),
+      },
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'clients.count_timeseries' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch client count timeseries:', error);
+    return { data: {}, metadata: { source: 'clients.count_timeseries' } };
+  }
+}
+
+// ========================================
+// ADDITIONAL CLIENT EXPERIENCE FETCHERS
+// ========================================
+
+async function fetchClientExperienceDistribution(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  let good = 0, fair = 0, poor = 0;
+
+  for (const client of clients) {
+    const score = calculateClientRfqiScore(client);
+    if (score >= 70) good++;
+    else if (score >= 40) fair++;
+    else poor++;
+  }
+
+  return {
+    data: {
+      good_count: good,
+      fair_count: fair,
+      poor_count: poor,
+      total_clients: clients.length,
+    },
+    metadata: { source: 'client_experience.distribution' },
+  };
+}
+
+async function fetchClientExperienceRFComponents(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  if (!siteId) {
+    const sites = await api.getSites();
+    siteId = sites[0]?.id;
+  }
+  if (!siteId) {
+    return { data: {}, metadata: { source: 'client_experience.rf_components' } };
+  }
+
+  try {
+    const widgetData = await api.fetchWidgetData(siteId, [
+      'rfQuality',
+      'channelUtilization5',
+      'noisePerRadio',
+      'retransmittedPackets',
+    ], timeRange);
+
+    return {
+      data: {
+        rf_quality: extractTimeseries(widgetData.rfQuality),
+        channel_utilization: extractTimeseries(widgetData.channelUtilization5),
+        noise_floor: extractTimeseries(widgetData.noisePerRadio),
+        retry_rate: extractTimeseries(widgetData.retransmittedPackets),
+      },
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'client_experience.rf_components' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch RF components:', error);
+    return { data: {}, metadata: { source: 'client_experience.rf_components' } };
+  }
+}
+
+async function fetchClientExperienceBySSID(
+  api: any,
+  siteId: string | null
+): Promise<WidgetDataResponse> {
+  let clients = await api.getStationsWithSiteCorrelation();
+
+  if (siteId) {
+    clients = clients.filter((c: any) => c.siteId === siteId);
+  }
+
+  const bySSID = new Map<string, { count: number; rfqi: number; rssi: number; snr: number; retries: number }>();
+
+  for (const client of clients) {
+    const ssid = client.network || client.ssid || 'Unknown';
+    const existing = bySSID.get(ssid) || { count: 0, rfqi: 0, rssi: 0, snr: 0, retries: 0 };
+    existing.count++;
+    existing.rfqi += calculateClientRfqiScore(client);
+    existing.rssi += client.rssi || -70;
+    existing.snr += client.snr || 25;
+    existing.retries += client.retryRate || 0;
+    bySSID.set(ssid, existing);
+  }
+
+  const data = Array.from(bySSID.entries()).map(([ssid, stats]) => ({
+    ssid,
+    client_count: stats.count,
+    avg_rfqi: Math.round(stats.rfqi / stats.count),
+    avg_rssi: Math.round(stats.rssi / stats.count),
+    avg_snr: Math.round(stats.snr / stats.count),
+    avg_retries: Math.round((stats.retries / stats.count) * 10) / 10,
+  }));
+
+  data.sort((a, b) => a.avg_rfqi - b.avg_rfqi);
+
+  return {
+    data,
+    metadata: { totalCount: data.length, source: 'client_experience.by_ssid' },
+  };
+}
+
+// ========================================
+// ADDITIONAL APP INSIGHTS FETCHERS
+// ========================================
+
+async function fetchAppInsightsByCategory(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const appInsights = await api.getAppInsights(timeRange, siteId || undefined);
+    const apps = appInsights.topAppGroupsByUsage || [];
+
+    const byCategory = new Map<string, { apps: number; bytes: number; clients: number; latency: number }>();
+
+    for (const app of apps) {
+      const category = app.category || 'Uncategorized';
+      const existing = byCategory.get(category) || { apps: 0, bytes: 0, clients: 0, latency: 0 };
+      existing.apps++;
+      existing.bytes += app.value || 0;
+      existing.clients += app.clientCount || 0;
+      existing.latency += app.latency || 0;
+      byCategory.set(category, existing);
+    }
+
+    const data = Array.from(byCategory.entries()).map(([category, stats]) => ({
+      category,
+      app_count: stats.apps,
+      bytes: stats.bytes,
+      clients_impacted: stats.clients,
+      avg_latency_ms: stats.apps > 0 ? Math.round(stats.latency / stats.apps) : 0,
+    }));
+
+    data.sort((a, b) => b.bytes - a.bytes);
+
+    return {
+      data,
+      metadata: { totalCount: data.length, source: 'app_insights.by_category' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch app insights by category:', error);
+    return { data: [], metadata: { source: 'app_insights.by_category' } };
+  }
+}
+
+async function fetchAppInsightsSummary(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const appInsights = await api.getAppInsights(timeRange, siteId || undefined);
+    const apps = appInsights.topAppGroupsByUsage || [];
+
+    let totalBytes = 0, totalFlows = 0, totalLatency = 0;
+    for (const app of apps) {
+      totalBytes += app.value || 0;
+      totalFlows += app.flows || 0;
+      totalLatency += app.latency || 0;
+    }
+
+    return {
+      data: {
+        app_count: apps.length,
+        total_flows: totalFlows,
+        total_bytes: totalBytes,
+        avg_latency_ms: apps.length > 0 ? Math.round(totalLatency / apps.length) : 0,
+      },
+      metadata: { source: 'app_insights.summary' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch app insights summary:', error);
+    return { data: { app_count: 0, total_flows: 0, total_bytes: 0, avg_latency_ms: 0 }, metadata: { source: 'app_insights.summary' } };
+  }
+}
+
+// ========================================
+// ADDITIONAL CONTEXTUAL INSIGHTS FETCHERS
+// ========================================
+
+async function fetchRoamingEvents(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const events = siteId
+      ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
+      : [];
+
+    const roamingEvents = events
+      .filter((e: any) => e.type === 'roam' || e.eventType === 'roaming' || e.category === 'roaming')
+      .map((e: any) => ({
+        event_id: e.id || `roam-${Date.now()}-${Math.random()}`,
+        timestamp: e.timestamp || e.startTime,
+        client_mac: e.clientMac || e.stationMac,
+        from_ap: e.fromAp || e.previousAp,
+        to_ap: e.toAp || e.currentAp || e.apSerial,
+        roam_type: e.roamType || 'standard',
+        duration_ms: e.duration || 0,
+      }))
+      .slice(0, 100);
+
+    return {
+      data: roamingEvents,
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.roaming_events' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch roaming events:', error);
+    return { data: [], metadata: { source: 'contextual_insights.roaming_events' } };
+  }
+}
+
+async function fetchAssociationEvents(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const events = siteId
+      ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
+      : [];
+
+    const assocEvents = events
+      .filter((e: any) =>
+        e.type === 'associate' || e.type === 'disassociate' ||
+        e.eventType === 'association' || e.eventType === 'disassociation'
+      )
+      .map((e: any) => ({
+        event_id: e.id || `assoc-${Date.now()}-${Math.random()}`,
+        timestamp: e.timestamp || e.startTime,
+        event_type: e.type || e.eventType,
+        client_mac: e.clientMac || e.stationMac,
+        ap_name: e.apName || e.apSerial,
+        ssid: e.ssid || e.network,
+        reason: e.reason || '',
+      }))
+      .slice(0, 100);
+
+    return {
+      data: assocEvents,
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.association_events' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch association events:', error);
+    return { data: [], metadata: { source: 'contextual_insights.association_events' } };
+  }
+}
+
+async function fetchRFEvents(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const events = siteId
+      ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
+      : [];
+
+    const rfEvents = events
+      .filter((e: any) =>
+        e.type === 'channelChange' || e.type === 'powerChange' ||
+        e.eventType === 'channel_change' || e.eventType === 'power_change' ||
+        e.category === 'rf'
+      )
+      .map((e: any) => ({
+        event_id: e.id || `rf-${Date.now()}-${Math.random()}`,
+        timestamp: e.timestamp || e.startTime,
+        event_type: e.type || e.eventType,
+        ap_name: e.apName || e.apSerial,
+        radio: e.radio || e.band,
+        old_value: e.oldValue || e.previousChannel || e.previousPower,
+        new_value: e.newValue || e.currentChannel || e.currentPower,
+        reason: e.reason || '',
+      }))
+      .slice(0, 100);
+
+    return {
+      data: rfEvents,
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.rf_events' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch RF events:', error);
+    return { data: [], metadata: { source: 'contextual_insights.rf_events' } };
+  }
+}
+
+async function fetchFailedAssociations(
+  api: any,
+  siteId: string | null,
+  timeRange: string,
+  catalogItem: WidgetCatalogItem
+): Promise<WidgetDataResponse> {
+  try {
+    // Fetch from site report widget if available
+    if (siteId) {
+      const widgetData = await api.fetchWidgetData(siteId, ['usersFailedAssociation'], timeRange);
+      const failedData = widgetData.usersFailedAssociation || [];
+
+      const transformed = failedData.map((f: any) => {
+        const identity = resolveClientIdentity({ macAddress: f.macAddress || f.clientMac });
+        return {
+          display_name: identity.displayName,
+          mac_address: f.macAddress || f.clientMac,
+          failure_count: f.count || f.failureCount || 1,
+          last_failure_reason: f.reason || f.failureReason || 'Unknown',
+          target_ap: f.apName || f.apSerial,
+          target_ssid: f.ssid || f.network,
+        };
+      });
+
+      const limit = catalogItem.dataBinding.limit || 25;
+      transformed.sort((a: any, b: any) => b.failure_count - a.failure_count);
+
+      return {
+        data: transformed.slice(0, limit),
+        metadata: { totalCount: transformed.length, source: 'contextual_insights.failed_associations' },
+      };
+    }
+
+    return { data: [], metadata: { source: 'contextual_insights.failed_associations' } };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch failed associations:', error);
+    return { data: [], metadata: { source: 'contextual_insights.failed_associations' } };
+  }
+}
+
+async function fetchAnomalies(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const events = siteId
+      ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
+      : [];
+
+    const anomalies = events
+      .filter((e: any) =>
+        e.severity === 'critical' || e.severity === 'warning' ||
+        e.type === 'anomaly' || e.category === 'anomaly'
+      )
+      .map((e: any) => ({
+        anomaly_id: e.id || `anomaly-${Date.now()}-${Math.random()}`,
+        timestamp: e.timestamp || e.startTime,
+        severity: e.severity || 'warning',
+        category: e.category || 'wireless',
+        title: e.title || e.type || 'Network Anomaly',
+        description: e.description || e.message || '',
+        affected_entity: e.apName || e.apSerial || e.entityName,
+        metric: e.metric || '',
+        threshold: e.threshold || '',
+        actual_value: e.actualValue || e.value || '',
+      }))
+      .slice(0, 50);
+
+    return {
+      data: anomalies,
+      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.anomalies' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch anomalies:', error);
+    return { data: [], metadata: { source: 'contextual_insights.anomalies' } };
+  }
+}
+
+async function fetchInsightsSummary(
+  api: any,
+  siteId: string | null,
+  timeRange: string
+): Promise<WidgetDataResponse> {
+  try {
+    const events = siteId
+      ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
+      : [];
+
+    let critical = 0, warning = 0, info = 0;
+
+    for (const event of events) {
+      if (event.severity === 'critical') critical++;
+      else if (event.severity === 'warning') warning++;
+      else info++;
+    }
+
+    return {
+      data: {
+        critical_count: critical,
+        warning_count: warning,
+        info_count: info,
+        total_count: events.length,
+      },
+      metadata: { source: 'contextual_insights.summary' },
+    };
+  } catch (error) {
+    console.warn('[WorkspaceDataService] Failed to fetch insights summary:', error);
+    return { data: { critical_count: 0, warning_count: 0, info_count: 0, total_count: 0 }, metadata: { source: 'contextual_insights.summary' } };
+  }
+}
+
