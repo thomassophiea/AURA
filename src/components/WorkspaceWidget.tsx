@@ -7,8 +7,8 @@ import {
   Minimize2,
   Loader2,
   Copy,
-  Link,
-  LinkOff,
+  Link2,
+  Unlink2,
   TrendingUp,
   TrendingDown,
   AlertCircle,
@@ -94,9 +94,9 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
                 title={widget.linkingEnabled ? 'Disable linking' : 'Enable linking'}
               >
                 {widget.linkingEnabled ? (
-                  <Link className="h-3.5 w-3.5 text-primary" />
+                  <Link2 className="h-3.5 w-3.5 text-primary" />
                 ) : (
-                  <LinkOff className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Unlink2 className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
               </Button>
               <Button
