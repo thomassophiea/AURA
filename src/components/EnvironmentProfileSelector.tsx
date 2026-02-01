@@ -1,7 +1,7 @@
 /**
- * Environment Profile Selector
+ * Context Profile Selector
  * 
- * Dropdown to select the environment profile that tunes what is considered "abnormal"
+ * Dropdown to select the context profile that tunes what is considered "abnormal"
  * for RF quality and network metrics.
  */
 
@@ -129,6 +129,7 @@ export function EnvironmentProfileSelector({
           variant="outline" 
           size="sm"
           className={cn("gap-2 h-9", className)}
+          title="Context Profile - Tunes what is considered abnormal"
         >
           <CurrentIcon className="h-4 w-4 text-muted-foreground" />
           <span className="hidden sm:inline">{currentProfile.name}</span>
@@ -139,7 +140,7 @@ export function EnvironmentProfileSelector({
       <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col">
-            <span className="font-medium">Environment Profile</span>
+            <span className="font-medium">Context Profile</span>
             <span className="text-xs text-muted-foreground">
               Tunes what is considered abnormal
             </span>
