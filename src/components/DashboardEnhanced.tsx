@@ -533,8 +533,11 @@ function DashboardEnhancedComponent() {
               if (rfqiStat?.values) {
                 return rfqiStat.values.map((v: any) => {
                   const rfqi = parseFloat(v.value) || 0;
-                  // RFQI threshold: > 70 is healthy, <= 70 needs attention
-                  const healthyPct = Math.min(100, Math.max(0, rfqi));
+                  // RFQI is on 1-5 scale - convert to percentage (multiply by 20)
+                  // Values > 5 are already percentages (different data format)
+                  const rfqiPercent = rfqi > 5 ? rfqi : rfqi * 20;
+                  // Threshold: >= 60% (3/5) is healthy
+                  const healthyPct = Math.min(100, Math.max(0, rfqiPercent));
                   return {
                     timestamp: v.timestamp,
                     rfqi: rfqi,
@@ -1431,7 +1434,7 @@ function DashboardEnhancedComponent() {
                     <span className="text-purple-400 font-medium">RFQI Data</span>
                   </div>
                   <span className="text-muted-foreground">
-                    Avg: <span className="font-medium text-foreground">{Math.round(rfqiData.reduce((acc, d) => acc + d.rfqi, 0) / rfqiData.length)}%</span>
+                    Avg: <span className="font-medium text-foreground">{Math.round(rfqiData.reduce((acc, d) => acc + d.healthy, 0) / rfqiData.length)}%</span>
                   </span>
                 </div>
               )}
