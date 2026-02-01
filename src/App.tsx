@@ -843,7 +843,7 @@ export default function App() {
   const renderPage = () => {
     switch (currentPage) {
       case 'workspace':
-        return <Workspace />;
+        return <Workspace api={apiService} />;
       case 'service-levels':
         return <DashboardEnhanced />;
       case 'app-insights':

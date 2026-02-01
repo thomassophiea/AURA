@@ -1,176 +1,123 @@
-import React, { useState, useCallback } from 'react';
-import { Plus, Sparkles, Cpu, Users, Key, Bell, Send, X, Trash2 } from 'lucide-react';
-import { Card, CardContent } from './ui/card';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Wifi,
+  Users,
+  Activity,
+  AppWindow,
+  Lightbulb,
+  Clock,
+  MapPin,
+  X,
+  Trash2,
+  Plus,
+  LayoutGrid,
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Badge } from './ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { cn } from './ui/utils';
 import { WorkspaceWidget } from './WorkspaceWidget';
 import {
   useWorkspace,
+  getWidgetsByTopic,
+  TOPIC_METADATA,
+  TIME_RANGE_OPTIONS,
   PROMPT_SUGGESTIONS,
-  TOPIC_COLORS,
   type WorkspaceTopic,
+  type WidgetCatalogItem,
 } from '@/hooks/useWorkspace';
+import { fetchWidgetData } from '@/services/workspaceDataService';
 
-/**
- * Topic configuration with icons
- */
-const TOPICS: { id: WorkspaceTopic; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: 'Devices', label: 'Devices', icon: Cpu },
-  { id: 'Clients', label: 'Clients', icon: Users },
-  { id: 'Licensing', label: 'Licensing', icon: Key },
-  { id: 'Alerts', label: 'Alerts', icon: Bell },
-];
-
-/**
- * Simulate widget data fetching
- * In a real implementation, this would call an AI service or API
- */
-async function simulateWidgetData(prompt: string, topic: WorkspaceTopic): Promise<any> {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 1000));
-
-  // Generate mock data based on topic and prompt
-  const lowerPrompt = prompt.toLowerCase();
-
-  if (topic === 'Devices') {
-    if (lowerPrompt.includes('how many') || lowerPrompt.includes('count')) {
-      return { total: Math.floor(Math.random() * 500) + 50, label: 'Managed Devices' };
-    }
-    if (lowerPrompt.includes('list') || lowerPrompt.includes('show')) {
-      return [
-        { name: 'AP-Floor1-East', value: 'Online' },
-        { name: 'AP-Floor1-West', value: 'Online' },
-        { name: 'AP-Floor2-East', value: 'Warning' },
-        { name: 'SW-Core-01', value: 'Online' },
-        { name: 'SW-Access-01', value: 'Online' },
-      ];
-    }
-    if (lowerPrompt.includes('cpu') || lowerPrompt.includes('memory')) {
-      return [
-        { name: 'SW-Core-01', value: '78%' },
-        { name: 'SW-Access-03', value: '65%' },
-        { name: 'AP-Floor3-East', value: '52%' },
-      ];
-    }
-    if (lowerPrompt.includes('end of service') || lowerPrompt.includes('eos')) {
-      return [
-        { name: 'AP-Legacy-01', value: 'June 2026' },
-        { name: 'SW-Old-Core', value: 'March 2026' },
-      ];
-    }
-    return { total: Math.floor(Math.random() * 100) + 10, label: 'Devices' };
-  }
-
-  if (topic === 'Clients') {
-    if (lowerPrompt.includes('how many') || lowerPrompt.includes('connected')) {
-      return { total: Math.floor(Math.random() * 2000) + 500, label: 'Connected Clients' };
-    }
-    if (lowerPrompt.includes('bandwidth') || lowerPrompt.includes('consuming')) {
-      return [
-        { name: 'workstation-john', value: '125 Mbps' },
-        { name: 'media-server-01', value: '98 Mbps' },
-        { name: 'dev-laptop-sarah', value: '76 Mbps' },
-        { name: 'conference-room-a', value: '54 Mbps' },
-      ];
-    }
-    if (lowerPrompt.includes('roaming')) {
-      return [
-        { name: 'mobile-exec-01', value: '12 roams' },
-        { name: 'tablet-floor-2', value: '8 roams' },
-        { name: 'phone-support-3', value: '6 roams' },
-      ];
-    }
-    return { total: Math.floor(Math.random() * 1000) + 100, label: 'Clients' };
-  }
-
-  if (topic === 'Licensing') {
-    if (lowerPrompt.includes('use') || lowerPrompt.includes('available')) {
-      return {
-        used: Math.floor(Math.random() * 400) + 100,
-        available: Math.floor(Math.random() * 200) + 50,
-      };
-    }
-    if (lowerPrompt.includes('site') || lowerPrompt.includes('exhaustion')) {
-      return [
-        { name: 'HQ Campus', value: '95% used' },
-        { name: 'Branch Office A', value: '88% used' },
-        { name: 'Data Center', value: '72% used' },
-      ];
-    }
-    if (lowerPrompt.includes('expir')) {
-      return [
-        { name: 'Enterprise License', value: 'Apr 15, 2026' },
-        { name: 'Support Contract', value: 'Mar 1, 2026' },
-        { name: 'Cloud Services', value: 'Feb 28, 2026' },
-      ];
-    }
-    return { used: 320, available: 180 };
-  }
-
-  if (topic === 'Alerts') {
-    if (lowerPrompt.includes('critical')) {
-      return [
-        { name: 'High CPU on SW-Core-01', value: 'Critical' },
-        { name: 'AP-Floor3 Offline', value: 'Critical' },
-        { name: 'License Limit Warning', value: 'Warning' },
-      ];
-    }
-    if (lowerPrompt.includes('recurring')) {
-      return [
-        { name: 'SW-Access-02', value: '15 alerts' },
-        { name: 'AP-Warehouse', value: '8 alerts' },
-        { name: 'Link-Uplink-A', value: '5 alerts' },
-      ];
-    }
-    if (lowerPrompt.includes('24 hours') || lowerPrompt.includes('today')) {
-      return { total: Math.floor(Math.random() * 50) + 5, label: 'Alerts (24h)' };
-    }
-    return { total: Math.floor(Math.random() * 30) + 3, label: 'Active Alerts' };
-  }
-
-  return { total: Math.floor(Math.random() * 100), label: 'Results' };
+interface WorkspaceProps {
+  api: any; // API service instance
 }
 
-export const Workspace: React.FC = () => {
+/**
+ * Topic icons mapping
+ */
+const TOPIC_ICONS: Record<WorkspaceTopic, React.ComponentType<{ className?: string }>> = {
+  AccessPoints: Wifi,
+  Clients: Users,
+  ClientExperience: Activity,
+  AppInsights: AppWindow,
+  ContextualInsights: Lightbulb,
+};
+
+/**
+ * Topics list
+ */
+const TOPICS: WorkspaceTopic[] = [
+  'AccessPoints',
+  'Clients',
+  'ClientExperience',
+  'AppInsights',
+  'ContextualInsights',
+];
+
+export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
   const {
     widgets,
     selectedTopic,
+    context,
     hasWidgets,
     selectTopic,
-    createWidget,
+    updateContext,
+    createWidgetFromCatalog,
     updateWidget,
     deleteWidget,
+    duplicateWidget,
     refreshWidget,
+    toggleWidgetLinking,
     clearWorkspace,
+    emitSignals,
   } = useWorkspace();
 
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sites, setSites] = useState<Array<{ id: string; name: string }>>([]);
+  const [isLoadingSites, setIsLoadingSites] = useState(true);
+
+  // Fetch sites on mount
+  useEffect(() => {
+    async function loadSites() {
+      try {
+        const siteList = await api.getSites();
+        setSites(siteList.map((s: any) => ({ id: s.id, name: s.name || s.siteName || s.id })));
+      } catch (error) {
+        console.warn('[Workspace] Failed to load sites:', error);
+      } finally {
+        setIsLoadingSites(false);
+      }
+    }
+    loadSites();
+  }, [api]);
 
   /**
-   * Handle prompt selection or submission
+   * Handle adding a widget from catalog
    */
-  const handlePromptSubmit = useCallback(async (prompt: string) => {
-    if (!selectedTopic || !prompt.trim()) return;
+  const handleAddWidget = useCallback(async (catalogItem: WidgetCatalogItem) => {
+    const widget = createWidgetFromCatalog(catalogItem);
 
-    setIsSubmitting(true);
-    const widget = createWidget(prompt.trim(), selectedTopic);
-
+    // Fetch data for the widget
     try {
-      const data = await simulateWidgetData(prompt, selectedTopic);
-      updateWidget(widget.id, { isLoading: false, data, error: null });
+      const result = await fetchWidgetData(widget, context, api);
+      updateWidget(widget.id, {
+        isLoading: false,
+        data: result.data,
+        error: null,
+      });
     } catch (error) {
       updateWidget(widget.id, {
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to fetch data',
       });
-    } finally {
-      setIsSubmitting(false);
-      setCustomPrompt('');
     }
-  }, [selectedTopic, createWidget, updateWidget]);
+  }, [api, context, createWidgetFromCatalog, updateWidget]);
 
   /**
    * Handle widget refresh
@@ -182,25 +129,30 @@ export const Workspace: React.FC = () => {
     refreshWidget(id);
 
     try {
-      const data = await simulateWidgetData(widget.prompt, widget.topic);
-      updateWidget(id, { isLoading: false, data, error: null });
+      const result = await fetchWidgetData(widget, context, api);
+      updateWidget(id, {
+        isLoading: false,
+        data: result.data,
+        error: null,
+      });
     } catch (error) {
       updateWidget(id, {
         isLoading: false,
         error: error instanceof Error ? error.message : 'Failed to refresh data',
       });
     }
-  }, [widgets, refreshWidget, updateWidget]);
+  }, [api, context, widgets, refreshWidget, updateWidget]);
 
   /**
-   * Handle custom prompt input
+   * Handle time brush selection from a widget
    */
-  const handleCustomPromptKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handlePromptSubmit(customPrompt);
-    }
-  };
+  const handleTimeBrush = useCallback((timeWindow: { start: number; end: number }) => {
+    emitSignals({ selectedTimeWindow: timeWindow });
+  }, [emitSignals]);
+
+  // Get catalog items for selected topic
+  const catalogItems = selectedTopic ? getWidgetsByTopic(selectedTopic) : [];
+  const promptSuggestions = selectedTopic ? PROMPT_SUGGESTIONS[selectedTopic] : [];
 
   return (
     <div className="min-h-[calc(100vh-8rem)]">
@@ -211,7 +163,7 @@ export const Workspace: React.FC = () => {
             <h1 className="text-2xl font-semibold text-foreground">Workspace</h1>
             <p className="text-sm text-muted-foreground mt-1">
               {hasWidgets
-                ? `${widgets.length} widget${widgets.length !== 1 ? 's' : ''} created`
+                ? `${widgets.length} widget${widgets.length !== 1 ? 's' : ''} on canvas`
                 : 'Create your first widget by selecting a topic below.'}
             </p>
           </div>
@@ -229,102 +181,147 @@ export const Workspace: React.FC = () => {
         </div>
       </div>
 
+      {/* Context Selectors */}
+      <div className="flex flex-wrap items-center gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+        {/* Site Selector */}
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <Select
+            value={context.siteId || 'all'}
+            onValueChange={(value) => updateContext({ siteId: value === 'all' ? null : value })}
+            disabled={isLoadingSites}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {sites.map((site) => (
+                <SelectItem key={site.id} value={site.id}>
+                  {site.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Time Range Selector */}
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground" />
+          <Select
+            value={context.timeRange}
+            onValueChange={(value) => updateContext({ timeRange: value })}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_RANGE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Topic Selector */}
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
+          <LayoutGrid className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm font-medium text-muted-foreground">Select a topic</span>
         </div>
         <div className="flex flex-wrap gap-2">
-          {TOPICS.map(topic => {
-            const Icon = topic.icon;
-            const isSelected = selectedTopic === topic.id;
-            const colors = TOPIC_COLORS[topic.id];
+          {TOPICS.map((topic) => {
+            const Icon = TOPIC_ICONS[topic];
+            const metadata = TOPIC_METADATA[topic];
+            const isSelected = selectedTopic === topic;
 
             return (
               <Button
-                key={topic.id}
+                key={topic}
                 variant={isSelected ? 'default' : 'outline'}
                 size="sm"
-                onClick={() => selectTopic(isSelected ? null : topic.id)}
+                onClick={() => selectTopic(isSelected ? null : topic)}
                 className={cn(
                   'transition-all',
-                  isSelected && colors.bg,
-                  isSelected && colors.text,
-                  isSelected && colors.border
+                  isSelected && metadata.color.bg,
+                  isSelected && metadata.color.text,
+                  isSelected && metadata.color.border
                 )}
               >
                 <Icon className="h-4 w-4 mr-2" />
-                {topic.label}
-                {isSelected && (
-                  <X className="h-3 w-3 ml-2 opacity-60" />
-                )}
+                {metadata.label}
+                {isSelected && <X className="h-3 w-3 ml-2 opacity-60" />}
               </Button>
             );
           })}
         </div>
       </div>
 
-      {/* Prompt Suggestions (shown when topic is selected) */}
+      {/* Widget Catalog (shown when topic is selected) */}
       {selectedTopic && (
         <div className="mb-8 animate-in fade-in slide-in-from-top-2 duration-200">
           <Card className="border-dashed">
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Badge variant="outline" className={cn(TOPIC_COLORS[selectedTopic].bg, TOPIC_COLORS[selectedTopic].text, TOPIC_COLORS[selectedTopic].border)}>
-                  {selectedTopic}
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    TOPIC_METADATA[selectedTopic].color.bg,
+                    TOPIC_METADATA[selectedTopic].color.text,
+                    TOPIC_METADATA[selectedTopic].color.border
+                  )}
+                >
+                  {TOPIC_METADATA[selectedTopic].label}
                 </Badge>
-                <span className="text-sm text-muted-foreground">Suggested queries</span>
+                <CardDescription>Available widgets</CardDescription>
               </div>
-
-              {/* Suggestion Pills */}
-              <div className="flex flex-wrap gap-2 mb-4">
-                {PROMPT_SUGGESTIONS[selectedTopic].map((suggestion, index) => (
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Widget Catalog Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {catalogItems.map((item) => (
                   <button
-                    key={index}
-                    onClick={() => handlePromptSubmit(suggestion)}
-                    disabled={isSubmitting}
+                    key={item.id}
+                    onClick={() => handleAddWidget(item)}
                     className={cn(
-                      'px-3 py-1.5 text-sm rounded-full border transition-all',
-                      'bg-muted/50 hover:bg-muted text-foreground',
-                      'hover:border-primary/50 hover:shadow-sm',
-                      'disabled:opacity-50 disabled:cursor-not-allowed',
-                      'text-left'
+                      'flex flex-col items-start p-4 rounded-lg border text-left transition-all',
+                      'bg-card hover:bg-muted/50 hover:border-primary/50 hover:shadow-sm',
+                      'focus:outline-none focus:ring-2 focus:ring-primary/50'
                     )}
                   >
-                    {suggestion}
+                    <div className="flex items-center gap-2 mb-2">
+                      <Plus className="h-4 w-4 text-primary" />
+                      <span className="font-medium text-sm">{item.title}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {item.description}
+                    </p>
+                    <Badge variant="outline" className="mt-2 text-xs">
+                      {item.type.replace(/_/g, ' ')}
+                    </Badge>
                   </button>
                 ))}
               </div>
 
-              {/* Custom Prompt Input */}
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Or type your own question..."
-                    value={customPrompt}
-                    onChange={e => setCustomPrompt(e.target.value)}
-                    onKeyDown={handleCustomPromptKeyDown}
-                    disabled={isSubmitting}
-                    className="pr-10"
-                  />
-                  {customPrompt && (
-                    <button
-                      onClick={() => setCustomPrompt('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+              {/* Prompt Suggestions */}
+              {promptSuggestions.length > 0 && (
+                <div className="pt-4 border-t">
+                  <p className="text-xs text-muted-foreground mb-3">Or explore with natural language:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {promptSuggestions.map((suggestion, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1.5 text-xs rounded-full bg-muted/50 text-muted-foreground"
+                      >
+                        {suggestion}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <Button
-                  onClick={() => handlePromptSubmit(customPrompt)}
-                  disabled={!customPrompt.trim() || isSubmitting}
-                  size="icon"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -333,12 +330,15 @@ export const Workspace: React.FC = () => {
       {/* Widgets Grid */}
       {hasWidgets ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {widgets.map(widget => (
+          {widgets.map((widget) => (
             <WorkspaceWidget
               key={widget.id}
               widget={widget}
               onRefresh={handleRefresh}
               onDelete={deleteWidget}
+              onDuplicate={duplicateWidget}
+              onToggleLinking={toggleWidgetLinking}
+              onTimeBrush={handleTimeBrush}
             />
           ))}
         </div>
@@ -350,8 +350,8 @@ export const Workspace: React.FC = () => {
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">No widgets yet</h3>
           <p className="text-sm text-muted-foreground max-w-md">
-            Select a topic above and choose a suggested query or type your own question to create
-            your first widget.
+            Select a topic above to see available widgets. Each widget displays real data
+            from your wireless network.
           </p>
         </div>
       )}

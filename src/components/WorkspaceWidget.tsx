@@ -1,60 +1,56 @@
-import React, { useState } from 'react';
-import { RefreshCw, Trash2, GripVertical, Maximize2, Minimize2, Loader2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import {
+  RefreshCw,
+  Trash2,
+  GripVertical,
+  Maximize2,
+  Minimize2,
+  Loader2,
+  Copy,
+  Link,
+  LinkOff,
+  TrendingUp,
+  TrendingDown,
+  AlertCircle,
+} from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardAction } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
 import { cn } from './ui/utils';
-import type { WorkspaceWidget as WorkspaceWidgetType, WorkspaceTopic } from '@/hooks/useWorkspace';
-import { TOPIC_COLORS } from '@/hooks/useWorkspace';
+import type { WorkspaceWidget as WorkspaceWidgetType } from '@/hooks/useWorkspace';
+import { TOPIC_METADATA, WIDGET_CATALOG } from '@/hooks/useWorkspace';
 
 interface WorkspaceWidgetProps {
   widget: WorkspaceWidgetType;
   onRefresh: (id: string) => void;
   onDelete: (id: string) => void;
-  onMove?: (id: string, position: { x: number; y: number }) => void;
-  onResize?: (id: string, size: { width: number; height: number }) => void;
-}
-
-/**
- * Get icon for a topic
- */
-function getTopicIcon(topic: WorkspaceTopic): React.ReactNode {
-  const iconClass = 'w-3 h-3';
-  switch (topic) {
-    case 'Devices':
-      return (
-        <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-        </svg>
-      );
-    case 'Clients':
-      return (
-        <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-        </svg>
-      );
-    case 'Licensing':
-      return (
-        <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-        </svg>
-      );
-    case 'Alerts':
-      return (
-        <svg className={iconClass} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-      );
-  }
+  onDuplicate: (id: string) => void;
+  onToggleLinking: (id: string) => void;
+  onTimeBrush?: (timeWindow: { start: number; end: number }) => void;
 }
 
 export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
   widget,
   onRefresh,
   onDelete,
+  onDuplicate,
+  onToggleLinking,
+  onTimeBrush,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const topicColor = TOPIC_COLORS[widget.topic];
+  const topicMeta = TOPIC_METADATA[widget.topic];
+  const catalogItem = useMemo(
+    () => WIDGET_CATALOG.find(item => item.id === widget.catalogId),
+    [widget.catalogId]
+  );
 
   return (
     <Card
@@ -65,7 +61,7 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
         'group'
       )}
     >
-      {/* Drag Handle (for future drag-and-drop) */}
+      {/* Drag Handle */}
       <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab">
         <GripVertical className="w-4 h-4 text-muted-foreground" />
       </div>
@@ -77,13 +73,12 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
               variant="outline"
               className={cn(
                 'mb-2 text-xs',
-                topicColor.bg,
-                topicColor.text,
-                topicColor.border
+                topicMeta.color.bg,
+                topicMeta.color.text,
+                topicMeta.color.border
               )}
             >
-              {getTopicIcon(widget.topic)}
-              <span className="ml-1">{widget.topic}</span>
+              {topicMeta.label}
             </Badge>
             <CardTitle className="text-sm font-medium line-clamp-2">
               {widget.title}
@@ -95,11 +90,33 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onToggleLinking(widget.id)}
+                title={widget.linkingEnabled ? 'Disable linking' : 'Enable linking'}
+              >
+                {widget.linkingEnabled ? (
+                  <Link className="h-3.5 w-3.5 text-primary" />
+                ) : (
+                  <LinkOff className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => onRefresh(widget.id)}
                 disabled={widget.isLoading}
                 title="Refresh"
               >
                 <RefreshCw className={cn('h-3.5 w-3.5', widget.isLoading && 'animate-spin')} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => onDuplicate(widget.id)}
+                title="Duplicate"
+              >
+                <Copy className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
@@ -130,34 +147,13 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
 
       <CardContent className="pt-2">
         {widget.isLoading ? (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <Loader2 className="h-8 w-8 animate-spin mb-2" />
-            <span className="text-sm">Processing query...</span>
-          </div>
+          <LoadingState />
         ) : widget.error ? (
-          <div className="flex flex-col items-center justify-center py-8 text-destructive">
-            <svg className="h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span className="text-sm text-center">{widget.error}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => onRefresh(widget.id)}
-            >
-              Try Again
-            </Button>
-          </div>
+          <ErrorState error={widget.error} onRetry={() => onRefresh(widget.id)} />
         ) : widget.data ? (
-          <div className="space-y-3">
-            {/* Render widget data based on type */}
-            {renderWidgetContent(widget)}
-          </div>
+          <WidgetContent widget={widget} catalogItem={catalogItem} isExpanded={isExpanded} />
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <span className="text-sm">No data available</span>
-          </div>
+          <EmptyState />
         )}
       </CardContent>
     </Card>
@@ -165,12 +161,321 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
 };
 
 /**
- * Render widget content based on the data type
+ * Loading state component
  */
-function renderWidgetContent(widget: WorkspaceWidgetType): React.ReactNode {
-  const { data } = widget;
+const LoadingState: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+    <Loader2 className="h-8 w-8 animate-spin mb-2" />
+    <span className="text-sm">Loading data...</span>
+  </div>
+);
 
-  // If data is a simple count/number
+/**
+ * Error state component
+ */
+const ErrorState: React.FC<{ error: string; onRetry: () => void }> = ({ error, onRetry }) => (
+  <div className="flex flex-col items-center justify-center py-8 text-destructive">
+    <AlertCircle className="h-8 w-8 mb-2" />
+    <span className="text-sm text-center mb-3">{error}</span>
+    <Button variant="outline" size="sm" onClick={onRetry}>
+      Try Again
+    </Button>
+  </div>
+);
+
+/**
+ * Empty state component
+ */
+const EmptyState: React.FC = () => (
+  <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+    <span className="text-sm">No data available</span>
+  </div>
+);
+
+/**
+ * Widget content based on type
+ */
+const WidgetContent: React.FC<{
+  widget: WorkspaceWidgetType;
+  catalogItem: any;
+  isExpanded: boolean;
+}> = ({ widget, catalogItem, isExpanded }) => {
+  const { type, data } = widget;
+
+  switch (type) {
+    case 'kpi_tile_group':
+      return <KPITileContent data={data} />;
+
+    case 'topn_table':
+      return <TableContent data={data} columns={catalogItem?.columns} isExpanded={isExpanded} />;
+
+    case 'timeseries_with_brush':
+    case 'timeseries_multi_metric':
+      return <TimeseriesContent data={data} />;
+
+    case 'timeline_feed':
+      return <TimelineFeedContent data={data} isExpanded={isExpanded} />;
+
+    default:
+      return <GenericContent data={data} />;
+  }
+};
+
+/**
+ * KPI Tile content for client experience overview
+ */
+const KPITileContent: React.FC<{ data: any }> = ({ data }) => {
+  const score = data?.score ?? 0;
+  const components = data?.score_components || {};
+
+  const getScoreColor = (value: number) => {
+    if (value >= 90) return 'text-green-500';
+    if (value >= 75) return 'text-blue-500';
+    if (value >= 60) return 'text-amber-500';
+    return 'text-red-500';
+  };
+
+  const getScoreBg = (value: number) => {
+    if (value >= 90) return 'bg-green-500/10';
+    if (value >= 75) return 'bg-blue-500/10';
+    if (value >= 60) return 'bg-amber-500/10';
+    return 'bg-red-500/10';
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Main Score */}
+      <div className={cn('text-center py-4 rounded-lg', getScoreBg(score))}>
+        <span className={cn('text-4xl font-bold', getScoreColor(score))}>{score}</span>
+        <p className="text-sm text-muted-foreground mt-1">RFQI Score</p>
+      </div>
+
+      {/* Component Breakdown */}
+      {Object.keys(components).length > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(components).slice(0, 6).map(([key, value]) => (
+            <div key={key} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
+              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+              <span className="font-medium">{typeof value === 'number' ? value.toFixed(1) : String(value)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Table content for TopN widgets
+ */
+const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: boolean }> = ({
+  data,
+  columns,
+  isExpanded,
+}) => {
+  if (!Array.isArray(data) || data.length === 0) {
+    return <EmptyState />;
+  }
+
+  // Determine columns to display
+  const displayColumns = columns || Object.keys(data[0]).slice(0, 6);
+  const visibleColumns = isExpanded ? displayColumns : displayColumns.slice(0, 4);
+  const displayData = isExpanded ? data.slice(0, 20) : data.slice(0, 5);
+
+  const formatValue = (value: any, column: string): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'number') {
+      if (column.includes('percent') || column.includes('_percent')) {
+        return `${value.toFixed(1)}%`;
+      }
+      if (column.includes('bps') || column.includes('throughput')) {
+        if (value >= 1e9) return `${(value / 1e9).toFixed(1)} Gbps`;
+        if (value >= 1e6) return `${(value / 1e6).toFixed(1)} Mbps`;
+        if (value >= 1e3) return `${(value / 1e3).toFixed(1)} Kbps`;
+        return `${value} bps`;
+      }
+      if (column.includes('dbm') || column.includes('rssi') || column.includes('noise')) {
+        return `${value} dBm`;
+      }
+      if (column.includes('db') || column.includes('snr')) {
+        return `${value} dB`;
+      }
+      if (column.includes('score')) {
+        return value.toFixed(0);
+      }
+      return value.toLocaleString();
+    }
+    return String(value);
+  };
+
+  const formatHeader = (column: string): string => {
+    return column
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+      .replace(/Dbm/g, 'dBm')
+      .replace(/Db/g, 'dB')
+      .replace(/Bps/g, 'bps')
+      .replace(/Rfqi/g, 'RFQI');
+  };
+
+  return (
+    <div className="overflow-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {visibleColumns.map((col) => (
+              <TableHead key={col} className="text-xs whitespace-nowrap">
+                {formatHeader(col)}
+              </TableHead>
+            ))}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {displayData.map((row, index) => (
+            <TableRow key={index}>
+              {visibleColumns.map((col) => (
+                <TableCell key={col} className="text-xs py-2">
+                  {formatValue(row[col], col)}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      {data.length > displayData.length && (
+        <p className="text-xs text-center text-muted-foreground mt-2">
+          +{data.length - displayData.length} more rows
+        </p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Timeseries content (simplified - would use Recharts in full implementation)
+ */
+const TimeseriesContent: React.FC<{ data: any }> = ({ data }) => {
+  if (!data || typeof data !== 'object') {
+    return <EmptyState />;
+  }
+
+  // Extract metrics from the data object
+  const metrics = Object.entries(data).filter(([_, value]) => {
+    return Array.isArray(value) && value.length > 0;
+  });
+
+  if (metrics.length === 0) {
+    // Check if it's a single metric array
+    if (Array.isArray(data) && data.length > 0) {
+      return (
+        <div className="space-y-2">
+          <div className="h-32 bg-muted/30 rounded flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">
+              {data.length} data points
+            </span>
+          </div>
+        </div>
+      );
+    }
+    return <EmptyState />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {metrics.slice(0, 4).map(([metric, values]: [string, any]) => {
+        const numericValues = values
+          .map((v: any) => v.value ?? v)
+          .filter((v: any) => typeof v === 'number');
+        const latest = numericValues[numericValues.length - 1] || 0;
+        const first = numericValues[0] || 0;
+        const trend = latest - first;
+        const trendPercent = first !== 0 ? ((trend / first) * 100).toFixed(1) : '0';
+
+        return (
+          <div key={metric} className="flex items-center justify-between p-2 bg-muted/30 rounded">
+            <span className="text-xs text-muted-foreground capitalize">
+              {metric.replace(/_/g, ' ')}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">
+                {typeof latest === 'number' ? latest.toFixed(1) : latest}
+              </span>
+              {trend !== 0 && (
+                <span className={cn('flex items-center text-xs', trend > 0 ? 'text-green-500' : 'text-red-500')}>
+                  {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {trendPercent}%
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+/**
+ * Timeline feed content for contextual insights
+ */
+const TimelineFeedContent: React.FC<{ data: any[]; isExpanded: boolean }> = ({ data, isExpanded }) => {
+  if (!Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+        <span className="text-sm">No insights available</span>
+      </div>
+    );
+  }
+
+  const displayData = isExpanded ? data.slice(0, 10) : data.slice(0, 3);
+
+  const getSeverityColor = (severity: string) => {
+    switch (severity?.toLowerCase()) {
+      case 'critical':
+        return 'bg-red-500/10 border-red-500/20 text-red-400';
+      case 'warning':
+        return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+      case 'info':
+        return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
+      default:
+        return 'bg-muted border-border text-muted-foreground';
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      {displayData.map((insight, index) => (
+        <div
+          key={insight.insight_id || index}
+          className={cn('p-3 rounded-lg border', getSeverityColor(insight.severity))}
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium line-clamp-1">{insight.title}</p>
+              {insight.description && (
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+                  {insight.description}
+                </p>
+              )}
+            </div>
+            <Badge variant="outline" className="text-xs shrink-0">
+              {insight.severity || 'info'}
+            </Badge>
+          </div>
+        </div>
+      ))}
+      {data.length > displayData.length && (
+        <p className="text-xs text-center text-muted-foreground">
+          +{data.length - displayData.length} more insights
+        </p>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Generic content for unhandled widget types
+ */
+const GenericContent: React.FC<{ data: any }> = ({ data }) => {
   if (typeof data === 'number') {
     return (
       <div className="text-center py-4">
@@ -179,92 +484,25 @@ function renderWidgetContent(widget: WorkspaceWidgetType): React.ReactNode {
     );
   }
 
-  // If data is an array (list of items)
   if (Array.isArray(data)) {
-    if (data.length === 0) {
-      return (
-        <div className="text-center py-4 text-muted-foreground">
-          <span className="text-sm">No results found</span>
-        </div>
-      );
-    }
-
     return (
       <div className="space-y-2 max-h-64 overflow-auto">
         {data.slice(0, 10).map((item, index) => (
-          <div
-            key={index}
-            className="flex items-center justify-between p-2 rounded-md bg-muted/50 text-sm"
-          >
-            <span className="truncate flex-1">
-              {typeof item === 'object' ? (item.name || item.displayName || item.id || JSON.stringify(item)) : String(item)}
-            </span>
-            {typeof item === 'object' && item.value !== undefined && (
-              <span className="text-muted-foreground ml-2">{item.value}</span>
-            )}
+          <div key={index} className="p-2 rounded bg-muted/50 text-sm">
+            {typeof item === 'object' ? JSON.stringify(item) : String(item)}
           </div>
         ))}
-        {data.length > 10 && (
-          <div className="text-center text-xs text-muted-foreground py-2">
-            +{data.length - 10} more items
-          </div>
-        )}
       </div>
     );
   }
 
-  // If data is an object with specific structure
   if (typeof data === 'object' && data !== null) {
-    // Check for summary/count type
-    if ('total' in data || 'count' in data) {
-      const value = data.total ?? data.count;
-      return (
-        <div className="text-center py-4">
-          <span className="text-4xl font-bold text-foreground">{value.toLocaleString()}</span>
-          {data.label && (
-            <p className="text-sm text-muted-foreground mt-1">{data.label}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Check for comparison type (e.g., used vs available)
-    if ('used' in data && 'available' in data) {
-      const total = data.used + data.available;
-      const percentage = total > 0 ? (data.used / total) * 100 : 0;
-      return (
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Used</span>
-            <span className="font-medium">{data.used.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Available</span>
-            <span className="font-medium">{data.available.toLocaleString()}</span>
-          </div>
-          <div className="w-full bg-muted rounded-full h-2">
-            <div
-              className={cn(
-                'h-2 rounded-full transition-all',
-                percentage > 90 ? 'bg-red-500' : percentage > 70 ? 'bg-amber-500' : 'bg-green-500'
-              )}
-              style={{ width: `${Math.min(percentage, 100)}%` }}
-            />
-          </div>
-          <div className="text-center text-xs text-muted-foreground">
-            {percentage.toFixed(1)}% utilized
-          </div>
-        </div>
-      );
-    }
-
-    // Generic object rendering
     return (
       <div className="space-y-2">
         {Object.entries(data).slice(0, 8).map(([key, value]) => (
           <div key={key} className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-            <span className="font-medium truncate ml-2 max-w-[60%]">
+            <span className="font-medium truncate ml-2">
               {typeof value === 'object' ? JSON.stringify(value) : String(value)}
             </span>
           </div>
@@ -273,12 +511,11 @@ function renderWidgetContent(widget: WorkspaceWidgetType): React.ReactNode {
     );
   }
 
-  // Default string rendering
   return (
     <div className="text-sm text-foreground whitespace-pre-wrap">
       {String(data)}
     </div>
   );
-}
+};
 
 export default WorkspaceWidget;
