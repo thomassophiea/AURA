@@ -1,4 +1,0 @@
-BUILD_TIMESTAMP=2024-12-23-20:18:00
-FORCE_REBUILD=true
-BUILD_NUMBER=7
-This file forces Docker cache invalidation

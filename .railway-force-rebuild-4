@@ -1,4 +1,0 @@
-Force rebuild timestamp: 2025-12-29T02:00:00Z
-Reason: Add Kroger theme CSS overrides to index.css (like synthwave/pirate/mi5)
-Changes: Added .theme-kroger and .kroger class overrides for all sidebar components
-CSS size: increased from 109.95 kB to 111.13 kB
