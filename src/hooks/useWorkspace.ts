@@ -4,9 +4,18 @@
  * Manages workspace widgets with per-user persistence.
  * Wireless-only focus: AccessPoints, Clients, ClientExperience, AppInsights, ContextualInsights
  * Integrates with existing dashboard API endpoints for real data.
+ *
+ * Supports SaveWidgetToWorkspace feature: users can save any insight widget
+ * from across the dashboard to their personal Workspace.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import {
+  getSavedWidgets,
+  hydrateWidgetFromReference,
+  removeWidgetFromWorkspace as removeSavedWidget,
+  type PersistedWidgetReference,
+} from '@/services/workspacePersistence';
 
 // Wireless-only topics
 export type WorkspaceTopic = 'AccessPoints' | 'Clients' | 'ClientExperience' | 'AppInsights' | 'ContextualInsights';
@@ -56,9 +65,10 @@ export interface WorkspaceWidget {
   topic: WorkspaceTopic;
   type: WidgetType;
   title: string;
-  createdAt: number;
-  position: { x: number; y: number };
-  size: { width: number; height: number };
+  description?: string;
+  createdAt?: number;
+  position?: { x: number; y: number };
+  size?: { width: number; height: number };
   isLoading: boolean;
   error: string | null;
   data: any;
@@ -68,7 +78,27 @@ export interface WorkspaceWidget {
     apId?: string;
     clientId?: string;
   };
-  linkingEnabled: boolean;
+  // For cross-widget linking
+  isLinked?: boolean;
+  linkingEnabled?: boolean;
+  // Data binding (from catalog or saved widget)
+  dataBinding?: {
+    endpointRef: string;
+    metrics?: string[];
+    aggregation?: string;
+    sortField?: string;
+    sortDirection?: 'asc' | 'desc';
+    limit?: number;
+  };
+  columns?: string[];
+  interaction?: {
+    brushEnabled?: boolean;
+    linkTargets?: string;
+  };
+  // Tracking for saved widgets
+  isSavedWidget?: boolean;
+  sourceWidgetId?: string;
+  lastUpdated?: number;
 }
 
 // Workspace context (site, time range, scope)
@@ -125,8 +155,50 @@ export function useWorkspace() {
     return defaultState;
   });
 
+  // Track if saved widgets have been loaded
+  const savedWidgetsLoaded = useRef(false);
+
   // Signal listeners for cross-widget communication
   const signalListeners = useRef<Set<(signals: WorkspaceSignals) => void>>(new Set());
+
+  // Load saved widgets on mount (from SaveWidgetToWorkspace feature)
+  useEffect(() => {
+    if (savedWidgetsLoaded.current) return;
+    savedWidgetsLoaded.current = true;
+
+    try {
+      const savedRefs = getSavedWidgets();
+      if (savedRefs.length > 0) {
+        const hydratedWidgets: WorkspaceWidget[] = [];
+
+        for (const ref of savedRefs) {
+          const widget = hydrateWidgetFromReference(ref);
+          if (widget) {
+            widget.isSavedWidget = true;
+            widget.sourceWidgetId = ref.source_widget_id;
+            hydratedWidgets.push(widget);
+          }
+        }
+
+        if (hydratedWidgets.length > 0) {
+          setState(prev => {
+            // Avoid duplicates - only add widgets not already present
+            const existingIds = new Set(prev.widgets.map(w => w.id));
+            const newWidgets = hydratedWidgets.filter(w => !existingIds.has(w.id));
+
+            if (newWidgets.length === 0) return prev;
+
+            return {
+              ...prev,
+              widgets: [...prev.widgets, ...newWidgets],
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('[Workspace] Failed to load saved widgets:', error);
+    }
+  }, []);
 
   // Persist state to localStorage
   useEffect(() => {
@@ -217,12 +289,22 @@ export function useWorkspace() {
 
   /**
    * Delete a widget
+   * Also removes from persisted saved widgets if applicable
    */
   const deleteWidget = useCallback((id: string) => {
-    setState(prev => ({
-      ...prev,
-      widgets: prev.widgets.filter(widget => widget.id !== id),
-    }));
+    setState(prev => {
+      const widget = prev.widgets.find(w => w.id === id);
+
+      // If this is a saved widget, also remove from persistence
+      if (widget?.isSavedWidget) {
+        removeSavedWidget(id);
+      }
+
+      return {
+        ...prev,
+        widgets: prev.widgets.filter(w => w.id !== id),
+      };
+    });
   }, []);
 
   /**
@@ -282,14 +364,47 @@ export function useWorkspace() {
 
   /**
    * Clear all widgets
+   * Optionally clear saved widgets from persistence too
    */
-  const clearWorkspace = useCallback(() => {
+  const clearWorkspace = useCallback((clearSaved = false) => {
+    if (clearSaved) {
+      // Remove all saved widgets from persistence
+      state.widgets.forEach(w => {
+        if (w.isSavedWidget) {
+          removeSavedWidget(w.id);
+        }
+      });
+    }
+
     setState(prev => ({
       ...prev,
       widgets: [],
       signals: {},
     }));
+  }, [state.widgets]);
+
+  /**
+   * Add a widget from a saved reference (from SaveWidgetToWorkspace feature)
+   */
+  const addSavedWidget = useCallback((ref: PersistedWidgetReference): WorkspaceWidget | null => {
+    const widget = hydrateWidgetFromReference(ref);
+    if (!widget) return null;
+
+    widget.isSavedWidget = true;
+    widget.sourceWidgetId = ref.source_widget_id;
+
+    setState(prev => ({
+      ...prev,
+      widgets: [...prev.widgets, widget],
+    }));
+
+    return widget;
   }, []);
+
+  /**
+   * Get count of saved widgets
+   */
+  const savedWidgetCount = state.widgets.filter(w => w.isSavedWidget).length;
 
   const hasWidgets = state.widgets.length > 0;
 
@@ -321,6 +436,10 @@ export function useWorkspace() {
     refreshWidget,
     toggleWidgetLinking,
     clearWorkspace,
+
+    // Saved widget actions (SaveWidgetToWorkspace feature)
+    addSavedWidget,
+    savedWidgetCount,
   };
 }
 
