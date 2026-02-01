@@ -48,6 +48,7 @@ const EventAlarmDashboard = lazy(() => import('./components/EventAlarmDashboard'
 const SecurityDashboard = lazy(() => import('./components/SecurityDashboard').then(m => ({ default: m.SecurityDashboard })));
 const GuestManagement = lazy(() => import('./components/GuestManagement').then(m => ({ default: m.GuestManagement })));
 const ApiDocumentation = lazy(() => import('./components/ApiDocumentation').then(m => ({ default: m.ApiDocumentation })));
+const Workspace = lazy(() => import('./components/Workspace').then(m => ({ default: m.Workspace })));
 import { apiService, ApiCallLog } from './services/api';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
@@ -63,6 +64,7 @@ import { applyTheme as applyThemeColors } from './lib/themes';
 import { useDeviceDetection } from './hooks/useDeviceDetection';
 
 const pageInfo = {
+  'workspace': { title: 'Workspace', description: 'Create custom widgets for Devices, Clients, Licensing, and Alerts' },
   'service-levels': { title: 'Contextual Insights', description: 'Context-aware network monitoring and analytics' },
   'app-insights': { title: 'App Insights', description: 'Application visibility and traffic analytics' },
   'connected-clients': { title: 'Connected Clients', description: 'View and manage connected devices' },
@@ -840,6 +842,8 @@ export default function App() {
 
   const renderPage = () => {
     switch (currentPage) {
+      case 'workspace':
+        return <Workspace />;
       case 'service-levels':
         return <DashboardEnhanced />;
       case 'app-insights':
