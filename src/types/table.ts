@@ -42,6 +42,7 @@ export type ColumnCategory =
   | 'metrics'
   | 'status'
   | 'network'
+  | 'connection'
   | 'advanced'
   | 'security'
   | 'performance';

@@ -85,6 +85,7 @@ export function ColumnSelector({
       metrics: 'Metrics & Performance',
       status: 'Status',
       network: 'Network',
+      connection: 'Connection Details',
       advanced: 'Advanced',
       security: 'Security',
       performance: 'Performance',
