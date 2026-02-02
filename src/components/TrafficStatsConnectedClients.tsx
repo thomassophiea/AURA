@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, Building, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2 } from 'lucide-react';
+import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, Building, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -21,7 +21,7 @@ import { resolveClientIdentity, type ClientIdentity } from '../lib/clientIdentit
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { useTableCustomization } from '../hooks/useTableCustomization';
-import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
+import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
 
 interface ConnectedClientsProps {
@@ -65,6 +65,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  // Column customization state
+  const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
 
   // Column customization hook
   const columnCustomization = useTableCustomization({
@@ -604,10 +607,12 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
-  if (isLoading) {
+  // Only show skeleton on initial load (when there's no data yet)
+  // This prevents flashing on subsequent refreshes
+  if (isLoading && stations.length === 0) {
     return (
       <div className="space-y-6">
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
@@ -620,7 +625,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </Card>
           ))}
         </div>
-        
+
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-32" />
@@ -647,9 +652,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button onClick={loadStations} variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
+          <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            {isLoading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </div>
@@ -860,11 +865,14 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           <div className="flex items-center justify-between">
             <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
             <div className="flex items-center gap-2">
-              <ColumnCustomizationDialog
-                customization={columnCustomization}
-                triggerLabel="Columns"
-                showTriggerIcon={true}
-              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsColumnDialogOpen(true)}
+              >
+                <Columns className="mr-2 h-4 w-4" />
+                Customize Columns
+              </Button>
               <SaveToWorkspace
                 widgetId="connected-clients-table"
                 widgetType="topn_table"
@@ -948,7 +956,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                 <TableHeader>
                   <TableRow className="h-8">
                     {/* Checkbox column - always visible */}
-                    <TableHead className="w-12 p-2 text-[10px] sticky left-0 bg-card z-10">
+                    <TableHead className="w-12 p-2 text-[10px] sticky left-0 bg-background z-10">
                       <Checkbox
                         checked={selectedStations.size === paginatedStations.length && paginatedStations.length > 0}
                         onCheckedChange={handleSelectAll}
@@ -1042,7 +1050,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         }}
                       >
                         {/* Checkbox cell - always visible */}
-                        <TableCell className="p-1 sticky left-0 bg-card z-10" data-checkbox>
+                        <TableCell className="p-1 sticky left-0 bg-background z-10" data-checkbox>
                           <Checkbox
                             checked={selectedStations.has(station.macAddress)}
                             onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
@@ -1146,6 +1154,146 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           )}
         </CardContent>
       </Card>
+
+      {/* Column Customization Slide-Out */}
+      <DetailSlideOut
+        isOpen={isColumnDialogOpen}
+        onClose={() => setIsColumnDialogOpen(false)}
+        title="Customize Table Columns"
+        description="Select which columns you want to display in the Connected Clients table"
+        width="lg"
+      >
+        <div className="space-y-6">
+          {/* Basic Columns */}
+          <div>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Basic Information</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'basic').map(column => (
+                <div key={column.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${column.key}`}
+                    checked={columnCustomization.visibleColumns.includes(column.key)}
+                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                    disabled={column.lockVisible}
+                  />
+                  <label
+                    htmlFor={`col-${column.key}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {column.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Network Columns */}
+          <div>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Network</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'network').map(column => (
+                <div key={column.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${column.key}`}
+                    checked={columnCustomization.visibleColumns.includes(column.key)}
+                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                  />
+                  <label
+                    htmlFor={`col-${column.key}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {column.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Connection Columns */}
+          <div>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Connection</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'connection').map(column => (
+                <div key={column.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${column.key}`}
+                    checked={columnCustomization.visibleColumns.includes(column.key)}
+                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                  />
+                  <label
+                    htmlFor={`col-${column.key}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {column.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Performance Columns */}
+          <div>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Performance</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'performance').map(column => (
+                <div key={column.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${column.key}`}
+                    checked={columnCustomization.visibleColumns.includes(column.key)}
+                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                  />
+                  <label
+                    htmlFor={`col-${column.key}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {column.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced Columns */}
+          <div>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Advanced</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'advanced').map(column => (
+                <div key={column.key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={`col-${column.key}`}
+                    checked={columnCustomization.visibleColumns.includes(column.key)}
+                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                  />
+                  <label
+                    htmlFor={`col-${column.key}`}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {column.label}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => columnCustomization.resetColumns()}
+            >
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reset to Defaults
+            </Button>
+            <div className="text-sm text-muted-foreground">
+              {columnCustomization.visibleColumns.length} of {DEVICE_MONITORING_COLUMNS.length} columns selected
+            </div>
+            <Button onClick={() => setIsColumnDialogOpen(false)}>
+              Done
+            </Button>
+          </div>
+        </div>
+      </DetailSlideOut>
     </div>
   );
 }
