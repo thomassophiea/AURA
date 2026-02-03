@@ -67,13 +67,11 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
         station.status?.toLowerCase() === 'associated' ||
         station.status?.toLowerCase() === 'active';
       return (
-        <div className="flex items-center gap-2">
-          {isOnline ? (
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-gray-400" />
-          )}
-          <Badge variant={isOnline ? 'default' : 'secondary'}>
+        <div className="flex items-center gap-2 min-w-[100px]">
+          <Badge className={isOnline
+            ? 'bg-green-500/15 text-green-500 border-green-500/30 hover:bg-green-500/20'
+            : 'bg-gray-500/15 text-gray-400 border-gray-500/30'
+          }>
             {station.status || 'Unknown'}
           </Badge>
         </div>

@@ -93,20 +93,20 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     }
   };
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeClass = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'connected':
       case 'associated':
       case 'active':
-        return 'default';
+        return 'bg-green-500/15 text-green-500 border-green-500/30';
       case 'disconnected':
       case 'inactive':
-        return 'destructive';
+        return 'bg-red-500/15 text-red-500 border-red-500/30';
       case 'idle':
       case 'low':
-        return 'secondary';
+        return 'bg-gray-500/15 text-gray-400 border-gray-500/30';
       default:
-        return 'outline';
+        return 'bg-gray-500/15 text-gray-400 border-gray-500/30';
     }
   };
 
@@ -818,19 +818,6 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               </div>
             </div>
             
-            <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-40 h-10">
-                <MapPin className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Select Site" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {getUniqueSites().map((site) => (
-                  <SelectItem key={site} value={site}>{site}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-28 h-10">
                 <Filter className="mr-2 h-4 w-4" />
@@ -1100,7 +1087,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       </div>
                       <div className="flex justify-between">
                         <span className="font-medium">Status:</span>
-                        <Badge variant={getStatusBadgeVariant(selectedStation.status || '')}>
+                        <Badge className={getStatusBadgeClass(selectedStation.status || '')}>
                           {selectedStation.status || 'Unknown'}
                         </Badge>
                       </div>
