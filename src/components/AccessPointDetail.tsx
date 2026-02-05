@@ -93,16 +93,19 @@ function parseSpeedString(speedStr: string | undefined | null): { speedMbps: num
 
 /**
  * Get the actual negotiated ethernet speed from AP data
- * Priority: ethPorts[0].speed > ethSpeed
+ * Checks ALL ports in ethPorts array and finds the one with valid speed
+ * (some APs use eth1 as uplink, not eth0)
  */
-function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string } {
-  // First try ethPorts array (actual negotiated speed)
+function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string; portName?: string } {
+  // Check all ports in ethPorts array to find one with valid speed
   if (ap.ethPorts && Array.isArray(ap.ethPorts) && ap.ethPorts.length > 0) {
-    const primaryPort = ap.ethPorts[0];
-    if (primaryPort && primaryPort.speed) {
-      const parsed = parseSpeedString(primaryPort.speed);
-      if (parsed.speedMbps !== null) {
-        return parsed;
+    // First pass: find any port with valid numeric speed (not speedNA)
+    for (const port of ap.ethPorts) {
+      if (port && port.speed) {
+        const parsed = parseSpeedString(port.speed);
+        if (parsed.speedMbps !== null) {
+          return { ...parsed, portName: port.name || 'eth' };
+        }
       }
     }
   }
@@ -597,12 +600,20 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                     {cableHealth.speedDisplay || 'N/A'}
                   </span>
                 </div>
-                {apAny.ethPorts?.[0]?.mode && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Duplex Mode:</span>
-                    <span className="font-medium">{apAny.ethPorts[0].mode}</span>
-                  </div>
-                )}
+                {apAny.ethPorts && (() => {
+                  // Find the port with valid speed (same logic as getActualEthSpeed)
+                  const activePort = apAny.ethPorts.find((p: any) => {
+                    if (!p?.speed) return false;
+                    const s = String(p.speed).toLowerCase();
+                    return s !== 'speedna' && s !== 'na';
+                  }) || apAny.ethPorts[0];
+                  return activePort?.mode ? (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duplex Mode ({activePort.name || 'eth'}):</span>
+                      <span className="font-medium">{activePort.mode}</span>
+                    </div>
+                  ) : null;
+                })()}
                 {apAny.ethPowerStatus && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">PoE Status:</span>

@@ -32,17 +32,20 @@ interface CableHealthResult {
 
 /**
  * Get the actual negotiated ethernet speed from AP data
- * Priority: ethPorts[0].speed > ethSpeed
+ * Checks ALL ports in ethPorts array and finds the one with valid speed
+ * (some APs use eth1 as uplink, not eth0)
  * Handles formats like: "speed5Gbps", "speed100Mbps", "speedNA", "speedAuto"
  */
-function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string } {
-  // First try ethPorts array (actual negotiated speed)
+function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string; portName?: string } {
+  // Check all ports in ethPorts array to find one with valid speed
   if (ap.ethPorts && Array.isArray(ap.ethPorts) && ap.ethPorts.length > 0) {
-    const primaryPort = ap.ethPorts[0];
-    if (primaryPort && primaryPort.speed) {
-      const parsed = parseSpeedString(primaryPort.speed);
-      if (parsed.speedMbps !== null) {
-        return parsed;
+    // First pass: find any port with valid numeric speed (not speedNA)
+    for (const port of ap.ethPorts) {
+      if (port && port.speed) {
+        const parsed = parseSpeedString(port.speed);
+        if (parsed.speedMbps !== null) {
+          return { ...parsed, portName: port.name || 'eth' };
+        }
       }
     }
   }
@@ -1303,14 +1306,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               </Tooltip>
             )}
             {/* Cable Health Icon - only show when there's a problem (warning/critical) */}
-            {apIsOnline && apCableHealth && (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
+            {apCableHealth && (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  {apCableHealth.status === 'warning' ? (
-                    <Cable className="h-4 w-4 text-yellow-500 cursor-help" />
-                  ) : (
-                    <Cable className="h-4 w-4 text-red-500 cursor-help" />
-                  )}
+                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`} />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p className="font-medium">
