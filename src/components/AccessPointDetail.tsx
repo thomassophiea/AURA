@@ -43,6 +43,7 @@ import { toast } from 'sonner';
 interface CableHealthResult {
   status: 'good' | 'warning' | 'critical' | 'unknown';
   speedMbps: number | null;
+  speedDisplay: string;
   expectedSpeedMbps: number;
   message: string;
   aiInsight?: string;
@@ -50,31 +51,68 @@ interface CableHealthResult {
 
 /**
  * Parse ethernet speed string to Mbps
+ * Handles formats like: "speed5Gbps", "speed100Mbps", "speedNA", "speedAuto"
  */
-function parseEthSpeed(ethSpeed: string | undefined | null): number | null {
-  if (!ethSpeed || ethSpeed === '-') return null;
+function parseSpeedString(speedStr: string | undefined | null): { speedMbps: number | null; speedDisplay: string } {
+  if (!speedStr || speedStr === '-') {
+    return { speedMbps: null, speedDisplay: 'Unknown' };
+  }
 
-  const speed = String(ethSpeed).toLowerCase().trim();
+  const speed = String(speedStr).toLowerCase().trim();
 
-  // Handle Gbps format
+  // Handle "speedNA" or "speedAuto" - these mean we can't determine actual speed
+  if (speed === 'speedna' || speed === 'speedauto' || speed === 'na' || speed === 'auto') {
+    return { speedMbps: null, speedDisplay: speedStr };
+  }
+
+  // Handle "speed5Gbps", "speed100Mbps", "speed1Gbps" format
+  const speedPrefixMatch = speed.match(/speed([\d.]+)(g|m)/i);
+  if (speedPrefixMatch) {
+    const value = parseFloat(speedPrefixMatch[1]);
+    const unit = speedPrefixMatch[2].toLowerCase();
+    const mbps = unit === 'g' ? value * 1000 : value;
+    const display = unit === 'g' ? `${value}Gbps` : `${value}Mbps`;
+    return { speedMbps: mbps, speedDisplay: display };
+  }
+
+  // Handle "5Gbps", "100Mbps" format (without "speed" prefix)
   const gbpsMatch = speed.match(/([\d.]+)\s*g/i);
   if (gbpsMatch) {
-    return parseFloat(gbpsMatch[1]) * 1000;
+    const value = parseFloat(gbpsMatch[1]);
+    return { speedMbps: value * 1000, speedDisplay: `${value}Gbps` };
   }
 
-  // Handle Mbps format
   const mbpsMatch = speed.match(/([\d.]+)\s*m/i);
   if (mbpsMatch) {
-    return parseFloat(mbpsMatch[1]);
+    const value = parseFloat(mbpsMatch[1]);
+    return { speedMbps: value, speedDisplay: `${value}Mbps` };
   }
 
-  // Handle plain number (assume Mbps)
-  const numMatch = speed.match(/^(\d+)$/);
-  if (numMatch) {
-    return parseInt(numMatch[1], 10);
+  return { speedMbps: null, speedDisplay: speedStr };
+}
+
+/**
+ * Get the actual negotiated ethernet speed from AP data
+ * Priority: ethPorts[0].speed > ethSpeed
+ */
+function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string } {
+  // First try ethPorts array (actual negotiated speed)
+  if (ap.ethPorts && Array.isArray(ap.ethPorts) && ap.ethPorts.length > 0) {
+    const primaryPort = ap.ethPorts[0];
+    if (primaryPort && primaryPort.speed) {
+      const parsed = parseSpeedString(primaryPort.speed);
+      if (parsed.speedMbps !== null) {
+        return parsed;
+      }
+    }
   }
 
-  return null;
+  // Fallback to ethSpeed field
+  if (ap.ethSpeed) {
+    return parseSpeedString(ap.ethSpeed);
+  }
+
+  return { speedMbps: null, speedDisplay: 'Unknown' };
 }
 
 /**
@@ -87,13 +125,14 @@ function getExpectedSpeed(model: string | undefined): number {
 
   // WiFi 6E / WiFi 7 APs - typically have 2.5Gbps or 5Gbps ports
   if (m.includes('AP6') || m.includes('AP7') || m.includes('635') || m.includes('655') ||
-      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15')) {
-    return 2500;
+      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15') ||
+      m.includes('5050')) {
+    return 5000; // 5Gbps for WiFi 6E
   }
 
-  // WiFi 6 APs - typically 1Gbps
+  // WiFi 6 APs - typically 1Gbps or 2.5Gbps
   if (m.includes('AP5') || m.includes('515') || m.includes('535') || m.includes('555') ||
-      m.includes('OAW-AP12') || m.includes('OAW-AP11')) {
+      m.includes('OAW-AP12') || m.includes('OAW-AP11') || m.includes('5020')) {
     return 1000;
   }
 
@@ -105,13 +144,14 @@ function getExpectedSpeed(model: string | undefined): number {
  */
 function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
   const apAny = apDetails as any;
-  const speedMbps = parseEthSpeed(apAny.ethSpeed);
-  const expectedSpeedMbps = getExpectedSpeed(apDetails.model || apAny.hardwareType);
+  const { speedMbps, speedDisplay } = getActualEthSpeed(apAny);
+  const expectedSpeedMbps = getExpectedSpeed(apDetails.model || apAny.hardwareType || apAny.platformName);
 
   if (speedMbps === null) {
     return {
       status: 'unknown',
       speedMbps: null,
+      speedDisplay,
       expectedSpeedMbps,
       message: 'Ethernet speed not available'
     };
@@ -121,8 +161,9 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
     return {
       status: 'critical',
       speedMbps,
+      speedDisplay,
       expectedSpeedMbps,
-      message: 'Critical: 10Mbps link detected - likely bad cable, damaged connector, or severe cable damage',
+      message: `Critical: ${speedDisplay} link detected - likely bad cable, damaged connector, or severe cable damage`,
       aiInsight: 'A 10Mbps negotiation typically indicates multiple damaged pairs. Check both ends of the cable for damage to the RJ45 connector. The blue pair (pins 4, 5) and brown pair (pins 7, 8) are most commonly damaged as they are the outer pairs. Consider replacing the cable entirely.'
     };
   }
@@ -131,8 +172,9 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
     return {
       status: 'warning',
       speedMbps,
+      speedDisplay,
       expectedSpeedMbps,
-      message: `Warning: 100Mbps link on AP that supports ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}`,
+      message: `Warning: ${speedDisplay} link on AP that supports ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}`,
       aiInsight: 'A 100Mbps negotiation on a gigabit-capable AP usually indicates a damaged pair in the cable. Gigabit Ethernet requires all 4 pairs, while 100Mbps only uses 2. Check the blue pair (pins 4, 5) or brown pair (pins 7, 8) on the RJ45 connector - these are often the culprit as they\'re not used for 100Mbps and damage goes unnoticed until gigabit is needed. Also verify the cable is Cat5e or better.'
     };
   }
@@ -140,8 +182,9 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
   return {
     status: 'good',
     speedMbps,
+    speedDisplay,
     expectedSpeedMbps,
-    message: `${speedMbps >= 1000 ? `${speedMbps/1000}Gbps` : `${speedMbps}Mbps`} - Link speed is good`
+    message: `${speedDisplay} - Link speed is good`
   };
 }
 
@@ -551,13 +594,13 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Link Speed:</span>
                   <span className={`font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : cableHealth.status === 'warning' ? 'text-yellow-500' : ''}`}>
-                    {apAny.ethSpeed || 'N/A'}
+                    {cableHealth.speedDisplay || 'N/A'}
                   </span>
                 </div>
-                {apAny.ethMode && (
+                {apAny.ethPorts?.[0]?.mode && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Mode:</span>
-                    <span className="font-medium">{apAny.ethMode}</span>
+                    <span className="text-muted-foreground">Duplex Mode:</span>
+                    <span className="font-medium">{apAny.ethPorts[0].mode}</span>
                   </div>
                 )}
                 {apAny.ethPowerStatus && (

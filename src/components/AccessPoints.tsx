@@ -24,39 +24,84 @@ import { SaveToWorkspace } from './SaveToWorkspace';
 interface CableHealthResult {
   status: 'good' | 'warning' | 'critical' | 'unknown';
   speedMbps: number | null;
+  speedDisplay: string;
   expectedSpeedMbps: number;
   message: string;
   otherAPsOnSwitch?: { good: number; bad: number };
 }
 
 /**
- * Parse ethernet speed string to Mbps
- * Handles formats like: "1Gbps", "100Mbps", "1000", "10/100/1000", "2.5Gbps", "5Gbps"
+ * Get the actual negotiated ethernet speed from AP data
+ * Priority: ethPorts[0].speed > ethSpeed
+ * Handles formats like: "speed5Gbps", "speed100Mbps", "speedNA", "speedAuto"
  */
-function parseEthSpeed(ethSpeed: string | undefined | null): number | null {
-  if (!ethSpeed || ethSpeed === '-') return null;
-
-  const speed = String(ethSpeed).toLowerCase().trim();
-
-  // Handle Gbps format
-  const gbpsMatch = speed.match(/([\d.]+)\s*g/i);
-  if (gbpsMatch) {
-    return parseFloat(gbpsMatch[1]) * 1000;
+function getActualEthSpeed(ap: any): { speedMbps: number | null; speedDisplay: string } {
+  // First try ethPorts array (actual negotiated speed)
+  if (ap.ethPorts && Array.isArray(ap.ethPorts) && ap.ethPorts.length > 0) {
+    const primaryPort = ap.ethPorts[0];
+    if (primaryPort && primaryPort.speed) {
+      const parsed = parseSpeedString(primaryPort.speed);
+      if (parsed.speedMbps !== null) {
+        return parsed;
+      }
+    }
   }
 
-  // Handle Mbps format
+  // Fallback to ethSpeed field
+  if (ap.ethSpeed) {
+    return parseSpeedString(ap.ethSpeed);
+  }
+
+  return { speedMbps: null, speedDisplay: 'Unknown' };
+}
+
+/**
+ * Parse ethernet speed string to Mbps
+ * Handles formats like: "speed5Gbps", "speed100Mbps", "1Gbps", "100Mbps", "speedNA", "speedAuto"
+ */
+function parseSpeedString(speedStr: string | undefined | null): { speedMbps: number | null; speedDisplay: string } {
+  if (!speedStr || speedStr === '-') {
+    return { speedMbps: null, speedDisplay: 'Unknown' };
+  }
+
+  const speed = String(speedStr).toLowerCase().trim();
+
+  // Handle "speedNA" or "speedAuto" - these mean we can't determine actual speed
+  if (speed === 'speedna' || speed === 'speedauto' || speed === 'na' || speed === 'auto') {
+    return { speedMbps: null, speedDisplay: speedStr };
+  }
+
+  // Handle "speed5Gbps", "speed100Mbps", "speed1Gbps" format
+  const speedPrefixMatch = speed.match(/speed([\d.]+)(g|m)/i);
+  if (speedPrefixMatch) {
+    const value = parseFloat(speedPrefixMatch[1]);
+    const unit = speedPrefixMatch[2].toLowerCase();
+    const mbps = unit === 'g' ? value * 1000 : value;
+    const display = unit === 'g' ? `${value}Gbps` : `${value}Mbps`;
+    return { speedMbps: mbps, speedDisplay: display };
+  }
+
+  // Handle "5Gbps", "100Mbps" format (without "speed" prefix)
+  const gbpsMatch = speed.match(/([\d.]+)\s*g/i);
+  if (gbpsMatch) {
+    const value = parseFloat(gbpsMatch[1]);
+    return { speedMbps: value * 1000, speedDisplay: `${value}Gbps` };
+  }
+
   const mbpsMatch = speed.match(/([\d.]+)\s*m/i);
   if (mbpsMatch) {
-    return parseFloat(mbpsMatch[1]);
+    const value = parseFloat(mbpsMatch[1]);
+    return { speedMbps: value, speedDisplay: `${value}Mbps` };
   }
 
   // Handle plain number (assume Mbps)
   const numMatch = speed.match(/^(\d+)$/);
   if (numMatch) {
-    return parseInt(numMatch[1], 10);
+    const value = parseInt(numMatch[1], 10);
+    return { speedMbps: value, speedDisplay: `${value}Mbps` };
   }
 
-  return null;
+  return { speedMbps: null, speedDisplay: speedStr };
 }
 
 /**
@@ -86,10 +131,25 @@ function getExpectedSpeed(model: string | undefined): number {
 
 /**
  * Extract switch identifier from switchPorts field
- * Format can be: "switch-serial:port", "switch-name/port", etc.
+ * Can be: array like ["46:SW-4220", ""] or string like "switch-serial:port"
  */
-function extractSwitchId(switchPorts: string | undefined): string | null {
-  if (!switchPorts || switchPorts === '-') return null;
+function extractSwitchId(switchPorts: string | string[] | undefined): string | null {
+  if (!switchPorts) return null;
+
+  // Handle array format: ["46:SW-4220", ""]
+  if (Array.isArray(switchPorts)) {
+    const firstPort = switchPorts.find(p => p && p.trim() !== '');
+    if (!firstPort) return null;
+    // Extract switch name from "46:SW-4220" format -> "sw-4220"
+    const parts = firstPort.split(':');
+    if (parts.length >= 2) {
+      return parts[1].trim().toLowerCase();
+    }
+    return firstPort.trim().toLowerCase();
+  }
+
+  // Handle string format
+  if (switchPorts === '-') return null;
 
   // Try common formats: "SWITCH123:1/0/1", "switch-name/ge-0/0/1"
   const colonMatch = switchPorts.match(/^([^:\/]+)/);
@@ -106,14 +166,15 @@ function analyzeCableHealth(
   allAPs: AccessPoint[]
 ): CableHealthResult {
   const apAny = ap as any;
-  const speedMbps = parseEthSpeed(apAny.ethSpeed);
-  const expectedSpeedMbps = getExpectedSpeed(ap.model || apAny.hardwareType);
+  const { speedMbps, speedDisplay } = getActualEthSpeed(apAny);
+  const expectedSpeedMbps = getExpectedSpeed(ap.model || apAny.hardwareType || apAny.platformName);
 
   // If we can't determine speed, return unknown
   if (speedMbps === null) {
     return {
       status: 'unknown',
       speedMbps: null,
+      speedDisplay,
       expectedSpeedMbps,
       message: 'Ethernet speed not available'
     };
@@ -132,11 +193,11 @@ function analyzeCableHealth(
 
     if (apsOnSameSwitch.length > 0) {
       const goodAPs = apsOnSameSwitch.filter(other => {
-        const otherSpeed = parseEthSpeed((other as any).ethSpeed);
+        const { speedMbps: otherSpeed } = getActualEthSpeed(other as any);
         return otherSpeed !== null && otherSpeed >= 1000;
       });
       const badAPs = apsOnSameSwitch.filter(other => {
-        const otherSpeed = parseEthSpeed((other as any).ethSpeed);
+        const { speedMbps: otherSpeed } = getActualEthSpeed(other as any);
         return otherSpeed !== null && otherSpeed < 1000;
       });
 
@@ -149,10 +210,11 @@ function analyzeCableHealth(
     return {
       status: 'critical',
       speedMbps,
+      speedDisplay,
       expectedSpeedMbps,
       message: otherAPsOnSwitch && otherAPsOnSwitch.good > 0
-        ? `Critical: 10Mbps link - likely bad cable (${otherAPsOnSwitch.good} other APs on same switch have good rates)`
-        : 'Critical: 10Mbps link detected - likely bad cable or connector',
+        ? `Critical: ${speedDisplay} link - likely bad cable (${otherAPsOnSwitch.good} other APs on same switch have good rates)`
+        : `Critical: ${speedDisplay} link detected - likely bad cable or connector`,
       otherAPsOnSwitch
     };
   }
@@ -163,10 +225,11 @@ function analyzeCableHealth(
       return {
         status: 'warning',
         speedMbps,
+        speedDisplay,
         expectedSpeedMbps,
         message: otherAPsOnSwitch && otherAPsOnSwitch.good > 0
-          ? `Warning: 100Mbps link on ${ap.model || 'AP'} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}) - ${otherAPsOnSwitch.good} other APs on same switch have good rates`
-          : `Warning: 100Mbps link - possible cable issue (${ap.model || 'AP'} supports higher speeds)`,
+          ? `Warning: ${speedDisplay} link on ${ap.model || apAny.platformName || 'AP'} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}) - ${otherAPsOnSwitch.good} other APs on same switch have good rates`
+          : `Warning: ${speedDisplay} link - possible cable issue (${ap.model || apAny.platformName || 'AP'} supports higher speeds)`,
         otherAPsOnSwitch
       };
     }
@@ -176,10 +239,9 @@ function analyzeCableHealth(
   return {
     status: 'good',
     speedMbps,
+    speedDisplay,
     expectedSpeedMbps,
-    message: speedMbps >= 1000
-      ? `${speedMbps >= 1000 ? `${speedMbps/1000}Gbps` : `${speedMbps}Mbps`} - Good`
-      : `${speedMbps}Mbps`,
+    message: `${speedDisplay} - Good`,
     otherAPsOnSwitch
   };
 }
