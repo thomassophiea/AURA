@@ -584,8 +584,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               /eth|speed|link|port|cable|duplex|nego|phy|lan|uplink/i.test(key)
             );
             console.log('[AP Metrics] Ethernet-related fields found:', ethFields);
+            // Log any CPU/memory related fields
+            const cpuMemFields = Object.entries(details).filter(([key]) =>
+              /cpu|mem|util|usage|percent|load|ram/i.test(key)
+            );
+            console.log('[AP Metrics] CPU/Memory-related fields found:', cpuMemFields);
+            // Log all fields with numeric values between 0-100 (potential percentage metrics)
+            const percentFields = Object.entries(details).filter(([, value]) =>
+              typeof value === 'number' && value >= 0 && value <= 100
+            );
+            console.log('[AP Metrics] Numeric fields 0-100 (potential %):', percentFields);
             // Log full first AP data for debugging
-            console.log('[AP Metrics] Full AP data sample:', JSON.stringify(details, null, 2).substring(0, 3000));
+            console.log('[AP Metrics] Full AP data sample:', JSON.stringify(details, null, 2).substring(0, 5000));
           }
           return {
             serialNumber: ap.serialNumber,
