@@ -438,6 +438,17 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       const accessPointsArray = Array.isArray(apsData) ? apsData : [];
 
+      // Debug: Log first AP data to find ethernet-related fields
+      if (accessPointsArray.length > 0) {
+        const firstAP = accessPointsArray[0];
+        console.log('[AP List] Sample AP fields from query:', Object.keys(firstAP));
+        const ethFields = Object.entries(firstAP).filter(([key]) =>
+          /eth|speed|link|port|cable|duplex|nego|phy|lan|uplink/i.test(key)
+        );
+        console.log('[AP List] Ethernet-related fields in query response:', ethFields);
+        console.log('[AP List] Full first AP data:', JSON.stringify(firstAP, null, 2).substring(0, 2000));
+      }
+
       // Map sysUptime to uptime field and format it
       const enrichedAPs = accessPointsArray.map(ap => ({
         ...ap,
@@ -568,6 +579,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           // Log first AP details to see available fields
           if (aps.indexOf(ap) === 0) {
             console.log('[AP Metrics] Sample AP details fields:', Object.keys(details));
+            // Log any ethernet/link/port related fields
+            const ethFields = Object.entries(details).filter(([key]) =>
+              /eth|speed|link|port|cable|duplex|nego|phy|lan|uplink/i.test(key)
+            );
+            console.log('[AP Metrics] Ethernet-related fields found:', ethFields);
+            // Log full first AP data for debugging
+            console.log('[AP Metrics] Full AP data sample:', JSON.stringify(details, null, 2).substring(0, 3000));
           }
           return {
             serialNumber: ap.serialNumber,
