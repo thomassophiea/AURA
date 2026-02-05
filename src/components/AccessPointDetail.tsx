@@ -28,12 +28,122 @@ import {
   Power,
   Download,
   ArrowLeft,
-  Maximize2
+  Maximize2,
+  Cable,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { apiService, AccessPoint, APDetails, APStation, APRadio, APAlarm, APAlarmCategory } from '../services/api';
 import { APEventsTimeline } from './APEventsTimeline';
 import { APInsights, APInsightsFullScreen } from './APInsights';
 import { toast } from 'sonner';
+
+// Cable health detection utilities
+interface CableHealthResult {
+  status: 'good' | 'warning' | 'critical' | 'unknown';
+  speedMbps: number | null;
+  expectedSpeedMbps: number;
+  message: string;
+  aiInsight?: string;
+}
+
+/**
+ * Parse ethernet speed string to Mbps
+ */
+function parseEthSpeed(ethSpeed: string | undefined | null): number | null {
+  if (!ethSpeed || ethSpeed === '-') return null;
+
+  const speed = String(ethSpeed).toLowerCase().trim();
+
+  // Handle Gbps format
+  const gbpsMatch = speed.match(/([\d.]+)\s*g/i);
+  if (gbpsMatch) {
+    return parseFloat(gbpsMatch[1]) * 1000;
+  }
+
+  // Handle Mbps format
+  const mbpsMatch = speed.match(/([\d.]+)\s*m/i);
+  if (mbpsMatch) {
+    return parseFloat(mbpsMatch[1]);
+  }
+
+  // Handle plain number (assume Mbps)
+  const numMatch = speed.match(/^(\d+)$/);
+  if (numMatch) {
+    return parseInt(numMatch[1], 10);
+  }
+
+  return null;
+}
+
+/**
+ * Determine expected ethernet speed based on AP model
+ */
+function getExpectedSpeed(model: string | undefined): number {
+  if (!model) return 1000;
+
+  const m = model.toUpperCase();
+
+  // WiFi 6E / WiFi 7 APs - typically have 2.5Gbps or 5Gbps ports
+  if (m.includes('AP6') || m.includes('AP7') || m.includes('635') || m.includes('655') ||
+      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15')) {
+    return 2500;
+  }
+
+  // WiFi 6 APs - typically 1Gbps
+  if (m.includes('AP5') || m.includes('515') || m.includes('535') || m.includes('555') ||
+      m.includes('OAW-AP12') || m.includes('OAW-AP11')) {
+    return 1000;
+  }
+
+  return 1000;
+}
+
+/**
+ * Analyze cable health for an AP
+ */
+function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
+  const apAny = apDetails as any;
+  const speedMbps = parseEthSpeed(apAny.ethSpeed);
+  const expectedSpeedMbps = getExpectedSpeed(apDetails.model || apAny.hardwareType);
+
+  if (speedMbps === null) {
+    return {
+      status: 'unknown',
+      speedMbps: null,
+      expectedSpeedMbps,
+      message: 'Ethernet speed not available'
+    };
+  }
+
+  if (speedMbps <= 10) {
+    return {
+      status: 'critical',
+      speedMbps,
+      expectedSpeedMbps,
+      message: 'Critical: 10Mbps link detected - likely bad cable, damaged connector, or severe cable damage',
+      aiInsight: 'A 10Mbps negotiation typically indicates multiple damaged pairs. Check both ends of the cable for damage to the RJ45 connector. The blue pair (pins 4, 5) and brown pair (pins 7, 8) are most commonly damaged as they are the outer pairs. Consider replacing the cable entirely.'
+    };
+  }
+
+  if (speedMbps <= 100 && expectedSpeedMbps >= 1000) {
+    return {
+      status: 'warning',
+      speedMbps,
+      expectedSpeedMbps,
+      message: `Warning: 100Mbps link on AP that supports ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}`,
+      aiInsight: 'A 100Mbps negotiation on a gigabit-capable AP usually indicates a damaged pair in the cable. Gigabit Ethernet requires all 4 pairs, while 100Mbps only uses 2. Check the blue pair (pins 4, 5) or brown pair (pins 7, 8) on the RJ45 connector - these are often the culprit as they\'re not used for 100Mbps and damage goes unnoticed until gigabit is needed. Also verify the cable is Cat5e or better.'
+    };
+  }
+
+  return {
+    status: 'good',
+    speedMbps,
+    expectedSpeedMbps,
+    message: `${speedMbps >= 1000 ? `${speedMbps/1000}Gbps` : `${speedMbps}Mbps`} - Link speed is good`
+  };
+}
 
 interface AccessPointDetailProps {
   serialNumber: string;
@@ -399,6 +509,101 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Ethernet Status */}
+      {(() => {
+        const cableHealth = analyzeCableHealth(apDetails);
+        const apAny = apDetails as any;
+        const hasEthData = apAny.ethSpeed || apAny.ethMode || apAny.ethPowerStatus;
+
+        if (!hasEthData && cableHealth.status === 'unknown') return null;
+
+        return (
+          <Card className={cableHealth.status === 'critical' ? 'border-red-500/50' : cableHealth.status === 'warning' ? 'border-yellow-500/50' : ''}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Cable className="h-4 w-4" />
+                  <span>Ethernet Status</span>
+                </div>
+                {cableHealth.status === 'good' && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                    Good
+                  </Badge>
+                )}
+                {cableHealth.status === 'warning' && (
+                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                    <AlertTriangle className="h-3 w-3 mr-1" />
+                    Check Cable
+                  </Badge>
+                )}
+                {cableHealth.status === 'critical' && (
+                  <Badge variant="destructive">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Bad Cable
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Link Speed:</span>
+                  <span className={`font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : cableHealth.status === 'warning' ? 'text-yellow-500' : ''}`}>
+                    {apAny.ethSpeed || 'N/A'}
+                  </span>
+                </div>
+                {apAny.ethMode && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mode:</span>
+                    <span className="font-medium">{apAny.ethMode}</span>
+                  </div>
+                )}
+                {apAny.ethPowerStatus && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">PoE Status:</span>
+                    <span className="font-medium">{apAny.ethPowerStatus}</span>
+                  </div>
+                )}
+                {cableHealth.status !== 'unknown' && cableHealth.expectedSpeedMbps && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Expected Speed:</span>
+                    <span className="font-medium">
+                      {cableHealth.expectedSpeedMbps >= 1000
+                        ? `${cableHealth.expectedSpeedMbps / 1000}Gbps`
+                        : `${cableHealth.expectedSpeedMbps}Mbps`}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Cable Health Warning */}
+              {(cableHealth.status === 'warning' || cableHealth.status === 'critical') && (
+                <div className={`p-3 rounded-lg ${cableHealth.status === 'critical' ? 'bg-red-500/10 border border-red-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className={`h-4 w-4 mt-0.5 ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`} />
+                    <div className="space-y-2">
+                      <p className={`text-sm font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
+                        {cableHealth.message}
+                      </p>
+                      {cableHealth.aiInsight && (
+                        <div className="text-xs text-muted-foreground bg-background/50 p-2 rounded border border-border">
+                          <div className="flex items-center gap-1 mb-1">
+                            <Info className="h-3 w-3" />
+                            <span className="font-medium">AI Insight</span>
+                          </div>
+                          <p>{cableHealth.aiInsight}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* Radio Configuration */}
       {apDetails.radios && apDetails.radios.length > 0 && (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -9,7 +9,7 @@ import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Columns, Anchor, Phone, FileDown, Radio } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Columns, Anchor, Phone, FileDown, Radio, Cable } from 'lucide-react';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -19,6 +19,170 @@ import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
+
+// Cable health detection utilities
+interface CableHealthResult {
+  status: 'good' | 'warning' | 'critical' | 'unknown';
+  speedMbps: number | null;
+  expectedSpeedMbps: number;
+  message: string;
+  otherAPsOnSwitch?: { good: number; bad: number };
+}
+
+/**
+ * Parse ethernet speed string to Mbps
+ * Handles formats like: "1Gbps", "100Mbps", "1000", "10/100/1000", "2.5Gbps", "5Gbps"
+ */
+function parseEthSpeed(ethSpeed: string | undefined | null): number | null {
+  if (!ethSpeed || ethSpeed === '-') return null;
+
+  const speed = String(ethSpeed).toLowerCase().trim();
+
+  // Handle Gbps format
+  const gbpsMatch = speed.match(/([\d.]+)\s*g/i);
+  if (gbpsMatch) {
+    return parseFloat(gbpsMatch[1]) * 1000;
+  }
+
+  // Handle Mbps format
+  const mbpsMatch = speed.match(/([\d.]+)\s*m/i);
+  if (mbpsMatch) {
+    return parseFloat(mbpsMatch[1]);
+  }
+
+  // Handle plain number (assume Mbps)
+  const numMatch = speed.match(/^(\d+)$/);
+  if (numMatch) {
+    return parseInt(numMatch[1], 10);
+  }
+
+  return null;
+}
+
+/**
+ * Determine expected ethernet speed based on AP model
+ * WiFi 6E/6 APs typically have multi-gig ports, WiFi 5 APs have 1Gbps
+ */
+function getExpectedSpeed(model: string | undefined): number {
+  if (!model) return 1000; // Default to 1Gbps
+
+  const m = model.toUpperCase();
+
+  // WiFi 6E / WiFi 7 APs - typically have 2.5Gbps or 5Gbps ports
+  if (m.includes('AP6') || m.includes('AP7') || m.includes('635') || m.includes('655') ||
+      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15')) {
+    return 2500; // 2.5Gbps expected
+  }
+
+  // WiFi 6 APs - typically 1Gbps or 2.5Gbps
+  if (m.includes('AP5') || m.includes('515') || m.includes('535') || m.includes('555') ||
+      m.includes('OAW-AP12') || m.includes('OAW-AP11')) {
+    return 1000; // 1Gbps expected
+  }
+
+  // Older APs
+  return 1000;
+}
+
+/**
+ * Extract switch identifier from switchPorts field
+ * Format can be: "switch-serial:port", "switch-name/port", etc.
+ */
+function extractSwitchId(switchPorts: string | undefined): string | null {
+  if (!switchPorts || switchPorts === '-') return null;
+
+  // Try common formats: "SWITCH123:1/0/1", "switch-name/ge-0/0/1"
+  const colonMatch = switchPorts.match(/^([^:\/]+)/);
+  if (colonMatch) return colonMatch[1].trim().toLowerCase();
+
+  return switchPorts.toLowerCase().trim();
+}
+
+/**
+ * Analyze cable health for an AP, considering other APs on the same switch
+ */
+function analyzeCableHealth(
+  ap: AccessPoint,
+  allAPs: AccessPoint[]
+): CableHealthResult {
+  const apAny = ap as any;
+  const speedMbps = parseEthSpeed(apAny.ethSpeed);
+  const expectedSpeedMbps = getExpectedSpeed(ap.model || apAny.hardwareType);
+
+  // If we can't determine speed, return unknown
+  if (speedMbps === null) {
+    return {
+      status: 'unknown',
+      speedMbps: null,
+      expectedSpeedMbps,
+      message: 'Ethernet speed not available'
+    };
+  }
+
+  // Check if AP is on a switch and compare with others
+  const switchId = extractSwitchId(apAny.switchPorts);
+  let otherAPsOnSwitch: { good: number; bad: number } | undefined;
+
+  if (switchId) {
+    const apsOnSameSwitch = allAPs.filter(other => {
+      if (other.serialNumber === ap.serialNumber) return false;
+      const otherSwitch = extractSwitchId((other as any).switchPorts);
+      return otherSwitch === switchId;
+    });
+
+    if (apsOnSameSwitch.length > 0) {
+      const goodAPs = apsOnSameSwitch.filter(other => {
+        const otherSpeed = parseEthSpeed((other as any).ethSpeed);
+        return otherSpeed !== null && otherSpeed >= 1000;
+      });
+      const badAPs = apsOnSameSwitch.filter(other => {
+        const otherSpeed = parseEthSpeed((other as any).ethSpeed);
+        return otherSpeed !== null && otherSpeed < 1000;
+      });
+
+      otherAPsOnSwitch = { good: goodAPs.length, bad: badAPs.length };
+    }
+  }
+
+  // Determine status based on speed and switch context
+  if (speedMbps <= 10) {
+    return {
+      status: 'critical',
+      speedMbps,
+      expectedSpeedMbps,
+      message: otherAPsOnSwitch && otherAPsOnSwitch.good > 0
+        ? `Critical: 10Mbps link - likely bad cable (${otherAPsOnSwitch.good} other APs on same switch have good rates)`
+        : 'Critical: 10Mbps link detected - likely bad cable or connector',
+      otherAPsOnSwitch
+    };
+  }
+
+  if (speedMbps <= 100) {
+    const isBelowExpected = speedMbps < expectedSpeedMbps;
+    if (isBelowExpected) {
+      return {
+        status: 'warning',
+        speedMbps,
+        expectedSpeedMbps,
+        message: otherAPsOnSwitch && otherAPsOnSwitch.good > 0
+          ? `Warning: 100Mbps link on ${ap.model || 'AP'} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`}) - ${otherAPsOnSwitch.good} other APs on same switch have good rates`
+          : `Warning: 100Mbps link - possible cable issue (${ap.model || 'AP'} supports higher speeds)`,
+        otherAPsOnSwitch
+      };
+    }
+  }
+
+  // Good speed
+  return {
+    status: 'good',
+    speedMbps,
+    expectedSpeedMbps,
+    message: speedMbps >= 1000
+      ? `${speedMbps >= 1000 ? `${speedMbps/1000}Gbps` : `${speedMbps}Mbps`} - Good`
+      : `${speedMbps}Mbps`,
+    otherAPsOnSwitch
+  };
+}
 
 // Define available columns with friendly labels
 interface ColumnConfig {
@@ -42,6 +206,7 @@ const AVAILABLE_COLUMNS: ColumnConfig[] = [
   { key: 'macAddress', label: 'MAC Address', defaultVisible: false, category: 'network' },
   { key: 'ethMode', label: 'Ethernet Mode', defaultVisible: false, category: 'network' },
   { key: 'ethSpeed', label: 'Ethernet Speed', defaultVisible: false, category: 'network' },
+  { key: 'cableHealth', label: 'Cable Health', defaultVisible: false, category: 'network' },
   { key: 'tunnel', label: 'Tunnel', defaultVisible: false, category: 'network' },
   { key: 'wiredClients', label: 'Wired Clients', defaultVisible: false, category: 'network' },
 
@@ -127,6 +292,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Compute cable health for all APs (memoized for performance)
+  const cableHealthMap = useMemo(() => {
+    const healthMap: Record<string, CableHealthResult> = {};
+    accessPoints.forEach(ap => {
+      healthMap[ap.serialNumber] = analyzeCableHealth(ap, accessPoints);
+    });
+    return healthMap;
+  }, [accessPoints]);
 
   useEffect(() => {
     loadData();
@@ -579,6 +753,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return (apAny.description || '').toLowerCase();
       case 'afcAnchor':
         return isAfcAnchor(ap) ? 1 : 0;
+      case 'cableHealth':
+        // Sort by severity: critical=0, warning=1, unknown=2, good=3
+        const health = cableHealthMap[ap.serialNumber];
+        if (!health) return 2;
+        if (health.status === 'critical') return 0;
+        if (health.status === 'warning') return 1;
+        if (health.status === 'unknown') return 2;
+        return 3;
       default:
         return '';
     }
@@ -1046,7 +1228,78 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       case 'ethMode':
         return <span className="text-sm">{(ap as any).ethMode || '-'}</span>;
       case 'ethSpeed':
-        return <span className="text-sm">{(ap as any).ethSpeed || '-'}</span>;
+        const ethHealth = cableHealthMap[ap.serialNumber];
+        const ethSpeedValue = (ap as any).ethSpeed || '-';
+        if (ethHealth && (ethHealth.status === 'warning' || ethHealth.status === 'critical')) {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
+                  <AlertTriangle className="h-3 w-3" />
+                  {ethSpeedValue}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-xs">
+                <p className="text-xs">{ethHealth.message}</p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        return <span className="text-sm">{ethSpeedValue}</span>;
+      case 'cableHealth':
+        const cableHealth = cableHealthMap[ap.serialNumber];
+        if (!cableHealth || cableHealth.status === 'unknown') {
+          return <span className="text-sm text-muted-foreground">-</span>;
+        }
+        if (cableHealth.status === 'good') {
+          return (
+            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Good
+            </Badge>
+          );
+        }
+        if (cableHealth.status === 'warning') {
+          return (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 cursor-help">
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Warning
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-sm">
+                <p className="text-xs font-medium mb-1">Possible Cable Issue</p>
+                <p className="text-xs">{cableHealth.message}</p>
+                {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
+                  <p className="text-xs mt-1 text-yellow-400">
+                    Other APs on same switch have good rates - issue likely isolated to this cable
+                  </p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+        // Critical
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge variant="destructive" className="cursor-help">
+                <XCircle className="h-3 w-3 mr-1" />
+                Bad Cable
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-sm">
+              <p className="text-xs font-medium mb-1">Likely Cable Problem</p>
+              <p className="text-xs">{cableHealth.message}</p>
+              {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
+                <p className="text-xs mt-1 text-red-300">
+                  {cableHealth.otherAPsOnSwitch.good} other APs on same switch have good rates - issue is with this cable/connector
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        );
       case 'tunnel':
         return <span className="text-sm">{(ap as any).tunnel || '-'}</span>;
       case 'wiredClients':
