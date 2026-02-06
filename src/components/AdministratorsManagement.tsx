@@ -333,10 +333,10 @@ export function AdministratorsManagement() {
 
   const getRoleBadge = (role: Administrator['role']) => {
     const colors: Record<Administrator['role'], string> = {
-      super_admin: 'bg-purple-500',
-      admin: 'bg-blue-500',
-      operator: 'bg-green-500',
-      viewer: 'bg-gray-500'
+      super_admin: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
+      admin: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+      operator: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
+      viewer: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
     };
 
     const labels: Record<Administrator['role'], string> = {
@@ -347,7 +347,7 @@ export function AdministratorsManagement() {
     };
 
     return (
-      <Badge className={colors[role]}>
+      <Badge variant="outline" className={colors[role]}>
         {labels[role]}
       </Badge>
     );
@@ -398,9 +398,9 @@ export function AdministratorsManagement() {
               </Button>
             </div>
 
-            <Alert className="border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
                 Administrators management API endpoints are not available on this Extreme Platform ONE version. This feature requires API v1/administrators support.
               </AlertDescription>
             </Alert>
@@ -444,7 +444,7 @@ export function AdministratorsManagement() {
       </div>
 
       {apiNotAvailable && (
-        <Alert className="border-yellow-500">
+        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Administrators management API endpoints are not available on this Extreme Platform ONE version.

@@ -388,7 +388,7 @@ export function ContextualInsightsSelector({
               <tab.icon className="h-4 w-4 flex-shrink-0" />
               <span>{tab.shortLabel}</span>
               {tab.beta && (
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-600 dark:text-amber-400">
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-500 dark:text-amber-400">
                   Beta
                 </Badge>
               )}
@@ -508,7 +508,7 @@ export function ContextualInsightsSelector({
                           {item.rssi !== undefined && (
                             <span className={cn(
                               "flex items-center gap-1",
-                              item.rssi >= -60 ? "text-green-600" : item.rssi >= -70 ? "text-amber-600" : "text-red-600"
+                              item.rssi >= -60 ? "text-green-500" : item.rssi >= -70 ? "text-amber-500" : "text-red-500"
                             )}>
                               <Signal className="h-3 w-3" />
                               {item.rssi} dBm
@@ -564,6 +564,7 @@ export function ContextualInsightsSelector({
         onClick={() => setIsContextModalOpen(true)}
         className="h-10 w-10"
         title="Configure Context Settings"
+        aria-label="Configure context settings"
       >
         <Settings2 className="h-4 w-4" />
       </Button>

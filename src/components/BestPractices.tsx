@@ -93,7 +93,7 @@ export function BestPractices() {
       case 'Info':
         return <Info className="h-4 w-4 text-blue-500" />;
       case 'Warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'Critical':
         return <XCircle className="h-4 w-4 text-red-500" />;
       default:
@@ -108,7 +108,7 @@ export function BestPractices() {
       case 'Info':
         return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
       case 'Warning':
-        return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
+        return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
       case 'Critical':
         return 'bg-red-500/10 text-red-500 border-red-500/20';
       default:
@@ -226,9 +226,9 @@ export function BestPractices() {
       </div>
 
       {/* Development Notice */}
-      <Alert className="border-yellow-500/20 bg-yellow-500/10">
-        <Info className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-700">
+      <Alert className="border-amber-500/20 bg-amber-500/10">
+        <Info className="h-4 w-4 text-amber-500" />
+        <AlertDescription className="text-amber-700">
           <strong>Demo Mode:</strong> Showing some sample data to populate the widgets. These APIs do exists today.
         </AlertDescription>
       </Alert>
@@ -288,7 +288,7 @@ export function BestPractices() {
                 <span>{networkCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                 <span>{networkCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">
@@ -315,7 +315,7 @@ export function BestPractices() {
                 <span>{configCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                 <span>{configCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">
@@ -342,7 +342,7 @@ export function BestPractices() {
                 <span>{operationalCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
                 <span>{operationalCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">

@@ -102,7 +102,7 @@ export function ApplicationEndpointTester() {
   const successfulEndpoints = results.filter(r => r.status === 'success');
 
   return (
-    <Card className="border-2 border-yellow-500">
+    <Card className="border-2 border-amber-500">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

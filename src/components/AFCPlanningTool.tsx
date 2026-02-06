@@ -211,7 +211,7 @@ export function AFCPlanningTool() {
       case 'analyzing':
         return <Badge variant="default">Analyzing...</Badge>;
       case 'completed':
-        return <Badge variant="default" className="bg-green-500">Completed</Badge>;
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Completed</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       default:

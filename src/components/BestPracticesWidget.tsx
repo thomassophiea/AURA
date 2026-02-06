@@ -82,7 +82,7 @@ export function BestPracticesWidget() {
       case 'Good':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'Warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'Error':
         return <XCircle className="h-4 w-4 text-red-500" />;
       default:
@@ -142,7 +142,7 @@ export function BestPracticesWidget() {
 
   if (error) {
     return (
-      <Card className="border-yellow-500">
+      <Card className="border-amber-500">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
@@ -189,13 +189,13 @@ export function BestPracticesWidget() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === 'Warning' ? 'All' : 'Warning')}
-            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-yellow-50 dark:bg-yellow-950 hover:bg-yellow-100 dark:hover:bg-yellow-900 ${
+            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 ${
               statusFilter === 'Warning'
                 ? 'ring-2 ring-purple-500'
                 : ''
             }`}
           >
-            <AlertTriangle className="h-5 w-5 text-yellow-500" />
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
             <div className="text-left">
               <div className="text-2xl font-bold">{statusCounts.Warning}</div>
               <div className="text-xs text-muted-foreground">Warnings</div>
@@ -297,7 +297,7 @@ export function BestPracticesWidget() {
         )}
 
         {practices.length === 0 && !loading && (
-          <div className="text-center py-6 text-green-600 dark:text-green-400">
+          <div className="text-center py-6 text-green-500 dark:text-green-400">
             <CheckCircle className="h-12 w-12 mx-auto mb-2" />
             <p className="font-semibold">All Best Practices Met!</p>
             <p className="text-sm text-muted-foreground">Your configuration follows all recommended best practices.</p>

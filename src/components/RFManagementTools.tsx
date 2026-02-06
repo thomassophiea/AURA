@@ -89,7 +89,7 @@ export function RFManagementTools() {
         </div>
 
         {error && (
-          <Alert className="border-yellow-500">
+          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>

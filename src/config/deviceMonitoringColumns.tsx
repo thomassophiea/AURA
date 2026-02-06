@@ -112,7 +112,7 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
   } else if (rss >= -50) {
     return { icon: SignalHigh, color: 'text-green-400', label: `${rss} dBm`, quality: 'Very Good', bgColor: 'bg-green-400/10' };
   } else if (rss >= -60) {
-    return { icon: SignalMedium, color: 'text-yellow-500', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-yellow-500/10' };
+    return { icon: SignalMedium, color: 'text-amber-500', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-amber-500/10' };
   } else if (rss >= -70) {
     return { icon: SignalLow, color: 'text-orange-500', label: `${rss} dBm`, quality: 'Fair', bgColor: 'bg-orange-500/10' };
   } else {
@@ -219,7 +219,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">Last seen: {new Date(station.lastSeen).toLocaleString()}</p>
+                <p>Last seen: {new Date(station.lastSeen).toLocaleString()}</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -250,8 +250,8 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <TooltipContent>
               <div className="space-y-1">
                 <p className="font-medium">{identity.displayName}</p>
-                {identity.deviceType && <p className="text-xs">{identity.deviceType}</p>}
-                {identity.manufacturer && <p className="text-xs text-muted-foreground">{identity.manufacturer}</p>}
+                {identity.deviceType && <p>{identity.deviceType}</p>}
+                {identity.manufacturer && <p className="text-muted-foreground">{identity.manufacturer}</p>}
               </div>
             </TooltipContent>
           </Tooltip>
@@ -261,7 +261,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
                 <Info className="h-3 w-3 text-muted-foreground flex-shrink-0" />
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">Identity not resolved - showing derived label</p>
+                <p>Identity not resolved - showing derived label</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -289,9 +289,9 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              <p className="font-mono text-xs">{station.macAddress}</p>
+              <p className="font-mono">{station.macAddress}</p>
               {isRandomizedMac(station.macAddress) && (
-                <p className="text-xs text-purple-500 mt-1">Randomized MAC Address</p>
+                <p className="text-purple-500 mt-1">Randomized MAC Address</p>
               )}
             </TooltipContent>
           </Tooltip>
@@ -302,7 +302,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               </TooltipTrigger>
               <TooltipContent>
                 <p className="font-medium">Randomized MAC Address</p>
-                <p className="text-xs">Privacy feature - prevents device tracking</p>
+                <p>Privacy feature - prevents device tracking</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -363,7 +363,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <span className="text-[9px] truncate leading-none max-w-[80px]">{station.siteName || '-'}</span>
             {station.siteRating !== undefined && (
               <>
-                <Star className="h-2 w-2 text-yellow-500 flex-shrink-0" />
+                <Star className="h-2 w-2 text-amber-500 flex-shrink-0" />
                 <span className="text-[8px] leading-none">{station.siteRating}</span>
               </>
             )}
@@ -398,7 +398,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
           </TooltipTrigger>
           <TooltipContent>
             <p>Network: {station.ssid || station.network || 'Unknown'}</p>
-            {station.role && <p className="text-xs text-muted-foreground">Role: {station.role}</p>}
+            {station.role && <p className="text-muted-foreground">Role: {station.role}</p>}
           </TooltipContent>
         </Tooltip>
       </div>
@@ -557,7 +557,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
           <TooltipContent>
             <div className="text-center">
               <p className="font-medium">{signalInfo.quality}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground">
                 {radioId === 20
                   ? 'Physical ethernet connection'
                   : (rssValue !== undefined ? `${rssValue} dBm` : 'No signal data')
@@ -681,7 +681,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1">
                 <Download className="h-2 w-2 text-green-500" />
-                <span className="text-[10px] text-green-600 font-medium">
+                <span className="text-[10px] text-green-500 font-medium">
                   {formatBytes(inBytes)}
                 </span>
               </div>

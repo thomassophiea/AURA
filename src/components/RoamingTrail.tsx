@@ -1044,7 +1044,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                       hover:scale-125 transition-all cursor-pointer z-10
                       ${dotColor}
                       ${selectedEventKey === getEventKey(event) ? 'ring-2 ring-primary ring-offset-1 scale-125' : ''}
-                      ${isHighlighted ? 'w-5 h-5 ring-2 ring-yellow-400 ring-offset-1 scale-110 z-20' : 'w-4 h-4'}
+                      ${isHighlighted ? 'w-5 h-5 ring-2 ring-amber-400 ring-offset-1 scale-110 z-20' : 'w-4 h-4'}
                       ${dimmed ? 'opacity-30' : ''}
                     `}
                     style={{
@@ -1206,7 +1206,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   <Badge variant="secondary" className="text-xs bg-orange-500/20 text-orange-700">Late Roam</Badge>
                 )}
                 {selectedEvent.isBandSteering && (
-                  <Badge className="bg-red-500 text-white text-xs">Interband</Badge>
+                  <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 text-xs">Interband</Badge>
                 )}
               </div>
             </div>
@@ -1426,7 +1426,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   <div className="text-sm">
                     {selectedEvent.bandSteeringFrom} → {selectedEvent.bandSteeringTo}
                   </div>
-                  <div className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+                  <div className="text-xs text-red-500/80 dark:text-red-400/80 mt-1">
                     Band change on the same AP indicates poor band steering configuration or interference issues.
                   </div>
                 </div>
@@ -1441,7 +1441,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   <div className="ml-6 flex items-center gap-2">
                     <span className={`font-mono ${
-                      selectedEvent.rssi >= -60 ? 'text-green-600' :
+                      selectedEvent.rssi >= -60 ? 'text-green-500' :
                       selectedEvent.rssi >= -70 ? 'text-orange-500' :
                       'text-red-500'
                     }`}>{selectedEvent.rssi} dBm</span>
@@ -1515,7 +1515,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                     {selectedEvent.isFailedRoam && (
                       <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
                         <div className="font-medium text-red-700 dark:text-red-400">Authentication Failure</div>
-                        <div className="text-red-600/80 dark:text-red-400/80 mt-1">
+                        <div className="text-red-500/80 dark:text-red-400/80 mt-1">
                           Client failed to authenticate. Check RADIUS logs, verify credentials, and ensure PMK caching is working properly.
                         </div>
                       </div>
@@ -1531,13 +1531,13 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                     {selectedEvent.isBandSteering && (
                       <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
                         <div className="font-medium text-red-700 dark:text-red-400">Interband Roaming (Same AP)</div>
-                        <div className="text-red-600/80 dark:text-red-400/80 mt-1">
+                        <div className="text-red-500/80 dark:text-red-400/80 mt-1">
                           Client changed bands from {selectedEvent.bandSteeringFrom || selectedEvent.previousFrequency || 'unknown band'} to {selectedEvent.bandSteeringTo || selectedEvent.frequency || 'unknown band'} on <strong>{selectedEvent.apName}</strong>.
                         </div>
-                        <div className="text-red-600/80 dark:text-red-400/80 mt-2 font-medium">
+                        <div className="text-red-500/80 dark:text-red-400/80 mt-2 font-medium">
                           This is especially problematic because:
                         </div>
-                        <ul className="text-red-600/80 dark:text-red-400/80 mt-1 ml-3 list-disc space-y-0.5">
+                        <ul className="text-red-500/80 dark:text-red-400/80 mt-1 ml-3 list-disc space-y-0.5">
                           <li>The client couldn't maintain connection on the preferred band</li>
                           <li>May indicate interference, poor signal, or band steering misconfiguration</li>
                           <li>If falling to 2.4GHz: likely 5GHz coverage/interference issues</li>
@@ -1626,7 +1626,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                     {(selectedCorrelationEvent as RRMEvent).previousChannel && (
                       <span className="text-red-500">{(selectedCorrelationEvent as RRMEvent).previousChannel} → </span>
                     )}
-                    <span className="text-green-600 font-medium">{selectedCorrelationEvent.channel}</span>
+                    <span className="text-green-500 font-medium">{selectedCorrelationEvent.channel}</span>
                   </div>
                 </div>
               )}
@@ -1642,7 +1642,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                     {(selectedCorrelationEvent as RRMEvent).previousTxPower && (
                       <span className="text-red-500">{(selectedCorrelationEvent as RRMEvent).previousTxPower} dBm → </span>
                     )}
-                    <span className="text-green-600 font-medium">{(selectedCorrelationEvent as RRMEvent).txPower} dBm</span>
+                    <span className="text-green-500 font-medium">{(selectedCorrelationEvent as RRMEvent).txPower} dBm</span>
                   </div>
                 </div>
               )}

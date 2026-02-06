@@ -166,12 +166,12 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
     <div className="p-4 space-y-4 pb-24">
       {/* Offline Banner */}
       {isOffline && (
-        <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-yellow-500 font-medium">Offline Mode</p>
+            <p className="text-sm text-amber-500 font-medium">Offline Mode</p>
             {lastUpdated && (
-              <p className="text-xs text-yellow-500/70">
+              <p className="text-xs text-amber-500/70">
                 Last updated {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}
@@ -200,6 +200,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
           onClick={handleRefresh}
           disabled={isRefreshing || statsLoading}
           className="h-12 w-12 flex-shrink-0"
+          aria-label="Refresh dashboard"
         >
           <RefreshCw className={`h-5 w-5 ${isRefreshing || statsLoading ? 'animate-spin' : ''}`} />
         </Button>

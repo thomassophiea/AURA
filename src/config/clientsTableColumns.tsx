@@ -42,7 +42,7 @@ function getSignalIndicator(rssi?: number) {
   if (!rssi) return <SignalLow className="h-4 w-4 text-gray-400" />;
 
   if (rssi >= -50) return <SignalHigh className="h-4 w-4 text-green-500" />;
-  if (rssi >= -60) return <SignalHigh className="h-4 w-4 text-yellow-500" />;
+  if (rssi >= -60) return <SignalHigh className="h-4 w-4 text-amber-500" />;
   if (rssi >= -70) return <SignalMedium className="h-4 w-4 text-orange-500" />;
   return <SignalLow className="h-4 w-4 text-red-500" />;
 }

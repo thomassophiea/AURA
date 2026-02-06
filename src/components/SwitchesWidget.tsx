@@ -285,12 +285,12 @@ export function SwitchesWidget({ siteId }: SwitchesWidgetProps) {
                   selectedSwitch.operationalState === 'up') ? (
                   <>
                     <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-medium text-green-600">Online</span>
+                    <span className="font-medium text-green-500">Online</span>
                   </>
                 ) : (
                   <>
                     <AlertCircle className="h-5 w-5 text-red-500" />
-                    <span className="font-medium text-red-600">Offline</span>
+                    <span className="font-medium text-red-500">Offline</span>
                   </>
                 )}
               </div>

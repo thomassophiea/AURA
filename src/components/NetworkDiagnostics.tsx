@@ -262,13 +262,13 @@ export function NetworkDiagnostics() {
                     <div className="text-sm text-muted-foreground">Transmitted</div>
                   </div>
                   <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">
+                    <div className="text-2xl font-bold text-green-500">
                       {pingResult.packets.received}
                     </div>
                     <div className="text-sm text-muted-foreground">Received</div>
                   </div>
                   <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">
+                    <div className="text-2xl font-bold text-red-500">
                       {pingResult.packets.loss}%
                     </div>
                     <div className="text-sm text-muted-foreground">Packet Loss</div>
@@ -439,9 +439,9 @@ export function NetworkDiagnostics() {
               </CardHeader>
               <CardContent>
                 {dnsResult.addresses.length === 0 ? (
-                  <div className="flex items-center gap-2 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                    <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <p className="text-sm text-amber-800 dark:text-amber-200">
                       No DNS records found for this hostname
                     </p>
                   </div>

@@ -213,6 +213,7 @@ export function MobileAPsList({ currentSite }: MobileAPsListProps) {
               setShowFilters(!showFilters);
             }}
             className="h-11 w-11 relative flex-shrink-0"
+            aria-label="Toggle filters"
           >
             <SlidersHorizontal className="h-5 w-5" />
             {activeFilterCount > 0 && (

@@ -97,10 +97,10 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
   // Get experience level and styling
   const getExperienceLevel = (score: number) => {
-    if (score >= 90) return { level: 'Excellent', icon: Smile, color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-600' };
+    if (score >= 90) return { level: 'Excellent', icon: Smile, color: 'text-green-500', bgColor: 'bg-green-50', borderColor: 'border-green-500' };
     if (score >= 75) return { level: 'Good', icon: Smile, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-600' };
-    if (score >= 60) return { level: 'Fair', icon: Meh, color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-600' };
-    return { level: 'Poor', icon: Frown, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-600' };
+    if (score >= 60) return { level: 'Fair', icon: Meh, color: 'text-amber-500', bgColor: 'bg-amber-50', borderColor: 'border-amber-500' };
+    return { level: 'Poor', icon: Frown, color: 'text-red-500', bgColor: 'bg-red-50', borderColor: 'border-red-500' };
   };
 
   const experience = getExperienceLevel(experienceScore);
@@ -141,10 +141,10 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'excellent': return 'text-green-600';
+      case 'excellent': return 'text-green-500';
       case 'good': return 'text-blue-600';
-      case 'fair': return 'text-yellow-600';
-      case 'poor': return 'text-red-600';
+      case 'fair': return 'text-amber-500';
+      case 'poor': return 'text-red-500';
       default: return 'text-muted-foreground';
     }
   };

@@ -76,7 +76,7 @@ export function SecurityDashboard() {
       case 'malicious':
         return <Badge variant="destructive">Malicious</Badge>;
       case 'friendly':
-        return <Badge className="bg-green-500">Friendly</Badge>;
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Friendly</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
@@ -87,9 +87,9 @@ export function SecurityDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'high':
-        return <Badge className="bg-orange-500">High</Badge>;
+        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">High</Badge>;
       case 'medium':
-        return <Badge className="bg-yellow-500">Medium</Badge>;
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Medium</Badge>;
       case 'low':
         return <Badge variant="secondary">Low</Badge>;
       default:
@@ -199,7 +199,7 @@ export function SecurityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-yellow-500" />
+              <Eye className="h-5 w-5 text-amber-500" />
               <span className="text-2xl font-bold">{stats.unknown}</span>
             </div>
           </CardContent>

@@ -252,7 +252,7 @@ export function GuestManagement() {
                         {isExpired(guest.expirationDate) ? (
                           <Badge variant="outline">Expired</Badge>
                         ) : (
-                          <Badge className="bg-green-500">Active</Badge>
+                          <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Active</Badge>
                         )}
                       </div>
                       <div className="space-y-1 text-sm text-muted-foreground">

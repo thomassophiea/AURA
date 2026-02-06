@@ -236,7 +236,7 @@ export function SystemBackupManager() {
                       getUsagePercentage() > 90
                         ? 'bg-gradient-to-r from-red-500 to-red-600'
                         : getUsagePercentage() > 70
-                        ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
                         : 'bg-gradient-to-r from-green-500 to-emerald-500'
                     }`}
                     style={{ width: `${getUsagePercentage()}%` }}
@@ -253,9 +253,9 @@ export function SystemBackupManager() {
               </div>
 
               {getUsagePercentage() > 80 && (
-                <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
                     Storage is running low. Consider deleting old backup files.
                   </p>
                 </div>
@@ -497,9 +497,9 @@ export function SystemBackupManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
                 <strong>Warning:</strong> This action will restart Extreme Platform ONE and may cause
                 temporary service disruption.
               </p>

@@ -569,7 +569,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedPowerValues && lockedPowerValues['Power Consumption'] !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-yellow-500 font-semibold mr-1">Power:</span> {lockedPowerValues['Power Consumption'].toFixed(1)} W
+                    <span className="text-amber-500 font-semibold mr-1">Power:</span> {lockedPowerValues['Power Consumption'].toFixed(1)} W
                   </Badge>
                 )}
               </div>
@@ -821,7 +821,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                   <div className="flex gap-2 text-xs flex-wrap">
                     {lockedChannelUtil5Values.Available !== null && lockedChannelUtil5Values.Available !== undefined && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-yellow-500 font-semibold mr-1">Avail:</span> {lockedChannelUtil5Values.Available.toFixed(1)}%
+                        <span className="text-amber-500 font-semibold mr-1">Avail:</span> {lockedChannelUtil5Values.Available.toFixed(1)}%
                       </Badge>
                     )}
                     {lockedChannelUtil5Values.ClientData !== null && lockedChannelUtil5Values.ClientData !== undefined && (
@@ -919,7 +919,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                   <div className="flex gap-2 text-xs flex-wrap">
                     {lockedChannelUtil24Values.Available !== null && lockedChannelUtil24Values.Available !== undefined && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-yellow-500 font-semibold mr-1">Avail:</span> {lockedChannelUtil24Values.Available.toFixed(1)}%
+                        <span className="text-amber-500 font-semibold mr-1">Avail:</span> {lockedChannelUtil24Values.Available.toFixed(1)}%
                       </Badge>
                     )}
                     {lockedChannelUtil24Values.ClientData !== null && lockedChannelUtil24Values.ClientData !== undefined && (

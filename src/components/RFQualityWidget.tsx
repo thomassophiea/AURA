@@ -82,10 +82,10 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
 
   const getScoreColor = (score?: number): string => {
     if (!score) return 'text-muted-foreground';
-    if (score >= 90) return 'text-green-600';
+    if (score >= 90) return 'text-green-500';
     if (score >= 75) return 'text-blue-600';
-    if (score >= 60) return 'text-yellow-600';
-    return 'text-red-600';
+    if (score >= 60) return 'text-amber-500';
+    return 'text-red-500';
   };
 
   const getScoreStatus = (score?: number): { label: string; variant: any; icon: any } => {
@@ -123,9 +123,9 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className="border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+          <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
               {error || 'RF quality data is not available for this site. This feature may require additional licensing or Extreme Platform ONE configuration.'}
             </AlertDescription>
           </Alert>
@@ -312,7 +312,7 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
 
       {/* Debug info when no structured data */}
       {overallScore === 0 && (
-        <Card className="border-yellow-500">
+        <Card className="border-amber-500">
           <CardHeader>
             <CardTitle className="text-sm">Raw RF Data (Debug)</CardTitle>
           </CardHeader>

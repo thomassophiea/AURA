@@ -54,7 +54,7 @@ export function ClientCountWidget({ data }: { data: ClientCountData }) {
 export function APHealthWidget({ data }: { data: APHealthData }) {
   const getHealthColor = (uptime: number) => {
     if (uptime >= 95) return 'text-green-500';
-    if (uptime >= 80) return 'text-yellow-500';
+    if (uptime >= 80) return 'text-amber-500';
     return 'text-red-500';
   };
 
@@ -111,7 +111,7 @@ export function APHealthWidget({ data }: { data: APHealthData }) {
 export function NetworkOverviewWidget({ data }: { data: NetworkOverviewData }) {
   const getHealthColor = (score: number) => {
     if (score >= 90) return 'text-green-500';
-    if (score >= 70) return 'text-yellow-500';
+    if (score >= 70) return 'text-amber-500';
     return 'text-red-500';
   };
 
@@ -215,7 +215,7 @@ export function ClientDistributionWidget({ data, title, type }: {
     const colors = [
       'bg-blue-500',
       'bg-green-500',
-      'bg-yellow-500',
+      'bg-amber-500',
       'bg-purple-500',
       'bg-pink-500',
       'bg-indigo-500'

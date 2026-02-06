@@ -500,20 +500,20 @@ export function ServiceLevelsEnhanced() {
 
   const getMetricColor = (status: 'good' | 'warn' | 'poor'): string => {
     switch (status) {
-      case 'good': return 'text-green-600';
-      case 'warn': return 'text-yellow-600';
-      case 'poor': return 'text-red-600';
+      case 'good': return 'text-green-500';
+      case 'warn': return 'text-amber-500';
+      case 'poor': return 'text-red-500';
     }
   };
 
   const getMetricBadge = (status: 'good' | 'warn' | 'poor') => {
     switch (status) {
       case 'good':
-        return <Badge variant="outline" className="border-green-600 text-green-600">Excellent</Badge>;
+        return <Badge variant="outline" className="border-green-500 text-green-500">Excellent</Badge>;
       case 'warn':
-        return <Badge variant="outline" className="border-yellow-600 text-yellow-600">Warning</Badge>;
+        return <Badge variant="outline" className="border-amber-500 text-amber-500">Warning</Badge>;
       case 'poor':
-        return <Badge variant="outline" className="border-red-600 text-red-600">Poor</Badge>;
+        return <Badge variant="outline" className="border-red-500 text-red-500">Poor</Badge>;
     }
   };
 
@@ -860,8 +860,8 @@ export function ServiceLevelsEnhanced() {
                         <span className="text-sm font-medium">Latency</span>
                       </div>
                       <span className={`text-sm font-bold ${
-                        serviceReport.metrics.latency < 20 ? 'text-green-600' :
-                        serviceReport.metrics.latency < 50 ? 'text-yellow-600' : 'text-red-600'
+                        serviceReport.metrics.latency < 20 ? 'text-green-500' :
+                        serviceReport.metrics.latency < 50 ? 'text-amber-500' : 'text-red-500'
                       }`}>
                         {serviceReport.metrics.latency.toFixed(1)} ms
                       </span>
@@ -883,8 +883,8 @@ export function ServiceLevelsEnhanced() {
                         <span className="text-sm font-medium">Jitter</span>
                       </div>
                       <span className={`text-sm font-bold ${
-                        serviceReport.metrics.jitter < 10 ? 'text-green-600' :
-                        serviceReport.metrics.jitter < 30 ? 'text-yellow-600' : 'text-red-600'
+                        serviceReport.metrics.jitter < 10 ? 'text-green-500' :
+                        serviceReport.metrics.jitter < 30 ? 'text-amber-500' : 'text-red-500'
                       }`}>
                         {serviceReport.metrics.jitter.toFixed(1)} ms
                       </span>
@@ -930,8 +930,8 @@ export function ServiceLevelsEnhanced() {
                         <span className="text-sm font-medium">Signal Strength (RSSI)</span>
                       </div>
                       <span className={`text-sm font-bold ${
-                        serviceReport.metrics.averageRssi >= -50 ? 'text-green-600' :
-                        serviceReport.metrics.averageRssi >= -70 ? 'text-yellow-600' : 'text-red-600'
+                        serviceReport.metrics.averageRssi >= -50 ? 'text-green-500' :
+                        serviceReport.metrics.averageRssi >= -70 ? 'text-amber-500' : 'text-red-500'
                       }`}>
                         {serviceReport.metrics.averageRssi} dBm
                       </span>
@@ -958,8 +958,8 @@ export function ServiceLevelsEnhanced() {
                         <span className="text-sm font-medium">Signal Quality (SNR)</span>
                       </div>
                       <span className={`text-sm font-bold ${
-                        serviceReport.metrics.averageSnr >= 40 ? 'text-green-600' :
-                        serviceReport.metrics.averageSnr >= 25 ? 'text-yellow-600' : 'text-red-600'
+                        serviceReport.metrics.averageSnr >= 40 ? 'text-green-500' :
+                        serviceReport.metrics.averageSnr >= 25 ? 'text-amber-500' : 'text-red-500'
                       }`}>
                         {serviceReport.metrics.averageSnr} dB
                       </span>
@@ -1339,7 +1339,7 @@ export function ServiceLevelsEnhanced() {
                           <div className="flex items-center gap-3 flex-1 min-w-0">
                             <div className="flex flex-col items-center justify-center w-10">
                               {station.authenticated !== false ? (
-                                <Shield className="h-5 w-5 text-green-600" />
+                                <Shield className="h-5 w-5 text-green-500" />
                               ) : (
                                 <Shield className="h-5 w-5 text-gray-400" />
                               )}
@@ -1350,7 +1350,7 @@ export function ServiceLevelsEnhanced() {
                                   {station.hostName || station.macAddress}
                                 </span>
                                 {station.authenticated !== false && (
-                                  <Badge variant="outline" className="text-xs border-green-600 text-green-600">
+                                  <Badge variant="outline" className="text-xs border-green-500 text-green-500">
                                     Auth
                                   </Badge>
                                 )}
@@ -1379,10 +1379,10 @@ export function ServiceLevelsEnhanced() {
                                 <div className="flex items-center gap-1 text-xs">
                                   <SignalIcon 
                                     className={`h-4 w-4 ${
-                                      signalQuality === 'excellent' ? 'text-green-600' :
+                                      signalQuality === 'excellent' ? 'text-green-500' :
                                       signalQuality === 'good' ? 'text-blue-600' :
-                                      signalQuality === 'fair' ? 'text-yellow-600' :
-                                      'text-red-600'
+                                      signalQuality === 'fair' ? 'text-amber-500' :
+                                      'text-red-500'
                                     }`}
                                   />
                                   <span>{rssi} dBm</span>
@@ -1412,10 +1412,10 @@ export function ServiceLevelsEnhanced() {
 
           {/* Utilization Warning */}
           {serviceStations.length > 50 && (
-            <Card className="border-yellow-500">
+            <Card className="border-amber-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <AlertTriangle className="h-5 w-5 text-amber-500" />
                   High Utilization Detected
                 </CardTitle>
                 <CardDescription>This service is experiencing heavy load</CardDescription>
@@ -1633,7 +1633,7 @@ export function ServiceLevelsEnhanced() {
                 <CardContent className="space-y-4">
                   <div>
                     <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Download className="h-4 w-4 text-green-600" />
+                      <Download className="h-4 w-4 text-green-500" />
                       Upload (TX)
                     </h4>
                     <div className="ml-6 space-y-1">

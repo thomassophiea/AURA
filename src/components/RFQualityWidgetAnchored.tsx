@@ -389,12 +389,13 @@ export function RFQualityWidgetAnchored() {
             <Badge variant="outline" className="text-xs text-muted-foreground">
               {profile.name}
             </Badge>
-            <Button 
-              onClick={() => loadRFQIData(true)} 
-              variant="ghost" 
+            <Button
+              onClick={() => loadRFQIData(true)}
+              variant="ghost"
               size="icon"
               className="h-8 w-8"
               disabled={refreshing}
+              aria-label="Refresh RF quality data"
             >
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>

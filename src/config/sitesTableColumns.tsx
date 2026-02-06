@@ -71,7 +71,7 @@ function getStatusIcon(status?: string) {
       return <CheckCircle className="h-4 w-4 text-green-500" />;
     case 'partial':
     case 'degraded':
-      return <Activity className="h-4 w-4 text-yellow-500" />;
+      return <Activity className="h-4 w-4 text-amber-500" />;
     case 'offline':
     case 'down':
     case 'inactive':
@@ -245,7 +245,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 120,
     renderCell: (site) => (
-      <div className="text-center text-green-600">
+      <div className="text-center text-green-500">
         {site.activeAPs ?? 0}
       </div>
     ),
@@ -262,7 +262,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 130,
     renderCell: (site) => (
-      <div className="text-center text-red-600">
+      <div className="text-center text-red-500">
         {site.nonActiveAPs ?? 0}
       </div>
     ),

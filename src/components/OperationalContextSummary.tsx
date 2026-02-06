@@ -505,20 +505,20 @@ function OperationalContextSummaryComponent() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'excellent': return 'text-green-600 dark:text-green-400';
+      case 'excellent': return 'text-green-500 dark:text-green-400';
       case 'good': return 'text-blue-600 dark:text-blue-400';
-      case 'degraded': return 'text-yellow-600 dark:text-yellow-400';
-      case 'critical': return 'text-red-600 dark:text-red-400';
+      case 'degraded': return 'text-amber-500 dark:text-amber-400';
+      case 'critical': return 'text-red-500 dark:text-red-400';
       default: return 'text-gray-600 dark:text-gray-400';
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'excellent': return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case 'excellent': return <CheckCircle2 className="h-5 w-5 text-green-500" />;
       case 'good': return <CheckCircle2 className="h-5 w-5 text-blue-600" />;
-      case 'degraded': return <AlertCircle className="h-5 w-5 text-yellow-600" />;
-      case 'critical': return <XCircle className="h-5 w-5 text-red-600" />;
+      case 'degraded': return <AlertCircle className="h-5 w-5 text-amber-500" />;
+      case 'critical': return <XCircle className="h-5 w-5 text-red-500" />;
       default: return <Activity className="h-5 w-5 text-gray-600" />;
     }
   };
@@ -555,13 +555,13 @@ function OperationalContextSummaryComponent() {
     return (
       <Card className="w-full border-red-200 dark:border-red-800">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-600">
+          <CardTitle className="flex items-center gap-2 text-red-500">
             <AlertTriangle className="h-5 w-5" />
             Operational Context Summary
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-red-600 dark:text-red-400">{error || 'Unable to load health metrics'}</p>
+          <p className="text-red-500 dark:text-red-400">{error || 'Unable to load health metrics'}</p>
         </CardContent>
       </Card>
     );
@@ -633,7 +633,7 @@ function OperationalContextSummaryComponent() {
                   Critical Alerts
                   <Info className="h-3 w-3" />
                 </div>
-                <div className={`text-3xl font-bold ${metrics.criticalAlerts.count > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <div className={`text-3xl font-bold ${metrics.criticalAlerts.count > 0 ? 'text-red-500' : 'text-green-500'}`}>
                   {metrics.criticalAlerts.count}
                 </div>
                 <Badge
@@ -643,7 +643,7 @@ function OperationalContextSummaryComponent() {
                   {metrics.criticalAlerts.count > 0 ? 'ACTION REQUIRED' : 'ALL CLEAR'}
                 </Badge>
               </div>
-              <AlertTriangle className={`h-5 w-5 ${metrics.criticalAlerts.count > 0 ? 'text-red-600' : 'text-green-600'}`} />
+              <AlertTriangle className={`h-5 w-5 ${metrics.criticalAlerts.count > 0 ? 'text-red-500' : 'text-green-500'}`} />
             </div>
           </div>
 
@@ -658,7 +658,7 @@ function OperationalContextSummaryComponent() {
                   Service Issues
                   <Info className="h-3 w-3" />
                 </div>
-                <div className={`text-3xl font-bold ${metrics.serviceDegradation.count > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                <div className={`text-3xl font-bold ${metrics.serviceDegradation.count > 0 ? 'text-amber-500' : 'text-green-500'}`}>
                   {metrics.serviceDegradation.count}
                 </div>
                 <Badge
@@ -668,7 +668,7 @@ function OperationalContextSummaryComponent() {
                   {metrics.serviceDegradation.count > 0 ? 'DEGRADED' : 'ALL CLEAR'}
                 </Badge>
               </div>
-              <TrendingDown className={`h-5 w-5 ${metrics.serviceDegradation.count > 0 ? 'text-yellow-600' : 'text-green-600'}`} />
+              <TrendingDown className={`h-5 w-5 ${metrics.serviceDegradation.count > 0 ? 'text-amber-500' : 'text-green-500'}`} />
             </div>
           </div>
 
@@ -733,7 +733,7 @@ function OperationalContextSummaryComponent() {
                 </div>
                 <div>
                   <span className="text-muted-foreground">Weak Signal:</span>
-                  <span className={`ml-2 font-medium ${metrics.organizationContext.details.weakSignalClients > 0 ? 'text-yellow-600' : ''}`}>{metrics.organizationContext.details.weakSignalClients}</span>
+                  <span className={`ml-2 font-medium ${metrics.organizationContext.details.weakSignalClients > 0 ? 'text-amber-500' : ''}`}>{metrics.organizationContext.details.weakSignalClients}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">AFC APs:</span>
@@ -768,7 +768,7 @@ function OperationalContextSummaryComponent() {
                 <ul className="space-y-1 text-sm">
                   {metrics.serviceDegradation.services.map((service, idx) => (
                     <li key={idx} className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
                       <span>{service.name || service.serviceName || service.ssid}</span>
                       <Badge variant="outline" className="text-xs">Performance Issue</Badge>
                     </li>
@@ -784,7 +784,7 @@ function OperationalContextSummaryComponent() {
                 <ul className="space-y-1 text-sm">
                   {metrics.criticalAlerts.alerts.map((alert, idx) => (
                     <li key={idx} className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
                       <span>{alert.message || alert.description || 'Critical alert'}</span>
                     </li>
                   ))}
@@ -858,9 +858,9 @@ function OperationalContextSummaryComponent() {
                       <div className="text-xs text-muted-foreground">Total APs</div>
                       <div className="text-2xl font-bold">{metrics.organizationContext.details.totalAPs}</div>
                       <div className="text-xs mt-1">
-                        <span className="text-green-600">{metrics.organizationContext.details.onlineAPs} online</span>
+                        <span className="text-green-500">{metrics.organizationContext.details.onlineAPs} online</span>
                         {metrics.organizationContext.details.offlineAPs > 0 && (
-                          <span className="text-red-600 ml-2">{metrics.organizationContext.details.offlineAPs} offline</span>
+                          <span className="text-red-500 ml-2">{metrics.organizationContext.details.offlineAPs} offline</span>
                         )}
                       </div>
                     </div>
@@ -868,7 +868,7 @@ function OperationalContextSummaryComponent() {
                       <div className="text-xs text-muted-foreground">Avg Clients/AP</div>
                       <div className="text-2xl font-bold">{metrics.organizationContext.details.avgClientsPerAP}</div>
                       {metrics.organizationContext.details.overloadedAPs > 0 && (
-                        <div className="text-xs text-yellow-600 mt-1">{metrics.organizationContext.details.overloadedAPs} overloaded</div>
+                        <div className="text-xs text-amber-500 mt-1">{metrics.organizationContext.details.overloadedAPs} overloaded</div>
                       )}
                     </div>
                     <div className="p-3 rounded-lg border bg-card">
@@ -932,11 +932,11 @@ function OperationalContextSummaryComponent() {
                       <div className="text-2xl font-bold">{metrics.organizationContext.details.avgSNR} dB</div>
                       <div className="text-xs mt-1">
                         {metrics.organizationContext.details.avgSNR >= 25 ? (
-                          <span className="text-green-600">Excellent</span>
+                          <span className="text-green-500">Excellent</span>
                         ) : metrics.organizationContext.details.avgSNR >= 15 ? (
-                          <span className="text-yellow-600">Good</span>
+                          <span className="text-amber-500">Good</span>
                         ) : (
-                          <span className="text-red-600">Poor</span>
+                          <span className="text-red-500">Poor</span>
                         )}
                       </div>
                     </div>
@@ -945,7 +945,7 @@ function OperationalContextSummaryComponent() {
                       <div className="text-2xl font-bold">{metrics.organizationContext.details.channelUtilization}%</div>
                       <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
                         <div
-                          className={`h-full transition-all ${metrics.organizationContext.details.channelUtilization > 80 ? 'bg-red-500' : metrics.organizationContext.details.channelUtilization > 50 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                          className={`h-full transition-all ${metrics.organizationContext.details.channelUtilization > 80 ? 'bg-red-500' : metrics.organizationContext.details.channelUtilization > 50 ? 'bg-amber-500' : 'bg-green-500'}`}
                           style={{ width: `${metrics.organizationContext.details.channelUtilization}%` }}
                         />
                       </div>
@@ -953,8 +953,8 @@ function OperationalContextSummaryComponent() {
                     <div className="p-3 rounded-lg border bg-card">
                       <div className="text-xs text-muted-foreground">Interference</div>
                       <div className="text-sm mt-1 space-y-1">
-                        <div className="flex justify-between"><span>Co-Channel:</span><span className={`font-medium ${metrics.organizationContext.details.coChannelInterference > 30 ? 'text-red-600' : 'text-green-600'}`}>{metrics.organizationContext.details.coChannelInterference}%</span></div>
-                        <div className="flex justify-between"><span>Adjacent:</span><span className={`font-medium ${metrics.organizationContext.details.adjacentChannelInterference > 20 ? 'text-yellow-600' : 'text-green-600'}`}>{metrics.organizationContext.details.adjacentChannelInterference}%</span></div>
+                        <div className="flex justify-between"><span>Co-Channel:</span><span className={`font-medium ${metrics.organizationContext.details.coChannelInterference > 30 ? 'text-red-500' : 'text-green-500'}`}>{metrics.organizationContext.details.coChannelInterference}%</span></div>
+                        <div className="flex justify-between"><span>Adjacent:</span><span className={`font-medium ${metrics.organizationContext.details.adjacentChannelInterference > 20 ? 'text-amber-500' : 'text-green-500'}`}>{metrics.organizationContext.details.adjacentChannelInterference}%</span></div>
                       </div>
                     </div>
                   </div>
@@ -966,14 +966,14 @@ function OperationalContextSummaryComponent() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 rounded-lg border bg-card">
                       <div className="text-xs text-muted-foreground">Weak Signal Clients</div>
-                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.weakSignalClients > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.weakSignalClients > 0 ? 'text-amber-500' : 'text-green-500'}`}>
                         {metrics.organizationContext.details.weakSignalClients}
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">&lt;-75 dBm</div>
                     </div>
                     <div className="p-3 rounded-lg border bg-card">
                       <div className="text-xs text-muted-foreground">Coverage Holes</div>
-                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.coverageHoleIndicator > 10 ? 'text-red-600' : metrics.organizationContext.details.coverageHoleIndicator > 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.coverageHoleIndicator > 10 ? 'text-red-500' : metrics.organizationContext.details.coverageHoleIndicator > 5 ? 'text-amber-500' : 'text-green-500'}`}>
                         {metrics.organizationContext.details.coverageHoleIndicator}%
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">of clients affected</div>
@@ -991,7 +991,7 @@ function OperationalContextSummaryComponent() {
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 rounded-lg border bg-card">
                       <div className="text-xs text-muted-foreground">Failed Auth (24h)</div>
-                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.failedAuthAttempts > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.failedAuthAttempts > 0 ? 'text-red-500' : 'text-green-500'}`}>
                         {metrics.organizationContext.details.failedAuthAttempts}
                       </div>
                     </div>
@@ -1025,7 +1025,7 @@ function OperationalContextSummaryComponent() {
                     </div>
                     <div className="p-3 rounded-lg border bg-card">
                       <div className="text-xs text-muted-foreground">Packet Loss</div>
-                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.packetLossRate > 1 ? 'text-red-600' : 'text-green-600'}`}>
+                      <div className={`text-2xl font-bold ${metrics.organizationContext.details.packetLossRate > 1 ? 'text-red-500' : 'text-green-500'}`}>
                         {metrics.organizationContext.details.packetLossRate}%
                       </div>
                     </div>
@@ -1059,7 +1059,7 @@ function OperationalContextSummaryComponent() {
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">Critical Alerts</h3>
-                    <div className={`text-4xl font-bold ${metrics.criticalAlerts.count > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <div className={`text-4xl font-bold ${metrics.criticalAlerts.count > 0 ? 'text-red-500' : 'text-green-500'}`}>
                       {metrics.criticalAlerts.count}
                     </div>
                   </div>
@@ -1074,7 +1074,7 @@ function OperationalContextSummaryComponent() {
                     {metrics.criticalAlerts.alerts.map((alert, idx) => (
                       <div key={idx} className="p-3 rounded-lg border border-red-500/50 bg-red-500/5">
                         <div className="flex items-start gap-2">
-                          <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                           <p className="text-sm">{alert.message || alert.description || 'Critical alert'}</p>
                         </div>
                       </div>
@@ -1082,7 +1082,7 @@ function OperationalContextSummaryComponent() {
                   </div>
                 ) : (
                   <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
-                    <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">No critical alerts at this time. All systems operating normally.</p>
                   </div>
                 )}
@@ -1094,7 +1094,7 @@ function OperationalContextSummaryComponent() {
                 <div className="p-4 rounded-lg border">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold">Service Issues</h3>
-                    <div className={`text-4xl font-bold ${metrics.serviceDegradation.count > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
+                    <div className={`text-4xl font-bold ${metrics.serviceDegradation.count > 0 ? 'text-amber-500' : 'text-green-500'}`}>
                       {metrics.serviceDegradation.count}
                     </div>
                   </div>
@@ -1107,10 +1107,10 @@ function OperationalContextSummaryComponent() {
                   <div className="space-y-2">
                     <h4 className="font-semibold">Degraded Services</h4>
                     {metrics.serviceDegradation.services.map((service, idx) => (
-                      <div key={idx} className="p-3 rounded-lg border border-yellow-500/50 bg-yellow-500/5">
+                      <div key={idx} className="p-3 rounded-lg border border-amber-500/50 bg-amber-500/5">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            <AlertCircle className="h-4 w-4 text-amber-500" />
                             <span className="font-medium">{service.name || service.serviceName || service.ssid}</span>
                           </div>
                           <Badge variant="outline" className="text-xs">Performance Issue</Badge>
@@ -1120,7 +1120,7 @@ function OperationalContextSummaryComponent() {
                   </div>
                 ) : (
                   <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg text-center">
-                    <CheckCircle2 className="h-12 w-12 text-green-600 mx-auto mb-2" />
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
                     <p className="text-sm text-muted-foreground">All services operating normally with no performance degradation detected.</p>
                   </div>
                 )}

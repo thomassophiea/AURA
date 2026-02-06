@@ -347,7 +347,7 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
       case 'inactive':
         return <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>;
       case 'pending':
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Pending</Badge>;
+        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }

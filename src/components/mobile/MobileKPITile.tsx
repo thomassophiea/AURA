@@ -22,7 +22,7 @@ interface MobileKPITileProps {
 export function MobileKPITile({ icon: Icon, label, value, trend, badge, status, onClick }: MobileKPITileProps) {
   const statusColors = {
     good: 'border-green-500/20 bg-green-500/5',
-    warning: 'border-yellow-500/20 bg-yellow-500/5',
+    warning: 'border-amber-500/20 bg-amber-500/5',
     critical: 'border-red-500/20 bg-red-500/5',
   };
 

@@ -65,7 +65,7 @@ export function DevModePanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightCh
   const getStatusColor = (status?: number) => {
     if (!status) return 'text-muted-foreground';
     if (status >= 200 && status < 300) return 'text-green-500';
-    if (status >= 400 && status < 500) return 'text-yellow-500';
+    if (status >= 400 && status < 500) return 'text-amber-500';
     if (status >= 500) return 'text-red-500';
     return 'text-muted-foreground';
   };
@@ -74,7 +74,7 @@ export function DevModePanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightCh
     if (log.isPending) return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
     if (log.error) return <XCircle className="h-4 w-4 text-red-500" />;
     if (log.status && log.status >= 200 && log.status < 300) return <CheckCircle className="h-4 w-4 text-green-500" />;
-    if (log.status && log.status >= 400) return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+    if (log.status && log.status >= 400) return <AlertCircle className="h-4 w-4 text-amber-500" />;
     return <Activity className="h-4 w-4 text-muted-foreground" />;
   };
 
@@ -82,7 +82,7 @@ export function DevModePanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightCh
     switch (method) {
       case 'GET': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
       case 'POST': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'PUT': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
+      case 'PUT': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
       case 'PATCH': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       case 'DELETE': return 'bg-red-500/20 text-red-400 border-red-500/30';
       default: return 'bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30';

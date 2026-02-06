@@ -95,7 +95,7 @@ export function OSOneWidget({
   const getServiceStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
     if (statusLower === 'available' || statusLower === 'onboarded' || statusLower === 'connected') {
-      return <Badge variant="default" className="bg-green-500">{status}</Badge>;
+      return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">{status}</Badge>;
     } else if (statusLower === 'unavailable' || statusLower === 'error') {
       return <Badge variant="destructive">{status}</Badge>;
     }
@@ -104,14 +104,14 @@ export function OSOneWidget({
 
   const getCpuColor = (usage: number): string => {
     if (usage > 80) return 'bg-red-500';
-    if (usage > 60) return 'bg-yellow-500';
+    if (usage > 60) return 'bg-amber-500';
     return 'bg-green-500';
   };
 
   const getMemoryColor = (freePercent: number): string => {
     const usedPercent = 100 - freePercent;
     if (usedPercent > 85) return 'bg-red-500';
-    if (usedPercent > 70) return 'bg-yellow-500';
+    if (usedPercent > 70) return 'bg-amber-500';
     return 'bg-blue-500';
   };
 
@@ -144,7 +144,7 @@ export function OSOneWidget({
               <Server className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">OS ONE</CardTitle>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleRefresh}>
+            <Button variant="ghost" size="sm" onClick={handleRefresh} aria-label="Refresh OS ONE data">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
@@ -179,14 +179,14 @@ export function OSOneWidget({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">CPU</span>
-              <span className={`text-sm font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-yellow-500' : 'text-green-500'}`}>
+              <span className={`text-sm font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-amber-500' : 'text-green-500'}`}>
                 {cpuUsage.toFixed(1)}%
               </span>
             </div>
             <Progress value={cpuUsage} className="h-1.5" />
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-muted-foreground">Memory</span>
-              <span className={`text-sm font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-yellow-500' : 'text-blue-500'}`}>
+              <span className={`text-sm font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-amber-500' : 'text-blue-500'}`}>
                 {memoryUsed.toFixed(0)}% used
               </span>
             </div>
@@ -244,7 +244,7 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Usage</span>
-                <span className={`font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-yellow-500' : 'text-green-500'}`}>
+                <span className={`font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-amber-500' : 'text-green-500'}`}>
                   {cpuUsage.toFixed(1)}%
                 </span>
               </div>
@@ -266,7 +266,7 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Used</span>
-                <span className={`font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-yellow-500' : 'text-blue-500'}`}>
+                <span className={`font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-amber-500' : 'text-blue-500'}`}>
                   {memoryUsed.toFixed(0)}%
                 </span>
               </div>

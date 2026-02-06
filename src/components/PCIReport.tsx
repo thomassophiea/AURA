@@ -538,22 +538,22 @@ export function PCIReport() {
                 <div className="flex items-center gap-2">
                   {reportResult.complianceStatus === 'pass' && (
                     <>
-                      <CheckCircle className="h-5 w-5 text-green-600" />
-                      <Badge className="bg-green-500 badge badge-success">PASS</Badge>
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">PASS</Badge>
                       <span className="text-sm">All access points are connected</span>
                     </>
                   )}
                   {reportResult.complianceStatus === 'warning' && (
                     <>
-                      <AlertCircle className="h-5 w-5 text-yellow-600" />
-                      <Badge className="bg-yellow-500 badge badge-warning">WARNING</Badge>
+                      <AlertCircle className="h-5 w-5 text-amber-500" />
+                      <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">WARNING</Badge>
                       <span className="text-sm">Some access points are disconnected</span>
                     </>
                   )}
                   {reportResult.complianceStatus === 'fail' && (
                     <>
-                      <XCircle className="h-5 w-5 text-red-600" />
-                      <Badge className="bg-red-500 badge badge-error">FAIL</Badge>
+                      <XCircle className="h-5 w-5 text-red-500" />
+                      <Badge variant="destructive">FAIL</Badge>
                       <span className="text-sm">Majority of access points are disconnected</span>
                     </>
                   )}
@@ -571,11 +571,11 @@ export function PCIReport() {
                     <div className="text-sm text-muted-foreground">Total APs</div>
                   </div>
                   <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{reportResult.connectedAPs.length}</div>
+                    <div className="text-2xl font-bold text-green-500">{reportResult.connectedAPs.length}</div>
                     <div className="text-sm text-muted-foreground">Connected</div>
                   </div>
                   <div className="text-center p-4 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">{reportResult.disconnectedAPs.length}</div>
+                    <div className="text-2xl font-bold text-red-500">{reportResult.disconnectedAPs.length}</div>
                     <div className="text-sm text-muted-foreground">Disconnected</div>
                   </div>
                 </div>
@@ -604,7 +604,7 @@ export function PCIReport() {
                             <td className="p-2">{ap.name}</td>
                             <td className="p-2 font-mono text-sm">{ap.mac}</td>
                             <td className="p-2">
-                              <Badge className="bg-green-500 status-connected">Connected</Badge>
+                              <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Connected</Badge>
                             </td>
                           </tr>
                         ))}
@@ -619,7 +619,7 @@ export function PCIReport() {
                 <>
                   <Separator />
                   <div>
-                    <h4 className="font-semibold mb-3 text-red-600">Appendix: Disconnected Access Points</h4>
+                    <h4 className="font-semibold mb-3 text-red-500">Appendix: Disconnected Access Points</h4>
                     <p className="text-sm text-muted-foreground mb-3">
                       The following access points are not in a connected state and require attention:
                     </p>
@@ -638,7 +638,7 @@ export function PCIReport() {
                               <td className="p-2">{ap.name}</td>
                               <td className="p-2 font-mono text-sm">{ap.mac}</td>
                               <td className="p-2">
-                                <Badge className="bg-red-500 status-disconnected">Disconnected</Badge>
+                                <Badge variant="destructive">Disconnected</Badge>
                               </td>
                             </tr>
                           ))}

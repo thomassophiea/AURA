@@ -49,8 +49,12 @@ export const ScoreCardWidget: React.FC<ScoreCardProps> = ({
 
   return (
     <div
-      className={`${statusColors[status]} rounded-lg p-6 ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow' : ''}`}
+      className={`${statusColors[status]} rounded-lg p-6 ${onClick ? 'cursor-pointer hover:shadow-lg transition-shadow focus:outline-none focus:ring-2 focus:ring-primary/50' : ''}`}
       onClick={onClick}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); }} : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      aria-label={onClick ? `${title}: ${formattedValue}${unit ? ` ${unit}` : ''}. Click for details.` : undefined}
     >
       <div className="flex items-start justify-between mb-4">
         <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>

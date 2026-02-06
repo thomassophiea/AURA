@@ -202,7 +202,7 @@ export const SaveToWorkspace: React.FC<SaveToWorkspaceProps> = ({
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            <p className="text-xs">Not eligible: {eligibility.reason}</p>
+            <p>Not eligible: {eligibility.reason}</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -242,7 +242,7 @@ export const SaveToWorkspace: React.FC<SaveToWorkspaceProps> = ({
         </button>
       </TooltipTrigger>
       <TooltipContent>
-        <p className="text-xs">{isSaved ? 'Remove from Workspace' : 'Save to Workspace'}</p>
+        <p>{isSaved ? 'Remove from Workspace' : 'Save to Workspace'}</p>
       </TooltipContent>
     </Tooltip>
   );

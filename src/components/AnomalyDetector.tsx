@@ -335,10 +335,10 @@ export function AnomalyDetector() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-red-600 dark:text-red-400 border-red-600';
-      case 'medium': return 'text-yellow-600 dark:text-yellow-400 border-yellow-600';
-      case 'low': return 'text-blue-600 dark:text-blue-400 border-blue-600';
-      default: return 'text-gray-600 dark:text-gray-400 border-gray-600';
+      case 'high': return 'text-red-500 dark:text-red-400 border-red-500';
+      case 'medium': return 'text-amber-500 dark:text-amber-400 border-amber-500';
+      case 'low': return 'text-blue-500 dark:text-blue-400 border-blue-500';
+      default: return 'text-gray-500 dark:text-gray-400 border-gray-500';
     }
   };
 
@@ -405,8 +405,8 @@ export function AnomalyDetector() {
           </div>
         ) : anomalies.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
-            <Activity className="h-8 w-8 text-green-600 mb-2" />
-            <div className="text-sm font-medium text-green-600">No anomalies detected</div>
+            <Activity className="h-8 w-8 text-green-500 mb-2" />
+            <div className="text-sm font-medium text-green-500">No anomalies detected</div>
             <div className="text-xs text-muted-foreground mt-1">
               All metrics within normal ranges
             </div>
@@ -438,7 +438,7 @@ export function AnomalyDetector() {
                         {' - '}
                         {anomaly.metric}: {anomaly.baseline.toFixed(1)} → {anomaly.current.toFixed(1)}
                         {' '}
-                        <span className={anomaly.changePercent > 0 ? 'text-green-600' : 'text-red-600'}>
+                        <span className={anomaly.changePercent > 0 ? 'text-green-500' : 'text-red-500'}>
                           ({anomaly.changePercent > 0 ? '+' : ''}{anomaly.changePercent}%)
                         </span>
                       </div>

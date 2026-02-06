@@ -27,7 +27,7 @@ export const TYPOGRAPHY = {
   labelMuted: 'text-sm font-medium text-muted-foreground',
   
   // Metrics
-  metricValue: 'text-2xl font-medium text-foreground',
+  metricValue: 'text-2xl font-bold text-foreground',
   metricLabel: 'text-xs text-muted-foreground uppercase tracking-wide',
   
   // Table

@@ -61,7 +61,7 @@ export function HighAvailabilityWidget() {
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'PRIMARY':
-        return 'text-green-600 dark:text-green-400';
+        return 'text-green-500 dark:text-green-400';
       case 'SECONDARY':
         return 'text-blue-600 dark:text-blue-400';
       case 'STANDALONE':
@@ -154,9 +154,9 @@ export function HighAvailabilityWidget() {
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
               {haStatus.availabilityEnabled ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
               ) : (
-                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <AlertCircle className="h-5 w-5 text-amber-500" />
               )}
               <h3 className="font-semibold text-sm">HA Configuration</h3>
             </div>
@@ -257,18 +257,18 @@ export function HighAvailabilityWidget() {
                 <>
                   {haStatus.availabilityPairAddr ? (
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                       <p className="text-xs">HA pair configured</p>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
                       <p className="text-xs">No pair address set</p>
                     </div>
                   )}
                   {haStatus.secureConnection && (
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
                       <p className="text-xs">Secure connection active</p>
                     </div>
                   )}
@@ -294,8 +294,8 @@ export function HighAvailabilityWidget() {
         )}
 
         {haStatus.availabilityEnabled && !haStatus.availabilityPairAddr && (
-          <div className="mt-4 p-3 bg-yellow-50 dark:bg-yellow-950/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-            <p className="text-xs text-yellow-800 dark:text-yellow-200">
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <p className="text-xs text-amber-800 dark:text-amber-200">
               <strong>Warning:</strong> HA is enabled but no paired node address is configured.
               Set the pair address to complete the HA setup.
             </p>

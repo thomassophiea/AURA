@@ -83,7 +83,7 @@ function getEventIcon(category?: string, context?: string) {
 function getSeverityColor(level?: string): string {
   const l = (level || '').toLowerCase();
   if (l === 'critical' || l === 'error') return 'text-red-500';
-  if (l === 'major' || l === 'warning') return 'text-yellow-500';
+  if (l === 'major' || l === 'warning') return 'text-amber-500';
   if (l === 'minor') return 'text-blue-500';
   return 'text-muted-foreground';
 }
@@ -91,7 +91,7 @@ function getSeverityColor(level?: string): string {
 function getSeverityBg(level?: string): string {
   const l = (level || '').toLowerCase();
   if (l === 'critical' || l === 'error') return 'bg-red-500/10 border-red-500/30';
-  if (l === 'major' || l === 'warning') return 'bg-yellow-500/10 border-yellow-500/30';
+  if (l === 'major' || l === 'warning') return 'bg-amber-500/10 border-amber-500/30';
   if (l === 'minor') return 'bg-blue-500/10 border-blue-500/30';
   return 'bg-muted/30 border-muted';
 }
@@ -368,7 +368,7 @@ export function APEventsTimeline({
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold">Event Details</h3>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)}>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} aria-label="Close event details">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>

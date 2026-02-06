@@ -153,8 +153,8 @@ export function ContextualInsightsDashboard({
                       variant="outline" 
                       className={cn(
                         "text-[10px] px-1.5 h-4 gap-0.5",
-                        insight.trend.direction === 'improving' && "border-green-500/50 text-green-600",
-                        insight.trend.direction === 'degrading' && "border-red-500/50 text-red-600"
+                        insight.trend.direction === 'improving' && "border-green-500/20 text-green-500",
+                        insight.trend.direction === 'degrading' && "border-red-500/20 text-red-500"
                       )}
                     >
                       {insight.trend.direction === 'improving' ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
@@ -209,7 +209,7 @@ export function ContextualInsightsDashboard({
               {/* Recommended Action */}
               <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
                 <div className="flex items-start gap-1.5">
-                  <Lightbulb className="h-3 w-3 text-green-600 mt-0.5 shrink-0" />
+                  <Lightbulb className="h-3 w-3 text-green-500 mt-0.5 shrink-0" />
                   <p className="text-xs">{insight.recommendedAction}</p>
                 </div>
               </div>
@@ -321,7 +321,7 @@ export function ContextualInsightsDashboard({
           />
           <EnvironmentProfileSelector showThresholds />
           {onRefresh && (
-            <Button variant="outline" size="icon" onClick={onRefresh} disabled={isRefreshing}>
+            <Button variant="outline" size="icon" onClick={onRefresh} disabled={isRefreshing} aria-label="Refresh insights">
               <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
             </Button>
           )}
@@ -408,7 +408,7 @@ export function ContextualInsightsDashboard({
               <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
                 <CheckCircle2 className="h-8 w-8 text-green-500" />
               </div>
-              <p className="font-medium text-green-600">All Systems Healthy</p>
+              <p className="font-medium text-green-500">All Systems Healthy</p>
               <p className="text-sm text-muted-foreground mt-1">
                 No issues detected for {profile.name} environment
               </p>

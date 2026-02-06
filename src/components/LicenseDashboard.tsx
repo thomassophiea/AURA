@@ -144,7 +144,7 @@ export function LicenseDashboard() {
       return <XCircle className="h-5 w-5 text-red-500" />;
     }
     if (isExpiringSoon(expirationDate)) {
-      return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+      return <AlertTriangle className="h-5 w-5 text-amber-500" />;
     }
     if (status === 'active') {
       return <CheckCircle className="h-5 w-5 text-green-500" />;
@@ -157,10 +157,10 @@ export function LicenseDashboard() {
       return <Badge variant="destructive">Expired</Badge>;
     }
     if (isExpiringSoon(expirationDate)) {
-      return <Badge className="bg-yellow-500">Expiring Soon</Badge>;
+      return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Expiring Soon</Badge>;
     }
     if (status === 'active') {
-      return <Badge className="bg-green-500">Active</Badge>;
+      return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Active</Badge>;
     }
     return <Badge variant="outline">{status}</Badge>;
   };
@@ -238,16 +238,16 @@ export function LicenseDashboard() {
           <CardContent>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-green-100 rounded-xl">
-                <CheckCircle className="h-6 w-6 text-green-600" />
+                <CheckCircle className="h-6 w-6 text-green-500" />
               </div>
-              <span className="text-3xl font-bold text-green-600">
+              <span className="text-3xl font-bold text-green-500">
                 {licenseInfo?.activeLicenses || 0}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-yellow-300">
+        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-amber-300">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Expiring Soon
@@ -255,10 +255,10 @@ export function LicenseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-yellow-100 rounded-xl">
-                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+              <div className="p-2.5 bg-amber-100 rounded-xl">
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
               </div>
-              <span className="text-3xl font-bold text-yellow-600">
+              <span className="text-3xl font-bold text-amber-500">
                 {licenseInfo?.expiringLicenses || 0}
               </span>
             </div>
@@ -333,19 +333,19 @@ export function LicenseDashboard() {
                   <div className="text-sm font-medium text-gray-600 mt-1">Total Devices</div>
                 </div>
                 <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-300 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-green-600">{licenseUsage.licensedDevices}</div>
+                  <div className="text-3xl font-bold text-green-500">{licenseUsage.licensedDevices}</div>
                   <div className="text-sm font-medium text-green-700 mt-1">Licensed</div>
                 </div>
                 <div className="text-center p-5 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border-2 border-red-200 hover:border-red-300 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-red-600">{licenseUsage.unlicensedDevices}</div>
+                  <div className="text-3xl font-bold text-red-500">{licenseUsage.unlicensedDevices}</div>
                   <div className="text-sm font-medium text-red-700 mt-1">Unlicensed</div>
                 </div>
               </div>
 
               {licenseUsage.unlicensedDevices > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                  <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  <p className="text-sm text-amber-800 dark:text-amber-200">
                     {licenseUsage.unlicensedDevices} device(s) require licensing
                   </p>
                 </div>

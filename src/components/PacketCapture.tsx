@@ -606,7 +606,7 @@ export function PacketCapture() {
         </div>
 
         {error && (
-          <Alert className="border-yellow-500">
+          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -886,7 +886,7 @@ export function PacketCapture() {
                     className="flex-1"
                     onKeyDown={(e) => e.key === 'Enter' && addFilter()}
                   />
-                  <Button onClick={addFilter} size="icon" variant="outline">
+                  <Button onClick={addFilter} size="icon" variant="outline" aria-label="Add filter">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -972,7 +972,7 @@ export function PacketCapture() {
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full animate-pulse ${
                               capture.status === 'running' ? 'bg-green-500' :
-                              capture.status === 'stopping' ? 'bg-yellow-500' :
+                              capture.status === 'stopping' ? 'bg-amber-500' :
                               'bg-gray-400'
                             }`} />
                             <Badge variant={
@@ -1115,7 +1115,7 @@ export function PacketCapture() {
                               {file.status}
                             </Badge>
                           ) : (
-                            <Badge variant="default" className="text-xs bg-green-500">
+                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
                               Ready
                             </Badge>
                           )}

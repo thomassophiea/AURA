@@ -123,7 +123,7 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
             <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
               <CheckCircle2 className="h-8 w-8 text-green-500" />
             </div>
-            <p className="font-medium text-green-600">All Systems Healthy</p>
+            <p className="font-medium text-green-500">All Systems Healthy</p>
             <p className="text-sm text-muted-foreground mt-1">
               No issues detected for {profile.name} environment
             </p>
@@ -214,8 +214,8 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
                                 variant="outline" 
                                 className={cn(
                                   "text-[10px] px-1.5 h-4 gap-0.5",
-                                  insight.trend.direction === 'improving' && "border-green-500/50 text-green-600",
-                                  insight.trend.direction === 'degrading' && "border-red-500/50 text-red-600",
+                                  insight.trend.direction === 'improving' && "border-green-500/20 text-green-500",
+                                  insight.trend.direction === 'degrading' && "border-red-500/20 text-red-500",
                                   insight.trend.direction === 'stable' && "border-gray-500/50 text-gray-600"
                                 )}
                               >
@@ -291,7 +291,7 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
                         
                         {/* Recommended Action */}
                         <div className="p-2 rounded-md bg-green-500/10 border border-green-500/20">
-                          <p className="text-xs font-medium text-green-600 mb-1 flex items-center gap-1">
+                          <p className="text-xs font-medium text-green-500 mb-1 flex items-center gap-1">
                             <Lightbulb className="h-3 w-3" />
                             Recommended Action
                           </p>

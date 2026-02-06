@@ -524,7 +524,7 @@ export function ConfigureAdoptionRules() {
                     <TableCell className="text-right">
                       <div className="text-sm">
                         {rule.matchCount > 0 ? (
-                          <span className="text-green-600 dark:text-green-400">{rule.matchCount} devices</span>
+                          <span className="text-green-500 dark:text-green-400">{rule.matchCount} devices</span>
                         ) : (
                           <span className="text-muted-foreground">0 devices</span>
                         )}

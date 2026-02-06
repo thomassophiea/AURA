@@ -15,7 +15,7 @@ export function NetworkHealthScore({ score, onClick }: NetworkHealthScoreProps) 
   const getScoreStatus = (s: number) => {
     if (s >= 90) return { label: 'Excellent', color: 'text-green-500', icon: CheckCircle2 };
     if (s >= 70) return { label: 'Good', color: 'text-blue-500', icon: Activity };
-    if (s >= 50) return { label: 'Fair', color: 'text-yellow-500', icon: AlertTriangle };
+    if (s >= 50) return { label: 'Fair', color: 'text-amber-500', icon: AlertTriangle };
     return { label: 'Poor', color: 'text-red-500', icon: XCircle };
   };
 

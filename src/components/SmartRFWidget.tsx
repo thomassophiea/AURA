@@ -92,7 +92,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
       <Card className="w-full border-red-200">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
+            <AlertTriangle className="h-5 w-5 text-red-500" />
             <CardTitle>Site RRM</CardTitle>
           </div>
         </CardHeader>
@@ -147,7 +147,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
           {/* Power Changes */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-green-600" />
+              <TrendingUp className="h-4 w-4 text-green-500" />
               <span className="text-sm text-muted-foreground">Power Changes</span>
             </div>
             <div className="text-2xl font-bold">{powerChanges}</div>
@@ -201,7 +201,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {avgChannelUtil > 70 && (
               <div className="flex items-start gap-2 text-sm">
-                <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   Channel utilization is high. Consider adding more APs or optimizing channel assignments.
                 </p>
@@ -209,7 +209,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {avgSnr < 20 && (
               <div className="flex items-start gap-2 text-sm">
-                <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   Low SNR detected. Check for interference sources or adjust AP placement.
                 </p>
@@ -217,7 +217,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {channelChanges <= 5 && powerChanges <= 5 && avgSnr > 30 && (
               <div className="flex items-start gap-2 text-sm">
-                <Radio className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                <Radio className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   RF environment is stable with excellent signal quality. Site RRM optimizations are minimal.
                 </p>

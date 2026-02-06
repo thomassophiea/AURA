@@ -261,7 +261,7 @@ export function APFirmwareManager() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
               <span className="text-2xl font-bold">{stats.updateAvailable}</span>
             </div>
           </CardContent>
@@ -303,7 +303,7 @@ export function APFirmwareManager() {
                     <div className="flex items-center gap-2">
                       <span>{version.version}</span>
                       {version.isRecommended && (
-                        <Badge className="bg-green-500">Recommended</Badge>
+                        <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Recommended</Badge>
                       )}
                     </div>
                   </SelectItem>
@@ -381,7 +381,7 @@ export function APFirmwareManager() {
                           status.color === 'green'
                             ? 'bg-green-500'
                             : status.color === 'yellow'
-                            ? 'bg-yellow-500'
+                            ? 'bg-amber-500'
                             : ''
                         }
                       >
@@ -455,9 +455,9 @@ export function APFirmwareManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <p className="text-sm text-amber-800 dark:text-amber-200">
                 Access points will reboot during the upgrade process
               </p>
             </div>

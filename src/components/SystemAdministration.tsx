@@ -202,7 +202,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
       </div>
 
       {apiNotAvailable && (
-        <Alert className="border-yellow-500">
+        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             System configuration API endpoints are not available on this Extreme Platform ONE version.

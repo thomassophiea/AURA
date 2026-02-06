@@ -140,9 +140,9 @@ export function ApplicationAnalyticsEnhancedWidget({ siteId, duration = '24H' }:
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className="border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+          <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-amber-800 dark:text-amber-200">
               {error || 'Application analytics data is not available for this site. This feature may require DPI (Deep Packet Inspection) licensing.'}
             </AlertDescription>
           </Alert>
@@ -321,7 +321,7 @@ export function ApplicationAnalyticsEnhancedWidget({ siteId, duration = '24H' }:
 
       {/* Debug info when no structured data */}
       {topByThroughput.length === 0 && topByClients.length === 0 && topByUsage.length === 0 && (
-        <Card className="border-yellow-500">
+        <Card className="border-amber-500">
           <CardHeader>
             <CardTitle className="text-sm">Raw Application Data (Debug)</CardTitle>
             <CardDescription>

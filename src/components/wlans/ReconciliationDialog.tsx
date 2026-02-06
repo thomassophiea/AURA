@@ -191,10 +191,10 @@ export function ReconciliationDialog({
 
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm text-green-600">Matched</CardTitle>
+                    <CardTitle className="text-sm text-green-500">Matched</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-green-600">{result.matched}</div>
+                    <div className="text-2xl font-bold text-green-500">{result.matched}</div>
                   </CardContent>
                 </Card>
 
@@ -210,8 +210,8 @@ export function ReconciliationDialog({
 
               {/* Status Alert */}
               {result.mismatched === 0 ? (
-                <Alert className="border-green-600/20 bg-green-50 dark:bg-green-900/10">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                <Alert className="border-green-500/20 bg-green-50 dark:bg-green-900/10">
+                  <CheckCircle className="h-4 w-4 text-green-500" />
                   <AlertDescription className="text-green-800 dark:text-green-200">
                     All profile assignments match expectations. No action needed.
                   </AlertDescription>

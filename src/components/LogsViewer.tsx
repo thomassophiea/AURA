@@ -179,7 +179,7 @@ export function LogsViewer() {
       case 'info':
         return <CheckCircle className="h-4 w-4 text-blue-500" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'error':
         return <XCircle className="h-4 w-4 text-red-500" />;
       case 'critical':
@@ -193,7 +193,7 @@ export function LogsViewer() {
     const variants: Record<LogEntry['level'], string> = {
       debug: 'bg-gray-500',
       info: 'bg-blue-500',
-      warning: 'bg-yellow-500',
+      warning: 'bg-amber-500',
       error: 'bg-red-500',
       critical: 'bg-red-700'
     };

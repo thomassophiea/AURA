@@ -303,7 +303,7 @@ export function ApplicationsManagement() {
   const getGrantTypeBadge = (grantType: Application['grantType']) => {
     const colors: Record<Application['grantType'], string> = {
       client_credentials: 'bg-blue-500',
-      password: 'bg-yellow-500',
+      password: 'bg-amber-500',
       authorization_code: 'bg-green-500'
     };
 
@@ -354,9 +354,9 @@ export function ApplicationsManagement() {
               </Button>
             </div>
 
-            <Alert className="border-2 border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
-              <AlertTriangle className="h-4 w-4 text-yellow-600" />
-              <AlertDescription className="text-yellow-800 dark:text-yellow-200">
+            <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
                 OAuth applications management API endpoints are not available on this Extreme Platform ONE version. This feature requires API v1/oauth/applications support.
               </AlertDescription>
             </Alert>

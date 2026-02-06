@@ -147,11 +147,14 @@ function MobileCard<T>({
     <Card
       {...(onSwipeLeft || onSwipeRight ? handlers : {})}
       onClick={() => onClick?.(item)}
+      onKeyDown={onClick ? (e: React.KeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(item); }} : undefined}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
       className={`
         p-4
         hover:shadow-md transition-all duration-300
         animate-in fade-in slide-in-from-bottom-2
-        ${onClick ? 'cursor-pointer' : ''}
+        ${onClick ? 'cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50' : ''}
         ${onSwipeLeft || onSwipeRight ? 'touch-action-pan-y' : ''}
       `}
       style={{ animationDelay: `${index * 50}ms` }}

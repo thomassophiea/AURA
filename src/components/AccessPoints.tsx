@@ -1285,7 +1285,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </TooltipTrigger>
           <TooltipContent>
             <p className="font-medium">Online</p>
-            <p className="text-xs opacity-80">Access Point is connected and operational</p>
+            <p className="opacity-80">Access Point is connected and operational</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -1297,7 +1297,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </TooltipTrigger>
           <TooltipContent>
             <p className="font-medium">Offline</p>
-            <p className="text-xs opacity-80">Access Point is not responding or disconnected</p>
+            <p className="opacity-80">Access Point is not responding or disconnected</p>
           </TooltipContent>
         </Tooltip>
       );
@@ -1413,7 +1413,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="font-medium">AFC Anchor</p>
-                  <p className="text-xs opacity-80">6 GHz Standard Power - This AP provides GPS location for AFC (Automated Frequency Coordination)</p>
+                  <p className="opacity-80">6 GHz Standard Power - This AP provides GPS location for AFC (Automated Frequency Coordination)</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -1421,18 +1421,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             {apCableHealth && (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`} />
+                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={5}>
                   <div className="max-w-xs">
                     {/* Header */}
-                    <p className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
+                    <p className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>
                       {apCableHealth.status === 'critical' ? 'Bad Cable Detected' : 'Possible Cable Issue'}
                     </p>
 
                     {/* Speed info */}
-                    <p className="text-xs mt-1">
-                      <span className={apCableHealth.status === 'critical' ? 'text-red-400' : 'text-yellow-400'}>
+                    <p className="mt-1">
+                      <span className={apCableHealth.status === 'critical' ? 'text-red-400' : 'text-amber-400'}>
                         {apCableHealth.speedDisplay}
                       </span>
                       {' '}(expected{' '}
@@ -1450,7 +1450,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
                     {/* Switch comparison */}
                     {apCableHealth.otherAPsOnSwitch && apCableHealth.otherAPsOnSwitch.good > 0 && (
-                      <p className="text-xs mt-1 text-emerald-400">
+                      <p className="mt-1 text-emerald-400">
                         {apCableHealth.otherAPsOnSwitch.good} other APs on switch OK - issue is this cable
                       </p>
                     )}
@@ -1492,13 +1492,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
+                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>
                   <AlertTriangle className="h-3 w-3" />
                   {ethSpeedValue}
                 </span>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-xs">
-                <p className="text-xs">{ethHealth.message}</p>
+                <p>{ethHealth.message}</p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1511,7 +1511,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         }
         if (cableHealth.status === 'good') {
           return (
-            <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Good
             </Badge>
@@ -1521,16 +1521,16 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 cursor-help">
+                <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30 cursor-help">
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Warning
                 </Badge>
               </TooltipTrigger>
               <TooltipContent side="top" className="max-w-sm">
-                <p className="text-xs font-medium mb-1">Possible Cable Issue</p>
-                <p className="text-xs">{cableHealth.message}</p>
+                <p className="font-medium mb-1">Possible Cable Issue</p>
+                <p>{cableHealth.message}</p>
                 {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
-                  <p className="text-xs mt-1 text-yellow-400">
+                  <p className="mt-1 text-amber-400">
                     Other APs on same switch have good rates - issue likely isolated to this cable
                   </p>
                 )}
@@ -1548,10 +1548,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               </Badge>
             </TooltipTrigger>
             <TooltipContent side="top" className="max-w-sm">
-              <p className="text-xs font-medium mb-1">Likely Cable Problem</p>
-              <p className="text-xs">{cableHealth.message}</p>
+              <p className="font-medium mb-1">Likely Cable Problem</p>
+              <p>{cableHealth.message}</p>
               {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
-                <p className="text-xs mt-1 text-red-300">
+                <p className="mt-1 text-red-300">
                   {cableHealth.otherAPsOnSwitch.good} other APs on same switch have good rates - issue is with this cable/connector
                 </p>
               )}
@@ -1610,7 +1610,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">{isLoadingMetrics ? 'Loading CPU data...' : 'CPU data not available. Click AP for details.'}</p>
+                <p>{isLoadingMetrics ? 'Loading CPU data...' : 'CPU data not available. Click AP for details.'}</p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1621,18 +1621,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <div className="flex items-center gap-2 cursor-help">
                 <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${cpuValue > 80 ? 'bg-red-500' : cpuValue > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                    className={`h-full transition-all ${cpuValue > 80 ? 'bg-red-500' : cpuValue > 60 ? 'bg-amber-500' : 'bg-green-500'}`}
                     style={{ width: `${Math.min(cpuValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-red-600' : cpuValue > 60 ? 'text-yellow-600' : ''}`}>
+                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-red-500' : cpuValue > 60 ? 'text-amber-500' : ''}`}>
                   {cpuValue}%
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">CPU Utilization</p>
-              <p className="text-xs opacity-80">{cpuValue > 80 ? 'High load - may impact performance' : cpuValue > 60 ? 'Moderate load' : 'Normal operation'}</p>
+              <p className="opacity-80">{cpuValue > 80 ? 'High load - may impact performance' : cpuValue > 60 ? 'Moderate load' : 'Normal operation'}</p>
             </TooltipContent>
           </Tooltip>
         );
@@ -1650,7 +1650,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p className="text-xs">{isLoadingMetrics ? 'Loading memory data...' : 'Memory data not available. Click AP for details.'}</p>
+                <p>{isLoadingMetrics ? 'Loading memory data...' : 'Memory data not available. Click AP for details.'}</p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1661,18 +1661,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <div className="flex items-center gap-2 cursor-help">
                 <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${memValue > 85 ? 'bg-red-500' : memValue > 70 ? 'bg-yellow-500' : 'bg-blue-500'}`}
+                    className={`h-full transition-all ${memValue > 85 ? 'bg-red-500' : memValue > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
                     style={{ width: `${Math.min(memValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${memValue > 85 ? 'text-red-600' : memValue > 70 ? 'text-yellow-600' : ''}`}>
+                <span className={`text-sm font-medium ${memValue > 85 ? 'text-red-500' : memValue > 70 ? 'text-amber-500' : ''}`}>
                   {memValue}%
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">Memory Utilization</p>
-              <p className="text-xs opacity-80">{memValue > 85 ? 'High memory usage - may cause issues' : memValue > 70 ? 'Elevated memory usage' : 'Normal memory usage'}</p>
+              <p className="opacity-80">{memValue > 85 ? 'High memory usage - may cause issues' : memValue > 70 ? 'Elevated memory usage' : 'Normal memory usage'}</p>
             </TooltipContent>
           </Tooltip>
         );
@@ -1687,7 +1687,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">AFC Anchor</p>
-              <p className="text-xs opacity-80">This AP has GPS and provides location data for AFC (Automated Frequency Coordination) to enable 6 GHz Standard Power operation</p>
+              <p className="opacity-80">This AP has GPS and provides location data for AFC (Automated Frequency Coordination) to enable 6 GHz Standard Power operation</p>
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -1804,7 +1804,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         if (criticalAPs.length === 0 && warningAPs.length === 0) return null;
 
         return (
-          <Alert variant={criticalAPs.length > 0 ? 'destructive' : 'default'} className={criticalAPs.length > 0 ? 'border-red-500 bg-red-500/10' : 'border-yellow-500 bg-yellow-500/10'}>
+          <Alert variant={criticalAPs.length > 0 ? 'destructive' : 'default'} className={criticalAPs.length > 0 ? 'border-red-500 bg-red-500/10' : 'border-amber-500 bg-amber-500/10'}>
             <Cable className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between w-full">
               <div>
@@ -1818,12 +1818,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     </Badge>
                   )}
                   {warningAPs.length > 0 && (
-                    <Badge variant="outline" className="bg-yellow-500/20 text-yellow-600 border-yellow-500/50">
+                    <Badge variant="outline" className="bg-amber-500/20 text-amber-500 border-amber-500/50">
                       {warningAPs.length} Warning
                     </Badge>
                   )}
                 </span>
-                <p className="text-xs mt-1 text-muted-foreground">
+                <p className="mt-1 text-muted-foreground">
                   {criticalAPs.length > 0
                     ? `APs negotiating at 10Mbps - likely bad cables: ${criticalAPs.map(ap => (ap as any).apName || ap.serialNumber).join(', ')}`
                     : `APs with degraded link speed: ${warningAPs.map(ap => (ap as any).apName || ap.serialNumber).join(', ')}`
@@ -1838,7 +1838,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </TooltipTrigger>
                 <TooltipContent side="left" className="max-w-sm">
                   <p className="font-medium mb-1">AI Insight</p>
-                  <p className="text-xs">
+                  <p>
                     {criticalAPs.length > 0
                       ? 'A 10Mbps link indicates multiple damaged cable pairs. Check both RJ45 connectors for damage, especially the blue pair (pins 4,5) and brown pair (pins 7,8). Consider replacing the cable.'
                       : 'A 100Mbps link on gigabit APs usually means one cable pair is damaged. Check the blue pair (pins 4,5) or brown pair (pins 7,8) - these pairs are only used for gigabit speeds and damage often goes unnoticed.'
@@ -2060,7 +2060,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                   <span className="text-sm font-medium">Offline</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-red-600">
+                  <span className="text-xl font-bold text-red-500">
                     {accessPoints.filter(ap => !isAPOnline(ap)).length}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -2143,7 +2143,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     className="relative p-1 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     <span className="absolute inset-0 bg-red-500/30 rounded-full animate-ping" />
-                    <Settings className="h-4 w-4 text-red-600 relative animate-[spin_4s_linear_infinite]" />
+                    <Settings className="h-4 w-4 text-red-500 relative animate-[spin_4s_linear_infinite]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -2154,7 +2154,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 onClick={handleDownloadBSSIDs}
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs border-red-500/50 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                className="h-7 text-xs border-red-500/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
                 disabled={filteredAccessPoints.length === 0}
               >
                 <FileDown className="mr-1 h-3 w-3" />
@@ -2164,7 +2164,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 onClick={handleDownloadBSSIDsJSON}
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs border-red-500/50 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50"
+                className="h-7 text-xs border-red-500/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
                 disabled={filteredAccessPoints.length === 0}
               >
                 <Download className="mr-1 h-3 w-3" />

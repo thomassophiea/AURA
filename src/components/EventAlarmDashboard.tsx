@@ -76,7 +76,7 @@ export function EventAlarmDashboard() {
       case 'critical':
         return <XCircle className="h-5 w-5 text-red-500" />;
       case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />;
+        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
       case 'info':
         return <Info className="h-5 w-5 text-blue-500" />;
       default:
@@ -89,7 +89,7 @@ export function EventAlarmDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'warning':
-        return <Badge className="bg-yellow-500">Warning</Badge>;
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Warning</Badge>;
       case 'info':
         return <Badge variant="secondary">Info</Badge>;
       default:
@@ -148,7 +148,7 @@ export function EventAlarmDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
               <span className="text-2xl font-bold">{alarms.length}</span>
             </div>
           </CardContent>

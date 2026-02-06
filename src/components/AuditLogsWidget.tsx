@@ -118,13 +118,13 @@ export function AuditLogsWidget() {
     }
 
     if (action.toLowerCase().includes('create') || action.toLowerCase().includes('add')) {
-      return <Badge variant="default" className="text-xs bg-green-600">Create</Badge>;
+      return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Create</Badge>;
     }
     if (action.toLowerCase().includes('update') || action.toLowerCase().includes('modify')) {
-      return <Badge variant="default" className="text-xs bg-blue-600">Update</Badge>;
+      return <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">Update</Badge>;
     }
     if (action.toLowerCase().includes('delete') || action.toLowerCase().includes('remove')) {
-      return <Badge variant="default" className="text-xs bg-red-600">Delete</Badge>;
+      return <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">Delete</Badge>;
     }
     return <Badge variant="secondary" className="text-xs">{action}</Badge>;
   };

@@ -104,7 +104,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'healthy': return 'text-green-500';
-      case 'warning': return 'text-yellow-500';
+      case 'warning': return 'text-amber-500';
       case 'critical': return 'text-red-500';
       default: return 'text-gray-500';
     }
@@ -227,7 +227,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
               <span className="text-sm">Client Satisfaction</span>
               <div className="flex items-center space-x-2">
                 <div className="w-16 bg-muted rounded-full h-2">
-                  <div className="bg-yellow-500 h-2 rounded-full" style={{ width: '78%' }}></div>
+                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: '78%' }}></div>
                 </div>
                 <span className="text-sm font-medium">78%</span>
               </div>

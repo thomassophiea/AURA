@@ -31,7 +31,7 @@ export function MobileStatusRow({
   const indicatorColors = {
     online: 'text-green-500',
     offline: 'text-red-500',
-    warning: 'text-yellow-500',
+    warning: 'text-amber-500',
   };
 
   const Component = onClick ? 'button' : 'div';

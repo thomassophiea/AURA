@@ -692,7 +692,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         if (!hasEthData && cableHealth.status === 'unknown') return null;
 
         return (
-          <Card className={cableHealth.status === 'critical' ? 'border-red-500/50' : cableHealth.status === 'warning' ? 'border-yellow-500/50' : ''}>
+          <Card className={cableHealth.status === 'critical' ? 'border-red-500/50' : cableHealth.status === 'warning' ? 'border-amber-500/50' : ''}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -700,13 +700,13 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                   <span>Ethernet Status</span>
                 </div>
                 {cableHealth.status === 'good' && (
-                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                  <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Good
                   </Badge>
                 )}
                 {cableHealth.status === 'warning' && (
-                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30">
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Check Cable
                   </Badge>
@@ -723,7 +723,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
               <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Link Speed:</span>
-                  <span className={`font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : cableHealth.status === 'warning' ? 'text-yellow-500' : ''}`}>
+                  <span className={`font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : cableHealth.status === 'warning' ? 'text-amber-500' : ''}`}>
                     {cableHealth.speedDisplay || 'N/A'}
                   </span>
                 </div>
@@ -761,11 +761,11 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
 
               {/* Cable Health Warning */}
               {(cableHealth.status === 'warning' || cableHealth.status === 'critical') && (
-                <div className={`p-3 rounded-lg ${cableHealth.status === 'critical' ? 'bg-red-500/10 border border-red-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
+                <div className={`p-3 rounded-lg ${cableHealth.status === 'critical' ? 'bg-red-500/10 border border-red-500/30' : 'bg-amber-500/10 border border-amber-500/30'}`}>
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className={`h-4 w-4 mt-0.5 ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`} />
+                    <AlertTriangle className={`h-4 w-4 mt-0.5 ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
                     <div className="space-y-2">
-                      <p className={`text-sm font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-yellow-500'}`}>
+                      <p className={`text-sm font-medium ${cableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>
                         {cableHealth.message}
                       </p>
                       {cableHealth.aiInsight && (
@@ -924,8 +924,8 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                     <p className="text-lg font-semibold text-destructive">{eventStats.critical}</p>
                     <p className="text-[10px] text-muted-foreground uppercase">Critical</p>
                   </div>
-                  <div className="p-2 bg-yellow-500/10 rounded-lg text-center">
-                    <p className="text-lg font-semibold text-yellow-600">{eventStats.major}</p>
+                  <div className="p-2 bg-amber-500/10 rounded-lg text-center">
+                    <p className="text-lg font-semibold text-amber-500">{eventStats.major}</p>
                     <p className="text-[10px] text-muted-foreground uppercase">Major</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded-lg text-center">
@@ -954,14 +954,14 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                             event.Level?.toLowerCase() === 'critical'
                               ? 'bg-destructive/10'
                               : event.Level?.toLowerCase() === 'major'
-                              ? 'bg-yellow-500/10'
+                              ? 'bg-amber-500/10'
                               : 'bg-muted'
                           }`}>
                             <EventIcon className={`h-4 w-4 ${
                               event.Level?.toLowerCase() === 'critical'
                                 ? 'text-destructive'
                                 : event.Level?.toLowerCase() === 'major'
-                                ? 'text-yellow-600'
+                                ? 'text-amber-500'
                                 : 'text-muted-foreground'
                             }`} />
                           </div>

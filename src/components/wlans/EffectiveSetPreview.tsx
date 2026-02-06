@@ -136,7 +136,7 @@ export function EffectiveSetPreview({ effectiveSets, className }: EffectiveSetPr
                               key={profile.id}
                               className="text-xs flex items-center gap-1 text-muted-foreground"
                             >
-                              <CheckCircle className="h-3 w-3 text-green-600" />
+                              <CheckCircle className="h-3 w-3 text-green-500" />
                               {profile.name || profile.profileName || profile.id}
                             </div>
                           ))}

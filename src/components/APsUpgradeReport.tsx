@@ -190,11 +190,11 @@ export function APsUpgradeReport() {
   const getStatusBadge = (status: APUpgradeInfo['status']) => {
     switch (status) {
       case 'current':
-        return <Badge className="bg-green-500">Up to Date</Badge>;
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Up to Date</Badge>;
       case 'upgrade_available':
-        return <Badge className="bg-blue-500">Update Available</Badge>;
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">Update Available</Badge>;
       case 'upgrading':
-        return <Badge className="bg-yellow-500">Upgrading...</Badge>;
+        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Upgrading...</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -209,7 +209,7 @@ export function APsUpgradeReport() {
       case 'upgrade_available':
         return <Download className="h-4 w-4 text-blue-500" />;
       case 'upgrading':
-        return <Clock className="h-4 w-4 text-yellow-500 animate-spin" />;
+        return <Clock className="h-4 w-4 text-amber-500 animate-spin" />;
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-500" />;
     }
@@ -273,7 +273,7 @@ export function APsUpgradeReport() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Upgrading</p>
-              <p className="text-3xl font-bold text-yellow-500">{stats.upgrading}</p>
+              <p className="text-3xl font-bold text-amber-500">{stats.upgrading}</p>
             </div>
           </CardContent>
         </Card>

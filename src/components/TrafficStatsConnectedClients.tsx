@@ -297,10 +297,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     } else if (rss >= -60) {
       return {
         icon: SignalMedium,
-        color: 'text-yellow-500',
+        color: 'text-amber-500',
         label: `${rss} dBm`,
         quality: 'Good',
-        bgColor: 'bg-yellow-500/10'
+        bgColor: 'bg-amber-500/10'
       };
     } else if (rss >= -70) {
       return {
@@ -806,7 +806,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       <Dialog open={isGdprDeleteDialogOpen} onOpenChange={setIsGdprDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-red-500">
               <AlertCircle className="h-5 w-5" />
               Confirm Data Deletion
             </DialogTitle>
@@ -825,7 +825,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                   );
                 })}
               </div>
-              <p className="text-red-600 font-medium">
+              <p className="text-red-500 font-medium">
                 This action cannot be undone. All connection history, events, and statistics
                 for these devices will be permanently removed.
               </p>
@@ -994,7 +994,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                             </TooltipTrigger>
                             {column.tooltip && (
                               <TooltipContent>
-                                <p className="text-xs">{column.tooltip}</p>
+                                <p>{column.tooltip}</p>
                               </TooltipContent>
                             )}
                           </Tooltip>
