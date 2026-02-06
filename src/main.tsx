@@ -64,6 +64,10 @@ function registerServiceWorker() {
     return;
   }
 
+  // Track if a SW was already controlling the page (i.e., this is a return visit)
+  // On first visit, controller is null — we should NOT reload when it first activates
+  const wasControlled = !!navigator.serviceWorker.controller;
+
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('/service-worker.js');
@@ -86,9 +90,13 @@ function registerServiceWorker() {
 
       // Listen for controller change (new SW took over)
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        console.log('[SW] Controller changed, reloading...');
-        // The version gate will handle cleanup on next load
-        window.location.reload();
+        if (wasControlled) {
+          // Only reload when replacing an existing SW (update scenario)
+          console.log('[SW] Controller changed, reloading...');
+          window.location.reload();
+        } else {
+          console.log('[SW] First controller set, no reload needed');
+        }
       });
 
       // Listen for messages from service worker
