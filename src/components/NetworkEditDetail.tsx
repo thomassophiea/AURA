@@ -143,6 +143,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   const [topologies, setTopologies] = useState<Topology[]>([]);
   const [aaaPolicies, setAaaPolicies] = useState<AaaPolicy[]>([]);
   const [cosOptions, setCosOptions] = useState<ClassOfService[]>([]);
+  const [eGuestProfiles, setEGuestProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -270,12 +271,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       setError(null);
 
       // Load all data sources in parallel
-      const [serviceResponse, rolesResponse, topologiesResponse, aaaPoliciesResponse, cosResponse] = await Promise.allSettled([
+      const [serviceResponse, rolesResponse, topologiesResponse, aaaPoliciesResponse, cosResponse, eGuestResponse] = await Promise.allSettled([
         apiService.getServiceById(serviceId),
         apiService.getRoles(),
         apiService.getTopologies(),
         apiService.getAaaPolicies(),
-        apiService.getClassOfService()
+        apiService.getClassOfService(),
+        apiService.getEGuestProfiles()
       ]);
 
       if (serviceResponse.status === 'fulfilled') {
@@ -454,6 +456,12 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         setCosOptions([]);
       }
 
+      if (eGuestResponse.status === 'fulfilled') {
+        setEGuestProfiles(Array.isArray(eGuestResponse.value) ? eGuestResponse.value : []);
+      } else {
+        setEGuestProfiles([]);
+      }
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load network data';
       setError(errorMessage);
@@ -603,6 +611,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         // === QUALITY OF SERVICE ===
         defaultCoS: formData.defaultCoS === 'none' ? null : formData.defaultCoS,
+        bandwidthLimitEnabled: formData.bandwidthLimitEnabled,
+        downloadLimit: formData.bandwidthLimitEnabled ? formData.downloadLimit : 0,
+        uploadLimit: formData.bandwidthLimitEnabled ? formData.uploadLimit : 0,
         uapsdEnabled: formData.uapsdEnabled,
         admissionControlVideo: formData.admissionControlVideo,
         admissionControlVoice: formData.admissionControlVoice,
@@ -1389,6 +1400,52 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               <Separator />
 
               <div className="space-y-4">
+                <h4 className="text-sm font-medium">Bandwidth Limits</h4>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <Label>Enable Bandwidth Limiting</Label>
+                    <p className="text-sm text-muted-foreground">Apply per-client bandwidth restrictions</p>
+                  </div>
+                  <Switch
+                    checked={formData.bandwidthLimitEnabled}
+                    onCheckedChange={(checked) => handleInputChange('bandwidthLimitEnabled', checked)}
+                  />
+                </div>
+
+                {formData.bandwidthLimitEnabled && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="download-limit">Download Limit (Kbps)</Label>
+                      <Input
+                        id="download-limit"
+                        type="number"
+                        value={formData.downloadLimit}
+                        onChange={(e) => handleInputChange('downloadLimit', parseInt(e.target.value) || 0)}
+                        min="0"
+                        max="1000000"
+                      />
+                      <p className="text-xs text-muted-foreground">0 = unlimited</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="upload-limit">Upload Limit (Kbps)</Label>
+                      <Input
+                        id="upload-limit"
+                        type="number"
+                        value={formData.uploadLimit}
+                        onChange={(e) => handleInputChange('uploadLimit', parseInt(e.target.value) || 0)}
+                        min="0"
+                        max="1000000"
+                      />
+                      <p className="text-xs text-muted-foreground">0 = unlimited</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
                 <h4 className="text-sm font-medium">Admission Control</h4>
                 <p className="text-xs text-muted-foreground">Require channel capacity before admitting traffic</p>
 
@@ -1489,13 +1546,22 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
                   <div className="space-y-2">
                     <Label htmlFor="eguest-portal">eGuest Portal</Label>
-                    <Input
-                      id="eguest-portal"
-                      value={formData.eGuestPortalId}
-                      onChange={(e) => handleInputChange('eGuestPortalId', e.target.value)}
-                      placeholder="eGuest Portal ID (optional)"
-                    />
-                    <p className="text-xs text-muted-foreground">Leave empty if not using eGuest</p>
+                    <Select value={formData.eGuestPortalId || 'none'} onValueChange={(value) => handleInputChange('eGuestPortalId', value === 'none' ? '' : value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select eGuest portal" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {eGuestProfiles.map(portal => (
+                          <SelectItem key={portal.id} value={portal.id}>
+                            {portal.name || portal.portalName || portal.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {eGuestProfiles.length === 0 && (
+                      <p className="text-xs text-muted-foreground">No eGuest portals configured. Create one in Guest Access.</p>
+                    )}
                   </div>
                 </>
               )}

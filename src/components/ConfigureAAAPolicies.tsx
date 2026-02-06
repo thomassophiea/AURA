@@ -73,17 +73,32 @@ export function ConfigureAAAPolicies() {
     authenticateLocallyForMac: true,
     fallbackToLocal: true,
   });
-  
+
+  // Controller AAA Policies State
+  const [aaaPolicies, setAaaPolicies] = useState<any[]>([]);
+  const [showPolicyDialog, setShowPolicyDialog] = useState(false);
+  const [editingPolicy, setEditingPolicy] = useState<any | null>(null);
+  const [policyForm, setPolicyForm] = useState({
+    name: '',
+    description: '',
+    radiusServerPrimary: '',
+    radiusServerSecondary: '',
+    radiusAccountingEnabled: false,
+    macAuthEnabled: false,
+    fallbackToLocal: false
+  });
+  const [savingPolicy, setSavingPolicy] = useState(false);
+
   // RADIUS Servers State
   const [radiusServers, setRadiusServers] = useState<RadiusServer[]>([]);
   const [showRadiusDialog, setShowRadiusDialog] = useState(false);
   const [editingRadius, setEditingRadius] = useState<RadiusServer | null>(null);
-  
+
   // LDAP Configurations State
   const [ldapConfigs, setLdapConfigs] = useState<LdapConfiguration[]>([]);
   const [showLdapDialog, setShowLdapDialog] = useState(false);
   const [editingLdap, setEditingLdap] = useState<LdapConfiguration | null>(null);
-  
+
   // Local Users State
   const [localUsers, setLocalUsers] = useState<LocalUser[]>([]);
   const [showUserDialog, setShowUserDialog] = useState(false);
@@ -96,58 +111,45 @@ export function ConfigureAAAPolicies() {
   const loadAAAConfiguration = async () => {
     setIsLoading(true);
     try {
-      // Load mock data for demonstration
-      // In production, this would call actual API endpoints
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Mock RADIUS servers
-      setRadiusServers([
-        {
-          id: '1',
-          name: 'Primary RADIUS',
-          ipAddress: '192.168.100.1',
-          port: 1812,
-          sharedSecret: '••••••••',
-          timeout: 5,
-          retries: 3,
-          isPrimary: true,
-          status: 'active'
-        }
+      const [policiesResponse, aaaPoliciesResponse] = await Promise.allSettled([
+        apiService.getAAAPolicies(),
+        apiService.getAaaPolicies()
       ]);
-      
-      // Mock LDAP configurations
-      setLdapConfigs([]);
-      
-      // Mock local users
-      setLocalUsers([
-        {
-          id: '1',
-          enabled: true,
-          username: 'admin',
-          displayName: 'System Administrator',
-          firstName: 'System',
-          lastName: 'Administrator',
-          passwordHashType: 'SHA-256',
-          password: '••••••••',
-          description: 'Primary administrator account',
-          lastLogin: new Date(Date.now() - 3600000).toISOString(),
-          createdAt: new Date(Date.now() - 86400000 * 30).toISOString()
-        },
-        {
-          id: '2',
-          enabled: true,
-          username: 'network_ops',
-          displayName: 'Network Operations',
-          firstName: 'Network',
-          lastName: 'Operations',
-          passwordHashType: 'SHA-256',
-          password: '••••••••',
-          description: 'Network operations team account',
-          lastLogin: new Date(Date.now() - 7200000).toISOString(),
-          createdAt: new Date(Date.now() - 86400000 * 15).toISOString()
+
+      // Load AAA policies from controller API
+      if (policiesResponse.status === 'fulfilled' && Array.isArray(policiesResponse.value) && policiesResponse.value.length > 0) {
+        setAaaPolicies(policiesResponse.value);
+      } else if (aaaPoliciesResponse.status === 'fulfilled' && Array.isArray(aaaPoliciesResponse.value)) {
+        setAaaPolicies(aaaPoliciesResponse.value);
+      }
+
+      // Extract RADIUS server information from policies if available
+      const policies = (policiesResponse.status === 'fulfilled' ? policiesResponse.value : aaaPoliciesResponse.status === 'fulfilled' ? aaaPoliciesResponse.value : []) || [];
+      if (Array.isArray(policies) && policies.length > 0) {
+        const extractedServers: RadiusServer[] = [];
+        policies.forEach((policy: any) => {
+          if (policy.radiusServerPrimary || policy.primaryServer) {
+            const server = policy.radiusServerPrimary || policy.primaryServer;
+            if (typeof server === 'object' && server.ipAddress) {
+              extractedServers.push({
+                id: server.id || `primary-${policy.id}`,
+                name: server.name || `${policy.name} Primary`,
+                ipAddress: server.ipAddress || server.host || '',
+                port: server.port || 1812,
+                sharedSecret: '••••••••',
+                timeout: server.timeout || 5,
+                retries: server.retries || 3,
+                isPrimary: true,
+                status: 'active'
+              });
+            }
+          }
+        });
+        if (extractedServers.length > 0) {
+          setRadiusServers(extractedServers);
         }
-      ]);
-      
+      }
+
     } catch (error) {
       console.error('Error loading AAA configuration:', error);
       toast.error('Failed to load AAA configuration');
@@ -158,12 +160,88 @@ export function ConfigureAAAPolicies() {
 
   const handleSaveAAAConfig = async () => {
     try {
-      // In production, this would call the API to save configuration
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      toast.success('AAA configuration saved successfully');
+      toast.success('AAA configuration saved');
     } catch (error) {
       toast.error('Failed to save AAA configuration');
+    }
+  };
+
+  // === AAA Policy CRUD ===
+  const handleCreatePolicy = () => {
+    setEditingPolicy(null);
+    setPolicyForm({
+      name: '',
+      description: '',
+      radiusServerPrimary: '',
+      radiusServerSecondary: '',
+      radiusAccountingEnabled: false,
+      macAuthEnabled: false,
+      fallbackToLocal: false
+    });
+    setShowPolicyDialog(true);
+  };
+
+  const handleEditPolicy = (policy: any) => {
+    setEditingPolicy(policy);
+    setPolicyForm({
+      name: policy.name || '',
+      description: policy.description || '',
+      radiusServerPrimary: policy.radiusServerPrimary || policy.primaryServer || '',
+      radiusServerSecondary: policy.radiusServerSecondary || policy.secondaryServer || '',
+      radiusAccountingEnabled: policy.radiusAccountingEnabled || policy.accountingEnabled || false,
+      macAuthEnabled: policy.macAuthEnabled || false,
+      fallbackToLocal: policy.fallbackToLocal || false
+    });
+    setShowPolicyDialog(true);
+  };
+
+  const handleSavePolicy = async () => {
+    if (!policyForm.name.trim()) {
+      toast.error('Policy name is required');
+      return;
+    }
+
+    setSavingPolicy(true);
+    try {
+      const payload = {
+        name: policyForm.name,
+        description: policyForm.description,
+        radiusServerPrimary: policyForm.radiusServerPrimary,
+        radiusServerSecondary: policyForm.radiusServerSecondary,
+        radiusAccountingEnabled: policyForm.radiusAccountingEnabled,
+        macAuthEnabled: policyForm.macAuthEnabled,
+        fallbackToLocal: policyForm.fallbackToLocal
+      };
+
+      if (editingPolicy) {
+        await apiService.updateAAAPolicy(editingPolicy.id, { ...editingPolicy, ...payload });
+        toast.success('AAA policy updated');
+      } else {
+        await apiService.createAAAPolicy(payload);
+        toast.success('AAA policy created');
+      }
+
+      setShowPolicyDialog(false);
+      await loadAAAConfiguration();
+    } catch (err) {
+      toast.error('Failed to save AAA policy', {
+        description: err instanceof Error ? err.message : 'Unknown error'
+      });
+    } finally {
+      setSavingPolicy(false);
+    }
+  };
+
+  const handleDeletePolicy = async (policy: any) => {
+    if (!confirm(`Delete AAA policy "${policy.name}"? This cannot be undone.`)) return;
+    try {
+      await apiService.deleteAAAPolicy(policy.id);
+      toast.success('AAA policy deleted');
+      await loadAAAConfiguration();
+    } catch (err) {
+      toast.error('Failed to delete policy', {
+        description: err instanceof Error ? err.message : 'Unknown error'
+      });
     }
   };
 
@@ -437,8 +515,12 @@ export function ConfigureAAAPolicies() {
       </Card>
 
       {/* Tabbed Content */}
-      <Tabs defaultValue="radius" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="policies" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="policies" className="flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            AAA Policies
+          </TabsTrigger>
           <TabsTrigger value="radius" className="flex items-center gap-2">
             <Server className="h-4 w-4" />
             RADIUS Servers
@@ -452,6 +534,99 @@ export function ConfigureAAAPolicies() {
             Local Password Repository
           </TabsTrigger>
         </TabsList>
+
+        {/* AAA Policies Tab (Controller API) */}
+        <TabsContent value="policies" className="space-y-4">
+          <Card className="surface-2dp border-border">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="font-medium">Controller AAA Policies</h3>
+                <p className="text-sm text-muted-foreground">RADIUS authentication policies from the Campus Controller</p>
+              </div>
+              <Button
+                size="sm"
+                onClick={handleCreatePolicy}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create Policy
+              </Button>
+            </div>
+            <div className="p-4">
+              {aaaPolicies.length === 0 ? (
+                <div className="text-center py-12">
+                  <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No AAA policies configured on the controller</p>
+                  <Button
+                    variant="outline"
+                    className="mt-4"
+                    onClick={handleCreatePolicy}
+                  >
+                    Create First Policy
+                  </Button>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Policy Name</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>RADIUS Accounting</TableHead>
+                      <TableHead>MAC Auth</TableHead>
+                      <TableHead>Fallback</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {aaaPolicies.map((policy: any) => (
+                      <TableRow key={policy.id}>
+                        <TableCell className="font-medium">
+                          {policy.name || policy.policyName || 'Unnamed'}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-muted-foreground">
+                          {policy.description || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={(policy.radiusAccountingEnabled || policy.accountingEnabled) ? 'default' : 'secondary'}>
+                            {(policy.radiusAccountingEnabled || policy.accountingEnabled) ? 'Enabled' : 'Disabled'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={policy.macAuthEnabled ? 'default' : 'secondary'}>
+                            {policy.macAuthEnabled ? 'Enabled' : 'Disabled'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={policy.fallbackToLocal ? 'default' : 'secondary'}>
+                            {policy.fallbackToLocal ? 'Local' : 'None'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditPolicy(policy)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeletePolicy(policy)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </Card>
+        </TabsContent>
 
         {/* RADIUS Servers Tab */}
         <TabsContent value="radius" className="space-y-4">
@@ -759,6 +934,83 @@ export function ConfigureAAAPolicies() {
         user={editingUser}
         onSave={handleSaveUser}
       />
+
+      {/* AAA Policy Dialog */}
+      <Dialog open={showPolicyDialog} onOpenChange={setShowPolicyDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingPolicy ? 'Edit AAA Policy' : 'Create AAA Policy'}</DialogTitle>
+            <DialogDescription>
+              Configure RADIUS authentication policy settings
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="policy-name">Policy Name *</Label>
+              <Input
+                id="policy-name"
+                value={policyForm.name}
+                onChange={(e) => setPolicyForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="AAA Policy Name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="policy-desc">Description</Label>
+              <Input
+                id="policy-desc"
+                value={policyForm.description}
+                onChange={(e) => setPolicyForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Optional description"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="policy-primary">Primary RADIUS Server</Label>
+              <Input
+                id="policy-primary"
+                value={policyForm.radiusServerPrimary}
+                onChange={(e) => setPolicyForm(prev => ({ ...prev, radiusServerPrimary: e.target.value }))}
+                placeholder="IP address or server ID"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="policy-secondary">Secondary RADIUS Server</Label>
+              <Input
+                id="policy-secondary"
+                value={policyForm.radiusServerSecondary}
+                onChange={(e) => setPolicyForm(prev => ({ ...prev, radiusServerSecondary: e.target.value }))}
+                placeholder="IP address or server ID (optional)"
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={policyForm.radiusAccountingEnabled}
+                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, radiusAccountingEnabled: checked }))}
+              />
+              <Label>Enable RADIUS Accounting</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={policyForm.macAuthEnabled}
+                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, macAuthEnabled: checked }))}
+              />
+              <Label>Enable MAC Authentication</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                checked={policyForm.fallbackToLocal}
+                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, fallbackToLocal: checked }))}
+              />
+              <Label>Fallback to Local Authentication</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPolicyDialog(false)}>Cancel</Button>
+            <Button onClick={handleSavePolicy} disabled={savingPolicy}>
+              {savingPolicy ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Create Policy'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

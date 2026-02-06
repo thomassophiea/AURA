@@ -5018,6 +5018,181 @@ class ApiService {
   }
 
   /**
+   * Get eGuest default configuration
+   * Endpoint: GET /v1/eguest/default
+   */
+  async getEGuestDefault(): Promise<any> {
+    try {
+      logger.log('[API] Fetching eGuest default config');
+      const response = await this.makeAuthenticatedRequest('/v1/eguest/default', {}, 10000);
+
+      if (!response.ok) {
+        logger.warn(`eGuest default API returned ${response.status}`);
+        return null;
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ Loaded eGuest default config');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to fetch eGuest default:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a new eGuest portal profile
+   * Endpoint: POST /v1/eguest
+   */
+  async createEGuestProfile(profileData: any): Promise<any> {
+    try {
+      logger.log('[API] Creating eGuest profile');
+      const response = await this.makeAuthenticatedRequest('/v1/eguest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`eGuest creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ eGuest profile created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create eGuest profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update an eGuest portal profile
+   * Endpoint: PUT /v1/eguest/{eguestId}
+   */
+  async updateEGuestProfile(eguestId: string, profileData: any): Promise<any> {
+    try {
+      const endpoint = `/v1/eguest/${encodeURIComponent(eguestId)}`;
+      logger.log(`[API] Updating eGuest profile: ${eguestId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`eGuest update failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ eGuest profile updated');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to update eGuest profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete an eGuest portal profile
+   * Endpoint: DELETE /v1/eguest/{eguestId}
+   */
+  async deleteEGuestProfile(eguestId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/eguest/${encodeURIComponent(eguestId)}`;
+      logger.log(`[API] Deleting eGuest profile: ${eguestId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`eGuest deletion failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ eGuest profile deleted');
+    } catch (error) {
+      logger.error('[API] Failed to delete eGuest profile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new AAA policy
+   * Endpoint: POST /v1/aaapolicy
+   */
+  async createAAAPolicy(policyData: any): Promise<any> {
+    try {
+      logger.log('[API] Creating AAA policy');
+      const response = await this.makeAuthenticatedRequest('/v1/aaapolicy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(policyData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`AAA policy creation failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ AAA policy created');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to create AAA policy:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a AAA policy
+   * Endpoint: PUT /v1/aaapolicy/{id}
+   */
+  async updateAAAPolicy(policyId: string, policyData: any): Promise<any> {
+    try {
+      const endpoint = `/v1/aaapolicy/${encodeURIComponent(policyId)}`;
+      logger.log(`[API] Updating AAA policy: ${policyId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(policyData)
+      }, 15000);
+
+      if (!response.ok) {
+        throw new Error(`AAA policy update failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      logger.log('[API] ✓ AAA policy updated');
+      return data;
+    } catch (error) {
+      logger.error('[API] Failed to update AAA policy:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a AAA policy
+   * Endpoint: DELETE /v1/aaapolicy/{id}
+   */
+  async deleteAAAPolicy(policyId: string): Promise<void> {
+    try {
+      const endpoint = `/v1/aaapolicy/${encodeURIComponent(policyId)}`;
+      logger.log(`[API] Deleting AAA policy: ${policyId}`);
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'DELETE'
+      }, 10000);
+
+      if (!response.ok) {
+        throw new Error(`AAA policy deletion failed: ${response.status}`);
+      }
+
+      logger.log('[API] ✓ AAA policy deleted');
+    } catch (error) {
+      logger.error('[API] Failed to delete AAA policy:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get AAA policies
    * Endpoint: GET /v1/aaapolicy
    */
