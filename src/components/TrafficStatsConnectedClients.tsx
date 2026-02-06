@@ -956,7 +956,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                 <TableHeader>
                   <TableRow className="h-8">
                     {/* Checkbox column - always visible */}
-                    <TableHead className="w-12 p-2 text-[10px] sticky left-0 bg-card z-10">
+                    <TableHead className="w-12 p-2 text-[10px] sticky left-0 bg-background z-10">
                       <Checkbox
                         checked={selectedStations.size === paginatedStations.length && paginatedStations.length > 0}
                         onCheckedChange={handleSelectAll}
@@ -1050,7 +1050,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         }}
                       >
                         {/* Checkbox cell - always visible */}
-                        <TableCell className="p-1 sticky left-0 bg-card z-10" data-checkbox>
+                        <TableCell className="p-1 sticky left-0 bg-background z-10" data-checkbox>
                           <Checkbox
                             checked={selectedStations.has(station.macAddress)}
                             onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
