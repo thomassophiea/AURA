@@ -2756,6 +2756,45 @@ class ApiService {
     }
   }
 
+  async createTopology(topologyData: any): Promise<any> {
+    cacheService.delete('topologies');
+    const response = await this.makeAuthenticatedRequest('/v1/topologies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(topologyData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create topology: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateTopology(topologyId: string, topologyData: any): Promise<any> {
+    cacheService.delete('topologies');
+    const response = await this.makeAuthenticatedRequest(`/v1/topologies/${encodeURIComponent(topologyId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(topologyData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update topology: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteTopology(topologyId: string): Promise<void> {
+    cacheService.delete('topologies');
+    const response = await this.makeAuthenticatedRequest(`/v1/topologies/${encodeURIComponent(topologyId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete topology: ${response.status} - ${errorText}`);
+    }
+  }
+
   // Get various statistics
   async getSiteStats(): Promise<SiteStats> {
     const response = await this.makeAuthenticatedRequest('/v1/sites/stats');
@@ -2874,6 +2913,42 @@ class ApiService {
 
     logger.warn('No profiles endpoint found');
     return [];
+  }
+
+  async createProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/profiles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/profiles/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/profiles/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete profile: ${response.status} - ${errorText}`);
+    }
   }
 
   /**
@@ -4347,6 +4422,42 @@ class ApiService {
     }
   }
 
+  async createRFManagementProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/rfmgmt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create RF profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateRFManagementProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/rfmgmt/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update RF profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteRFManagementProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/rfmgmt/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete RF profile: ${response.status} - ${errorText}`);
+    }
+  }
+
   /**
    * Get all IoT profiles
    * Endpoint: GET /v3/iotprofile
@@ -4367,6 +4478,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch IoT profiles:', error);
       return [];
+    }
+  }
+
+  async createIoTProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/iotprofile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create IoT profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateIoTProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/iotprofile/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update IoT profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteIoTProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/iotprofile/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete IoT profile: ${response.status} - ${errorText}`);
     }
   }
 
@@ -4393,6 +4540,42 @@ class ApiService {
     }
   }
 
+  async createADSPProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/adsp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create ADSP profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateADSPProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/adsp/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update ADSP profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteADSPProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/adsp/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete ADSP profile: ${response.status} - ${errorText}`);
+    }
+  }
+
   /**
    * Get all analytics profiles
    * Endpoint: GET /v3/analytics
@@ -4413,6 +4596,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch analytics profiles:', error);
       return [];
+    }
+  }
+
+  async createAnalyticsProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/analytics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create analytics profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateAnalyticsProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/analytics/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update analytics profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteAnalyticsProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/analytics/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete analytics profile: ${response.status} - ${errorText}`);
     }
   }
 
@@ -4439,6 +4658,42 @@ class ApiService {
     }
   }
 
+  async createPositioningProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/positioning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create positioning profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updatePositioningProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/positioning/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update positioning profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deletePositioningProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/positioning/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete positioning profile: ${response.status} - ${errorText}`);
+    }
+  }
+
   /**
    * Get all mesh points
    * Endpoint: GET /v3/meshpoints
@@ -4462,6 +4717,42 @@ class ApiService {
     }
   }
 
+  async createMeshPoint(data: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/meshpoints', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create meshpoint: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateMeshPoint(meshpointId: string, data: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/meshpoints/${encodeURIComponent(meshpointId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update meshpoint: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteMeshPoint(meshpointId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/meshpoints/${encodeURIComponent(meshpointId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete meshpoint: ${response.status} - ${errorText}`);
+    }
+  }
+
   /**
    * Get all switch port profiles
    * Endpoint: GET /v3/switchportprofile
@@ -4482,6 +4773,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch switch port profiles:', error);
       return [];
+    }
+  }
+
+  async createSwitchPortProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/switchportprofile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create switch port profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateSwitchPortProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/switchportprofile/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update switch port profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteSwitchPortProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/switchportprofile/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete switch port profile: ${response.status} - ${errorText}`);
     }
   }
 
@@ -4560,6 +4887,42 @@ class ApiService {
     }
   }
 
+  async createRateLimiter(data: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v1/ratelimiters', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create rate limiter: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateRateLimiter(rateLimiterId: string, data: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update rate limiter: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteRateLimiter(rateLimiterId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete rate limiter: ${response.status} - ${errorText}`);
+    }
+  }
+
   /**
    * Get CoS (Class of Service) profiles
    * Endpoint: GET /v1/cos
@@ -4580,6 +4943,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch CoS profiles:', error);
       return [];
+    }
+  }
+
+  async createCoSProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v1/cos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create CoS profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateCoSProfile(cosId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v1/cos/${encodeURIComponent(cosId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update CoS profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteCoSProfile(cosId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v1/cos/${encodeURIComponent(cosId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete CoS profile: ${response.status} - ${errorText}`);
     }
   }
 
@@ -4846,6 +5245,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch XLocation profiles:', error);
       return [];
+    }
+  }
+
+  async createXLocationProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v3/xlocation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create XLocation profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateXLocationProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v3/xlocation/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update XLocation profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteXLocationProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v3/xlocation/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete XLocation profile: ${response.status} - ${errorText}`);
     }
   }
 
@@ -5474,6 +5909,19 @@ class ApiService {
     }
   }
 
+  async updateAccessControl(accessControlData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v1/accesscontrol', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(accessControlData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update access control: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
   /**
    * Get NSight configuration
    * Endpoint: GET /v1/nsightconfig
@@ -5652,6 +6100,42 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch RTLS profiles:', error);
       return [];
+    }
+  }
+
+  async createRTLSProfile(profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest('/v1/rtlsprofile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to create RTLS profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async updateRTLSProfile(profileId: string, profileData: any): Promise<any> {
+    const response = await this.makeAuthenticatedRequest(`/v1/rtlsprofile/${encodeURIComponent(profileId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profileData)
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to update RTLS profile: ${response.status} - ${errorText}`);
+    }
+    return await response.json();
+  }
+
+  async deleteRTLSProfile(profileId: string): Promise<void> {
+    const response = await this.makeAuthenticatedRequest(`/v1/rtlsprofile/${encodeURIComponent(profileId)}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to delete RTLS profile: ${response.status} - ${errorText}`);
     }
   }
 

@@ -71,7 +71,14 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
     name: '',
     country: '',
     timezone: '',
-    description: ''
+    description: '',
+    postalCode: '',
+    siteManagerName: '',
+    siteManagerEmail: '',
+    contact: '',
+    enforceVersion: 'none' as string,
+    preferredAffinity: 'Any' as string,
+    stpEnabled: false
   });
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [currentLoadingStep, setCurrentLoadingStep] = useState('');
@@ -392,7 +399,7 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
       setIsCreateDialogOpen(false);
       
       // Reset form
-      setFormData({ name: '', country: '', timezone: '', description: '' });
+      setFormData({ name: '', country: '', timezone: '', description: '', postalCode: '', siteManagerName: '', siteManagerEmail: '', contact: '', enforceVersion: 'none', preferredAffinity: 'Any', stpEnabled: false });
       
       // Show success message
       toast.success('Site created successfully', {
@@ -414,36 +421,100 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
   };
 
   const handleEditSite = async () => {
-    toast.info('Site editing not yet implemented', {
-      description: 'Please use the Extreme Platform ONE web interface to edit sites.'
-    });
+    if (!editingSite) return;
+    if (!formData.name.trim()) {
+      toast.error('Site name is required');
+      return;
+    }
+    try {
+      const siteData = {
+        ...editingSite,
+        siteName: formData.name.trim(),
+        country: formData.country || undefined,
+        timezone: formData.timezone || undefined,
+        description: formData.description?.trim() || undefined,
+        postalCode: formData.postalCode || undefined,
+        siteManagerName: formData.siteManagerName || undefined,
+        siteManagerEmail: formData.siteManagerEmail || undefined,
+        contact: formData.contact || undefined,
+        enforceVersion: formData.enforceVersion || 'none',
+        preferredAffinity: formData.preferredAffinity || 'Any',
+        stpEnabled: formData.stpEnabled
+      };
+      await apiService.updateSite(editingSite.id, siteData);
+      setIsEditDialogOpen(false);
+      setEditingSite(null);
+      toast.success('Site updated successfully', {
+        description: `Site "${formData.name}" has been updated.`
+      });
+      loadSites();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update site';
+      toast.error('Failed to update site', { description: errorMessage });
+    }
   };
 
   const handleDeleteSite = async (site: Site) => {
-    toast.info('Site deletion not yet implemented', {
-      description: 'Please use the Extreme Platform ONE web interface to delete sites.'
-    });
+    if (site.canDelete === false) {
+      toast.error('Cannot delete this site', {
+        description: 'This site is protected and cannot be deleted.'
+      });
+      return;
+    }
+    if (!confirm(`Are you sure you want to delete site "${site.siteName || site.name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await apiService.deleteSite(site.id);
+      toast.success('Site deleted successfully', {
+        description: `Site "${site.siteName || site.name}" has been deleted.`
+      });
+      loadSites();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete site';
+      toast.error('Failed to delete site', { description: errorMessage });
+    }
   };
 
   const handleCloneSite = async (site: Site) => {
-    toast.info('Site cloning not yet implemented', {
-      description: 'Please use the Extreme Platform ONE web interface to clone sites.'
-    });
+    try {
+      const cloneData = {
+        siteName: `${site.siteName || site.name} (Copy)`,
+        ...(site.country && { country: site.country }),
+        ...(site.timezone && { timezone: site.timezone }),
+        ...(site.description && { description: site.description })
+      };
+      await apiService.createSite(cloneData);
+      toast.success('Site cloned successfully', {
+        description: `Clone of "${site.siteName || site.name}" has been created.`
+      });
+      loadSites();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to clone site';
+      toast.error('Failed to clone site', { description: errorMessage });
+    }
   };
 
   const openEditDialog = (site: Site) => {
     setEditingSite(site);
     setFormData({
-      name: site.name || '',
+      name: site.siteName || site.name || '',
       country: site.country || '',
       timezone: site.timezone || '',
-      description: site.description || ''
+      description: site.description || '',
+      postalCode: site.postalCode || '',
+      siteManagerName: site.siteManagerName || '',
+      siteManagerEmail: site.siteManagerEmail || '',
+      contact: site.contact || '',
+      enforceVersion: site.enforceVersion || 'none',
+      preferredAffinity: site.preferredAffinity || 'Any',
+      stpEnabled: site.stpEnabled || false
     });
     setIsEditDialogOpen(true);
   };
 
   const openCreateDialog = () => {
-    setFormData({ name: '', country: '', timezone: '', description: '' });
+    setFormData({ name: '', country: '', timezone: '', description: '', postalCode: '', siteManagerName: '', siteManagerEmail: '', contact: '', enforceVersion: 'none', preferredAffinity: 'Any', stpEnabled: false });
     setIsCreateDialogOpen(true);
   };
 
@@ -840,7 +911,7 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
 
       {/* Edit Site Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Site</DialogTitle>
             <DialogDescription>
@@ -858,68 +929,108 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
               />
             </div>
 
-            <div>
-              <Label htmlFor="editCountry">Country</Label>
-              <Select
-                value={formData.country}
-                onValueChange={(value) => {
-                  setFormData({ ...formData, country: value, timezone: '' });
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Search countries" />
-                </SelectTrigger>
-                <SelectContent>
-                  <div className="p-2">
-                    <Input
-                      placeholder="Search countries..."
-                      value={countrySearch}
-                      onChange={(e) => setCountrySearch(e.target.value)}
-                      className="mb-2"
-                    />
-                  </div>
-                  {filteredCountries.length > 0 ? filteredCountries.map((country) => (
-                    <SelectItem key={country.code || country.name} value={country.name}>
-                      <div className="flex items-center space-x-2">
-                        <Globe className="h-4 w-4" />
-                        <span>{country.name}</span>
-                      </div>
-                    </SelectItem>
-                  )) : (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      No countries available
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.country && availableTimezones.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editCountry">Country</Label>
+                <Input
+                  id="editCountry"
+                  placeholder="e.g. Canada"
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                />
+              </div>
               <div>
                 <Label htmlFor="editTimezone">Timezone</Label>
-                <Select
+                <Input
+                  id="editTimezone"
+                  placeholder="e.g. America/Toronto"
                   value={formData.timezone}
-                  onValueChange={(value) => setFormData({ ...formData, timezone: value })}
+                  onChange={(e) => setFormData({ ...formData, timezone: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editPostalCode">Postal Code</Label>
+                <Input
+                  id="editPostalCode"
+                  placeholder="Postal/ZIP code"
+                  value={formData.postalCode}
+                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="editContact">Contact</Label>
+                <Input
+                  id="editContact"
+                  placeholder="Contact info"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editManagerName">Site Manager Name</Label>
+                <Input
+                  id="editManagerName"
+                  placeholder="Manager name"
+                  value={formData.siteManagerName}
+                  onChange={(e) => setFormData({ ...formData, siteManagerName: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="editManagerEmail">Site Manager Email</Label>
+                <Input
+                  id="editManagerEmail"
+                  placeholder="manager@example.com"
+                  value={formData.siteManagerEmail}
+                  onChange={(e) => setFormData({ ...formData, siteManagerEmail: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="editEnforceVersion">Firmware Enforcement</Label>
+                <Select
+                  value={formData.enforceVersion}
+                  onValueChange={(value) => setFormData({ ...formData, enforceVersion: value })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select timezone" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {availableTimezones.map((timezone) => (
-                      <SelectItem key={timezone} value={timezone}>
-                        <div className="flex items-center space-x-2">
-                          <Clock className="h-4 w-4" />
-                          <span>{timezone}</span>
-                        </div>
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="none">None</SelectItem>
+                    <SelectItem value="full">Full</SelectItem>
+                    <SelectItem value="major">Major</SelectItem>
+                    <SelectItem value="minor">Minor</SelectItem>
+                    <SelectItem value="strict">Strict</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            )}
+              <div>
+                <Label htmlFor="editPreferredAffinity">Preferred Affinity</Label>
+                <Select
+                  value={formData.preferredAffinity}
+                  onValueChange={(value) => setFormData({ ...formData, preferredAffinity: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Any">Any</SelectItem>
+                    <SelectItem value="Primary">Primary</SelectItem>
+                    <SelectItem value="Backup">Backup</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
             <div>
-              <Label htmlFor="editDescription">Description (Optional)</Label>
+              <Label htmlFor="editDescription">Description</Label>
               <Input
                 id="editDescription"
                 placeholder="Site description..."
