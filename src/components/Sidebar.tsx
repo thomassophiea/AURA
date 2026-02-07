@@ -66,6 +66,7 @@ const configureItems = [
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
+  { id: 'configure-advanced', label: 'Advanced', icon: Settings },
 ];
 
 // System Management items

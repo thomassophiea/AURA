@@ -31,6 +31,7 @@ const ConfigurePolicy = lazy(() => import('./components/ConfigurePolicy').then(m
 const ConfigureAAAPolicies = lazy(() => import('./components/ConfigureAAAPolicies').then(m => ({ default: m.ConfigureAAAPolicies })));
 const ConfigureAdoptionRules = lazy(() => import('./components/ConfigureAdoptionRules').then(m => ({ default: m.ConfigureAdoptionRules })));
 const ConfigureGuest = lazy(() => import('./components/ConfigureGuest').then(m => ({ default: m.ConfigureGuest })));
+const ConfigureAdvanced = lazy(() => import('./components/ConfigureAdvanced').then(m => ({ default: m.ConfigureAdvanced })));
 const Administration = lazy(() => import('./components/Administration').then(m => ({ default: m.Administration })));
 const Tools = lazy(() => import('./components/Tools').then(m => ({ default: m.Tools })));
 const ApiTestTool = lazy(() => import('./components/ApiTestTool').then(m => ({ default: m.ApiTestTool })));
@@ -91,6 +92,7 @@ const pageInfo = {
   'api-documentation': { title: 'API Documentation', description: 'AURA Platform REST API reference' },
   'configure-sites': { title: 'Sites', description: 'Manage and configure network sites and locations' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
+  'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
   'help': { title: 'Help & Support', description: 'Get assistance with the EDGE platform using AI' },
 };
 
@@ -913,6 +915,8 @@ export default function App() {
         return <ConfigureAdoptionRules />;
       case 'configure-guest':
         return <ConfigureGuest />;
+      case 'configure-advanced':
+        return <ConfigureAdvanced />;
       case 'configure-sites':
         return <ConfigureSites onShowDetail={handleShowSiteDetail} />;
       case 'tools':
