@@ -3,12 +3,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription } from './ui/alert';
 import {
@@ -139,12 +138,12 @@ function TopologiesTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Topology' : 'Create Topology'}</DialogTitle>
-            <DialogDescription>VLAN/Topology configuration</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit Topology' : 'Create Topology'}</SheetTitle>
+            <SheetDescription>VLAN/Topology configuration</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="VLAN name" /></div>
@@ -205,8 +204,8 @@ function TopologiesTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -332,12 +331,12 @@ function CoSTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit CoS Profile' : 'Create CoS Profile'}</DialogTitle>
-            <DialogDescription>QoS settings for traffic classification</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit CoS Profile' : 'Create CoS Profile'}</SheetTitle>
+            <SheetDescription>QoS settings for traffic classification</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div><Label>CoS Name</Label><Input value={form.cosName} onChange={e => setForm({...form, cosName: e.target.value})} placeholder="My-CoS" /></div>
             <div className="grid grid-cols-2 gap-4">
@@ -381,8 +380,8 @@ function CoSTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -475,12 +474,12 @@ function RateLimitersTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Rate Limiter' : 'Create Rate Limiter'}</DialogTitle>
-            <DialogDescription>Bandwidth rate limiting configuration</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit Rate Limiter' : 'Create Rate Limiter'}</SheetTitle>
+            <SheetDescription>Bandwidth rate limiting configuration</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div><Label>Name (1-64 chars)</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Rate limiter name" maxLength={64} /></div>
             <div><Label>Average Rate CIR (kbps, 128-25000, 0=unlimited)</Label><Input type="number" value={form.cirKbps} onChange={e => setForm({...form, cirKbps: parseInt(e.target.value) || 0})} min={0} max={25000} /></div>
@@ -489,8 +488,8 @@ function RateLimitersTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -614,12 +613,12 @@ function ProfilesTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit AP Profile' : 'Create AP Profile'}</DialogTitle>
-            <DialogDescription>AP device profile configuration</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit AP Profile' : 'Create AP Profile'}</SheetTitle>
+            <SheetDescription>AP device profile configuration</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Profile Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Profile name" /></div>
@@ -690,8 +689,8 @@ function ProfilesTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -811,12 +810,12 @@ function IoTTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit IoT Profile' : 'Create IoT Profile'}</DialogTitle>
-            <DialogDescription>BLE beacon and Thread gateway configuration</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit IoT Profile' : 'Create IoT Profile'}</SheetTitle>
+            <SheetDescription>BLE beacon and Thread gateway configuration</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="IoT profile name" /></div>
             <div>
@@ -859,8 +858,8 @@ function IoTTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -977,12 +976,12 @@ function MeshpointsTab() {
         </TableBody>
       </Table>
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Meshpoint' : 'Create Meshpoint'}</DialogTitle>
-            <DialogDescription>MeshConnex wireless mesh configuration</DialogDescription>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit Meshpoint' : 'Create Meshpoint'}</SheetTitle>
+            <SheetDescription>MeshConnex wireless mesh configuration</SheetDescription>
+          </SheetHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Meshpoint name" /></div>
@@ -1007,8 +1006,8 @@ function MeshpointsTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
@@ -1256,11 +1255,11 @@ function LocationServicesTab() {
       {renderTable('Positioning Profiles', 'positioning', posProfiles)}
       {renderTable('Analytics Profiles', 'analytics', analyticsProfiles)}
 
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>{editing ? 'Edit' : 'Create'} {dialogType === 'xloc' ? 'XLocation' : dialogType === 'rtls' ? 'RTLS' : dialogType === 'positioning' ? 'Positioning' : 'Analytics'} Profile</DialogTitle>
-          </DialogHeader>
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit' : 'Create'} {dialogType === 'xloc' ? 'XLocation' : dialogType === 'rtls' ? 'RTLS' : dialogType === 'positioning' ? 'Positioning' : 'Analytics'} Profile</SheetTitle>
+          </SheetHeader>
           <div className="space-y-4">
             <div><Label>Name</Label><Input value={form.name || ''} onChange={e => setForm({...form, name: e.target.value})} /></div>
             {dialogType === 'xloc' && (
@@ -1318,8 +1317,8 @@ function LocationServicesTab() {
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
