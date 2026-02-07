@@ -40,26 +40,14 @@ interface AccessPoint {
   siteId?: string;
 }
 
-interface FirmwareVersion {
-  version: string;
-  releaseDate: string;
-  isRecommended: boolean;
-  features?: string[];
-}
-
-interface UpgradeSchedule {
-  id: string;
+interface FirmwareImage {
   name: string;
-  targetVersion: string;
-  scheduledTime: string;
-  deviceCount: number;
-  status: string;
+  isRecommended: boolean;
 }
 
 export function APFirmwareManager() {
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
-  const [firmwareVersions, setFirmwareVersions] = useState<FirmwareVersion[]>([]);
-  const [schedules, setSchedules] = useState<UpgradeSchedule[]>([]);
+  const [firmwareImages, setFirmwareImages] = useState<FirmwareImage[]>([]);
   const [selectedAPs, setSelectedAPs] = useState<Set<string>>(new Set());
   const [selectedVersion, setSelectedVersion] = useState('');
   const [loading, setLoading] = useState(true);
@@ -76,14 +64,17 @@ export function APFirmwareManager() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [aps, versions, scheduleList] = await Promise.all([
+      const [aps, imageList] = await Promise.all([
         apiService.getAccessPoints(),
-        apiService.getAPSoftwareVersions(),
-        apiService.getAPUpgradeSchedules()
+        apiService.getAPSoftwareVersions()
       ]);
-      setAccessPoints(aps);
-      setFirmwareVersions(versions);
-      setSchedules(scheduleList);
+      setAccessPoints(Array.isArray(aps) ? aps : []);
+      // imageList is an array of image name strings like "AP7612-LEAN-5.9.3.2-002R.img"
+      const images: FirmwareImage[] = (imageList || []).map((img: string, idx: number) => ({
+        name: img,
+        isRecommended: idx === 0
+      }));
+      setFirmwareImages(images);
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load firmware data');
@@ -164,24 +155,14 @@ export function APFirmwareManager() {
     }
   };
 
-  const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm('Are you sure you want to delete this schedule?')) return;
-
-    try {
-      await apiService.deleteAPUpgradeSchedule(scheduleId);
-      toast.success('Schedule deleted successfully');
-      await loadData();
-    } catch (error) {
-      console.error('Failed to delete schedule:', error);
-      toast.error('Failed to delete schedule');
-    }
+  const handleDeleteSchedule = async (_scheduleId: string) => {
+    toast.error('Schedule deletion not supported by controller API');
   };
 
   const getUpgradeStatus = (ap: AccessPoint) => {
-    const recommended = firmwareVersions.find(v => v.isRecommended);
-    if (!recommended) return { status: 'unknown', color: 'gray' };
-
-    if (ap.currentFirmware === recommended.version) {
+    if (firmwareImages.length === 0) return { status: 'unknown', color: 'gray' };
+    // If AP firmware matches any available image, consider it up to date
+    if (ap.currentFirmware && firmwareImages.some(img => img.name.includes(ap.currentFirmware!))) {
       return { status: 'up-to-date', color: 'green' };
     }
     return { status: 'update-available', color: 'yellow' };
@@ -295,15 +276,15 @@ export function APFirmwareManager() {
             <Label>Target Firmware Version</Label>
             <Select value={selectedVersion} onValueChange={setSelectedVersion}>
               <SelectTrigger>
-                <SelectValue placeholder="Select firmware version" />
+                <SelectValue placeholder="Select firmware image" />
               </SelectTrigger>
               <SelectContent>
-                {firmwareVersions.map((version) => (
-                  <SelectItem key={version.version} value={version.version}>
+                {firmwareImages.map((image) => (
+                  <SelectItem key={image.name} value={image.name}>
                     <div className="flex items-center gap-2">
-                      <span>{version.version}</span>
-                      {version.isRecommended && (
-                        <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Recommended</Badge>
+                      <span>{image.name}</span>
+                      {image.isRecommended && (
+                        <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Latest</Badge>
                       )}
                     </div>
                   </SelectItem>
@@ -326,7 +307,7 @@ export function APFirmwareManager() {
               disabled={selectedAPs.size === 0 || !selectedVersion}
             >
               <Calendar className="h-4 w-4 mr-2" />
-              Schedule Upgrade
+              Schedule
             </Button>
           </div>
         </CardContent>
@@ -374,7 +355,7 @@ export function APFirmwareManager() {
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="text-right">
-                      <p className="text-sm font-medium">v{ap.currentFirmware || 'Unknown'}</p>
+                      <p className="text-sm font-medium">{ap.currentFirmware || 'Unknown'}</p>
                       <Badge
                         variant={status.status === 'up-to-date' ? 'default' : 'outline'}
                         className={
@@ -396,53 +377,7 @@ export function APFirmwareManager() {
         </CardContent>
       </Card>
 
-      {/* Scheduled Upgrades */}
-      {schedules.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Scheduled Upgrades</CardTitle>
-            <CardDescription>
-              Upcoming firmware upgrade schedules
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {schedules.map((schedule) => (
-                <div
-                  key={schedule.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{schedule.name}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{new Date(schedule.scheduledTime).toLocaleString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-sm font-medium">v{schedule.targetVersion}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {schedule.deviceCount} device(s)
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteSchedule(schedule.id)}
-                    >
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Note: Scheduled upgrade listing not available via controller REST API */}
 
       {/* Upgrade Now Dialog */}
       <Dialog open={showUpgradeDialog} onOpenChange={setShowUpgradeDialog}>

@@ -5,12 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Radio, RefreshCw, AlertCircle, Plus, Edit, Trash2 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -279,15 +278,15 @@ export function RFManagementTools() {
           </CardContent>
         </Card>
 
-        {/* Create/Edit Dialog */}
-        <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingProfile ? 'Edit RF Profile' : 'Create RF Profile'}</DialogTitle>
-              <DialogDescription>
+        {/* Create/Edit Slide-out */}
+        <Sheet open={showDialog} onOpenChange={setShowDialog}>
+          <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>{editingProfile ? 'Edit RF Profile' : 'Create RF Profile'}</SheetTitle>
+              <SheetDescription>
                 Configure RF management policy settings
-              </DialogDescription>
-            </DialogHeader>
+              </SheetDescription>
+            </SheetHeader>
             <div className="space-y-4">
               <div>
                 <Label htmlFor="rfName">Profile Name</Label>
@@ -351,8 +350,8 @@ export function RFManagementTools() {
                 </Button>
               </div>
             </div>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
       </div>
     </div>
   );

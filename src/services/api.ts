@@ -6674,19 +6674,33 @@ class ApiService {
    */
   async getAPSoftwareVersions(): Promise<any[]> {
     try {
-      logger.log('[API] Fetching AP software versions');
-      const response = await this.makeAuthenticatedRequest('/v1/aps/swversion', {}, 10000);
+      logger.log('[API] Fetching AP upgrade image list');
+      const response = await this.makeAuthenticatedRequest('/v1/aps/upgradeimagelist', {}, 10000);
 
       if (!response.ok) {
-        logger.warn(`AP software versions API returned ${response.status}`);
+        logger.warn(`AP upgrade image list API returned ${response.status}`);
         return [];
       }
 
       const data = await response.json();
-      logger.log(`[API] ✓ Loaded ${data?.length || 0} AP software versions`);
-      return data || [];
+      // Response is a map: { "AP7612": ["image1.img", "image2.img"], ... }
+      // Transform to flat list of unique version strings
+      const versions: string[] = [];
+      if (data && typeof data === 'object') {
+        for (const images of Object.values(data)) {
+          if (Array.isArray(images)) {
+            for (const img of images) {
+              if (typeof img === 'string' && !versions.includes(img)) {
+                versions.push(img);
+              }
+            }
+          }
+        }
+      }
+      logger.log(`[API] ✓ Loaded ${versions.length} AP upgrade images`);
+      return versions;
     } catch (error) {
-      logger.error('[API] Failed to fetch AP software versions:', error);
+      logger.error('[API] Failed to fetch AP upgrade images:', error);
       return [];
     }
   }
@@ -7318,21 +7332,20 @@ class ApiService {
    */
   async upgradeAPSoftware(serialNumbers: string[], imageVersion: string): Promise<any> {
     try {
-      const endpoint = '/v1/accesspoints/software/upgrade';
+      const endpoint = `/v1/aps/upgrade?apImageName=${encodeURIComponent(imageVersion)}`;
       logger.log(`[API] Upgrading ${serialNumbers.length} APs to ${imageVersion}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers, imageVersion })
+        body: JSON.stringify({ serialNumbers })
       }, 30000);
 
       if (!response.ok) {
         throw new Error(`AP software upgrade failed: ${response.status}`);
       }
 
-      const data = await response.json();
       logger.log('[API] ✓ AP software upgrade initiated');
-      return data;
+      return { success: true };
     } catch (error) {
       logger.error('[API] Failed to upgrade AP software:', error);
       throw error;
@@ -7340,50 +7353,51 @@ class ApiService {
   }
 
   /**
-   * Get AP upgrade schedule
-   * Endpoint: GET /v1/accesspoints/software/schedule
+   * Get AP upgrade schedules
+   * Note: No GET endpoint exists in swagger; schedules tracked locally
    */
   async getAPUpgradeSchedules(): Promise<any[]> {
-    try {
-      const endpoint = '/v1/accesspoints/software/schedule';
-      logger.log('[API] Fetching AP upgrade schedules');
-      const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
-
-      if (!response.ok) {
-        logger.warn(`AP upgrade schedule API returned ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
-      logger.log(`[API] ✓ Loaded ${data?.length || 0} upgrade schedules`);
-      return data || [];
-    } catch (error) {
-      logger.error('[API] Failed to fetch AP upgrade schedules:', error);
-      return [];
-    }
+    // No GET endpoint for upgrade schedules in the controller API
+    logger.log('[API] AP upgrade schedules: no list endpoint available');
+    return [];
   }
 
   /**
-   * Create AP upgrade schedule
-   * Endpoint: POST /v1/accesspoints/software/schedule
+   * Create/Schedule AP upgrade
+   * Endpoint: PUT /v1/aps/upgradeschedule (ApUpgradeScheduleElement)
    */
   async createAPUpgradeSchedule(schedule: any): Promise<any> {
     try {
-      const endpoint = '/v1/accesspoints/software/schedule';
+      const endpoint = '/v1/aps/upgradeschedule';
       logger.log('[API] Creating AP upgrade schedule');
+
+      // Transform to ApUpgradeScheduleElement format
+      const deviceInfo: Record<string, string> = {};
+      if (schedule.deviceSerialNumbers && schedule.targetVersion) {
+        for (const sn of schedule.deviceSerialNumbers) {
+          deviceInfo[sn] = schedule.targetVersion;
+        }
+      }
+
+      const body = {
+        utcSecondsSinceEpoc: schedule.scheduledTime
+          ? Math.floor(new Date(schedule.scheduledTime).getTime() / 1000)
+          : null,
+        deviceInfo
+      };
+
       const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(schedule)
+        body: JSON.stringify(body)
       }, 15000);
 
       if (!response.ok) {
         throw new Error(`Failed to create upgrade schedule: ${response.status}`);
       }
 
-      const data = await response.json();
       logger.log('[API] ✓ Upgrade schedule created');
-      return data;
+      return { success: true };
     } catch (error) {
       logger.error('[API] Failed to create AP upgrade schedule:', error);
       throw error;
@@ -7392,25 +7406,11 @@ class ApiService {
 
   /**
    * Delete AP upgrade schedule
-   * Endpoint: DELETE /v1/accesspoints/software/schedule/{id}
+   * Note: No DELETE endpoint exists in swagger
    */
   async deleteAPUpgradeSchedule(scheduleId: string): Promise<void> {
-    try {
-      const endpoint = `/v1/accesspoints/software/schedule/${encodeURIComponent(scheduleId)}`;
-      logger.log(`[API] Deleting upgrade schedule: ${scheduleId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 15000);
-
-      if (!response.ok) {
-        throw new Error(`Failed to delete upgrade schedule: ${response.status}`);
-      }
-
-      logger.log('[API] ✓ Upgrade schedule deleted');
-    } catch (error) {
-      logger.error('[API] Failed to delete AP upgrade schedule:', error);
-      throw error;
-    }
+    logger.warn('[API] AP upgrade schedule deletion not supported by controller API');
+    throw new Error('Schedule deletion not supported');
   }
 
   /**
