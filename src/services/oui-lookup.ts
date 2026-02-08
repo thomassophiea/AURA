@@ -1,9 +1,8 @@
 // OUI (Organizationally Unique Identifier) Lookup Service
 // Maps MAC addresses to device manufacturers via backend server
 
-import { projectId, publicAnonKey } from '../utils/supabase/info';
-
-const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-efba0687`;
+// Use local Express server for OUI lookup (replaces Supabase edge function)
+const SERVER_URL = '/api';
 
 interface VendorCache {
   [oui: string]: string;
@@ -44,8 +43,7 @@ async function lookupVendorAPI(mac: string): Promise<string> {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`
+        'Accept': 'application/json'
       }
     });
     
@@ -135,21 +133,12 @@ export function getVendorIcon(vendor: string): string {
  */
 export async function batchLookupVendors(macs: string[]): Promise<Map<string, string>> {
   const results = new Map<string, string>();
-  
-  // Add delay between requests to respect rate limits (macvendors.com allows 2 requests/second)
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-  
-  for (let i = 0; i < macs.length; i++) {
-    const mac = macs[i];
+
+  for (const mac of macs) {
     const vendor = await getVendor(mac);
     results.set(mac, vendor);
-    
-    // Wait 550ms between requests (allows ~1.8 requests/second, safely under the 2/sec limit)
-    if (i < macs.length - 1) {
-      await delay(550);
-    }
   }
-  
+
   return results;
 }
 

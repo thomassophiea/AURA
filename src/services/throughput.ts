@@ -1,6 +1,5 @@
-import { projectId, publicAnonKey } from '../utils/supabase/info';
-
-const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-efba0687`;
+// Use local Express server for throughput storage (replaces Supabase edge function)
+const SERVER_URL = '/api';
 
 export interface ThroughputSnapshot {
   timestamp: number;
@@ -43,7 +42,6 @@ class ThroughputService {
       ...options,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
         ...options.headers,
       },
     });

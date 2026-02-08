@@ -513,6 +513,396 @@ app.get('/api/management/v1/guests/portal/config', (req, res) => {
   res.json(null);
 });
 
+// ==================== Alerts ====================
+// Controller doesn't expose an alerts REST endpoint
+
+app.get('/api/management/v1/alerts', (req, res) => {
+  // Return empty alerts array - no controller endpoint available
+  res.json([]);
+});
+
+// ==================== AFC (Automated Frequency Coordination) Planning ====================
+// Controller doesn't expose AFC planning endpoints via REST API
+
+const afcPlanStore = [];
+
+app.get('/api/management/v1/afc/plans', (req, res) => {
+  res.json(afcPlanStore);
+});
+
+app.post('/api/management/v1/afc/plans', jsonParser, (req, res) => {
+  const { name, description, apSerials, channel, power } = req.body || {};
+  if (!name) {
+    return res.status(400).json({ error: 'Plan name is required' });
+  }
+  const plan = {
+    id: crypto.randomUUID(),
+    name,
+    description: description || '',
+    apSerials: apSerials || [],
+    channel: channel || 'auto',
+    power: power || 'auto',
+    status: 'draft',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  afcPlanStore.push(plan);
+  console.log(`[AFC] Created plan: ${name}`);
+  res.status(201).json(plan);
+});
+
+app.post('/api/management/v1/afc/plans/:id/analyze', jsonParser, (req, res) => {
+  const plan = afcPlanStore.find(p => p.id === req.params.id);
+  if (!plan) {
+    return res.status(404).json({ error: 'AFC plan not found' });
+  }
+  plan.status = 'analyzed';
+  plan.updatedAt = new Date().toISOString();
+  plan.analysisResult = {
+    compliant: true,
+    maxEirp: 36,
+    channelAvailability: [36, 40, 44, 48, 149, 153, 157, 161, 165],
+    timestamp: new Date().toISOString()
+  };
+  console.log(`[AFC] Analysis completed for plan: ${plan.name}`);
+  res.json(plan);
+});
+
+app.delete('/api/management/v1/afc/plans/:id', (req, res) => {
+  const idx = afcPlanStore.findIndex(p => p.id === req.params.id);
+  if (idx !== -1) {
+    const removed = afcPlanStore.splice(idx, 1);
+    console.log(`[AFC] Deleted plan: ${removed[0].name}`);
+  }
+  res.json({ success: true });
+});
+
+// ==================== Packet Capture ====================
+// Controller doesn't expose packet capture endpoints via REST API
+
+const packetCaptureStore = [];
+const packetCaptureFiles = [];
+
+// Start capture - /platformmanager/v1/startappacketcapture
+app.post('/api/management/platformmanager/v1/startappacketcapture', jsonParser, (req, res) => {
+  const { apSerialNumber, duration, filter, captureType } = req.body || {};
+  const capture = {
+    id: crypto.randomUUID(),
+    apSerialNumber: apSerialNumber || 'unknown',
+    status: 'running',
+    captureType: captureType || 'wireless',
+    filter: filter || '',
+    duration: duration || 60,
+    startedAt: new Date().toISOString(),
+    packetCount: 0,
+    fileSize: 0
+  };
+  packetCaptureStore.push(capture);
+  console.log(`[PacketCapture] Started capture on AP ${capture.apSerialNumber}`);
+
+  // Simulate capture completing after duration
+  const captureId = capture.id;
+  setTimeout(() => {
+    const c = packetCaptureStore.find(x => x.id === captureId);
+    if (c && c.status === 'running') {
+      c.status = 'completed';
+      c.completedAt = new Date().toISOString();
+      c.packetCount = Math.floor(Math.random() * 50000) + 1000;
+      c.fileSize = Math.floor(Math.random() * 5000000) + 100000;
+      // Add to files store
+      packetCaptureFiles.push({
+        id: c.id,
+        filename: `capture_${c.apSerialNumber}_${Date.now()}.pcap`,
+        apSerialNumber: c.apSerialNumber,
+        size: c.fileSize,
+        packetCount: c.packetCount,
+        captureType: c.captureType,
+        createdAt: c.completedAt
+      });
+      console.log(`[PacketCapture] Capture ${captureId} completed`);
+    }
+  }, Math.min((duration || 60) * 1000, 30000)); // Cap at 30s for simulation
+
+  res.status(201).json(capture);
+});
+
+// Stop capture - /platformmanager/v1/stopappacketcapture
+app.put('/api/management/platformmanager/v1/stopappacketcapture', jsonParser, (req, res) => {
+  const { captureId, stopAll } = req.body || {};
+  if (stopAll) {
+    packetCaptureStore.forEach(c => { if (c.status === 'running') c.status = 'stopped'; });
+    console.log(`[PacketCapture] Stopped all captures`);
+  } else if (captureId) {
+    const capture = packetCaptureStore.find(c => c.id === captureId);
+    if (capture) capture.status = 'stopped';
+    console.log(`[PacketCapture] Stopped capture ${captureId}`);
+  }
+  res.json({ success: true });
+});
+
+// Get active captures - both path variants
+app.get('/api/management/v1/packetcapture/active', (req, res) => {
+  res.json(packetCaptureStore.filter(c => c.status === 'running'));
+});
+app.get('/api/management/platformmanager/v1/packetcapture/active', (req, res) => {
+  res.json(packetCaptureStore.filter(c => c.status === 'running'));
+});
+
+// Get capture files - both path variants
+app.get('/api/management/v1/packetcapture/files', (req, res) => {
+  res.json(packetCaptureFiles);
+});
+app.get('/api/management/platformmanager/v1/packetcapture/files', (req, res) => {
+  res.json(packetCaptureFiles);
+});
+
+// Download capture file - both path variants
+app.get('/api/management/v1/packetcapture/download/:id', (req, res) => {
+  const file = packetCaptureFiles.find(f => f.id === req.params.id);
+  if (!file) return res.status(404).json({ error: 'Capture file not found' });
+  res.setHeader('Content-Type', 'application/vnd.tcpdump.pcap');
+  res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+  res.send(Buffer.from(`PCAP placeholder for ${file.filename}\n`));
+});
+app.get('/api/management/platformmanager/v1/packetcapture/download/:id', (req, res) => {
+  const file = packetCaptureFiles.find(f => f.id === req.params.id);
+  if (!file) return res.status(404).json({ error: 'Capture file not found' });
+  res.setHeader('Content-Type', 'application/vnd.tcpdump.pcap');
+  res.setHeader('Content-Disposition', `attachment; filename="${file.filename}"`);
+  res.send(Buffer.from(`PCAP placeholder for ${file.filename}\n`));
+});
+
+// Delete capture file - both path variants
+app.delete('/api/management/v1/packetcapture/delete/:id', (req, res) => {
+  const idx = packetCaptureFiles.findIndex(f => f.id === req.params.id);
+  if (idx !== -1) packetCaptureFiles.splice(idx, 1);
+  res.json({ success: true });
+});
+app.delete('/api/management/platformmanager/v1/packetcapture/delete/:id', (req, res) => {
+  const idx = packetCaptureFiles.findIndex(f => f.id === req.params.id);
+  if (idx !== -1) packetCaptureFiles.splice(idx, 1);
+  res.json({ success: true });
+});
+
+// Get capture status - both path variants
+app.get('/api/management/v1/packetcapture/status/:id', (req, res) => {
+  const capture = packetCaptureStore.find(c => c.id === req.params.id);
+  if (!capture) return res.status(404).json({ error: 'Capture not found' });
+  res.json(capture);
+});
+app.get('/api/management/platformmanager/v1/packetcapture/status/:id', (req, res) => {
+  const capture = packetCaptureStore.find(c => c.id === req.params.id);
+  if (!capture) return res.status(404).json({ error: 'Capture not found' });
+  res.json(capture);
+});
+
+// ==================== Throughput Metrics (Local replacement for Supabase) ====================
+// Replaces Supabase-hosted throughput edge function with local in-memory store
+
+const throughputStore = [];
+
+app.post('/api/throughput/snapshot', jsonParser, (req, res) => {
+  const snapshot = { ...req.body, id: crypto.randomUUID(), storedAt: Date.now() };
+  throughputStore.push(snapshot);
+  // Keep only last 1000 snapshots
+  if (throughputStore.length > 1000) throughputStore.splice(0, throughputStore.length - 1000);
+  res.json({ success: true });
+});
+
+app.get('/api/throughput/snapshots', (req, res) => {
+  const { startTime, endTime, limit } = req.query;
+  let results = [...throughputStore];
+  if (startTime) results = results.filter(s => s.timestamp >= parseInt(startTime));
+  if (endTime) results = results.filter(s => s.timestamp <= parseInt(endTime));
+  if (limit) results = results.slice(-parseInt(limit));
+  res.json({ snapshots: results });
+});
+
+app.get('/api/throughput/latest', (req, res) => {
+  const snapshot = throughputStore.length > 0 ? throughputStore[throughputStore.length - 1] : null;
+  res.json({ snapshot });
+});
+
+app.get('/api/throughput/aggregated', (req, res) => {
+  const { startTime, endTime } = req.query;
+  let results = [...throughputStore];
+  if (startTime) results = results.filter(s => s.timestamp >= parseInt(startTime));
+  if (endTime) results = results.filter(s => s.timestamp <= parseInt(endTime));
+
+  if (results.length === 0) {
+    return res.json({ avgUpload: 0, avgDownload: 0, avgTotal: 0, maxUpload: 0, maxDownload: 0, maxTotal: 0, avgClientCount: 0, snapshotCount: 0 });
+  }
+
+  res.json({
+    avgUpload: results.reduce((s, r) => s + (r.totalUpload || 0), 0) / results.length,
+    avgDownload: results.reduce((s, r) => s + (r.totalDownload || 0), 0) / results.length,
+    avgTotal: results.reduce((s, r) => s + (r.totalTraffic || 0), 0) / results.length,
+    maxUpload: Math.max(...results.map(r => r.totalUpload || 0)),
+    maxDownload: Math.max(...results.map(r => r.totalDownload || 0)),
+    maxTotal: Math.max(...results.map(r => r.totalTraffic || 0)),
+    avgClientCount: results.reduce((s, r) => s + (r.clientCount || 0), 0) / results.length,
+    snapshotCount: results.length
+  });
+});
+
+app.get('/api/throughput/network/:name', (req, res) => {
+  const networkName = decodeURIComponent(req.params.name);
+  const { startTime, endTime } = req.query;
+  let results = [...throughputStore];
+  if (startTime) results = results.filter(s => s.timestamp >= parseInt(startTime));
+  if (endTime) results = results.filter(s => s.timestamp <= parseInt(endTime));
+
+  const trends = results.map(s => {
+    const nb = (s.networkBreakdown || []).find(n => n.network === networkName);
+    return nb ? { timestamp: s.timestamp, upload: nb.upload, download: nb.download, total: nb.total, clients: nb.clients } : null;
+  }).filter(Boolean);
+
+  res.json({ trends });
+});
+
+app.delete('/api/throughput/clear', (req, res) => {
+  const count = throughputStore.length;
+  throughputStore.length = 0;
+  res.json({ deletedCount: count });
+});
+
+// ==================== OUI Vendor Lookup (Local replacement for Supabase) ====================
+// Common OUI prefixes for device manufacturer identification
+
+app.get('/api/oui/lookup', (req, res) => {
+  const { mac } = req.query;
+  if (!mac) return res.status(400).json({ error: 'MAC address required' });
+
+  // Extract OUI (first 6 hex chars)
+  const normalized = String(mac).replace(/[:\-\.]/g, '').toUpperCase();
+  const oui = normalized.substring(0, 6);
+
+  // Common OUI database
+  const ouiDb = {
+    '000C29': 'VMware', '005056': 'VMware', '001C42': 'Parallels',
+    '00005E': 'IANA', '00000C': 'Cisco', '000142': 'Cisco',
+    '001A2F': 'Cisco', '00070E': 'Cisco', 'AABBCC': 'Cisco',
+    '000A95': 'Apple', '000393': 'Apple', '000A27': 'Apple',
+    '000D93': 'Apple', '0010FA': 'Apple', '001451': 'Apple',
+    '0016CB': 'Apple', '0017F2': 'Apple', '0019E3': 'Apple',
+    '001B63': 'Apple', '001CB3': 'Apple', '001D4F': 'Apple',
+    '001E52': 'Apple', '001F5B': 'Apple', '001FF3': 'Apple',
+    '0021E9': 'Apple', '002241': 'Apple', '002312': 'Apple',
+    '002436': 'Apple', '002500': 'Apple', '002608': 'Apple',
+    '0026BB': 'Apple', '003065': 'Apple', '003EE1': 'Apple',
+    '0050E4': 'Apple', '00A040': 'Apple', '04489A': 'Apple',
+    '080007': 'Apple', '10DDB1': 'Apple', '18AF61': 'Apple',
+    '20A2E4': 'Apple', '28E7CF': 'Apple', '3C15C2': 'Apple',
+    '40A6D9': 'Apple', '44D884': 'Apple', '54724F': 'Apple',
+    '5855CA': 'Apple', '5C5948': 'Apple', '60FACD': 'Apple',
+    '64A5C3': 'Apple', '685B35': 'Apple', '6C4008': 'Apple',
+    '70DEE2': 'Apple', '74E2F5': 'Apple', '7831C1': 'Apple',
+    '7CD1C3': 'Apple', '80E650': 'Apple', '84788B': 'Apple',
+    '848506': 'Apple', '8866A5': 'Apple', '8C7C92': 'Apple',
+    '9027E4': 'Apple', '9801A7': 'Apple', '9C207B': 'Apple',
+    'A4B197': 'Apple', 'A860B6': 'Apple', 'ACFDEC': 'Apple',
+    'B065BD': 'Apple', 'B8E856': 'Apple', 'BC6778': 'Apple',
+    'BC9FEF': 'Apple', 'C42C03': 'Apple', 'C82A14': 'Apple',
+    'CC785F': 'Apple', 'D02598': 'Apple', 'D4619D': 'Apple',
+    'D89695': 'Apple', 'DC2B2A': 'Apple', 'E0B9BA': 'Apple',
+    'E49ADC': 'Apple', 'F0B479': 'Apple', 'F0D1A9': 'Apple',
+    'F81EDF': 'Apple', 'AC3C0B': 'Apple',
+    '000AE4': 'Samsung', '0007AB': 'Samsung', '001247': 'Samsung',
+    '001377': 'Samsung', '0015B9': 'Samsung', '001632': 'Samsung',
+    '001A8A': 'Samsung', '001EE1': 'Samsung', '001EE2': 'Samsung',
+    '002119': 'Samsung', '00265D': 'Samsung', '00265F': 'Samsung',
+    '0026E2': 'Samsung', '08D42B': 'Samsung', '10D38A': 'Samsung',
+    '14568E': 'Samsung', '18227E': 'Samsung', '1C62B8': 'Samsung',
+    '244B03': 'Samsung', '2CAE2B': 'Samsung', '30CBF8': 'Samsung',
+    '340395': 'Samsung', '38AA3C': 'Samsung', '40B89A': 'Samsung',
+    '44F459': 'Samsung', '4844F7': 'Samsung', '4CE676': 'Samsung',
+    '50A4C8': 'Samsung', '5440AD': 'Samsung', '549B12': 'Samsung',
+    '5C3C27': 'Samsung', '5CA39D': 'Samsung', '606BBD': 'Samsung',
+    '6455B1': 'Samsung', '6C2F2C': 'Samsung', '700514': 'Samsung',
+    '742F68': 'Samsung', '7825AD': 'Samsung', '7C0191': 'Samsung',
+    '843835': 'Samsung', '8855A5': 'Samsung', '8C71F8': 'Samsung',
+    '94350A': 'Samsung', '94D771': 'Samsung', '98398E': 'Samsung',
+    '9C65F9': 'Samsung', 'A00798': 'Samsung', 'A0B4A5': 'Samsung',
+    'A8F274': 'Samsung', 'B0DF3A': 'Samsung', 'B407F9': 'Samsung',
+    'BC4486': 'Samsung', 'BC851F': 'Samsung', 'C44619': 'Samsung',
+    'C8BA94': 'Samsung', 'CC07AB': 'Samsung', 'D0176A': 'Samsung',
+    'D0577B': 'Samsung', 'D831CF': 'Samsung', 'E4E0C5': 'Samsung',
+    'E8508B': 'Samsung', 'F025B7': 'Samsung', 'F4428F': 'Samsung',
+    'F8042E': 'Samsung', 'FC1910': 'Samsung',
+    '000BBE': 'Cisco', '000DE5': 'Cisco', '001795': 'Cisco',
+    '0024F7': 'Cisco Linksys', '00259C': 'Cisco Linksys',
+    '001018': 'HP', '001083': 'HP', '001185': 'HP',
+    '001321': 'HP', '001635': 'HP', '001708': 'HP',
+    '001871': 'HP', '001A4B': 'HP', '001CC4': 'HP',
+    '002264': 'HP', '0025B3': 'HP', '3C4A92': 'HP',
+    '9457A5': 'HP', 'D4C9EF': 'HP',
+    '0018F3': 'ASUSTek', '001A92': 'ASUSTek', '001FC6': 'ASUSTek',
+    '002354': 'ASUSTek', '0026187': 'ASUSTek', '04D4C4': 'ASUSTek',
+    '08606E': 'ASUSTek', '10BF48': 'ASUSTek', '107B44': 'ASUSTek',
+    '00E04C': 'Realtek', '00E04D': 'Realtek', '52540A': 'Realtek',
+    '001CBD': 'Intel', '001DE0': 'Intel', '001E64': 'Intel',
+    '001E67': 'Intel', '001F3B': 'Intel', '001F3C': 'Intel',
+    '002314': 'Intel', '0024D6': 'Intel', '40A6E8': 'Intel',
+    '502DA2': 'Intel', '606720': 'Intel', '686D12': 'Intel',
+    '84A6C8': 'Intel', '8C8D28': 'Intel', 'A0369F': 'Intel',
+    'A44CC8': 'Intel', 'B4D5BD': 'Intel',
+    '000B82': 'Grandstream', '001E5A': 'Motorola',
+    '000F66': 'Cisco', '000FE2': 'Hangzhou H3C',
+    'B827EB': 'Raspberry Pi', 'DC2632': 'Raspberry Pi',
+    'E45F01': 'Raspberry Pi',
+    '001E58': 'D-Link', '00179A': 'D-Link', '001B11': 'D-Link',
+    '001CF0': 'D-Link', '001E58': 'D-Link',
+    '0024A5': 'Buffalo', '001601': 'Buffalo',
+    '0017C5': 'SonicWALL', '000E38': 'SonicWALL',
+    '00037F': 'Atheros', '001372': 'Dell', '001422': 'Dell',
+    '001731': 'Dell', '001882': 'Dell', '001A4A': 'Dell',
+    '001E4F': 'Dell', '002219': 'Dell', '0024E8': 'Dell',
+    '1867B0': 'Dell', '246E96': 'Dell', '4487FC': 'Dell',
+    '509A4C': 'Dell', '5CF3FC': 'Dell', 'B083FE': 'Dell',
+    'F48E38': 'Dell', 'F8B156': 'Dell',
+    '001599': 'TP-Link', '001D0F': 'TP-Link', '1C3BF3': 'TP-Link',
+    '300D43': 'TP-Link', '503EAA': 'TP-Link', '5C899A': 'TP-Link',
+    '6466B3': 'TP-Link', '6CE873': 'TP-Link', '84163A': 'TP-Link',
+    '8C210A': 'TP-Link', 'A01800': 'TP-Link', 'D46E0E': 'TP-Link',
+    'E894F6': 'TP-Link', 'EC086B': 'TP-Link', 'EC888F': 'TP-Link',
+    'F4F26D': 'TP-Link',
+    '001E2A': 'Netgear', '0024B2': 'Netgear', '008EF2': 'Netgear',
+    '204E7F': 'Netgear', '2CB05D': 'Netgear', '6CB0CE': 'Netgear',
+    'A021B7': 'Netgear', 'B03956': 'Netgear', 'C43DC7': 'Netgear',
+    'E4F4C6': 'Netgear',
+    '000E8F': 'Sercomm', '002275': 'ARRIS', '0019A6': 'Motorola',
+    '000C43': 'Ralink', '000E6A': 'Aruba', '001A1E': 'Aruba',
+    '00248C': 'Aruba', '18645A': 'Aruba', '24DEC6': 'Aruba',
+    '40E3D6': 'Aruba', '6CF37F': 'Aruba', '9C1C12': 'Aruba',
+    'B4C799': 'Aruba', 'D8C7C8': 'Aruba',
+    '001195': 'Extreme Networks', '000496': 'Extreme Networks',
+    '00E02B': 'Extreme Networks', 'B4C799': 'Extreme Networks',
+    'B8C253': 'Juniper', '002283': 'Juniper', '3CE5A6': 'Juniper',
+    '54E032': 'Juniper', '80714F': 'Juniper', 'ACE87B': 'Juniper',
+    'F01C2D': 'Juniper', 'F4A739': 'Juniper',
+    '000DB9': 'PC Engines', '00064F': 'Phion',
+    'BADDAD': 'Google', 'D4F5EF': 'Google', 'F4F5D8': 'Google',
+    '3C5AB4': 'Google', '5828CA': 'Google', 'A47733': 'Google',
+    '0018E7': 'Cameo', '002618': 'ASUSTek', '04421A': 'ASUSTek',
+    '001FE1': 'Lenovo', '002170': 'Lenovo', 'D89D67': 'Lenovo',
+    'E8F724': 'Lenovo', '484BAA': 'Lenovo', '70F395': 'Lenovo',
+    '8C164C': 'Lenovo', 'B871FC': 'Lenovo',
+    '40B076': 'Microsoft', '44032C': 'Microsoft', 'B41489': 'Microsoft',
+    'C83F26': 'Microsoft', 'F41661': 'Microsoft',
+    '002332': 'Nintendo', '0025A0': 'Nintendo', '34AF2C': 'Nintendo',
+    '7CBB8A': 'Nintendo', 'E84ECE': 'Nintendo',
+    '001FCD': 'Sony', '0019C5': 'Sony', '002567': 'Sony',
+    '0024BE': 'Sony', '28A0EF': 'Sony', '709E29': 'Sony',
+    '0050F2': 'Microsoft', 'FCEDC4': 'Ubiquiti',
+    '802AA8': 'Ubiquiti', 'F09FC2': 'Ubiquiti', '24A43C': 'Ubiquiti',
+    '44D9E7': 'Ubiquiti', 'B4FBE4': 'Ubiquiti',
+    '001217': 'Cisco-Linksys', '00187D': 'Aruba', '001AEB': 'Aruba'
+  };
+
+  const vendor = ouiDb[oui] || 'Unknown Vendor';
+  res.json({ vendor, oui, mac: String(mac) });
+});
+
 // Proxy configuration
 const proxyOptions = {
   target: CAMPUS_CONTROLLER_URL,
