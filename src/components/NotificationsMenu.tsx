@@ -27,6 +27,8 @@ import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useContextScope } from '../hooks/useContextScope';
 
 interface Alert {
   id: string;
@@ -140,6 +142,8 @@ const getNotificationTypeLabel = (type: NotificationItem['type']) => {
 };
 
 export function NotificationsMenu() {
+  const { filters } = useGlobalFilters();
+  const scope = useContextScope();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -153,7 +157,7 @@ export function NotificationsMenu() {
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [filters.site]); // Reload when site context changes
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -418,10 +422,19 @@ export function NotificationsMenu() {
               )}
             </div>
             <SheetDescription>
-              View and manage your system notifications including alerts, events, and status updates.
+              {scope.isSiteScoped
+                ? `Notifications for ${scope.siteName || 'selected site'}`
+                : 'View and manage your system notifications including alerts, events, and status updates.'}
             </SheetDescription>
             <div className="text-left mt-2">
-              <h3 className="font-medium text-foreground mb-1">Notifications</h3>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-medium text-foreground">Notifications</h3>
+                {scope.isSiteScoped && (
+                  <Badge variant="outline" className="text-[10px] font-normal">
+                    {scope.label}
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {unreadCount} unread of {totalCount} total
               </p>

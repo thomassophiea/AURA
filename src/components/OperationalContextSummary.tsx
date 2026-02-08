@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { apiService, AccessPoint, Station, Service } from '../services/api';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useContextScope } from '../hooks/useContextScope';
 
 interface ContextMetrics {
   organizationContext: {
@@ -87,6 +88,7 @@ interface ContextMetrics {
 
 function OperationalContextSummaryComponent() {
   const { filters } = useGlobalFilters();
+  const scope = useContextScope();
   const [metrics, setMetrics] = useState<ContextMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -107,29 +109,45 @@ function OperationalContextSummaryComponent() {
       setError(null);
 
       // Fetch data in parallel for better performance
-      // Use site-filtered API calls to get correct data (same as AccessPoints tab)
-      const [aps, stations, services] = await Promise.all([
-        filters.site === 'all'
-          ? apiService.getAccessPoints()
-          : apiService.getAccessPointsBySite(filters.site),
+      // ALL data is scoped to the active context (site or organization)
+      const siteId = filters.site !== 'all' ? filters.site : undefined;
+      let siteName: string | undefined;
+
+      if (siteId) {
+        const site = await apiService.getSiteById(siteId);
+        siteName = site?.name || site?.siteName || siteId;
+      }
+
+      const [aps, allStations, services] = await Promise.all([
+        siteId
+          ? apiService.getAccessPointsBySite(siteId)
+          : apiService.getAccessPoints(),
         apiService.getStations(),
-        apiService.getServices()
+        siteId
+          ? apiService.getServicesBySite(siteId).catch(() => apiService.getServices())
+          : apiService.getServices()
       ]);
 
-      // Filter stations by site if needed
-      // Note: APs are already filtered by getAccessPointsBySite
-      let filteredStations = stations;
-      if (filters.site !== 'all') {
-        // Get site name from site ID to filter stations
-        const site = await apiService.getSiteById(filters.site);
-        const siteName = site?.name || site?.siteName || filters.site;
+      // Filter stations by site context
+      const filteredStations = siteId
+        ? allStations.filter(s =>
+            s.siteName === siteName ||
+            s.siteId === siteId ||
+            s.siteName === siteId
+          )
+        : allStations;
 
-        filteredStations = stations.filter(s =>
-          s.siteName === siteName ||
-          s.siteId === filters.site ||
-          s.siteName === filters.site
-        );
-      }
+      // Filter services by site context (fallback if getServicesBySite returned all)
+      const filteredServices = siteId
+        ? services.filter((s: any) =>
+            s.siteName === siteName ||
+            s.site === siteId ||
+            s.site === siteName ||
+            s.location === siteName ||
+            // If service has no site info, include it only if getServicesBySite was used
+            (!s.siteName && !s.site && !s.location && services.length < 20)
+          )
+        : services;
 
       // Calculate Organization Context Score (weighted composite)
       const organizationContext = calculateOrganizationContext(aps, filteredStations);
@@ -137,8 +155,8 @@ function OperationalContextSummaryComponent() {
       // Get critical alerts
       const criticalAlerts = await getCriticalAlerts();
 
-      // Calculate service degradation
-      const serviceDegradation = calculateServiceDegradation(services, filteredStations);
+      // Calculate service degradation - uses context-scoped services and stations
+      const serviceDegradation = calculateServiceDegradation(filteredServices, filteredStations);
 
       // Calculate client experience score
       const clientExperience = calculateClientExperience(filteredStations);
@@ -574,6 +592,11 @@ function OperationalContextSummaryComponent() {
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             Operational Context Summary
+            {scope.isSiteScoped && (
+              <Badge variant="outline" className="ml-2 text-xs font-normal">
+                {scope.label}
+              </Badge>
+            )}
           </CardTitle>
           <Button
             variant="ghost"

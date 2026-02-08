@@ -37,6 +37,8 @@ import {
 } from 'lucide-react';
 import { apiService, Site } from '../services/api';
 import { toast } from 'sonner';
+import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useContextScope } from '../hooks/useContextScope';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
@@ -103,19 +105,24 @@ interface Station {
 }
 
 export function ServiceLevelsEnhanced() {
+  // Sync with global site filter for consistent context scoping
+  const { filters, updateFilter } = useGlobalFilters();
+  const scope = useContextScope();
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  
+
   // Service data
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [serviceReport, setServiceReport] = useState<ServiceReport | null>(null);
   const [serviceStations, setServiceStations] = useState<Station[]>([]);
-  
-  // Site filtering
+
+  // Site filtering - synced with global filters
   const [sites, setSites] = useState<Site[]>([]);
-  const [selectedSite, setSelectedSite] = useState<string>('all');
+  const selectedSite = filters.site;
+  const setSelectedSite = (value: string) => updateFilter('site', value);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
   
   // Filters
@@ -183,29 +190,46 @@ export function ServiceLevelsEnhanced() {
         setLoading(true);
       }
 
-      console.log('[ServiceLevels] Fetching services from /v1/services...');
+      const siteId = selectedSite !== 'all' ? selectedSite : undefined;
+      console.log('[ServiceLevels] Fetching services' + (siteId ? ` for site: ${siteId}` : ''));
 
-      const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+      let servicesList: any[] = [];
 
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}`);
+      // Use site-specific API when site is selected
+      if (siteId) {
+        try {
+          servicesList = await apiService.getServicesBySite(siteId);
+          console.log('[ServiceLevels] Loaded', servicesList.length, 'services for site');
+        } catch {
+          console.log('[ServiceLevels] Site-specific services failed, falling back to all');
+        }
       }
 
-      const data = await response.json();
-      const servicesList = Array.isArray(data) ? data : (data.services || data.data || []);
+      // Fallback to all services
+      if (servicesList.length === 0) {
+        const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+        const data = await response.json();
+        servicesList = Array.isArray(data) ? data : (data.services || data.data || []);
+      }
 
       console.log('[ServiceLevels] Loaded', servicesList.length, 'services');
-      
-      // Filter services by selected site if needed
+
+      // Client-side filtering by site if API-level filtering wasn't available
       let filteredServices = servicesList;
-      if (selectedSite && selectedSite !== 'all') {
-        filteredServices = servicesList.filter(service => {
-          // Services might have site information in different fields
-          // Check common field names
+      if (siteId && servicesList.length > 0) {
+        const site = await apiService.getSiteById(siteId).catch(() => null);
+        const siteName = site?.name || site?.siteName || siteId;
+        const filtered = servicesList.filter((service: any) => {
           const serviceSite = service.siteName || service.site || service.location;
-          return serviceSite === selectedSite;
+          return serviceSite === siteName || serviceSite === siteId;
         });
-        console.log('[ServiceLevels] Filtered to', filteredServices.length, 'services for site:', selectedSite);
+        if (filtered.length > 0) {
+          filteredServices = filtered;
+          console.log('[ServiceLevels] Filtered to', filteredServices.length, 'services for site:', siteName);
+        }
       }
       
       setServices(filteredServices);
@@ -697,9 +721,18 @@ export function ServiceLevelsEnhanced() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Service Level Analytics</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl tracking-tight">Service Level Analytics</h2>
+            {scope.isSiteScoped && (
+              <Badge variant="outline" className="text-xs font-normal">
+                {scope.label}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
-            Real-time service performance metrics and SLA compliance
+            {scope.isSiteScoped
+              ? `Service performance for ${scope.siteName || 'selected site'}`
+              : 'Real-time service performance metrics and SLA compliance'}
             {lastUpdate && (
               <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
             )}
@@ -707,7 +740,7 @@ export function ServiceLevelsEnhanced() {
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedSite} onValueChange={(value) => {
-            console.log('Site filter changed to:', value);
+            console.log('[ServiceLevels] Site filter changed to:', value);
             setSelectedSite(value);
           }}>
             <SelectTrigger className="w-48">
@@ -718,7 +751,7 @@ export function ServiceLevelsEnhanced() {
               <SelectItem value="all">All Sites</SelectItem>
               {sites.length > 0 ? (
                 sites.map((site) => (
-                  <SelectItem key={site.id} value={site.name || site.siteName || site.id}>
+                  <SelectItem key={site.id} value={site.id}>
                     {site.name || site.siteName || site.id}
                   </SelectItem>
                 ))

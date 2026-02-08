@@ -31,6 +31,8 @@ import {
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
+import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useContextScope } from '../hooks/useContextScope';
 
 interface Alert {
   id: string;
@@ -61,12 +63,14 @@ interface Event {
 }
 
 export function AlertsEventsEnhanced() {
+  const { filters } = useGlobalFilters();
+  const scope = useContextScope();
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('alerts');
-  
+
   // Filter states
   const [severityFilter, setSeverityFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -76,14 +80,14 @@ export function AlertsEventsEnhanced() {
 
   useEffect(() => {
     loadData();
-    
+
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
       loadData(true);
     }, 30000);
-    
+
     return () => clearInterval(interval);
-  }, [selectedTimeRange]);
+  }, [selectedTimeRange, filters.site]); // Reload when site context changes
 
   const loadData = async (showRefreshing = false) => {
     try {
@@ -223,6 +227,45 @@ export function AlertsEventsEnhanced() {
       // Sort by timestamp (newest first)
       loadedAlerts.sort((a, b) => b.timestamp - a.timestamp);
       loadedEvents.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Context scoping: filter alerts/events by site if a site is selected
+      // Alerts/events with a source matching site-associated devices are included
+      if (filters.site !== 'all' && scope.siteName) {
+        const siteId = filters.site;
+        const siteName = scope.siteName;
+        // Get APs for this site to scope alerts by device
+        try {
+          const siteAPs = await apiService.getAccessPointsBySite(siteId);
+          const siteDeviceNames = new Set<string>();
+          siteAPs.forEach(ap => {
+            if (ap.name) siteDeviceNames.add(ap.name.toLowerCase());
+            if (ap.serialNumber) siteDeviceNames.add(ap.serialNumber.toLowerCase());
+            if ((ap as any).hostname) siteDeviceNames.add((ap as any).hostname.toLowerCase());
+          });
+
+          // Filter to only alerts/events from devices at this site
+          // Include alerts with no specific device (system-wide) or matching site devices
+          loadedAlerts = loadedAlerts.filter(alert => {
+            if (siteDeviceNames.size === 0) return true; // No AP data, show all
+            const source = alert.source.toLowerCase();
+            const devices = (alert.affectedDevices || []).map(d => d.toLowerCase());
+            return source === 'system' ||
+              siteDeviceNames.has(source) ||
+              devices.some(d => siteDeviceNames.has(d));
+          });
+
+          loadedEvents = loadedEvents.filter(event => {
+            if (siteDeviceNames.size === 0) return true;
+            const source = event.source.toLowerCase();
+            const device = (event.device || '').toLowerCase();
+            return source === 'system' ||
+              siteDeviceNames.has(source) ||
+              siteDeviceNames.has(device);
+          });
+        } catch (error) {
+          console.log('[AlertsEvents] Could not filter by site devices:', error);
+        }
+      }
 
       setAlerts(loadedAlerts);
       setEvents(loadedEvents);
@@ -395,9 +438,18 @@ export function AlertsEventsEnhanced() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Alerts & Events</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-3xl tracking-tight">Alerts & Events</h2>
+            {scope.isSiteScoped && (
+              <Badge variant="outline" className="text-xs font-normal">
+                {scope.label}
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
-            Real-time system notifications and event monitoring
+            {scope.isSiteScoped
+              ? `Alerts and events for ${scope.siteName || 'selected site'}`
+              : 'Real-time system notifications and event monitoring'}
           </p>
         </div>
         <div className="flex items-center gap-2">

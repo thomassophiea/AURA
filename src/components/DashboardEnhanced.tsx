@@ -486,18 +486,49 @@ function DashboardEnhancedComponent() {
   };
 
   const fetchServices = async (): Promise<Service[]> => {
-    console.log('[Dashboard] Fetching services from /v1/services...');
-    
+    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    console.log('[Dashboard] Fetching services' + (siteFilter ? ` for site: ${siteFilter}` : ''));
+
     try {
+      // Use site-specific services if site is selected
+      if (siteFilter) {
+        try {
+          const services = await apiService.getServicesBySite(siteFilter);
+          if (services.length > 0) {
+            console.log('[Dashboard] Fetched', services.length, 'services for site');
+            return services;
+          }
+        } catch (error) {
+          console.log('[Dashboard] Site-specific services fetch failed, falling back to all:', error);
+        }
+      }
+
       const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
-      
+
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
       const services = Array.isArray(data) ? data : (data.services || data.data || []);
-      
+
+      // Client-side filtering by site if site-specific fetch failed
+      if (siteFilter) {
+        const site = await apiService.getSiteById(siteFilter);
+        const siteName = site?.name || site?.siteName || siteFilter;
+        const filtered = services.filter((s: any) =>
+          s.siteName === siteName ||
+          s.site === siteFilter ||
+          s.site === siteName ||
+          s.location === siteName
+        );
+        // If filtering returned results, use them; otherwise show all (some services lack site metadata)
+        if (filtered.length > 0) {
+          console.log('[Dashboard] Filtered', filtered.length, 'services for site (client-side)');
+          return filtered;
+        }
+      }
+
       console.log('[Dashboard] Fetched', services.length, 'services');
       return services;
     } catch (error) {
