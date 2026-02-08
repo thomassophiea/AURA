@@ -448,6 +448,16 @@ const proxyOptions = {
     if (req.headers.authorization) {
       proxyReq.setHeader('Authorization', req.headers.authorization);
     }
+
+    // Re-serialize body if express.json() already consumed the stream
+    // This is critical: express.json() parses the body and consumes the raw stream,
+    // so the proxy would forward an empty body without this fix
+    if (req.body && Object.keys(req.body).length > 0) {
+      const bodyData = JSON.stringify(req.body);
+      proxyReq.setHeader('Content-Type', 'application/json');
+      proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+      proxyReq.write(bodyData);
+    }
   },
 
   onProxyRes: (proxyRes, req, res) => {
