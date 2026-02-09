@@ -228,42 +228,46 @@ export function AlertsEventsEnhanced() {
       loadedAlerts.sort((a, b) => b.timestamp - a.timestamp);
       loadedEvents.sort((a, b) => b.timestamp - a.timestamp);
 
-      // Context scoping: filter alerts/events by site if a site is selected
-      // Alerts/events with a source matching site-associated devices are included
-      if (filters.site !== 'all' && scope.siteName) {
+      // STRICT: Context scoping - filter alerts/events by AP-site device correlation
+      // When site is selected, ONLY show alerts/events correlated to APs at that site
+      // deny_global_fallback: true - no system-wide alerts shown in site-scoped views
+      if (filters.site !== 'all') {
         const siteId = filters.site;
-        const siteName = scope.siteName;
-        // Get APs for this site to scope alerts by device
         try {
           const siteAPs = await apiService.getAccessPointsBySite(siteId);
-          const siteDeviceNames = new Set<string>();
+          const siteDeviceIds = new Set<string>();
           siteAPs.forEach(ap => {
-            if (ap.name) siteDeviceNames.add(ap.name.toLowerCase());
-            if (ap.serialNumber) siteDeviceNames.add(ap.serialNumber.toLowerCase());
-            if ((ap as any).hostname) siteDeviceNames.add((ap as any).hostname.toLowerCase());
+            if (ap.name) siteDeviceIds.add(ap.name.toLowerCase());
+            if (ap.serialNumber) siteDeviceIds.add(ap.serialNumber.toLowerCase());
+            if ((ap as any).hostname) siteDeviceIds.add((ap as any).hostname.toLowerCase());
+            if ((ap as any).macAddress) siteDeviceIds.add((ap as any).macAddress.toLowerCase());
           });
 
-          // Filter to only alerts/events from devices at this site
-          // Include alerts with no specific device (system-wide) or matching site devices
-          loadedAlerts = loadedAlerts.filter(alert => {
-            if (siteDeviceNames.size === 0) return true; // No AP data, show all
-            const source = alert.source.toLowerCase();
-            const devices = (alert.affectedDevices || []).map(d => d.toLowerCase());
-            return source === 'system' ||
-              siteDeviceNames.has(source) ||
-              devices.some(d => siteDeviceNames.has(d));
-          });
+          if (siteDeviceIds.size === 0) {
+            // STRICT: no device identifiers = return empty (no alerts can be correlated)
+            loadedAlerts = [];
+            loadedEvents = [];
+          } else {
+            // STRICT: only include alerts/events from devices at this site
+            // system-wide alerts are EXCLUDED in site-scoped views
+            loadedAlerts = loadedAlerts.filter(alert => {
+              const source = alert.source.toLowerCase();
+              const devices = (alert.affectedDevices || []).map(d => d.toLowerCase());
+              return siteDeviceIds.has(source) ||
+                devices.some(d => siteDeviceIds.has(d));
+            });
 
-          loadedEvents = loadedEvents.filter(event => {
-            if (siteDeviceNames.size === 0) return true;
-            const source = event.source.toLowerCase();
-            const device = (event.device || '').toLowerCase();
-            return source === 'system' ||
-              siteDeviceNames.has(source) ||
-              siteDeviceNames.has(device);
-          });
+            loadedEvents = loadedEvents.filter(event => {
+              const source = event.source.toLowerCase();
+              const device = (event.device || '').toLowerCase();
+              return siteDeviceIds.has(source) || siteDeviceIds.has(device);
+            });
+          }
         } catch (error) {
-          console.log('[AlertsEvents] Could not filter by site devices:', error);
+          // STRICT: on failure, return empty rather than showing unscoped data
+          console.warn('[AlertsEvents] Site device correlation failed, returning empty (strict mode)');
+          loadedAlerts = [];
+          loadedEvents = [];
         }
       }
 

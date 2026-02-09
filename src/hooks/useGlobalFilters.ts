@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 export interface GlobalFilters {
   site: string;
   timeRange: string;
+  environment: string; // 'all' | environment ID (e.g., 'lab', 'production')
   dateFrom?: Date;
   dateTo?: Date;
 }
@@ -18,7 +19,8 @@ const STORAGE_KEY = 'aura_global_filters';
 
 const defaultFilters: GlobalFilters = {
   site: 'all',
-  timeRange: '24h'
+  timeRange: '24h',
+  environment: 'all'
 };
 
 // Global state (shared across all hook instances)
@@ -114,7 +116,7 @@ export function useGlobalFilters() {
     updateFilters,
     resetFilters,
     resetFilter,
-    hasActiveFilters: filters.site !== 'all' || filters.timeRange !== '24h'
+    hasActiveFilters: filters.site !== 'all' || filters.timeRange !== '24h' || filters.environment !== 'all'
   };
 }
 

@@ -103,6 +103,47 @@ function OperationalContextSummaryComponent() {
     return () => clearInterval(interval);
   }, [filters.site, filters.timeRange]);
 
+  // STRICT: Fetch stations scoped by site. Returns empty on failure, never global.
+  const fetchStrictStations = async (siteId?: string, siteName?: string): Promise<Station[]> => {
+    if (!siteId) return apiService.getStations();
+    try {
+      const response = await apiService.makeAuthenticatedRequest(
+        `/v3/sites/${siteId}/stations`, { method: 'GET' }, 15000
+      );
+      if (response.ok) {
+        const data = await response.json();
+        return Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+      }
+    } catch { /* fall through to client-side filter */ }
+    try {
+      const allStations = await apiService.getStations();
+      return allStations.filter(s =>
+        s.siteName === siteName || s.siteId === siteId || s.siteName === siteId
+      );
+    } catch {
+      console.warn('[OperationalContext] Station fetch failed for site, returning empty');
+      return [];
+    }
+  };
+
+  // STRICT: Fetch services scoped by site. Returns empty on failure, never global.
+  const fetchStrictServices = async (siteId?: string, siteName?: string): Promise<Service[]> => {
+    if (!siteId) return apiService.getServices();
+    try {
+      const services = await apiService.getServicesBySite(siteId);
+      if (services.length > 0) return services;
+    } catch { /* fall through to client-side filter */ }
+    try {
+      const allServices = await apiService.getServices();
+      return allServices.filter((s: any) =>
+        s.siteName === siteName || s.site === siteId || s.site === siteName || s.location === siteName
+      );
+    } catch {
+      console.warn('[OperationalContext] Service fetch failed for site, returning empty');
+      return [];
+    }
+  };
+
   const loadContextMetrics = async () => {
     try {
       setIsLoading(true);
@@ -118,36 +159,14 @@ function OperationalContextSummaryComponent() {
         siteName = site?.name || site?.siteName || siteId;
       }
 
-      const [aps, allStations, services] = await Promise.all([
+      // STRICT: All fetches are scoped to active context. No global fallback.
+      const [aps, filteredStations, filteredServices] = await Promise.all([
         siteId
-          ? apiService.getAccessPointsBySite(siteId)
+          ? apiService.getAccessPointsBySite(siteId).catch(() => [] as AccessPoint[])
           : apiService.getAccessPoints(),
-        apiService.getStations(),
-        siteId
-          ? apiService.getServicesBySite(siteId).catch(() => apiService.getServices())
-          : apiService.getServices()
+        fetchStrictStations(siteId, siteName),
+        fetchStrictServices(siteId, siteName)
       ]);
-
-      // Filter stations by site context
-      const filteredStations = siteId
-        ? allStations.filter(s =>
-            s.siteName === siteName ||
-            s.siteId === siteId ||
-            s.siteName === siteId
-          )
-        : allStations;
-
-      // Filter services by site context (fallback if getServicesBySite returned all)
-      const filteredServices = siteId
-        ? services.filter((s: any) =>
-            s.siteName === siteName ||
-            s.site === siteId ||
-            s.site === siteName ||
-            s.location === siteName ||
-            // If service has no site info, include it only if getServicesBySite was used
-            (!s.siteName && !s.site && !s.location && services.length < 20)
-          )
-        : services;
 
       // Calculate Organization Context Score (weighted composite)
       const organizationContext = calculateOrganizationContext(aps, filteredStations);

@@ -166,20 +166,55 @@ export function NotificationsMenu() {
       const alertsData = await loadAlertsData();
       const eventsData = await loadEventsData();
       const systemData = await loadSystemNotifications();
-      
+
       // Combine all notification sources
-      const allNotifications = [
+      let allNotifications = [
         ...alertsData,
         ...eventsData,
         ...systemData
       ];
-      
+
+      // STRICT: Filter by site device correlation when site-scoped
+      if (filters.site !== 'all') {
+        allNotifications = await filterNotificationsBySite(allNotifications, filters.site);
+      }
+
       setNotifications(allNotifications);
     } catch (error) {
-      // Silently handle expected API failures - errors are already handled by global error system
+      // Silently handle expected API failures
       setNotifications([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // STRICT: Filter notifications by AP-site device correlation
+  const filterNotificationsBySite = async (items: NotificationItem[], siteId: string): Promise<NotificationItem[]> => {
+    try {
+      const siteAPs = await apiService.getAccessPointsBySite(siteId);
+      const deviceIds = new Set<string>();
+      siteAPs.forEach(ap => {
+        if (ap.name) deviceIds.add(ap.name.toLowerCase());
+        if (ap.serialNumber) deviceIds.add(ap.serialNumber.toLowerCase());
+        if ((ap as any).hostname) deviceIds.add((ap as any).hostname.toLowerCase());
+        if ((ap as any).macAddress) deviceIds.add((ap as any).macAddress.toLowerCase());
+      });
+
+      if (deviceIds.size === 0) return []; // STRICT: no devices = no notifications
+
+      // Filter items that have associated device information matching site APs
+      return items.filter(item => {
+        // NotificationItems don't have device fields directly,
+        // so we check the title/message for device name references
+        const titleLower = (item.title || '').toLowerCase();
+        const msgLower = (item.message || '').toLowerCase();
+        for (const devId of deviceIds) {
+          if (titleLower.includes(devId) || msgLower.includes(devId)) return true;
+        }
+        return false;
+      });
+    } catch {
+      return []; // STRICT: empty on failure
     }
   };
 

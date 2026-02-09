@@ -490,7 +490,7 @@ function DashboardEnhancedComponent() {
     console.log('[Dashboard] Fetching services' + (siteFilter ? ` for site: ${siteFilter}` : ''));
 
     try {
-      // Use site-specific services if site is selected
+      // STRICT: Use site-specific services if site is selected
       if (siteFilter) {
         try {
           const services = await apiService.getServicesBySite(siteFilter);
@@ -498,37 +498,42 @@ function DashboardEnhancedComponent() {
             console.log('[Dashboard] Fetched', services.length, 'services for site');
             return services;
           }
-        } catch (error) {
-          console.log('[Dashboard] Site-specific services fetch failed, falling back to all:', error);
+        } catch {
+          // Fall through to client-side filter only
         }
+
+        // STRICT: Client-side filter as last resort, but NEVER return unfiltered global data
+        try {
+          const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+          if (response.ok) {
+            const data = await response.json();
+            const allServices = Array.isArray(data) ? data : (data.services || data.data || []);
+            const site = await apiService.getSiteById(siteFilter);
+            const siteName = site?.name || site?.siteName || siteFilter;
+            const filtered = allServices.filter((s: any) =>
+              s.siteName === siteName ||
+              s.site === siteFilter ||
+              s.site === siteName ||
+              s.location === siteName
+            );
+            console.log('[Dashboard] Filtered', filtered.length, 'services for site (client-side)');
+            return filtered; // STRICT: return filtered even if empty
+          }
+        } catch {
+          // Fall through
+        }
+
+        console.warn('[Dashboard] Service fetch failed for site, returning empty (strict mode)');
+        return []; // STRICT: empty on failure when site-scoped
       }
 
+      // No site filter: return all services
       const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
-
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
       }
-
       const data = await response.json();
       const services = Array.isArray(data) ? data : (data.services || data.data || []);
-
-      // Client-side filtering by site if site-specific fetch failed
-      if (siteFilter) {
-        const site = await apiService.getSiteById(siteFilter);
-        const siteName = site?.name || site?.siteName || siteFilter;
-        const filtered = services.filter((s: any) =>
-          s.siteName === siteName ||
-          s.site === siteFilter ||
-          s.site === siteName ||
-          s.location === siteName
-        );
-        // If filtering returned results, use them; otherwise show all (some services lack site metadata)
-        if (filtered.length > 0) {
-          console.log('[Dashboard] Filtered', filtered.length, 'services for site (client-side)');
-          return filtered;
-        }
-      }
-
       console.log('[Dashboard] Fetched', services.length, 'services');
       return services;
     } catch (error) {
@@ -538,29 +543,55 @@ function DashboardEnhancedComponent() {
   };
 
   const fetchNotifications = async (): Promise<Notification[]> => {
-    console.log('[Dashboard] Fetching notifications from /v1/notifications...');
-    
+    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    console.log('[Dashboard] Fetching notifications' + (siteFilter ? ` for site: ${siteFilter}` : ''));
+
     try {
       const response = await apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
-      
+
       if (!response.ok) {
         // Try alternative endpoint
         const altResponse = await apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000);
         if (altResponse.ok) {
           const altData = await altResponse.json();
-          return Array.isArray(altData) ? altData : (altData.alerts || altData.data || []);
+          const allNotifs = Array.isArray(altData) ? altData : (altData.alerts || altData.data || []);
+          return siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
         }
         throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
-      const notifications = Array.isArray(data) ? data : (data.notifications || data.data || []);
-      
-      console.log('[Dashboard] Fetched', notifications.length, 'notifications');
+      const allNotifs = Array.isArray(data) ? data : (data.notifications || data.data || []);
+
+      // STRICT: filter by site device correlation when site-scoped
+      const notifications = siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
+      console.log('[Dashboard] Fetched', notifications.length, 'notifications' + (siteFilter ? ' (site-scoped)' : ''));
       return notifications;
     } catch (error) {
       console.log('[Dashboard] Notifications not available:', error);
       return [];
+    }
+  };
+
+  // STRICT: Filter notifications by AP-site device correlation
+  const filterNotificationsBySite = async (notifications: Notification[], siteId: string): Promise<Notification[]> => {
+    try {
+      const siteAPs = await apiService.getAccessPointsBySite(siteId);
+      const deviceIds = new Set<string>();
+      siteAPs.forEach(ap => {
+        if (ap.name) deviceIds.add(ap.name.toLowerCase());
+        if (ap.serialNumber) deviceIds.add(ap.serialNumber.toLowerCase());
+        if ((ap as any).hostname) deviceIds.add((ap as any).hostname.toLowerCase());
+        if ((ap as any).macAddress) deviceIds.add((ap as any).macAddress.toLowerCase());
+      });
+      if (deviceIds.size === 0) return []; // STRICT: no devices = no notifications
+      return notifications.filter(n => {
+        const source = ((n as any).source || '').toLowerCase();
+        const device = ((n as any).deviceName || (n as any).device || '').toLowerCase();
+        return deviceIds.has(source) || deviceIds.has(device);
+      });
+    } catch {
+      return []; // STRICT: empty on failure
     }
   };
 

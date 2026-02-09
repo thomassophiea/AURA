@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Button } from './ui/button';
-import { Building, Clock, X, Calendar, Settings2, Layers } from 'lucide-react';
+import { Building, Clock, X, Calendar, Settings2, Layers, Globe } from 'lucide-react';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { apiService, Site } from '../services/api';
 import { Badge } from './ui/badge';
@@ -19,15 +19,17 @@ import { ContextConfigModal } from './ContextConfigModal';
 export interface FilterBarProps {
   showSiteFilter?: boolean;
   showTimeRangeFilter?: boolean;
+  showEnvironmentFilter?: boolean;
   showContextFilter?: boolean;
   customFilters?: React.ReactNode;
-  onFilterChange?: (filters: { site: string; timeRange: string; context?: string }) => void;
+  onFilterChange?: (filters: { site: string; timeRange: string; environment?: string; context?: string }) => void;
   className?: string;
 }
 
 export function FilterBar({
   showSiteFilter = true,
   showTimeRangeFilter = true,
+  showEnvironmentFilter = true,
   showContextFilter = false,
   customFilters,
   onFilterChange,
@@ -50,10 +52,11 @@ export function FilterBar({
       onFilterChange({
         site: filters.site,
         timeRange: filters.timeRange,
+        environment: filters.environment,
         context: selectedContextId
       });
     }
-  }, [filters.site, filters.timeRange, selectedContextId, onFilterChange]);
+  }, [filters.site, filters.timeRange, filters.environment, selectedContextId, onFilterChange]);
 
   const loadSites = async () => {
     setIsLoadingSites(true);
@@ -98,6 +101,27 @@ export function FilterBar({
                     {getSiteDisplayName(site)}
                   </SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Environment Filter */}
+        {showEnvironmentFilter && (
+          <div className="flex items-center gap-2">
+            <Select
+              value={filters.environment}
+              onValueChange={(value) => updateFilter('environment', value)}
+            >
+              <SelectTrigger className="w-44 h-10">
+                <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
+                <SelectValue placeholder="Environment" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Environments</SelectItem>
+                <SelectItem value="production">Production</SelectItem>
+                <SelectItem value="lab">Lab</SelectItem>
+                <SelectItem value="staging">Staging</SelectItem>
               </SelectContent>
             </Select>
           </div>

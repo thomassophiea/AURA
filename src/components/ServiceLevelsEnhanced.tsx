@@ -195,18 +195,36 @@ export function ServiceLevelsEnhanced() {
 
       let servicesList: any[] = [];
 
-      // Use site-specific API when site is selected
+      // STRICT: Use site-specific API when site is selected. No global fallback.
       if (siteId) {
         try {
           servicesList = await apiService.getServicesBySite(siteId);
           console.log('[ServiceLevels] Loaded', servicesList.length, 'services for site');
         } catch {
-          console.log('[ServiceLevels] Site-specific services failed, falling back to all');
+          // Fall through to client-side filter
         }
-      }
 
-      // Fallback to all services
-      if (servicesList.length === 0) {
+        // STRICT: If site-specific API returned nothing, try client-side filter
+        if (servicesList.length === 0) {
+          try {
+            const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+            if (response.ok) {
+              const data = await response.json();
+              const allServices = Array.isArray(data) ? data : (data.services || data.data || []);
+              const site = await apiService.getSiteById(siteId).catch(() => null);
+              const siteName = site?.name || site?.siteName || siteId;
+              servicesList = allServices.filter((service: any) => {
+                const serviceSite = service.siteName || service.site || service.location;
+                return serviceSite === siteName || serviceSite === siteId;
+              });
+              console.log('[ServiceLevels] Client-side filtered to', servicesList.length, 'services for site');
+            }
+          } catch {
+            // STRICT: empty on failure
+          }
+        }
+      } else {
+        // No site filter: fetch all services
         const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
         if (!response.ok) {
           throw new Error(`API returned ${response.status}`);
@@ -217,20 +235,8 @@ export function ServiceLevelsEnhanced() {
 
       console.log('[ServiceLevels] Loaded', servicesList.length, 'services');
 
-      // Client-side filtering by site if API-level filtering wasn't available
-      let filteredServices = servicesList;
-      if (siteId && servicesList.length > 0) {
-        const site = await apiService.getSiteById(siteId).catch(() => null);
-        const siteName = site?.name || site?.siteName || siteId;
-        const filtered = servicesList.filter((service: any) => {
-          const serviceSite = service.siteName || service.site || service.location;
-          return serviceSite === siteName || serviceSite === siteId;
-        });
-        if (filtered.length > 0) {
-          filteredServices = filtered;
-          console.log('[ServiceLevels] Filtered to', filteredServices.length, 'services for site:', siteName);
-        }
-      }
+      // STRICT: No additional global fallback - use what we have (even if empty)
+      const filteredServices = servicesList;
       
       setServices(filteredServices);
 
