@@ -12,18 +12,18 @@ import { SLEClassifierTree } from './SLEClassifierTree';
 import { SLERootCausePanel } from './SLERootCausePanel';
 import type { SLEMetric, SLEClassifier, SLERootCause } from '../../types/sle';
 
-// Status-based gradient backgrounds (left-to-right, like Mist)
+// Status-based gradient backgrounds — vibrant, clearly tinted
 const STATUS_GRADIENTS = {
-  good: 'linear-gradient(135deg, #1a3a2a 0%, #0f2b1f 30%, #162420 100%)',
-  warn: 'linear-gradient(135deg, #3a2a0a 0%, #2b1f0a 30%, #242016 100%)',
-  poor: 'linear-gradient(135deg, #3a1a1a 0%, #2b0f0f 30%, #241616 100%)',
+  good: 'linear-gradient(135deg, #14532d 0%, #166534 40%, #1a3a2a 100%)',
+  warn: 'linear-gradient(135deg, #713f12 0%, #854d0e 40%, #4a3520 100%)',
+  poor: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 40%, #4a2020 100%)',
 } as const;
 
-// Border glow based on status
+// Border glow based on status — stronger
 const STATUS_BORDER = {
-  good: '1px solid rgba(34, 197, 94, 0.25)',
-  warn: '1px solid rgba(245, 158, 11, 0.25)',
-  poor: '1px solid rgba(239, 68, 68, 0.25)',
+  good: '1px solid rgba(34, 197, 94, 0.45)',
+  warn: '1px solid rgba(245, 158, 11, 0.45)',
+  poor: '1px solid rgba(239, 68, 68, 0.45)',
 } as const;
 
 const SLE_ICONS: Record<string, React.ElementType> = {
@@ -124,12 +124,12 @@ export function SLEBlock({ sle, stations = [], aps = [] }: SLEBlockProps) {
         <div className="flex items-start justify-between p-5 pb-2">
           <div className="flex-1">
             <div className="flex items-center gap-2.5 mb-1">
-              <div className="p-1.5 rounded-lg bg-white/10">
-                <Icon className="h-4 w-4 text-white/70" />
+              <div className="p-1.5 rounded-lg bg-white/15">
+                <Icon className="h-4 w-4 text-white/90" />
               </div>
               <h3 className="text-sm font-bold uppercase tracking-widest text-white">{sle.name}</h3>
             </div>
-            <p className="text-[11px] text-white/50 ml-9">{sle.description}</p>
+            <p className="text-[11px] text-white/70 ml-9">{sle.description}</p>
 
             {/* Client/AP count badges */}
             <div className="flex items-center gap-2 mt-3 ml-9">

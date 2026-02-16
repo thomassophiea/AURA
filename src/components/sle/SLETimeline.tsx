@@ -29,8 +29,8 @@ export function SLETimeline({ data, status, height = 80, id = 'default' }: SLETi
       <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 2 }}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="rgba(255,255,255,0.25)" />
-            <stop offset="95%" stopColor="rgba(255,255,255,0)" />
+            <stop offset="5%" stopColor="rgba(255,255,255,0.45)" />
+            <stop offset="95%" stopColor="rgba(255,255,255,0.05)" />
           </linearGradient>
         </defs>
         <XAxis dataKey="time" hide />
@@ -50,8 +50,8 @@ export function SLETimeline({ data, status, height = 80, id = 'default' }: SLETi
         <Area
           type="monotone"
           dataKey="successRate"
-          stroke="rgba(255,255,255,0.5)"
-          strokeWidth={1.5}
+          stroke="rgba(255,255,255,0.8)"
+          strokeWidth={2}
           fill={`url(#${gradientId})`}
           isAnimationActive={false}
           dot={false}
