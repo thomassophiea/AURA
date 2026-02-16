@@ -15,7 +15,7 @@ import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
 import { computeAllWirelessSLEs } from '../../services/sleCalculationEngine';
-import { SLEBlock } from './SLEBlock';
+import { SLERadialMap } from './SLERadialMap';
 import { SLE_STATUS_COLORS } from '../../types/sle';
 import type { SLEMetric } from '../../types/sle';
 import { toast } from 'sonner';
@@ -231,16 +231,7 @@ export function SLEDashboard() {
         </TabsList>
 
         <TabsContent value="wireless" className="mt-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {wirelessSLEs.map(sle => (
-              <SLEBlock
-                key={sle.id}
-                sle={sle}
-                stations={stations}
-                aps={aps}
-              />
-            ))}
-          </div>
+          <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />
         </TabsContent>
 
         <TabsContent value="wired" className="mt-4">
