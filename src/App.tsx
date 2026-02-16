@@ -23,6 +23,7 @@ const prefetchCriticalComponents = () => {
   }, 2000); // Delay to not block initial render
 };
 const ServiceLevelsEnhanced = lazy(() => import('./components/ServiceLevelsEnhanced').then(m => ({ default: m.ServiceLevelsEnhanced })));
+const SLEDashboard = lazy(() => import('./components/sle/SLEDashboard').then(m => ({ default: m.SLEDashboard })));
 const AlertsEventsEnhanced = lazy(() => import('./components/AlertsEventsEnhanced').then(m => ({ default: m.AlertsEventsEnhanced })));
 const ReportWidgets = lazy(() => import('./components/ReportWidgets').then(m => ({ default: m.ReportWidgets })));
 const ConfigureNetworks = lazy(() => import('./components/ConfigureNetworks').then(m => ({ default: m.ConfigureNetworks })));
@@ -68,6 +69,7 @@ import { useDeviceDetection } from './hooks/useDeviceDetection';
 const pageInfo = {
   'workspace': { title: 'Workspace', description: 'Create custom widgets for Devices, Clients, Licensing, and Alerts' },
   'service-levels': { title: 'Contextual Insights', description: 'Context-aware network monitoring and analytics' },
+  'sle-dashboard': { title: 'Service Levels', description: 'SLE metrics with drill-down classifier analysis' },
   'app-insights': { title: 'App Insights', description: 'Application visibility and traffic analytics' },
   'connected-clients': { title: 'Connected Clients', description: 'View and manage connected devices' },
   'access-points': { title: 'Access Points', description: 'Manage and monitor wireless access points' },
@@ -850,6 +852,8 @@ export default function App() {
         return <Workspace api={apiService} />;
       case 'service-levels':
         return <DashboardEnhanced />;
+      case 'sle-dashboard':
+        return <SLEDashboard />;
       case 'app-insights':
         return <AppInsights api={apiService} />;
       case 'access-points':

@@ -27,7 +27,8 @@ import {
   Bell,
   HardDrive,
   LayoutDashboard,
-  HelpCircle
+  HelpCircle,
+  Target
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -53,6 +54,7 @@ interface SidebarProps {
 const navigationItems = [
   { id: 'workspace', label: 'Workspace', icon: LayoutDashboard },
   { id: 'service-levels', label: 'Contextual Insights', icon: Brain },
+  { id: 'sle-dashboard', label: 'Service Levels', icon: Target },
   { id: 'app-insights', label: 'App Insights', icon: AppWindow },
   { id: 'connected-clients', label: 'Connected Clients', icon: Users },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
