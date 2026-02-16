@@ -1527,11 +1527,19 @@ class ApiService {
 
   async getSiteById(siteId: string): Promise<Site | null> {
     try {
-      // First try to get from the sites list
+      // First try to get from the sites list by ID, then by name
       const sites = await this.getSites();
       const foundSite = sites.find(site => site.id === siteId);
       if (foundSite) {
         return foundSite;
+      }
+      // Fallback: try matching by name (in case caller passed a name instead of ID)
+      const foundByName = sites.find(site =>
+        (site.name && site.name.toLowerCase() === siteId.toLowerCase()) ||
+        (site.siteName && site.siteName.toLowerCase() === siteId.toLowerCase())
+      );
+      if (foundByName) {
+        return foundByName;
       }
       
       // If not found in sites list, try individual site lookup endpoints

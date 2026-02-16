@@ -2219,7 +2219,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
                 {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.name || site.siteName || site.id}>
+                  <SelectItem key={site.id} value={site.id}>
                     {site.name || site.siteName} {site.aps ? `(${site.aps} APs)` : ''}
                   </SelectItem>
                 ))}

@@ -818,6 +818,19 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               </div>
             </div>
             
+            <Select value={siteFilter} onValueChange={setSiteFilter}>
+              <SelectTrigger className="w-36 h-10">
+                <MapPin className="mr-2 h-4 w-4" />
+                <SelectValue placeholder="Site" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sites</SelectItem>
+                {getUniqueSites().map((site) => (
+                  <SelectItem key={site} value={site}>{site}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-28 h-10">
                 <Filter className="mr-2 h-4 w-4" />
