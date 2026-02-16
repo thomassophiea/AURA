@@ -167,7 +167,7 @@ interface Notification {
 
 function DashboardEnhancedComponent() {
   // Global filters for site/time filtering
-  const { filters } = useGlobalFilters();
+  const { filters, updateFilter } = useGlobalFilters();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -284,6 +284,15 @@ function DashboardEnhancedComponent() {
     status: 'resolved' | 'in-progress' | 'monitoring' | 'stable' | 'requires-action';
     entityNames?: string[];
   } | null>(null);
+
+  // Sync operational context siteId to global filters on mount/change
+  useEffect(() => {
+    if (operationalCtx.mode === 'SITE' && operationalCtx.siteId) {
+      if (filters.site !== operationalCtx.siteId) {
+        updateFilter('site', operationalCtx.siteId);
+      }
+    }
+  }, [operationalCtx.siteId, operationalCtx.mode]);
 
   useEffect(() => {
     loadDashboardData();
@@ -452,19 +461,38 @@ function DashboardEnhancedComponent() {
     console.log('[Dashboard] Fetching stations' + (siteFilter ? ` for site: ${siteFilter}` : ''));
 
     try {
-      // If site is selected, use site-specific endpoint
+      // If site is selected, use site-specific endpoint with client-side fallback
       if (siteFilter) {
-        const response = await apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000);
+        // Try site-scoped API first
+        try {
+          const response = await apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000);
+          if (response.ok) {
+            const data = await response.json();
+            const stations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+            console.log('[Dashboard] Fetched', stations.length, 'stations for site (API-scoped)');
+            return stations;
+          }
+        } catch { /* fall through to client-side filter */ }
 
-        if (!response.ok) {
-          throw new Error(`API returned ${response.status}`);
-        }
+        // STRICT: Client-side fallback - filter all stations by site name/ID
+        try {
+          const site = await apiService.getSiteById(siteFilter);
+          const siteName = site?.name || site?.siteName || siteFilter;
 
-        const data = await response.json();
-        const stations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+          const response = await apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000);
+          if (response.ok) {
+            const data = await response.json();
+            const allStations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+            const filtered = allStations.filter((s: any) =>
+              s.siteName === siteName || s.siteId === siteFilter || s.siteName === siteFilter
+            );
+            console.log('[Dashboard] Filtered', filtered.length, '/', allStations.length, 'stations for site (client-side)');
+            return filtered;
+          }
+        } catch { /* fall through */ }
 
-        console.log('[Dashboard] Fetched', stations.length, 'stations for site');
-        return stations;
+        console.warn('[Dashboard] Station fetch failed for site, returning empty (strict mode)');
+        return []; // STRICT: empty on failure when site-scoped
       } else {
         // Get all stations
         const response = await apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000);
@@ -1477,11 +1505,22 @@ function DashboardEnhancedComponent() {
               setSelectorTab(tab);
               setSelectedEntityId(null);
               setSelectedEntityName(null);
+              // Reset site filter when switching away from site-scoped views
+              if (tab === 'ai-insights') {
+                updateFilter('site', 'all');
+              }
             }}
             onSelectionChange={(tab, id, name) => {
               setSelectedEntityId(id);
               setSelectedEntityName(name || null);
               console.log('[Dashboard] Selection changed:', { tab, id, name });
+              // Sync site selection to global filters so all data fetching is site-scoped
+              if (tab === 'site' && id) {
+                updateFilter('site', id);
+              } else if (tab === 'site' && !id) {
+                // "All Sites" selected - reset to global view
+                updateFilter('site', 'all');
+              }
             }}
           />
           <FilterBar
