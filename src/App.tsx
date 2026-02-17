@@ -631,19 +631,22 @@ export default function App() {
     };
   }, []);
 
+  // All special themes that layer on top of dark mode
+  const DARK_OVERLAY_THEMES = ['synthwave', 'pirate', 'mi5'] as const;
+
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'dark' | 'synthwave') => {
+  const applyTheme = (newTheme: string) => {
     const root = document.documentElement;
 
-    // Apply color variables from themes.ts (synthwave uses dark as base)
+    // All overlay themes use dark as their base
+    const isDarkOverlay = DARK_OVERLAY_THEMES.includes(newTheme as any);
     applyThemeColors(newTheme === 'light' ? 'default' : 'dark');
 
     // Remove existing theme classes
-    root.classList.remove('light', 'dark', 'synthwave');
+    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
 
-    if (newTheme === 'synthwave') {
-      // Synthwave layers on top of dark mode
-      root.classList.add('dark', 'synthwave');
+    if (isDarkOverlay) {
+      root.classList.add('dark', newTheme);
     } else {
       root.classList.add(newTheme);
     }
@@ -652,9 +655,9 @@ export default function App() {
     root.setAttribute('data-theme', newTheme);
 
     // Ensure body also gets the theme class
-    document.body.classList.remove('light', 'dark', 'synthwave');
-    if (newTheme === 'synthwave') {
-      document.body.classList.add('dark', 'synthwave');
+    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
+    if (isDarkOverlay) {
+      document.body.classList.add('dark', newTheme);
     } else {
       document.body.classList.add(newTheme);
     }

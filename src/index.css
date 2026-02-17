@@ -5610,9 +5610,8 @@ body.synthwave {
   backdrop-filter: blur(4px) !important;
 }
 
-/* Override bg-black/50 from overlay */
-.synthwave [data-slot="sheet-overlay"].bg-black\/50,
-.synthwave div[class*="bg-black"] {
+/* Override bg-black/50 from sheet overlay only */
+.synthwave [data-slot="sheet-overlay"].bg-black\/50 {
   background: rgba(7, 10, 26, 0.85) !important;
   background-color: rgba(7, 10, 26, 0.85) !important;
 }
@@ -5651,56 +5650,18 @@ body.synthwave {
    ======================================== */
 
 /* Pirate Background - Weathered wood planks with ocean depths */
-.pirate {
-  background: #1A0F0A;
-  position: relative;
+html.pirate,
+body.pirate {
+  background: transparent !important;
 }
 
-/* Wood planks background with ocean scene */
-.pirate::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: 100vh;
-  background-image:
-    linear-gradient(
-      to bottom,
-      rgba(26, 15, 10, 0.88) 0%,
-      rgba(26, 15, 10, 0.85) 50%,
-      rgba(13, 6, 4, 0.90) 100%
-    ),
-    url('https://imgs.search.brave.com/q7xqJ2sLEpxuZINpq53jsysNaj6PoAH-7OkGR1mAMB4/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9jZG4u/anNkZWxpdnIubmV0/L2doL2hvbWFyci1s/YWJzL2Rhc2hib2Fy/ZC1pY29ucy9wbmcv/dGhlLXBpcmF0ZS1i/YXkucG5n');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 1;
+.pirate .bg-background {
+  background: transparent !important;
 }
 
-/* Content layering - only target the root container */
 .pirate #root {
   position: relative;
   z-index: 1;
-}
-
-/* Aged paper/parchment texture overlay */
-.pirate::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Pirate Card Styling - Weathered wood with gold trim */
@@ -5823,9 +5784,9 @@ body.synthwave {
   background: rgba(184, 134, 11, 0.12) !important;
 }
 
-/* Text Styling - Weathered bone */
+/* Text Styling - Weathered bone (no !important to allow inline overrides) */
 .pirate {
-  color: #F5E6D3 !important;
+  color: #F5E6D3;
 }
 
 .pirate p,
@@ -5837,11 +5798,11 @@ body.synthwave {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-/* Headings - Treasure gold glow */
+/* Headings - Treasure gold glow (no !important to allow inline overrides) */
 .pirate h1,
 .pirate h2,
 .pirate h3 {
-  color: #D4AF37 !important;
+  color: #D4AF37;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
@@ -5912,9 +5873,8 @@ body.synthwave {
   backdrop-filter: blur(4px) !important;
 }
 
-/* Override bg-black/50 from overlay */
-.pirate [data-slot="sheet-overlay"].bg-black\/50,
-.pirate div[class*="bg-black"] {
+/* Override bg-black/50 from sheet overlay only */
+.pirate [data-slot="sheet-overlay"].bg-black\/50 {
   background: rgba(13, 6, 4, 0.88) !important;
   background-color: rgba(13, 6, 4, 0.88) !important;
 }
@@ -5968,57 +5928,19 @@ body.synthwave {
    Your mission, should you choose to accept it...
    ======================================== */
 
-/* MI5 Background - Mission Impossible imagery */
-.mi5 {
-  background: #0A0A0A;
-  position: relative;
+/* MI5 Background - Mission Impossible */
+html.mi5,
+body.mi5 {
+  background: transparent !important;
 }
 
-/* Mission Impossible background with dark overlay */
-.mi5::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: 100vh;
-  background-image:
-    linear-gradient(
-      to bottom,
-      rgba(10, 10, 10, 0.88) 0%,
-      rgba(10, 10, 10, 0.85) 50%,
-      rgba(5, 5, 5, 0.90) 100%
-    ),
-    url('https://mcdn.wallpapersafari.com/medium/23/37/myWrKE.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 1;
+.mi5 .bg-background {
+  background: transparent !important;
 }
 
-/* Content layering - only target the root container */
 .mi5 #root {
   position: relative;
   z-index: 1;
-}
-
-/* Subtle noise texture overlay */
-.mi5::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
-  opacity: 0.03;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* MI5 Card Styling - Dark with red accents */
@@ -6141,9 +6063,9 @@ body.synthwave {
   background: rgba(211, 0, 0, 0.10) !important;
 }
 
-/* Text Styling - Clean and readable */
+/* Text Styling - Clean and readable (no !important to allow inline overrides) */
 .mi5 {
-  color: #E8E8E8 !important;
+  color: #E8E8E8;
 }
 
 .mi5 p,
@@ -6155,11 +6077,11 @@ body.synthwave {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
-/* Headings - Red emphasis */
+/* Headings - Red emphasis (no !important to allow inline overrides) */
 .mi5 h1,
 .mi5 h2,
 .mi5 h3 {
-  color: #D30000 !important;
+  color: #D30000;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 
@@ -6230,9 +6152,8 @@ body.synthwave {
   backdrop-filter: blur(4px) !important;
 }
 
-/* Override bg-black/50 from overlay */
-.mi5 [data-slot="sheet-overlay"].bg-black\/50,
-.mi5 div[class*="bg-black"] {
+/* Override bg-black/50 from sheet overlay only */
+.mi5 [data-slot="sheet-overlay"].bg-black\/50 {
   background: rgba(10, 10, 10, 0.90) !important;
   background-color: rgba(10, 10, 10, 0.90) !important;
 }
