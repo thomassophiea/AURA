@@ -938,8 +938,8 @@ function DashboardEnhancedComponent() {
     const serviceIdToNameMapLocal = new Map<string, string>();
     servicesData.forEach(service => {
       if (service.id) {
-        // Prefer SSID over name, then name, as SSID is more recognizable to users
-        const displayName = service.ssid || service.name || service.id;
+        // Prefer SSID over name, then serviceName, then name, as SSID is most recognizable
+        const displayName = service.ssid || service.serviceName || service.name || service.id;
         serviceIdToNameMapLocal.set(service.id, displayName);
       }
     });
@@ -1010,12 +1010,17 @@ function DashboardEnhancedComponent() {
       totalDownload += rx;
 
       // Track by service - try multiple fields to identify the service/network
-      // Priority: 1) SSID (most user-friendly), 2) serviceName, 3) lookup serviceId in map, 4) raw serviceId, 5) 'Unknown'
-      let serviceName = station.ssid || station.serviceName;
+      // Priority: 1) SSID, 2) essid, 3) serviceName, 4) network/networkName/profileName, 5) lookup serviceId, 6) 'Unknown'
+      let serviceName = station.ssid || station.essid || station.serviceName || station.network || station.networkName || station.profileName;
 
       if (!serviceName && station.serviceId) {
         // Try to resolve serviceId to a friendly name using the services lookup
-        serviceName = serviceIdToNameMapLocal.get(station.serviceId) || station.serviceId;
+        serviceName = serviceIdToNameMapLocal.get(station.serviceId) || undefined;
+      }
+
+      // If still no name and we have a UUID-like serviceId, show 'Unknown Service' instead
+      if (!serviceName && station.serviceId) {
+        serviceName = station.serviceId.length > 20 ? 'Unknown Service' : station.serviceId;
       }
 
       serviceName = serviceName || 'Unknown';
@@ -1371,12 +1376,14 @@ function DashboardEnhancedComponent() {
 
   // Helper function to get service name for a station (must match logic in processStations)
   const getServiceNameForStation = (station: Station): string => {
-    // Priority: 1) SSID (most user-friendly), 2) serviceName, 3) lookup serviceId in map, 4) raw serviceId, 5) 'Unknown'
-    let serviceName = station.ssid || station.serviceName;
+    let serviceName = station.ssid || station.essid || station.serviceName || station.network || station.networkName || station.profileName;
 
     if (!serviceName && station.serviceId) {
-      // Try to resolve serviceId to a friendly name using the services lookup
-      serviceName = serviceIdToNameMap.get(station.serviceId) || station.serviceId;
+      serviceName = serviceIdToNameMap.get(station.serviceId) || undefined;
+    }
+
+    if (!serviceName && station.serviceId) {
+      serviceName = station.serviceId.length > 20 ? 'Unknown Service' : station.serviceId;
     }
 
     return serviceName || 'Unknown';
