@@ -142,13 +142,13 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
         </defs>
 
         {/* === Column headers === */}
-        <text x={col0 + barW / 2} y={20} textAnchor="middle" className="fill-white/60 text-[11px] font-semibold uppercase tracking-[0.2em]">
+        <text x={col0 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
           Clients
         </text>
-        <text x={col1 + barW / 2} y={20} textAnchor="middle" className="fill-white/60 text-[11px] font-semibold uppercase tracking-[0.2em]">
+        <text x={col1 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
           Outcome
         </text>
-        <text x={col2 + barW / 2} y={20} textAnchor="middle" className="fill-white/60 text-[11px] font-semibold uppercase tracking-[0.2em]">
+        <text x={col2 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
           Root Cause
         </text>
 
