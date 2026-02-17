@@ -5,9 +5,7 @@
 
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Wifi, Signal, Radio, Shield, Clock, Activity, Target } from 'lucide-react';
-import { SLEScoreGauge } from './SLEScoreGauge';
-import { SLETimeline } from './SLETimeline';
-import { SLEClassifierTree } from './SLEClassifierTree';
+import { SLESankeyFlow } from './SLESankeyFlow';
 import { SLERootCausePanel } from './SLERootCausePanel';
 import { SLE_STATUS_COLORS, getSLEStatus } from '../../types/sle';
 import type { SLEMetric, SLEClassifier, SLERootCause } from '../../types/sle';
@@ -266,60 +264,41 @@ export function SLERadialMap({ sles, stations, aps }: SLERadialMapProps) {
         })}
       </div>
 
-      {/* Detail panel for selected SLE */}
+      {/* Sankey flow diagram for selected SLE */}
       {selected && (
         <div
-          className="rounded-xl overflow-hidden transition-all duration-300 animate-in slide-in-from-top-2"
+          className="rounded-xl overflow-hidden transition-all duration-300"
           style={{
             background: STATUS_DETAIL_BG[selected.status],
             border: `1px solid ${STATUS_NODE_BORDER[selected.status]}`,
           }}
         >
-          <div className="flex items-start justify-between p-5 pb-3">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <div className="p-1.5 rounded-lg bg-white/15">
-                  {(() => {
-                    const Icon = SLE_ICONS[selected.id] || Target;
-                    return <Icon className="h-4 w-4 text-white/90" />;
-                  })()}
-                </div>
-                <h3 className="text-sm font-bold uppercase tracking-widest text-white">
-                  {selected.name}
-                </h3>
-              </div>
-              <p className="text-[11px] text-white/70 ml-9">{selected.description}</p>
-              <div className="flex items-center gap-2 mt-2 ml-9">
-                <span className="text-[10px] font-medium text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
-                  {selected.totalUserMinutes} {selected.id === 'ap_health' ? 'APs' : 'clients'}
-                </span>
-                {selected.affectedUserMinutes > 0 && (
-                  <span className="text-[10px] font-medium text-red-200 bg-red-500/30 px-2.5 py-0.5 rounded-full">
-                    {selected.affectedUserMinutes} affected
-                  </span>
-                )}
-              </div>
+          {/* Compact header */}
+          <div className="flex items-center gap-2.5 px-5 pt-4 pb-2">
+            <div className="p-1.5 rounded-lg bg-white/15">
+              {(() => {
+                const Icon = SLE_ICONS[selected.id] || Target;
+                return <Icon className="h-4 w-4 text-white/90" />;
+              })()}
             </div>
-            <SLEScoreGauge value={selected.successRate} status={selected.status} size={64} />
+            <div>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">
+                {selected.name}
+              </h3>
+              <p className="text-[11px] text-white/60">{selected.description}</p>
+            </div>
+            <span
+              className="ml-auto text-xl font-bold"
+              style={{ color: SLE_STATUS_COLORS[selected.status].hex }}
+            >
+              {selected.successRate.toFixed(1)}%
+            </span>
           </div>
 
-          {/* Timeline */}
-          <div className="px-5">
-            <SLETimeline
-              data={selected.timeSeries}
-              status={selected.status}
-              height={80}
-              id={selected.id}
-            />
-          </div>
-
-          {/* Classifiers */}
-          <div className="px-5 pb-4 pt-2">
-            <div className="text-[10px] text-white/50 font-medium mb-2 uppercase tracking-widest">
-              Classifiers
-            </div>
-            <SLEClassifierTree
-              classifiers={selected.classifiers}
+          {/* Sankey flow */}
+          <div className="px-3 pb-4">
+            <SLESankeyFlow
+              sle={selected}
               onClassifierClick={(c) => {
                 setRootCause(buildRootCause(c, selected, stations, aps));
               }}
