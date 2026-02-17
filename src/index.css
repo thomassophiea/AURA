@@ -5275,8 +5275,15 @@ body.synthwave {
   background: transparent !important;
 }
 
-/* Border Adjustments - 22% opacity on cyan */
-.synthwave [class*="border"] {
+/* Border Adjustments - only target Tailwind border utility classes, not inline styles */
+.synthwave .border,
+.synthwave .border-border,
+.synthwave .border-input,
+.synthwave .border-muted,
+.synthwave [class*="border-border"],
+.synthwave [class*="border-input"],
+.synthwave [class*="border-muted"],
+.synthwave [class*="divide-"] {
   border-color: rgba(0, 229, 255, 0.22) !important;
 }
 
@@ -5563,9 +5570,11 @@ body.synthwave {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
-/* Make sure primary text is bright and readable */
+/* Make sure primary text is bright and readable - targeted selectors only */
 .synthwave .text-foreground,
-.synthwave [class*="text-"] {
+.synthwave .text-card-foreground,
+.synthwave .text-popover-foreground,
+.synthwave .text-accent-foreground {
   color: #F2F6FF !important;
 }
 
