@@ -1038,7 +1038,22 @@ export default function App() {
 
   return (
     <>
-      <div className="h-screen flex bg-background">
+      {/* Miami Vice sunset background - fixed behind everything */}
+      {theme === 'synthwave' && (
+        <div
+          className="fixed inset-0 w-screen h-screen"
+          style={{
+            zIndex: 0,
+            pointerEvents: 'none',
+            background: [
+              "url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed",
+              "radial-gradient(ellipse 30% 28% at 50% 50%, rgba(255,213,79,0.85) 0%, rgba(255,171,64,0.65) 25%, rgba(255,109,0,0.35) 50%, rgba(255,61,0,0.15) 70%, transparent 100%)",
+              "linear-gradient(to bottom, #0a0520 0%, #150a35 10%, #2d1260 20%, #5c1a8e 30%, #8e1580 37%, #c91880 43%, #e83068 47%, #ff5040 51%, #ff7830 55%, #ff5040 59%, #c91880 65%, #5c1a8e 75%, #2d1260 85%, #150a35 92%, #0a0520 100%)"
+            ].join(', ')
+          }}
+        />
+      )}
+      <div className={`h-screen flex ${theme === 'synthwave' ? '' : 'bg-background'}`} style={{ position: 'relative', zIndex: 1 }}>
         <Sidebar
           onLogout={handleLogout}
           adminRole={adminRole}

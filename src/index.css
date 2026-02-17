@@ -5264,56 +5264,15 @@ html[data-theme="light"], html.light {
               box-shadow 140ms ease-out;
 }
 
-/* Miami Vice Sunset - applied directly to html */
-html.synthwave {
-  background:
-    /* Layer 1: Palm tree & city silhouette overlay */
-    url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed,
-    /* Layer 2: Sun glow - warm radial in the center */
-    radial-gradient(
-      ellipse 30% 28% at 50% 50%,
-      rgba(255, 213, 79, 0.85) 0%,
-      rgba(255, 171, 64, 0.65) 25%,
-      rgba(255, 109, 0, 0.35) 50%,
-      rgba(255, 61, 0, 0.15) 70%,
-      transparent 100%
-    ) fixed,
-    /* Layer 3: Sunset sky gradient */
-    linear-gradient(
-      to bottom,
-      #0a0520 0%,
-      #150a35 10%,
-      #2d1260 20%,
-      #5c1a8e 30%,
-      #8e1580 37%,
-      #c91880 43%,
-      #e83068 47%,
-      #ff5040 51%,
-      #ff7830 55%,
-      #ff5040 59%,
-      #c91880 65%,
-      #5c1a8e 75%,
-      #2d1260 85%,
-      #150a35 92%,
-      #0a0520 100%
-    ) fixed;
-  position: relative;
-}
-
-/* Body must be transparent so html background shows through */
+/* Miami Vice - background is rendered by React (fixed div in App.tsx) */
+/* Make body and containers transparent so the sunset shows through */
+html.synthwave,
 body.synthwave {
   background: transparent !important;
 }
 
-/* All intermediate containers must be transparent so the sunset shows through */
 .synthwave .bg-background {
   background: transparent !important;
-}
-
-/* Content layering */
-.synthwave #root {
-  position: relative;
-  z-index: 1;
 }
 
 /* Border Adjustments - 22% opacity on cyan */
