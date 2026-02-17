@@ -44,6 +44,21 @@ const STATUS_DETAIL_BG = {
   poor: 'rgba(153, 27, 27, 0.7)',
 } as const;
 
+/** Resolve the best human-friendly name for a station */
+function clientName(s: any): string {
+  return s.hostName || s.hostname || s.username || s.deviceType || s.macAddress || 'Unknown';
+}
+
+/** Resolve the best human-friendly AP name for a station */
+function clientAP(s: any): string {
+  return s.apName || s.apDisplayName || s.apHostname || s.accessPointName || s.apSerialNumber || s.apSerial || s.apSn || '-';
+}
+
+/** Resolve the best human-friendly AP name from an AP object */
+function apName(ap: any): string {
+  return ap.name || ap.hostname || ap.apName || ap.displayName || ap.serialNumber || ap.serial || 'Unknown AP';
+}
+
 function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any[], aps: any[]): SLERootCause {
   let affectedDevices: SLERootCause['affectedDevices'] = [];
   let affectedAPs: SLERootCause['affectedAPs'] = [];
@@ -55,8 +70,8 @@ function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any
       .slice(0, 30)
       .map(s => ({
         mac: s.macAddress || '',
-        name: s.hostName || s.hostname || '',
-        ap: s.apName || s.apSerial || '',
+        name: clientName(s),
+        ap: clientAP(s),
         rssi: s.rssi ?? s.rss,
       }));
     recommendations = [
@@ -72,8 +87,8 @@ function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any
       })
       .slice(0, 20)
       .map(ap => ({
-        serial: ap.serialNumber || '',
-        name: ap.name || ap.hostname || ap.serialNumber || '',
+        serial: ap.serialNumber || ap.serial || '',
+        name: apName(ap),
         status: ap.status || ap.connectionState || 'offline',
       }));
     recommendations = [
@@ -86,8 +101,8 @@ function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any
       .slice(0, 10)
       .map(s => ({
         mac: s.macAddress || '',
-        name: s.hostName || s.hostname || '',
-        ap: s.apName || s.apSerial || '',
+        name: clientName(s),
+        ap: clientAP(s),
       }));
     recommendations = [
       'Monitor this classifier for trends over time',

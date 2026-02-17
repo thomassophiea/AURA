@@ -52,9 +52,9 @@ export function SLERootCausePanel({ open, onClose, rootCause }: SLERootCausePane
                   <TableBody>
                     {rootCause.affectedDevices.slice(0, 20).map((dev, i) => (
                       <TableRow key={i} className="h-7">
-                        <TableCell className="py-1">{dev.name || 'Unknown'}</TableCell>
+                        <TableCell className="py-1">{dev.name || dev.mac || 'Unknown'}</TableCell>
                         <TableCell className="py-1 font-mono text-[10px]">{dev.mac}</TableCell>
-                        <TableCell className="py-1">{dev.ap || '-'}</TableCell>
+                        <TableCell className="py-1">{dev.ap && dev.ap !== '-' ? dev.ap : '-'}</TableCell>
                         {dev.rssi !== undefined && (
                           <TableCell className="py-1">
                             <Badge variant={dev.rssi > -70 ? 'outline' : 'destructive'} className="text-[10px]">
