@@ -15,16 +15,16 @@ export interface BrandConfig {
 
 export const branding: Record<ThemeMode, BrandConfig> = {
   default: {
-    name: 'AURA',
-    fullName: 'Extreme Platform ONE | AURA',
-    tagline: 'Autonomous Unified Radio Agent',
+    name: 'API',
+    fullName: 'Extreme Platform ONE | API',
+    tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   dark: {
-    name: 'AURA',
-    fullName: 'Extreme Platform ONE | AURA',
-    tagline: 'Autonomous Unified Radio Agent',
+    name: 'API',
+    fullName: 'Extreme Platform ONE | API',
+    tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   }

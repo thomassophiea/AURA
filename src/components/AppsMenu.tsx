@@ -34,8 +34,8 @@ interface App {
 const APPS: App[] = [
   {
     id: 'mobility-engine-mgmt',
-    name: 'AURA Management',
-    description: 'Full-featured management dashboard for AURA platform',
+    name: 'API Management',
+    description: 'Full-featured management dashboard for API platform',
     isActive: true,
     icon: Activity,
     url: 'https://tsophiea.ddns.net:443/management'

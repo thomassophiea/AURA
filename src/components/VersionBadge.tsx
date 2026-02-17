@@ -136,7 +136,7 @@ export function VersionBadge() {
 
           <div className="pt-2 border-t">
             <p className="text-xs text-muted-foreground">
-              Extreme Platform ONE | AURA
+              Extreme Platform ONE | API
             </p>
           </div>
         </div>

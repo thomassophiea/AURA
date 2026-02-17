@@ -776,7 +776,7 @@ export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
             </Button>
           )}
           <div>
-            <h1 className="text-2xl font-bold">AURA Platform REST API</h1>
+            <h1 className="text-2xl font-bold">API Platform REST API</h1>
             <p className="text-muted-foreground">
               Complete API documentation for Extreme Platform ONE • {apiCategories.length} categories • {totalEndpoints} endpoints
             </p>
