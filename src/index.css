@@ -5264,25 +5264,11 @@ html[data-theme="light"], html.light {
               box-shadow 140ms ease-out;
 }
 
-/* 80s Retro Background - App Shell */
-.synthwave {
-  background: #070A1A;
-  position: relative;
-}
-
-/* Miami Vice Sunset Sky - Pure CSS gradient + SVG silhouette */
-.synthwave::before {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100vw;
-  height: 100vh;
+/* Miami Vice Sunset - applied directly to html */
+html.synthwave {
   background:
     /* Layer 1: Palm tree & city silhouette overlay */
-    url('/synthwave-silhouette.svg') center bottom / cover no-repeat,
+    url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed,
     /* Layer 2: Sun glow - warm radial in the center */
     radial-gradient(
       ellipse 30% 28% at 50% 50%,
@@ -5291,7 +5277,7 @@ html[data-theme="light"], html.light {
       rgba(255, 109, 0, 0.35) 50%,
       rgba(255, 61, 0, 0.15) 70%,
       transparent 100%
-    ),
+    ) fixed,
     /* Layer 3: Sunset sky gradient */
     linear-gradient(
       to bottom,
@@ -5310,30 +5296,24 @@ html[data-theme="light"], html.light {
       #2d1260 85%,
       #150a35 92%,
       #0a0520 100%
-    );
-  pointer-events: none;
-  z-index: 0;
-  opacity: 1;
+    ) fixed;
+  position: relative;
 }
 
-/* Content layering - only target the root container */
+/* Body must be transparent so html background shows through */
+body.synthwave {
+  background: transparent !important;
+}
+
+/* All intermediate containers must be transparent so the sunset shows through */
+.synthwave .bg-background {
+  background: transparent !important;
+}
+
+/* Content layering */
 .synthwave #root {
   position: relative;
   z-index: 1;
-}
-
-/* Subtle Noise Texture (0.035 opacity) */
-.synthwave::after {
-  content: '';
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' /%3E%3C/svg%3E");
-  opacity: 0.035;
-  pointer-events: none;
-  z-index: 0;
 }
 
 /* Border Adjustments - 22% opacity on cyan */
