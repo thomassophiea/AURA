@@ -52,6 +52,7 @@ const GuestManagement = lazy(() => import('./components/GuestManagement').then(m
 const ApiDocumentation = lazy(() => import('./components/ApiDocumentation').then(m => ({ default: m.ApiDocumentation })));
 const Workspace = lazy(() => import('./components/Workspace').then(m => ({ default: m.Workspace })));
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
+const SynthwaveMusicPlayer = lazy(() => import('./components/SynthwaveMusicPlayer').then(m => ({ default: m.SynthwaveMusicPlayer })));
 import { apiService, ApiCallLog } from './services/api';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
@@ -110,13 +111,14 @@ export default function App() {
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'system'>('system');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
     data: null
   });
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isMusicPlayerDismissed, setIsMusicPlayerDismissed] = useState(false);
   const [networkAssistantEnabled, setNetworkAssistantEnabled] = useState(() => {
     // Default to false - hidden by default
     return localStorage.getItem('networkAssistantEnabled') === 'true';
@@ -183,7 +185,7 @@ export default function App() {
   useEffect(() => {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'system' | null;
       const initialTheme = savedTheme || 'system';
 
       setTheme(initialTheme);
@@ -630,28 +632,36 @@ export default function App() {
   }, []);
 
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'dark') => {
+  const applyTheme = (newTheme: 'light' | 'dark' | 'synthwave') => {
     const root = document.documentElement;
 
-    // Apply color variables from themes.ts
-    applyThemeColors(newTheme === 'light' ? 'default' : newTheme);
+    // Apply color variables from themes.ts (synthwave uses dark as base)
+    applyThemeColors(newTheme === 'light' ? 'default' : 'dark');
 
     // Remove existing theme classes
-    root.classList.remove('light', 'dark');
+    root.classList.remove('light', 'dark', 'synthwave');
 
-    // Add new theme class
-    root.classList.add(newTheme);
+    if (newTheme === 'synthwave') {
+      // Synthwave layers on top of dark mode
+      root.classList.add('dark', 'synthwave');
+    } else {
+      root.classList.add(newTheme);
+    }
 
     // Set data attribute for theme as well (for compatibility)
     root.setAttribute('data-theme', newTheme);
 
     // Ensure body also gets the theme class
-    document.body.classList.remove('light', 'dark');
-    document.body.classList.add(newTheme);
+    document.body.classList.remove('light', 'dark', 'synthwave');
+    if (newTheme === 'synthwave') {
+      document.body.classList.add('dark', 'synthwave');
+    } else {
+      document.body.classList.add(newTheme);
+    }
   };
 
   // Helper function to apply theme based on mode (handles system detection)
-  const applyThemeForMode = (mode: 'light' | 'dark' | 'system') => {
+  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'system') => {
     if (mode === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
@@ -663,10 +673,16 @@ export default function App() {
   const toggleTheme = () => {
     const newTheme =
       theme === 'light' ? 'dark' :
-      theme === 'dark' ? 'system' :
+      theme === 'dark' ? 'synthwave' :
+      theme === 'synthwave' ? 'system' :
       'light';
     setTheme(newTheme);
     applyThemeForMode(newTheme);
+
+    // Reset music player when switching to synthwave
+    if (newTheme === 'synthwave') {
+      setIsMusicPlayerDismissed(false);
+    }
 
     // Save to localStorage
     localStorage.setItem('theme', newTheme);
@@ -674,10 +690,12 @@ export default function App() {
     // Show a toast notification
     const themeLabel =
       newTheme === 'system' ? 'System (Auto)' :
+      newTheme === 'synthwave' ? 'Miami Vice' :
       newTheme.charAt(0).toUpperCase() + newTheme.slice(1);
 
     const themeDescription =
       newTheme === 'system' ? 'The interface will now follow your system preference.' :
+      newTheme === 'synthwave' ? 'Welcome to Miami. Neon lights activated.' :
       `The interface is now using ${newTheme} theme.`;
 
     toast.success(`Switched to ${themeLabel} mode`, {
@@ -1145,6 +1163,16 @@ export default function App() {
           onHeightChange={setDevPanelHeight}
         />
       )}
+      {/* Synthwave Music Player - Shows when Miami Vice theme is active */}
+      {theme === 'synthwave' && !isMusicPlayerDismissed && (
+        <Suspense fallback={null}>
+          <SynthwaveMusicPlayer
+            isVisible={true}
+            onClose={() => setIsMusicPlayerDismissed(true)}
+          />
+        </Suspense>
+      )}
+
       {/* Version Display - Fixed to bottom-left */}
       <VersionDisplay position="bottom-left" />
     </>

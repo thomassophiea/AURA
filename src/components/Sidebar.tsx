@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Zap,
   BarChart3,
   Wrench,
   AppWindow,
@@ -46,7 +47,7 @@ interface SidebarProps {
   adminRole: string | null;
   currentPage: string;
   onPageChange: (page: string) => void;
-  theme?: 'light' | 'dark' | 'system';
+  theme?: 'light' | 'dark' | 'synthwave' | 'system';
   onThemeToggle?: () => void;
 }
 
@@ -392,6 +393,8 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : theme === 'dark' ? (
               <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            ) : theme === 'synthwave' ? (
+              <Zap className={cn("h-4 w-4 text-pink-400", !isCollapsed && "mr-2")} />
             ) : (
               <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
@@ -399,6 +402,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <span>
                 {theme === 'light' ? 'Light' :
                  theme === 'dark' ? 'Dark' :
+                 theme === 'synthwave' ? 'Miami Vice' :
                  'Auto'}
               </span>
             )}
