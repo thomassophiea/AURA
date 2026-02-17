@@ -44,9 +44,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
     return () => obs.disconnect();
   }, []);
 
-  const height = 300;
-  const pad = { top: 40, bottom: 40, left: 20, right: 20 };
-  const flowH = height - pad.top - pad.bottom;
+  const pad = { top: 40, bottom: 30, left: 20, right: 20 };
   const barW = 28;
 
   // Column x positions (left edge of each bar)
@@ -54,41 +52,56 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
   const col1 = width * 0.32;
   const col2 = width * 0.64;
 
+  // --- Stage 2 sizing first: figure out classifier space needed ---
+  const activeClassifiers = sle.classifiers.filter(c => c.impactPercent > 0 || c.affectedClients > 0);
+  const totalImpact = activeClassifiers.reduce((s, c) => s + c.impactPercent, 0) || 1;
+
+  // Minimum row height to prevent label overlap (name + detail = ~28px)
+  const minRowH = 34;
+  const classifierGap = 6;
+  const minClassifierH = activeClassifiers.length * minRowH + Math.max(0, activeClassifiers.length - 1) * classifierGap;
+
+  // Base flow height, expanded if classifiers need more room
+  const baseFlowH = 220;
+  const flowH = Math.max(baseFlowH, minClassifierH);
+  const height = flowH + pad.top + pad.bottom;
+
   // Ensure minimum band height for visibility
-  const minBand = 6;
+  const minBand = 8;
 
   // --- Stage 1: Total → Success + Affected ---
   const successFrac = sle.successRate / 100;
   const affectedFrac = 1 - successFrac;
 
-  const successH = Math.max(minBand, successFrac * flowH);
-  const affectedH = Math.max(minBand, affectedFrac * flowH);
-  // Normalize so they fit exactly
-  const totalSplitH = successH + affectedH;
-  const normSuccessH = (successH / totalSplitH) * flowH;
-  const normAffectedH = (affectedH / totalSplitH) * flowH;
+  const rawSuccessH = Math.max(minBand, successFrac * flowH);
+  const rawAffectedH = Math.max(minBand, affectedFrac * flowH);
+  const totalSplitH = rawSuccessH + rawAffectedH;
+  const normSuccessH = (rawSuccessH / totalSplitH) * flowH;
+  const normAffectedH = (rawAffectedH / totalSplitH) * flowH;
 
-  // Total bar (col0)
+  // Bar positions
   const totalY = pad.top;
-
-  // Success bar (col1, top)
   const successY = pad.top;
-
-  // Affected bar (col1, below success)
   const affectedY = pad.top + normSuccessH;
 
   // --- Stage 2: Affected → Classifiers ---
-  const activeClassifiers = sle.classifiers.filter(c => c.impactPercent > 0 || c.affectedClients > 0);
-  const totalImpact = activeClassifiers.reduce((s, c) => s + c.impactPercent, 0) || 1;
+  // Spread classifiers over the full flow height for readability,
+  // with each bar's thickness proportional to impact but with a minimum size.
+  const totalClassifierGaps = Math.max(0, activeClassifiers.length - 1) * classifierGap;
+  const availableClassifierH = flowH - totalClassifierGaps;
 
-  const classifierGap = 3;
-  const totalGaps = Math.max(0, activeClassifiers.length - 1) * classifierGap;
-  const classifierFlowH = Math.max(minBand, normAffectedH - totalGaps);
-
-  let classifierRunY = pad.top; // classifiers start from top of col2
-  const classifierBars = activeClassifiers.map(c => {
+  // Calculate bar heights: proportional with minimum
+  let rawClassifierHeights = activeClassifiers.map(c => {
     const frac = c.impactPercent / totalImpact;
-    const h = Math.max(minBand, frac * classifierFlowH);
+    return Math.max(minRowH * 0.6, frac * availableClassifierH);
+  });
+  // Normalize to fit
+  const rawTotal = rawClassifierHeights.reduce((s, h) => s + h, 0) || 1;
+  rawClassifierHeights = rawClassifierHeights.map(h => (h / rawTotal) * availableClassifierH);
+
+  let classifierRunY = pad.top;
+  const classifierBars = activeClassifiers.map((c, i) => {
+    const h = rawClassifierHeights[i];
     const bar = { classifier: c, y: classifierRunY, h };
     classifierRunY += h + classifierGap;
     return bar;
@@ -98,19 +111,17 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
   const successColor = SLE_STATUS_COLORS.good.hex;
   const affectedColor = SLE_STATUS_COLORS[sle.status === 'good' ? 'warn' : sle.status].hex;
 
-  // Classifier colors: gradient from the affected color to lighter shades
+  // Classifier colors
   const classifierColors = activeClassifiers.map((_c, i) => {
-    const opacity = 0.9 - (i * 0.12);
-    return `${affectedColor}${Math.round(Math.max(0.4, opacity) * 255).toString(16).padStart(2, '0')}`;
+    const opacity = 0.9 - (i * 0.1);
+    return `${affectedColor}${Math.round(Math.max(0.45, opacity) * 255).toString(16).padStart(2, '0')}`;
   });
 
-  // --- Affected side: map source positions on total bar for the affected→classifier flows ---
-  // The affected portion on col1 runs from affectedY to affectedY + normAffectedH.
-  // Each classifier band takes a proportional slice of that range.
+  // Source slices on the affected bar for each classifier flow
   let affectedRunY = affectedY;
-  const affectedSlices = classifierBars.map(bar => {
-    const frac = bar.classifier.impactPercent / totalImpact;
-    const h = frac * normAffectedH;
+  const affectedSlices = activeClassifiers.map(c => {
+    const frac = c.impactPercent / totalImpact;
+    const h = Math.max(1, frac * normAffectedH);
     const slice = { y: affectedRunY, h };
     affectedRunY += h;
     return slice;
@@ -126,7 +137,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
             col1, successY, successY + normSuccessH,
           )}
           fill={successColor}
-          opacity={hovered === null || hovered === '_success' ? 0.35 : 0.12}
+          opacity={hovered === null || hovered === '_success' ? 0.3 : 0.1}
           className="transition-opacity duration-200"
         />
 
@@ -137,7 +148,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
             col1, affectedY, affectedY + normAffectedH,
           )}
           fill={affectedColor}
-          opacity={hovered === null || hovered === '_affected' ? 0.35 : 0.12}
+          opacity={hovered === null || hovered === '_affected' ? 0.3 : 0.1}
           className="transition-opacity duration-200"
         />
 
@@ -153,7 +164,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
                 col2, bar.y, bar.y + bar.h,
               )}
               fill={classifierColors[i]}
-              opacity={hovered === null || isHovered ? 0.4 : 0.1}
+              opacity={hovered === null || isHovered ? 0.35 : 0.08}
               className="transition-opacity duration-200 cursor-pointer"
               onMouseEnter={() => setHovered(bar.classifier.id)}
               onMouseLeave={() => setHovered(null)}
@@ -169,8 +180,8 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
           x={col0} y={totalY}
           width={barW} height={flowH}
           rx={4}
-          fill="rgba(255,255,255,0.15)"
-          stroke="rgba(255,255,255,0.3)"
+          fill="rgba(255,255,255,0.12)"
+          stroke="rgba(255,255,255,0.25)"
           strokeWidth={1}
         />
 
@@ -219,34 +230,40 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
         <text x={col0 + barW / 2} y={totalY - 10} textAnchor="middle" className="fill-white/80 text-[11px] font-semibold">
           Total
         </text>
-        <text x={col0 + barW / 2} y={totalY + flowH / 2} textAnchor="middle" dominantBaseline="middle" className="fill-white text-[11px] font-bold">
+        <text x={col0 + barW / 2} y={totalY + flowH / 2} textAnchor="middle" dominantBaseline="middle" className="fill-white text-[12px] font-bold">
           {sle.totalUserMinutes}
         </text>
 
         {/* Success label */}
-        <text x={col1 + barW + 8} y={successY + normSuccessH / 2 - 7} dominantBaseline="middle" className="fill-white/90 text-[11px] font-semibold">
+        <text x={col1 + barW + 10} y={successY + normSuccessH / 2 - 7} dominantBaseline="middle" className="fill-white/90 text-[11px] font-semibold">
           Success
         </text>
-        <text x={col1 + barW + 8} y={successY + normSuccessH / 2 + 7} dominantBaseline="middle" className="fill-white/60 text-[10px]">
+        <text x={col1 + barW + 10} y={successY + normSuccessH / 2 + 7} dominantBaseline="middle" className="fill-white/60 text-[10px]">
           {sle.successRate.toFixed(1)}% ({sle.totalUserMinutes - sle.affectedUserMinutes})
         </text>
 
-        {/* Affected label */}
-        {normAffectedH > 20 && (
+        {/* Affected label — only show if bar is tall enough */}
+        {normAffectedH > 24 && (
           <>
-            <text x={col1 + barW + 8} y={affectedY + normAffectedH / 2 - 7} dominantBaseline="middle" className="fill-white/90 text-[11px] font-semibold">
+            <text x={col1 + barW + 10} y={affectedY + normAffectedH / 2 - 7} dominantBaseline="middle" className="fill-white/90 text-[11px] font-semibold">
               Affected
             </text>
-            <text x={col1 + barW + 8} y={affectedY + normAffectedH / 2 + 7} dominantBaseline="middle" className="fill-white/60 text-[10px]">
+            <text x={col1 + barW + 10} y={affectedY + normAffectedH / 2 + 7} dominantBaseline="middle" className="fill-white/60 text-[10px]">
               {(100 - sle.successRate).toFixed(1)}% ({sle.affectedUserMinutes})
             </text>
           </>
         )}
+        {/* Compact affected label when bar is small */}
+        {normAffectedH <= 24 && normAffectedH > 0 && sle.affectedUserMinutes > 0 && (
+          <text x={col1 + barW + 10} y={affectedY + normAffectedH / 2} dominantBaseline="middle" className="fill-white/80 text-[10px] font-medium">
+            Affected: {(100 - sle.successRate).toFixed(1)}% ({sle.affectedUserMinutes})
+          </text>
+        )}
 
-        {/* Classifier labels */}
+        {/* Classifier labels — positioned to center on each bar */}
         {classifierBars.map((bar) => {
           const isHovered = hovered === bar.classifier.id;
-          const labelY = bar.y + bar.h / 2;
+          const centerY = bar.y + bar.h / 2;
           return (
             <g
               key={`label-${bar.classifier.id}`}
@@ -257,7 +274,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
             >
               <text
                 x={col2 + barW + 10}
-                y={labelY - 7}
+                y={centerY - 7}
                 dominantBaseline="middle"
                 className={`text-[11px] font-medium transition-all duration-200 ${isHovered ? 'fill-white' : 'fill-white/80'}`}
               >
@@ -265,11 +282,11 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
               </text>
               <text
                 x={col2 + barW + 10}
-                y={labelY + 7}
+                y={centerY + 7}
                 dominantBaseline="middle"
                 className="fill-white/50 text-[10px]"
               >
-                {bar.classifier.impactPercent.toFixed(1)}% &middot; {bar.classifier.affectedClients} {sle.id === 'ap_health' ? 'APs' : 'clients'}
+                {bar.classifier.impactPercent.toFixed(1)}% · {bar.classifier.affectedClients} {sle.id === 'ap_health' ? 'APs' : 'clients'}
               </text>
             </g>
           );
