@@ -10,12 +10,13 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { RefreshCw, Building, Clock, Target, Wifi, Cable } from 'lucide-react';
+import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, LayoutGrid } from 'lucide-react';
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
 import { computeAllWirelessSLEs } from '../../services/sleCalculationEngine';
 import { SLERadialMap } from './SLERadialMap';
+import { SLEBlock } from './SLEBlock';
 import { SLE_STATUS_COLORS } from '../../types/sle';
 import type { SLEMetric } from '../../types/sle';
 import { toast } from 'sonner';
@@ -33,6 +34,7 @@ export function SLEDashboard() {
   const [timeRange, setTimeRange] = useState('24h');
   const [selectedSite, setSelectedSite] = useState(filters.site || 'all');
   const [activeTab, setActiveTab] = useState('wireless');
+  const [viewMode, setViewMode] = useState<'radial' | 'blocks'>('radial');
 
   // Load sites for filter
   useEffect(() => {
@@ -217,21 +219,59 @@ export function SLEDashboard() {
 
       {/* Tabs: Wireless / Wired */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="wireless" className="flex items-center gap-1.5">
-            <Wifi className="h-3.5 w-3.5" />
-            Wireless
-            <Badge variant="secondary" className="text-[10px] ml-1">{wirelessSLEs.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="wired" className="flex items-center gap-1.5" disabled>
-            <Cable className="h-3.5 w-3.5" />
-            Wired
-            <Badge variant="outline" className="text-[10px] ml-1">Coming Soon</Badge>
-          </TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="wireless" className="flex items-center gap-1.5">
+              <Wifi className="h-3.5 w-3.5" />
+              Wireless
+              <Badge variant="secondary" className="text-[10px] ml-1">{wirelessSLEs.length}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="wired" className="flex items-center gap-1.5" disabled>
+              <Cable className="h-3.5 w-3.5" />
+              Wired
+              <Badge variant="outline" className="text-[10px] ml-1">Coming Soon</Badge>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* View toggle */}
+          {activeTab === 'wireless' && (
+            <div className="flex items-center rounded-md border border-border/50 p-0.5 bg-muted/30">
+              <button
+                onClick={() => setViewMode('radial')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  viewMode === 'radial'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Network className="h-3.5 w-3.5" />
+                Radial
+              </button>
+              <button
+                onClick={() => setViewMode('blocks')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  viewMode === 'blocks'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Blocks
+              </button>
+            </div>
+          )}
+        </div>
 
         <TabsContent value="wireless" className="mt-4">
-          <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />
+          {viewMode === 'radial' ? (
+            <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {wirelessSLEs.map(sle => (
+                <SLEBlock key={sle.id} sle={sle} stations={stations} aps={aps} />
+              ))}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="wired" className="mt-4">
