@@ -10,7 +10,7 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft, Sparkles } from 'lucide-react';
+import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft } from 'lucide-react';
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
@@ -19,12 +19,15 @@ import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
-import { SLEConstellation } from './SLEConstellation';
 import { SLE_STATUS_COLORS } from '../../types/sle';
 import type { SLEMetric } from '../../types/sle';
 import { toast } from 'sonner';
 
-export function SLEDashboard() {
+interface SLEDashboardProps {
+  onClientClick?: (mac: string) => void;
+}
+
+export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const { filters, updateFilter } = useGlobalFilters();
 
   const [wirelessSLEs, setWirelessSLEs] = useState<SLEMetric[]>([]);
@@ -37,7 +40,7 @@ export function SLEDashboard() {
   const [timeRange, setTimeRange] = useState('24h');
   const [selectedSite, setSelectedSite] = useState(filters.site || 'all');
   const [activeTab, setActiveTab] = useState('wireless');
-  const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall' | 'constellation'>('radial');
+  const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall'>('radial');
 
   // Load sites for filter
   useEffect(() => {
@@ -238,24 +241,23 @@ export function SLEDashboard() {
 
           {/* View toggle */}
           {activeTab === 'wireless' && (
-            <div className="flex items-center rounded-md border border-border/50 p-0.5 bg-muted/30">
+            <div className="flex items-center rounded-md border border-border/50 p-0.5 bg-muted/30 gap-0.5">
               {([
                 { id: 'radial', label: 'Radial', Icon: Network },
                 { id: 'octopus', label: 'Octopus', Icon: Target },
                 { id: 'honeycomb', label: 'Hex', Icon: Hexagon },
                 { id: 'waterfall', label: 'Waterfall', Icon: AlignLeft },
-                { id: 'constellation', label: 'Stars', Icon: Sparkles },
               ] as const).map(({ id, label, Icon }) => (
                 <button
                   key={id}
                   onClick={() => setViewMode(id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap ${
                     viewMode === id
                       ? 'bg-background text-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                   {label}
                 </button>
               ))}
@@ -264,11 +266,10 @@ export function SLEDashboard() {
         </div>
 
         <TabsContent value="wireless" className="mt-4">
-          {viewMode === 'radial' && <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />}
-          {viewMode === 'octopus' && <SLEOctopus sles={wirelessSLEs} stations={stations} aps={aps} />}
-          {viewMode === 'honeycomb' && <SLEHoneycomb sles={wirelessSLEs} stations={stations} aps={aps} />}
-          {viewMode === 'waterfall' && <SLEWaterfall sles={wirelessSLEs} stations={stations} aps={aps} />}
-          {viewMode === 'constellation' && <SLEConstellation sles={wirelessSLEs} stations={stations} aps={aps} />}
+          {viewMode === 'radial' && <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+          {viewMode === 'octopus' && <SLEOctopus sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+          {viewMode === 'honeycomb' && <SLEHoneycomb sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+          {viewMode === 'waterfall' && <SLEWaterfall sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
         </TabsContent>
 
         <TabsContent value="wired" className="mt-4">

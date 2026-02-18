@@ -7,30 +7,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { SLESankeyFlow } from './SLESankeyFlow';
 import { SLERootCausePanel } from './SLERootCausePanel';
+import { buildRootCause } from './sleRootCause';
 import { SLE_STATUS_COLORS, getSLEStatus } from '../../types/sle';
-import type { SLEMetric, SLEClassifier, SLERootCause } from '../../types/sle';
+import type { SLEMetric, SLERootCause } from '../../types/sle';
 
 interface SLEHoneycombProps {
   sles: SLEMetric[];
   stations: any[];
   aps: any[];
-}
-
-function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any[], aps: any[]): SLERootCause {
-  let affectedDevices: SLERootCause['affectedDevices'] = [];
-  let affectedAPs: SLERootCause['affectedAPs'] = [];
-  let recommendations: string[] = [];
-  if (sle.id === 'coverage' && classifier.id === 'weak_signal') {
-    affectedDevices = stations.filter(s => (s.rssi ?? s.rss ?? 0) < -70).slice(0, 30).map(s => ({ mac: s.macAddress || '', name: s.hostName || s.hostname || s.username || s.deviceType || s.macAddress || 'Unknown', ap: s.apName || s.apDisplayName || s.apHostname || s.accessPointName || s.apSerialNumber || s.apSerial || s.apSn || '-', rssi: s.rssi ?? s.rss }));
-    recommendations = ['Consider adding additional access points to improve coverage in affected areas', 'Verify AP transmit power settings are appropriate', 'Check for physical obstructions between APs and client locations'];
-  } else if (sle.id === 'ap_health' && classifier.id === 'ap_disconnected') {
-    affectedAPs = aps.filter(ap => { const status = (ap.status || ap.connectionState || '').toLowerCase(); return status.includes('disconnect') || status.includes('offline'); }).slice(0, 20).map(ap => ({ serial: ap.serialNumber || ap.serial || '', name: ap.name || ap.hostname || ap.apName || ap.displayName || ap.serialNumber || ap.serial || 'Unknown AP', status: ap.status || ap.connectionState || 'offline' }));
-    recommendations = ['Check network connectivity to disconnected access points', 'Verify PoE power delivery to affected APs', 'Review switch port status for AP uplinks'];
-  } else {
-    affectedDevices = stations.slice(0, 10).map(s => ({ mac: s.macAddress || '', name: s.hostName || s.hostname || s.username || s.deviceType || s.macAddress || 'Unknown', ap: s.apName || s.apDisplayName || s.apHostname || s.accessPointName || s.apSerialNumber || s.apSerial || s.apSn || '-' }));
-    recommendations = ['Monitor this classifier for trends over time', 'Review network configuration for the affected segment'];
-  }
-  return { classifierId: classifier.id, classifierName: classifier.name, description: `${classifier.affectedClients} ${sle.id === 'ap_health' ? 'access points' : 'clients'} affected by ${classifier.name.toLowerCase()} issues`, affectedDevices, affectedAPs, recommendations };
+  onClientClick?: (mac: string) => void;
 }
 
 /** Generate pointy-top hexagon vertex string */
@@ -52,7 +37,7 @@ const STATUS_NODE_BORDER: Record<string, string> = {
   poor: 'rgba(239, 68, 68, 0.6)',
 };
 
-export function SLEHoneycomb({ sles, stations, aps }: SLEHoneycombProps) {
+export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycombProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
@@ -215,7 +200,7 @@ export function SLEHoneycomb({ sles, stations, aps }: SLEHoneycombProps) {
         </div>
       )}
 
-      <SLERootCausePanel open={rootCause !== null} onClose={() => setRootCause(null)} rootCause={rootCause} />
+      <SLERootCausePanel open={rootCause !== null} onClose={() => setRootCause(null)} rootCause={rootCause} onClientClick={onClientClick} />
     </>
   );
 }

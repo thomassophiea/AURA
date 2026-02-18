@@ -874,7 +874,7 @@ export default function App() {
       case 'service-levels':
         return <DashboardEnhanced />;
       case 'sle-dashboard':
-        return <SLEDashboard />;
+        return <SLEDashboard onClientClick={handleShowClientDetail} />;
       case 'app-insights':
         return <AppInsights api={apiService} />;
       case 'access-points':

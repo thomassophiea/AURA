@@ -7,8 +7,9 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Wifi, Signal, Radio, Shield, Clock, Activity, Target } from 'lucide-react';
 import { SLESankeyFlow } from './SLESankeyFlow';
 import { SLERootCausePanel } from './SLERootCausePanel';
+import { buildRootCause } from './sleRootCause';
 import { SLE_STATUS_COLORS, getSLEStatus } from '../../types/sle';
-import type { SLEMetric, SLEClassifier, SLERootCause } from '../../types/sle';
+import type { SLEMetric, SLERootCause } from '../../types/sle';
 
 const SLE_ICONS: Record<string, React.ElementType> = {
   coverage: Signal,
@@ -44,89 +45,14 @@ const STATUS_DETAIL_BG = {
   poor: 'rgba(153, 27, 27, 0.7)',
 } as const;
 
-/** Resolve the best human-friendly name for a station */
-function clientName(s: any): string {
-  return s.hostName || s.hostname || s.username || s.deviceType || s.macAddress || 'Unknown';
-}
-
-/** Resolve the best human-friendly AP name for a station */
-function clientAP(s: any): string {
-  return s.apName || s.apDisplayName || s.apHostname || s.accessPointName || s.apSerialNumber || s.apSerial || s.apSn || '-';
-}
-
-/** Resolve the best human-friendly AP name from an AP object */
-function apName(ap: any): string {
-  return ap.name || ap.hostname || ap.apName || ap.displayName || ap.serialNumber || ap.serial || 'Unknown AP';
-}
-
-function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any[], aps: any[]): SLERootCause {
-  let affectedDevices: SLERootCause['affectedDevices'] = [];
-  let affectedAPs: SLERootCause['affectedAPs'] = [];
-  let recommendations: string[] = [];
-
-  if (sle.id === 'coverage' && classifier.id === 'weak_signal') {
-    affectedDevices = stations
-      .filter(s => (s.rssi ?? s.rss ?? 0) < -70)
-      .slice(0, 30)
-      .map(s => ({
-        mac: s.macAddress || '',
-        name: clientName(s),
-        ap: clientAP(s),
-        rssi: s.rssi ?? s.rss,
-      }));
-    recommendations = [
-      'Consider adding additional access points to improve coverage in affected areas',
-      'Verify AP transmit power settings are appropriate',
-      'Check for physical obstructions between APs and client locations',
-    ];
-  } else if (sle.id === 'ap_health' && classifier.id === 'ap_disconnected') {
-    affectedAPs = aps
-      .filter(ap => {
-        const status = (ap.status || ap.connectionState || '').toLowerCase();
-        return status.includes('disconnect') || status.includes('offline');
-      })
-      .slice(0, 20)
-      .map(ap => ({
-        serial: ap.serialNumber || ap.serial || '',
-        name: apName(ap),
-        status: ap.status || ap.connectionState || 'offline',
-      }));
-    recommendations = [
-      'Check network connectivity to disconnected access points',
-      'Verify PoE power delivery to affected APs',
-      'Review switch port status for AP uplinks',
-    ];
-  } else {
-    affectedDevices = stations
-      .slice(0, 10)
-      .map(s => ({
-        mac: s.macAddress || '',
-        name: clientName(s),
-        ap: clientAP(s),
-      }));
-    recommendations = [
-      'Monitor this classifier for trends over time',
-      'Review network configuration for the affected segment',
-    ];
-  }
-
-  return {
-    classifierId: classifier.id,
-    classifierName: classifier.name,
-    description: `${classifier.affectedClients} ${sle.id === 'ap_health' ? 'access points' : 'clients'} affected by ${classifier.name.toLowerCase()} issues`,
-    affectedDevices,
-    affectedAPs,
-    recommendations,
-  };
-}
-
 interface SLERadialMapProps {
   sles: SLEMetric[];
   stations: any[];
   aps: any[];
+  onClientClick?: (mac: string) => void;
 }
 
-export function SLERadialMap({ sles, stations, aps }: SLERadialMapProps) {
+export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMapProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -327,6 +253,7 @@ export function SLERadialMap({ sles, stations, aps }: SLERadialMapProps) {
         open={rootCause !== null}
         onClose={() => setRootCause(null)}
         rootCause={rootCause}
+        onClientClick={onClientClick}
       />
     </>
   );

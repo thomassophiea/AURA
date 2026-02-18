@@ -6,16 +6,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Users, Wifi, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Users, Wifi, AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
 import type { SLERootCause } from '../../types/sle';
 
 interface SLERootCausePanelProps {
   open: boolean;
   onClose: () => void;
   rootCause: SLERootCause | null;
+  onClientClick?: (mac: string) => void;
 }
 
-export function SLERootCausePanel({ open, onClose, rootCause }: SLERootCausePanelProps) {
+export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: SLERootCausePanelProps) {
   if (!rootCause) return null;
 
   return (
@@ -51,8 +52,19 @@ export function SLERootCausePanel({ open, onClose, rootCause }: SLERootCausePane
                   </TableHeader>
                   <TableBody>
                     {rootCause.affectedDevices.slice(0, 20).map((dev, i) => (
-                      <TableRow key={i} className="h-7">
-                        <TableCell className="py-1">{dev.name || dev.mac || 'Unknown'}</TableCell>
+                      <TableRow
+                        key={i}
+                        className={`h-7 ${onClientClick && dev.mac ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                        onClick={() => onClientClick && dev.mac && onClientClick(dev.mac)}
+                      >
+                        <TableCell className="py-1">
+                          <span className="flex items-center gap-1">
+                            {dev.name || dev.mac || 'Unknown'}
+                            {onClientClick && dev.mac && (
+                              <ExternalLink className="h-3 w-3 text-muted-foreground opacity-50 shrink-0" />
+                            )}
+                          </span>
+                        </TableCell>
                         <TableCell className="py-1 font-mono text-[10px]">{dev.mac}</TableCell>
                         <TableCell className="py-1">{dev.ap && dev.ap !== '-' ? dev.ap : '-'}</TableCell>
                         {dev.rssi !== undefined && (
