@@ -10,13 +10,16 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, LayoutGrid } from 'lucide-react';
+import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft, Sparkles } from 'lucide-react';
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
 import { computeAllWirelessSLEs } from '../../services/sleCalculationEngine';
 import { SLERadialMap } from './SLERadialMap';
-import { SLEBlock } from './SLEBlock';
+import { SLEOctopus } from './SLEOctopus';
+import { SLEHoneycomb } from './SLEHoneycomb';
+import { SLEWaterfall } from './SLEWaterfall';
+import { SLEConstellation } from './SLEConstellation';
 import { SLE_STATUS_COLORS } from '../../types/sle';
 import type { SLEMetric } from '../../types/sle';
 import { toast } from 'sonner';
@@ -34,7 +37,7 @@ export function SLEDashboard() {
   const [timeRange, setTimeRange] = useState('24h');
   const [selectedSite, setSelectedSite] = useState(filters.site || 'all');
   const [activeTab, setActiveTab] = useState('wireless');
-  const [viewMode, setViewMode] = useState<'radial' | 'blocks'>('radial');
+  const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall' | 'constellation'>('radial');
 
   // Load sites for filter
   useEffect(() => {
@@ -219,7 +222,7 @@ export function SLEDashboard() {
 
       {/* Tabs: Wireless / Wired */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <TabsList>
             <TabsTrigger value="wireless" className="flex items-center gap-1.5">
               <Wifi className="h-3.5 w-3.5" />
@@ -236,42 +239,36 @@ export function SLEDashboard() {
           {/* View toggle */}
           {activeTab === 'wireless' && (
             <div className="flex items-center rounded-md border border-border/50 p-0.5 bg-muted/30">
-              <button
-                onClick={() => setViewMode('radial')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  viewMode === 'radial'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Network className="h-3.5 w-3.5" />
-                Radial
-              </button>
-              <button
-                onClick={() => setViewMode('blocks')}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
-                  viewMode === 'blocks'
-                    ? 'bg-background text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                Blocks
-              </button>
+              {([
+                { id: 'radial', label: 'Radial', Icon: Network },
+                { id: 'octopus', label: 'Octopus', Icon: Target },
+                { id: 'honeycomb', label: 'Hex', Icon: Hexagon },
+                { id: 'waterfall', label: 'Waterfall', Icon: AlignLeft },
+                { id: 'constellation', label: 'Stars', Icon: Sparkles },
+              ] as const).map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setViewMode(id)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    viewMode === id
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {label}
+                </button>
+              ))}
             </div>
           )}
         </div>
 
         <TabsContent value="wireless" className="mt-4">
-          {viewMode === 'radial' ? (
-            <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2">
-              {wirelessSLEs.map(sle => (
-                <SLEBlock key={sle.id} sle={sle} stations={stations} aps={aps} />
-              ))}
-            </div>
-          )}
+          {viewMode === 'radial' && <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} />}
+          {viewMode === 'octopus' && <SLEOctopus sles={wirelessSLEs} stations={stations} aps={aps} />}
+          {viewMode === 'honeycomb' && <SLEHoneycomb sles={wirelessSLEs} stations={stations} aps={aps} />}
+          {viewMode === 'waterfall' && <SLEWaterfall sles={wirelessSLEs} stations={stations} aps={aps} />}
+          {viewMode === 'constellation' && <SLEConstellation sles={wirelessSLEs} stations={stations} aps={aps} />}
         </TabsContent>
 
         <TabsContent value="wired" className="mt-4">
