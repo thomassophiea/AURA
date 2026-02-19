@@ -34,9 +34,9 @@ const STATUS_NODE_BORDER = {
 } as const;
 
 const STATUS_LINE = {
-  good: 'rgba(34, 197, 94, 0.4)',
-  warn: 'rgba(245, 158, 11, 0.4)',
-  poor: 'rgba(239, 68, 68, 0.4)',
+  good: 'rgba(34, 197, 94, 0.55)',
+  warn: 'rgba(245, 158, 11, 0.55)',
+  poor: 'rgba(239, 68, 68, 0.55)',
 } as const;
 
 const STATUS_DETAIL_BG = {
@@ -169,10 +169,10 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
                 left: pos.x - nodeSize / 2,
                 top: pos.y - nodeSize / 2,
                 background: STATUS_NODE_BG[sle.status],
-                border: `2px solid ${isSelected ? SLE_STATUS_COLORS[sle.status].hex : STATUS_NODE_BORDER[sle.status]}`,
+                border: `2px solid ${SLE_STATUS_COLORS[sle.status].hex}${isSelected ? '' : 'bb'}`,
                 boxShadow: isSelected
-                  ? `0 0 20px ${SLE_STATUS_COLORS[sle.status].hex}50, 0 0 40px ${SLE_STATUS_COLORS[sle.status].hex}25`
-                  : '0 4px 16px rgba(0,0,0,0.4)',
+                  ? `0 0 20px ${SLE_STATUS_COLORS[sle.status].hex}60, 0 0 40px ${SLE_STATUS_COLORS[sle.status].hex}30`
+                  : `0 4px 16px rgba(0,0,0,0.5), 0 0 16px ${SLE_STATUS_COLORS[sle.status].hex}55`,
                 transform: isSelected ? 'scale(1.12)' : 'scale(1)',
               }}
             >
