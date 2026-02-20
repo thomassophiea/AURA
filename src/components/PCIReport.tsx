@@ -135,7 +135,7 @@ export function PCIReport() {
       if (!services || !Array.isArray(services) || services.length === 0) {
         console.log('[PCIReport] No services returned from API');
         setWlans([]);
-        toast.info('No WLANs/Services configured on Extreme Platform ONE');
+        toast.info('No WLANs/Services configured on the controller');
         return;
       }
 

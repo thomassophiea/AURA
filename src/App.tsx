@@ -329,7 +329,7 @@ export default function App() {
         'Network error for /v1/applications',
         'NetworkVisualization',
         'fetching topology',
-        'Unable to connect to Extreme Platform ONE',
+        'Unable to connect to the controller',
         '/v1/system/time',
         '/v1/system/info',
         '/v1/system/logging',
@@ -414,7 +414,7 @@ export default function App() {
           '/v1/sites', 'Network error for /v1/sites',
           '/v1/applications', 'Network error for /v1/applications',
           'NetworkVisualization', 'fetching topology',
-          'Unable to connect to Extreme Platform ONE',
+          'Unable to connect to the controller',
           '6000ms', '30000ms', '15000ms',
           '/v1/system/time', '/v1/system/info', '/v1/system/logging', '/v1/system/maintenance',
           '/v3/topologies', 'Network error for /v3/topologies',
@@ -472,7 +472,7 @@ export default function App() {
           
           console.warn('Request timeout detected:', errorMessage);
           toast.error('Request timed out', {
-            description: 'The Extreme Platform ONE took too long to respond.',
+            description: 'The controller took too long to respond.',
             duration: 4000
           });
           event.preventDefault();
@@ -548,7 +548,7 @@ export default function App() {
         '/v1/sites', 'Network error for /v1/sites',
         '/v1/applications', 'Network error for /v1/applications',
         'NetworkVisualization', 'fetching topology',
-        'Unable to connect to Extreme Platform ONE',
+        'Unable to connect to the controller',
         '/v1/system/time', '/v1/system/info', '/v1/system/logging', '/v1/system/maintenance',
         '/v3/topologies', 'Network error for /v3/topologies',
         '/v3/cos', 'Network error for /v3/cos',
@@ -560,11 +560,11 @@ export default function App() {
         'Error loading filter options', 'Error loading access points',
         'timeout', 'timed out', '15000ms', '30000ms'
       ];
-      
+
       if (suppressedPatterns.some(pattern => errorString.includes(pattern))) {
         return; // Silently suppress
       }
-      
+
       // Call original console.error for legitimate errors
       originalConsoleError.apply(console, args);
     };
@@ -591,7 +591,7 @@ export default function App() {
         '/v1/sites', 'Network error for /v1/sites',
         '/v1/applications', 'Network error for /v1/applications',
         'NetworkVisualization', 'fetching topology',
-        'Unable to connect to Extreme Platform ONE',
+        'Unable to connect to the controller',
         '/v1/system/time', '/v1/system/info', '/v1/system/logging', '/v1/system/maintenance',
         '/v3/topologies', 'Network error for /v3/topologies',
         '/v3/cos', 'Network error for /v3/cos',
@@ -833,7 +833,7 @@ export default function App() {
         toast.error('Connection test failed', {
           description: errorMessage.includes('timed out') 
             ? 'Connection test timed out - server may be slow or unreachable'
-            : 'Unable to reach Extreme Platform ONE API'
+            : 'Unable to reach the controller API'
         });
       }
     } finally {

@@ -58,7 +58,7 @@ export function BestPractices() {
         throw new Error('Session expired. Please login again.');
       } else {
         // API endpoint doesn't exist - show error
-        throw new Error('Best Practices API endpoint not available on this Extreme Platform ONE');
+        throw new Error('Best Practices API endpoint not available on this controller');
       }
 
       setLastRefresh(new Date());

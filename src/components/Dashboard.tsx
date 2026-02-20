@@ -177,7 +177,7 @@ export function Dashboard() {
           // Only show toast if user explicitly refreshed
           if (showRefreshing) {
             toast.info('Dashboard unavailable', {
-              description: 'This Extreme Platform ONE version does not support dashboard endpoints.'
+              description: 'This controller version does not support dashboard endpoints.'
             });
           }
         }
@@ -975,7 +975,7 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The dashboard endpoint is not available on this Extreme Platform ONE. The system tried multiple methods to load dashboard data.
+              The dashboard endpoint is not available on this controller. The system tried multiple methods to load dashboard data.
             </p>
             <div className="bg-muted/20 border border-border rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-2">

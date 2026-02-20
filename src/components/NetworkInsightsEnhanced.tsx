@@ -166,7 +166,7 @@ export function NetworkInsightsEnhanced() {
             Network Insights
           </h2>
           <p className="text-muted-foreground mt-1">
-            Comprehensive analytics with 75+ widgets • 100% feature parity with Extreme Platform ONE
+            Comprehensive analytics with 75+ widgets • 100% feature parity with the controller
             {lastUpdate && (
               <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
             )}

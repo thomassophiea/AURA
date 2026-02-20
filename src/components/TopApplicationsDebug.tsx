@@ -303,7 +303,7 @@ export function TopApplicationsDebug() {
             <div className="flex flex-col items-center justify-center space-y-4">
               <RefreshCw className="h-12 w-12 text-primary animate-spin" />
               <p className="text-sm text-muted-foreground">
-                Loading applications from Extreme Platform ONE...
+                Loading applications from the controller...
               </p>
             </div>
           </CardContent>

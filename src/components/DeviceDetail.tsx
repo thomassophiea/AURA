@@ -118,7 +118,7 @@ export function DeviceDetail({ deviceId }: DeviceDetailProps) {
       
       if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
         toast.error('Request timed out', {
-          description: 'Extreme Platform ONE is taking too long to respond.',
+          description: 'The controller is taking too long to respond.',
           duration: 8000
         });
       } else {

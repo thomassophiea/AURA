@@ -420,7 +420,7 @@ export function SystemUtilities() {
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
                 Export includes networks, policies, device settings, and system preferences.
-                Use this for backup or migration to another Extreme Platform ONE.
+                Use this for backup or migration to another controller.
               </p>
 
               <Button

@@ -505,7 +505,7 @@ export function ReportWidgets() {
         <div>
           <h1 className="text-headline-5 text-high-emphasis">Analytics & Monitoring Hub</h1>
           <p className="text-muted-foreground">
-            Real-time widgets and metrics from Extreme Platform ONE
+            Real-time widgets and metrics from the controller
           </p>
         </div>
         

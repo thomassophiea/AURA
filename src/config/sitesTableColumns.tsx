@@ -296,7 +296,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 180,
     renderCell: (site) => site.adoptionPrimary || '—',
-    tooltip: 'Primary Extreme Platform ONE address'
+    tooltip: 'Primary controller address'
   },
 
   {
@@ -309,6 +309,6 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 180,
     renderCell: (site) => site.adoptionBackup || '—',
-    tooltip: 'Backup Extreme Platform ONE address'
+    tooltip: 'Backup controller address'
   }
 ];

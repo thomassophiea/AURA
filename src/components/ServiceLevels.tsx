@@ -449,7 +449,7 @@ export function ServiceLevels() {
         <Database className="h-5 w-5 text-info" />
         <AlertDescription className="ml-2 flex items-center justify-between w-full">
           <div>
-            <strong className="font-semibold">Live SLE Data Collection:</strong> Metrics calculated from real client data polled every minute from the Extreme Platform ONE API.
+            <strong className="font-semibold">Live SLE Data Collection:</strong> Metrics calculated from real client data polled every minute from the controller API.
             {collectionStats && (
               <span className="text-sm ml-2">
                 ({collectionStats.totalDataPoints} data points • {collectionStats.sitesMonitored} sites)

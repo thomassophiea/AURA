@@ -637,7 +637,7 @@ export function PacketCapture() {
                     <Router className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
                       <div className="font-medium">Edge Service Data Ports</div>
-                      <div className="text-xs text-muted-foreground">Capture traffic on Extreme Platform ONE data ports</div>
+                      <div className="text-xs text-muted-foreground">Capture traffic on controller data ports</div>
                     </div>
                     <div className={`w-4 h-4 rounded-full border-2 ${
                       captureLocation === 'appliance' ? 'border-primary bg-primary' : 'border-muted-foreground'

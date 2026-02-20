@@ -16,14 +16,14 @@ export interface BrandConfig {
 export const branding: Record<ThemeMode, BrandConfig> = {
   default: {
     name: 'API',
-    fullName: 'Extreme Platform ONE | API',
+    fullName: 'API',
     tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   dark: {
     name: 'API',
-    fullName: 'Extreme Platform ONE | API',
+    fullName: 'API',
     tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'

@@ -449,7 +449,7 @@ export function NetworkVisualization() {
             <div className="flex-1">
               <p className="text-sm text-destructive mb-1">Network Connection Failed</p>
               <p className="text-xs text-muted-foreground mb-3">
-                Unable to reach the Extreme Platform ONE API. This page requires connectivity to display network topology.
+                Unable to reach the controller API. This page requires connectivity to display network topology.
               </p>
               <div className="flex gap-2">
                 <Button 
@@ -523,7 +523,7 @@ export function NetworkVisualization() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center h-[600px] text-muted-foreground max-w-3xl mx-auto px-4">
             <MapPin className="h-12 w-12 mb-4 opacity-50 text-destructive" />
-            <p className="text-lg mb-2 text-destructive">Cannot Connect to Extreme Platform ONE</p>
+            <p className="text-lg mb-2 text-destructive">Cannot Connect to the Controller</p>
             <p className="text-sm mb-4 text-center">{error}</p>
             
             {/* Diagnostic Results */}
@@ -563,12 +563,12 @@ export function NetworkVisualization() {
               
               <p className="text-sm mb-2 text-foreground">Common causes:</p>
               <ul className="text-xs space-y-1 list-disc list-inside text-muted-foreground">
-                <li>Extreme Platform ONE service is not running or crashed</li>
+                <li>The controller service is not running or crashed</li>
                 <li>NGINX proxy is misconfigured or not forwarding <span className="font-mono text-primary">/management</span> requests</li>
                 <li>Firewall blocking port 443 or the /management path</li>
                 <li>Network connectivity issue between your browser and tsophiea.ddns.net</li>
                 <li>SSL certificate issues (check browser console for certificate errors)</li>
-                <li>The /v1/sites API endpoint doesn't exist in your Extreme Platform ONE version</li>
+                <li>The /v1/sites API endpoint doesn't exist in your controller version</li>
               </ul>
             </div>
             

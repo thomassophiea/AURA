@@ -562,7 +562,7 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
                 <span>Loading Sites</span>
               </CardTitle>
               <CardDescription>
-                Fetching site data from Extreme Platform ONE...
+                Fetching site data from the controller...
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">

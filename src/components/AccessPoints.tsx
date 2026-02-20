@@ -662,7 +662,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         setError(errorMessage);
       } else {
         // For timeout errors, show a user-friendly message
-        setError('Loading access points is taking longer than expected. Extreme Platform ONE may be slow to respond.');
+        setError('Loading access points is taking longer than expected. The controller may be slow to respond.');
       }
     } finally {
       setIsLoading(false);
@@ -2453,7 +2453,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                             <DropdownMenuItem
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (confirm(`Delete ${getAPName(ap)}? This will remove the AP from Extreme Platform ONE.`)) {
+                                if (confirm(`Delete ${getAPName(ap)}? This will remove the AP from the controller.`)) {
                                   try {
                                     await apiService.deleteAP(ap.serialNumber);
                                     toast.success('AP deleted successfully');

@@ -259,7 +259,7 @@ export function ServiceLevelsEnhanced() {
     } catch (error) {
       console.error('[ServiceLevels] Error loading services:', error);
       toast.error('Failed to load services', {
-        description: 'Unable to connect to Extreme Platform ONE API'
+        description: 'Unable to connect to the controller API'
       });
     } finally {
       setLoading(false);

@@ -92,7 +92,7 @@ export function HighAvailabilityWidget() {
             <Shield className="h-5 w-5" />
             High Availability Status
           </CardTitle>
-          <CardDescription>Extreme Platform ONE redundancy and clustering</CardDescription>
+          <CardDescription>Controller redundancy and clustering</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -111,7 +111,7 @@ export function HighAvailabilityWidget() {
             <Shield className="h-5 w-5" />
             High Availability Status
           </CardTitle>
-          <CardDescription>Extreme Platform ONE redundancy and clustering</CardDescription>
+          <CardDescription>Controller redundancy and clustering</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
@@ -137,7 +137,7 @@ export function HighAvailabilityWidget() {
               High Availability Status
             </CardTitle>
             <CardDescription>
-              Extreme Platform ONE redundancy and clustering
+              Controller redundancy and clustering
               {lastUpdate && (
                 <span className="ml-2">• Updated {lastUpdate.toLocaleTimeString()}</span>
               )}
