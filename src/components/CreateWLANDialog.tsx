@@ -14,7 +14,7 @@ import { apiService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
 import { effectiveSetCalculator } from '../services/effectiveSetCalculator';
 import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
-import { ProfilePicker } from './wlans/ProfilePicker';
+import { ProfilePickerDialog } from './wlans/ProfilePickerDialog';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
 import { SiteGroupManagementDialog } from './SiteGroupManagementDialog';
 import type {
@@ -590,9 +590,33 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       console.log('11. WLAN Creation Result:', result);
       console.log('=== WLAN CREATION DEBUG END ===');
 
-      toast.success('WLAN Created Successfully', {
-        description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`
-      });
+      // Calculate success/failure counts
+      const successfulAssignments = result.assignments?.filter(a => a.success) || [];
+      const failedAssignments = result.assignments?.filter(a => !a.success) || [];
+
+      if (failedAssignments.length === 0) {
+        // Complete success
+        toast.success('WLAN Created Successfully', {
+          description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`
+        });
+      } else if (successfulAssignments.length > 0) {
+        // Partial success - some profiles succeeded, some failed
+        toast.warning('WLAN Created with Partial Deployment', {
+          description: `✓ ${successfulAssignments.length} profile(s) succeeded, ✗ ${failedAssignments.length} failed. Check console for details.`,
+          duration: 8000
+        });
+        console.warn('[WLAN Deployment] Failed profiles:', failedAssignments.map(a => ({
+          profile: a.profileName,
+          error: a.error
+        })));
+      } else {
+        // All assignments failed
+        toast.error('WLAN Created but Deployment Failed', {
+          description: `WLAN was created but could not be assigned to any profiles. Check console for details.`,
+          duration: 8000
+        });
+        console.error('[WLAN Deployment] All profile assignments failed:', failedAssignments);
+      }
 
       onSuccess(result);
       onOpenChange(false);
@@ -1259,7 +1283,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
       {/* Profile Picker Dialog */}
       {profilePickerSite && (
-        <ProfilePicker
+        <ProfilePickerDialog
           open={profilePickerOpen}
           onOpenChange={setProfilePickerOpen}
           mode={profilePickerSite.mode}

@@ -297,34 +297,63 @@ export class WLANAssignmentService {
   }
 
   /**
-   * Assign service to all profiles
+   * Assign service to all profiles with resilient error handling
+   * Continues even if some profiles fail - returns partial success results
    */
   private async assignToProfiles(
     serviceId: string,
     profiles: Profile[]
   ): Promise<AssignmentResult[]> {
     const results: AssignmentResult[] = [];
+    let successCount = 0;
+    let failCount = 0;
+
+    console.log(`[WLANAssignment] Starting assignment to ${profiles.length} profiles...`);
 
     // Process assignments in parallel (but limit concurrency to avoid overwhelming the API)
     const batchSize = 5;
     for (let i = 0; i < profiles.length; i += batchSize) {
       const batch = profiles.slice(i, i + batchSize);
+      const batchNum = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(profiles.length / batchSize);
+      
+      console.log(`[WLANAssignment] Processing batch ${batchNum}/${totalBatches}...`);
 
       const batchResults = await Promise.all(
         batch.map(async (profile) => {
+          const profileName = profile.name || profile.profileName || profile.id;
           try {
+            // First verify the profile exists and is accessible
+            const profileData = await apiService.getProfile(profile.id).catch(() => null);
+            if (!profileData) {
+              console.warn(`[WLANAssignment] Profile ${profileName} not found or inaccessible, skipping`);
+              failCount++;
+              return {
+                profileId: profile.id,
+                profileName,
+                success: false,
+                error: 'Profile not found or inaccessible',
+                skipped: true
+              };
+            }
+
             await apiService.assignServiceToProfile(serviceId, profile.id);
+            successCount++;
+            console.log(`[WLANAssignment] ✓ Assigned to profile: ${profileName}`);
             return {
               profileId: profile.id,
-              profileName: profile.name || profile.profileName || profile.id,
+              profileName,
               success: true
             };
           } catch (error) {
+            failCount++;
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+            console.warn(`[WLANAssignment] ✗ Failed to assign to profile ${profileName}: ${errorMsg}`);
             return {
               profileId: profile.id,
-              profileName: profile.name || profile.profileName || profile.id,
+              profileName,
               success: false,
-              error: error instanceof Error ? error.message : 'Unknown error'
+              error: errorMsg
             };
           }
         })
@@ -333,6 +362,7 @@ export class WLANAssignmentService {
       results.push(...batchResults);
     }
 
+    console.log(`[WLANAssignment] Assignment complete: ${successCount} succeeded, ${failCount} failed`);
     return results;
   }
 
