@@ -9,12 +9,14 @@ import { Switch } from './ui/switch';
 import { Separator } from './ui/separator';
 import { Textarea } from './ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Save, RefreshCw, Plus, Trash2, Network, Shield, Wifi, Settings, Radio, Users, Globe, Lock, Unlock, Eye, EyeOff, Info } from 'lucide-react';
+import { AlertCircle, Save, RefreshCw, Plus, Trash2, Network, Shield, Wifi, Settings, Radio, Users, Globe, Lock, Unlock, Eye, EyeOff, Info, MapPin, Building, Folder, FolderOpen, Loader2, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Skeleton } from './ui/skeleton';
 import { ScrollArea } from './ui/scroll-area';
 import { apiService, Service, Role, Topology, AaaPolicy, ClassOfService } from '../services/api';
+import { WLANAssignmentService } from '../services/wlanAssignment';
+import type { Site, SiteGroup, Profile } from '../types/network';
 import { generateDefaultService, generatePrivacyConfig, validateServiceData } from '../utils/serviceDefaults';
 import { toast } from 'sonner';
 
@@ -148,6 +150,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
+  
+  // Site Assignment State
+  const [sites, setSites] = useState<Site[]>([]);
+  const [siteGroups, setSiteGroups] = useState<SiteGroup[]>([]);
+  const [selectedSites, setSelectedSites] = useState<string[]>([]);
+  const [selectedSiteGroups, setSelectedSiteGroups] = useState<string[]>([]);
+  const [loadingSites, setLoadingSites] = useState(false);
+  const [assigningSites, setAssigningSites] = useState(false);
+  const [profilesBySite, setProfilesBySite] = useState<Map<string, Profile[]>>(new Map());
   const [formData, setFormData] = useState<NetworkFormData>({
     // Basic Settings
     name: '',
@@ -473,6 +484,160 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     }
   };
 
+  // Load sites and site groups for assignment
+  const loadSitesData = async () => {
+    setLoadingSites(true);
+    try {
+      const [sitesResponse, savedGroups] = await Promise.all([
+        apiService.getSites(),
+        Promise.resolve(localStorage.getItem('siteGroups'))
+      ]);
+      
+      setSites(sitesResponse);
+      
+      if (savedGroups) {
+        try {
+          setSiteGroups(JSON.parse(savedGroups));
+        } catch {
+          setSiteGroups([]);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load sites:', err);
+    } finally {
+      setLoadingSites(false);
+    }
+  };
+
+  // Discover profiles for selected sites
+  const discoverProfilesForSites = async (siteIds: string[]) => {
+    if (siteIds.length === 0) {
+      setProfilesBySite(new Map());
+      return;
+    }
+
+    try {
+      const assignmentService = new WLANAssignmentService();
+      const profileMap = await assignmentService.discoverProfilesForSites(siteIds);
+      
+      const newProfilesBySite = new Map<string, Profile[]>();
+      for (const siteId of siteIds) {
+        newProfilesBySite.set(siteId, profileMap[siteId] || []);
+      }
+      setProfilesBySite(newProfilesBySite);
+    } catch (err) {
+      console.error('Failed to discover profiles:', err);
+    }
+  };
+
+  // Get all site IDs including those from site groups
+  const getExpandedSiteIds = (): string[] => {
+    const siteIdsFromGroups = selectedSiteGroups.flatMap(groupId => {
+      const group = siteGroups.find(g => g.id === groupId);
+      return group?.siteIds || [];
+    });
+    return [...new Set([...selectedSites, ...siteIdsFromGroups])];
+  };
+
+  // Toggle site selection
+  const toggleSite = (siteId: string) => {
+    setSelectedSites(prev => 
+      prev.includes(siteId) 
+        ? prev.filter(id => id !== siteId)
+        : [...prev, siteId]
+    );
+  };
+
+  // Toggle site group selection
+  const toggleSiteGroup = (groupId: string) => {
+    setSelectedSiteGroups(prev =>
+      prev.includes(groupId)
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
+  // Assign WLAN to selected sites
+  const handleAssignToSites = async () => {
+    const expandedSiteIds = getExpandedSiteIds();
+    if (expandedSiteIds.length === 0) {
+      toast.error('Please select at least one site or site group');
+      return;
+    }
+
+    setAssigningSites(true);
+    try {
+      const assignmentService = new WLANAssignmentService();
+      
+      // Discover profiles for all selected sites
+      const profileMap = await assignmentService.discoverProfilesForSites(expandedSiteIds);
+      const allProfiles = Object.values(profileMap).flat();
+      
+      // Deduplicate profiles
+      const uniqueProfiles = allProfiles.filter((profile, index, self) =>
+        index === self.findIndex(p => p.id === profile.id)
+      );
+
+      if (uniqueProfiles.length === 0) {
+        toast.error('No profiles found at selected sites', {
+          description: 'Ensure sites have device groups with profiles configured'
+        });
+        return;
+      }
+
+      // Assign to each profile
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const profile of uniqueProfiles) {
+        try {
+          await apiService.assignServiceToProfile(serviceId, profile.id);
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to assign to profile ${profile.id}:`, err);
+          failCount++;
+        }
+      }
+
+      // Sync profiles
+      for (const profile of uniqueProfiles) {
+        try {
+          await apiService.syncProfile(profile.id);
+        } catch (err) {
+          console.error(`Failed to sync profile ${profile.id}:`, err);
+        }
+      }
+
+      if (successCount > 0) {
+        toast.success(`Assigned to ${successCount} profile(s)`, {
+          description: failCount > 0 ? `${failCount} failed` : `Across ${expandedSiteIds.length} site(s)`
+        });
+      } else {
+        toast.error('Failed to assign to any profiles');
+      }
+    } catch (err) {
+      console.error('Assignment failed:', err);
+      toast.error('Failed to assign WLAN to sites');
+    } finally {
+      setAssigningSites(false);
+    }
+  };
+
+  // Load sites when Sites tab is activated
+  useEffect(() => {
+    if (activeTab === 'sites' && sites.length === 0) {
+      loadSitesData();
+    }
+  }, [activeTab]);
+
+  // Discover profiles when site selection changes
+  useEffect(() => {
+    const expandedSites = getExpandedSiteIds();
+    if (expandedSites.length > 0 && activeTab === 'sites') {
+      discoverProfilesForSites(expandedSites);
+    }
+  }, [selectedSites, selectedSiteGroups, activeTab]);
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -770,10 +935,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="basic">Basic</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="network">Network</TabsTrigger>
+          <TabsTrigger value="sites">Sites</TabsTrigger>
           <TabsTrigger value="access">Access</TabsTrigger>
           <TabsTrigger value="advanced">Advanced</TabsTrigger>
         </TabsList>
@@ -1364,6 +1530,179 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   onCheckedChange={(checked) => handleInputChange('mbo', checked)}
                 />
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Sites Assignment Tab */}
+        <TabsContent value="sites" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <MapPin className="h-5 w-5" />
+                <span>Site Assignment</span>
+              </CardTitle>
+              <CardDescription>
+                Assign this WLAN to sites and site groups. The WLAN will be deployed to all profiles at the selected sites.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {loadingSites ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                  <span>Loading sites...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Site Groups Section */}
+                  {siteGroups.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Folder className="h-4 w-4" />
+                        <Label>Site Groups</Label>
+                      </div>
+                      <div className="space-y-2">
+                        {siteGroups.map(group => (
+                          <div
+                            key={group.id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                              selectedSiteGroups.includes(group.id)
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-accent/50'
+                            }`}
+                            onClick={() => toggleSiteGroup(group.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSiteGroups.includes(group.id)}
+                              onChange={() => {}}
+                              className="h-4 w-4"
+                            />
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: group.color || '#888' }}
+                            />
+                            <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium">{group.name}</span>
+                              {group.description && (
+                                <p className="text-xs text-muted-foreground truncate">{group.description}</p>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">
+                              {group.siteIds.length} {group.siteIds.length === 1 ? 'site' : 'sites'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <Separator />
+
+                  {/* Individual Sites Section */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        <Label>Individual Sites</Label>
+                      </div>
+                      {sites.length > 0 && (
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setSelectedSites(sites.map(s => s.id))}
+                            disabled={selectedSites.length === sites.length}
+                          >
+                            Select All
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => setSelectedSites([])}
+                            disabled={selectedSites.length === 0}
+                          >
+                            Clear All
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {sites.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center py-4">
+                        No sites available
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {sites.map(site => (
+                          <div
+                            key={site.id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                              selectedSites.includes(site.id)
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-accent/50'
+                            }`}
+                            onClick={() => toggleSite(site.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedSites.includes(site.id)}
+                              onChange={() => {}}
+                              className="h-4 w-4"
+                            />
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="flex-1">{site.name || site.siteName || site.id}</span>
+                            {profilesBySite.get(site.id) && (
+                              <Badge variant="outline" className="text-xs">
+                                {profilesBySite.get(site.id)?.length || 0} profiles
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Assignment Summary and Action */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                      <div>
+                        <p className="font-medium">Selected: {getExpandedSiteIds().length} site(s)</p>
+                        <p className="text-sm text-muted-foreground">
+                          {Array.from(profilesBySite.values()).flat().length} profile(s) will receive this WLAN
+                        </p>
+                      </div>
+                      <Button
+                        onClick={handleAssignToSites}
+                        disabled={assigningSites || getExpandedSiteIds().length === 0}
+                      >
+                        {assigningSites ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Assigning...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Assign to Sites
+                          </>
+                        )}
+                      </Button>
+                    </div>
+
+                    <p className="text-xs text-muted-foreground">
+                      This will assign the WLAN to all profiles at the selected sites and trigger a configuration sync to the access points.
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
