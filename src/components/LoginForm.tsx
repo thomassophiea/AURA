@@ -261,7 +261,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
             </div>
             <CardTitle className="text-2xl"><span className="font-bold">API</span> | Integration ONE</CardTitle>
             <CardDescription className="text-center mt-2">
-              {step === 'controller' ? 'Select a controller to connect' : 'Sign in to continue'}
+              {step === 'controller' ? 'Select a site group to connect' : 'Sign in to continue'}
             </CardDescription>
           </CardHeader>
 
@@ -274,7 +274,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : showAddForm || editingController ? (
-                  /* Add/Edit Controller Form */
+                  /* Add/Edit Site Group Form */
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-4">
                       <Button 
@@ -289,7 +289,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
                       <span className="font-medium">
-                        {editingController ? 'Edit Controller' : 'Add Controller'}
+                        {editingController ? 'Edit Site Group' : 'Add Site Group'}
                       </span>
                     </div>
 
@@ -297,7 +297,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                       <Label htmlFor="ctrl-name">Name</Label>
                       <Input
                         id="ctrl-name"
-                        placeholder="Production Controller"
+                        placeholder="Production Sites"
                         value={controllerForm.name}
                         onChange={(e) => setControllerForm(prev => ({ ...prev, name: e.target.value }))}
                       />
@@ -317,19 +317,19 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                       className="w-full"
                       onClick={editingController ? handleEditController : handleAddController}
                     >
-                      {editingController ? 'Save Changes' : 'Add Controller'}
+                      {editingController ? 'Save Changes' : 'Add Site Group'}
                     </Button>
                   </div>
                 ) : (
-                  /* Controller List */
+                  /* Site Group List */
                   <div className="space-y-3">
                     {controllers.length === 0 ? (
                       <div className="text-center py-8">
                         <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground mb-4">No controllers configured</p>
+                        <p className="text-muted-foreground mb-4">No site groups configured</p>
                         <Button onClick={() => setShowAddForm(true)}>
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Controller
+                          Add Site Group
                         </Button>
                       </div>
                     ) : (
@@ -414,7 +414,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                           onClick={() => setShowAddForm(true)}
                         >
                           <Plus className="h-4 w-4 mr-2" />
-                          Add Controller
+                          Add Site Group
                         </Button>
                       </>
                     )}

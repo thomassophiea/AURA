@@ -235,9 +235,9 @@ export function ControllerSelector({
     <div className="space-y-6">
       {/* Header */}
       <div className="text-center">
-        <h2 className="text-2xl font-bold">Select Controller</h2>
+        <h2 className="text-2xl font-bold">Select Site Group</h2>
         <p className="text-muted-foreground mt-1">
-          Choose a Platform ONE controller to connect to
+          Choose a Platform ONE site group to manage
         </p>
       </div>
 
@@ -246,13 +246,13 @@ export function ControllerSelector({
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Server className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Controllers</h3>
+            <h3 className="text-lg font-medium mb-2">No Site Groups</h3>
             <p className="text-muted-foreground text-center mb-4">
-              Add a Platform ONE controller to get started
+              Add a Platform ONE site group to get started
             </p>
             <Button onClick={() => setAddDialogOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Add Controller
+              Add Site Group
             </Button>
           </CardContent>
         </Card>
@@ -347,7 +347,7 @@ export function ControllerSelector({
           onClick={() => setAddDialogOpen(true)}
         >
           <Plus className="h-4 w-4 mr-2" />
-          Add Controller
+          Add Site Group
         </Button>
 
         <div className="flex gap-2">
@@ -367,13 +367,13 @@ export function ControllerSelector({
         </div>
       </div>
 
-      {/* Add Controller Dialog */}
+      {/* Add Site Group Dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Controller</DialogTitle>
+            <DialogTitle>Add Site Group</DialogTitle>
             <DialogDescription>
-              Add a new Platform ONE controller to manage
+              Add a new Platform ONE site group to manage
             </DialogDescription>
           </DialogHeader>
           
@@ -382,7 +382,7 @@ export function ControllerSelector({
               <Label htmlFor="name">Name</Label>
               <Input
                 id="name"
-                placeholder="Production Controller"
+                placeholder="Production Sites"
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
               />
@@ -417,19 +417,19 @@ export function ControllerSelector({
               Cancel
             </Button>
             <Button onClick={handleAddController}>
-              Add Controller
+              Add Site Group
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Controller Dialog */}
+      {/* Edit Site Group Dialog */}
       <Dialog open={!!editController} onOpenChange={(open) => !open && setEditController(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Controller</DialogTitle>
+            <DialogTitle>Edit Site Group</DialogTitle>
             <DialogDescription>
-              Update controller settings
+              Update site group settings
             </DialogDescription>
           </DialogHeader>
           
