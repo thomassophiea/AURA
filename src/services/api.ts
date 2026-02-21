@@ -3082,43 +3082,83 @@ class ApiService {
   ): Promise<void> {
     logger.log(`Assigning service ${serviceId} to profile ${profileId} with interfaces:`, interfaces);
 
-    // Build interface assignment payload
-    const interfaceAssignment: any = {};
-    if (interfaces) {
-      if (interfaces.radio1) interfaceAssignment.radio1 = serviceId;
-      if (interfaces.radio2) interfaceAssignment.radio2 = serviceId;
-      if (interfaces.radio3) interfaceAssignment.radio3 = serviceId;
-      if (interfaces.port1) interfaceAssignment.port1 = serviceId;
-      if (interfaces.port2) interfaceAssignment.port2 = serviceId;
-      if (interfaces.port3) interfaceAssignment.port3 = serviceId;
-    }
-
-    // Method 1: Try updating profile with service interface assignments
+    // Method 1: Try updating profile with radioIfList (Extreme Platform ONE API format)
+    // API expects: radioIfList: [{ serviceId: "...", index: 1 }, { serviceId: "...", index: 2 }]
+    // where index 1=Radio1 (2.4GHz), index 2=Radio2 (5GHz), index 3=Radio3 (6GHz)
     try {
       const profile = await this.getProfileById(profileId);
       if (profile) {
-        // The profile likely has a structure like:
-        // { radio1Services: [...], radio2Services: [...], ... }
-        // or { interfaces: { radio1: { services: [...] }, ... } }
-        
         const updatePayload = { ...profile };
         
-        // Try common patterns for interface service assignment
-        if (interfaces?.radio1) {
-          updatePayload.radio1Services = [...(profile.radio1Services || []), serviceId];
-        }
-        if (interfaces?.radio2) {
-          updatePayload.radio2Services = [...(profile.radio2Services || []), serviceId];
-        }
-        if (interfaces?.radio3) {
-          updatePayload.radio3Services = [...(profile.radio3Services || []), serviceId];
-        }
+        // Determine available radios based on device type
+        // Reference: Extreme Platform ONE AP models and their radio capabilities
+        const deviceType = profile.apPlatform || profile.deviceType || profile.hardwareType || '';
+        const dt = deviceType.toUpperCase();
         
-        // Also update general services array
-        const services = profile.services || [];
-        if (!services.includes(serviceId)) {
-          updatePayload.services = [...services, serviceId];
+        // All APs have Radio 1 (2.4GHz)
+        const hasRadio1 = true;
+        
+        // Single-band APs (Radio 1 only): AP505, APVMAP, SA201
+        const isSingleBand = (dt.includes('AP505') && !dt.includes('AP5050')) ||
+                             dt.includes('APVMAP') || dt.includes('SA201');
+        
+        // Tri-band APs (Radio 1, 2, 3): AP4000/4020 series, AP5010/5020/5050 series
+        const isTriBand = dt.includes('AP4000') || dt.includes('AP4020') || 
+                          dt.includes('AP5010') || dt.includes('AP5020') || dt.includes('AP5050') ||
+                          dt.includes('WI-FI 6E') || dt.includes('WIFI6E');
+        
+        // Radio 2 (5GHz): All except single-band
+        const hasRadio2 = !isSingleBand;
+        
+        // Radio 3 (6GHz): Only tri-band APs
+        // Note: Radio 3 requires WPA3 or OWE per Wi-Fi 6E standard - but we enable it here
+        // and let the controller enforce security requirements
+        const hasRadio3 = isTriBand;
+        
+        // Build radioIfList entries for requested radios (only if AP supports them)
+        const newRadioEntries: Array<{ serviceId: string; index: number }> = [];
+        if (interfaces?.radio1 && hasRadio1) newRadioEntries.push({ serviceId, index: 1 });
+        if (interfaces?.radio2 && hasRadio2) newRadioEntries.push({ serviceId, index: 2 });
+        if (interfaces?.radio3 && hasRadio3) newRadioEntries.push({ serviceId, index: 3 });
+
+        logger.log(`Profile ${profileId} device type: ${deviceType}, radios: R1=${hasRadio1}, R2=${hasRadio2}, R3=${hasRadio3}`);
+
+        // Merge with existing radioIfList, avoiding duplicates
+        const existingRadioIfList: Array<{ serviceId: string; index: number }> = profile.radioIfList || [];
+        const mergedRadioIfList = [...existingRadioIfList];
+        
+        for (const newEntry of newRadioEntries) {
+          const exists = mergedRadioIfList.some(
+            e => e.serviceId === newEntry.serviceId && e.index === newEntry.index
+          );
+          if (!exists) {
+            mergedRadioIfList.push(newEntry);
+          }
         }
+        updatePayload.radioIfList = mergedRadioIfList;
+
+        // Build wiredIfList for wired ports if requested
+        if (interfaces?.port1 || interfaces?.port2 || interfaces?.port3) {
+          const newWiredEntries: Array<{ serviceId: string; index: number }> = [];
+          if (interfaces?.port1) newWiredEntries.push({ serviceId, index: 1 });
+          if (interfaces?.port2) newWiredEntries.push({ serviceId, index: 2 });
+          if (interfaces?.port3) newWiredEntries.push({ serviceId, index: 3 });
+
+          const existingWiredIfList: Array<{ serviceId: string; index: number }> = profile.wiredIfList || [];
+          const mergedWiredIfList = [...existingWiredIfList];
+          
+          for (const newEntry of newWiredEntries) {
+            const exists = mergedWiredIfList.some(
+              e => e.serviceId === newEntry.serviceId && e.index === newEntry.index
+            );
+            if (!exists) {
+              mergedWiredIfList.push(newEntry);
+            }
+          }
+          updatePayload.wiredIfList = mergedWiredIfList;
+        }
+
+        logger.log(`Updating profile with radioIfList:`, updatePayload.radioIfList);
 
         const response = await this.makeAuthenticatedRequest(
           `/v3/profiles/${encodeURIComponent(profileId)}`,
@@ -3130,19 +3170,33 @@ class ApiService {
         );
 
         if (response.ok) {
-          logger.log(`Successfully assigned service to profile interfaces`);
+          logger.log(`Successfully assigned service to profile interfaces via radioIfList`);
           return;
+        } else {
+          const errorText = await response.text();
+          logger.warn(`Profile update via PUT failed (${response.status}):`, errorText);
         }
       }
     } catch (error) {
       logger.warn('Profile update method failed:', error);
     }
 
-    // Method 2: Try dedicated assignment endpoints
+    // Method 2: Try dedicated assignment endpoints as fallback
     const assignmentEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/services`,
       `/v1/profiles/${encodeURIComponent(profileId)}/services`
     ];
+
+    // Build interface assignment for fallback endpoints
+    const interfaceAssignment: any = {};
+    if (interfaces) {
+      if (interfaces.radio1) interfaceAssignment.radio1 = serviceId;
+      if (interfaces.radio2) interfaceAssignment.radio2 = serviceId;
+      if (interfaces.radio3) interfaceAssignment.radio3 = serviceId;
+      if (interfaces.port1) interfaceAssignment.port1 = serviceId;
+      if (interfaces.port2) interfaceAssignment.port2 = serviceId;
+      if (interfaces.port3) interfaceAssignment.port3 = serviceId;
+    }
 
     for (const endpoint of assignmentEndpoints) {
       try {

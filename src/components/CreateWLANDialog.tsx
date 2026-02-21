@@ -46,10 +46,10 @@ interface SiteDeploymentConfig {
 }
 
 export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDialogProps) {
-  // Form state
+  // Form state - defaults for easy WLAN creation
   const [formData, setFormData] = useState<WLANFormData>({
-    serviceName: '',
-    ssid: '',
+    serviceName: 'New WLAN',
+    ssid: 'New WLAN',
     security: 'wpa2-psk',
     passphrase: '',
     vlan: 1,
@@ -122,6 +122,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   // Submission state
   const [submitting, setSubmitting] = useState(false);
 
+  // Track if SSID has been manually edited (to stop auto-sync from Network Name)
+  const [ssidManuallyEdited, setSsidManuallyEdited] = useState(false);
+
   // Draggable state
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -156,16 +159,16 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       loadAaaPolicies();
       loadTopologies();
       loadCosProfiles();
-      // Reset form and position with controller defaults
+      // Reset form and position with easy-to-use defaults
       setFormData({
-        serviceName: '',
-        ssid: '',
+        serviceName: 'New WLAN',
+        ssid: 'New WLAN',
         security: 'wpa2-psk',
         passphrase: '',
-        vlan: null,
+        vlan: 1,
         band: 'dual',
         enabled: true,
-        selectedSites: [],
+        selectedSites: [], // Will be populated with all sites after load
         selectedSiteGroups: [],
         authenticatedUserDefaultRoleID: null, // Will be set to 'bridged' after roles load
         // Basic options
@@ -193,6 +196,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setSiteConfigs(new Map());
       setProfilesBySite(new Map());
       setEffectiveSets([]);
+      setSsidManuallyEdited(false); // Reset SSID sync tracking
       setPosition({ x: 0, y: 0 }); // Reset position when opening
     }
   }, [open]);
@@ -255,6 +259,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     try {
       const data = await apiService.getSites();
       setSites(data);
+      // Auto-select all sites by default for easy deployment
+      if (data.length > 0) {
+        const allSiteIds = data.map((s: any) => s.id);
+        setFormData(prev => ({ ...prev, selectedSites: allSiteIds }));
+        console.log('[CreateWLAN] Auto-selected all sites:', allSiteIds.length);
+      }
     } catch (error) {
       console.error('Failed to load sites:', error);
       toast.error('Failed to load sites');
@@ -830,21 +840,29 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               </CardHeader>
               <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Service Name */}
+                {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
                 <div className="space-y-2">
                   <Label htmlFor="serviceName">
-                    Service Name {!formData.serviceName?.trim() && <span className="text-red-500">*</span>}
+                    Network Name {!formData.serviceName?.trim() && <span className="text-red-500">*</span>}
                   </Label>
                   <Input
                     id="serviceName"
                     value={formData.serviceName || ''}
-                    onChange={(e) => setFormData({ ...formData, serviceName: e.target.value })}
-                    placeholder="Service identifier (required)"
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      // Sync SSID unless user has manually edited it
+                      if (!ssidManuallyEdited) {
+                        setFormData({ ...formData, serviceName: newName, ssid: newName });
+                      } else {
+                        setFormData({ ...formData, serviceName: newName });
+                      }
+                    }}
+                    placeholder="New WLAN"
                     className={!formData.serviceName?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
                   />
                 </div>
 
-                {/* SSID */}
+                {/* SSID - can be different from Network Name */}
                 <div className="space-y-2">
                   <Label htmlFor="ssid">
                     SSID {!formData.ssid?.trim() && <span className="text-red-500">*</span>}
@@ -852,8 +870,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                   <Input
                     id="ssid"
                     value={formData.ssid || ''}
-                    onChange={(e) => setFormData({ ...formData, ssid: e.target.value })}
-                    placeholder="MyNetwork (required)"
+                    onChange={(e) => {
+                      setSsidManuallyEdited(true); // User edited SSID, stop auto-sync
+                      setFormData({ ...formData, ssid: e.target.value });
+                    }}
+                    placeholder="Broadcast name"
                     className={!formData.ssid?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
                   />
                 </div>

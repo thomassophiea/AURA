@@ -130,8 +130,8 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     proxied: 'Local',
     shutdownOnMeshpointLoss: false,
 
-    // VLAN configuration
-    dot1dPortNumber: serviceData.vlan || 99,
+    // VLAN configuration - default to VLAN 1 bridged untagged
+    dot1dPortNumber: serviceData.vlan || 1,
 
     // Security configuration
     privacy: buildPrivacyPayload(serviceData.security, serviceData.passphrase, securityConfig),

@@ -68,9 +68,17 @@ export function ProfileInterfaceAssignmentDialog({
       const mappedProfiles: ProfileWithInterfaces[] = profilesData.map((p: any) => {
         const deviceType = p.deviceType || p.hardwareType || 'Unknown';
 
+        const dt = deviceType.toUpperCase();
         const hasRadio1 = true;
-        const hasRadio2 = !deviceType.includes('305') && !deviceType.includes('302');
-        const hasRadio3 = deviceType.includes('5010') || deviceType.includes('5020') || deviceType.includes('5050');
+        // Single-band: AP505 (not AP5050), APVMAP, SA201
+        const isSingleBand = (dt.includes('AP505') && !dt.includes('AP5050')) ||
+                             dt.includes('APVMAP') || dt.includes('SA201');
+        // Tri-band: AP4000/4020, AP5010/5020/5050 series
+        const isTriBand = dt.includes('AP4000') || dt.includes('AP4020') || 
+                          dt.includes('AP5010') || dt.includes('AP5020') || dt.includes('AP5050');
+        const hasRadio2 = !isSingleBand;
+        // Radio 3 (6GHz) requires WPA3 or OWE per Wi-Fi 6E standard
+        const hasRadio3 = isTriBand;
         const hasPorts = deviceType.includes('302W') || deviceType.includes('3915') || deviceType.includes('3916');
         const hasCamera = deviceType.includes('camera');
         const hasGe2 = deviceType.includes('302W');
