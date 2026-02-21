@@ -67,7 +67,7 @@ const STORAGE_KEYS = {
 const DEFAULT_CONTROLLER: Controller = {
   id: 'default-controller',
   org_id: 'default',
-  name: 'Platform ONE',
+  name: 'TGS-XIQC-VE6120',
   description: 'Default Platform ONE Controller',
   url: 'https://tsophiea.ddns.net',
   port: 443,
