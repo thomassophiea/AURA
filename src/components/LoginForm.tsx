@@ -61,7 +61,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl"><span className="font-bold">Extreme</span> Platform ONE™ | API</CardTitle>
+            <CardTitle className="text-2xl"><span className="font-bold">API</span> | Integration ONE</CardTitle>
             <CardDescription className="text-center mt-2">
               Autonomous Platform Intelligence
             </CardDescription>
