@@ -17,6 +17,11 @@ logger.log('[API Service] BASE_URL:', BASE_URL);
 
 // Function to get current base URL (supports dynamic controller switching)
 function getBaseUrl(): string {
+  // In production, always use the proxy - the X-Controller-URL header handles routing
+  if (isProduction) {
+    return BASE_URL; // Always /api/management in production
+  }
+  // In development, use dynamic controller URL if set
   if (DYNAMIC_CONTROLLER_URL) {
     return `${DYNAMIC_CONTROLLER_URL}/management`;
   }
