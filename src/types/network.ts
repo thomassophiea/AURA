@@ -76,6 +76,23 @@ export interface CreateServiceRequest {
   authenticatedUserDefaultRoleID?: string;
   hidden?: boolean;
   maxClients?: number;
+  // Advanced options (matching controller)
+  mbo?: boolean;
+  accountingEnabled?: boolean;
+  includeHostname?: boolean;
+  enable11mcSupport?: boolean;
+  enabled11kSupport?: boolean;
+  uapsdEnabled?: boolean;
+  admissionControlVoice?: boolean;
+  admissionControlVideo?: boolean;
+  admissionControlBestEffort?: boolean;
+  admissionControlBackgroundTraffic?: boolean;
+  clientToClientCommunication?: boolean;
+  purgeOnDisconnect?: boolean;
+  beaconProtection?: boolean;
+  preAuthenticatedIdleTimeout?: number;
+  postAuthenticatedIdleTimeout?: number;
+  sessionTimeout?: number;
 }
 
 export interface AutoAssignmentResponse {
@@ -117,10 +134,28 @@ export interface WLANFormData {
   selectedSiteGroups: string[]; // Site groups selected for deployment
   authenticatedUserDefaultRoleID?: string | null;
 
-  // Advanced options (fields that exist in Service API)
+  // Basic options
   hidden?: boolean;
   maxClients?: number;
   description?: string;
+
+  // Advanced options (matching controller exactly)
+  mbo?: boolean;                              // MultiBand Operation
+  accountingEnabled?: boolean;                // RADIUS Accounting
+  includeHostname?: boolean;                  // Include Hostname
+  enable11mcSupport?: boolean;                // FTM (11mc) responder support
+  enabled11kSupport?: boolean;                // Radio Management (11k) support
+  uapsdEnabled?: boolean;                     // U-APSD (WMM-PS)
+  admissionControlVoice?: boolean;            // Use Admission Control for Voice (VO)
+  admissionControlVideo?: boolean;            // Use Admission Control for Video (VI)
+  admissionControlBestEffort?: boolean;       // Use Admission Control for Best Effort (BE)
+  admissionControlBackgroundTraffic?: boolean; // Use Global Admission Control for Background (BK)
+  clientToClientCommunication?: boolean;      // Client To Client Communication
+  purgeOnDisconnect?: boolean;                // Clear Session on Disconnect
+  beaconProtection?: boolean;                 // Beacon Protection
+  preAuthenticatedIdleTimeout?: number;       // Pre-Authenticated idle timeout (seconds)
+  postAuthenticatedIdleTimeout?: number;      // Post-Authenticated idle timeout (seconds)
+  sessionTimeout?: number;                    // Maximum session duration (seconds)
 }
 
 // ============================================

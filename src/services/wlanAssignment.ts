@@ -9,6 +9,123 @@ import type {
 } from '../types/network';
 
 /**
+ * Build Extreme Platform ONE API compliant service payload from form data
+ * Uses form values with controller defaults as fallbacks
+ */
+function buildServicePayload(serviceData: CreateServiceRequest): any {
+  const payload: any = {
+    // Basic identification
+    serviceName: serviceData.serviceName || serviceData.name,
+    ssid: serviceData.ssid,
+    status: 'enabled',
+    suppressSsid: serviceData.hidden || false,
+
+    // Required flags
+    canEdit: true,
+    canDelete: true,
+    proxied: 'Local',
+    shutdownOnMeshpointLoss: false,
+
+    // VLAN configuration
+    dot1dPortNumber: serviceData.vlan || 99,
+
+    // Security configuration - set below based on security type
+    privacy: null,
+
+    // 802.11k/v/r support (from form with defaults)
+    enabled11kSupport: serviceData.enabled11kSupport ?? false,
+    rm11kBeaconReport: serviceData.enabled11kSupport ?? false,
+    rm11kQuietIe: serviceData.enabled11kSupport ?? false,
+    enable11mcSupport: serviceData.enable11mcSupport ?? false,
+
+    // QoS settings (from form with defaults)
+    uapsdEnabled: serviceData.uapsdEnabled ?? true,
+    admissionControlVideo: serviceData.admissionControlVideo ?? false,
+    admissionControlVoice: serviceData.admissionControlVoice ?? false,
+    admissionControlBestEffort: serviceData.admissionControlBestEffort ?? false,
+    admissionControlBackgroundTraffic: serviceData.admissionControlBackgroundTraffic ?? false,
+
+    // Advanced features (from form with defaults)
+    flexibleClientAccess: false,
+    mbaAuthorization: false,
+    accountingEnabled: serviceData.accountingEnabled ?? false,
+    clientToClientCommunication: serviceData.clientToClientCommunication ?? true,
+    includeHostname: serviceData.includeHostname ?? false,
+    mbo: serviceData.mbo ?? true,
+    oweAutogen: false,
+    oweCompanion: null,
+    purgeOnDisconnect: serviceData.purgeOnDisconnect ?? false,
+    beaconProtection: serviceData.beaconProtection ?? false,
+
+    // Policies
+    aaaPolicyId: null,
+    mbatimeoutRoleId: null,
+    roamingAssistPolicy: null,
+
+    // Vendor attributes
+    vendorSpecificAttributes: ['apName', 'vnsName', 'ssid'],
+
+    // Captive portal
+    enableCaptivePortal: false,
+    captivePortalType: null,
+    eGuestPortalId: null,
+    eGuestSettings: [],
+
+    // Timeouts (from form with defaults)
+    preAuthenticatedIdleTimeout: serviceData.preAuthenticatedIdleTimeout ?? 300,
+    postAuthenticatedIdleTimeout: serviceData.postAuthenticatedIdleTimeout ?? 1800,
+    sessionTimeout: serviceData.sessionTimeout ?? 0,
+
+    // Topology and CoS (using default UUIDs from existing services)
+    defaultTopology: 'efd5f044-26c8-11e7-93ae-92361f002671',
+    defaultCoS: '1eea4d66-2607-11e7-93ae-92361f002671',
+
+    // Roles
+    unAuthenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
+    authenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
+    cpNonAuthenticatedPolicyName: null,
+
+    // Hotspot 2.0
+    hotspotType: 'Disabled',
+    hotspot: null,
+
+    // DSCP code points mapping (controller defaults)
+    dscp: {
+      codePoints: [
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 2, 0,
+        1, 0, 3, 0, 3, 0, 3, 0, 3, 0, 4, 0, 4, 0, 4, 0,
+        4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0, 0, 6, 0,
+        6, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
+      ]
+    },
+
+    // Features
+    features: ['CENTRALIZED-SITE']
+  };
+
+  // Configure security based on type
+  if (serviceData.security === 'wpa2-psk' && serviceData.passphrase) {
+    payload.privacy = {
+      WpaPskElement: {
+        mode: 'aesOnly',
+        pmfMode: 'disabled',
+        presharedKey: serviceData.passphrase,
+        keyHexEncoded: false
+      }
+    };
+  } else if (serviceData.security === 'open') {
+    payload.privacy = null;
+  }
+
+  // Add optional description if provided
+  if (serviceData.description) {
+    payload.description = serviceData.description;
+  }
+
+  return payload;
+}
+
+/**
  * Service for orchestrating automatic WLAN-to-Profile assignment
  *
  * Workflow:
@@ -35,116 +152,7 @@ export class WLANAssignmentService {
       // Step 1: Create the WLAN/Service
       console.log('[WLANAssignment] Step 1: Creating service...');
 
-      // Build Extreme Platform ONE API compliant service payload
-      const servicePayload: any = {
-        // Basic identification
-        serviceName: serviceData.serviceName || serviceData.name,
-        ssid: serviceData.ssid,
-        status: 'enabled',
-        suppressSsid: serviceData.hidden || false,
-
-        // Required flags
-        canEdit: true,
-        canDelete: true,
-        proxied: 'Local',
-        shutdownOnMeshpointLoss: false,
-
-        // VLAN configuration
-        dot1dPortNumber: serviceData.vlan || 99,
-
-        // Security configuration (WPA2-PSK)
-        privacy: null, // Will be set below based on security type
-
-        // 802.11k/v/r support
-        enabled11kSupport: false,
-        rm11kBeaconReport: false,
-        rm11kQuietIe: false,
-        enable11mcSupport: false,
-
-        // QoS settings
-        uapsdEnabled: true,
-        admissionControlVideo: false,
-        admissionControlVoice: false,
-        admissionControlBestEffort: false,
-        admissionControlBackgroundTraffic: false,
-
-        // Advanced features
-        flexibleClientAccess: false,
-        mbaAuthorization: false,
-        accountingEnabled: false,
-        clientToClientCommunication: true,
-        includeHostname: false,
-        mbo: false,
-        oweAutogen: false,
-        oweCompanion: null,
-        purgeOnDisconnect: false,
-        beaconProtection: false,
-
-        // Policies
-        aaaPolicyId: null,
-        mbatimeoutRoleId: null,
-        roamingAssistPolicy: null,
-
-        // Vendor attributes
-        vendorSpecificAttributes: ['apName', 'vnsName', 'ssid'],
-
-        // Captive portal
-        enableCaptivePortal: false,
-        captivePortalType: null,
-        eGuestPortalId: null,
-        eGuestSettings: [],
-
-        // Timeouts
-        preAuthenticatedIdleTimeout: 300,
-        postAuthenticatedIdleTimeout: 1800,
-        sessionTimeout: 0,
-
-        // Topology and CoS (using default UUIDs from existing services)
-        defaultTopology: 'efd5f044-26c8-11e7-93ae-92361f002671',
-        defaultCoS: '1eea4d66-2607-11e7-93ae-92361f002671',
-
-        // Roles
-        unAuthenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
-        authenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
-        cpNonAuthenticatedPolicyName: null,
-
-        // Hotspot 2.0
-        hotspotType: 'Disabled',
-        hotspot: null,
-
-        // DSCP code points mapping
-        dscp: {
-          codePoints: [
-            2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 2, 0,
-            1, 0, 3, 0, 3, 0, 3, 0, 3, 0, 4, 0, 4, 0, 4, 0,
-            4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0, 0, 6, 0,
-            6, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
-          ]
-        },
-
-        // Features
-        features: ['CENTRALIZED-SITE']
-      };
-
-      // Configure security based on type
-      if (serviceData.security === 'wpa2-psk' && serviceData.passphrase) {
-        servicePayload.privacy = {
-          WpaPskElement: {
-            mode: 'aesOnly',
-            pmfMode: 'disabled',
-            presharedKey: serviceData.passphrase,
-            keyHexEncoded: false
-          }
-        };
-      } else if (serviceData.security === 'open') {
-        servicePayload.privacy = null;
-      }
-
-      // Add optional description if provided
-      if (serviceData.description) {
-        servicePayload.description = serviceData.description;
-      }
-
+      const servicePayload = buildServicePayload(serviceData);
       console.log('[WLANAssignment] Service payload:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
@@ -472,116 +480,7 @@ export class WLANAssignmentService {
       // Step 4: Create the WLAN/Service
       console.log('[WLANAssignment] Step 4: Creating service...');
 
-      // Build Extreme Platform ONE API compliant service payload
-      const servicePayload: any = {
-        // Basic identification
-        serviceName: serviceData.serviceName || serviceData.name,
-        ssid: serviceData.ssid,
-        status: 'enabled',
-        suppressSsid: serviceData.hidden || false,
-
-        // Required flags
-        canEdit: true,
-        canDelete: true,
-        proxied: 'Local',
-        shutdownOnMeshpointLoss: false,
-
-        // VLAN configuration
-        dot1dPortNumber: serviceData.vlan || 99,
-
-        // Security configuration (WPA2-PSK)
-        privacy: null, // Will be set below based on security type
-
-        // 802.11k/v/r support
-        enabled11kSupport: false,
-        rm11kBeaconReport: false,
-        rm11kQuietIe: false,
-        enable11mcSupport: false,
-
-        // QoS settings
-        uapsdEnabled: true,
-        admissionControlVideo: false,
-        admissionControlVoice: false,
-        admissionControlBestEffort: false,
-        admissionControlBackgroundTraffic: false,
-
-        // Advanced features
-        flexibleClientAccess: false,
-        mbaAuthorization: false,
-        accountingEnabled: false,
-        clientToClientCommunication: true,
-        includeHostname: false,
-        mbo: false,
-        oweAutogen: false,
-        oweCompanion: null,
-        purgeOnDisconnect: false,
-        beaconProtection: false,
-
-        // Policies
-        aaaPolicyId: null,
-        mbatimeoutRoleId: null,
-        roamingAssistPolicy: null,
-
-        // Vendor attributes
-        vendorSpecificAttributes: ['apName', 'vnsName', 'ssid'],
-
-        // Captive portal
-        enableCaptivePortal: false,
-        captivePortalType: null,
-        eGuestPortalId: null,
-        eGuestSettings: [],
-
-        // Timeouts
-        preAuthenticatedIdleTimeout: 300,
-        postAuthenticatedIdleTimeout: 1800,
-        sessionTimeout: 0,
-
-        // Topology and CoS (using default UUIDs from existing services)
-        defaultTopology: 'efd5f044-26c8-11e7-93ae-92361f002671',
-        defaultCoS: '1eea4d66-2607-11e7-93ae-92361f002671',
-
-        // Roles
-        unAuthenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
-        authenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
-        cpNonAuthenticatedPolicyName: null,
-
-        // Hotspot 2.0
-        hotspotType: 'Disabled',
-        hotspot: null,
-
-        // DSCP code points mapping
-        dscp: {
-          codePoints: [
-            2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 2, 0,
-            1, 0, 3, 0, 3, 0, 3, 0, 3, 0, 4, 0, 4, 0, 4, 0,
-            4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0, 0, 6, 0,
-            6, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
-          ]
-        },
-
-        // Features
-        features: ['CENTRALIZED-SITE']
-      };
-
-      // Configure security based on type
-      if (serviceData.security === 'wpa2-psk' && serviceData.passphrase) {
-        servicePayload.privacy = {
-          WpaPskElement: {
-            mode: 'aesOnly',
-            pmfMode: 'disabled',
-            presharedKey: serviceData.passphrase,
-            keyHexEncoded: false
-          }
-        };
-      } else if (serviceData.security === 'open') {
-        servicePayload.privacy = null;
-      }
-
-      // Add optional description if provided
-      if (serviceData.description) {
-        servicePayload.description = serviceData.description;
-      }
-
+      const servicePayload = buildServicePayload(serviceData);
       console.log('[WLANAssignment] Service payload:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);

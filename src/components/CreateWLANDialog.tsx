@@ -55,10 +55,27 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     selectedSites: [],
     selectedSiteGroups: [],
     authenticatedUserDefaultRoleID: null,
-    // Advanced options defaults
+    // Basic options
     hidden: false,
     maxClients: undefined,
-    description: ''
+    description: '',
+    // Advanced options (controller defaults)
+    mbo: true,
+    accountingEnabled: false,
+    includeHostname: false,
+    enable11mcSupport: false,
+    enabled11kSupport: false,
+    uapsdEnabled: true,
+    admissionControlVoice: false,
+    admissionControlVideo: false,
+    admissionControlBestEffort: false,
+    admissionControlBackgroundTraffic: false,
+    clientToClientCommunication: true,
+    purgeOnDisconnect: false,
+    beaconProtection: false,
+    preAuthenticatedIdleTimeout: 300,
+    postAuthenticatedIdleTimeout: 1800,
+    sessionTimeout: 0
   });
 
   // Sites data
@@ -116,7 +133,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     if (open) {
       loadSites();
       loadRoles();
-      // Reset form and position
+      // Reset form and position with controller defaults
       setFormData({
         serviceName: '',
         ssid: '',
@@ -127,7 +144,28 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         enabled: true,
         selectedSites: [],
         selectedSiteGroups: [],
-        authenticatedUserDefaultRoleID: null // Will be set to 'bridged' after roles load
+        authenticatedUserDefaultRoleID: null, // Will be set to 'bridged' after roles load
+        // Basic options
+        hidden: false,
+        maxClients: undefined,
+        description: '',
+        // Advanced options (controller defaults)
+        mbo: true,
+        accountingEnabled: false,
+        includeHostname: false,
+        enable11mcSupport: false,
+        enabled11kSupport: false,
+        uapsdEnabled: true,
+        admissionControlVoice: false,
+        admissionControlVideo: false,
+        admissionControlBestEffort: false,
+        admissionControlBackgroundTraffic: false,
+        clientToClientCommunication: true,
+        purgeOnDisconnect: false,
+        beaconProtection: false,
+        preAuthenticatedIdleTimeout: 300,
+        postAuthenticatedIdleTimeout: 1800,
+        sessionTimeout: 0
       });
       setSiteConfigs(new Map());
       setProfilesBySite(new Map());
@@ -524,10 +562,27 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           enabled: formData.enabled,
           sites: expandedSites, // Use expanded site IDs (includes both individual sites and sites from groups)
           authenticatedUserDefaultRoleID: formData.authenticatedUserDefaultRoleID || undefined,
-          // Advanced options
-          hidden: formData.hidden || undefined,
-          maxClients: formData.maxClients || undefined,
-          description: formData.description || undefined
+          // Basic options
+          hidden: formData.hidden,
+          maxClients: formData.maxClients,
+          description: formData.description || undefined,
+          // Advanced options (from controller form)
+          mbo: formData.mbo,
+          accountingEnabled: formData.accountingEnabled,
+          includeHostname: formData.includeHostname,
+          enable11mcSupport: formData.enable11mcSupport,
+          enabled11kSupport: formData.enabled11kSupport,
+          uapsdEnabled: formData.uapsdEnabled,
+          admissionControlVoice: formData.admissionControlVoice,
+          admissionControlVideo: formData.admissionControlVideo,
+          admissionControlBestEffort: formData.admissionControlBestEffort,
+          admissionControlBackgroundTraffic: formData.admissionControlBackgroundTraffic,
+          clientToClientCommunication: formData.clientToClientCommunication,
+          purgeOnDisconnect: formData.purgeOnDisconnect,
+          beaconProtection: formData.beaconProtection,
+          preAuthenticatedIdleTimeout: formData.preAuthenticatedIdleTimeout,
+          postAuthenticatedIdleTimeout: formData.postAuthenticatedIdleTimeout,
+          sessionTimeout: formData.sessionTimeout
         },
         siteAssignments
       );
@@ -739,46 +794,249 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <CardDescription className="text-xs mt-0.5">Optional advanced settings</CardDescription>
               </CardHeader>
               {showAdvanced && (
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Hide SSID */}
-                    <div className="flex items-center justify-between">
+                <CardContent className="space-y-6">
+                  {/* Toggle Options - Grid Layout */}
+                  <div className="space-y-3">
+                    {/* MultiBand Operation */}
+                    <div className="flex items-center justify-between py-1">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="hideSSID" className="cursor-pointer">Hide SSID</Label>
+                        <Label htmlFor="mbo" className="cursor-pointer">MultiBand Operation</Label>
+                        <Info className="h-3 w-3 text-muted-foreground" />
                       </div>
+                      <input
+                        id="mbo"
+                        type="checkbox"
+                        checked={formData.mbo ?? true}
+                        onChange={(e) => setFormData({ ...formData, mbo: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* RADIUS Accounting */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="accountingEnabled" className="cursor-pointer">RADIUS Accounting</Label>
+                      <input
+                        id="accountingEnabled"
+                        type="checkbox"
+                        checked={formData.accountingEnabled ?? false}
+                        onChange={(e) => setFormData({ ...formData, accountingEnabled: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Hide SSID */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="hideSSID" className="cursor-pointer">Hide SSID</Label>
                       <input
                         id="hideSSID"
                         type="checkbox"
-                        checked={formData.hidden || false}
+                        checked={formData.hidden ?? false}
                         onChange={(e) => setFormData({ ...formData, hidden: e.target.checked })}
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
-                    {/* Max Clients */}
-                    <div className="space-y-2">
-                      <Label htmlFor="maxClients">Max Clients (Optional)</Label>
-                      <Input
-                        id="maxClients"
-                        type="number"
-                        value={formData.maxClients || ''}
-                        onChange={(e) => setFormData({ ...formData, maxClients: e.target.value ? parseInt(e.target.value) : undefined })}
-                        placeholder="Unlimited"
-                        min="1"
-                        max="1000"
+                    {/* Include Hostname */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="includeHostname" className="cursor-pointer">Include Hostname</Label>
+                      <input
+                        id="includeHostname"
+                        type="checkbox"
+                        checked={formData.includeHostname ?? false}
+                        onChange={(e) => setFormData({ ...formData, includeHostname: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
-                    {/* Description */}
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Description (Optional)</Label>
-                      <Input
-                        id="description"
-                        value={formData.description || ''}
-                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                        placeholder="Network description..."
+                    {/* FTM (11mc) responder support */}
+                    <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="enable11mcSupport" className="cursor-pointer">FTM (11mc) responder support</Label>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                      <input
+                        id="enable11mcSupport"
+                        type="checkbox"
+                        checked={formData.enable11mcSupport ?? false}
+                        onChange={(e) => setFormData({ ...formData, enable11mcSupport: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
                       />
                     </div>
+
+                    {/* Radio Management (11k) support */}
+                    <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="enabled11kSupport" className="cursor-pointer">Radio Management (11k) support</Label>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                      <input
+                        id="enabled11kSupport"
+                        type="checkbox"
+                        checked={formData.enabled11kSupport ?? false}
+                        onChange={(e) => setFormData({ ...formData, enabled11kSupport: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* U-APSD (WMM-PS) */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="uapsdEnabled" className="cursor-pointer">U-APSD (WMM-PS)</Label>
+                      <input
+                        id="uapsdEnabled"
+                        type="checkbox"
+                        checked={formData.uapsdEnabled ?? true}
+                        onChange={(e) => setFormData({ ...formData, uapsdEnabled: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Admission Control for Voice */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="admissionControlVoice" className="cursor-pointer">Use Admission Control for Voice (VO)</Label>
+                      <input
+                        id="admissionControlVoice"
+                        type="checkbox"
+                        checked={formData.admissionControlVoice ?? false}
+                        onChange={(e) => setFormData({ ...formData, admissionControlVoice: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Admission Control for Video */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="admissionControlVideo" className="cursor-pointer">Use Admission Control for Video (VI)</Label>
+                      <input
+                        id="admissionControlVideo"
+                        type="checkbox"
+                        checked={formData.admissionControlVideo ?? false}
+                        onChange={(e) => setFormData({ ...formData, admissionControlVideo: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Admission Control for Best Effort */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="admissionControlBestEffort" className="cursor-pointer">Use Admission Control for Best Effort (BE)</Label>
+                      <input
+                        id="admissionControlBestEffort"
+                        type="checkbox"
+                        checked={formData.admissionControlBestEffort ?? false}
+                        onChange={(e) => setFormData({ ...formData, admissionControlBestEffort: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Admission Control for Background */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="admissionControlBackgroundTraffic" className="cursor-pointer">Use Global Admission Control for Background (BK)</Label>
+                      <input
+                        id="admissionControlBackgroundTraffic"
+                        type="checkbox"
+                        checked={formData.admissionControlBackgroundTraffic ?? false}
+                        onChange={(e) => setFormData({ ...formData, admissionControlBackgroundTraffic: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Client To Client Communication */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="clientToClientCommunication" className="cursor-pointer">Client To Client Communication</Label>
+                      <input
+                        id="clientToClientCommunication"
+                        type="checkbox"
+                        checked={formData.clientToClientCommunication ?? true}
+                        onChange={(e) => setFormData({ ...formData, clientToClientCommunication: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Clear Session on Disconnect */}
+                    <div className="flex items-center justify-between py-1">
+                      <Label htmlFor="purgeOnDisconnect" className="cursor-pointer">Clear Session on Disconnect</Label>
+                      <input
+                        id="purgeOnDisconnect"
+                        type="checkbox"
+                        checked={formData.purgeOnDisconnect ?? false}
+                        onChange={(e) => setFormData({ ...formData, purgeOnDisconnect: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Beacon Protection */}
+                    <div className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="beaconProtection" className="cursor-pointer">Beacon Protection</Label>
+                        <Info className="h-3 w-3 text-muted-foreground" />
+                      </div>
+                      <input
+                        id="beaconProtection"
+                        type="checkbox"
+                        checked={formData.beaconProtection ?? false}
+                        onChange={(e) => setFormData({ ...formData, beaconProtection: e.target.checked })}
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Timeout Settings */}
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Timeout Settings</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {/* Pre-Authenticated Idle Timeout */}
+                      <div className="space-y-2">
+                        <Label htmlFor="preAuthenticatedIdleTimeout" className="text-xs">Pre-Authenticated idle timeout (seconds)</Label>
+                        <Input
+                          id="preAuthenticatedIdleTimeout"
+                          type="number"
+                          value={formData.preAuthenticatedIdleTimeout ?? 300}
+                          onChange={(e) => setFormData({ ...formData, preAuthenticatedIdleTimeout: parseInt(e.target.value) || 300 })}
+                          min="5"
+                          max="999999"
+                        />
+                      </div>
+
+                      {/* Post-Authenticated Idle Timeout */}
+                      <div className="space-y-2">
+                        <Label htmlFor="postAuthenticatedIdleTimeout" className="text-xs">Post-Authenticated idle timeout (seconds)</Label>
+                        <Input
+                          id="postAuthenticatedIdleTimeout"
+                          type="number"
+                          value={formData.postAuthenticatedIdleTimeout ?? 1800}
+                          onChange={(e) => setFormData({ ...formData, postAuthenticatedIdleTimeout: parseInt(e.target.value) || 1800 })}
+                          min="0"
+                          max="999999"
+                        />
+                      </div>
+
+                      {/* Maximum Session Duration */}
+                      <div className="space-y-2">
+                        <Label htmlFor="sessionTimeout" className="text-xs">Maximum session duration (seconds)</Label>
+                        <Input
+                          id="sessionTimeout"
+                          type="number"
+                          value={formData.sessionTimeout ?? 0}
+                          onChange={(e) => setFormData({ ...formData, sessionTimeout: parseInt(e.target.value) || 0 })}
+                          min="0"
+                          max="999999"
+                          placeholder="0 = unlimited"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Description */}
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Input
+                      id="description"
+                      value={formData.description || ''}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="Network description..."
+                    />
                   </div>
                 </CardContent>
               )}
