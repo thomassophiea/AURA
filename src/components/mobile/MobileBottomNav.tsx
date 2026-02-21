@@ -4,9 +4,9 @@
  */
 
 import React from 'react';
-import { Home, Users, Wifi, AppWindow } from 'lucide-react';
+import { Home, Users, Wifi, QrCode, Target } from 'lucide-react';
 
-export type MobileTab = 'home' | 'clients' | 'aps' | 'apps';
+export type MobileTab = 'home' | 'sle' | 'networks' | 'clients' | 'aps';
 
 interface MobileBottomNavProps {
   activeTab: MobileTab;
@@ -14,16 +14,17 @@ interface MobileBottomNavProps {
   badges?: {
     clients?: number;
     aps?: number;
-    apps?: number;
+    networks?: number;
   };
 }
 
 export function MobileBottomNav({ activeTab, onTabChange, badges }: MobileBottomNavProps) {
   const tabs = [
     { id: 'home' as MobileTab, icon: Home, label: 'Home' },
+    { id: 'sle' as MobileTab, icon: Target, label: 'SLEs' },
+    { id: 'networks' as MobileTab, icon: QrCode, label: 'QR Codes', badge: badges?.networks },
     { id: 'clients' as MobileTab, icon: Users, label: 'Clients', badge: badges?.clients },
     { id: 'aps' as MobileTab, icon: Wifi, label: 'APs', badge: badges?.aps },
-    { id: 'apps' as MobileTab, icon: AppWindow, label: 'Apps', badge: badges?.apps },
   ];
 
   return (

@@ -8,9 +8,10 @@ import { MobileShell } from './MobileShell';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav, MobileTab } from './MobileBottomNav';
 import { MobileHome } from './MobileHome';
+import { MobileSLEView } from './MobileSLEView';
+import { MobileNetworksList } from './MobileNetworksList';
 import { MobileClientsList } from './MobileClientsList';
 import { MobileAPsList } from './MobileAPsList';
-import { MobileAppsList } from './MobileAppsList';
 import { useHaptic } from '@/hooks/useHaptic';
 
 interface MobileAppProps {
@@ -49,12 +50,14 @@ export function MobileApp({
     switch (activeTab) {
       case 'home':
         return 'Wireless Status';
+      case 'sle':
+        return 'Service Levels';
+      case 'networks':
+        return 'WiFi QR Codes';
       case 'clients':
         return 'Clients';
       case 'aps':
         return 'Access Points';
-      case 'apps':
-        return 'Applications';
       default:
         return 'Wireless Status';
     }
@@ -71,12 +74,19 @@ export function MobileApp({
             onNavigate={handleNavigate}
           />
         );
+      case 'sle':
+        return (
+          <MobileSLEView
+            currentSite={currentSite}
+            onSiteChange={onSiteChange}
+          />
+        );
+      case 'networks':
+        return <MobileNetworksList currentSite={currentSite} />;
       case 'clients':
         return <MobileClientsList currentSite={currentSite} />;
       case 'aps':
         return <MobileAPsList currentSite={currentSite} />;
-      case 'apps':
-        return <MobileAppsList currentSite={currentSite} />;
       default:
         return null;
     }
