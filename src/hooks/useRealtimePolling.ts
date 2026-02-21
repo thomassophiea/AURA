@@ -98,8 +98,12 @@ export function useRealtimePolling<T>(
     return isIdleRef.current ? idleInterval : activeInterval;
   }, [activeInterval, idleInterval, hiddenInterval]);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (showLoading = false) => {
     try {
+      // Only show loading on initial load (when no data exists)
+      if (showLoading && !dataRef.current) {
+        setLoading(true);
+      }
       setError(null);
       const result = await fetcherRef.current();
 
@@ -126,8 +130,8 @@ export function useRealtimePolling<T>(
   }, [key]);
 
   const refresh = useCallback(async () => {
-    setLoading(true);
-    await fetchData();
+    // Don't blank the screen - just fetch in background
+    await fetchData(false);
   }, [fetchData]);
 
   const setupInterval = useCallback(() => {
@@ -162,7 +166,7 @@ export function useRealtimePolling<T>(
       }
     }
 
-    fetchData();
+    fetchData(true); // Show loading on initial fetch
   }, [key, enabled, fetchData, activeInterval]);
 
   useEffect(() => {

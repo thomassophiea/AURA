@@ -47,8 +47,8 @@ function SLECard({ sle }: { sle: SLEMetric }) {
     <div 
       className="rounded-xl p-4 border transition-all active:scale-[0.98]"
       style={{ 
-        backgroundColor: `${colors.background}15`,
-        borderColor: `${colors.stroke}40`
+        backgroundColor: `${colors.hex}15`,
+        borderColor: `${colors.hex}40`
       }}
     >
       {/* Header */}
@@ -56,9 +56,9 @@ function SLECard({ sle }: { sle: SLEMetric }) {
         <div className="flex items-center gap-2">
           <div 
             className="p-2 rounded-lg"
-            style={{ backgroundColor: `${colors.background}30` }}
+            style={{ backgroundColor: `${colors.hex}30` }}
           >
-            <Icon className="h-5 w-5" style={{ color: colors.stroke }} />
+            <Icon className="h-5 w-5" style={{ color: colors.hex }} />
           </div>
           <span className="font-medium text-sm">{sle.name}</span>
         </div>
@@ -69,7 +69,7 @@ function SLECard({ sle }: { sle: SLEMetric }) {
       <div className="flex items-end gap-2 mb-3">
         <span 
           className="text-4xl font-bold tabular-nums"
-          style={{ color: colors.stroke }}
+          style={{ color: colors.hex }}
         >
           {Math.round(sle.successRate)}
         </span>
@@ -82,7 +82,7 @@ function SLECard({ sle }: { sle: SLEMetric }) {
           className="h-full rounded-full transition-all duration-500"
           style={{ 
             width: `${sle.successRate}%`,
-            backgroundColor: colors.stroke 
+            backgroundColor: colors.hex 
           }}
         />
       </div>
@@ -91,11 +91,11 @@ function SLECard({ sle }: { sle: SLEMetric }) {
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="flex flex-col">
           <span className="text-muted-foreground">Affected</span>
-          <span className="font-medium">{sle.affectedClients} clients</span>
+          <span className="font-medium">{sle.affectedClients ?? 0} clients</span>
         </div>
         <div className="flex flex-col">
           <span className="text-muted-foreground">Total</span>
-          <span className="font-medium">{sle.totalClients} clients</span>
+          <span className="font-medium">{sle.totalClients ?? 0} clients</span>
         </div>
       </div>
 
@@ -247,13 +247,13 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
           </SelectContent>
         </Select>
         <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-24 h-12">
+          <SelectTrigger className="w-20 h-12">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1h">1 Hour</SelectItem>
-            <SelectItem value="24h">24 Hours</SelectItem>
-            <SelectItem value="7d">7 Days</SelectItem>
+            <SelectItem value="1h">1h</SelectItem>
+            <SelectItem value="24h">24h</SelectItem>
+            <SelectItem value="7d">7d</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -280,25 +280,25 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
         <div 
           className="rounded-xl p-6 text-center"
           style={{ 
-            backgroundColor: `${overallColors.background}20`,
-            border: `2px solid ${overallColors.stroke}40`
+            backgroundColor: `${overallColors.hex}20`,
+            border: `2px solid ${overallColors.hex}40`
           }}
         >
           <div className="text-sm text-muted-foreground mb-2">Overall Network Health</div>
           <div 
             className="text-6xl font-bold mb-1"
-            style={{ color: overallColors.stroke }}
+            style={{ color: overallColors.hex }}
           >
             {overallScore}%
           </div>
           <Badge 
             style={{ 
-              backgroundColor: `${overallColors.background}40`,
-              color: overallColors.stroke,
-              borderColor: overallColors.stroke
+              backgroundColor: `${overallColors.hex}40`,
+              color: overallColors.hex,
+              borderColor: overallColors.hex
             }}
           >
-            {overallStatus === 'good' ? 'Healthy' : overallStatus === 'warning' ? 'Needs Attention' : 'Critical'}
+            {overallStatus === 'good' ? 'Healthy' : overallStatus === 'warn' ? 'Needs Attention' : 'Critical'}
           </Badge>
           {lastUpdate && (
             <div className="text-xs text-muted-foreground mt-3">

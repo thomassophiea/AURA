@@ -102,7 +102,7 @@ export function useOfflineCache<T>(
     };
   }, []);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (isInitialLoad = false) => {
     if (!navigator.onLine) {
       const hasCache = await loadFromCache();
       if (hasCache) {
@@ -115,7 +115,10 @@ export function useOfflineCache<T>(
     }
 
     try {
-      setLoading(true);
+      // Only show loading on initial load (no existing data)
+      if (isInitialLoad && !data) {
+        setLoading(true);
+      }
       setError(null);
       const result = await fetchFnRef.current();
 
@@ -142,7 +145,7 @@ export function useOfflineCache<T>(
         setLoading(false);
       }
     }
-  }, [loadFromCache, saveToCache]);
+  }, [loadFromCache, saveToCache, data]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -151,13 +154,13 @@ export function useOfflineCache<T>(
       if (preload) {
         await loadFromCache();
       }
-      await fetchData();
+      await fetchData(true); // Initial load shows loading state
     };
     init();
 
     let interval: NodeJS.Timeout | undefined;
     if (refreshInterval > 0) {
-      interval = setInterval(fetchData, refreshInterval);
+      interval = setInterval(() => fetchData(false), refreshInterval); // Refresh doesn't blank screen
     }
 
     return () => {
