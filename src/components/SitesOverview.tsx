@@ -276,113 +276,119 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Sites</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <>
+      {/* Show full skeleton when loading, otherwise show content with fade-in */}
+      {loading ? (
+        <>
+          {/* Summary Cards Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="surface-1dp">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-16 mb-1" />
+                  <Skeleton className="h-3 w-24" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Sites List Skeleton */}
+          <Card className="surface-2dp">
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-64 mt-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in duration-200">
+            <Card className="surface-1dp">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Sites</CardTitle>
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold">{sites.length}</div>
                 <p className="text-xs text-muted-foreground">
                   Network locations
                 </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Healthy Sites</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <>
+            <Card className="surface-1dp">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Healthy Sites</CardTitle>
+                <CheckCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold">
                   {sites.filter(s => (s.healthPercentage || 0) >= 90).length}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   90%+ health score
                 </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
-            <Network className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <>
+            <Card className="surface-1dp">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Devices</CardTitle>
+                <Network className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold">
                   {sites.reduce((total, site) => total + (site.totalDevices || 0), 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   APs and switches
                 </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <>
+            <Card className="surface-1dp">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
+                <Users className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
                 <div className="text-2xl font-bold">
                   {sites.reduce((total, site) => total + (site.clients || 0), 0)}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Connected users
                 </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Sites List */}
-      <Card className="surface-2dp">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-headline-6 text-high-emphasis">Site Details</CardTitle>
-            <SaveToWorkspace
-              widgetId="sites-overview"
-              widgetType="topn_table"
-              title="Site Details"
-              endpointRefs={['sites.list']}
-              sourcePage="sites"
-              catalogId="sites_overview"
-            />
+              </CardContent>
+            </Card>
           </div>
-          <CardDescription>Overview of all network sites and their status</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="space-y-4">
-              {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
-            </div>
-          ) : sites.length === 0 ? (
+
+          {/* Sites List */}
+          <Card className="surface-2dp animate-in fade-in duration-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-headline-6 text-high-emphasis">Site Details</CardTitle>
+                <SaveToWorkspace
+                  widgetId="sites-overview"
+                  widgetType="topn_table"
+                  title="Site Details"
+                  endpointRefs={['sites.list']}
+                  sourcePage="sites"
+                  catalogId="sites_overview"
+                />
+              </div>
+              <CardDescription>Overview of all network sites and their status</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sites.length === 0 ? (
             <div className="text-center py-8">
               <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No sites found</p>
@@ -455,8 +461,10 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
               ))}
             </div>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Site Details Slide-out */}
       <DetailSlideOut

@@ -14,12 +14,16 @@ import {
   Wifi,
   Users,
   Gauge,
-  Network
+  Network,
+  Settings2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { SaveToWorkspace } from './SaveToWorkspace';
+import { useDashboardLayout } from '../hooks/useDashboardLayout';
+import { DashboardCustomization } from './dashboard/DashboardCustomization';
+import { DraggableWidget } from './dashboard/DraggableWidget';
 
 interface DashboardData {
   networkHealth: {
@@ -74,6 +78,40 @@ export function Dashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [customizeOpen, setCustomizeOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  const {
+    widgets,
+    visibleWidgets,
+    setWidgets,
+    moveWidget,
+    toggleWidget,
+    resetToDefault,
+  } = useDashboardLayout();
+
+  const handleDragStart = (index: number) => {
+    setDragIndex(index);
+  };
+
+  const handleDragOver = (index: number) => {
+    if (dragIndex !== null && dragIndex !== index) {
+      setDropIndex(index);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (dragIndex !== null && dropIndex !== null && dragIndex !== dropIndex) {
+      moveWidget(dragIndex, dropIndex);
+    }
+    setDragIndex(null);
+    setDropIndex(null);
+  };
+
+  const isWidgetVisible = (widgetId: string) => {
+    return visibleWidgets.some(w => w.id === widgetId);
+  };
 
   // Utility function to detect randomized MAC addresses
   const isRandomizedMac = (macAddress: string): boolean => {
@@ -1076,16 +1114,36 @@ export function Dashboard() {
               : 'Basic network status overview'}
           </p>
         </div>
-        <Button
-          onClick={() => loadDashboardData(true)}
-          disabled={refreshing}
-          size="sm"
-          variant="outline"
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => setCustomizeOpen(true)}
+            size="sm"
+            variant="outline"
+          >
+            <Settings2 className="h-4 w-4 mr-2" />
+            Customize
+          </Button>
+          <Button
+            onClick={() => loadDashboardData(true)}
+            disabled={refreshing}
+            size="sm"
+            variant="outline"
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
+
+      {/* Customization Dialog */}
+      <DashboardCustomization
+        open={customizeOpen}
+        onOpenChange={setCustomizeOpen}
+        widgets={widgets}
+        onWidgetsChange={setWidgets}
+        onToggleWidget={toggleWidget}
+        onResetToDefault={resetToDefault}
+      />
 
       {/* Info Banner for Partial Data */}
       {hasPartialData && !hasFullData && (
@@ -1104,17 +1162,47 @@ export function Dashboard() {
         </Card>
       )}
 
-      {/* Network Health */}
-      {renderNetworkHealth()}
+      {/* Render widgets based on layout order and visibility */}
+      {visibleWidgets.map((widget, index) => {
+        const renderWidget = () => {
+          switch (widget.id) {
+            case 'NetworkHealth':
+              return renderNetworkHealth();
+            case 'ClientStats':
+              return renderPerformanceMetrics();
+            case 'APStats':
+              return renderUniqueClientsChart();
+            case 'ApplicationStats':
+              return renderTopSites();
+            case 'SLEOverview':
+            case 'TopAPs':
+            case 'TopClients':
+            case 'RecentEvents':
+            case 'BandDistribution':
+              return null;
+            default:
+              return null;
+          }
+        };
 
-      {/* Performance Metrics */}
-      {renderPerformanceMetrics()}
+        const content = renderWidget();
+        if (!content) return null;
 
-      {/* Unique Clients Chart */}
-      {renderUniqueClientsChart()}
-
-      {/* Top Sites */}
-      {renderTopSites()}
+        return (
+          <DraggableWidget
+            key={widget.id}
+            id={widget.id}
+            index={index}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+            isDragging={dragIndex === index}
+            isDropTarget={dropIndex === index}
+          >
+            {content}
+          </DraggableWidget>
+        );
+      })}
       
       {/* Show placeholder if we have partial data but no charts */}
       {hasPartialData && !hasFullData && (

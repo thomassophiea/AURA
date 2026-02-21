@@ -8,12 +8,14 @@ import { Search, SlidersHorizontal, X, Anchor } from 'lucide-react';
 import { MobileStatusList } from './MobileStatusList';
 import { MobileStatusRow } from './MobileStatusRow';
 import { MobileBottomSheet } from './MobileBottomSheet';
+import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { apiService } from '@/services/api';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 interface MobileAPsListProps {
   currentSite: string;
@@ -190,8 +192,22 @@ export function MobileAPsList({ currentSite }: MobileAPsListProps) {
     };
   }, [aps]);
 
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await refresh();
+    },
+    disabled: loading,
+  });
+
   return (
-    <div className="flex flex-col h-full">
+    <div
+      ref={pullToRefresh.containerRef}
+      className="flex flex-col h-full relative overflow-y-auto"
+      onTouchStart={pullToRefresh.handlers.onTouchStart}
+      onTouchMove={pullToRefresh.handlers.onTouchMove}
+      onTouchEnd={pullToRefresh.handlers.onTouchEnd}
+    >
+      <PullToRefreshIndicator state={pullToRefresh.state} />
       {/* Search Bar */}
       <div className="p-4 space-y-3 border-b border-border sticky top-0 bg-background z-10">
         <div className="flex items-center gap-2">

@@ -4,15 +4,21 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wifi, AppWindow, AlertCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Users, Wifi, AppWindow, AlertCircle, RefreshCw, Loader2, Trash2, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 import { MobileKPITile } from './MobileKPITile';
 import { NetworkHealthScore } from './NetworkHealthScore';
 import { MobileBottomSheet } from './MobileBottomSheet';
+import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Button } from '../ui/button';
 import { apiService } from '@/services/api';
 import { useHaptic } from '@/hooks/useHaptic';
-import { useOfflineCache } from '@/hooks/useOfflineCache';
+import { useRealtimePolling } from '@/hooks/useRealtimePolling';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useBackgroundSync } from '@/hooks/useBackgroundSync';
+import { offlineStorage } from '@/services/offlineStorage';
+import { formatCacheAge } from '@/hooks/useOfflineCache';
 import type { MobileTab } from './MobileBottomNav';
 
 interface MobileHomeProps {
@@ -42,72 +48,87 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIssues, setShowIssues] = useState(false);
   const [offlineAPs, setOfflineAPs] = useState<any[]>([]);
+  const [cacheAge, setCacheAge] = useState<number | null>(null);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
-  // Use offline cache for stats
-  const { data: cachedStats, loading: statsLoading, error: statsError, isOffline, lastUpdated, refresh } = useOfflineCache(
-    `stats_${currentSite}`,
-    async () => {
-      console.log('[MobileHome] Fetching stats for site:', currentSite);
-      const [clientsData, apsData, appsData] = await Promise.all([
-        apiService.getStations(),
-        apiService.getAccessPoints(),
-        apiService.getApplications().catch(() => []),
-      ]);
-
-      console.log('[MobileHome] Raw data - clients:', clientsData?.length, 'aps:', apsData?.length, 'apps:', appsData?.length);
-
-      // Filter by site - check multiple possible site ID fields
-      const filteredClients = currentSite === 'all'
-        ? clientsData
-        : clientsData.filter((c: any) =>
-            c.siteId === currentSite ||
-            c.site === currentSite ||
-            c.siteName === currentSite
-          );
-      const filteredAPs = currentSite === 'all'
-        ? apsData
-        : apsData.filter((ap: any) =>
-            ap.siteId === currentSite ||
-            ap.site === currentSite ||
-            ap.hostSite === currentSite
-          );
-
-      console.log('[MobileHome] Filtered - clients:', filteredClients?.length, 'aps:', filteredAPs?.length);
-
-      const isAPOnline = (ap: any): boolean => {
-        const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
-        return (
-          status === 'inservice' ||
-          status.includes('up') ||
-          status.includes('online') ||
-          status.includes('connected') ||
-          ap.isUp === true ||
-          ap.online === true ||
-          (!status && ap.isUp !== false && ap.online !== false)
-        );
-      };
-
-      const onlineAPsList = filteredAPs.filter(isAPOnline);
-      const offlineAPsList = filteredAPs.filter((ap: any) => !isAPOnline(ap));
-
-      const onlineAPs = onlineAPsList.length;
-      const offlineAPsCount = offlineAPsList.length;
-
-      // Calculate health score
-      const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
-      const issueCount = offlineAPsCount;
-      const healthScore = Math.round(apScore * 0.7 + (issueCount === 0 ? 30 : Math.max(0, 30 - issueCount * 10)));
-
-      return {
-        clients: { total: filteredClients.length },
-        aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPsCount },
-        apps: { total: appsData.length },
-        issues: issueCount,
-        healthScore,
-        offlineAPs: offlineAPsList,
-      };
+  const { isOnline, isSyncing } = useBackgroundSync({
+    onOnline: async () => {
+      await refresh();
     },
-    30000
+    showToasts: true,
+  });
+
+  const isOffline = !isOnline;
+
+  const fetchStats = async () => {
+    console.log('[MobileHome] Fetching stats for site:', currentSite);
+    const [clientsData, apsData, appsData] = await Promise.all([
+      apiService.getStations(),
+      apiService.getAccessPoints(),
+      apiService.getApplications().catch(() => []),
+    ]);
+
+    console.log('[MobileHome] Raw data - clients:', clientsData?.length, 'aps:', apsData?.length, 'apps:', appsData?.length);
+
+    const filteredClients = currentSite === 'all'
+      ? clientsData
+      : clientsData.filter((c: any) =>
+          c.siteId === currentSite ||
+          c.site === currentSite ||
+          c.siteName === currentSite
+        );
+    const filteredAPs = currentSite === 'all'
+      ? apsData
+      : apsData.filter((ap: any) =>
+          ap.siteId === currentSite ||
+          ap.site === currentSite ||
+          ap.hostSite === currentSite
+        );
+
+    console.log('[MobileHome] Filtered - clients:', filteredClients?.length, 'aps:', filteredAPs?.length);
+
+    const isAPOnline = (ap: any): boolean => {
+      const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
+      return (
+        status === 'inservice' ||
+        status.includes('up') ||
+        status.includes('online') ||
+        status.includes('connected') ||
+        ap.isUp === true ||
+        ap.online === true ||
+        (!status && ap.isUp !== false && ap.online !== false)
+      );
+    };
+
+    const onlineAPsList = filteredAPs.filter(isAPOnline);
+    const offlineAPsList = filteredAPs.filter((ap: any) => !isAPOnline(ap));
+
+    const onlineAPs = onlineAPsList.length;
+    const offlineAPsCount = offlineAPsList.length;
+
+    const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
+    const issueCount = offlineAPsCount;
+    const healthScore = Math.round(apScore * 0.7 + (issueCount === 0 ? 30 : Math.max(0, 30 - issueCount * 10)));
+
+    return {
+      clients: { total: filteredClients.length },
+      aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPsCount },
+      apps: { total: appsData.length },
+      issues: issueCount,
+      healthScore,
+      offlineAPs: offlineAPsList,
+    };
+  };
+
+  const { data: cachedStats, loading: statsLoading, error: statsError, lastUpdated, isStale, refresh } = useRealtimePolling(
+    fetchStats,
+    {
+      key: `stats_${currentSite}`,
+      activeInterval: 10000,
+      idleInterval: 30000,
+      hiddenInterval: 120000,
+      enabled: !isOffline,
+    }
   );
 
   useEffect(() => {
@@ -116,6 +137,29 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
       setOfflineAPs(cachedStats.offlineAPs || []);
     }
   }, [cachedStats]);
+
+  useEffect(() => {
+    if (!lastUpdated) return;
+    setCacheAge(Date.now() - lastUpdated.getTime());
+    const interval = setInterval(() => {
+      setCacheAge(Date.now() - lastUpdated.getTime());
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [lastUpdated]);
+
+  const handleClearCache = async () => {
+    setIsClearingCache(true);
+    haptic.medium();
+    try {
+      await offlineStorage.clear();
+      toast.success('Cache cleared');
+      await refresh();
+    } catch (e) {
+      toast.error('Failed to clear cache');
+    } finally {
+      setIsClearingCache(false);
+    }
+  };
 
   // Load sites
   useEffect(() => {
@@ -152,6 +196,13 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
     }, 500);
   };
 
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await refresh();
+    },
+    disabled: isRefreshing || statsLoading,
+  });
+
   const handleTileClick = (tab: MobileTab) => {
     haptic.light();
     onNavigate(tab);
@@ -163,7 +214,15 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
   };
 
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div
+      ref={pullToRefresh.containerRef}
+      className="p-4 space-y-4 pb-24 relative overflow-y-auto h-full"
+      onTouchStart={pullToRefresh.handlers.onTouchStart}
+      onTouchMove={pullToRefresh.handlers.onTouchMove}
+      onTouchEnd={pullToRefresh.handlers.onTouchEnd}
+    >
+      <PullToRefreshIndicator state={pullToRefresh.state} />
+
       {/* Offline Banner */}
       {isOffline && (
         <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2">
@@ -172,6 +231,52 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
             <p className="text-sm text-amber-500 font-medium">Offline Mode</p>
             {lastUpdated && (
               <p className="text-xs text-amber-500/70">
+                Last updated {new Date(lastUpdated).toLocaleTimeString()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Cache Status Banner */}
+      {cacheAge !== null && cacheAge > 60000 && !isOffline && !isStale && (
+        <div className="p-3 bg-muted/50 border border-border rounded-lg flex items-center gap-2">
+          <Clock className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          <p className="text-xs text-muted-foreground flex-1">
+            Using cached data from {formatCacheAge(cacheAge)}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClearCache}
+            disabled={isClearingCache}
+            className="h-7 px-2 text-xs"
+          >
+            {isClearingCache ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Trash2 className="h-3 w-3" />
+            )}
+          </Button>
+        </div>
+      )}
+
+      {/* Syncing indicator */}
+      {isSyncing && (
+        <div className="p-2 bg-primary/10 border border-primary/30 rounded-lg flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          <p className="text-xs text-primary">Syncing pending changes...</p>
+        </div>
+      )}
+
+      {/* Stale Data Banner */}
+      {isStale && !isOffline && (
+        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center gap-2">
+          <RefreshCw className="h-5 w-5 text-blue-500 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-blue-500 font-medium">Data may be stale</p>
+            {lastUpdated && (
+              <p className="text-xs text-blue-500/70">
                 Last updated {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}

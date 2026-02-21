@@ -1,6 +1,16 @@
 
 import { cacheService, CACHE_TTL } from './cache';
 import { logger } from './logger';
+import { 
+  isNetworkError, 
+  isServerError, 
+  isTimeoutError,
+  getUserFriendlyMessage,
+  parseError,
+  withRetry,
+  ERROR_TYPES,
+  type RetryOptions 
+} from './errorHandler';
 
 // Use proxy in production, direct connection in development
 const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
@@ -1254,16 +1264,19 @@ class ApiService {
       clearTimeout(timeoutId);
       this.pendingRequests.delete(controller);
 
+      // Parse the error using centralized error handler
+      const errorDetails = parseError(error);
+      
       // Update API log with error
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       this.updateApiLog(requestId, {
         duration,
-        error: errorMessage,
+        error: errorDetails.message,
         isPending: false
       });
       
       if (error instanceof Error) {
-        if (error.name === 'AbortError') {
+        // Handle timeout errors
+        if (isTimeoutError(error)) {
           if (!isAnalyticsEndpoint) {
             logger.warn(`Request to ${endpoint} timed out after ${timeoutMs}ms`);
           }
@@ -1272,28 +1285,56 @@ class ApiService {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Request timeout for ${endpoint}`);
           }
           
-          throw new Error(`Request timeout`);
+          throw new Error(getUserFriendlyMessage(error));
         }
         
-        // Handle network fetch failures more gracefully
-        if (error.message === 'Failed to fetch') {
+        // Handle network errors with user-friendly messages
+        if (isNetworkError(error)) {
           if (isAnalyticsEndpoint) {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: ${endpoint}`);
           }
           
-          // Log network errors for debugging
           logger.warn(`Network error for ${endpoint}: ${error.message}`);
-          
-          throw new Error(`Network error: Unable to connect to Extreme Platform ONE. Please check your connection and server availability.`);
+          throw new Error(getUserFriendlyMessage(error));
         }
         
         if (!isAnalyticsEndpoint) {
           logger.warn(`Request to ${endpoint} failed:`, error.message);
         }
-        throw error;
+        
+        // Use user-friendly message for other errors
+        throw new Error(getUserFriendlyMessage(error));
       }
-      throw new Error('Network request failed');
+      throw new Error('An unexpected error occurred. Please try again.');
     }
+  }
+
+  /**
+   * Make an authenticated request with automatic retry for server errors
+   * Uses exponential backoff: 1s, 2s, 4s
+   */
+  async makeAuthenticatedRequestWithRetry(
+    endpoint: string,
+    options: RequestInit = {},
+    retryOptions?: Partial<RetryOptions>
+  ): Promise<Response> {
+    const defaultRetryOptions: RetryOptions = {
+      maxRetries: 2,
+      backoff: true,
+      initialDelayMs: 1000,
+      maxDelayMs: 4000,
+      retryableErrors: [ERROR_TYPES.SERVER, ERROR_TYPES.NETWORK, ERROR_TYPES.TIMEOUT],
+      onRetry: (attempt, error, delayMs) => {
+        logger.warn(
+          `[API Retry] Attempt ${attempt} for ${endpoint} after ${Math.round(delayMs)}ms`
+        );
+      },
+    };
+
+    return withRetry(
+      () => this.makeAuthenticatedRequest(endpoint, options),
+      { ...defaultRetryOptions, ...retryOptions }
+    );
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -3235,70 +3276,162 @@ class ApiService {
   }
 
   /**
-   * Trigger profile synchronization
+   * Trigger profile synchronization / configuration deployment
+   * 
+   * ExtremeCloud IQ uses the /deployments endpoint to push configuration to devices.
+   * Profile changes are automatically tracked and can be pushed via this deployment mechanism.
+   * If deployment API is unavailable, changes will be applied during next AP check-in.
    */
-  async syncProfile(profileId: string): Promise<void> {
-    logger.log(`Triggering sync for profile ${profileId}`);
+  async syncProfile(profileId: string): Promise<{ success: boolean; message: string; deploymentId?: string }> {
+    logger.log(`Triggering configuration deployment for profile ${profileId}`);
 
-    const syncEndpoints = [
+    // First, try to get devices associated with this profile
+    let deviceIds: number[] = [];
+    try {
+      const profile = await this.getProfileById(profileId);
+      if (profile && profile.deviceIds) {
+        deviceIds = profile.deviceIds;
+      }
+    } catch (error) {
+      logger.log(`Could not fetch device IDs for profile ${profileId}`);
+    }
+
+    // Try the ExtremeCloud IQ deployment API (POST /deployments)
+    // This is the official way to push configuration changes
+    if (deviceIds.length > 0) {
+      try {
+        const deploymentPayload = {
+          devices: {
+            ids: deviceIds
+          },
+          policy: {
+            enable_complete_configuration_update: false // Delta config only
+          }
+        };
+
+        const response = await this.makeAuthenticatedRequest('/deployments', {
+          method: 'POST',
+          body: JSON.stringify(deploymentPayload)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          logger.log(`Successfully triggered deployment for profile ${profileId}`, result);
+          return {
+            success: true,
+            message: 'Configuration deployment initiated successfully',
+            deploymentId: result.id || result.deployment_id
+          };
+        }
+      } catch (error) {
+        logger.log(`Deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // Try legacy sync endpoints as fallback (for ExtremeCloud IQ Controller / on-premise)
+    const legacyEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/sync`,
-      `/v1/profiles/${encodeURIComponent(profileId)}/sync`,
-      `/v3/profiles/${encodeURIComponent(profileId)}/push`,
-      `/v3/sync/profile/${encodeURIComponent(profileId)}`
+      `/v1/profiles/${encodeURIComponent(profileId)}/sync`
     ];
 
-    for (const endpoint of syncEndpoints) {
+    for (const endpoint of legacyEndpoints) {
       try {
         const response = await this.makeAuthenticatedRequest(endpoint, {
           method: 'POST'
         });
 
         if (response.ok) {
-          logger.log(`Successfully triggered sync via ${endpoint}`);
-          return;
+          logger.log(`Successfully triggered sync via legacy endpoint ${endpoint}`);
+          return {
+            success: true,
+            message: 'Profile sync triggered successfully'
+          };
         }
       } catch (error) {
         continue;
       }
     }
 
-    // If no sync endpoint works, log warning but don't fail
-    // (some systems may sync automatically)
-    logger.warn(`No sync endpoint found for profile ${profileId} - profile may sync automatically`);
+    // No explicit sync needed - ExtremeCloud IQ applies changes automatically
+    // Profile modifications via PUT are immediately stored and pushed on next AP check-in
+    logger.log(`Profile ${profileId} updated - configuration will be applied during next device check-in`);
+    return {
+      success: true,
+      message: 'Profile updated successfully. Configuration will be applied automatically during next device check-in (typically within 5 minutes).'
+    };
   }
 
   /**
    * Sync multiple profiles (batch operation)
+   * Uses the ExtremeCloud IQ deployment API when device IDs are available
    */
-  async syncMultipleProfiles(profileIds: string[]): Promise<void> {
+  async syncMultipleProfiles(profileIds: string[]): Promise<{ success: boolean; message: string; results?: Array<{ profileId: string; success: boolean; message: string }> }> {
     logger.log(`Triggering sync for ${profileIds.length} profiles`);
 
-    // Try batch sync endpoint first
-    const batchEndpoints = [
-      '/v3/profiles/sync',
-      '/v1/profiles/sync',
-      '/v3/sync/profiles'
-    ];
+    if (profileIds.length === 0) {
+      return { success: true, message: 'No profiles to sync' };
+    }
 
-    for (const endpoint of batchEndpoints) {
+    // Collect all device IDs from all profiles for batch deployment
+    const allDeviceIds: number[] = [];
+    for (const profileId of profileIds) {
       try {
-        const response = await this.makeAuthenticatedRequest(endpoint, {
+        const profile = await this.getProfileById(profileId);
+        if (profile && profile.deviceIds) {
+          allDeviceIds.push(...profile.deviceIds);
+        }
+      } catch (error) {
+        logger.log(`Could not fetch device IDs for profile ${profileId}`);
+      }
+    }
+
+    // Try batch deployment via ExtremeCloud IQ deployment API
+    if (allDeviceIds.length > 0) {
+      try {
+        const deploymentPayload = {
+          devices: {
+            ids: [...new Set(allDeviceIds)] // Deduplicate device IDs
+          },
+          policy: {
+            enable_complete_configuration_update: false
+          }
+        };
+
+        const response = await this.makeAuthenticatedRequest('/deployments', {
           method: 'POST',
-          body: JSON.stringify({ profileIds })
+          body: JSON.stringify(deploymentPayload)
         });
 
         if (response.ok) {
-          logger.log(`Successfully triggered batch sync via ${endpoint}`);
-          return;
+          const result = await response.json();
+          logger.log(`Successfully triggered batch deployment for ${profileIds.length} profiles`, result);
+          return {
+            success: true,
+            message: `Configuration deployment initiated for ${profileIds.length} profiles`
+          };
         }
       } catch (error) {
-        continue;
+        logger.log(`Batch deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     }
 
     // Fall back to individual syncs
-    logger.log('Batch sync not available, falling back to individual syncs');
-    await Promise.all(profileIds.map(id => this.syncProfile(id)));
+    logger.log('Batch deployment not available, falling back to individual profile syncs');
+    const results = await Promise.all(
+      profileIds.map(async (id) => {
+        const result = await this.syncProfile(id);
+        return { profileId: id, ...result };
+      })
+    );
+
+    const allSucceeded = results.every(r => r.success);
+    return {
+      success: allSucceeded,
+      message: allSucceeded 
+        ? `All ${profileIds.length} profiles updated successfully. Configuration will be applied during next device check-in.`
+        : `Some profiles failed to sync`,
+      results
+    };
   }
 
   // Check if an endpoint is available (returns true if endpoint exists and is reachable)

@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
 import { Skeleton } from './ui/skeleton';
@@ -139,6 +140,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const [createdServiceId, setCreatedServiceId] = useState<string | null>(null);
   const [createdServiceName, setCreatedServiceName] = useState<string>('');
 
+  // 6GHz band validation warning
+  const [show6GHzWarning, setShow6GHzWarning] = useState(false);
+
   // Load site groups from localStorage
   useEffect(() => {
     const savedGroups = localStorage.getItem('siteGroups');
@@ -253,6 +257,27 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       calculateEffectiveSets();
     }
   }, [siteConfigs, profilesBySite]);
+
+  // Check for 6GHz band with non-WPA3/OWE security
+  useEffect(() => {
+    const bandLower = formData.band?.toLowerCase() || '';
+    const includes6GHz = bandLower.includes('6ghz') || 
+                         bandLower.includes('6 ghz') ||
+                         bandLower === 'all' || 
+                         bandLower.includes('tri');
+    
+    const validSecurityFor6GHz = [
+      'wpa3-personal',
+      'wpa3-enterprise-transition',
+      'wpa3-enterprise-192',
+      'owe',
+      'wpa3-compatibility'
+    ];
+    
+    const isSecurityValid = validSecurityFor6GHz.includes(formData.security);
+    
+    setShow6GHzWarning(includes6GHz && !isSecurityValid);
+  }, [formData.band, formData.security]);
 
   const loadSites = async () => {
     setLoadingSites(true);
@@ -926,6 +951,16 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* 6GHz Security Warning */}
+                {show6GHzWarning && (
+                  <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+                    <AlertCircle className="h-4 w-4 text-amber-600" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-400">
+                      6GHz (Radio 3) requires WPA3 or OWE security. The controller may reject this configuration.
+                    </AlertDescription>
+                  </Alert>
+                )}
 
                 {/* Passphrase - for PSK/Personal modes */}
                 {['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.security) && (

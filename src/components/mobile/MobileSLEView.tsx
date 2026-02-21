@@ -8,12 +8,14 @@ import { RefreshCw, Loader2, Signal, Zap, Clock, Activity, Wifi, TrendingUp, Tre
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { apiService, Site } from '@/services/api';
 import { sleDataCollectionService } from '@/services/sleDataCollection';
 import { computeAllWirelessSLEs } from '@/services/sleCalculationEngine';
 import { SLE_STATUS_COLORS, getSLEStatus } from '@/types/sle';
 import type { SLEMetric } from '@/types/sle';
 import { useHaptic } from '@/hooks/useHaptic';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 interface MobileSLEViewProps {
   currentSite: string;
@@ -199,6 +201,13 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
     haptic.success();
   };
 
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await loadData(true);
+    },
+    disabled: refreshing || loading,
+  });
+
   const handleSiteChange = (siteId: string) => {
     haptic.light();
     onSiteChange?.(siteId);
@@ -213,7 +222,15 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
   const overallColors = SLE_STATUS_COLORS[overallStatus];
 
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div
+      ref={pullToRefresh.containerRef}
+      className="p-4 space-y-4 pb-24 relative overflow-y-auto h-full"
+      onTouchStart={pullToRefresh.handlers.onTouchStart}
+      onTouchMove={pullToRefresh.handlers.onTouchMove}
+      onTouchEnd={pullToRefresh.handlers.onTouchEnd}
+    >
+      <PullToRefreshIndicator state={pullToRefresh.state} />
+
       {/* Header with site selector */}
       <div className="flex items-center gap-2">
         <Select value={currentSite} onValueChange={handleSiteChange}>

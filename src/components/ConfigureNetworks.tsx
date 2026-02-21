@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from './ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode } from 'lucide-react';
+import { Progress } from './ui/progress';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2 } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
@@ -17,6 +18,21 @@ import { CreateWLANDialog } from './CreateWLANDialog';
 import { WifiQRCodeDialog } from './WifiQRCodeDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
+
+interface BulkOperationProgress {
+  total: number;
+  completed: number;
+  succeeded: number;
+  failed: number;
+  currentItem?: string;
+}
+
+interface ProfileOption {
+  id: string;
+  name: string;
+  deviceGroupId?: string;
+  siteName?: string;
+}
 
 interface NetworkConfig {
   id: string;
@@ -357,9 +373,14 @@ export function ConfigureNetworks() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkActionDialogOpen, setIsBulkActionDialogOpen] = useState(false);
-  const [bulkAction, setBulkAction] = useState<'enable' | 'disable' | 'delete' | null>(null);
+  const [bulkAction, setBulkAction] = useState<'enable' | 'disable' | 'delete' | 'assign' | null>(null);
   const [qrCodeWlan, setQrCodeWlan] = useState<NetworkConfig | null>(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<BulkOperationProgress | null>(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [availableProfiles, setAvailableProfiles] = useState<ProfileOption[]>([]);
+  const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
 
   useEffect(() => {
     loadNetworks();
@@ -636,13 +657,140 @@ export function ConfigureNetworks() {
 
   const clearSelection = () => setSelectedNetworks([]);
 
+  const loadAvailableProfiles = async () => {
+    setLoadingProfiles(true);
+    try {
+      const sites = await apiService.getSites();
+      const allProfiles: ProfileOption[] = [];
+      
+      for (const site of sites) {
+        try {
+          const deviceGroups = await apiService.getDeviceGroupsBySite(site.id);
+          for (const group of deviceGroups) {
+            try {
+              const profiles = await apiService.getProfilesByDeviceGroup(group.id);
+              for (const profile of profiles) {
+                allProfiles.push({
+                  id: profile.id,
+                  name: profile.name || profile.profileName || profile.id,
+                  deviceGroupId: group.id,
+                  siteName: site.name || site.siteName || site.id
+                });
+              }
+            } catch (err) {
+              console.warn(`Failed to load profiles for device group ${group.id}:`, err);
+            }
+          }
+        } catch (err) {
+          console.warn(`Failed to load device groups for site ${site.id}:`, err);
+        }
+      }
+      
+      const uniqueProfiles = Array.from(
+        new Map(allProfiles.map(p => [p.id, p])).values()
+      );
+      setAvailableProfiles(uniqueProfiles);
+    } catch (err) {
+      console.error('Failed to load profiles:', err);
+      toast.error('Failed to load available profiles');
+    } finally {
+      setLoadingProfiles(false);
+    }
+  };
+
+  const handleOpenAssignDialog = async () => {
+    setIsAssignDialogOpen(true);
+    setSelectedProfiles([]);
+    await loadAvailableProfiles();
+  };
+
+  const handleBulkAssign = async () => {
+    if (selectedNetworks.length === 0 || selectedProfiles.length === 0) return;
+    
+    const totalOperations = selectedNetworks.length * selectedProfiles.length;
+    setBulkProgress({
+      total: totalOperations,
+      completed: 0,
+      succeeded: 0,
+      failed: 0
+    });
+
+    let succeeded = 0;
+    let failed = 0;
+    const failedItems: string[] = [];
+
+    for (const wlanId of selectedNetworks) {
+      const network = networks.find(n => n.id === wlanId);
+      const networkName = network?.ssid || wlanId;
+      
+      for (const profileId of selectedProfiles) {
+        const profile = availableProfiles.find(p => p.id === profileId);
+        const profileName = profile?.name || profileId;
+        
+        setBulkProgress(prev => prev ? {
+          ...prev,
+          currentItem: `Assigning ${networkName} to ${profileName}`
+        } : null);
+
+        try {
+          await apiService.assignServiceToProfile(wlanId, profileId);
+          succeeded++;
+        } catch (err) {
+          failed++;
+          failedItems.push(`${networkName} → ${profileName}`);
+          console.error(`Failed to assign ${networkName} to ${profileName}:`, err);
+        }
+
+        setBulkProgress(prev => prev ? {
+          ...prev,
+          completed: prev.completed + 1,
+          succeeded,
+          failed
+        } : null);
+      }
+    }
+
+    setBulkProgress(null);
+    setIsAssignDialogOpen(false);
+    setSelectedProfiles([]);
+
+    if (failed === 0) {
+      toast.success(`Successfully assigned ${selectedNetworks.length} network(s) to ${selectedProfiles.length} profile(s)`);
+    } else {
+      toast.warning(`Assigned ${succeeded} of ${totalOperations} operations`, {
+        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`
+      });
+    }
+    
+    setSelectedNetworks([]);
+  };
+
   const handleBulkAction = async () => {
     if (!bulkAction || selectedNetworks.length === 0) return;
     
-    try {
-      toast.info(`Processing ${selectedNetworks.length} WLAN(s)...`);
+    const total = selectedNetworks.length;
+    setBulkProgress({
+      total,
+      completed: 0,
+      succeeded: 0,
+      failed: 0
+    });
+
+    let succeeded = 0;
+    let failed = 0;
+    const failedItems: string[] = [];
+
+    for (let i = 0; i < selectedNetworks.length; i++) {
+      const wlanId = selectedNetworks[i];
+      const network = networks.find(n => n.id === wlanId);
+      const networkName = network?.ssid || wlanId;
       
-      for (const wlanId of selectedNetworks) {
+      setBulkProgress(prev => prev ? {
+        ...prev,
+        currentItem: `Processing ${networkName}...`
+      } : null);
+
+      try {
         if (bulkAction === 'delete') {
           await apiService.deleteService(wlanId);
         } else {
@@ -657,26 +805,92 @@ export function ConfigureNetworks() {
             await apiService.updateService(wlanId, updatePayload);
           }
         }
+        succeeded++;
+      } catch (error) {
+        failed++;
+        failedItems.push(networkName);
+        console.error(`Failed to ${bulkAction} ${networkName}:`, error);
       }
-      
-      toast.success(`Successfully ${bulkAction}d ${selectedNetworks.length} WLAN(s)`);
-      setSelectedNetworks([]);
-      setIsBulkActionDialogOpen(false);
-      setBulkAction(null);
-      loadNetworks();
-    } catch (error) {
-      toast.error(`Failed to ${bulkAction} WLANs`, {
-        description: error instanceof Error ? error.message : 'Unknown error'
+
+      setBulkProgress(prev => prev ? {
+        ...prev,
+        completed: i + 1,
+        succeeded,
+        failed
+      } : null);
+    }
+
+    setBulkProgress(null);
+    setIsBulkActionDialogOpen(false);
+    setBulkAction(null);
+
+    const actionPast = bulkAction === 'enable' ? 'enabled' : bulkAction === 'disable' ? 'disabled' : 'deleted';
+    
+    if (failed === 0) {
+      toast.success(`Successfully ${actionPast} ${succeeded} network(s)`);
+    } else {
+      toast.warning(`${succeeded} of ${total} networks ${actionPast}`, {
+        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`
       });
     }
+    
+    setSelectedNetworks([]);
+    loadNetworks();
   };
 
   if (loading) {
-    return null;
+    return (
+      <div className="space-y-6">
+        <Card className="surface-2dp">
+          <CardHeader>
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-80 mt-2" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col space-y-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-[150px]" />
+                <Skeleton className="h-10 w-[200px]" />
+                <Skeleton className="h-10 w-[120px]" />
+              </div>
+            </div>
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12"><Skeleton className="h-4 w-4" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-20" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-14" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-24" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-12" /></TableHead>
+                    <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-16 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -835,32 +1049,46 @@ export function ConfigureNetworks() {
             </div>
             
             {selectedNetworks.length > 0 && (
-              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg mb-4">
-                <span className="text-sm font-medium">{selectedNetworks.length} selected</span>
+              <div className="sticky top-0 z-10 flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg mb-4 shadow-sm">
+                <Badge variant="secondary" className="text-sm font-medium">
+                  {selectedNetworks.length} selected
+                </Badge>
                 <div className="flex-1" />
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => { setBulkAction('enable'); setIsBulkActionDialogOpen(true); }}
                 >
-                  Enable All
+                  <Eye className="h-4 w-4 mr-1" />
+                  Enable
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={() => { setBulkAction('disable'); setIsBulkActionDialogOpen(true); }}
                 >
-                  Disable All
+                  <EyeOff className="h-4 w-4 mr-1" />
+                  Disable
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleOpenAssignDialog}
+                >
+                  <Link2 className="h-4 w-4 mr-1" />
+                  Assign to Profiles
                 </Button>
                 <Button 
                   variant="destructive" 
                   size="sm"
                   onClick={() => { setBulkAction('delete'); setIsBulkActionDialogOpen(true); }}
                 >
-                  Delete All
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
                 </Button>
                 <Button variant="ghost" size="sm" onClick={clearSelection}>
-                  Clear
+                  <X className="h-4 w-4 mr-1" />
+                  Deselect All
                 </Button>
               </div>
             )}
@@ -1073,24 +1301,133 @@ export function ConfigureNetworks() {
         </CardContent>
       </Card>
 
-      <Dialog open={isBulkActionDialogOpen} onOpenChange={setIsBulkActionDialogOpen}>
+      <Dialog open={isBulkActionDialogOpen} onOpenChange={(open) => {
+        if (!bulkProgress) setIsBulkActionDialogOpen(open);
+      }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Bulk Action</DialogTitle>
+            <DialogTitle>
+              {bulkAction === 'delete' ? 'Delete' : bulkAction === 'enable' ? 'Enable' : 'Disable'} {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
+            </DialogTitle>
             <DialogDescription>
-              Are you sure you want to {bulkAction} {selectedNetworks.length} WLAN(s)?
-              {bulkAction === 'delete' && ' This cannot be undone.'}
+              {bulkProgress ? (
+                <div className="space-y-3 mt-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>{bulkProgress.currentItem || 'Processing...'}</span>
+                    <span>{bulkProgress.completed} / {bulkProgress.total}</span>
+                  </div>
+                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} className="h-2" />
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-green-600">✓ {bulkProgress.succeeded} succeeded</span>
+                    {bulkProgress.failed > 0 && (
+                      <span className="text-red-600">✗ {bulkProgress.failed} failed</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  Are you sure you want to {bulkAction} {selectedNetworks.length} selected network{selectedNetworks.length !== 1 ? 's' : ''}?
+                  {bulkAction === 'delete' && (
+                    <span className="block mt-2 text-destructive font-medium">
+                      This action cannot be undone.
+                    </span>
+                  )}
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsBulkActionDialogOpen(false)}>Cancel</Button>
-            <Button 
-              variant={bulkAction === 'delete' ? 'destructive' : 'default'}
-              onClick={handleBulkAction}
-            >
-              Confirm
-            </Button>
-          </DialogFooter>
+          {!bulkProgress && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsBulkActionDialogOpen(false)}>Cancel</Button>
+              <Button 
+                variant={bulkAction === 'delete' ? 'destructive' : 'default'}
+                onClick={handleBulkAction}
+              >
+                {bulkAction === 'delete' ? 'Delete' : bulkAction === 'enable' ? 'Enable' : 'Disable'} {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAssignDialogOpen} onOpenChange={(open) => {
+        if (!bulkProgress) setIsAssignDialogOpen(open);
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Assign Networks to Profiles</DialogTitle>
+            <DialogDescription>
+              {bulkProgress ? (
+                <div className="space-y-3 mt-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="truncate max-w-[300px]">{bulkProgress.currentItem || 'Processing...'}</span>
+                    <span>{bulkProgress.completed} / {bulkProgress.total}</span>
+                  </div>
+                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} className="h-2" />
+                  <div className="flex gap-4 text-sm">
+                    <span className="text-green-600">✓ {bulkProgress.succeeded} succeeded</span>
+                    {bulkProgress.failed > 0 && (
+                      <span className="text-red-600">✗ {bulkProgress.failed} failed</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>Select profiles to assign the {selectedNetworks.length} selected network{selectedNetworks.length !== 1 ? 's' : ''} to.</>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {!bulkProgress && (
+            <div className="py-4 max-h-[300px] overflow-y-auto">
+              {loadingProfiles ? (
+                <div className="flex items-center justify-center py-8">
+                  <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                  <span>Loading profiles...</span>
+                </div>
+              ) : availableProfiles.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Network className="h-8 w-8 mx-auto mb-2" />
+                  <p>No profiles found</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {availableProfiles.map((profile) => (
+                    <div key={profile.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted">
+                      <Checkbox
+                        id={`profile-${profile.id}`}
+                        checked={selectedProfiles.includes(profile.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedProfiles(prev => [...prev, profile.id]);
+                          } else {
+                            setSelectedProfiles(prev => prev.filter(id => id !== profile.id));
+                          }
+                        }}
+                      />
+                      <label htmlFor={`profile-${profile.id}`} className="flex-1 cursor-pointer">
+                        <div className="font-medium text-sm">{profile.name}</div>
+                        {profile.siteName && (
+                          <div className="text-xs text-muted-foreground">Site: {profile.siteName}</div>
+                        )}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {!bulkProgress && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Cancel</Button>
+              <Button 
+                onClick={handleBulkAssign}
+                disabled={selectedProfiles.length === 0 || loadingProfiles}
+              >
+                Assign to {selectedProfiles.length} Profile{selectedProfiles.length !== 1 ? 's' : ''}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
 

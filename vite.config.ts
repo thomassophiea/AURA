@@ -86,30 +86,28 @@ export default defineConfig({
   build: {
     target: 'esnext',
     outDir: 'build',
-    // Code splitting configuration to reduce bundle size
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
-          // React core
           'vendor-react': ['react', 'react-dom', 'react-hook-form'],
-          // UI components
           'vendor-ui': [
             '@radix-ui/react-dialog',
             '@radix-ui/react-dropdown-menu',
             '@radix-ui/react-select',
             '@radix-ui/react-tabs'
           ],
-          // Charts
           'vendor-charts': ['recharts'],
-          // Supabase
           'vendor-supabase': ['@supabase/supabase-js'],
-          // Icons
           'vendor-icons': ['lucide-react']
-        }
-      }
+        },
+      },
+      treeshake: {
+        moduleSideEffects: 'no-external',
+        propertyReadSideEffects: false,
+      },
     },
-    // Increase chunk size warning limit
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 500,
   },
   server: {
     port: 3000,

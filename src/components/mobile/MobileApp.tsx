@@ -12,7 +12,9 @@ import { MobileSLEView } from './MobileSLEView';
 import { MobileNetworksList } from './MobileNetworksList';
 import { MobileClientsList } from './MobileClientsList';
 import { MobileAPsList } from './MobileAPsList';
+import { PWAInstallPrompt } from './PWAInstallPrompt';
 import { useHaptic } from '@/hooks/useHaptic';
+import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface MobileAppProps {
   theme: 'light' | 'dark' | 'system';
@@ -32,6 +34,7 @@ export function MobileApp({
   onSiteChange,
 }: MobileAppProps) {
   const haptic = useHaptic();
+  const { showPrompt, promptToInstall, dismissPrompt } = usePWAInstall();
   const [activeTab, setActiveTab] = useState<MobileTab>('home');
   const [badges, setBadges] = useState<{ clients?: number; aps?: number; apps?: number }>({});
 
@@ -115,6 +118,14 @@ export function MobileApp({
           onTabChange={handleTabChange}
           badges={badges}
         />
+
+        {/* PWA Install Prompt */}
+        {showPrompt && (
+          <PWAInstallPrompt
+            onInstall={promptToInstall}
+            onDismiss={dismissPrompt}
+          />
+        )}
       </div>
     </MobileShell>
   );

@@ -41,6 +41,7 @@ import { useBranding } from '@/lib/branding';
 import { VersionBadge } from './VersionBadge';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { useEffect } from 'react';
+import { prefetchComponent } from '@/lib/prefetch';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -192,6 +193,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
               onClick={() => handlePageChange(item.id)}
+              onMouseEnter={() => prefetchComponent(item.id)}
             >
               <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
               {!isCollapsed && <span>{item.label}</span>}
@@ -246,6 +248,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                         : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                     onClick={() => handlePageChange(item.id)}
+                    onMouseEnter={() => prefetchComponent(item.id)}
                   >
                     <Icon className="h-3 w-3 mr-2" />
                     <span>{item.label}</span>
@@ -304,6 +307,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                           : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                       onClick={() => handlePageChange(item.id)}
+                      onMouseEnter={() => prefetchComponent(item.id)}
                     >
                       <Icon className="h-3 w-3 mr-2" />
                       <span>{item.label}</span>
