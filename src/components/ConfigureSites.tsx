@@ -536,66 +536,7 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
   const availableTimezones = selectedCountry?.timezones || [];
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        {/* Loading Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="surface-1dp">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-4" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-16 mb-2" />
-                <Skeleton className="h-3 w-24" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        <div className="flex justify-center items-center min-h-[400px]">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <CardTitle className="flex items-center justify-center space-x-2">
-                <Building2 className="h-5 w-5 animate-pulse" />
-                <span>Loading Sites</span>
-              </CardTitle>
-              <CardDescription>
-                Fetching site data from the controller...
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>{currentLoadingStep}</span>
-                  <span>{loadingProgress}%</span>
-                </div>
-                <div className="w-full bg-secondary/20 rounded-full h-2">
-                  <div 
-                    className="bg-secondary h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${loadingProgress}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    apiService.cancelAllRequests();
-                    setLoading(false);
-                    setError('Load operation cancelled by user');
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (error) {

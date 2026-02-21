@@ -698,26 +698,7 @@ export function ServiceLevelsEnhanced() {
   ] : [];
 
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl tracking-tight">Service Levels</h2>
-          <div className="h-10 w-32 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-4">
-          {[1,2,3,4].map(i => (
-            <Card key={i}>
-              <CardHeader className="pb-3">
-                <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 w-16 bg-muted rounded animate-pulse" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const currentService = services.find(s => s.id === selectedService);
