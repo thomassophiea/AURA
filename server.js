@@ -1035,7 +1035,7 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
-  console.log(`[Proxy Server] Proxying /api/* to ${CAMPUS_CONTROLLER_URL}`);
+  console.log(`[Proxy Server] Proxying /api/* to ${DEFAULT_CONTROLLER_URL} (with dynamic routing)`);
   console.log(`[Proxy Server] Health check available at http://localhost:${PORT}/health`);
 });
 
