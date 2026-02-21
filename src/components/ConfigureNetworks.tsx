@@ -5,14 +5,16 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import { Label } from './ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
 import { CreateWLANDialog } from './CreateWLANDialog';
+import { WifiQRCodeDialog } from './WifiQRCodeDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
 
@@ -351,6 +353,13 @@ export function ConfigureNetworks() {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [expandedNetworkId, setExpandedNetworkId] = useState<string | null>(null);
+  const [editingWlan, setEditingWlan] = useState<any | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkActionDialogOpen, setIsBulkActionDialogOpen] = useState(false);
+  const [bulkAction, setBulkAction] = useState<'enable' | 'disable' | 'delete' | null>(null);
+  const [qrCodeWlan, setQrCodeWlan] = useState<NetworkConfig | null>(null);
+  const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
 
   useEffect(() => {
     loadNetworks();
@@ -584,6 +593,84 @@ export function ConfigureNetworks() {
     toast.success('Network configuration saved successfully');
   };
 
+  const handleEditWlan = (wlan: any) => {
+    setEditingWlan(wlan);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDeleteWlan = async (wlan: any) => {
+    if (!confirm(`Are you sure you want to delete "${wlan.serviceName || wlan.ssid}"? This cannot be undone.`)) {
+      return;
+    }
+    
+    setIsDeleting(true);
+    try {
+      await apiService.deleteService(wlan.id);
+      toast.success('WLAN deleted successfully');
+      loadNetworks();
+    } catch (error) {
+      console.error('Failed to delete WLAN:', error);
+      toast.error('Failed to delete WLAN', {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingWlan) return;
+    
+    try {
+      await apiService.updateService(editingWlan.id, editingWlan);
+      toast.success('WLAN updated successfully');
+      setIsEditDialogOpen(false);
+      setEditingWlan(null);
+      loadNetworks();
+    } catch (error) {
+      toast.error('Failed to update WLAN', {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  };
+
+  const clearSelection = () => setSelectedNetworks([]);
+
+  const handleBulkAction = async () => {
+    if (!bulkAction || selectedNetworks.length === 0) return;
+    
+    try {
+      toast.info(`Processing ${selectedNetworks.length} WLAN(s)...`);
+      
+      for (const wlanId of selectedNetworks) {
+        if (bulkAction === 'delete') {
+          await apiService.deleteService(wlanId);
+        } else {
+          const service = services.find(s => s.id === wlanId);
+          if (service) {
+            const updatePayload: any = {
+              serviceName: service.name || service.ssid || 'Unnamed Network',
+              name: service.name || service.ssid || 'Unnamed Network',
+              ssid: service.ssid || service.name || 'Unnamed SSID',
+              enabled: bulkAction === 'enable'
+            };
+            await apiService.updateService(wlanId, updatePayload);
+          }
+        }
+      }
+      
+      toast.success(`Successfully ${bulkAction}d ${selectedNetworks.length} WLAN(s)`);
+      setSelectedNetworks([]);
+      setIsBulkActionDialogOpen(false);
+      setBulkAction(null);
+      loadNetworks();
+    } catch (error) {
+      toast.error(`Failed to ${bulkAction} WLANs`, {
+        description: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  };
+
   if (loading) {
     return null;
   }
@@ -629,6 +716,61 @@ export function ConfigureNetworks() {
                 loadNetworks();
               }}
             />
+
+            {/* Edit WLAN Dialog */}
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Edit WLAN</DialogTitle>
+                  <DialogDescription>Modify WLAN configuration</DialogDescription>
+                </DialogHeader>
+                {editingWlan && (
+                  <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Service Name</Label>
+                        <Input 
+                          value={editingWlan.serviceName || editingWlan.name || ''} 
+                          onChange={(e) => setEditingWlan({...editingWlan, serviceName: e.target.value, name: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>SSID</Label>
+                        <Input 
+                          value={editingWlan.ssid || ''} 
+                          onChange={(e) => setEditingWlan({...editingWlan, ssid: e.target.value})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>VLAN</Label>
+                        <Input 
+                          type="number"
+                          value={editingWlan.dot1dPortNumber || editingWlan.vlanId || editingWlan.vlan || ''} 
+                          onChange={(e) => setEditingWlan({...editingWlan, dot1dPortNumber: parseInt(e.target.value) || 0})}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select 
+                          value={editingWlan.enabled ? 'enabled' : 'disabled'}
+                          onValueChange={(value) => setEditingWlan({...editingWlan, enabled: value === 'enabled'})}
+                        >
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="enabled">Enabled</SelectItem>
+                            <SelectItem value="disabled">Disabled</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleSaveEdit}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </CardHeader>
         
@@ -693,13 +835,32 @@ export function ConfigureNetworks() {
             </div>
             
             {selectedNetworks.length > 0 && (
-              <div className="flex items-center space-x-2 p-3 bg-muted rounded-lg">
-                <span className="text-sm">
-                  {selectedNetworks.length} network{selectedNetworks.length === 1 ? '' : 's'} selected
-                </span>
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4 mr-2" />
-                  Bulk Actions
+              <div className="flex items-center gap-2 p-3 bg-muted rounded-lg mb-4">
+                <span className="text-sm font-medium">{selectedNetworks.length} selected</span>
+                <div className="flex-1" />
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => { setBulkAction('enable'); setIsBulkActionDialogOpen(true); }}
+                >
+                  Enable All
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => { setBulkAction('disable'); setIsBulkActionDialogOpen(true); }}
+                >
+                  Disable All
+                </Button>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => { setBulkAction('delete'); setIsBulkActionDialogOpen(true); }}
+                >
+                  Delete All
+                </Button>
+                <Button variant="ghost" size="sm" onClick={clearSelection}>
+                  Clear
                 </Button>
               </div>
             )}
@@ -792,6 +953,25 @@ export function ConfigureNetworks() {
                               <Eye className="h-4 w-4" />
                             )}
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditWlan(network)}
+                            title="Edit WLAN"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setQrCodeWlan(network);
+                              setIsQrDialogOpen(true);
+                            }}
+                            title="Generate QR Code"
+                          >
+                            <QrCode className="h-4 w-4" />
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -807,9 +987,10 @@ export function ConfigureNetworks() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteNetwork(network.id)}
+                            onClick={() => handleDeleteWlan(network)}
+                            disabled={isDeleting}
                             className="text-destructive hover:text-destructive"
-                            title="Delete Network"
+                            title="Delete WLAN"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -891,6 +1072,42 @@ export function ConfigureNetworks() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={isBulkActionDialogOpen} onOpenChange={setIsBulkActionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Bulk Action</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to {bulkAction} {selectedNetworks.length} WLAN(s)?
+              {bulkAction === 'delete' && ' This cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsBulkActionDialogOpen(false)}>Cancel</Button>
+            <Button 
+              variant={bulkAction === 'delete' ? 'destructive' : 'default'}
+              onClick={handleBulkAction}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {qrCodeWlan && (
+        <WifiQRCodeDialog
+          open={isQrDialogOpen}
+          onOpenChange={setIsQrDialogOpen}
+          wlan={{
+            ssid: qrCodeWlan.ssid,
+            security: qrCodeWlan.authType,
+            passphrase: qrCodeWlan.passphrase || qrCodeWlan.psk || '',
+            hidden: qrCodeWlan.hidden,
+            name: qrCodeWlan.name,
+            band: qrCodeWlan.band,
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -5,14 +5,119 @@ import type {
   AssignmentResult,
   SyncResult,
   DeviceGroup,
-  Profile
+  Profile,
+  SecurityConfig,
+  SecurityType
 } from '../types/network';
+
+/**
+ * Build privacy payload based on security type and configuration
+ * Maps form data to Extreme Platform ONE API privacy element structure
+ */
+function buildPrivacyPayload(
+  security: SecurityType,
+  passphrase?: string,
+  config?: SecurityConfig
+): any {
+  const pmfMode = config?.pmfMode ?? 'disabled';
+  const encryptionMode = config?.encryptionMode ?? 'aesOnly';
+  const keyHexEncoded = config?.keyHexEncoded ?? false;
+
+  switch (security) {
+    case 'open':
+      return null;
+
+    case 'owe':
+      return {
+        OweElement: {
+          pmfMode: 'required'
+        }
+      };
+
+    case 'wep':
+      return {
+        WepElement: {
+          keyLength: config?.wepKeyLength ?? 128,
+          inputMethod: config?.wepInputMethod ?? 'ascii',
+          keyIndex: config?.wepKeyIndex ?? 1,
+          key: config?.wepKey || ''
+        }
+      };
+
+    case 'wpa2-psk':
+      return {
+        WpaPskElement: {
+          mode: encryptionMode,
+          pmfMode: pmfMode,
+          presharedKey: passphrase || config?.passphrase || '',
+          keyHexEncoded: keyHexEncoded
+        }
+      };
+
+    case 'wpa3-personal':
+      return {
+        Wpa3SaeElement: {
+          mode: 'aesOnly',
+          pmfMode: 'required',
+          saeMethod: config?.saeMethod ?? 'sae',
+          presharedKey: passphrase || config?.passphrase || '',
+          keyHexEncoded: keyHexEncoded,
+          akmSuiteSelector: config?.akmSuiteSelector
+        }
+      };
+
+    case 'wpa3-compatibility':
+      return {
+        Wpa3CompatibilityElement: {
+          mode: 'aesOnly',
+          pmfMode: 'optional',
+          presharedKey: passphrase || config?.passphrase || '',
+          keyHexEncoded: keyHexEncoded,
+          akmSuiteSelector: config?.akmSuiteSelector
+        }
+      };
+
+    case 'wpa2-enterprise':
+      return {
+        Wpa2EnterpriseElement: {
+          mode: encryptionMode,
+          pmfMode: pmfMode,
+          fastTransition: config?.fastTransition ?? false
+        }
+      };
+
+    case 'wpa3-enterprise-transition':
+      return {
+        Wpa3EnterpriseTransitionElement: {
+          mode: 'aesOnly',
+          pmfMode: 'optional',
+          fastTransition: config?.fastTransition ?? true
+        }
+      };
+
+    case 'wpa3-enterprise-192':
+      return {
+        Wpa3Enterprise192Element: {
+          mode: 'gcmp256',
+          pmfMode: 'required',
+          fastTransition: config?.fastTransition ?? false
+        }
+      };
+
+    default:
+      console.warn(`Unknown security type: ${security}, defaulting to open`);
+      return null;
+  }
+}
 
 /**
  * Build Extreme Platform ONE API compliant service payload from form data
  * Uses form values with controller defaults as fallbacks
  */
 function buildServicePayload(serviceData: CreateServiceRequest): any {
+  const securityConfig = serviceData.securityConfig;
+  const isEnterprise = ['wpa2-enterprise', 'wpa3-enterprise-transition', 'wpa3-enterprise-192'].includes(serviceData.security);
+
   const payload: any = {
     // Basic identification
     serviceName: serviceData.serviceName || serviceData.name,
@@ -29,8 +134,11 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     // VLAN configuration
     dot1dPortNumber: serviceData.vlan || 99,
 
-    // Security configuration - set below based on security type
-    privacy: null,
+    // Security configuration
+    privacy: buildPrivacyPayload(serviceData.security, serviceData.passphrase, securityConfig),
+
+    // MBA (MAC-Based Authentication)
+    mbaAuthorization: securityConfig?.mbaEnabled ?? false,
 
     // 802.11k/v/r support (from form with defaults)
     enabled11kSupport: serviceData.enabled11kSupport ?? false,
@@ -47,18 +155,20 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
 
     // Advanced features (from form with defaults)
     flexibleClientAccess: false,
-    mbaAuthorization: false,
     accountingEnabled: serviceData.accountingEnabled ?? false,
     clientToClientCommunication: serviceData.clientToClientCommunication ?? true,
     includeHostname: serviceData.includeHostname ?? false,
     mbo: serviceData.mbo ?? true,
-    oweAutogen: false,
+    oweAutogen: serviceData.security === 'owe',
     oweCompanion: null,
     purgeOnDisconnect: serviceData.purgeOnDisconnect ?? false,
     beaconProtection: serviceData.beaconProtection ?? false,
 
-    // Policies
-    aaaPolicyId: null,
+    // 6E WPA Compliance
+    sixEWpaCompliance: securityConfig?.sixECompliance ?? false,
+
+    // Policies - AAA Policy for enterprise auth
+    aaaPolicyId: isEnterprise ? (securityConfig?.aaaPolicyId || null) : null,
     mbatimeoutRoleId: null,
     roamingAssistPolicy: null,
 
@@ -76,14 +186,17 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     postAuthenticatedIdleTimeout: serviceData.postAuthenticatedIdleTimeout ?? 1800,
     sessionTimeout: serviceData.sessionTimeout ?? 0,
 
-    // Topology and CoS (using default UUIDs from existing services)
-    defaultTopology: 'efd5f044-26c8-11e7-93ae-92361f002671',
-    defaultCoS: '1eea4d66-2607-11e7-93ae-92361f002671',
+    // Topology and CoS (use provided values or defaults)
+    defaultTopology: serviceData.topologyId || 'efd5f044-26c8-11e7-93ae-92361f002671',
+    defaultCoS: serviceData.cosId || '1eea4d66-2607-11e7-93ae-92361f002671',
 
-    // Roles
-    unAuthenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
-    authenticatedUserDefaultRoleID: serviceData.authenticatedUserDefaultRoleID || null,
+    // Roles - use security config overrides if provided
+    unAuthenticatedUserDefaultRoleID: securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID || null,
+    authenticatedUserDefaultRoleID: securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID || null,
     cpNonAuthenticatedPolicyName: null,
+
+    // Default VLAN override from security config
+    defaultVlan: securityConfig?.defaultVlanId || null,
 
     // Hotspot 2.0
     hotspotType: 'Disabled',
@@ -103,18 +216,26 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     features: ['CENTRALIZED-SITE']
   };
 
-  // Configure security based on type
-  if (serviceData.security === 'wpa2-psk' && serviceData.passphrase) {
-    payload.privacy = {
-      WpaPskElement: {
-        mode: 'aesOnly',
-        pmfMode: 'disabled',
-        presharedKey: serviceData.passphrase,
-        keyHexEncoded: false
-      }
-    };
-  } else if (serviceData.security === 'open') {
-    payload.privacy = null;
+  // Add enterprise-specific RADIUS server configuration
+  if (isEnterprise && securityConfig) {
+    if (securityConfig.primaryRadiusServer) {
+      payload.primaryRadiusServer = securityConfig.primaryRadiusServer;
+    }
+    if (securityConfig.backupRadiusServer) {
+      payload.backupRadiusServer = securityConfig.backupRadiusServer;
+    }
+    if (securityConfig.thirdRadiusServer) {
+      payload.thirdRadiusServer = securityConfig.thirdRadiusServer;
+    }
+    if (securityConfig.fourthRadiusServer) {
+      payload.fourthRadiusServer = securityConfig.fourthRadiusServer;
+    }
+    if (securityConfig.wlanAuthMethod) {
+      payload.authenticationMethod = securityConfig.wlanAuthMethod;
+    }
+    if (securityConfig.ldapConfigurationId) {
+      payload.ldapConfigurationId = securityConfig.ldapConfigurationId;
+    }
   }
 
   // Add optional description if provided

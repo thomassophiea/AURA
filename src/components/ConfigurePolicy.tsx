@@ -6,7 +6,8 @@ import { Badge } from './ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertTriangle, Plus, Search, Edit2, Trash2, Shield, Network, AlertCircle, CheckCircle, RefreshCw, Lock, Unlock, Globe, Settings } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { AlertTriangle, Plus, Search, Edit2, Trash2, Shield, Network, AlertCircle, CheckCircle, RefreshCw, Lock, Unlock, Globe, Settings, Layers, Gauge } from 'lucide-react';
 import { apiService, Role } from '../services/api';
 import { toast } from 'sonner';
 import { RoleEditDialog } from './RoleEditDialog';
@@ -22,6 +23,23 @@ export function ConfigurePolicy() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null);
+
+  // VLAN/Topology state
+  const [topologies, setTopologies] = useState<any[]>([]);
+  const [loadingTopologies, setLoadingTopologies] = useState(false);
+  const [topologySearchTerm, setTopologySearchTerm] = useState('');
+
+  // Class of Service state
+  const [cosProfiles, setCosProfiles] = useState<any[]>([]);
+  const [loadingCos, setLoadingCos] = useState(false);
+
+  // Topology dialog state
+  const [selectedTopology, setSelectedTopology] = useState<any | null>(null);
+  const [isTopologyDetailOpen, setIsTopologyDetailOpen] = useState(false);
+  const [isTopologyEditOpen, setIsTopologyEditOpen] = useState(false);
+  const [editingTopology, setEditingTopology] = useState<any | null>(null);
+  const [selectedCos, setSelectedCos] = useState<any | null>(null);
+  const [isCosDetailOpen, setIsCosDetailOpen] = useState(false);
 
   // Debug: Log dialog state changes
   useEffect(() => {
@@ -54,10 +72,53 @@ export function ConfigurePolicy() {
     }
   };
 
+  const loadTopologies = async () => {
+    setLoadingTopologies(true);
+    try {
+      const data = await apiService.getTopologies();
+      setTopologies(data || []);
+      console.log(`✓ Loaded ${data.length} topologies/VLANs`);
+    } catch (error) {
+      console.error('❌ Error loading topologies:', error);
+      setTopologies([]);
+    } finally {
+      setLoadingTopologies(false);
+    }
+  };
+
+  const loadCosProfiles = async () => {
+    setLoadingCos(true);
+    try {
+      const data = await apiService.getClassOfService();
+      setCosProfiles(data || []);
+      console.log(`✓ Loaded ${data.length} CoS profiles`);
+    } catch (error) {
+      console.error('❌ Error loading CoS profiles:', error);
+      setCosProfiles([]);
+    } finally {
+      setLoadingCos(false);
+    }
+  };
+
   const filteredRoles = roles.filter(role => {
     const matchesSearch = role.name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  const filteredTopologies = topologies.filter(topology => {
+    const name = topology.name || topology.topologyName || '';
+    return name.toLowerCase().includes(topologySearchTerm.toLowerCase());
+  });
+
+  // Load data when tab changes
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'topologies' && topologies.length === 0) {
+      loadTopologies();
+    } else if (tab === 'cos' && cosProfiles.length === 0) {
+      loadCosProfiles();
+    }
+  };
 
   const handleViewRole = (role: Role) => {
     setSelectedRole(role);
@@ -211,7 +272,7 @@ export function ConfigurePolicy() {
 
       {/* Main Content */}
       <Card className="surface-2dp">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="border-b border-border px-6 pt-6">
             <TabsList className="bg-transparent border-b-0 h-auto p-0 space-x-6">
               <TabsTrigger 
@@ -220,6 +281,20 @@ export function ConfigurePolicy() {
               >
                 <Shield className="h-4 w-4 mr-2" />
                 Network Roles
+              </TabsTrigger>
+              <TabsTrigger 
+                value="topologies" 
+                className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
+              >
+                <Layers className="h-4 w-4 mr-2" />
+                VLANs / Topologies
+              </TabsTrigger>
+              <TabsTrigger 
+                value="cos" 
+                className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
+              >
+                <Gauge className="h-4 w-4 mr-2" />
+                Class of Service
               </TabsTrigger>
               <TabsTrigger 
                 value="firewall" 
@@ -394,6 +469,155 @@ export function ConfigurePolicy() {
                       />
                     )}
                   </div>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* VLANs / Topologies Tab */}
+          <TabsContent value="topologies" className="p-6 space-y-4">
+            {/* Search and Refresh */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search topologies..."
+                  value={topologySearchTerm}
+                  onChange={(e) => setTopologySearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Button
+                variant="outline"
+                onClick={loadTopologies}
+                disabled={loadingTopologies}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingTopologies ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <Button
+                onClick={() => {
+                  setEditingTopology(null);
+                  setIsTopologyEditOpen(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Create Topology
+              </Button>
+            </div>
+
+            {/* Topologies List */}
+            {loadingTopologies ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredTopologies.length === 0 ? (
+              renderEmptyState(
+                'No Topologies Found',
+                topologySearchTerm ? 'No topologies match your search criteria.' : 'No VLAN topologies are configured on this controller.'
+              )
+            ) : (
+              <div className="grid gap-3">
+                {filteredTopologies.map((topology) => (
+                  <Card key={topology.id} className="surface-1dp p-4 hover:surface-3dp transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-500/10">
+                          <Layers className="h-4 w-4 text-blue-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{topology.name || topology.topologyName || 'Unnamed'}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            {topology.vlanId && <Badge variant="outline">VLAN {topology.vlanId}</Badge>}
+                            {topology.mode && <Badge variant="secondary">{topology.mode}</Badge>}
+                            {topology.predefined && <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" />System</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {topology.ipAddress && (
+                          <span className="text-xs text-muted-foreground font-mono">{topology.ipAddress}</span>
+                        )}
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          title="View details"
+                          onClick={() => {
+                            setSelectedTopology(topology);
+                            setIsTopologyDetailOpen(true);
+                          }}
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Class of Service Tab */}
+          <TabsContent value="cos" className="p-6 space-y-4">
+            {/* Refresh Button */}
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={loadCosProfiles}
+                disabled={loadingCos}
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${loadingCos ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            </div>
+
+            {/* CoS List */}
+            {loadingCos ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : cosProfiles.length === 0 ? (
+              renderEmptyState(
+                'No Class of Service Profiles Found',
+                'No CoS profiles are configured on this controller.'
+              )
+            ) : (
+              <div className="grid gap-3">
+                {cosProfiles.map((cos) => (
+                  <Card key={cos.id} className="surface-1dp p-4 hover:surface-3dp transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-purple-500/10">
+                          <Gauge className="h-4 w-4 text-purple-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium">{cos.name || cos.cosName || 'Unnamed'}</div>
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
+                            {cos.priority !== undefined && <Badge variant="outline">Priority {cos.priority}</Badge>}
+                            {cos.predefined && <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" />System</Badge>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0" 
+                          title="View details"
+                          onClick={() => {
+                            setSelectedCos(cos);
+                            setIsCosDetailOpen(true);
+                          }}
+                        >
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
                 ))}
               </div>
             )}
@@ -603,6 +827,174 @@ export function ConfigurePolicy() {
         }}
         onSave={handleSaveRole}
       />
+
+      {/* CoS Detail Dialog */}
+      <Dialog open={isCosDetailOpen} onOpenChange={setIsCosDetailOpen}>
+        <DialogContent className="surface-2dp max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gauge className="h-5 w-5" />
+              {selectedCos?.name || 'Class of Service Details'}
+              {selectedCos?.predefined && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  System
+                </Badge>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedCos && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Name</Label>
+                  <p className="text-sm mt-1">{selectedCos.name || selectedCos.cosName}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Priority</Label>
+                  <p className="text-sm mt-1">{selectedCos.priority ?? 'Default'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">ID</Label>
+                  <p className="text-sm mt-1 font-mono text-xs">{selectedCos.id}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Editable</Label>
+                  <p className="text-sm mt-1">{selectedCos.canEdit !== false ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+              
+              {/* Queue Mappings if available */}
+              {selectedCos.queueMappings && (
+                <div>
+                  <Label className="text-muted-foreground">Queue Mappings</Label>
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                    {Object.entries(selectedCos.queueMappings).map(([queue, value]) => (
+                      <div key={queue} className="p-2 bg-muted rounded text-xs">
+                        <span className="font-medium">{queue}:</span> {String(value)}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* DSCP Mappings if available */}
+              {selectedCos.dscpMappings && (
+                <div>
+                  <Label className="text-muted-foreground">DSCP Mappings</Label>
+                  <p className="text-sm mt-1 text-muted-foreground">
+                    {Array.isArray(selectedCos.dscpMappings) 
+                      ? `${selectedCos.dscpMappings.length} mappings configured`
+                      : 'Custom mappings configured'}
+                  </p>
+                </div>
+              )}
+              
+              {selectedCos.description && (
+                <div>
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="text-sm mt-1">{selectedCos.description}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCosDetailOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Topology Detail Dialog */}
+      <Dialog open={isTopologyDetailOpen} onOpenChange={setIsTopologyDetailOpen}>
+        <DialogContent className="surface-2dp max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Layers className="h-5 w-5" />
+              {selectedTopology?.name || 'Topology Details'}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedTopology && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-muted-foreground">Name</Label>
+                  <p className="text-sm mt-1">{selectedTopology.name}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">VLAN ID</Label>
+                  <p className="text-sm mt-1">{selectedTopology.vlanId || 'Not set'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Mode</Label>
+                  <p className="text-sm mt-1">{selectedTopology.mode || 'Default'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">IP Address</Label>
+                  <p className="text-sm mt-1 font-mono">{selectedTopology.ipAddress || 'Not configured'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Subnet Mask</Label>
+                  <p className="text-sm mt-1 font-mono">{selectedTopology.subnetMask || 'Not configured'}</p>
+                </div>
+                <div>
+                  <Label className="text-muted-foreground">Gateway</Label>
+                  <p className="text-sm mt-1 font-mono">{selectedTopology.gateway || 'Not configured'}</p>
+                </div>
+              </div>
+              {selectedTopology.description && (
+                <div>
+                  <Label className="text-muted-foreground">Description</Label>
+                  <p className="text-sm mt-1">{selectedTopology.description}</p>
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTopologyDetailOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Topology Edit/Create Dialog */}
+      <Dialog open={isTopologyEditOpen} onOpenChange={setIsTopologyEditOpen}>
+        <DialogContent className="surface-2dp max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{editingTopology ? 'Edit Topology' : 'Create Topology'}</DialogTitle>
+            <DialogDescription>Configure VLAN topology settings</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Name *</Label>
+                <Input placeholder="Topology name" />
+              </div>
+              <div className="space-y-2">
+                <Label>VLAN ID</Label>
+                <Input type="number" placeholder="1-4094" min="1" max="4094" />
+              </div>
+              <div className="space-y-2">
+                <Label>Mode</Label>
+                <Select defaultValue="bridged-at-ap">
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bridged-at-ap">Bridged at AP</SelectItem>
+                    <SelectItem value="bridged-at-controller">Bridged at Controller</SelectItem>
+                    <SelectItem value="tunnel-to-controller">Tunnel to Controller</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>IP Address</Label>
+                <Input placeholder="192.168.1.1" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsTopologyEditOpen(false)}>Cancel</Button>
+            <Button>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

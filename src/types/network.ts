@@ -1,11 +1,242 @@
 // Network/WLAN type definitions for automatic profile assignment
 
+// ============================================
+// Security Type Definitions (must be defined first)
+// ============================================
+
+/**
+ * All supported WLAN security types matching Extreme Platform ONE controller
+ */
+export type SecurityType =
+  | 'open'                    // Open (no encryption)
+  | 'owe'                     // OWE (Opportunistic Wireless Encryption)
+  | 'wep'                     // WEP (legacy, not recommended)
+  | 'wpa2-psk'                // WPA2-Personal (PSK)
+  | 'wpa2-enterprise'         // WPA2-Enterprise (802.1X/EAP)
+  | 'wpa3-personal'           // WPA3-Personal (SAE)
+  | 'wpa3-compatibility'      // WPA3-Compatibility (WPA2+WPA3 mixed)
+  | 'wpa3-enterprise-transition' // WPA3-Enterprise Transition
+  | 'wpa3-enterprise-192';    // WPA3-Enterprise 192-bit
+
+/**
+ * Protected Management Frames (PMF/802.11w) modes
+ */
+export type PMFMode = 'disabled' | 'optional' | 'required';
+
+/**
+ * Encryption cipher modes for WPA2
+ */
+export type EncryptionMode = 
+  | 'aesOnly'        // AES-CCMP only (recommended)
+  | 'tkipOnly'       // TKIP only (legacy)
+  | 'both';          // TKIP + AES (TKIP-CCMP)
+
+/**
+ * WPA3 encryption cipher modes
+ */
+export type WPA3EncryptionMode =
+  | 'aes-ccm-128'           // AES-CCM-128 (default for WPA3)
+  | 'aes-ccm-128-gcmp256'   // AES-CCM-128 & GCMP256 (Wi-Fi 7)
+  | 'gcmp256';              // GCMP256 only (Wi-Fi 7)
+
+/**
+ * WPA3 SAE methods
+ */
+export type SAEMethod = 
+  | 'sae'    // SAE only (2.4/5 GHz)
+  | 'h2e'    // H2E only (required for 6 GHz)
+  | 'both';  // SAE/H2E (default, backwards compatible)
+
+/**
+ * WEP key length
+ */
+export type WEPKeyLength = 64 | 128;
+
+/**
+ * WEP key input method
+ */
+export type WEPInputMethod = 'hex' | 'ascii';
+
+/**
+ * Enterprise authentication method
+ */
+export type EnterpriseAuthMethod = 
+  | 'default'           // Default 802.1X
+  | 'proxy-failover'    // Proxy RADIUS with failover
+  | 'proxy-loadbalance' // Proxy RADIUS with load balance
+  | 'local'             // Local authentication
+  | 'ldap';             // LDAP authentication
+
+/**
+ * Authentication protocol for RADIUS
+ */
+export type AuthenticationProtocol = 'PAP' | 'CHAP' | 'MS-CHAP' | 'MS-CHAP2';
+
+/**
+ * Called Station ID format options
+ */
+export type CalledStationIdFormat = 
+  | 'WIRED_MAC_COLON_SSID'
+  | 'BSSID'
+  | 'SITE_NAME'
+  | 'SITE_NAME_COLON_DEVICE_GROUP_NAME'
+  | 'SERIAL'
+  | 'SITE_CAMPUS'
+  | 'SITE_REGION'
+  | 'SITE_CITY';
+
+/**
+ * Accounting type options
+ */
+export type AccountingType = 'START-INTERIM-STOP' | 'START-STOP' | 'INTERIM-UPDATE';
+
+/**
+ * Accounting start options
+ */
+export type AccountingStart = 'NO_DELAY' | 'AFTER_AUTHENTICATION' | 'AFTER_ASSOCIATION';
+
+/**
+ * RADIUS servers mode
+ */
+export type RADIUSServersMode = 'Failover' | 'Load-Balance' | 'Broadcast';
+
+/**
+ * Operator name options
+ */
+export type OperatorNameType = 'None' | 'Custom';
+
+/**
+ * RADIUS server type
+ */
+export type RADIUSServerType = 'Standard' | 'RFC5765';
+
+/**
+ * RADIUS server configuration (for auth or accounting)
+ */
+export interface RADIUSServerConfig {
+  order?: number;
+  host: string;
+  port: number;
+  secret?: string;
+  retries?: number;
+  timeout?: number;
+  trustPoint?: string;
+  serverType?: RADIUSServerType;
+}
+
+/**
+ * AAA Policy configuration matching Extreme Platform ONE controller
+ */
+export interface AAAPolicy {
+  id?: string;
+  name: string;
+  
+  // NAI Routing
+  naiRouting?: boolean;
+  
+  // Authentication
+  authenticationProtocol?: AuthenticationProtocol;
+  nasIpAddress?: string;
+  nasId?: string;
+  calledStationId?: CalledStationIdFormat;
+  
+  // Accounting
+  accountingType?: AccountingType;
+  accountingStart?: AccountingStart;
+  accountingInterimInterval?: number;
+  
+  // Server modes
+  radiusAuthServersMode?: RADIUSServersMode;
+  radiusAcctServersMode?: RADIUSServersMode;
+  
+  // Additional options
+  eventTimestamp?: boolean;
+  includeFramedIp?: boolean;
+  reportNasLocation?: boolean;
+  overrideReauthTimeout?: number;
+  blockRepeatedFailedAuth?: boolean;
+  includeMessageAuthenticator?: boolean;
+  operatorName?: OperatorNameType;
+  operatorNameValue?: string;
+  
+  // RADIUS servers (up to 4 auth, 4 accounting)
+  radiusAuthServers?: RADIUSServerConfig[];
+  radiusAcctServers?: RADIUSServerConfig[];
+}
+
+/**
+ * WLAN-level authentication method (used when enterprise security)
+ */
+export type WLANAuthMethod = 
+  | 'RADIUS'              // Default RADIUS authentication
+  | 'Proxy RADIUS'        // Proxy RADIUS
+  | 'Local'               // Local authentication
+  | 'LDAP';               // LDAP authentication
+
+/**
+ * Security-specific configuration for each security type
+ */
+export interface SecurityConfig {
+  // Common
+  pmfMode?: PMFMode;
+  
+  // WPA2 PSK modes
+  passphrase?: string;
+  encryptionMode?: EncryptionMode;      // For WPA2 (aesOnly, tkipOnly, both)
+  keyHexEncoded?: boolean;              // String vs HEX input
+  
+  // WPA3 Personal specific
+  saeMethod?: SAEMethod;                // SAE, H2E, or SAE/H2E
+  wpa3EncryptionMode?: WPA3EncryptionMode; // AES-CCM-128, GCMP256, etc.
+  
+  // WEP specific (legacy)
+  wepKeyLength?: WEPKeyLength;
+  wepInputMethod?: WEPInputMethod;
+  wepKeyIndex?: 1 | 2 | 3 | 4;
+  wepKey?: string;
+  
+  // Enterprise specific - AAA Policy
+  aaaPolicyId?: string;           // RADIUS AAA Policy UUID
+  aaaPolicy?: AAAPolicy;          // Inline AAA Policy (for new policies)
+  
+  // Enterprise specific - WLAN-level auth settings
+  wlanAuthMethod?: WLANAuthMethod;
+  defaultAaaAuthMethod?: 'RADIUS' | 'Local' | 'LDAP';
+  primaryRadiusServer?: string;   // IP or hostname
+  backupRadiusServer?: string;
+  thirdRadiusServer?: string;
+  fourthRadiusServer?: string;
+  ldapConfigurationId?: string;
+  authenticateLocallyForMac?: boolean; // Authenticate MAC on controller
+  
+  // Fast Transition (802.11r)
+  fastTransition?: boolean;
+  mobilityDomainId?: string;      // Mobility Domain ID for 11r
+  
+  // Wi-Fi 7 / 6E specific
+  akmSuiteSelector?: string;      // AKM Suite for Wi-Fi 7
+  sixECompliance?: boolean;       // 6E WPA Compliance mode
+  
+  // MBA (MAC-Based Authentication)
+  mbaEnabled?: boolean;
+  mbaTimeoutRoleId?: string;      // Role assigned on RADIUS timeout
+  
+  // Default role and VLAN for authenticated users
+  defaultAuthRoleId?: string;
+  defaultUnauthRoleId?: string;
+  defaultVlanId?: string;
+}
+
+// ============================================
+// Core Entity Interfaces
+// ============================================
+
 export interface Service {
   id: string;
   name?: string;
   serviceName?: string;
   ssid: string;
-  security: 'open' | 'wpa2-psk' | 'wpa3-sae' | 'wpa2-enterprise';
+  security: SecurityType;
   passphrase?: string;
   vlan?: number;
   band: '2.4GHz' | '5GHz' | '6GHz' | 'both' | 'dual' | 'all';
@@ -15,6 +246,7 @@ export interface Service {
   description?: string;
   hidden?: boolean;
   maxClients?: number;
+  securityConfig?: SecurityConfig;
 }
 
 export interface Site {
@@ -66,7 +298,7 @@ export interface CreateServiceRequest {
   name?: string; // Deprecated - use serviceName instead
   serviceName?: string; // Service identifier (required by API)
   ssid: string;
-  security: string;
+  security: SecurityType;
   passphrase?: string;
   vlan?: number;
   band: string;
@@ -76,6 +308,10 @@ export interface CreateServiceRequest {
   authenticatedUserDefaultRoleID?: string;
   hidden?: boolean;
   maxClients?: number;
+  
+  // Security configuration (type-specific options)
+  securityConfig?: SecurityConfig;
+  
   // Advanced options (matching controller)
   mbo?: boolean;
   accountingEnabled?: boolean;
@@ -93,6 +329,8 @@ export interface CreateServiceRequest {
   preAuthenticatedIdleTimeout?: number;
   postAuthenticatedIdleTimeout?: number;
   sessionTimeout?: number;
+  topologyId?: string;
+  cosId?: string;
 }
 
 export interface AutoAssignmentResponse {
@@ -125,7 +363,7 @@ export interface SyncResult {
 export interface WLANFormData {
   serviceName: string;
   ssid: string;
-  security: 'open' | 'wpa2-psk' | 'wpa3-sae' | 'wpa2-enterprise';
+  security: SecurityType;
   passphrase: string;
   vlan: number | null;
   band: '2.4GHz' | '5GHz' | '6GHz' | 'both' | 'dual' | 'all';
@@ -133,11 +371,16 @@ export interface WLANFormData {
   selectedSites: string[];
   selectedSiteGroups: string[]; // Site groups selected for deployment
   authenticatedUserDefaultRoleID?: string | null;
+  topologyId?: string;
+  cosId?: string;
 
   // Basic options
   hidden?: boolean;
   maxClients?: number;
   description?: string;
+
+  // Security configuration (type-specific options)
+  securityConfig?: SecurityConfig;
 
   // Advanced options (matching controller exactly)
   mbo?: boolean;                              // MultiBand Operation
