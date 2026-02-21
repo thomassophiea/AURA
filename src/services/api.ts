@@ -5,12 +5,23 @@ import { logger } from './logger';
 // Use proxy in production, direct connection in development
 const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
 const devBaseUrl = import.meta.env.VITE_DEV_CAMPUS_CONTROLLER_URL || 'https://localhost:443';
-const BASE_URL = isProduction
+let BASE_URL = isProduction
   ? '/api/management'  // Proxy through our Express server
   : `${devBaseUrl}/management`;  // Direct connection in development from env var
 
+// Dynamic controller URL support
+let DYNAMIC_CONTROLLER_URL: string | null = null;
+
 logger.log('[API Service] Environment:', isProduction ? 'Production (using proxy)' : 'Development (direct)');
 logger.log('[API Service] BASE_URL:', BASE_URL);
+
+// Function to get current base URL (supports dynamic controller switching)
+function getBaseUrl(): string {
+  if (DYNAMIC_CONTROLLER_URL) {
+    return `${DYNAMIC_CONTROLLER_URL}/management`;
+  }
+  return BASE_URL;
+}
 
 export interface LoginCredentials {
   grantType: string;
@@ -804,6 +815,22 @@ class ApiService {
   }
 
   /**
+   * Set a dynamic base URL for multi-controller support
+   * @param url The controller URL (e.g., https://controller.example.com)
+   */
+  setBaseUrl(url: string | null) {
+    DYNAMIC_CONTROLLER_URL = url;
+    logger.log('[API Service] Dynamic controller URL set to:', url || 'default');
+  }
+
+  /**
+   * Get the current base URL
+   */
+  getBaseUrl(): string {
+    return getBaseUrl();
+  }
+
+  /**
    * Build query string from QueryOptions
    * Supports field projection, pagination, sorting, and custom params
    */
@@ -967,7 +994,7 @@ class ApiService {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for login
         
-        const response = await fetch(`${BASE_URL}/v1/oauth2/token`, {
+        const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
           method: 'POST',
           signal: controller.signal,
           ...format,
@@ -1045,7 +1072,7 @@ class ApiService {
     
     if (this.accessToken) {
       try {
-        await fetch(`${BASE_URL}/v1/oauth2/token/${this.accessToken}`, {
+        await fetch(`${getBaseUrl()}/v1/oauth2/token/${this.accessToken}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${this.accessToken}`,
@@ -1075,12 +1102,17 @@ class ApiService {
       throw new Error('No access token available');
     }
 
-    const headers = {
+    const headers: Record<string, string> = {
       'Authorization': `Bearer ${this.accessToken}`,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
+    
+    // Add dynamic controller URL header for multi-controller proxy routing
+    if (DYNAMIC_CONTROLLER_URL && isProduction) {
+      headers['X-Controller-URL'] = DYNAMIC_CONTROLLER_URL;
+    }
 
     // Create AbortController for timeout and cancellation
     const controller = new AbortController();
@@ -1125,7 +1157,7 @@ class ApiService {
     this.addApiLog(apiLog);
     
     try {
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
+      const response = await fetch(`${getBaseUrl()}${endpoint}`, {
         ...options,
         headers,
         signal: controller.signal,
@@ -1269,7 +1301,7 @@ class ApiService {
     const timeoutId = setTimeout(() => controller.abort(), 6000); // 6 second timeout
 
     try {
-      const response = await fetch(`${BASE_URL}/v1/oauth2/refreshToken`, {
+      const response = await fetch(`${getBaseUrl()}/v1/oauth2/refreshToken`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1744,7 +1776,7 @@ class ApiService {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
 
-      const response = await fetch(`${BASE_URL}/v1/oauth2/token`, {
+      const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
         method: 'OPTIONS',
         headers: {
           'Accept': 'application/json',
@@ -2541,7 +2573,7 @@ class ApiService {
     description?: string;
   }): Promise<Site> {
     logger.log('Creating site:', {
-      url: `${BASE_URL}/v3/sites`,
+      url: `${getBaseUrl()}/v3/sites`,
       payload: siteData
     });
     

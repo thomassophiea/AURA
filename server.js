@@ -11,19 +11,23 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Campus Controller URL
-const CAMPUS_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL || 'https://tsophiea.ddns.net';
+// Default Campus Controller URL (fallback if no dynamic controller specified)
+const DEFAULT_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL || 'https://tsophiea.ddns.net';
+
+// Map to track active controller URLs per session (could be enhanced with Redis for production)
+const controllerSessions = new Map();
 
 console.log('[Proxy Server] Starting...');
-console.log('[Proxy Server] Target:', CAMPUS_CONTROLLER_URL);
+console.log('[Proxy Server] Default Target:', DEFAULT_CONTROLLER_URL);
 console.log('[Proxy Server] Port:', PORT);
+console.log('[Proxy Server] Multi-controller support: ENABLED');
 
 // Enable CORS for all routes
 app.use(cors({
   origin: true, // Allow all origins in development, restrict in production
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Controller-URL']
 }));
 
 // Health check endpoint
@@ -903,9 +907,33 @@ app.get('/api/oui/lookup', (req, res) => {
   res.json({ vendor, oui, mac: String(mac) });
 });
 
-// Proxy configuration
+// Helper function to get controller URL from request
+function getControllerUrl(req) {
+  // Check for X-Controller-URL header (set by frontend when using dynamic controllers)
+  const controllerHeader = req.headers['x-controller-url'];
+  if (controllerHeader) {
+    // Validate URL format to prevent SSRF
+    try {
+      const url = new URL(controllerHeader);
+      if (url.protocol === 'https:' || url.protocol === 'http:') {
+        return controllerHeader;
+      }
+    } catch (e) {
+      console.warn('[Proxy] Invalid controller URL in header:', controllerHeader);
+    }
+  }
+  return DEFAULT_CONTROLLER_URL;
+}
+
+// Dynamic proxy middleware using http-proxy-middleware router option
 const proxyOptions = {
-  target: CAMPUS_CONTROLLER_URL,
+  router: (req) => {
+    const target = getControllerUrl(req);
+    if (target !== DEFAULT_CONTROLLER_URL) {
+      console.log(`[Proxy] Dynamic routing to: ${target}`);
+    }
+    return target;
+  },
   changeOrigin: true,
   secure: false, // Accept self-signed certificates
   followRedirects: true,
@@ -927,14 +955,17 @@ const proxyOptions = {
   },
 
   onProxyReq: (proxyReq, req, res) => {
-    // Log all proxied requests
-    const targetUrl = `${CAMPUS_CONTROLLER_URL}${req.url}`;
-    console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}`);
+    // Get target URL for logging
+    const targetUrl = getControllerUrl(req);
+    console.log(`[Proxy] ${req.method} ${req.url} -> ${targetUrl}${req.url}`);
 
     // Forward original headers
     if (req.headers.authorization) {
       proxyReq.setHeader('Authorization', req.headers.authorization);
     }
+    
+    // Remove the x-controller-url header before forwarding (internal use only)
+    proxyReq.removeHeader('x-controller-url');
   },
 
   onProxyRes: (proxyRes, req, res) => {
@@ -956,10 +987,11 @@ const proxyOptions = {
   }
 };
 
-// Proxy all /api/* requests to Campus Controller
-console.log('[Proxy Server] Setting up /api/* proxy middleware');
+// Proxy all /api/* requests to Campus Controller (with dynamic routing support)
+console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
 app.use('/api', (req, res, next) => {
-  console.log(`[Proxy Middleware] Received: ${req.method} ${req.url}`);
+  const target = getControllerUrl(req);
+  console.log(`[Proxy Middleware] Received: ${req.method} ${req.url} (target: ${target})`);
   next();
 }, createProxyMiddleware(proxyOptions));
 
