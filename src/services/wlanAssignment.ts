@@ -59,21 +59,20 @@ function buildPrivacyPayload(
         Wpa3SaeElement: {
           mode: 'aesOnly',
           pmfMode: 'required',
-          saeMethod: config?.saeMethod ?? 'sae',
+          saeMethod: config?.saeMethod ?? 'both',
           presharedKey: passphrase || config?.passphrase || '',
-          keyHexEncoded: keyHexEncoded,
-          akmSuiteSelector: config?.akmSuiteSelector
+          keyHexEncoded: keyHexEncoded
         }
       };
 
     case 'wpa3-compatibility':
+      // WPA3/WPA2 mixed mode - uses WPA2 PSK with optional PMF for compatibility
       return {
-        Wpa3CompatibilityElement: {
+        WpaPskElement: {
           mode: 'aesOnly',
           pmfMode: 'optional',
           presharedKey: passphrase || config?.passphrase || '',
-          keyHexEncoded: keyHexEncoded,
-          akmSuiteSelector: config?.akmSuiteSelector
+          keyHexEncoded: keyHexEncoded
         }
       };
 
@@ -184,37 +183,27 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     // Timeouts (from form with defaults)
     preAuthenticatedIdleTimeout: serviceData.preAuthenticatedIdleTimeout ?? 300,
     postAuthenticatedIdleTimeout: serviceData.postAuthenticatedIdleTimeout ?? 1800,
-    sessionTimeout: serviceData.sessionTimeout ?? 0,
-
-    // Topology and CoS (use provided values or defaults)
-    defaultTopology: serviceData.topologyId || 'efd5f044-26c8-11e7-93ae-92361f002671',
-    defaultCoS: serviceData.cosId || '1eea4d66-2607-11e7-93ae-92361f002671',
-
-    // Roles - use security config overrides if provided
-    unAuthenticatedUserDefaultRoleID: securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID || null,
-    authenticatedUserDefaultRoleID: securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID || null,
-    cpNonAuthenticatedPolicyName: null,
-
-    // Default VLAN override from security config
-    defaultVlan: securityConfig?.defaultVlanId || null,
-
-    // Hotspot 2.0
-    hotspotType: 'Disabled',
-    hotspot: null,
-
-    // DSCP code points mapping (controller defaults)
-    dscp: {
-      codePoints: [
-        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 0, 2, 0, 2, 0,
-        1, 0, 3, 0, 3, 0, 3, 0, 3, 0, 4, 0, 4, 0, 4, 0,
-        4, 0, 5, 0, 5, 0, 5, 0, 5, 0, 0, 0, 0, 0, 6, 0,
-        6, 0, 0, 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0
-      ]
-    },
-
-    // Features
-    features: ['CENTRALIZED-SITE']
+    sessionTimeout: serviceData.sessionTimeout ?? 0
   };
+
+  // Only include topology/CoS if explicitly provided (don't use hardcoded defaults)
+  if (serviceData.topologyId) {
+    payload.defaultTopology = serviceData.topologyId;
+  }
+  if (serviceData.cosId) {
+    payload.defaultCoS = serviceData.cosId;
+  }
+
+  // Roles - only include if provided
+  if (securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID) {
+    payload.unAuthenticatedUserDefaultRoleID = securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
+    payload.authenticatedUserDefaultRoleID = securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
+  }
+
+  // Default VLAN override from security config
+  if (securityConfig?.defaultVlanId) {
+    payload.defaultVlan = securityConfig.defaultVlanId;
+  }
 
   // Add enterprise-specific RADIUS server configuration
   if (isEnterprise && securityConfig) {

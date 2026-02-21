@@ -2498,9 +2498,11 @@ class ApiService {
 
   async createService(serviceData: Partial<Service>): Promise<Service> {
     logger.log('Creating service:', serviceData);
+    logger.log('Service payload JSON:', JSON.stringify(serviceData, null, 2));
     
     const response = await this.makeAuthenticatedRequest('/v1/services', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(serviceData)
     });
     
@@ -2509,21 +2511,31 @@ class ApiService {
       
       try {
         const errorResponse = await response.text();
+        logger.error('Full error response:', errorResponse);
         
         if (errorResponse) {
           try {
             const errorData = JSON.parse(errorResponse);
+            logger.error('Parsed error data:', errorData);
             
             if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
               const firstError = errorData.errors[0];
               errorMessage = firstError.errorMessage || firstError.message || errorMessage;
               
-              logger.error('Detailed error info:', firstError);
+              // Log all errors for debugging
+              errorData.errors.forEach((err: any, i: number) => {
+                logger.error(`Error ${i + 1}:`, err);
+              });
             } else if (errorData.message) {
               errorMessage = errorData.message;
+            } else if (errorData.error) {
+              errorMessage = errorData.error;
             }
           } catch (parseError) {
-            logger.error('Failed to parse error response:', parseError);
+            // Response wasn't JSON, use raw text
+            if (errorResponse.length < 500) {
+              errorMessage = errorResponse;
+            }
           }
         }
         
