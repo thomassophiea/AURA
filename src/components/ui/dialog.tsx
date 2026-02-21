@@ -41,10 +41,8 @@ const DialogContent = React.forwardRef<
   React.useImperativeHandle(ref, () => contentRef.current!);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only start drag if clicking on the header area (detected by data-drag-handle attribute)
     const target = e.target as HTMLElement;
 
-    // Don't drag if clicking on interactive elements
     if (target.closest('button, input, select, textarea, a')) {
       return;
     }
@@ -53,7 +51,7 @@ const DialogContent = React.forwardRef<
       return;
     }
 
-    e.preventDefault(); // Prevent text selection while dragging
+    e.preventDefault();
     setIsDragging(true);
     setDragStart({
       x: e.clientX - position.x,
@@ -68,7 +66,6 @@ const DialogContent = React.forwardRef<
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
 
-      // Get dialog dimensions
       const dialog = contentRef.current;
       if (!dialog) return;
 
@@ -76,15 +73,13 @@ const DialogContent = React.forwardRef<
       const viewportWidth = window.innerWidth;
       const viewportHeight = window.innerHeight;
 
-      // Constrain to viewport bounds
-      // Allow dialog to be dragged higher to reveal bottom content
       const constrainedX = Math.max(
-        -rect.width / 2 + 50, // Allow some overflow on left
-        Math.min(newX, viewportWidth - rect.width / 2 - 50) // Allow some overflow on right
+        -rect.width / 2 + 50,
+        Math.min(newX, viewportWidth - rect.width / 2 - 50)
       );
       const constrainedY = Math.max(
-        -(rect.height - 100), // Allow dragging up to reveal bottom (keep 100px of header visible)
-        Math.min(newY, viewportHeight - 100) // Keep at least 100px visible at bottom
+        -(rect.height - 100),
+        Math.min(newY, viewportHeight - 100)
       );
 
       setPosition({ x: constrainedX, y: constrainedY });
@@ -105,53 +100,10 @@ const DialogContent = React.forwardRef<
     };
   }, [isDragging, dragStart]);
 
-  // Smart positioning: center small dialogs, position tall dialogs higher
-  const resetPosition = React.useCallback(() => {
-    const dialog = contentRef.current;
-    if (!dialog) {
-      setPosition({ x: 0, y: 0 });
-      return;
-    }
-
-    // Use multiple animation frames and a timeout to ensure content is fully rendered
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setTimeout(() => {
-          const rect = dialog.getBoundingClientRect();
-          const viewportHeight = window.innerHeight;
-
-          console.log('📏 Dialog dimensions:', { height: rect.height, viewportHeight, threshold: viewportHeight * 0.7 });
-
-          // Only proceed if dialog has actual dimensions (is rendered)
-          if (rect.height === 0) {
-            console.log('⚠️ Dialog height is 0, setting default position');
-            setPosition({ x: 0, y: 0 });
-            return;
-          }
-
-          // If dialog is tall (>70% of viewport), position it higher
-          if (rect.height > viewportHeight * 0.7) {
-            const targetY = -(rect.height / 2 - 150); // 150px from top
-            console.log('📍 Tall dialog detected, positioning higher:', { targetY });
-            setPosition({ x: 0, y: targetY });
-          } else {
-            console.log('📍 Small dialog detected, centering');
-            setPosition({ x: 0, y: 0 });
-          }
-        }, 100); // Increased delay to ensure content is rendered
-      });
-    });
+  // Reset position to center when dialog opens
+  React.useEffect(() => {
+    setPosition({ x: 0, y: 0 });
   }, []);
-
-  // Reset position when dialog opens or when content changes
-  React.useEffect(() => {
-    resetPosition();
-  }, [children, resetPosition]); // Reset whenever dialog content changes (typically on open)
-
-  // Also reset on initial mount
-  React.useEffect(() => {
-    resetPosition();
-  }, [resetPosition]);
 
   return (
     <DialogPortal>
@@ -159,13 +111,15 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={contentRef}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] gap-4 rounded-lg border p-6 shadow-lg sm:max-w-lg overflow-y-auto",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] gap-4 rounded-lg border p-6 shadow-lg sm:max-w-lg overflow-y-auto",
           isDragging && "cursor-move select-none",
           className,
         )}
         style={{
+          top: '50%',
+          left: '50%',
           transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
-          transition: isDragging ? 'none' : 'all 200ms',
+          transition: isDragging ? 'none' : undefined,
         }}
         onMouseDown={handleMouseDown}
         {...props}
