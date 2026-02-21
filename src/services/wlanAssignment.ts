@@ -434,7 +434,7 @@ export class WLANAssignmentService {
           const profileName = profile.name || profile.profileName || profile.id;
           try {
             // First verify the profile exists and is accessible
-            const profileData = await apiService.getProfile(profile.id).catch(() => null);
+            const profileData = await apiService.getProfileById(profile.id).catch(() => null);
             if (!profileData) {
               console.warn(`[WLANAssignment] Profile ${profileName} not found or inaccessible, skipping`);
               failCount++;
