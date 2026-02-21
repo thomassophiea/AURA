@@ -3053,16 +3053,82 @@ class ApiService {
   // ============================================================================
 
   /**
-   * Assign a service/WLAN to a profile
-   * This tries multiple methods since the exact API pattern is unknown
+   * Assign a service/WLAN to a profile with interface/radio specification
+   * The controller requires specifying which interfaces (radios, ports) receive the WLAN
    */
-  async assignServiceToProfile(serviceId: string, profileId: string): Promise<void> {
-    logger.log(`Assigning service ${serviceId} to profile ${profileId}`);
+  async assignServiceToProfileWithInterfaces(
+    serviceId: string,
+    profileId: string,
+    interfaces?: {
+      radio1?: boolean;
+      radio2?: boolean;
+      radio3?: boolean;
+      port1?: boolean;
+      port2?: boolean;
+      port3?: boolean;
+    }
+  ): Promise<void> {
+    logger.log(`Assigning service ${serviceId} to profile ${profileId} with interfaces:`, interfaces);
 
-    // Method 1: Try dedicated assignment endpoint
+    // Build interface assignment payload
+    const interfaceAssignment: any = {};
+    if (interfaces) {
+      if (interfaces.radio1) interfaceAssignment.radio1 = serviceId;
+      if (interfaces.radio2) interfaceAssignment.radio2 = serviceId;
+      if (interfaces.radio3) interfaceAssignment.radio3 = serviceId;
+      if (interfaces.port1) interfaceAssignment.port1 = serviceId;
+      if (interfaces.port2) interfaceAssignment.port2 = serviceId;
+      if (interfaces.port3) interfaceAssignment.port3 = serviceId;
+    }
+
+    // Method 1: Try updating profile with service interface assignments
+    try {
+      const profile = await this.getProfileById(profileId);
+      if (profile) {
+        // The profile likely has a structure like:
+        // { radio1Services: [...], radio2Services: [...], ... }
+        // or { interfaces: { radio1: { services: [...] }, ... } }
+        
+        const updatePayload = { ...profile };
+        
+        // Try common patterns for interface service assignment
+        if (interfaces?.radio1) {
+          updatePayload.radio1Services = [...(profile.radio1Services || []), serviceId];
+        }
+        if (interfaces?.radio2) {
+          updatePayload.radio2Services = [...(profile.radio2Services || []), serviceId];
+        }
+        if (interfaces?.radio3) {
+          updatePayload.radio3Services = [...(profile.radio3Services || []), serviceId];
+        }
+        
+        // Also update general services array
+        const services = profile.services || [];
+        if (!services.includes(serviceId)) {
+          updatePayload.services = [...services, serviceId];
+        }
+
+        const response = await this.makeAuthenticatedRequest(
+          `/v3/profiles/${encodeURIComponent(profileId)}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
+          }
+        );
+
+        if (response.ok) {
+          logger.log(`Successfully assigned service to profile interfaces`);
+          return;
+        }
+      }
+    } catch (error) {
+      logger.warn('Profile update method failed:', error);
+    }
+
+    // Method 2: Try dedicated assignment endpoints
     const assignmentEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/services`,
-      `/v3/services/${encodeURIComponent(serviceId)}/assign`,
       `/v1/profiles/${encodeURIComponent(profileId)}/services`
     ];
 
@@ -3070,7 +3136,12 @@ class ApiService {
       try {
         const response = await this.makeAuthenticatedRequest(endpoint, {
           method: 'POST',
-          body: JSON.stringify({ serviceId, profileId })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            serviceId, 
+            profileId,
+            interfaces: interfaceAssignment 
+          })
         });
 
         if (response.ok) {
@@ -3082,41 +3153,19 @@ class ApiService {
       }
     }
 
-    // Method 2: Try updating the profile to add the service
-    try {
-      const profile = await this.getProfileById(profileId);
-      if (profile) {
-        const services = profile.services || [];
-        if (!services.includes(serviceId)) {
-          services.push(serviceId);
+    throw new Error(`Failed to assign service ${serviceId} to profile ${profileId}`);
+  }
 
-          const updateEndpoints = [
-            `/v3/profiles/${encodeURIComponent(profileId)}`,
-            `/v1/profiles/${encodeURIComponent(profileId)}`
-          ];
-
-          for (const endpoint of updateEndpoints) {
-            try {
-              const response = await this.makeAuthenticatedRequest(endpoint, {
-                method: 'PUT',
-                body: JSON.stringify({ ...profile, services })
-              });
-
-              if (response.ok) {
-                logger.log(`Successfully assigned via profile update at ${endpoint}`);
-                return;
-              }
-            } catch (error) {
-              continue;
-            }
-          }
-        }
-      }
-    } catch (error) {
-      logger.error('Failed to assign via profile update:', error);
-    }
-
-    throw new Error(`Failed to assign service ${serviceId} to profile ${profileId} - no working endpoint found`);
+  /**
+   * Assign a service/WLAN to a profile (legacy method - assigns to all radios)
+   */
+  async assignServiceToProfile(serviceId: string, profileId: string): Promise<void> {
+    // Default to all radios when no specific interfaces provided
+    return this.assignServiceToProfileWithInterfaces(serviceId, profileId, {
+      radio1: true,
+      radio2: true,
+      radio3: true
+    });
   }
 
   /**

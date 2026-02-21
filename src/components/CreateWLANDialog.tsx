@@ -17,6 +17,7 @@ import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
 import { ProfilePickerDialog } from './wlans/ProfilePickerDialog';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
 import { SiteGroupManagementDialog } from './SiteGroupManagementDialog';
+import { ProfileInterfaceAssignmentDialog, type ProfileWithInterfaces } from './wlans/ProfileInterfaceAssignmentDialog';
 import type {
   Site,
   SiteGroup,
@@ -129,6 +130,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Advanced options state
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Interface assignment dialog state (for granular radio/port selection)
+  const [interfaceAssignmentOpen, setInterfaceAssignmentOpen] = useState(false);
+  const [createdServiceId, setCreatedServiceId] = useState<string | null>(null);
+  const [createdServiceName, setCreatedServiceName] = useState<string>('');
 
   // Load site groups from localStorage
   useEffect(() => {
@@ -700,6 +706,85 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // Handler for interface assignment dialog - assigns service to profiles with specific interfaces
+  const handleInterfaceAssignment = async (assignments: ProfileWithInterfaces[]) => {
+    if (!createdServiceId) {
+      toast.error('No service ID available for assignment');
+      return;
+    }
+
+    console.log('[InterfaceAssignment] Saving assignments for service:', createdServiceId);
+    console.log('[InterfaceAssignment] Profile assignments:', assignments);
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const assignment of assignments) {
+      try {
+        // Build interface configuration from the assignment
+        const interfaces = {
+          radio1: assignment.interfaces.radio1?.enabled ?? false,
+          radio2: assignment.interfaces.radio2?.enabled ?? false,
+          radio3: assignment.interfaces.radio3?.enabled ?? false,
+          port1: assignment.interfaces.port1?.enabled ?? false,
+          port2: assignment.interfaces.port2?.enabled ?? false,
+          port3: assignment.interfaces.port3?.enabled ?? false,
+        };
+
+        await apiService.assignServiceToProfileWithInterfaces(
+          createdServiceId,
+          assignment.id,
+          interfaces
+        );
+        successCount++;
+      } catch (error) {
+        console.error(`[InterfaceAssignment] Failed to assign to profile ${assignment.name}:`, error);
+        failCount++;
+      }
+    }
+
+    if (failCount === 0) {
+      toast.success('Interface Assignments Saved', {
+        description: `Successfully configured ${successCount} profile(s)`
+      });
+    } else if (successCount > 0) {
+      toast.warning('Partial Assignment Success', {
+        description: `${successCount} succeeded, ${failCount} failed`
+      });
+    } else {
+      toast.error('Assignment Failed', {
+        description: 'Could not assign interfaces to any profiles'
+      });
+    }
+
+    // Trigger sync for assigned profiles
+    try {
+      const profileIds = assignments.map(a => a.id);
+      await apiService.syncMultipleProfiles(profileIds);
+    } catch (error) {
+      console.warn('[InterfaceAssignment] Sync failed:', error);
+    }
+
+    // Close dialogs and notify success
+    setInterfaceAssignmentOpen(false);
+    setCreatedServiceId(null);
+    setCreatedServiceName('');
+    onOpenChange(false);
+
+    onSuccess({
+      serviceId: createdServiceId,
+      sitesProcessed: siteConfigs.size,
+      deviceGroupsFound: 0,
+      profilesAssigned: successCount,
+      assignments: assignments.map(a => ({
+        profileId: a.id,
+        profileName: a.name,
+        success: true
+      })),
+      success: true
+    });
   };
 
   // Use the comprehensive validation function
@@ -1640,6 +1725,24 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         siteGroups={siteGroups}
         onSave={handleSaveSiteGroups}
       />
+
+      {/* Profile Interface Assignment Dialog - for granular radio/port selection */}
+      {createdServiceId && (
+        <ProfileInterfaceAssignmentDialog
+          open={interfaceAssignmentOpen}
+          onOpenChange={(open) => {
+            setInterfaceAssignmentOpen(open);
+            if (!open) {
+              // User cancelled - clear state
+              setCreatedServiceId(null);
+              setCreatedServiceName('');
+            }
+          }}
+          serviceId={createdServiceId}
+          serviceName={createdServiceName}
+          onSave={handleInterfaceAssignment}
+        />
+      )}
     </>
   );
 }
