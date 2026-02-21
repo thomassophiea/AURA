@@ -103,8 +103,8 @@ export function ProfilePickerDialog({
   const isValid = mode === 'INCLUDE_ONLY' ? localSelection.size > 0 : true;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+    <Dialog open={open} onOpenChange={onOpenChange} modal={true}>
+      <DialogContent className="max-w-lg max-h-[85vh] flex flex-col z-[100]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mode === 'INCLUDE_ONLY' ? (
