@@ -119,11 +119,15 @@ function QRCodeSheet({
   const [showPassword, setShowPassword] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (!network) return null;
+  // Don't render if no network AND not open (allow render during close animation)
+  if (!network && !isOpen) return null;
+  
+  // Use empty values if network is null (during close animation)
+  const displayNetwork = network || { ssid: '', security: '', passphrase: '', hidden: false };
 
   // Generate WiFi QR string
   const generateWifiQRString = () => {
-    const security = network.security?.toLowerCase() || 'open';
+    const security = displayNetwork.security?.toLowerCase() || 'open';
     let authType = 'nopass';
 
     if (security.includes('wpa3') || security.includes('wpa2') || security.includes('wpa')) {
@@ -132,9 +136,9 @@ function QRCodeSheet({
       authType = 'WEP';
     }
 
-    const ssid = network.ssid;
-    const password = network.passphrase || '';
-    const hidden = network.hidden ? 'true' : 'false';
+    const ssid = displayNetwork.ssid;
+    const password = displayNetwork.passphrase || '';
+    const hidden = displayNetwork.hidden ? 'true' : 'false';
 
     const escapedSSID = ssid.replace(/([\\;,":])/g, '\\$1');
     const escapedPassword = password.replace(/([\\;,":])/g, '\\$1');
@@ -172,7 +176,7 @@ function QRCodeSheet({
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `wifi-${network.ssid.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+              a.download = `wifi-${displayNetwork.ssid.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
@@ -212,10 +216,10 @@ function QRCodeSheet({
 
               canvas.toBlob(async (blob) => {
                 if (blob) {
-                  const file = new File([blob], `wifi-${network.ssid}.png`, { type: 'image/png' });
+                  const file = new File([blob], `wifi-${displayNetwork.ssid}.png`, { type: 'image/png' });
                   await navigator.share({
-                    title: `WiFi: ${network.ssid}`,
-                    text: `Scan this QR code to connect to ${network.ssid}`,
+                    title: `WiFi: ${displayNetwork.ssid}`,
+                    text: `Scan this QR code to connect to ${displayNetwork.ssid}`,
                     files: [file],
                   });
                   haptic.success();
@@ -237,8 +241,8 @@ function QRCodeSheet({
 
   const handleCopyPassword = () => {
     haptic.light();
-    if (network.passphrase) {
-      navigator.clipboard.writeText(network.passphrase);
+    if (displayNetwork.passphrase) {
+      navigator.clipboard.writeText(displayNetwork.passphrase);
       setCopied(true);
       toast.success('Password copied');
       setTimeout(() => setCopied(false), 2000);
@@ -268,7 +272,7 @@ function QRCodeSheet({
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold">{network.ssid}</h2>
+              <h2 className="text-xl font-bold">{displayNetwork.ssid}</h2>
               <p className="text-sm text-muted-foreground">Scan to connect</p>
             </div>
             <Button variant="ghost" size="icon" onClick={onClose}>
@@ -287,14 +291,14 @@ function QRCodeSheet({
           </div>
 
           {/* Password (if PSK) */}
-          {network.passphrase && (
+          {displayNetwork.passphrase && (
             <div className="space-y-2">
               <label className="text-sm text-muted-foreground">Password</label>
               <div className="flex gap-2">
                 <div className="flex-1 relative">
                   <Input
                     type={showPassword ? 'text' : 'password'}
-                    value={network.passphrase}
+                    value={displayNetwork.passphrase}
                     readOnly
                     className="pr-10 font-mono"
                   />
