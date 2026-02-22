@@ -18,7 +18,7 @@ import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, Alig
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
-import { computeAllWirelessSLEs } from '../../services/sleCalculationEngine';
+import { computeAllWirelessSLEs, setActiveThresholds } from '../../services/sleCalculationEngine';
 import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
@@ -281,6 +281,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         startTimestamp: Date.now() - timeRangeMs,
       });
 
+      // Set active thresholds before computing SLEs
+      setActiveThresholds(siteThresholds);
+      
       // Compute all SLEs
       const sles = computeAllWirelessSLEs(stationsArr, apsArr, historicalData);
       setWirelessSLEs(sles);
@@ -294,7 +297,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedSite, timeRange]);
+  }, [selectedSite, timeRange, siteThresholds]);
 
   // Initial load + auto-refresh
   useEffect(() => {

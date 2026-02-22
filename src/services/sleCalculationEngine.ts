@@ -4,9 +4,26 @@
  * Inspired by Juniper Mist's SLE classifier hierarchy.
  */
 
-import type { SLEMetric, SLEClassifier, SLETimeSeriesPoint } from '../types/sle';
+import type { SLEMetric, SLEClassifier, SLETimeSeriesPoint, SLEThresholds } from '../types/sle';
 import { getSLEStatus, DEFAULT_SLE_THRESHOLDS } from '../types/sle';
 import type { SLEDataPoint } from './sleDataCollection';
+
+// Module-level thresholds that can be updated
+let activeThresholds: SLEThresholds = { ...DEFAULT_SLE_THRESHOLDS };
+
+/**
+ * Set the active thresholds to use for SLE calculations
+ */
+export function setActiveThresholds(thresholds: SLEThresholds): void {
+  activeThresholds = { ...DEFAULT_SLE_THRESHOLDS, ...thresholds };
+}
+
+/**
+ * Get the current active thresholds
+ */
+export function getActiveThresholds(): SLEThresholds {
+  return { ...activeThresholds };
+}
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -44,7 +61,7 @@ export function computeCoverage(
 ): SLEMetric {
   const wireless = stations.filter(s => !s.isWired);
   const total = wireless.length;
-  const threshold = DEFAULT_SLE_THRESHOLDS.coverage.rssiMin;
+  const threshold = activeThresholds.coverage.rssiMin;
 
   // Weak Signal: RSSI below threshold
   const weakSignal = wireless.filter(s => {
@@ -104,7 +121,7 @@ export function computeThroughput(
 ): SLEMetric {
   const wireless = stations.filter(s => !s.isWired);
   const total = wireless.length;
-  const minRate = DEFAULT_SLE_THRESHOLDS.throughput.minRateBps;
+  const minRate = activeThresholds.throughput.minRateBps;
 
   const belowThreshold = wireless.filter(s => {
     const tx = s.transmittedRate || s.txRate || 0;
@@ -329,7 +346,7 @@ export function computeTimeToConnect(
 ): SLEMetric {
   const wireless = stations.filter(s => !s.isWired);
   const total = wireless.length;
-  const maxSeconds = DEFAULT_SLE_THRESHOLDS.timeToConnect.maxSeconds;
+  const maxSeconds = activeThresholds.timeToConnect.maxSeconds;
 
   // Estimate connection time from signal quality
   const slowConnects = wireless.filter(s => {
