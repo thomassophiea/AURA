@@ -13,10 +13,21 @@ import {
   LogOut,
   Wifi,
   Clock,
-  Radio
+  Radio,
+  Smartphone,
+  Laptop,
+  Monitor,
+  Tablet,
+  Tv,
+  Speaker,
+  Gamepad2,
+  Watch,
+  Printer,
+  HardDrive,
+  ChevronRight,
+  Signal
 } from 'lucide-react';
 import { MobileStatusList } from './MobileStatusList';
-import { MobileStatusRow } from './MobileStatusRow';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { Input } from '../ui/input';
@@ -92,6 +103,179 @@ function getSignalPercentage(rssi: number | undefined): number {
   const max = -30;
   const clamped = Math.max(min, Math.min(max, rssi));
   return Math.round(((clamped - min) / (max - min)) * 100);
+}
+
+// Get device icon based on device type, OS, or hostname
+function getDeviceIcon(client: any) {
+  const deviceType = (client.deviceType || client.device || client.osType || '').toLowerCase();
+  const hostname = (client.hostName || client.hostname || '').toLowerCase();
+  const manufacturer = (client.manufacturer || client.oui || '').toLowerCase();
+  
+  // Check device type
+  if (deviceType.includes('phone') || deviceType.includes('mobile') || deviceType.includes('iphone') || deviceType.includes('android')) {
+    return Smartphone;
+  }
+  if (deviceType.includes('tablet') || deviceType.includes('ipad')) {
+    return Tablet;
+  }
+  if (deviceType.includes('laptop') || deviceType.includes('macbook') || deviceType.includes('notebook')) {
+    return Laptop;
+  }
+  if (deviceType.includes('desktop') || deviceType.includes('pc') || deviceType.includes('imac')) {
+    return Monitor;
+  }
+  if (deviceType.includes('tv') || deviceType.includes('appletv') || deviceType.includes('roku') || deviceType.includes('firetv')) {
+    return Tv;
+  }
+  if (deviceType.includes('speaker') || deviceType.includes('homepod') || deviceType.includes('echo') || deviceType.includes('sonos')) {
+    return Speaker;
+  }
+  if (deviceType.includes('game') || deviceType.includes('playstation') || deviceType.includes('xbox') || deviceType.includes('nintendo')) {
+    return Gamepad2;
+  }
+  if (deviceType.includes('watch') || deviceType.includes('wearable')) {
+    return Watch;
+  }
+  if (deviceType.includes('print')) {
+    return Printer;
+  }
+  if (deviceType.includes('nas') || deviceType.includes('server') || deviceType.includes('storage')) {
+    return HardDrive;
+  }
+  
+  // Check hostname patterns
+  if (hostname.includes('iphone') || hostname.includes('android') || hostname.includes('pixel') || hostname.includes('galaxy')) {
+    return Smartphone;
+  }
+  if (hostname.includes('ipad')) {
+    return Tablet;
+  }
+  if (hostname.includes('macbook') || hostname.includes('laptop')) {
+    return Laptop;
+  }
+  if (hostname.includes('imac') || hostname.includes('desktop') || hostname.includes('-pc')) {
+    return Monitor;
+  }
+  if (hostname.includes('appletv') || hostname.includes('roku') || hostname.includes('firetv') || hostname.includes('chromecast')) {
+    return Tv;
+  }
+  
+  // Check manufacturer
+  if (manufacturer.includes('apple')) {
+    // Could be any Apple device, default to laptop
+    return Laptop;
+  }
+  if (manufacturer.includes('samsung') || manufacturer.includes('google') || manufacturer.includes('oneplus')) {
+    return Smartphone;
+  }
+  
+  // Default to generic wifi icon
+  return Wifi;
+}
+
+// Signal strength bars component (UniFi-style)
+function SignalBars({ rssi, className = '' }: { rssi: number | null | undefined; className?: string }) {
+  const bars = 4;
+  let activeBars = 0;
+  let color = 'bg-muted-foreground/30';
+  
+  if (rssi !== null && rssi !== undefined) {
+    if (rssi >= -50) { activeBars = 4; color = 'bg-green-500'; }
+    else if (rssi >= -60) { activeBars = 3; color = 'bg-green-500'; }
+    else if (rssi >= -70) { activeBars = 2; color = 'bg-yellow-500'; }
+    else if (rssi >= -80) { activeBars = 1; color = 'bg-orange-500'; }
+    else { activeBars = 1; color = 'bg-red-500'; }
+  }
+  
+  return (
+    <div className={`flex items-end gap-0.5 h-3 ${className}`}>
+      {Array.from({ length: bars }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-1 rounded-sm transition-colors ${
+            i < activeBars ? color : 'bg-muted-foreground/20'
+          }`}
+          style={{ height: `${((i + 1) / bars) * 100}%` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// Custom client row with UniFi-style design
+function ClientRow({ 
+  client, 
+  onClick 
+}: { 
+  client: any; 
+  onClick: () => void;
+}) {
+  const isOnline =
+    client.connectionState?.toLowerCase() === 'connected' ||
+    client.status?.toLowerCase() === 'connected' ||
+    client.status?.toLowerCase() === 'associated' ||
+    client.status?.toLowerCase() === 'active';
+
+  // Get hostname - prefer hostname over MAC
+  const hostname = client.hostName || client.hostname || client.deviceName || null;
+  const displayName = hostname || client.macAddress || 'Unknown';
+  
+  // Get IP address
+  const ipAddress = client.ipAddress || client.ip || null;
+  
+  // Get signal strength (RSSI)
+  const rssi = client.rssi ?? client.signalStrength ?? client.rss ?? null;
+  
+  // Get device icon
+  const DeviceIcon = getDeviceIcon(client);
+  
+  // Get band info
+  const band = client.band || client.radioType || client.radio || null;
+  const bandLabel = band?.includes('5') ? '5G' : band?.includes('6') ? '6G' : band?.includes('2') ? '2.4G' : null;
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full px-3 py-2.5 flex items-center gap-3 rounded-xl bg-card/50 border border-border/50 backdrop-blur-sm shadow-sm active:bg-accent/80 active:scale-[0.99] transition-all duration-150"
+    >
+      {/* Device Icon with status indicator */}
+      <div className="relative">
+        <div className={`p-2 rounded-xl ${isOnline ? 'bg-primary/10' : 'bg-muted'}`}>
+          <DeviceIcon className={`h-5 w-5 ${isOnline ? 'text-primary' : 'text-muted-foreground'}`} />
+        </div>
+        {/* Status dot */}
+        <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${
+          isOnline ? 'bg-green-500' : 'bg-red-500'
+        }`} />
+      </div>
+      
+      {/* Content */}
+      <div className="flex-1 min-w-0 text-left">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium truncate">{displayName}</span>
+          {bandLabel && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+              {bandLabel}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 mt-0.5">
+          {ipAddress && (
+            <span className="text-xs text-muted-foreground/70 font-mono">{ipAddress}</span>
+          )}
+          {rssi !== null && (
+            <span className="text-xs text-muted-foreground/70">{rssi} dBm</span>
+          )}
+        </div>
+      </div>
+      
+      {/* Signal bars + chevron */}
+      <div className="flex items-center gap-2">
+        {rssi !== null && <SignalBars rssi={rssi} />}
+        <ChevronRight className="h-4 w-4 text-muted-foreground/40" />
+      </div>
+    </button>
+  );
 }
 
 export function MobileClientsList({ currentSite }: MobileClientsListProps) {
@@ -309,48 +493,13 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
       {/* List */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
         <MobileStatusList loading={loading} emptyMessage="No clients found">
-          {filteredClients.map((client: any) => {
-            const isOnline =
-              client.connectionState?.toLowerCase() === 'connected' ||
-              client.status?.toLowerCase() === 'connected' ||
-              client.status?.toLowerCase() === 'associated' ||
-              client.status?.toLowerCase() === 'active';
-
-            // Get hostname - prefer hostname over MAC
-            const hostname = client.hostName || client.hostname || client.deviceName || null;
-            const primaryText = hostname || client.macAddress || 'Unknown Client';
-
-            // Get IP address
-            const ipAddress = client.ipAddress || client.ip || null;
-
-            // Get signal strength (RSSI)
-            const rssi = client.rssi ?? client.signalStrength ?? client.rss ?? null;
-            const signalText = rssi !== null ? `${rssi} dBm` : null;
-
-            // Build secondary text with available info
-            const secondaryParts: string[] = [];
-            if (ipAddress) secondaryParts.push(ipAddress);
-            if (signalText) secondaryParts.push(signalText);
-            if (secondaryParts.length === 0) {
-              // Fall back to showing MAC if we used hostname as primary
-              if (hostname) secondaryParts.push(client.macAddress);
-            }
-            const secondaryText = secondaryParts.join(' • ') || 'No details';
-
-            return (
-              <MobileStatusRow
-                key={client.macAddress}
-                primaryText={primaryText}
-                secondaryText={secondaryText}
-                status={{
-                  label: isOnline ? 'Online' : 'Offline',
-                  variant: isOnline ? 'success' : 'destructive',
-                }}
-                indicator={isOnline ? 'online' : 'offline'}
-                onClick={() => handleClientClick(client)}
-              />
-            );
-          })}
+          {filteredClients.map((client: any) => (
+            <ClientRow
+              key={client.macAddress}
+              client={client}
+              onClick={() => handleClientClick(client)}
+            />
+          ))}
         </MobileStatusList>
       </div>
 
