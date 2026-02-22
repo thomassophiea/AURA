@@ -218,25 +218,63 @@ class TenantService {
   // === Controllers ===
 
   async getControllers(orgId?: string): Promise<Controller[]> {
-    // First try to get from Supabase
+    // First get local controllers (instant)
+    const localControllers = this.getLocalControllers();
+    
+    // If we have local controllers, return them immediately
+    // This provides instant loading - no network delay
+    if (localControllers.length > 0) {
+      // Optionally try to sync from Supabase in background (non-blocking)
+      this.syncControllersFromSupabase(orgId).catch(() => {});
+      return localControllers;
+    }
+    
+    // No local controllers - try Supabase with short timeout
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 2000)
+      );
+      
+      let query = supabase.from('controllers').select('*');
+      if (orgId) {
+        query = query.eq('org_id', orgId);
+      }
+      
+      const result = await Promise.race([
+        query.order('name'),
+        timeoutPromise
+      ]);
+
+      const { data, error } = result as { data: Controller[] | null; error: any };
+      if (!error && data && data.length > 0) {
+        // Save to local storage for next time
+        data.forEach(c => this.saveControllerLocally(c));
+        return data;
+      }
+    } catch (error) {
+      console.warn('Supabase not available or timed out, using defaults');
+    }
+
+    // Fallback - ensure default controller exists and return it
+    this.ensureDefaultController();
+    return this.getLocalControllers();
+  }
+  
+  // Background sync without blocking UI
+  private async syncControllersFromSupabase(orgId?: string): Promise<void> {
     try {
       let query = supabase.from('controllers').select('*');
-      
       if (orgId) {
         query = query.eq('org_id', orgId);
       }
       
       const { data, error } = await query.order('name');
-
-      if (!error && data && data.length > 0) {
-        return data;
+      if (!error && data) {
+        data.forEach(c => this.saveControllerLocally(c));
       }
-    } catch (error) {
-      console.warn('Supabase not available, using local storage');
+    } catch {
+      // Silently fail - local data is good enough
     }
-
-    // Fallback to localStorage
-    return this.getLocalControllers();
   }
 
   async getController(controllerId: string): Promise<Controller | null> {

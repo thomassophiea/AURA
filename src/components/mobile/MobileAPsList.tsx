@@ -47,11 +47,20 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
     async () => {
       const data = await apiService.getAccessPoints();
       if (currentSite === 'all') return data;
-      // Filter by multiple possible site ID fields
+      
+      // Get site name for matching against hostSite field (which contains names, not IDs)
+      const sitesList = await apiService.getSites();
+      const selectedSite = sitesList.find((s: Site) => 
+        s.id === currentSite || s.siteId === currentSite
+      );
+      const siteName = selectedSite?.name || selectedSite?.siteName;
+      
+      // Filter by site ID or site name (hostSite contains the name, not ID)
       return data.filter((ap: any) =>
         ap.siteId === currentSite ||
         ap.site === currentSite ||
-        ap.hostSite === currentSite
+        (siteName && ap.hostSite === siteName) ||
+        (siteName && ap.hostSite?.toLowerCase() === siteName.toLowerCase())
       );
     },
     30000
@@ -62,11 +71,21 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
     async () => {
       const data = await apiService.getStations();
       if (currentSite === 'all') return data;
-      // Filter by multiple possible site ID fields
+      
+      // Get site name for matching (siteName field in clients may contain the name)
+      const sitesList = await apiService.getSites();
+      const selectedSite = sitesList.find((s: Site) => 
+        s.id === currentSite || s.siteId === currentSite
+      );
+      const siteNameToMatch = selectedSite?.name || selectedSite?.siteName;
+      
+      // Filter by site ID or site name
       return data.filter((c: any) =>
         c.siteId === currentSite ||
         c.site === currentSite ||
-        c.siteName === currentSite
+        c.siteName === currentSite ||
+        (siteNameToMatch && c.siteName === siteNameToMatch) ||
+        (siteNameToMatch && c.siteName?.toLowerCase() === siteNameToMatch.toLowerCase())
       );
     },
     30000

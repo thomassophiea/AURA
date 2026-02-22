@@ -110,11 +110,21 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
     async () => {
       const data = await apiService.getStations();
       if (currentSite === 'all') return data;
-      // Filter by multiple possible site ID fields
+      
+      // Get site name for matching (siteName field may contain name, not ID)
+      const sitesList = await apiService.getSites();
+      const selectedSite = sitesList.find((s: any) => 
+        s.id === currentSite || s.siteId === currentSite
+      );
+      const siteNameToMatch = selectedSite?.name || selectedSite?.siteName;
+      
+      // Filter by site ID or site name
       return data.filter((c: any) =>
         c.siteId === currentSite ||
         c.site === currentSite ||
-        c.siteName === currentSite
+        c.siteName === currentSite ||
+        (siteNameToMatch && c.siteName === siteNameToMatch) ||
+        (siteNameToMatch && c.siteName?.toLowerCase() === siteNameToMatch.toLowerCase())
       );
     },
     30000

@@ -390,36 +390,88 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
         let security = 'Open';
         let passphrase = '';
 
-        // Check privacy object for security type
-        if (s.privacy) {
-          if (s.privacy.Wpa3SaeElement) {
+        // Priority 1: Check for WPA3-SAE (multiple possible locations)
+        const saeElement = s.WpaSaeElement 
+          || s.privacy?.WpaSaeElement 
+          || s.privacy?.wpaSaeElement
+          || s.privacy?.sae
+          || s.privacy?.Wpa3SaeElement
+          || s.Wpa3SaeElement;
+
+        if (saeElement) {
+          if (saeElement?.pmfMode === 'required' && saeElement?.saeMethod === 'SaeH2e') {
             security = 'WPA3-Personal';
-            passphrase = s.privacy.Wpa3SaeElement.presharedKey || '';
-          } else if (s.privacy.Wpa3Enterprise192Element) {
+          } else if (saeElement?.pmfMode === 'capable') {
+            security = 'WPA2/WPA3-Personal';
+          } else {
+            security = 'WPA3-Personal';
+          }
+          passphrase = saeElement.presharedKey || '';
+        }
+        // Priority 2: Check for WPA Enterprise (802.1X)
+        else if (s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement 
+          || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement
+          || s.Wpa3Enterprise192Element || s.privacy?.Wpa3Enterprise192Element
+          || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement) {
+          const enterpriseElement = s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement
+            || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement;
+          const mode = enterpriseElement?.mode?.toLowerCase();
+          
+          if (s.Wpa3Enterprise192Element || s.privacy?.Wpa3Enterprise192Element 
+            || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement
+            || enterpriseElement?.pmfMode === 'required') {
             security = 'WPA3-Enterprise';
-          } else if (s.privacy.Wpa3EnterpriseTransitionElement) {
-            security = 'WPA3-Enterprise';
-          } else if (s.privacy.Wpa2EnterpriseElement || s.privacy.WpaEnterpriseElement) {
+          } else if (mode === 'wpa3mixed') {
+            security = 'WPA2/WPA3-Enterprise';
+          } else {
             security = 'WPA2-Enterprise';
-          } else if (s.privacy.WpaPskElement) {
-            security = 'WPA2-Personal';
-            passphrase = s.privacy.WpaPskElement.presharedKey || '';
-          } else if (s.privacy.OweElement) {
-            security = 'OWE (Enhanced Open)';
-          } else if (s.privacy.WepElement) {
-            security = 'WEP';
           }
         }
-        
-        // Also check top-level elements
-        if (s.Wpa3SaeElement) {
-          security = 'WPA3-Personal';
-          passphrase = s.Wpa3SaeElement.presharedKey || passphrase;
-        } else if (s.WpaEnterpriseElement || s.Wpa2EnterpriseElement) {
+        // Priority 3: Check for 802.1X / EAP specific fields
+        else if (s.WpaEapElement || s.privacy?.WpaEapElement
+          || s.eapElement || s.privacy?.eapElement
+          || s.dot1xElement || s.privacy?.dot1xElement
+          || s['802.1x'] || s.privacy?.['802.1x']) {
           security = 'WPA2-Enterprise';
-        } else if (s.WpaPskElement) {
-          security = 'WPA2-Personal';
-          passphrase = s.WpaPskElement.presharedKey || passphrase;
+        }
+        // Priority 4: Check for WPA PSK
+        else if (s.WpaPskElement || s.privacy?.WpaPskElement) {
+          const pskElement = s.WpaPskElement || s.privacy?.WpaPskElement;
+          const mode = pskElement?.mode?.toLowerCase();
+          
+          if (mode === 'wpa3only' || mode === 'wpa3mixed') {
+            security = mode === 'wpa3only' ? 'WPA3-Personal' : 'WPA2/WPA3-Personal';
+          } else {
+            security = 'WPA2-Personal';
+          }
+          passphrase = pskElement?.presharedKey || '';
+        }
+        // Priority 5: Check for OWE (Enhanced Open)
+        else if (s.OweElement || s.privacy?.OweElement) {
+          security = 'OWE (Enhanced Open)';
+        }
+        // Priority 6: Check for WEP
+        else if (s.WepElement || s.privacy?.WepElement) {
+          security = 'WEP';
+        }
+        // Priority 7: Check explicit security/auth type fields
+        else if (s.security?.type) {
+          security = s.security.type;
+        } else if (s.securityType) {
+          security = s.securityType;
+        } else if (s.authType) {
+          security = s.authType;
+        } else if (s.privacyType && s.privacyType !== 'None') {
+          security = s.privacyType;
+        }
+        // Priority 8: Check mode field
+        else if (s.mode) {
+          const mode = s.mode.toLowerCase();
+          if (mode === 'open' || mode === 'none') {
+            security = 'Open';
+          } else {
+            security = s.mode;
+          }
         }
 
         // Get client count from our mapping
