@@ -366,8 +366,8 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           </Select>
 
           <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-36">
-              <Clock className="h-4 w-4 mr-2" />
+            <SelectTrigger className="w-44">
+              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

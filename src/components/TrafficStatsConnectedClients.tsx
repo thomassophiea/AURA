@@ -960,7 +960,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                       <Checkbox
                         checked={selectedStations.size === paginatedStations.length && paginatedStations.length > 0}
                         onCheckedChange={handleSelectAll}
-                        className="h-3 w-3"
+                        className="h-3 w-3 border-muted-foreground/50"
                       />
                     </TableHead>
                     {/* Dynamic columns from customization */}
@@ -1054,7 +1054,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                           <Checkbox
                             checked={selectedStations.has(station.macAddress)}
                             onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
-                            className="h-3 w-3"
+                            className="h-3 w-3 border-muted-foreground/50"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </TableCell>
