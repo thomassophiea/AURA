@@ -1735,13 +1735,22 @@ html[data-theme="light"], html.light {
 
 /* ===== Hide Scrollbars Globally ===== */
 /* Hide scrollbars while maintaining scroll functionality */
-* {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+*,
+*::before,
+*::after,
+html,
+body {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE and Edge */
 }
 
-*::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+*::-webkit-scrollbar,
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* Utility class to show scrollbars when explicitly needed */
