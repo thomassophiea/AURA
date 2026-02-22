@@ -118,6 +118,17 @@ const SLE_THRESHOLD_CONFIG: Record<string, {
   },
 };
 
+// Map SLE IDs (snake_case) to config keys (camelCase)
+const SLE_ID_TO_CONFIG_KEY: Record<string, string> = {
+  time_to_connect: 'timeToConnect',
+  successful_connects: 'successfulConnects',
+  coverage: 'coverage',
+  roaming: 'roaming',
+  throughput: 'throughput',
+  capacity: 'capacity',
+  ap_health: 'apHealth',
+};
+
 interface SLEDashboardProps {
   onClientClick?: (mac: string) => void;
 }
@@ -175,8 +186,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
   // Handle clicking on an SLE pill to edit threshold
   const handleSLEClick = (sleId: string) => {
-    const config = SLE_THRESHOLD_CONFIG[sleId];
-    if (!config || sleId === 'apHealth') {
+    const configKey = SLE_ID_TO_CONFIG_KEY[sleId] || sleId;
+    const config = SLE_THRESHOLD_CONFIG[configKey];
+    if (!config || configKey === 'apHealth') {
       toast.info('AP Health is based on operational status and cannot be configured');
       return;
     }
@@ -190,7 +202,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       currentValue = currentValue / 1_000_000;
     }
     
-    setEditingMetric(sleId);
+    setEditingMetric(configKey);
     setEditingValue(currentValue);
     setThresholdDialogOpen(true);
   };
