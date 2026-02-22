@@ -61,48 +61,44 @@ function NetworkCard({
   };
 
   return (
-    <div className="rounded-xl p-4 border bg-card active:bg-muted/50 transition-colors">
-      <div className="flex items-start justify-between gap-3">
+    <div className="rounded-xl px-3 py-2.5 border border-border/50 bg-card/50 backdrop-blur-sm shadow-sm active:bg-accent/80 active:scale-[0.99] transition-all duration-150">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0">
-          {/* Network Name */}
-          <div className="flex items-center gap-2 mb-1">
-            <Wifi className="h-4 w-4 text-primary flex-shrink-0" />
-            <span className="font-semibold truncate">{network.ssid}</span>
-          </div>
-          
-          {/* Badges */}
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            <Badge variant="outline" className={`text-xs ${getSecurityColor(network.security)}`}>
-              <Shield className="h-3 w-3 mr-1" />
+          {/* Network Name + Security inline */}
+          <div className="flex items-center gap-2">
+            <Wifi className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+            <span className="text-sm font-medium truncate">{network.ssid}</span>
+            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 flex-shrink-0 ${getSecurityColor(network.security)}`}>
               {getSecurityLabel(network.security)}
             </Badge>
-            {network.hidden && (
-              <Badge variant="outline" className="text-xs">
-                <EyeOff className="h-3 w-3 mr-1" />
-                Hidden
-              </Badge>
-            )}
             {network.enabled === false && (
-              <Badge variant="destructive" className="text-xs">
-                Disabled
+              <Badge variant="destructive" className="text-[9px] px-1.5 py-0 h-4">
+                Off
               </Badge>
             )}
           </div>
-
-          {/* Client count */}
-          <div className="text-xs text-muted-foreground mt-2">
-            {network.clientCount ?? 0} connected client{network.clientCount !== 1 ? 's' : ''}
+          
+          {/* Secondary info */}
+          <div className="flex items-center gap-2 mt-0.5 ml-5">
+            <span className="text-xs text-muted-foreground/80">
+              {network.clientCount ?? 0} client{network.clientCount !== 1 ? 's' : ''}
+            </span>
+            {network.hidden && (
+              <span className="text-xs text-muted-foreground/60 flex items-center gap-0.5">
+                <EyeOff className="h-3 w-3" /> Hidden
+              </span>
+            )}
           </div>
         </div>
 
-        {/* QR Button */}
+        {/* QR Button - smaller */}
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
-          className="h-12 w-12 flex-shrink-0"
+          className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-primary"
           onClick={handleQRClick}
         >
-          <QrCode className="h-6 w-6" />
+          <QrCode className="h-5 w-5" />
         </Button>
       </div>
     </div>
@@ -389,6 +385,7 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
       const networkList: Network[] = services.map((s: any) => {
         let security = 'Open';
         let passphrase = '';
+        const ssidName = s.ssid || s.serviceName || s.name || '';
 
         // Priority 1: Check for WPA3-SAE (multiple possible locations)
         const saeElement = s.WpaSaeElement 
@@ -408,11 +405,14 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           }
           passphrase = saeElement.presharedKey || '';
         }
-        // Priority 2: Check for WPA Enterprise (802.1X)
+        // Priority 2: Check for WPA Enterprise (802.1X) - check all possible field names
         else if (s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement 
           || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement
           || s.Wpa3Enterprise192Element || s.privacy?.Wpa3Enterprise192Element
-          || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement) {
+          || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement
+          || s.radiusServerAddress || s.privacy?.radiusServerAddress
+          || s.radiusSecret || s.privacy?.radiusSecret
+          || s.authenticationServerIp || s.privacy?.authenticationServerIp) {
           const enterpriseElement = s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement
             || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement;
           const mode = enterpriseElement?.mode?.toLowerCase();
@@ -431,7 +431,9 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
         else if (s.WpaEapElement || s.privacy?.WpaEapElement
           || s.eapElement || s.privacy?.eapElement
           || s.dot1xElement || s.privacy?.dot1xElement
-          || s['802.1x'] || s.privacy?.['802.1x']) {
+          || s['802.1x'] || s.privacy?.['802.1x']
+          || s.dot1x || s.privacy?.dot1x
+          || s.eap || s.privacy?.eap) {
           security = 'WPA2-Enterprise';
         }
         // Priority 4: Check for WPA PSK
@@ -472,6 +474,20 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           } else {
             security = s.mode;
           }
+        }
+        // Priority 9: Check privacy object has any keys (non-empty = secured)
+        else if (s.privacy && typeof s.privacy === 'object' && Object.keys(s.privacy).length > 0) {
+          // Has privacy config but we didn't match specific type - assume WPA2
+          security = 'WPA2';
+        }
+        
+        // Debug: Log services that still show as Open
+        if (security === 'Open') {
+          console.log(`[MobileNetworks] "${ssidName}" detected as Open. Service data:`, {
+            hasPrivacy: !!s.privacy,
+            privacyKeys: s.privacy ? Object.keys(s.privacy) : [],
+            topLevelKeys: Object.keys(s).filter(k => k.toLowerCase().includes('wpa') || k.toLowerCase().includes('privacy') || k.toLowerCase().includes('security') || k.toLowerCase().includes('radius') || k.toLowerCase().includes('eap'))
+          });
         }
 
         // Get client count from our mapping
@@ -521,41 +537,41 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
   );
 
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div className="px-3 py-3 space-y-3 pb-24">
       {/* Search and Refresh */}
       <div className="flex items-center gap-2">
         <Input
           placeholder="Search networks..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 h-12"
+          className="flex-1 h-10 text-sm"
         />
         <Button
-          variant="outline"
+          variant="ghost"
           size="icon"
           onClick={handleRefresh}
           disabled={refreshing || loading}
-          className="h-12 w-12 flex-shrink-0"
+          className="h-10 w-10 flex-shrink-0"
         >
-          <RefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
       {/* Loading state */}
       {loading && networks.length === 0 && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">Loading networks...</span>
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
         </div>
       )}
 
       {/* Networks list */}
       {!loading && filteredNetworks.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Networks</h2>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Networks</span>
             <span className="text-xs text-muted-foreground">
-              {filteredNetworks.length} WLAN{filteredNetworks.length !== 1 ? 's' : ''}
+              {filteredNetworks.length}
             </span>
           </div>
           {filteredNetworks.map((network) => (
@@ -566,13 +582,13 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
 
       {/* Empty state */}
       {!loading && filteredNetworks.length === 0 && (
-        <div className="text-center py-12">
-          <Wifi className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-lg font-semibold">
+        <div className="text-center py-8">
+          <Wifi className="h-10 w-10 text-muted-foreground/50 mx-auto mb-2" />
+          <p className="text-sm font-medium">
             {searchTerm ? 'No matching networks' : 'No Networks'}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
-            {searchTerm ? 'Try a different search term' : 'No WLANs configured'}
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {searchTerm ? 'Try a different search' : 'No WLANs configured'}
           </p>
         </div>
       )}

@@ -230,31 +230,31 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
     >
       <PullToRefreshIndicator state={pullToRefresh.state} />
       {/* Search Bar */}
-      <div className="p-4 space-y-3 border-b border-border sticky top-0 bg-background z-10">
+      <div className="px-3 py-2.5 space-y-2 border-b border-border/50 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
             <Input
               type="search"
               placeholder="Search clients..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11"
+              className="pl-9 h-10 text-sm"
             />
           </div>
           <Button
-            variant={showFilters ? 'default' : 'outline'}
+            variant={showFilters ? 'default' : 'ghost'}
             size="icon"
             onClick={() => {
               haptic.light();
               setShowFilters(!showFilters);
             }}
-            className="h-11 w-11 relative flex-shrink-0"
+            className="h-10 w-10 relative flex-shrink-0"
             aria-label="Toggle filters"
           >
-            <SlidersHorizontal className="h-5 w-5" />
+            <SlidersHorizontal className="h-4 w-4" />
             {activeFilterCount > 0 && (
-              <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+              <span className="absolute -top-0.5 -right-0.5 h-4 w-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
                 {activeFilterCount}
               </span>
             )}
@@ -263,34 +263,34 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
 
         {/* Filter Pills */}
         {showFilters && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5">
             <Badge
               variant={filterStatus === 'all' ? 'outline' : 'default'}
-              className="cursor-pointer"
+              className="cursor-pointer text-xs h-6"
               onClick={() => {
                 haptic.light();
                 setFilterStatus(filterStatus === 'all' ? 'online' : filterStatus === 'online' ? 'offline' : 'all');
               }}
             >
-              {filterStatus === 'all' ? 'All Status' : filterStatus === 'online' ? 'Online' : 'Offline'}
+              {filterStatus === 'all' ? 'All' : filterStatus === 'online' ? 'Online' : 'Offline'}
             </Badge>
             <Badge
               variant={filterSignal === 'all' ? 'outline' : 'default'}
-              className="cursor-pointer"
+              className="cursor-pointer text-xs h-6"
               onClick={() => {
                 haptic.light();
                 const next = filterSignal === 'all' ? 'good' : filterSignal === 'good' ? 'fair' : filterSignal === 'fair' ? 'poor' : 'all';
                 setFilterSignal(next);
               }}
             >
-              {filterSignal === 'all' ? 'All Signals' : filterSignal.charAt(0).toUpperCase() + filterSignal.slice(1)}
+              {filterSignal === 'all' ? 'Signal' : filterSignal.charAt(0).toUpperCase() + filterSignal.slice(1)}
             </Badge>
             {activeFilterCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClearFilters}
-                className="h-6 px-2"
+                className="h-6 px-2 text-xs"
               >
                 <X className="h-3 w-3 mr-1" />
                 Clear
@@ -300,14 +300,14 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
         )}
 
         {/* Result Count */}
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
-          {activeFilterCount > 0 && ` (filtered from ${clients?.length || 0})`}
+          {activeFilterCount > 0 && ` (of ${clients?.length || 0})`}
         </p>
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto px-3 py-2">
         <MobileStatusList loading={loading} emptyMessage="No clients found">
           {filteredClients.map((client: any) => {
             const isOnline =
