@@ -10,7 +10,11 @@ import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { ScrollArea, ScrollBar } from '../ui/scroll-area';
-import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Slider } from '../ui/slider';
+import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft, Settings2 } from 'lucide-react';
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
@@ -19,13 +23,129 @@ import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
-import { SLE_STATUS_COLORS } from '../../types/sle';
-import type { SLEMetric } from '../../types/sle';
+import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
+import type { SLEMetric, SLEThresholds } from '../../types/sle';
 import { toast } from 'sonner';
+
+// SLE threshold configuration per metric
+const SLE_THRESHOLD_CONFIG: Record<string, {
+  label: string;
+  description: string;
+  field: keyof SLEThresholds;
+  subField: string;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  defaultValue: number;
+}> = {
+  timeToConnect: {
+    label: 'Time to Connect',
+    description: 'Maximum acceptable connection time',
+    field: 'timeToConnect',
+    subField: 'maxSeconds',
+    unit: 'seconds',
+    min: 1,
+    max: 30,
+    step: 1,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.timeToConnect.maxSeconds,
+  },
+  successfulConnects: {
+    label: 'Successful Connects',
+    description: 'Minimum success rate required',
+    field: 'successfulConnects',
+    subField: 'minSuccessRate',
+    unit: '%',
+    min: 50,
+    max: 100,
+    step: 1,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.successfulConnects.minSuccessRate,
+  },
+  coverage: {
+    label: 'Coverage',
+    description: 'Minimum acceptable signal strength (RSSI)',
+    field: 'coverage',
+    subField: 'rssiMin',
+    unit: 'dBm',
+    min: -90,
+    max: -50,
+    step: 1,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.coverage.rssiMin,
+  },
+  roaming: {
+    label: 'Roaming',
+    description: 'Maximum acceptable roam latency',
+    field: 'roaming',
+    subField: 'maxLatencyMs',
+    unit: 'ms',
+    min: 50,
+    max: 2000,
+    step: 50,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.roaming.maxLatencyMs,
+  },
+  throughput: {
+    label: 'Throughput',
+    description: 'Minimum acceptable data rate',
+    field: 'throughput',
+    subField: 'minRateBps',
+    unit: 'Mbps',
+    min: 1,
+    max: 100,
+    step: 1,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.throughput.minRateBps / 1_000_000,
+  },
+  capacity: {
+    label: 'Capacity',
+    description: 'Maximum channel utilization threshold',
+    field: 'capacity',
+    subField: 'maxChannelUtil',
+    unit: '%',
+    min: 50,
+    max: 100,
+    step: 5,
+    defaultValue: DEFAULT_SLE_THRESHOLDS.capacity.maxChannelUtil,
+  },
+  apHealth: {
+    label: 'AP Health',
+    description: 'AP health is based on operational status',
+    field: 'apHealth',
+    subField: '',
+    unit: '',
+    min: 0,
+    max: 100,
+    step: 1,
+    defaultValue: 95,
+  },
+};
 
 interface SLEDashboardProps {
   onClientClick?: (mac: string) => void;
 }
+
+// Storage key for SLE thresholds per site
+const getSLEStorageKey = (siteId: string) => `sle_thresholds_${siteId}`;
+
+// Load thresholds from localStorage
+const loadSiteThresholds = (siteId: string): SLEThresholds => {
+  try {
+    const stored = localStorage.getItem(getSLEStorageKey(siteId));
+    if (stored) {
+      return { ...DEFAULT_SLE_THRESHOLDS, ...JSON.parse(stored) };
+    }
+  } catch (e) {
+    console.warn('Failed to load SLE thresholds:', e);
+  }
+  return { ...DEFAULT_SLE_THRESHOLDS };
+};
+
+// Save thresholds to localStorage
+const saveSiteThresholds = (siteId: string, thresholds: SLEThresholds) => {
+  try {
+    localStorage.setItem(getSLEStorageKey(siteId), JSON.stringify(thresholds));
+  } catch (e) {
+    console.warn('Failed to save SLE thresholds:', e);
+  }
+};
 
 export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const { filters, updateFilter } = useGlobalFilters();
@@ -41,6 +161,72 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [selectedSite, setSelectedSite] = useState(filters.site || 'all');
   const [activeTab, setActiveTab] = useState('wireless');
   const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall'>('radial');
+  
+  // SLE threshold editing state
+  const [thresholdDialogOpen, setThresholdDialogOpen] = useState(false);
+  const [editingMetric, setEditingMetric] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState<number>(0);
+  const [siteThresholds, setSiteThresholds] = useState<SLEThresholds>(() => loadSiteThresholds(filters.site || 'all'));
+
+  // Update thresholds when site changes
+  useEffect(() => {
+    setSiteThresholds(loadSiteThresholds(selectedSite));
+  }, [selectedSite]);
+
+  // Handle clicking on an SLE pill to edit threshold
+  const handleSLEClick = (sleId: string) => {
+    const config = SLE_THRESHOLD_CONFIG[sleId];
+    if (!config || sleId === 'apHealth') {
+      toast.info('AP Health is based on operational status and cannot be configured');
+      return;
+    }
+    
+    // Get current value from thresholds
+    const fieldData = siteThresholds[config.field] as Record<string, number>;
+    let currentValue = fieldData?.[config.subField] ?? config.defaultValue;
+    
+    // Convert for display (e.g., throughput from bps to Mbps)
+    if (config.field === 'throughput') {
+      currentValue = currentValue / 1_000_000;
+    }
+    
+    setEditingMetric(sleId);
+    setEditingValue(currentValue);
+    setThresholdDialogOpen(true);
+  };
+
+  // Save threshold changes
+  const handleSaveThreshold = () => {
+    if (!editingMetric) return;
+    
+    const config = SLE_THRESHOLD_CONFIG[editingMetric];
+    if (!config) return;
+    
+    // Convert value if needed (e.g., Mbps to bps for throughput)
+    let valueToSave = editingValue;
+    if (config.field === 'throughput') {
+      valueToSave = editingValue * 1_000_000;
+    }
+    
+    const newThresholds: SLEThresholds = {
+      ...siteThresholds,
+      [config.field]: {
+        ...(siteThresholds[config.field] as Record<string, number>),
+        [config.subField]: valueToSave,
+      },
+    };
+    
+    setSiteThresholds(newThresholds);
+    saveSiteThresholds(selectedSite, newThresholds);
+    setThresholdDialogOpen(false);
+    setEditingMetric(null);
+    
+    const siteName = selectedSite === 'all' ? 'All Sites' : sites.find(s => s.id === selectedSite)?.name || selectedSite;
+    toast.success(`${config.label} threshold updated for ${siteName}`);
+    
+    // Reload data with new thresholds
+    loadData(true);
+  };
 
   // Load sites for filter
   useEffect(() => {
@@ -207,17 +393,20 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             </span>
           </div>
 
-          {/* Per-SLE pills */}
+          {/* Per-SLE pills - clickable to edit thresholds */}
           {wirelessSLEs.map(sle => (
-            <div
+            <button
               key={sle.id}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 hover:border-border/60 cursor-default transition-colors flex-shrink-0"
+              onClick={() => handleSLEClick(sle.id)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/50 hover:bg-muted/40 cursor-pointer transition-all flex-shrink-0 group"
+              title={`Click to adjust ${sle.name} threshold`}
             >
-              <span className="text-xs text-muted-foreground">{sle.name}</span>
+              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{sle.name}</span>
               <span className="text-xs font-bold" style={{ color: SLE_STATUS_COLORS[sle.status].hex }}>
                 {sle.successRate.toFixed(1)}%
               </span>
-            </div>
+              <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+            </button>
           ))}
         </div>
         <ScrollBar orientation="horizontal" />
@@ -282,6 +471,100 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* SLE Threshold Edit Dialog */}
+      <Dialog open={thresholdDialogOpen} onOpenChange={setThresholdDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings2 className="h-5 w-5 text-primary" />
+              {editingMetric && SLE_THRESHOLD_CONFIG[editingMetric]?.label} Threshold
+            </DialogTitle>
+            <DialogDescription>
+              {editingMetric && SLE_THRESHOLD_CONFIG[editingMetric]?.description}
+              <br />
+              <span className="text-xs text-muted-foreground mt-1 block">
+                Site: {selectedSite === 'all' ? 'All Sites' : sites.find(s => s.id === selectedSite)?.name || selectedSite}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingMetric && SLE_THRESHOLD_CONFIG[editingMetric] && (
+            <div className="space-y-6 py-4">
+              {/* Current value display */}
+              <div className="text-center">
+                <div className="text-4xl font-bold text-primary">
+                  {editingValue}
+                  <span className="text-lg text-muted-foreground ml-1">
+                    {SLE_THRESHOLD_CONFIG[editingMetric].unit}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Slider */}
+              <div className="space-y-3">
+                <Slider
+                  value={[editingValue]}
+                  onValueChange={([val]) => setEditingValue(val)}
+                  min={SLE_THRESHOLD_CONFIG[editingMetric].min}
+                  max={SLE_THRESHOLD_CONFIG[editingMetric].max}
+                  step={SLE_THRESHOLD_CONFIG[editingMetric].step}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{SLE_THRESHOLD_CONFIG[editingMetric].min} {SLE_THRESHOLD_CONFIG[editingMetric].unit}</span>
+                  <span>{SLE_THRESHOLD_CONFIG[editingMetric].max} {SLE_THRESHOLD_CONFIG[editingMetric].unit}</span>
+                </div>
+              </div>
+              
+              {/* Manual input */}
+              <div className="flex items-center gap-2">
+                <Label htmlFor="threshold-value" className="text-sm whitespace-nowrap">
+                  Exact value:
+                </Label>
+                <Input
+                  id="threshold-value"
+                  type="number"
+                  value={editingValue}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (!isNaN(val)) {
+                      const config = SLE_THRESHOLD_CONFIG[editingMetric];
+                      setEditingValue(Math.min(config.max, Math.max(config.min, val)));
+                    }
+                  }}
+                  min={SLE_THRESHOLD_CONFIG[editingMetric].min}
+                  max={SLE_THRESHOLD_CONFIG[editingMetric].max}
+                  step={SLE_THRESHOLD_CONFIG[editingMetric].step}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">
+                  {SLE_THRESHOLD_CONFIG[editingMetric].unit}
+                </span>
+              </div>
+              
+              {/* Reset to default */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-muted-foreground"
+                onClick={() => setEditingValue(SLE_THRESHOLD_CONFIG[editingMetric].defaultValue)}
+              >
+                Reset to default ({SLE_THRESHOLD_CONFIG[editingMetric].defaultValue} {SLE_THRESHOLD_CONFIG[editingMetric].unit})
+              </Button>
+            </div>
+          )}
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setThresholdDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveThreshold}>
+              Save Threshold
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
