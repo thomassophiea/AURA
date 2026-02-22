@@ -90,11 +90,9 @@ function NetworkCard({
           </div>
 
           {/* Client count */}
-          {network.clientCount !== undefined && (
-            <div className="text-xs text-muted-foreground mt-2">
-              {network.clientCount} connected client{network.clientCount !== 1 ? 's' : ''}
-            </div>
-          )}
+          <div className="text-xs text-muted-foreground mt-2">
+            {network.clientCount ?? 0} connected client{network.clientCount !== 1 ? 's' : ''}
+          </div>
         </div>
 
         {/* QR Button */}
@@ -366,36 +364,77 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
         setLoading(true);
       }
 
-      const services = await apiService.getServices();
+      // Get services and clients to calculate client counts
+      const [services, stations] = await Promise.all([
+        apiService.getServices(),
+        apiService.getStations().catch(() => [])
+      ]);
+      
+      // Count clients per service/SSID
+      const clientCountByService: Record<string, number> = {};
+      const clientCountBySSID: Record<string, number> = {};
+      
+      stations.forEach((station: any) => {
+        const serviceId = station.serviceId;
+        const ssid = station.ssid || station.essid || station.networkName;
+        if (serviceId) {
+          clientCountByService[serviceId] = (clientCountByService[serviceId] || 0) + 1;
+        }
+        if (ssid) {
+          clientCountBySSID[ssid] = (clientCountBySSID[ssid] || 0) + 1;
+        }
+      });
       
       // Transform to network format with security detection
       const networkList: Network[] = services.map((s: any) => {
         let security = 'Open';
         let passphrase = '';
 
+        // Check privacy object for security type
         if (s.privacy) {
-          if (s.privacy.WpaPskElement) {
-            security = 'WPA2-PSK';
-            passphrase = s.privacy.WpaPskElement.presharedKey || '';
-          } else if (s.privacy.Wpa3SaeElement) {
+          if (s.privacy.Wpa3SaeElement) {
             security = 'WPA3-Personal';
             passphrase = s.privacy.Wpa3SaeElement.presharedKey || '';
-          } else if (s.privacy.Wpa2EnterpriseElement) {
+          } else if (s.privacy.Wpa3Enterprise192Element) {
+            security = 'WPA3-Enterprise';
+          } else if (s.privacy.Wpa3EnterpriseTransitionElement) {
+            security = 'WPA3-Enterprise';
+          } else if (s.privacy.Wpa2EnterpriseElement || s.privacy.WpaEnterpriseElement) {
             security = 'WPA2-Enterprise';
+          } else if (s.privacy.WpaPskElement) {
+            security = 'WPA2-Personal';
+            passphrase = s.privacy.WpaPskElement.presharedKey || '';
           } else if (s.privacy.OweElement) {
-            security = 'OWE';
+            security = 'OWE (Enhanced Open)';
+          } else if (s.privacy.WepElement) {
+            security = 'WEP';
           }
         }
+        
+        // Also check top-level elements
+        if (s.Wpa3SaeElement) {
+          security = 'WPA3-Personal';
+          passphrase = s.Wpa3SaeElement.presharedKey || passphrase;
+        } else if (s.WpaEnterpriseElement || s.Wpa2EnterpriseElement) {
+          security = 'WPA2-Enterprise';
+        } else if (s.WpaPskElement) {
+          security = 'WPA2-Personal';
+          passphrase = s.WpaPskElement.presharedKey || passphrase;
+        }
+
+        // Get client count from our mapping
+        const ssid = s.ssid || s.serviceName;
+        const clientCount = s.clientCount ?? clientCountByService[s.id] ?? clientCountBySSID[ssid] ?? 0;
 
         return {
           id: s.id,
-          ssid: s.ssid || s.serviceName,
+          ssid,
           serviceName: s.serviceName,
           security,
           passphrase,
           hidden: s.suppressSsid || false,
           enabled: s.status === 'enabled',
-          clientCount: s.clientCount,
+          clientCount,
         };
       });
 

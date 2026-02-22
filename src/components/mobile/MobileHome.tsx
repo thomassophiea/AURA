@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Users, Wifi, AppWindow, AlertCircle, RefreshCw, Loader2, Trash2, Clock } from 'lucide-react';
+import { Users, Wifi, Network, AlertCircle, RefreshCw, Loader2, Trash2, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 import { MobileKPITile } from './MobileKPITile';
 import { NetworkHealthScore } from './NetworkHealthScore';
@@ -30,7 +30,7 @@ interface MobileHomeProps {
 interface NetworkStats {
   clients: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
   aps: { total: number; online: number; offline: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
-  apps: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
+  networks: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
   issues: number;
   healthScore: number;
 }
@@ -41,7 +41,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
   const [stats, setStats] = useState<NetworkStats>({
     clients: { total: 0 },
     aps: { total: 0, online: 0, offline: 0 },
-    apps: { total: 0 },
+    networks: { total: 0 },
     issues: 0,
     healthScore: 0,
   });
@@ -62,13 +62,13 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
 
   const fetchStats = async () => {
     console.log('[MobileHome] Fetching stats for site:', currentSite);
-    const [clientsData, apsData, appsData] = await Promise.all([
+    const [clientsData, apsData, networksData] = await Promise.all([
       apiService.getStations(),
       apiService.getAccessPoints(),
-      apiService.getApplications().catch(() => []),
+      apiService.getServices().catch(() => []),
     ]);
 
-    console.log('[MobileHome] Raw data - clients:', clientsData?.length, 'aps:', apsData?.length, 'apps:', appsData?.length);
+    console.log('[MobileHome] Raw data - clients:', clientsData?.length, 'aps:', apsData?.length, 'networks:', networksData?.length);
 
     const filteredClients = currentSite === 'all'
       ? clientsData
@@ -110,10 +110,13 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
     const issueCount = offlineAPsCount;
     const healthScore = Math.round(apScore * 0.7 + (issueCount === 0 ? 30 : Math.max(0, 30 - issueCount * 10)));
 
+    // Count enabled networks
+    const enabledNetworks = networksData.filter((n: any) => n.status === 'enabled').length;
+
     return {
       clients: { total: filteredClients.length },
       aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPsCount },
-      apps: { total: appsData.length },
+      networks: { total: enabledNetworks || networksData.length },
       issues: issueCount,
       healthScore,
       offlineAPs: offlineAPsList,
@@ -359,11 +362,11 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
           onClick={handleIssuesClick}
         />
         <MobileKPITile
-          icon={AppWindow}
-          label="Applications"
-          value={stats.apps.total}
-          trend={stats.apps.trend}
-          onClick={() => handleTileClick('apps')}
+          icon={Network}
+          label="Networks"
+          value={stats.networks.total}
+          trend={stats.networks.trend}
+          onClick={() => handleTileClick('networks')}
         />
       </div>
 

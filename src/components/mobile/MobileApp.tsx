@@ -56,7 +56,7 @@ export function MobileApp({
       case 'sle':
         return 'Service Levels';
       case 'networks':
-        return 'WiFi QR Codes';
+        return 'Networks';
       case 'clients':
         return 'Clients';
       case 'aps':
@@ -89,7 +89,7 @@ export function MobileApp({
       case 'clients':
         return <MobileClientsList currentSite={currentSite} />;
       case 'aps':
-        return <MobileAPsList currentSite={currentSite} />;
+        return <MobileAPsList currentSite={currentSite} onSiteChange={onSiteChange} />;
       default:
         return null;
     }

@@ -12,22 +12,35 @@ import { PullToRefreshIndicator } from './PullToRefreshIndicator';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { apiService } from '@/services/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { apiService, Site } from '@/services/api';
 import { useHaptic } from '@/hooks/useHaptic';
 import { useOfflineCache } from '@/hooks/useOfflineCache';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 interface MobileAPsListProps {
   currentSite: string;
+  onSiteChange?: (siteId: string) => void;
 }
 
-export function MobileAPsList({ currentSite }: MobileAPsListProps) {
+export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps) {
   const haptic = useHaptic();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'online' | 'offline'>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedAP, setSelectedAP] = useState<any | null>(null);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
+  const [sites, setSites] = useState<Site[]>([]);
+
+  // Load sites for selector
+  useEffect(() => {
+    apiService.getSites().then(setSites).catch(() => {});
+  }, []);
+
+  const handleSiteChange = (siteId: string) => {
+    haptic.light();
+    onSiteChange?.(siteId);
+  };
 
   const { data: aps, loading, refresh } = useOfflineCache(
     `aps_${currentSite}`,
@@ -208,8 +221,26 @@ export function MobileAPsList({ currentSite }: MobileAPsListProps) {
       onTouchEnd={pullToRefresh.handlers.onTouchEnd}
     >
       <PullToRefreshIndicator state={pullToRefresh.state} />
-      {/* Search Bar */}
+      {/* Site Selector and Search */}
       <div className="p-4 space-y-3 border-b border-border sticky top-0 bg-background z-10">
+        {/* Site Selector */}
+        {onSiteChange && (
+          <Select value={currentSite} onValueChange={handleSiteChange}>
+            <SelectTrigger className="w-full h-11">
+              <SelectValue placeholder="Select site" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {sites.map((site) => (
+                <SelectItem key={site.id || site.siteId} value={site.id || site.siteId}>
+                  {site.name || site.siteName || site.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Search Bar */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -297,11 +328,16 @@ export function MobileAPsList({ currentSite }: MobileAPsListProps) {
             }
             const bandText = band || (ap.model || ap.hardwareType ? 'Dual' : 'Unknown');
 
+            // Get the best available name for the AP
+            const apName = ap.displayName || ap.name || ap.hostname || ap.apName || ap.serialNumber || 'Unknown AP';
+            // Include model info in secondary if available
+            const modelInfo = ap.model || ap.hardwareType || ap.platformName || '';
+
             return (
               <MobileStatusRow
                 key={ap.serialNumber || ap.macAddress}
-                primaryText={ap.displayName || ap.name || ap.serialNumber || 'Unknown AP'}
-                secondaryText={`${clientCount} client${clientCount !== 1 ? 's' : ''} • ${bandText}${afcAnchor ? ' • AFC' : ''}`}
+                primaryText={apName}
+                secondaryText={`${clientCount} client${clientCount !== 1 ? 's' : ''}${modelInfo ? ` • ${modelInfo}` : ''}${afcAnchor ? ' • AFC' : ''}`}
                 status={{
                   label: online ? 'Online' : 'Offline',
                   variant: online ? 'success' : 'destructive',

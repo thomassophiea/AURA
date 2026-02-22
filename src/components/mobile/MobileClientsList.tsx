@@ -306,17 +306,32 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
               client.status?.toLowerCase() === 'associated' ||
               client.status?.toLowerCase() === 'active';
 
-            // Get band
-            const band = client.band || client.radioBand || client.frequency || '—';
+            // Get hostname - prefer hostname over MAC
+            const hostname = client.hostName || client.hostname || client.deviceName || null;
+            const primaryText = hostname || client.macAddress || 'Unknown Client';
 
-            // Get signal strength
-            const signalText = client.rssi ? `${client.rssi} dBm` : '—';
+            // Get IP address
+            const ipAddress = client.ipAddress || client.ip || null;
+
+            // Get signal strength (RSSI)
+            const rssi = client.rssi ?? client.signalStrength ?? client.rss ?? null;
+            const signalText = rssi !== null ? `${rssi} dBm` : null;
+
+            // Build secondary text with available info
+            const secondaryParts: string[] = [];
+            if (ipAddress) secondaryParts.push(ipAddress);
+            if (signalText) secondaryParts.push(signalText);
+            if (secondaryParts.length === 0) {
+              // Fall back to showing MAC if we used hostname as primary
+              if (hostname) secondaryParts.push(client.macAddress);
+            }
+            const secondaryText = secondaryParts.join(' • ') || 'No details';
 
             return (
               <MobileStatusRow
                 key={client.macAddress}
-                primaryText={client.hostName || client.hostname || client.macAddress || 'Unknown Client'}
-                secondaryText={`${band} • ${signalText}`}
+                primaryText={primaryText}
+                secondaryText={secondaryText}
                 status={{
                   label: isOnline ? 'Online' : 'Offline',
                   variant: isOnline ? 'success' : 'destructive',
