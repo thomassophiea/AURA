@@ -8,6 +8,11 @@ interface ErrorBoundaryProps {
   fallback?: ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
   onReset?: () => void;
+  /** When true, wraps the default fallback in a full-screen centred container.
+   *  Use this for top-level app boundaries. Defaults to false (inline card). */
+  fullScreen?: boolean;
+  /** Optional title shown in the fallback UI */
+  fallbackTitle?: string;
 }
 
 interface ErrorBoundaryState {
@@ -59,37 +64,56 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         return this.props.fallback;
       }
 
-      return (
-        <Card className="m-4 border-destructive/50 bg-destructive/5">
+      const title = this.props.fallbackTitle || 'Something went wrong';
+      const card = (
+        <Card className="m-4 border-destructive/50 bg-destructive/5 max-w-2xl w-full">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
-              Something went wrong
+              {title}
             </CardTitle>
           </CardHeader>
-          <CardContent className="pb-3">
+          <CardContent className="pb-3 space-y-3">
             <p className="text-sm text-muted-foreground">
               An unexpected error occurred while rendering this component.
             </p>
             {this.state.error && (
-              <p className="mt-2 text-xs font-mono text-destructive/80 bg-destructive/10 p-2 rounded">
+              <p className="text-xs font-mono text-destructive/80 bg-destructive/10 p-2 rounded">
                 {this.state.error.message}
               </p>
             )}
+            {import.meta.env.DEV && this.state.errorInfo && (
+              <details className="rounded-md bg-muted p-3">
+                <summary className="text-xs font-medium cursor-pointer mb-1">
+                  Stack Trace (Dev Only)
+                </summary>
+                <pre className="text-xs overflow-auto max-h-64 text-muted-foreground whitespace-pre-wrap">
+                  {this.state.errorInfo.componentStack}
+                </pre>
+              </details>
+            )}
           </CardContent>
-          <CardFooter>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={this.handleReset}
-              className="gap-2"
-            >
+          <CardFooter className="gap-2">
+            <Button variant="outline" size="sm" onClick={this.handleReset} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
+            </Button>
+            <Button size="sm" onClick={() => window.location.reload()}>
+              Refresh Page
             </Button>
           </CardFooter>
         </Card>
       );
+
+      if (this.props.fullScreen) {
+        return (
+          <div className="flex items-center justify-center min-h-screen bg-background p-4">
+            {card}
+          </div>
+        );
+      }
+
+      return card;
     }
 
     return this.props.children;

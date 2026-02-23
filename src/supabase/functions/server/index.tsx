@@ -1,6 +1,6 @@
-import { Hono } from "npm:hono";
-import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
+import { Hono } from "npm:hono@^4.12.1";
+import { cors } from "npm:hono@^4.12.1/cors";
+import { logger } from "npm:hono@^4.12.1/logger";
 import * as throughputTracker from './throughput_tracker.tsx';
 import * as ouiLookup from './oui_lookup.tsx';
 
@@ -10,10 +10,15 @@ const app = new Hono();
 app.use('*', logger(console.log));
 
 // Enable CORS for all routes and methods
+const edgeAllowedOrigins = (Deno.env.get("ALLOWED_ORIGINS") || "")
+  .split(",")
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(
   "/*",
   cors({
-    origin: "*",
+    origin: (origin) => edgeAllowedOrigins.includes(origin) ? origin : null,
     allowHeaders: ["Content-Type", "Authorization"],
     allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     exposeHeaders: ["Content-Length"],

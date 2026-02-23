@@ -2,12 +2,9 @@ node_modules
 build
 dist
 .git
-.env.local
-.env*.local
+.env
+.env.*
+!.env.example
 *.log
-*.md
 .DS_Store
-*.backup
-*.bak
-*.bak2
-src/components/*.backup
+coverage

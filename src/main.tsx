@@ -40,7 +40,7 @@ async function initApp() {
 
   // If we get here, version is OK - render the app
   createRoot(document.getElementById("root")!).render(
-    <ErrorBoundary>
+    <ErrorBoundary fullScreen>
       <App />
     </ErrorBoundary>
   );

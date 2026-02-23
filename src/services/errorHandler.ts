@@ -165,14 +165,15 @@ export function isValidationError(error: unknown): boolean {
  * Check if the error is a timeout error
  */
 export function isTimeoutError(error: unknown): boolean {
-  if (error instanceof Error) {
+  if (error instanceof Error || error instanceof DOMException) {
     return (
       error.name === 'AbortError' ||
+      error.name === 'TimeoutError' ||
       error.message.toLowerCase().includes('timeout') ||
       error.message.toLowerCase().includes('timed out')
     );
   }
-  
+
   return false;
 }
 

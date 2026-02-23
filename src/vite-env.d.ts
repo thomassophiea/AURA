@@ -12,7 +12,7 @@ interface ImportMetaEnv {
   readonly VITE_APP_BUILD_DATE: string;
   readonly VITE_APP_COMMIT_DATE: string;
 
-  // Existing Supabase vars
+  // Supabase — public project URL and anon key (safe to expose to browser)
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
 }

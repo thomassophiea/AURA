@@ -193,7 +193,7 @@ function processClientCountData(stations: any[]): ClientCountData {
     total,
     byProtocol,
     byManufacturer,
-    trend: 'stable' // TODO: Calculate trend from historical data
+    trend: 'stable' as const // Trend calculation requires historical data snapshots (not yet available)
   };
 }
 

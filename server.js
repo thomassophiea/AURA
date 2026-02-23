@@ -23,8 +23,34 @@ console.log('[Proxy Server] Port:', PORT);
 console.log('[Proxy Server] Multi-controller support: ENABLED');
 
 // Enable CORS for all routes
+// ALLOWED_ORIGINS: comma-separated list of permitted origins (e.g. https://aura.example.com)
+// In development, localhost on any port is always permitted.
+const rawAllowedOrigins = process.env.ALLOWED_ORIGINS || '';
+const configuredOrigins = rawAllowedOrigins
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: true, // Allow all origins in development, restrict in production
+  origin: (origin, callback) => {
+    // Server-to-server requests (no Origin header) — allow
+    if (!origin) return callback(null, true);
+
+    // Always allow localhost in development
+    if (process.env.NODE_ENV !== 'production') {
+      if (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+          /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+    }
+
+    // Allow explicitly configured origins
+    if (configuredOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`CORS: origin '${origin}' not allowed`));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Controller-URL']

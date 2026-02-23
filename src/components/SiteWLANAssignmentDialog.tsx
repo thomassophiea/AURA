@@ -77,7 +77,7 @@ export function SiteWLANAssignmentDialog({
         siteName,
         data.wlans || [],
         data.profiles || [],
-        [] // TODO: Add observed WLANs when API endpoint available
+        [] // Observed WLANs: Campus Controller does not expose a dedicated endpoint for this yet
       );
 
       setInventory(siteInventory);

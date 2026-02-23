@@ -1,15 +1,20 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-// Using existing project credentials from utils/supabase/info.tsx
-const SUPABASE_URL = 'https://ufqjnesldbacyltbsvys.supabase.co';
+// Supabase configuration — values must be set via environment variables.
+// VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are the Supabase project URL
+// and public anon key; both are safe to expose to the browser per Supabase
+// design (RLS policies enforce access control). Never use the service role key here.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// This is the anon key (public), not the service role key
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVmcWpuZXNsZGJhY3lsdGJzdnlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA3MjA4MTUsImV4cCI6MjA3NjI5NjgxNX0.9lZXSp3mRNb9h4Q0aO5wKouZ5yp8FVjotJunFF_bu4g';
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.warn('[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set — Supabase features will be unavailable.');
+}
 
-// Create a single supabase client for interacting with your database
-export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+// Create a single supabase client for interacting with your database.
+// Falls back to placeholder values when env vars are absent so the module
+// can be imported without crashing; callers should check the warning above.
+export const supabase: SupabaseClient = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_ANON_KEY || 'placeholder', {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
