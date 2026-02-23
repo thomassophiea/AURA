@@ -36,6 +36,14 @@ app.use(cors({
     // Server-to-server requests (no Origin header) — allow
     if (!origin) return callback(null, true);
 
+    // If ALLOWED_ORIGINS is not configured, fall back to allowing all origins.
+    // This handles same-origin "crossorigin" asset requests (Vite adds crossorigin
+    // to <script type="module"> and <link rel="modulepreload"> tags, which causes
+    // the browser to send an Origin header even for same-origin requests).
+    if (configuredOrigins.length === 0) {
+      return callback(null, true);
+    }
+
     // Always allow localhost in development
     if (process.env.NODE_ENV !== 'production') {
       if (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
