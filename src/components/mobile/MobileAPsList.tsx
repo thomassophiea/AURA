@@ -66,63 +66,32 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
     30000
   );
 
-  const { data: clients } = useOfflineCache(
-    `clients_${currentSite}`,
-    async () => {
-      const data = await apiService.getStations();
-      if (currentSite === 'all') return data;
-      
-      // Get site name for matching (siteName field in clients may contain the name)
-      const sitesList = await apiService.getSites();
-      const selectedSite = sitesList.find((s: Site) => 
-        s.id === currentSite || s.siteId === currentSite
-      );
-      const siteNameToMatch = selectedSite?.name || selectedSite?.siteName;
-      
-      // Filter by site ID or site name
-      return data.filter((c: any) =>
-        c.siteId === currentSite ||
-        c.site === currentSite ||
-        c.siteName === currentSite ||
-        (siteNameToMatch && c.siteName === siteNameToMatch) ||
-        (siteNameToMatch && c.siteName?.toLowerCase() === siteNameToMatch.toLowerCase())
-      );
-    },
-    30000
-  );
-
-  // Calculate client counts per AP
+  // Load client counts per AP using the same approach as desktop AccessPoints:
+  // call getAccessPointStations(serial) for each AP in parallel.
   useEffect(() => {
-    if (!clients || !aps) return;
+    if (!aps || aps.length === 0) return;
 
-    const counts: Record<string, number> = {};
+    const loadCounts = async () => {
+      const results = await Promise.all(
+        aps.map(async (ap: any) => {
+          if (!ap.serialNumber) return { serial: '', count: 0 };
+          try {
+            const stations = await apiService.getAccessPointStations(ap.serialNumber);
+            return { serial: ap.serialNumber, count: Array.isArray(stations) ? stations.length : 0 };
+          } catch {
+            return { serial: ap.serialNumber, count: 0 };
+          }
+        })
+      );
+      const counts: Record<string, number> = {};
+      results.forEach(({ serial, count }) => {
+        if (serial) counts[serial] = count;
+      });
+      setClientCounts(counts);
+    };
 
-    // Initialize all APs with 0 clients
-    aps.forEach((ap: any) => {
-      const key = ap.serialNumber || ap.name || ap.displayName;
-      if (key) counts[key] = 0;
-    });
-
-    // Count clients per AP
-    clients.forEach((client: any) => {
-      const apKey = client.apSerialNumber || client.apName || client.apSerial;
-      if (apKey && counts[apKey] !== undefined) {
-        counts[apKey]++;
-      }
-      // Also try matching by name if serial doesn't match
-      if (client.apName) {
-        const matchingAP = aps.find((ap: any) =>
-          ap.name === client.apName || ap.displayName === client.apName
-        );
-        if (matchingAP) {
-          const key = matchingAP.serialNumber || matchingAP.name || matchingAP.displayName;
-          if (key) counts[key] = (counts[key] || 0) + 1;
-        }
-      }
-    });
-
-    setClientCounts(counts);
-  }, [clients, aps]);
+    loadCounts();
+  }, [aps]);
 
   // Check if AP is online
   const isAPOnline = (ap: any): boolean => {
@@ -138,10 +107,9 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
     );
   };
 
-  // Get client count
+  // Get client count — prefer per-AP loaded count, fall back to fields on the AP object
   const getClientCount = (ap: any): number => {
-    const key = ap.serialNumber || ap.name || ap.displayName;
-    return key ? (clientCounts[key] || ap.clientCount || ap.clients || ap.numClients || 0) : 0;
+    return clientCounts[ap.serialNumber] ?? ap.stationCount ?? ap.clientCount ?? ap.numClients ?? ap.clients ?? 0;
   };
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)

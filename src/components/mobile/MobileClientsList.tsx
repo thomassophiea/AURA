@@ -241,7 +241,7 @@ function ClientRow({
       {/* Device Icon with status indicator */}
       <div className="relative">
         <div className={`p-2 rounded-xl ${isOnline ? 'bg-primary/10' : 'bg-muted'}`}>
-          <DeviceIcon className={`h-5 w-5 ${isOnline ? 'text-primary' : 'text-muted-foreground'}`} />
+          <DeviceIcon className={`h-5 w-5 ${isOnline ? 'text-primary' : 'text-muted-foreground'}${DeviceIcon === Wifi ? ' rotate-180' : ''}`} />
         </div>
         {/* Status dot */}
         <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${
@@ -251,20 +251,27 @@ function ClientRow({
       
       {/* Content */}
       <div className="flex-1 min-w-0 text-left">
+        {/* Primary: hostname if known, otherwise MAC (monospace to signal it's a HW id) */}
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate">{displayName}</span>
+          <span className={`text-sm font-medium truncate ${!hostname ? 'font-mono text-xs tracking-tight' : ''}`}>
+            {displayName}
+          </span>
           {bandLabel && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium flex-shrink-0">
               {bandLabel}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2 mt-0.5">
-          {ipAddress && (
-            <span className="text-xs text-muted-foreground/70 font-mono">{ipAddress}</span>
+        {/* Secondary: MAC (when hostname shown) or IP; always dBm */}
+        <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          {hostname && client.macAddress && (
+            <span className="text-[11px] text-muted-foreground/50 font-mono truncate">{client.macAddress}</span>
+          )}
+          {!hostname && ipAddress && (
+            <span className="text-xs text-muted-foreground/60 font-mono truncate">{ipAddress}</span>
           )}
           {rssi !== null && (
-            <span className="text-xs text-muted-foreground/70">{rssi} dBm</span>
+            <span className="text-xs text-muted-foreground/60 flex-shrink-0">{rssi} dBm</span>
           )}
         </div>
       </div>
@@ -483,7 +490,10 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
           </div>
         )}
 
-        {/* Result Count */}
+      </div>
+
+      {/* Result count — outside sticky header to avoid overlap */}
+      <div className="px-4 pt-2 pb-1">
         <p className="text-[11px] text-muted-foreground">
           {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
           {activeFilterCount > 0 && ` (of ${clients?.length || 0})`}
@@ -491,7 +501,7 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      <div className="flex-1 overflow-y-auto px-3 pb-2">
         <MobileStatusList loading={loading} emptyMessage="No clients found">
           {filteredClients.map((client: any) => (
             <ClientRow
