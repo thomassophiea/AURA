@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { ExportButton } from './ExportButton';
 
 interface AFCPlan {
   id: string;
@@ -747,10 +748,29 @@ export function AFCPlanningTool() {
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Apply Recommendations
                   </Button>
-                  <Button variant="outline" onClick={() => {}}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export Report
-                  </Button>
+                  <ExportButton
+                    data={selectedPlan.channelPlan || selectedPlan.powerPlan || []}
+                    columns={
+                      selectedPlan.channelPlan
+                        ? [
+                            { key: 'apName', label: 'AP Name' },
+                            { key: 'band', label: 'Band' },
+                            { key: 'currentChannel', label: 'Current Channel' },
+                            { key: 'recommendedChannel', label: 'Recommended Channel' },
+                            { key: 'interference', label: 'Interference (%)' },
+                            { key: 'neighbors', label: 'Neighbors' },
+                          ]
+                        : [
+                            { key: 'apName', label: 'AP Name' },
+                            { key: 'radioIndex', label: 'Radio' },
+                            { key: 'currentPower', label: 'Current Power (dBm)' },
+                            { key: 'recommendedPower', label: 'Recommended Power (dBm)' },
+                            { key: 'coverage', label: 'Coverage (%)' },
+                          ]
+                    }
+                    filename={`afc-report-${selectedPlan.name.replace(/\s+/g, '-').toLowerCase()}`}
+                    title={`AFC Report: ${selectedPlan.name}`}
+                  />
                 </div>
               </CardContent>
             </Card>

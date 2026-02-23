@@ -1,36 +1,40 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Radio, TestTube, Zap, Network, Download, FileText, RefreshCw, Stethoscope } from 'lucide-react';
+import { Radio, TestTube, Zap, Network, FileText, RefreshCw, Stethoscope } from 'lucide-react';
 import { AFCPlanningTool } from './AFCPlanningTool';
 import { ApiTestTool } from './ApiTestTool';
 import { RFManagementTools } from './RFManagementTools';
 import { PacketCapture } from './PacketCapture';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { toast } from 'sonner';
-import type { 
-  PacketCaptureConfig, 
-  TCPDumpConfig, 
-  LogViewerConfig,
-  DiagnosticResult 
-} from '../types/tools';
+import { apiService } from '../services/api';
 
 export function Tools() {
   const [activeTab, setActiveTab] = useState('rf-management');
 
-  const [packetCaptureRunning, setPacketCaptureRunning] = useState(false);
-  const [packetCaptureConfig, setPacketCaptureConfig] = useState<Partial<PacketCaptureConfig>>({
-    duration: 60,
-    maxPackets: 1000,
-    interface: 'all'
-  });
-
   const [logLevel, setLogLevel] = useState<string>('info');
   const [logEntries, setLogEntries] = useState<any[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
+
+  const handleRefreshLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const events = await apiService.getEvents(undefined, undefined, logLevel === 'info' ? undefined : logLevel);
+      const mapped = events.map((e: any) => ({
+        timestamp: e.timestamp || e.createdAt || e.time || new Date().toISOString(),
+        level: e.severity || e.level || 'info',
+        message: e.message || e.description || e.text || JSON.stringify(e),
+      }));
+      setLogEntries(mapped);
+      if (mapped.length === 0) toast.info('No log entries found');
+    } catch {
+      toast.error('Failed to fetch logs');
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   return (
     <div className="h-full">
@@ -81,35 +85,17 @@ export function Tools() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5" />
+                  <Network className="h-5 w-5" />
                   Packet Capture
                 </CardTitle>
                 <CardDescription>Capture network traffic for analysis</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Duration (seconds)</Label>
-                    <Input 
-                      type="number" 
-                      value={packetCaptureConfig.duration} 
-                      onChange={(e) => setPacketCaptureConfig(prev => ({...prev, duration: parseInt(e.target.value)}))}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Max Packets</Label>
-                    <Input 
-                      type="number" 
-                      value={packetCaptureConfig.maxPackets}
-                      onChange={(e) => setPacketCaptureConfig(prev => ({...prev, maxPackets: parseInt(e.target.value)}))}
-                    />
-                  </div>
-                </div>
-                <Button 
-                  onClick={() => toast.info('Packet capture would start here')}
-                  disabled={packetCaptureRunning}
-                >
-                  {packetCaptureRunning ? 'Capturing...' : 'Start Capture'}
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Configure interface, filters, duration, and download captures from the dedicated Packet Capture tab.
+                </p>
+                <Button onClick={() => setActiveTab('packet-capture')}>
+                  Open Packet Capture
                 </Button>
               </CardContent>
             </Card>
@@ -135,9 +121,9 @@ export function Tools() {
                       <SelectItem value="error">Error</SelectItem>
                     </SelectContent>
                   </Select>
-                  <Button variant="outline" onClick={() => toast.info('Would fetch logs')}>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Refresh Logs
+                  <Button variant="outline" onClick={handleRefreshLogs} disabled={loadingLogs}>
+                    <RefreshCw className={`h-4 w-4 mr-2 ${loadingLogs ? 'animate-spin' : ''}`} />
+                    {loadingLogs ? 'Loading...' : 'Refresh Logs'}
                   </Button>
                 </div>
                 <div className="h-64 overflow-y-auto bg-muted rounded-lg p-4 font-mono text-xs">
