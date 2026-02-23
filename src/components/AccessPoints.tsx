@@ -9,7 +9,7 @@ import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Columns, Anchor, Phone, FileDown, Radio, Cable } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Columns, Anchor, Phone, FileDown, Radio, Cable, Loader2 } from 'lucide-react';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -1700,67 +1700,51 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
+      <div className="space-y-6 animate-in fade-in duration-200">
+        {/* Header skeleton */}
         <div className="flex justify-between items-center">
-          <div>
-            <Skeleton className="h-4 w-80" />
-            <Skeleton className="h-3 w-32 mt-1" />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Skeleton className="h-9 w-28" />
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-9 w-32" />
-            <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-4 w-72" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-24" />
           </div>
         </div>
-
-        {/* Stats Cards Skeleton */}
+        {/* Stat cards skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+          {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-20" />
-              </CardHeader>
+              <CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader>
               <CardContent>
-                <Skeleton className="h-8 w-16 mb-1" />
-                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-8 w-12 mb-1" />
+                <Skeleton className="h-3 w-20" />
               </CardContent>
             </Card>
           ))}
         </div>
-
-        {/* Filters Skeleton */}
+        {/* Search/filter bar skeleton */}
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        {/* Table skeleton */}
         <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-32" />
-            <Skeleton className="h-4 w-48 mt-1" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <Skeleton className="h-10 flex-1" />
-              <Skeleton className="h-10 w-[180px]" />
-              <Skeleton className="h-10 w-[150px]" />
-              <Skeleton className="h-10 w-[150px]" />
+          <CardContent className="p-0">
+            <div className="border-b px-4 py-3 flex gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-4 w-20" />
+              ))}
             </div>
-
-            {/* Table Skeleton */}
-            <div className="border rounded-lg">
-              <div className="space-y-0">
-                <div className="flex items-center border-b p-3 bg-muted/50">
-                  {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <Skeleton key={i} className="h-4 w-20 mx-2" />
-                  ))}
-                </div>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                  <div key={i} className="flex items-center border-b p-3">
-                    {[1, 2, 3, 4, 5, 6].map((j) => (
-                      <Skeleton key={j} className="h-4 w-20 mx-2" />
-                    ))}
-                  </div>
-                ))}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="px-4 py-3 flex gap-6 border-b last:border-0">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-10" />
               </div>
-            </div>
+            ))}
           </CardContent>
         </Card>
       </div>

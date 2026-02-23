@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
-import { RefreshCw, Radio, Signal, AlertTriangle, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, Radio, Signal, AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 
@@ -100,11 +100,21 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
     return (
       <Card>
         <CardHeader className="pb-3">
-          <div className="h-4 w-32 bg-muted rounded animate-pulse mb-2" />
-          <div className="h-3 w-48 bg-muted rounded animate-pulse" />
+          <CardTitle className="flex items-center gap-2">
+            <Radio className="h-5 w-5" />
+            RF Quality Index (RFQI)
+          </CardTitle>
+          <CardDescription>
+            Wireless signal quality and interference monitoring
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-32 bg-muted rounded animate-pulse" />
+          <div className="flex items-center justify-center h-32">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

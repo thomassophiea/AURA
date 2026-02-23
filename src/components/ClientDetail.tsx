@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import {
@@ -23,7 +23,8 @@ import {
   Package,
   FileText,
   Route,
-  ArrowLeft
+  ArrowLeft,
+  Loader2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { apiService, Station, StationEvent, APEvent, RRMEvent } from '../services/api';
@@ -268,10 +269,11 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-32 w-full" />
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading client details...</span>
+        </div>
       </div>
     );
   }

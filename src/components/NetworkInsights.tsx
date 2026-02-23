@@ -203,7 +203,7 @@ export function NetworkInsights() {
       {/* Info Footer */}
       <div className="mt-8 p-4 bg-muted/20 rounded-lg border border-muted">
         <p className="text-sm text-muted-foreground">
-          <strong>Sunil and Kurt - Add cool A.I. shit here</strong>
+          <strong>AI-powered insights and recommendations coming soon.</strong> Network behavior analysis, predictive alerts, and automated remediation will surface here.
         </p>
       </div>
     </div>

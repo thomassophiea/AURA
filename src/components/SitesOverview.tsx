@@ -19,7 +19,8 @@ import {
   Settings,
   TrendingUp,
   Clock,
-  Network
+  Network,
+  Loader2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -276,38 +277,14 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
         </div>
       </div>
 
-      {/* Show full skeleton when loading, otherwise show content with fade-in */}
+      {/* Show spinner when loading, otherwise show content with fade-in */}
       {loading ? (
-        <>
-          {/* Summary Cards Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="surface-1dp">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <Skeleton className="h-4 w-20" />
-                  <Skeleton className="h-4 w-4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16 mb-1" />
-                  <Skeleton className="h-3 w-24" />
-                </CardContent>
-              </Card>
-            ))}
+        <div className="flex items-center justify-center h-64">
+          <div className="flex items-center gap-3 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Loading sites...</span>
           </div>
-
-          {/* Sites List Skeleton */}
-          <Card className="surface-2dp">
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="h-4 w-64 mt-2" />
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
-              </div>
-            </CardContent>
-          </Card>
-        </>
+        </div>
       ) : (
         <>
           {/* Summary Cards */}

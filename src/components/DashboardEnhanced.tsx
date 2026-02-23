@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Skeleton } from './ui/skeleton';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
@@ -1457,7 +1458,43 @@ function DashboardEnhancedComponent() {
   ] : [];
 
   if (loading) {
-    return null;
+    return (
+      <div className="space-y-4">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-6 w-6 rounded-full" />
+            <Skeleton className="h-6 w-56" />
+          </div>
+          <Skeleton className="h-8 w-24" />
+        </div>
+        {/* Metric cards skeleton — matches the 4-col grid */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-32" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Chart area skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
+            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
+            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   return (

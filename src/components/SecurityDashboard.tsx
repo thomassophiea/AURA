@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Skeleton } from './ui/skeleton';
+import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   Shield,
@@ -107,9 +107,11 @@ export function SecurityDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading security dashboard...</span>
+        </div>
       </div>
     );
   }

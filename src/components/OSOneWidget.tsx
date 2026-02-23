@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Separator } from './ui/separator';
-import { Skeleton } from './ui/skeleton';
+
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import {
@@ -25,7 +25,8 @@ import {
   Info,
   CheckCircle2,
   AlertCircle,
-  Wifi
+  Wifi,
+  Loader2
 } from 'lucide-react';
 import { apiService, OSOneInfo, OSOneSystemInfo, OSOneManufacturingInfo } from '../services/api';
 
@@ -121,14 +122,15 @@ export function OSOneWidget({
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
             <Server className="h-5 w-5 text-primary" />
-            <Skeleton className="h-6 w-32" />
+            <CardTitle className="text-lg">OS ONE</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <Skeleton className="h-4 w-1/2" />
+          <div className="flex items-center justify-center h-32">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">Loading...</span>
+            </div>
           </div>
         </CardContent>
       </Card>

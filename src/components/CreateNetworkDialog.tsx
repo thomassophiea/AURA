@@ -279,7 +279,7 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
           top: '50%',
           transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
           cursor: isDragging ? 'grabbing' : 'auto',
-          minWidth: '600px',
+          minWidth: 'min(90vw, 600px)',
           minHeight: '500px',
           maxHeight: '90vh'
         }}
@@ -305,6 +305,14 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
           )}
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-muted-foreground">
+              Step {activeTab === 'basic' ? '1' : activeTab === 'security' ? '2' : '3'} of 3
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {activeTab === 'basic' ? 'Name & VLAN' : activeTab === 'security' ? 'Authentication' : 'Roles & Policies'}
+            </p>
+          </div>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
@@ -620,30 +628,52 @@ export function CreateNetworkDialog({ onNetworkCreated }: CreateNetworkDialogPro
         </Tabs>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t mt-auto">
-          <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
-            disabled={creating}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleCreate}
-            disabled={creating || !formData.serviceName || !formData.ssid || (securityRequiresPassphrase && !formData.passphrase)}
-          >
-            {creating ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Creating...
-              </>
-            ) : (
-              <>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Network
-              </>
+        <DialogFooter className="px-6 py-4 border-t mt-auto flex-col sm:flex-row gap-2">
+          <div className="flex gap-2 flex-1">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            {activeTab !== 'basic' && (
+              <Button
+                variant="outline"
+                onClick={() => setActiveTab(activeTab === 'advanced' ? 'security' : 'basic')}
+                disabled={creating}
+              >
+                Back
+              </Button>
             )}
-          </Button>
+            {activeTab !== 'advanced' ? (
+              <Button
+                variant="outline"
+                onClick={() => setActiveTab(activeTab === 'basic' ? 'security' : 'advanced')}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                onClick={handleCreate}
+                disabled={creating || !formData.serviceName || !formData.ssid || (securityRequiresPassphrase && !formData.passphrase)}
+              >
+                {creating ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Network
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

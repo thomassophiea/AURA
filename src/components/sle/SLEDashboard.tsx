@@ -332,19 +332,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl tracking-tight">Service Levels</h2>
-          <div className="h-10 w-32 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[1, 2, 3, 4, 5, 6, 7].map(i => (
-            <Card key={i}>
-              <CardContent className="pt-6">
-                <div className="h-32 bg-muted/50 rounded animate-pulse" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <RefreshCw className="h-5 w-5 animate-spin" />
+          <span>Loading Service Levels...</span>
         </div>
       </div>
     );

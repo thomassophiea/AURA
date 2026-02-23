@@ -4,7 +4,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Skeleton } from './ui/skeleton';
+import { Loader2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 import {
   Key,
@@ -167,9 +167,11 @@ export function LicenseDashboard() {
 
   if (loading) {
     return (
-      <div className="space-y-4 p-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-96 w-full" />
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-3 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading licenses...</span>
+        </div>
       </div>
     );
   }

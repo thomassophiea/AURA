@@ -8,8 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
-import { Skeleton } from './ui/skeleton';
-import { Shield, Plus, Edit, Trash2, Server, Users, Key, CheckCircle } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Server, Users, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AAAProfile {
@@ -91,7 +90,14 @@ export function AccessControlAAA() {
     }
   };
 
-  if (loading) return <div className="p-6"><Skeleton className="h-96 w-full" /></div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-32">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading...</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 p-6">

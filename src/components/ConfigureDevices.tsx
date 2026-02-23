@@ -31,7 +31,8 @@ import {
   Server,
   Smartphone,
   Router,
-  Monitor
+  Monitor,
+  Loader2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -525,15 +526,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <div className="h-4 w-4 bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-32 bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-24 bg-muted animate-pulse rounded" />
-                  <div className="h-4 w-20 bg-muted animate-pulse rounded" />
-                </div>
-              ))}
+            <div className="flex items-center justify-center h-32">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading...</span>
+              </div>
             </div>
           </CardContent>
         </Card>

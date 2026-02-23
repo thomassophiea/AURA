@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { AlertCircle, Save, RefreshCw, Plus, Trash2, Network, Shield, Wifi, Settings, Radio, Users, Globe, Lock, Unlock, Eye, EyeOff, Info, MapPin, Building, Folder, FolderOpen, Loader2, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Skeleton } from './ui/skeleton';
+
 import { ScrollArea } from './ui/scroll-area';
 import { apiService, Service, Role, Topology, AaaPolicy, ClassOfService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
@@ -908,18 +908,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
   if (loading) {
     return (
-      <div className="space-y-6 p-6">
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-48" />
-          <Skeleton className="h-4 w-64" />
-        </div>
-        <div className="space-y-4">
-          {[...Array(8)].map((_, i) => (
-            <div key={i} className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ))}
+      <div className="flex items-center justify-center h-32">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading...</span>
         </div>
       </div>
     );

@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Separator } from './ui/separator';
-import { Skeleton } from './ui/skeleton';
+
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
@@ -837,7 +837,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
             top: '50%',
             transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
             cursor: isDragging ? 'grabbing' : 'auto',
-            minWidth: '800px',
+            minWidth: 'min(95vw, 800px)',
             minHeight: '500px',
             maxHeight: '90vh'
           }}
@@ -882,9 +882,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                         setFormData({ ...formData, serviceName: newName });
                       }
                     }}
-                    placeholder="New WLAN"
+                    placeholder="e.g. Corporate WiFi"
                     className={!formData.serviceName?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
                   />
+                  {!formData.serviceName?.trim() && (
+                    <p className="text-xs text-red-500">Network name is required</p>
+                  )}
                 </div>
 
                 {/* SSID - can be different from Network Name */}
@@ -899,9 +902,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       setSsidManuallyEdited(true); // User edited SSID, stop auto-sync
                       setFormData({ ...formData, ssid: e.target.value });
                     }}
-                    placeholder="Broadcast name"
+                    placeholder="Broadcast name (visible to clients)"
                     className={!formData.ssid?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
                   />
+                  {!formData.ssid?.trim() && (
+                    <p className="text-xs text-red-500">SSID is required</p>
+                  )}
                 </div>
 
                 {/* Security Type */}
@@ -974,9 +980,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       type="password"
                       value={formData.passphrase || ''}
                       onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
-                      placeholder="Enter passphrase (8-63 characters)"
+                      placeholder="8–63 characters"
                       className={!formData.passphrase?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
                     />
+                    {!formData.passphrase?.trim() && (
+                      <p className="text-xs text-red-500">Passphrase is required (8–63 characters)</p>
+                    )}
                   </div>
                 )}
 
@@ -1662,8 +1671,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                   )}
                 </div>
                 {loadingSites ? (
-                  <div className="space-y-2">
-                    {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                  <div className="flex items-center justify-center h-32">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Loading...</span>
+                    </div>
                   </div>
                 ) : sites.length === 0 ? (
                   <div className="text-sm text-muted-foreground text-center py-4">

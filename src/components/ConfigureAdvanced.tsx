@@ -8,11 +8,11 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { Skeleton } from './ui/skeleton';
+
 import { Alert, AlertDescription } from './ui/alert';
 import {
   Settings, RefreshCw, Plus, Edit, Trash2, AlertCircle,
-  Network, Gauge, Layers, Cpu, Bluetooth, Globe, Shield, Cable
+  Network, Gauge, Layers, Cpu, Bluetooth, Globe, Shield, Cable, Loader2
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -94,7 +94,7 @@ function TopologiesTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -289,7 +289,7 @@ function CoSTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -436,7 +436,7 @@ function RateLimitersTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -571,7 +571,7 @@ function ProfilesTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -774,7 +774,7 @@ function IoTTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -936,7 +936,7 @@ function MeshpointsTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -1057,7 +1057,7 @@ function AccessControlTab() {
     setMacList(macList.filter(m => m !== mac));
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   return (
     <div className="space-y-4">
@@ -1203,7 +1203,7 @@ function LocationServicesTab() {
     } catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
   };
 
-  if (loading) return <div className="space-y-2">{[1,2,3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>;
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
 
   const renderTable = (title: string, type: typeof dialogType, data: any[]) => (
     <Card className="mb-4">

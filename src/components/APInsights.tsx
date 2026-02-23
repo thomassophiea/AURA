@@ -9,7 +9,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Skeleton } from './ui/skeleton';
+import { Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   AreaChart,
@@ -298,10 +298,11 @@ export function APInsights({ serialNumber, apName, onOpenFullScreen }: APInsight
       {expanded && (
         <CardContent className="pt-2">
           {isLoading ? (
-            <div className="grid grid-cols-3 gap-3">
-              <Skeleton className="h-14" />
-              <Skeleton className="h-14" />
-              <Skeleton className="h-14" />
+            <div className="flex items-center justify-center h-14">
+              <div className="flex items-center gap-3 text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm">Loading stats...</span>
+              </div>
             </div>
           ) : stats ? (
             <div className="grid grid-cols-3 gap-3">
@@ -1153,11 +1154,11 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="p-6 space-y-6 pb-12">
             {isLoading ? (
-              <div className="grid grid-cols-2 gap-6">
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64" />
-                <Skeleton className="h-64" />
+              <div className="flex items-center justify-center h-64">
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Loading AP insights...</span>
+                </div>
               </div>
             ) : chartConfigs.some(c => c.hasData) ? (
               <div className="grid grid-cols-2 gap-6">
