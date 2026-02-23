@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { MobileApp } from './components/mobile/MobileApp';
 import { DetailSlideOut } from './components/DetailSlideOut';
 import { PlaceholderPage } from './components/PlaceholderPage';
+import { PerformanceAnalytics } from './components/PerformanceAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy load route components for better performance with prefetch
@@ -868,24 +869,7 @@ export default function App() {
       case 'connected-clients':
         return <TrafficStatsConnectedClients onShowDetail={handleShowClientDetail} />;
       case 'performance-analytics':
-        return (
-          <PlaceholderPage
-            title="Performance Analytics"
-            description="Deep-dive into network performance trends, capacity planning, and SLA tracking"
-            icon={BarChart3}
-            mockupType="charts"
-            features={[
-              'Throughput trends by site, AP, and SSID',
-              'Channel utilization and interference analysis',
-              'Client density heatmaps over time',
-              'Roaming success rate and handoff latency',
-              'SLA compliance reporting and breach alerts',
-              'Capacity forecasting and growth projections',
-              'Top-N talkers — clients, APs, and applications',
-              'Exportable PDF and CSV performance reports',
-            ]}
-          />
-        );
+        return <PerformanceAnalytics />;
       case 'report-widgets':
         return <ReportWidgets />;
       case 'pci-report':
