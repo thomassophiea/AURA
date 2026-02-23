@@ -27,6 +27,11 @@ const defaultFilters: GlobalFilters = {
 let globalState: GlobalFilters = { ...defaultFilters };
 const listeners = new Set<(filters: GlobalFilters) => void>();
 
+// Debounce timer — rapid filter changes (e.g. quick site/time-range switching)
+// are coalesced so components only re-render and fire API calls once per burst.
+let notifyTimer: ReturnType<typeof setTimeout> | null = null;
+const NOTIFY_DEBOUNCE_MS = 300;
+
 // Load from localStorage on initialization
 try {
   const stored = localStorage.getItem(STORAGE_KEY);
@@ -43,7 +48,7 @@ try {
 }
 
 /**
- * Notify all listeners of filter changes
+ * Notify all listeners of filter changes (immediate — used for resets).
  */
 function notifyListeners() {
   listeners.forEach(listener => listener(globalState));
@@ -54,6 +59,18 @@ function notifyListeners() {
   } catch (error) {
     console.warn('[GlobalFilters] Failed to save to localStorage:', error);
   }
+}
+
+/**
+ * Debounced notify — coalesces rapid changes so components only re-render
+ * once per burst (e.g. quickly switching sites or time ranges).
+ */
+function notifyListenersDebounced() {
+  if (notifyTimer !== null) clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(() => {
+    notifyTimer = null;
+    notifyListeners();
+  }, NOTIFY_DEBOUNCE_MS);
 }
 
 /**
@@ -83,7 +100,7 @@ export function useGlobalFilters() {
     value: GlobalFilters[K]
   ) => {
     globalState = { ...globalState, [key]: value };
-    notifyListeners();
+    notifyListenersDebounced();
   };
 
   /**
@@ -91,7 +108,7 @@ export function useGlobalFilters() {
    */
   const updateFilters = (updates: Partial<GlobalFilters>) => {
     globalState = { ...globalState, ...updates };
-    notifyListeners();
+    notifyListenersDebounced();
   };
 
   /**
@@ -132,5 +149,5 @@ export function getGlobalFilters(): GlobalFilters {
  */
 export function setGlobalFilters(updates: Partial<GlobalFilters>) {
   globalState = { ...globalState, ...updates };
-  notifyListeners();
+  notifyListenersDebounced();
 }

@@ -17,6 +17,7 @@ import { Checkbox } from './ui/checkbox';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
+import { ExportButton } from './ExportButton';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
 
@@ -1806,6 +1807,21 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <Columns className="mr-2 h-4 w-4" />
             Customize Columns
           </Button>
+          <ExportButton
+            data={sortedAccessPoints}
+            columns={[
+              { key: 'name', label: 'Name' },
+              { key: 'serialNumber', label: 'Serial Number' },
+              { key: 'status', label: 'Status' },
+              { key: 'model', label: 'Model' },
+              { key: 'ipAddress', label: 'IP Address' },
+              { key: 'macAddress', label: 'MAC Address' },
+              { key: 'siteName', label: 'Site' },
+              { key: 'firmwareVersion', label: 'Firmware' },
+            ]}
+            filename="access-points"
+            title="Access Points"
+          />
         </div>
       </div>
 

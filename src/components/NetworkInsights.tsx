@@ -49,8 +49,8 @@ export function NetworkInsights() {
         }
       } catch (error) {
         console.error('[NetworkInsights] Failed to load sites:', error);
-        // Fallback to hardcoded site ID
-        setSelectedSiteId('c7395471-aa5c-46dc-9211-3ed24c5789bd');
+        // No site available — widgets will show their own empty states
+        setSelectedSiteId(null);
       }
     };
 

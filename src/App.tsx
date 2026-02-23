@@ -57,7 +57,7 @@ import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
 import { Button } from './components/ui/button';
-import { Activity, Sun, Moon, Braces, Github, FlaskConical } from 'lucide-react';
+import { Activity, Sun, Moon, Braces, Github, FlaskConical, BarChart3 } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
@@ -199,24 +199,17 @@ export default function App() {
         setIsAuthenticated(true);
         setAdminRole(apiService.getAdminRole());
 
-        // Load site information
+        // Load site information — use first available site from the account
         try {
-          const SITE_ID = 'c7395471-aa5c-46dc-9211-3ed24c5789bd';
-          const site = await apiService.getSiteById(SITE_ID);
-          if (site) {
-            const displayName = site.displayName || site.name || site.siteName || 'Production Site';
+          const sites = await apiService.getSites();
+          if (sites && sites.length > 0) {
+            const firstSite = sites[0];
+            const displayName = firstSite.displayName || firstSite.name || firstSite.siteName || 'Site';
             setSiteName(displayName);
-          } else {
-            const sites = await apiService.getSites();
-            if (sites && sites.length > 0) {
-              const firstSite = sites[0];
-              const displayName = firstSite.displayName || firstSite.name || firstSite.siteName || 'Site';
-              setSiteName(displayName);
-            }
           }
         } catch (error) {
           console.error('[App] Failed to load site name:', error);
-          setSiteName('Production Site');
+          setSiteName('Site');
         }
 
         // Start SLE data collection automatically on successful authentication
@@ -718,27 +711,17 @@ export default function App() {
     // Prefetch critical components for faster navigation
     prefetchCriticalComponents();
 
-    // Load site information
+    // Load site information — use first available site from the account
     try {
-      const SITE_ID = 'c7395471-aa5c-46dc-9211-3ed24c5789bd';
-      const site = await apiService.getSiteById(SITE_ID);
-      if (site) {
-        const displayName = site.displayName || site.name || site.siteName || 'Production Site';
-        console.log('[App] Loaded site:', displayName);
+      const sites = await apiService.getSites();
+      if (sites && sites.length > 0) {
+        const firstSite = sites[0];
+        const displayName = firstSite.displayName || firstSite.name || firstSite.siteName || 'Site';
         setSiteName(displayName);
-      } else {
-        // Fallback to first available site
-        const sites = await apiService.getSites();
-        if (sites && sites.length > 0) {
-          const firstSite = sites[0];
-          const displayName = firstSite.displayName || firstSite.name || firstSite.siteName || 'Site';
-          console.log('[App] Fallback to first site:', displayName);
-          setSiteName(displayName);
-        }
       }
     } catch (error) {
       console.error('[App] Failed to load site name:', error);
-      setSiteName('Production Site'); // Default fallback
+      setSiteName('Site');
     }
 
     // Start SLE data collection on login
@@ -885,8 +868,24 @@ export default function App() {
       case 'connected-clients':
         return <TrafficStatsConnectedClients onShowDetail={handleShowClientDetail} />;
       case 'performance-analytics':
-        const performanceAnalyticsInfo = pageInfo['performance-analytics'];
-        return <PlaceholderPage title={performanceAnalyticsInfo.title} description={performanceAnalyticsInfo.description} />;
+        return (
+          <PlaceholderPage
+            title="Performance Analytics"
+            description="Deep-dive into network performance trends, capacity planning, and SLA tracking"
+            icon={BarChart3}
+            mockupType="charts"
+            features={[
+              'Throughput trends by site, AP, and SSID',
+              'Channel utilization and interference analysis',
+              'Client density heatmaps over time',
+              'Roaming success rate and handoff latency',
+              'SLA compliance reporting and breach alerts',
+              'Capacity forecasting and growth projections',
+              'Top-N talkers — clients, APs, and applications',
+              'Exportable PDF and CSV performance reports',
+            ]}
+          />
+        );
       case 'report-widgets':
         return <ReportWidgets />;
       case 'pci-report':

@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { apiService } from '../services/api';
+import { ExportButton } from './ExportButton';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface GlobalSettings {
   [key: string]: any;
@@ -119,6 +121,8 @@ export function Settings() {
     notificationsEnabled: true,
     notificationsSound: false,
     notificationsDesktop: false,
+    refreshInterval: '60' as '30' | '60' | '120' | '300' | 'off',
+    defaultTimeRange: '24h' as '15m' | '1h' | '24h' | '7d' | '30d',
   });
 
   const [saving, setSaving] = useState(false);
@@ -536,6 +540,60 @@ export function Settings() {
                     setLocalPrefs(prev => ({ ...prev, sidebarCollapsed: checked }))
                   }
                 />
+              </div>
+
+              {/* Auto-refresh interval */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Auto-Refresh Interval</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    How often dashboard data refreshes automatically
+                  </p>
+                </div>
+                <Select
+                  value={localPrefs.refreshInterval}
+                  onValueChange={(v: '30' | '60' | '120' | '300' | 'off') =>
+                    setLocalPrefs(prev => ({ ...prev, refreshInterval: v }))
+                  }
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30">30 seconds</SelectItem>
+                    <SelectItem value="60">1 minute</SelectItem>
+                    <SelectItem value="120">2 minutes</SelectItem>
+                    <SelectItem value="300">5 minutes</SelectItem>
+                    <SelectItem value="off">Off</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Default time range */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Default Time Range</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Starting time window for charts and metrics on load
+                  </p>
+                </div>
+                <Select
+                  value={localPrefs.defaultTimeRange}
+                  onValueChange={(v: '15m' | '1h' | '24h' | '7d' | '30d') =>
+                    setLocalPrefs(prev => ({ ...prev, defaultTimeRange: v }))
+                  }
+                >
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="15m">Last 15 min</SelectItem>
+                    <SelectItem value="1h">Last hour</SelectItem>
+                    <SelectItem value="24h">Last 24 hours</SelectItem>
+                    <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Save Button */}
@@ -1134,14 +1192,29 @@ export function Settings() {
                       System activity and administrative actions
                     </p>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
-                    onClick={loadSystemConfiguration}
-                    disabled={isLoadingSystem}
-                  >
-                    <RefreshCw className={`h-4 w-4 ${isLoadingSystem ? 'animate-spin' : ''}`} />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <ExportButton
+                      data={auditLogs}
+                      columns={[
+                        { key: 'timestamp', label: 'Timestamp' },
+                        { key: 'user', label: 'User' },
+                        { key: 'action', label: 'Action' },
+                        { key: 'resource', label: 'Resource' },
+                        { key: 'status', label: 'Status' },
+                        { key: 'ipAddress', label: 'IP Address' },
+                      ]}
+                      filename="audit-logs"
+                      title="Audit Logs"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={loadSystemConfiguration}
+                      disabled={isLoadingSystem}
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isLoadingSystem ? 'animate-spin' : ''}`} />
+                    </Button>
+                  </div>
                 </div>
                 <div className="p-4">
                   {isLoadingSystem ? (
