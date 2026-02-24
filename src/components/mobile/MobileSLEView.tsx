@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Loader2, Signal, Zap, Clock, Activity, Wifi, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -269,9 +270,18 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
 
       {/* Loading state */}
       {loading && sles.length === 0 && (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">Loading SLEs...</span>
+        <div className="space-y-3">
+          <Skeleton className="h-36 w-full rounded-xl" />
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/50 p-4 flex items-center gap-4">
+              <Skeleton className="h-12 w-12 rounded-xl flex-shrink-0" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <Skeleton className="h-8 w-14 rounded-lg flex-shrink-0" />
+            </div>
+          ))}
         </div>
       )}
 

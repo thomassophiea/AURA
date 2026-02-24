@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { RefreshCw, Loader2, Wifi, QrCode, Shield, Eye, EyeOff, Download, Share2, X, Check, Copy } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
@@ -563,9 +564,17 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
 
       {/* Loading state */}
       {loading && networks.length === 0 && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading...</span>
+        <div className="space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl px-3 py-2.5 border border-border/50 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-3.5 w-3.5 rounded" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-12 rounded-full" />
+              </div>
+              <Skeleton className="h-3 w-20 ml-5" />
+            </div>
+          ))}
         </div>
       )}
 

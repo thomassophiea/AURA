@@ -562,55 +562,38 @@ export function PerformanceAnalytics() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end items-center">
-        <div className="flex items-center space-x-4">
-          {lastUpdated && (
-            <span className="text-sm text-muted-foreground flex items-center">
-              <Clock className="h-4 w-4 mr-1" />
-              Updated: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          
+      {/* Page header */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+          <div>
+            <h2 className="text-xl font-semibold">Performance Analytics</h2>
+            <p className="text-sm text-muted-foreground">
+              {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'AP health, client distribution, and site metrics'}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Select value={selectedSite} onValueChange={setSelectedSite}>
+            <SelectTrigger className="w-52">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites Overview</SelectItem>
+              {sites.map(site => (
+                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={handleExport} variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          
-          <Button onClick={handleRefresh} variant="outline" size="sm" disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+          <Button onClick={handleRefresh} variant="outline" size="icon" disabled={refreshing}>
+            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
-
-      {/* Site Selector */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center">
-                <Filter className="h-5 w-5 mr-2" />
-                Analytics Scope
-              </CardTitle>
-              <CardDescription>Select sites to analyze performance data</CardDescription>
-            </div>
-            
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites Overview</SelectItem>
-                {sites.map(site => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardHeader>
-      </Card>
 
       {/* Key Performance Indicators */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -700,9 +683,11 @@ export function PerformanceAnalytics() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="sites">Sites Performance</TabsTrigger>
+          <TabsTrigger value="sites">Sites</TabsTrigger>
           <TabsTrigger value="access-points">Access Points</TabsTrigger>
-          <TabsTrigger value="widgets">Report Widgets</TabsTrigger>
+          {reportWidgets.length > 0 && (
+            <TabsTrigger value="widgets">Report Widgets</TabsTrigger>
+          )}
         </TabsList>
         
         <TabsContent value="overview" className="space-y-4">

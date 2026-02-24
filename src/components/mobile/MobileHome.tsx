@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Users, Wifi, Network, AlertCircle, RefreshCw, Loader2, Trash2, Clock } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 import { toast } from 'sonner';
 import { MobileKPITile } from './MobileKPITile';
 import { NetworkHealthScore } from './NetworkHealthScore';
@@ -314,12 +315,20 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
         </Button>
       </div>
 
-      {/* Loading State */}
+      {/* Loading State — skeleton tiles matching the real layout */}
       {statsLoading && !cachedStats && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2 text-muted-foreground">Loading stats...</span>
-        </div>
+        <>
+          <Skeleton className="h-20 w-full rounded-xl" />
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border-2 border-border p-4 min-h-[120px] flex flex-col gap-2">
+                <Skeleton className="h-6 w-6 rounded" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-4 w-20 mt-auto" />
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Error State */}
