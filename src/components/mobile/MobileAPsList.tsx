@@ -348,34 +348,80 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
       >
         {selectedAP && (
           <div className="p-4 space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Serial Number</p>
-              <p className="text-base font-medium">{selectedAP.serialNumber || 'N/A'}</p>
+            {/* Identity grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Serial</p>
+                <p className="text-sm font-medium font-mono truncate">{selectedAP.serialNumber || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Status</p>
+                <p className={`text-sm font-semibold ${isAPOnline(selectedAP) ? 'text-green-500' : 'text-red-500'}`}>
+                  {isAPOnline(selectedAP) ? 'Online' : 'Offline'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">IP Address</p>
+                <p className="text-sm font-medium font-mono truncate">{selectedAP.ipAddress || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Clients</p>
+                <p className="text-sm font-medium">{getClientCount(selectedAP)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">MAC</p>
+                <p className="text-sm font-medium font-mono truncate">{selectedAP.macAddress || 'N/A'}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Model</p>
+                <p className="text-sm font-medium truncate">{selectedAP.model || selectedAP.deviceType || 'N/A'}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">MAC Address</p>
-              <p className="text-base font-medium">{selectedAP.macAddress || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">IP Address</p>
-              <p className="text-base font-medium">{selectedAP.ipAddress || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p className="text-base font-medium">{isAPOnline(selectedAP) ? 'Online' : 'Offline'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Connected Clients</p>
-              <p className="text-base font-medium">{getClientCount(selectedAP)}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Band</p>
-              <p className="text-base font-medium">{selectedAP.band || selectedAP.radioType || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Model</p>
-              <p className="text-base font-medium">{selectedAP.model || selectedAP.deviceType || 'N/A'}</p>
-            </div>
+
+            {/* Firmware */}
+            {(selectedAP.firmware || selectedAP.firmwareVersion || selectedAP.version) && (
+              <div>
+                <p className="text-xs text-muted-foreground">Firmware</p>
+                <p className="text-sm font-medium font-mono truncate">
+                  {selectedAP.firmware || selectedAP.firmwareVersion || selectedAP.version}
+                </p>
+              </div>
+            )}
+
+            {/* Radios */}
+            {selectedAP.radios && Array.isArray(selectedAP.radios) && selectedAP.radios.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Radios</p>
+                <div className="space-y-2">
+                  {selectedAP.radios.map((radio: any, i: number) => (
+                    <div key={i} className="rounded-lg border border-border/60 p-2.5 bg-muted/30">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold">
+                          Radio {radio.radioIndex ?? radio.index ?? i + 1}
+                          {radio.band && <span className="ml-1 text-muted-foreground font-normal">· {radio.band}</span>}
+                        </span>
+                        <Badge variant="outline" className={`text-[9px] h-4 px-1.5 ${radio.adminState === 'disabled' ? 'text-muted-foreground' : 'text-green-600 border-green-500/30'}`}>
+                          {radio.adminState === 'disabled' ? 'Off' : 'On'}
+                        </Badge>
+                      </div>
+                      <div className="flex gap-3 text-[11px] text-muted-foreground">
+                        {(radio.channel || radio.currentChannel) && (
+                          <span>Ch {radio.channel ?? radio.currentChannel}</span>
+                        )}
+                        {radio.txPower !== undefined && (
+                          <span>{radio.txPower} dBm</span>
+                        )}
+                        {(radio.numClients !== undefined || radio.clientCount !== undefined) && (
+                          <span>{radio.numClients ?? radio.clientCount} clients</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* AFC Anchor */}
             {isAfcAnchor(selectedAP) && (
               <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
                 <div className="flex items-center gap-2">

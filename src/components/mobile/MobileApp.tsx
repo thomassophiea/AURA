@@ -75,6 +75,12 @@ export function MobileApp({
             currentSite={currentSite}
             onSiteChange={onSiteChange}
             onNavigate={handleNavigate}
+            onStatsUpdate={(offlineAPs, totalClients) => {
+              setBadges({
+                aps: offlineAPs > 0 ? offlineAPs : undefined,
+                clients: totalClients > 0 ? totalClients : undefined,
+              });
+            }}
           />
         );
       case 'sle':

@@ -26,6 +26,7 @@ interface MobileHomeProps {
   currentSite: string;
   onSiteChange: (siteId: string) => void;
   onNavigate: (tab: MobileTab) => void;
+  onStatsUpdate?: (offlineAPs: number, totalClients: number) => void;
 }
 
 interface NetworkStats {
@@ -36,7 +37,7 @@ interface NetworkStats {
   healthScore: number;
 }
 
-export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHomeProps) {
+export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdate }: MobileHomeProps) {
   const haptic = useHaptic();
   const [sites, setSites] = useState<any[]>([]);
   const [stats, setStats] = useState<NetworkStats>({
@@ -109,10 +110,14 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
 
     const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
     const issueCount = offlineAPsCount;
-    const healthScore = Math.round(apScore * 0.7 + (issueCount === 0 ? 30 : Math.max(0, 30 - issueCount * 10)));
 
     // Count enabled networks
     const enabledNetworks = networksData.filter((n: any) => n.status === 'enabled').length;
+
+    // Health score: AP availability (60%) + issue severity (20%) + network health (20%)
+    const issueScore = issueCount === 0 ? 100 : Math.max(0, 100 - (issueCount / Math.max(filteredAPs.length, 1)) * 200);
+    const networkScore = networksData.length > 0 ? (enabledNetworks / networksData.length) * 100 : 100;
+    const healthScore = Math.round(apScore * 0.6 + issueScore * 0.2 + networkScore * 0.2);
 
     return {
       clients: { total: filteredClients.length },
@@ -139,8 +144,9 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate }: MobileHome
     if (cachedStats) {
       setStats(cachedStats);
       setOfflineAPs(cachedStats.offlineAPs || []);
+      onStatsUpdate?.(cachedStats.aps?.offline ?? 0, cachedStats.clients?.total ?? 0);
     }
-  }, [cachedStats]);
+  }, [cachedStats, onStatsUpdate]);
 
   useEffect(() => {
     if (!lastUpdated) return;

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Loader2, Wifi, QrCode, Shield, Eye, EyeOff, Download, Share2, X, Check, Copy } from 'lucide-react';
+import { RefreshCw, Loader2, Search, Wifi, QrCode, Shield, Eye, EyeOff, Download, Share2, X, Check, Copy } from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -545,12 +545,15 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
     <div className="px-3 py-3 space-y-3 pb-24">
       {/* Search and Refresh */}
       <div className="flex items-center gap-2">
-        <Input
-          placeholder="Search networks..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1 h-10 text-sm"
-        />
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search networks..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-10 text-sm"
+          />
+        </div>
         <Button
           variant="ghost"
           size="icon"
