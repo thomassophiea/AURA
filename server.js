@@ -22,6 +22,18 @@ console.log('[Proxy Server] Default Target:', DEFAULT_CONTROLLER_URL);
 console.log('[Proxy Server] Port:', PORT);
 console.log('[Proxy Server] Multi-controller support: ENABLED');
 
+// Runtime environment validation
+console.log('[Proxy Server] --- Runtime Environment ---');
+if (!process.env.CAMPUS_CONTROLLER_URL) {
+  console.warn('[Proxy Server] ⚠  CAMPUS_CONTROLLER_URL not set — using hardcoded default (tsophiea.ddns.net)');
+}
+if (!process.env.ALLOWED_ORIGINS) {
+  console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set — CORS will allow all origins (set this in production!)');
+} else {
+  console.log('[Proxy Server] ✓ ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS);
+}
+console.log('[Proxy Server] --------------------------');
+
 // Enable CORS for all routes
 // ALLOWED_ORIGINS: comma-separated list of permitted origins (e.g. https://aura.example.com)
 // In development, localhost on any port is always permitted.

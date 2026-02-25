@@ -1122,11 +1122,14 @@ export default function App() {
             </div>
 
             <div>
-              <Suspense fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}>
-                <div className="animate-in fade-in duration-300">
-                  {renderPage()}
-                </div>
-              </Suspense>
+              {/* key=currentPage resets the boundary automatically on navigation */}
+              <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
+                <Suspense fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}>
+                  <div className="animate-in fade-in duration-300">
+                    {renderPage()}
+                  </div>
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </div>
         </main>

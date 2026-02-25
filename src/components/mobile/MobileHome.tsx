@@ -35,6 +35,7 @@ interface NetworkStats {
   networks: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
   issues: number;
   healthScore: number;
+  disabledNetworks?: any[];
 }
 
 export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdate }: MobileHomeProps) {
@@ -50,6 +51,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showIssues, setShowIssues] = useState(false);
   const [offlineAPs, setOfflineAPs] = useState<any[]>([]);
+  const [disabledNetworks, setDisabledNetworks] = useState<any[]>([]);
   const [cacheAge, setCacheAge] = useState<number | null>(null);
   const [isClearingCache, setIsClearingCache] = useState(false);
 
@@ -111,11 +113,14 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
     const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
     const issueCount = offlineAPsCount;
 
-    // Count enabled networks
+    // Count enabled/disabled networks
     const enabledNetworks = networksData.filter((n: any) => n.status === 'enabled').length;
+    const disabledNetworksList = networksData.filter((n: any) => n.status && n.status !== 'enabled');
+
+    const totalIssues = offlineAPsCount + disabledNetworksList.length;
 
     // Health score: AP availability (60%) + issue severity (20%) + network health (20%)
-    const issueScore = issueCount === 0 ? 100 : Math.max(0, 100 - (issueCount / Math.max(filteredAPs.length, 1)) * 200);
+    const issueScore = totalIssues === 0 ? 100 : Math.max(0, 100 - (totalIssues / Math.max(filteredAPs.length, 1)) * 200);
     const networkScore = networksData.length > 0 ? (enabledNetworks / networksData.length) * 100 : 100;
     const healthScore = Math.round(apScore * 0.6 + issueScore * 0.2 + networkScore * 0.2);
 
@@ -123,9 +128,10 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
       clients: { total: filteredClients.length },
       aps: { total: filteredAPs.length, online: onlineAPs, offline: offlineAPsCount },
       networks: { total: enabledNetworks || networksData.length },
-      issues: issueCount,
+      issues: totalIssues,
       healthScore,
       offlineAPs: offlineAPsList,
+      disabledNetworks: disabledNetworksList,
     };
   };
 
@@ -144,6 +150,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
     if (cachedStats) {
       setStats(cachedStats);
       setOfflineAPs(cachedStats.offlineAPs || []);
+      setDisabledNetworks(cachedStats.disabledNetworks || []);
       onStatsUpdate?.(cachedStats.aps?.offline ?? 0, cachedStats.clients?.total ?? 0);
     }
   }, [cachedStats, onStatsUpdate]);
@@ -392,48 +399,74 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
         title="Network Issues"
       >
         <div className="p-4 space-y-3">
-          {offlineAPs.length === 0 ? (
+          {offlineAPs.length === 0 && disabledNetworks.length === 0 ? (
             <div className="text-center py-8">
               <AlertCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
               <p className="text-lg font-semibold text-foreground">No Issues Found</p>
               <p className="text-sm text-muted-foreground mt-1">
-                All access points are operating normally
+                All access points and networks are operating normally
               </p>
             </div>
           ) : (
             <>
-              <div className="pb-2">
-                <p className="text-sm text-muted-foreground">
-                  {offlineAPs.length} offline access point{offlineAPs.length !== 1 ? 's' : ''}
-                </p>
-              </div>
-              {offlineAPs.map((ap: any) => (
-                <div
-                  key={ap.serialNumber || ap.macAddress}
-                  className="p-3 rounded-lg border border-red-500/20 bg-red-500/5"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground truncate">
-                        {ap.displayName || ap.name || ap.serialNumber || 'Unknown AP'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {ap.serialNumber || 'No serial number'}
-                      </p>
-                      {ap.ipAddress && (
-                        <p className="text-sm text-muted-foreground">
-                          IP: {ap.ipAddress}
-                        </p>
-                      )}
+              {/* Offline APs */}
+              {offlineAPs.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Offline Access Points ({offlineAPs.length})
+                  </p>
+                  {offlineAPs.map((ap: any) => (
+                    <div
+                      key={ap.serialNumber || ap.macAddress}
+                      className="p-3 rounded-lg border border-red-500/20 bg-red-500/5"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {ap.displayName || ap.name || ap.serialNumber || 'Unknown AP'}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-0.5 truncate">
+                            {ap.serialNumber || 'No serial number'}
+                            {ap.ipAddress ? ` · ${ap.ipAddress}` : ''}
+                          </p>
+                        </div>
+                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                          Offline
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex-shrink-0 ml-3">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
-                        Offline
-                      </span>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* Disabled Networks */}
+              {disabledNetworks.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Disabled Networks ({disabledNetworks.length})
+                  </p>
+                  {disabledNetworks.map((n: any) => (
+                    <div
+                      key={n.id}
+                      className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {n.ssid || n.serviceName || n.name || 'Unknown Network'}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {n.security || 'Unknown security'}
+                          </p>
+                        </div>
+                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600">
+                          Disabled
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
