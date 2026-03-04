@@ -83,23 +83,48 @@ app.get('/health', (req, res) => {
 
 // Version check endpoint - proves which commit is deployed
 app.get('/api/version', async (req, res) => {
-  try {
-    // Try to read version.json from build directory
-    const versionPath = path.join(__dirname, 'build', 'version.json');
-    const fs = await import('fs');
-    const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
-    res.json(versionData);
-  } catch (error) {
-    // Fallback if version.json doesn't exist
-    res.json({
-      version: 'unknown',
-      commit: 'unknown',
-      error: 'version.json not found in build',
-      errorDetails: error.message,
-      buildPath: path.join(__dirname, 'build'),
-      timestamp: new Date().toISOString()
-    });
+  const fs = await import('fs');
+
+  // Try build/version.json first (written by generate-version.js during build)
+  for (const versionPath of [
+    path.join(__dirname, 'build', 'version.json'),
+    path.join(__dirname, 'public', 'version.json'),
+  ]) {
+    try {
+      const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+      // If version.json has real data (not fallback unknowns), use it
+      if (versionData.commit && versionData.commit !== 'unknown') {
+        res.json(versionData);
+        return;
+      }
+    } catch (_) {
+      // continue to next path
+    }
   }
+
+  // Final fallback: use Railway runtime env vars if available
+  const railwayCommit = process.env.RAILWAY_GIT_COMMIT_SHA || '';
+  const railwayBranch = process.env.RAILWAY_GIT_BRANCH || 'unknown';
+  const commitShort = railwayCommit.length >= 7 ? railwayCommit.substring(0, 7) : null;
+
+  if (commitShort) {
+    res.json({
+      version: `v0.${commitShort}`,
+      commit: commitShort,
+      commitFull: railwayCommit,
+      branch: railwayBranch,
+      buildDate: new Date().toISOString(),
+      message: 'Deployed via Railway (runtime env)',
+    });
+    return;
+  }
+
+  res.json({
+    version: 'unknown',
+    commit: 'unknown',
+    error: 'version.json not found; RAILWAY_GIT_COMMIT_SHA not set',
+    buildDate: new Date().toISOString(),
+  });
 });
 
 // JSON body parser - only applied to server-side routes, NOT globally

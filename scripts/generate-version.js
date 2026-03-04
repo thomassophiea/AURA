@@ -57,6 +57,10 @@ VITE_APP_COMMIT_DATE=${commitDate}
     commitDate: commitDate,
     message: commitMessage,
     features: [
+      'React 19 + Vite 7 + Recharts 3 Upgrade',
+      'Error Boundaries & Railway Validation',
+      'Mobile UX Audit (badges, search, AP detail, health score)',
+      'Mobile Skeleton Loaders & Performance Analytics',
       'Data Normalization Layer (P0-002)',
       'Universal FilterBar Component (P0-003)',
       'Operational Health Summary Widget (P1-001)',
@@ -125,7 +129,10 @@ VITE_APP_COMMIT_DATE=unknown
     commitDate: 'unknown',
     message: 'Version Gate with Clean State on Deploy',
     features: [
-      'Fixed site selector to display names instead of IDs',
+      'React 19 + Vite 7 + Recharts 3 Upgrade',
+      'Error Boundaries & Railway Validation',
+      'Mobile UX Audit (badges, search, AP detail, health score)',
+      'Mobile Skeleton Loaders & Performance Analytics',
       'Data Normalization Layer (P0-002)',
       'Universal FilterBar Component (P0-003)',
       'Operational Health Summary Widget (P1-001)',

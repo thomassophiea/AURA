@@ -4,7 +4,7 @@
 builder = "nixpacks"
 
 [build.nixpacksPlan]
-phases.setup.nixPkgs = ["nodejs"]
+phases.setup.nixPkgs = ["nodejs", "git"]
 phases.install.cmds = [
   "npm ci --no-cache",
   "echo 'Build started at:' $(date -u)"
