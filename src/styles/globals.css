@@ -1951,3 +1951,248 @@ body::-webkit-scrollbar {
 .animate-value-flash {
   animation: value-flash 0.5s ease-in-out;
 }
+
+
+/* ==========================================================================
+   SYNTHWAVE / MIAMI VICE THEME
+   ========================================================================== */
+
+/* --- Neon CSS Variable Overrides --- */
+html.synthwave,
+html[data-theme="synthwave"] {
+  --background: rgba(6, 2, 20, 0.0);
+  --foreground: #f0e6ff;
+  --card: rgba(12, 5, 35, 0.75);
+  --card-foreground: #f0e6ff;
+  --popover: rgba(10, 4, 28, 0.96);
+  --popover-foreground: #f0e6ff;
+  --primary: #ff2d9b;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(255, 45, 155, 0.12);
+  --secondary-foreground: #ff2d9b;
+  --muted: rgba(255, 255, 255, 0.05);
+  --muted-foreground: rgba(200, 160, 255, 0.65);
+  --accent: rgba(0, 230, 255, 0.12);
+  --accent-foreground: #00e6ff;
+  --destructive: #ff3860;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 45, 155, 0.28);
+  --input: rgba(255, 45, 155, 0.12);
+  --ring: #ff2d9b;
+  --sidebar: rgba(5, 1, 18, 0.92);
+  --sidebar-foreground: #f0e6ff;
+  --sidebar-primary: #ff2d9b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(255, 45, 155, 0.14);
+  --sidebar-accent-foreground: #ff2d9b;
+  --sidebar-border: rgba(255, 45, 155, 0.22);
+  --sidebar-ring: #ff2d9b;
+  --chart-1: #ff2d9b;
+  --chart-2: #00e6ff;
+  --chart-3: #bf5fff;
+  --chart-4: #ff7b2c;
+  --chart-5: #ffe600;
+  --success: #39ff14;
+  --success-foreground: #000000;
+  --warning: #ffe600;
+  --warning-foreground: #000000;
+  --info: #00e6ff;
+  --info-foreground: #000000;
+}
+
+/* Override the heavy-handed dark theme background enforcement */
+html.dark.synthwave,
+html.dark.synthwave body {
+  background-color: transparent !important;
+  color: #f0e6ff !important;
+}
+
+/* --- Glassmorphism Cards --- */
+.synthwave .card,
+.synthwave [data-slot="card"] {
+  background: rgba(12, 5, 35, 0.72) !important;
+  border: 1px solid rgba(255, 45, 155, 0.30) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 155, 0.08),
+    0 4px 32px rgba(255, 0, 110, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+}
+
+.synthwave .card:hover,
+.synthwave [data-slot="card"]:hover {
+  border-color: rgba(255, 45, 155, 0.55) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 45, 155, 0.18),
+    0 0 22px rgba(255, 45, 155, 0.18),
+    0 8px 40px rgba(255, 0, 110, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07) !important;
+}
+
+/* --- Neon Sidebar --- */
+.synthwave .bg-sidebar,
+.synthwave [class*="bg-sidebar"] {
+  background: rgba(4, 1, 15, 0.92) !important;
+  border-right: 1px solid rgba(255, 45, 155, 0.20) !important;
+  box-shadow: 4px 0 32px rgba(255, 0, 110, 0.07), 4px 0 8px rgba(123, 47, 255, 0.05) !important;
+}
+
+/* Sidebar nav item active glow */
+.synthwave [data-active="true"],
+.synthwave [aria-current="page"] {
+  color: #ff2d9b !important;
+  text-shadow: 0 0 10px rgba(255, 45, 155, 0.6) !important;
+  background: rgba(255, 45, 155, 0.10) !important;
+}
+
+/* --- Neon Table --- */
+.synthwave thead th {
+  color: #00e6ff !important;
+  text-shadow: 0 0 10px rgba(0, 230, 255, 0.55), 0 0 20px rgba(0, 230, 255, 0.25) !important;
+  border-bottom: 1px solid rgba(0, 230, 255, 0.22) !important;
+  background: rgba(0, 40, 70, 0.25) !important;
+}
+
+.synthwave tbody tr:hover td {
+  background: rgba(255, 45, 155, 0.07) !important;
+}
+
+.synthwave tbody tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.015) !important;
+}
+
+.synthwave table {
+  border-color: rgba(255, 45, 155, 0.14) !important;
+}
+
+/* --- Neon Inputs --- */
+.synthwave input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.synthwave textarea,
+.synthwave select {
+  background: rgba(12, 5, 35, 0.75) !important;
+  border-color: rgba(255, 45, 155, 0.30) !important;
+  color: #f0e6ff !important;
+}
+
+.synthwave input:focus,
+.synthwave textarea:focus {
+  border-color: #ff2d9b !important;
+  box-shadow: 0 0 0 1px rgba(255, 45, 155, 0.6), 0 0 16px rgba(255, 45, 155, 0.28) !important;
+  outline: none !important;
+}
+
+/* --- Neon Scrollbar --- */
+.synthwave ::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.synthwave ::-webkit-scrollbar-track {
+  background: rgba(6, 2, 20, 0.8);
+}
+
+.synthwave ::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #ff2d9b, #7b2fff);
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(255, 45, 155, 0.7);
+}
+
+.synthwave ::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #ff5cc0, #9b5fff);
+}
+
+/* --- Neon Focus Ring --- */
+.synthwave *:focus-visible {
+  outline: 2px solid #ff2d9b !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 10px rgba(255, 45, 155, 0.5) !important;
+}
+
+/* --- Neon Dividers --- */
+.synthwave [class*="border-b"],
+.synthwave [class*="border-t"],
+.synthwave hr {
+  border-color: rgba(255, 45, 155, 0.18) !important;
+}
+
+/* --- Neon Typography --- */
+.synthwave h1,
+.synthwave h2,
+.synthwave h3 {
+  text-shadow: 0 0 20px rgba(255, 45, 155, 0.45), 0 0 40px rgba(255, 45, 155, 0.20);
+}
+
+/* --- Neon Popover / Dropdown --- */
+.synthwave [data-radix-popper-content-wrapper],
+.synthwave [role="dialog"],
+.synthwave [role="menu"],
+.synthwave [role="listbox"] {
+  background: rgba(8, 3, 24, 0.96) !important;
+  border-color: rgba(255, 45, 155, 0.38) !important;
+  box-shadow: 0 0 40px rgba(255, 0, 110, 0.18), 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+/* --- Neon Menu Items Hover --- */
+.synthwave [role="menuitem"]:hover,
+.synthwave [role="option"]:hover,
+.synthwave [data-highlighted] {
+  background: rgba(255, 45, 155, 0.12) !important;
+  color: #ff2d9b !important;
+}
+
+/* --- Neon Tab Active --- */
+.synthwave [role="tab"][data-state="active"] {
+  color: #ff2d9b !important;
+  border-bottom-color: #ff2d9b !important;
+  text-shadow: 0 0 10px rgba(255, 45, 155, 0.6) !important;
+}
+
+/* --- Status badge neon colors --- */
+.synthwave .status-healthy {
+  color: #39ff14 !important;
+  text-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
+}
+.synthwave .status-warning {
+  color: #ffe600 !important;
+  text-shadow: 0 0 8px rgba(255, 230, 0, 0.7);
+}
+.synthwave .status-critical {
+  color: #ff3860 !important;
+  text-shadow: 0 0 8px rgba(255, 56, 96, 0.7);
+}
+
+/* --- Equalizer bar animation --- */
+@keyframes eq-bounce {
+  0%, 100% { height: 4px; }
+  50% { height: 28px; }
+}
+
+@keyframes neon-text-pulse {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 45, 155, 0.7), 0 0 20px rgba(255, 45, 155, 0.4); }
+  50% { text-shadow: 0 0 20px rgba(255, 45, 155, 1.0), 0 0 40px rgba(255, 45, 155, 0.7), 0 0 60px rgba(255, 45, 155, 0.3); }
+}
+
+@keyframes neon-border-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 45, 155, 0.4), 0 0 20px rgba(255, 45, 155, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(255, 45, 155, 0.7), 0 0 40px rgba(255, 45, 155, 0.4), 0 0 60px rgba(123, 47, 255, 0.2); }
+}
+
+@keyframes scanlines-drift {
+  from { background-position: 0 0; }
+  to { background-position: 0 4px; }
+}
+
+.synthwave-eq-bar {
+  border-radius: 2px;
+  animation: eq-bounce 0.6s ease-in-out infinite alternate;
+  min-height: 4px;
+}
+
+.synthwave-title-glow {
+  animation: neon-text-pulse 2.5s ease-in-out infinite;
+}
+
+.synthwave-card-glow {
+  animation: neon-border-pulse 3s ease-in-out infinite;
+}

@@ -125,7 +125,14 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
   if (isMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50">
-        <Card className="bg-gradient-to-br from-purple-900/95 to-pink-900/95 border-2 border-pink-500 shadow-[0_0_30px_rgba(255,0,110,0.5)]">
+        <Card
+          className="border-2 border-pink-500 synthwave-card-glow"
+          style={{
+            background: 'rgba(8, 2, 28, 0.92)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 0 30px rgba(255,0,110,0.5), 0 0 60px rgba(123,47,255,0.2)',
+          }}
+        >
           <CardContent className="p-3 flex items-center gap-3">
             <Button
               size="sm"
@@ -139,7 +146,25 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
                 <Play className="h-4 w-4 text-cyan-400" />
               )}
             </Button>
-            <Music className="h-4 w-4 text-pink-400 animate-pulse" />
+            {/* Mini equalizer */}
+            <div className="flex items-end gap-0.5 h-5">
+              {[0, 1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className={isPlaying ? 'synthwave-eq-bar' : ''}
+                  style={{
+                    width: '3px',
+                    height: isPlaying ? undefined : '4px',
+                    background: i % 2 === 0
+                      ? 'linear-gradient(to top, #ff2d9b, #bf5fff)'
+                      : 'linear-gradient(to top, #00e6ff, #7b2fff)',
+                    borderRadius: '1px',
+                    animationDuration: isPlaying ? `${0.45 + i * 0.12}s` : undefined,
+                    animationDelay: isPlaying ? `${i * 0.08}s` : undefined,
+                  }}
+                />
+              ))}
+            </div>
             <Button
               size="sm"
               variant="ghost"
@@ -156,14 +181,31 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-96">
-      <Card className="bg-gradient-to-br from-purple-900/95 to-pink-900/95 border-2 border-pink-500 shadow-[0_0_40px_rgba(255,0,110,0.6)] backdrop-blur-sm">
+      <Card
+        className="border-2 border-pink-500 synthwave-card-glow"
+        style={{
+          background: 'rgba(6, 1, 22, 0.93)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          boxShadow: '0 0 40px rgba(255,0,110,0.55), 0 0 80px rgba(123,47,255,0.25), inset 0 1px 0 rgba(255,255,255,0.06)',
+        }}
+      >
         <CardContent className="p-6 space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Music className="h-5 w-5 text-pink-400" />
-              <h3 className="font-bold text-cyan-400 text-shadow-[0_0_10px_rgba(0,217,255,0.8)]">
-                MIAMI VICE PLAYER
+              <Music className="h-5 w-5 text-pink-400 animate-pulse" />
+              <h3
+                className="font-bold tracking-widest text-sm synthwave-title-glow"
+                style={{
+                  background: 'linear-gradient(90deg, #ff2d9b, #00e6ff, #ff2d9b)',
+                  backgroundSize: '200% auto',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  animation: 'synthwave-title-glow 2.5s ease-in-out infinite, gradient-shift 4s linear infinite',
+                }}
+              >
+                ◈ MIAMI VICE PLAYER ◈
               </h3>
             </div>
             <div className="flex gap-1">
@@ -186,18 +228,67 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
             </div>
           </div>
 
+          {/* Equalizer Bars */}
+          <div
+            className="flex items-end justify-center gap-1 rounded"
+            style={{
+              height: '40px',
+              padding: '4px 8px',
+              background: 'rgba(0,0,0,0.25)',
+              border: '1px solid rgba(255,45,155,0.15)',
+            }}
+          >
+            {Array.from({ length: 18 }).map((_, i) => (
+              <div
+                key={i}
+                className={isPlaying ? 'synthwave-eq-bar' : ''}
+                style={{
+                  flex: '1',
+                  height: isPlaying ? undefined : '3px',
+                  background: i % 3 === 0
+                    ? 'linear-gradient(to top, #ff2d9b, #ff6eb4)'
+                    : i % 3 === 1
+                      ? 'linear-gradient(to top, #7b2fff, #bf5fff)'
+                      : 'linear-gradient(to top, #00e6ff, #7b2fff)',
+                  borderRadius: '2px 2px 0 0',
+                  animationDuration: isPlaying ? `${0.35 + (i % 5) * 0.13}s` : undefined,
+                  animationDelay: isPlaying ? `${(i % 7) * 0.06}s` : undefined,
+                  minHeight: '3px',
+                }}
+              />
+            ))}
+          </div>
+
           {/* Track Info */}
-          <div className="text-center space-y-1 py-4 border-y border-pink-500/30">
-            <div className="text-lg font-bold text-pink-400 text-shadow-[0_0_10px_rgba(255,0,110,0.8)]">
+          <div
+            className="text-center space-y-1 py-3 rounded"
+            style={{
+              borderTop: '1px solid rgba(255,45,155,0.25)',
+              borderBottom: '1px solid rgba(0,230,255,0.20)',
+            }}
+          >
+            <div
+              className="text-base font-bold tracking-wide"
+              style={{
+                color: '#ff2d9b',
+                textShadow: '0 0 12px rgba(255,45,155,0.8), 0 0 24px rgba(255,45,155,0.4)',
+              }}
+            >
               {currentTrack.title}
             </div>
-            <div className="text-sm text-cyan-300">
+            <div
+              className="text-xs tracking-widest uppercase"
+              style={{
+                color: '#00e6ff',
+                textShadow: '0 0 8px rgba(0,230,255,0.6)',
+              }}
+            >
               {currentTrack.artist}
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Slider
               value={[currentTime]}
               max={duration || 100}
@@ -205,7 +296,10 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
               onValueChange={handleSeek}
               className="cursor-pointer"
             />
-            <div className="flex justify-between text-xs text-cyan-400">
+            <div
+              className="flex justify-between text-xs"
+              style={{ color: 'rgba(0,230,255,0.75)' }}
+            >
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -217,7 +311,7 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
               size="sm"
               variant="ghost"
               onClick={handlePrevious}
-              className="h-10 w-10 p-0 hover:bg-cyan-500/20"
+              className="h-10 w-10 p-0 hover:bg-cyan-500/20 transition-all"
             >
               <SkipBack className="h-5 w-5 text-cyan-400" />
             </Button>
@@ -225,12 +319,19 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
             <Button
               size="lg"
               onClick={togglePlay}
-              className="h-14 w-14 rounded-full bg-gradient-to-br from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 shadow-[0_0_20px_rgba(255,0,110,0.6)]"
+              className="h-16 w-16 rounded-full transition-all duration-200"
+              style={{
+                background: 'linear-gradient(135deg, #ff2d9b 0%, #7b2fff 100%)',
+                boxShadow: isPlaying
+                  ? '0 0 25px rgba(255,45,155,0.8), 0 0 50px rgba(123,47,255,0.5), 0 0 80px rgba(255,45,155,0.2)'
+                  : '0 0 15px rgba(255,45,155,0.5), 0 0 30px rgba(123,47,255,0.3)',
+                border: '1px solid rgba(255,255,255,0.15)',
+              }}
             >
               {isPlaying ? (
-                <Pause className="h-6 w-6 text-white" />
+                <Pause className="h-7 w-7 text-white" />
               ) : (
-                <Play className="h-6 w-6 text-white ml-1" />
+                <Play className="h-7 w-7 text-white ml-1" />
               )}
             </Button>
 
@@ -238,7 +339,7 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
               size="sm"
               variant="ghost"
               onClick={handleNext}
-              className="h-10 w-10 p-0 hover:bg-cyan-500/20"
+              className="h-10 w-10 p-0 hover:bg-cyan-500/20 transition-all"
             >
               <SkipForward className="h-5 w-5 text-cyan-400" />
             </Button>
@@ -265,18 +366,37 @@ export function SynthwaveMusicPlayer({ isVisible, onClose }: SynthwaveMusicPlaye
               onValueChange={(val) => setVolume(val[0])}
               className="flex-1"
             />
-            <span className="text-xs text-cyan-400 w-8 text-right">{volume}%</span>
+            <span
+              className="text-xs w-8 text-right"
+              style={{ color: 'rgba(0,230,255,0.75)' }}
+            >
+              {volume}%
+            </span>
           </div>
 
           {/* Track List Hint */}
-          <div className="text-xs text-center text-purple-300/70 pt-2 border-t border-pink-500/30">
-            Place your .mp3 files in /public/music/ folder
+          <div
+            className="text-xs text-center pt-2"
+            style={{
+              borderTop: '1px solid rgba(255,45,155,0.18)',
+              color: 'rgba(191,95,255,0.55)',
+            }}
+          >
+            Drop .mp3 files into /public/music/
           </div>
         </CardContent>
       </Card>
 
       {/* Hidden Audio Element */}
       <audio ref={audioRef} src={currentTrack.url} />
+
+      {/* Inline styles for gradient-shift animation */}
+      <style>{`
+        @keyframes gradient-shift {
+          0% { background-position: 0% center; }
+          100% { background-position: 200% center; }
+        }
+      `}</style>
     </div>
   );
 }

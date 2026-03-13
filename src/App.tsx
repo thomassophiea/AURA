@@ -1029,18 +1029,34 @@ export default function App() {
     <>
       {/* Miami Vice sunset background - fixed behind everything */}
       {theme === 'synthwave' && (
-        <div
-          className="fixed inset-0 w-screen h-screen"
-          style={{
-            zIndex: 0,
-            pointerEvents: 'none',
-            background: [
-              "url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed",
-              "radial-gradient(ellipse 30% 28% at 50% 50%, rgba(255,213,79,0.85) 0%, rgba(255,171,64,0.65) 25%, rgba(255,109,0,0.35) 50%, rgba(255,61,0,0.15) 70%, transparent 100%)",
-              "linear-gradient(to bottom, #0a0520 0%, #150a35 10%, #2d1260 20%, #5c1a8e 30%, #8e1580 37%, #c91880 43%, #e83068 47%, #ff5040 51%, #ff7830 55%, #ff5040 59%, #c91880 65%, #5c1a8e 75%, #2d1260 85%, #150a35 92%, #0a0520 100%)"
-            ].join(', ')
-          }}
-        />
+        <>
+          {/* Main gradient sky + SVG silhouette */}
+          <div
+            className="fixed inset-0 w-screen h-screen"
+            style={{
+              zIndex: 0,
+              pointerEvents: 'none',
+              background: [
+                "url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed",
+                /* Sun — positioned at 62% vertical to match SVG horizon */
+                "radial-gradient(ellipse 18% 13% at 50% 62%, rgba(255,248,100,1.0) 0%, rgba(255,210,60,0.90) 15%, rgba(255,140,30,0.65) 40%, rgba(255,60,10,0.25) 65%, transparent 100%)",
+                /* Outer sun corona */
+                "radial-gradient(ellipse 45% 22% at 50% 62%, rgba(255,100,30,0.22) 0%, transparent 100%)",
+                /* Sky gradient — deeper purple top, warm coral at horizon */
+                "linear-gradient(to bottom, #020010 0%, #070218 4%, #0d0430 10%, #1a0848 16%, #2d1260 24%, #5c1a8e 33%, #8e1580 40%, #c91880 45%, #e83068 49%, #ff5040 53%, #ff7830 57%, #e83068 61%, #c91880 67%, #5c1a8e 77%, #2d1260 87%, #0d0430 94%, #020010 100%)"
+              ].join(', ')
+            }}
+          />
+          {/* Scanline overlay — classic CRT feel */}
+          <div
+            className="fixed inset-0 w-screen h-screen"
+            style={{
+              zIndex: 2,
+              pointerEvents: 'none',
+              background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
+            }}
+          />
+        </>
       )}
       <div className={`h-screen flex ${theme === 'synthwave' ? '' : 'bg-background'}`} style={{ position: 'relative', zIndex: 1 }}>
         <Sidebar

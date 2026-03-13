@@ -1,43 +1,205 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080' preserveAspectRatio='xMidYMax slice'>
   <defs>
     <style>.f{fill:#06030e}.w{fill:#06030e;opacity:.35}</style>
+
+    <!-- Neon pink glow filter -->
+    <filter id="glow-pink" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="b1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="b2"/>
+      <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Neon cyan glow filter -->
+    <filter id="glow-cyan" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="b1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b2"/>
+      <feMerge><feMergeNode in="b2"/><feMergeNode in="b1"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Soft glow for stars -->
+    <filter id="glow-star" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Grid line vertical gradient: bright at horizon, fading down -->
+    <linearGradient id="vgrid-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff2d9b" stop-opacity="0.85"/>
+      <stop offset="60%" stop-color="#ff2d9b" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ff2d9b" stop-opacity="0.05"/>
+    </linearGradient>
+
+    <!-- Horizontal grid fade (edge to center) -->
+    <linearGradient id="hgrid-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ff2d9b" stop-opacity="0.50"/>
+      <stop offset="100%" stop-color="#ff2d9b" stop-opacity="0.05"/>
+    </linearGradient>
   </defs>
 
-  <!-- Ground / horizon with gentle hills -->
+  <!-- ===================== STARS ===================== -->
+  <g filter="url(#glow-star)">
+    <!-- Large bright stars -->
+    <circle cx="120"  cy="45"  r="1.8" fill="white" opacity="0.92"/>
+    <circle cx="450"  cy="30"  r="2.1" fill="white" opacity="0.85"/>
+    <circle cx="790"  cy="22"  r="1.6" fill="white" opacity="0.88"/>
+    <circle cx="1100" cy="38"  r="2.0" fill="white" opacity="0.90"/>
+    <circle cx="1430" cy="18"  r="1.7" fill="white" opacity="0.82"/>
+    <circle cx="1750" cy="40"  r="2.2" fill="white" opacity="0.87"/>
+    <!-- Medium stars -->
+    <circle cx="280"  cy="88"  r="1.2" fill="white" opacity="0.72"/>
+    <circle cx="620"  cy="70"  r="1.3" fill="white" opacity="0.77"/>
+    <circle cx="960"  cy="55"  r="1.1" fill="white" opacity="0.70"/>
+    <circle cx="1260" cy="78"  r="1.3" fill="white" opacity="0.74"/>
+    <circle cx="1580" cy="62"  r="1.1" fill="white" opacity="0.75"/>
+    <circle cx="1880" cy="90"  r="1.2" fill="white" opacity="0.70"/>
+    <!-- Small stars scattered -->
+    <circle cx="60"   cy="120" r="0.8" fill="white" opacity="0.60"/>
+    <circle cx="195"  cy="160" r="0.8" fill="white" opacity="0.52"/>
+    <circle cx="340"  cy="135" r="1.0" fill="white" opacity="0.65"/>
+    <circle cx="500"  cy="175" r="0.7" fill="white" opacity="0.55"/>
+    <circle cx="670"  cy="110" r="0.9" fill="white" opacity="0.62"/>
+    <circle cx="850"  cy="148" r="0.8" fill="white" opacity="0.50"/>
+    <circle cx="1010" cy="122" r="1.0" fill="white" opacity="0.65"/>
+    <circle cx="1160" cy="178" r="0.7" fill="white" opacity="0.55"/>
+    <circle cx="1320" cy="132" r="0.9" fill="white" opacity="0.60"/>
+    <circle cx="1490" cy="158" r="0.8" fill="white" opacity="0.50"/>
+    <circle cx="1640" cy="105" r="1.0" fill="white" opacity="0.65"/>
+    <circle cx="1800" cy="170" r="0.7" fill="white" opacity="0.55"/>
+    <circle cx="395"  cy="200" r="0.7" fill="white" opacity="0.45"/>
+    <circle cx="740"  cy="195" r="0.8" fill="white" opacity="0.48"/>
+    <circle cx="1080" cy="208" r="0.7" fill="white" opacity="0.45"/>
+    <circle cx="1415" cy="195" r="0.8" fill="white" opacity="0.48"/>
+    <circle cx="1720" cy="212" r="0.7" fill="white" opacity="0.42"/>
+    <!-- Neon-tinted stars -->
+    <circle cx="350"  cy="55"  r="1.3" fill="#ff8ed4" opacity="0.72" filter="url(#glow-star)"/>
+    <circle cx="720"  cy="42"  r="1.1" fill="#00e6ff" opacity="0.68" filter="url(#glow-star)"/>
+    <circle cx="980"  cy="88"  r="1.3" fill="#ff8ed4" opacity="0.72" filter="url(#glow-star)"/>
+    <circle cx="1350" cy="50"  r="1.1" fill="#00e6ff" opacity="0.68" filter="url(#glow-star)"/>
+    <circle cx="1700" cy="75"  r="1.3" fill="#ff8ed4" opacity="0.72" filter="url(#glow-star)"/>
+    <circle cx="530"  cy="165" r="0.9" fill="#bf5fff" opacity="0.60" filter="url(#glow-star)"/>
+    <circle cx="1200" cy="145" r="0.9" fill="#bf5fff" opacity="0.60" filter="url(#glow-star)"/>
+  </g>
+
+  <!-- ===================== NEON HORIZON LINE ===================== -->
+  <!-- Wide pink glow -->
+  <ellipse cx="960" cy="668" rx="960" ry="5" fill="rgba(255,45,155,0.55)" filter="url(#glow-pink)"/>
+  <!-- Narrow cyan line on top -->
+  <ellipse cx="960" cy="668" rx="700" ry="1.5" fill="rgba(0,230,255,0.80)" filter="url(#glow-cyan)"/>
+  <!-- Hard horizon line -->
+  <line x1="0" y1="668" x2="1920" y2="668" stroke="#ff2d9b" stroke-width="1.2" opacity="0.65"/>
+
+  <!-- ===================== PERSPECTIVE GRID ===================== -->
+  <!-- Vertical lines converging to vanishing point at (960, 668) -->
+  <g opacity="0.60">
+    <line x1="960" y1="668" x2="0"    y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.3"/>
+    <line x1="960" y1="668" x2="160"  y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.1"/>
+    <line x1="960" y1="668" x2="320"  y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.0"/>
+    <line x1="960" y1="668" x2="480"  y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.9"/>
+    <line x1="960" y1="668" x2="640"  y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.8"/>
+    <line x1="960" y1="668" x2="800"  y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.7"/>
+    <line x1="960" y1="668" x2="1120" y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.7"/>
+    <line x1="960" y1="668" x2="1280" y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.8"/>
+    <line x1="960" y1="668" x2="1440" y2="1080" stroke="url(#vgrid-grad)" stroke-width="0.9"/>
+    <line x1="960" y1="668" x2="1600" y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.0"/>
+    <line x1="960" y1="668" x2="1760" y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.1"/>
+    <line x1="960" y1="668" x2="1920" y2="1080" stroke="url(#vgrid-grad)" stroke-width="1.3"/>
+  </g>
+
+  <!-- Horizontal grid lines (perspective foreshortening) -->
+  <g>
+    <line x1="0" y1="725" x2="1920" y2="725" stroke="#ff2d9b" stroke-width="0.9" opacity="0.42"/>
+    <line x1="0" y1="778" x2="1920" y2="778" stroke="#ff2d9b" stroke-width="0.85" opacity="0.38"/>
+    <line x1="0" y1="828" x2="1920" y2="828" stroke="#ff2d9b" stroke-width="0.8"  opacity="0.33"/>
+    <line x1="0" y1="875" x2="1920" y2="875" stroke="#ff2d9b" stroke-width="0.75" opacity="0.28"/>
+    <line x1="0" y1="920" x2="1920" y2="920" stroke="#ff2d9b" stroke-width="0.7"  opacity="0.23"/>
+    <line x1="0" y1="962" x2="1920" y2="962" stroke="#ff2d9b" stroke-width="0.65" opacity="0.18"/>
+    <line x1="0" y1="1002" x2="1920" y2="1002" stroke="#ff2d9b" stroke-width="0.6" opacity="0.14"/>
+    <line x1="0" y1="1040" x2="1920" y2="1040" stroke="#ff2d9b" stroke-width="0.6" opacity="0.10"/>
+  </g>
+
+  <!-- ===================== GROUND / HORIZON FILL ===================== -->
   <path class='f' d='M0 680Q240 668 480 672Q720 676 960 670Q1200 664 1440 668Q1680 672 1920 665L1920 1080H0Z'/>
 
-  <!-- City skyline - left cluster -->
+  <!-- ===================== CITY SKYLINE - LEFT ===================== -->
+  <!-- Neon pink outline glow behind left buildings -->
+  <path fill="none" stroke="rgba(255,45,155,0.55)" stroke-width="2"
+    d='M80 680V635H100V618H120V635H140V598H155V580H170V598H190V618H210V600H225V588H240V608H260V625H280V612H300V640H320V680Z'
+    filter="url(#glow-pink)"/>
+  <!-- Left cluster solid -->
   <path class='f' d='M80 680V635H100V618H120V635H140V598H155V580H170V598H190V618H210V600H225V588H240V608H260V625H280V612H300V640H320V680Z'/>
+  <!-- Windows - warm amber -->
+  <g fill="rgba(255,210,80,0.65)" opacity="0.85">
+    <rect x="144" y="585" width="4" height="5" rx="0.5"/>
+    <rect x="152" y="585" width="4" height="5" rx="0.5"/>
+    <rect x="160" y="591" width="4" height="5" rx="0.5"/>
+    <rect x="144" y="595" width="4" height="5" rx="0.5"/>
+    <rect x="213" y="606" width="4" height="4" rx="0.5"/>
+    <rect x="221" y="606" width="4" height="4" rx="0.5"/>
+    <rect x="229" y="595" width="4" height="4" rx="0.5"/>
+    <rect x="237" y="601" width="4" height="4" rx="0.5"/>
+    <rect x="145" y="608" width="3" height="4" rx="0.5"/>
+    <rect x="161" y="602" width="3" height="4" rx="0.5"/>
+  </g>
+  <!-- Windows - neon cyan accent -->
+  <g fill="rgba(0,230,255,0.80)" opacity="0.75">
+    <rect x="155" y="594" width="3" height="4" rx="0.5" filter="url(#glow-cyan)"/>
+    <rect x="218" y="613" width="3" height="4" rx="0.5" filter="url(#glow-cyan)"/>
+  </g>
+  <!-- Windows - neon pink accent -->
+  <g fill="rgba(255,45,155,0.85)" opacity="0.70">
+    <rect x="168" y="600" width="3" height="3" rx="0.5" filter="url(#glow-pink)"/>
+    <rect x="231" y="606" width="3" height="3" rx="0.5" filter="url(#glow-pink)"/>
+  </g>
 
-  <!-- City skyline - right cluster -->
+  <!-- ===================== CITY SKYLINE - RIGHT ===================== -->
+  <!-- Neon cyan outline glow behind right buildings -->
+  <path fill="none" stroke="rgba(0,230,255,0.45)" stroke-width="2"
+    d='M1560 680V640H1580V622H1595V605H1610V588H1625V572H1640V555H1660V572H1675V560H1690V578H1710V562H1725V580H1740V595H1758V578H1775V598H1790V612H1810V600H1830V625H1850V680Z'
+    filter="url(#glow-cyan)"/>
+  <!-- Right cluster solid -->
   <path class='f' d='M1560 680V640H1580V622H1595V605H1610V588H1625V572H1640V555H1660V572H1675V560H1690V578H1710V562H1725V580H1740V595H1758V578H1775V598H1790V612H1810V600H1830V625H1850V680Z'/>
+  <!-- Windows - warm amber -->
+  <g fill="rgba(255,210,80,0.65)" opacity="0.85">
+    <rect x="1627" y="577" width="4" height="5" rx="0.5"/>
+    <rect x="1635" y="577" width="4" height="5" rx="0.5"/>
+    <rect x="1643" y="561" width="4" height="5" rx="0.5"/>
+    <rect x="1628" y="587" width="4" height="5" rx="0.5"/>
+    <rect x="1692" y="584" width="4" height="4" rx="0.5"/>
+    <rect x="1700" y="571" width="4" height="4" rx="0.5"/>
+    <rect x="1761" y="584" width="4" height="4" rx="0.5"/>
+    <rect x="1777" y="604" width="4" height="4" rx="0.5"/>
+    <rect x="1628" y="597" width="3" height="4" rx="0.5"/>
+    <rect x="1712" y="570" width="3" height="4" rx="0.5"/>
+  </g>
+  <!-- Windows - neon pink accent -->
+  <g fill="rgba(255,45,155,0.85)" opacity="0.75">
+    <rect x="1636" y="569" width="3" height="4" rx="0.5" filter="url(#glow-pink)"/>
+    <rect x="1762" y="592" width="3" height="4" rx="0.5" filter="url(#glow-pink)"/>
+  </g>
+  <!-- Windows - neon cyan accent -->
+  <g fill="rgba(0,230,255,0.80)" opacity="0.70">
+    <rect x="1651" y="560" width="3" height="3" rx="0.5" filter="url(#glow-cyan)"/>
+    <rect x="1726" y="580" width="3" height="3" rx="0.5" filter="url(#glow-cyan)"/>
+  </g>
 
-  <!-- City skyline - distant center-left -->
+  <!-- ===================== DISTANT CITY - CENTER ===================== -->
   <path class='f' d='M780 676V658H798V648H815V655H830V645H848V658H865V652H880V676Z'/>
-
-  <!-- City skyline - distant center-right -->
   <path class='f' d='M1040 672V655H1058V645H1075V638H1090V648H1108V640H1125V652H1140V660H1160V672Z'/>
 
-  <!-- === PALM TREES === -->
-  <!-- Each palm uses: trunk (tapered rect), then individual frond strokes -->
-
-  <!-- Palm 1 - far left, tall, leaning slightly right -->
+  <!-- ===================== PALM TREES ===================== -->
+  <!-- Palm 1 - far left -->
   <g class='f'>
-    <!-- trunk -->
     <path d='M175 680 Q178 600 185 520 Q190 440 195 380 L199 380 Q194 440 189 520 Q184 600 181 680Z'/>
-    <!-- fronds - left drooping -->
     <path d='M197 380 Q170 360 130 380 Q110 390 80 420 L82 416 Q112 384 132 374 Q170 354 197 376Z'/>
     <path d='M197 378 Q165 345 120 340 Q95 338 55 355 L57 350 Q97 332 122 334 Q167 339 197 372Z'/>
     <path d='M196 375 Q175 340 148 310 Q130 290 100 280 L103 276 Q133 284 152 305 Q178 334 198 370Z'/>
-    <!-- fronds - right drooping -->
     <path d='M197 380 Q225 365 265 385 Q285 395 315 425 L313 421 Q283 389 263 379 Q223 359 197 376Z'/>
     <path d='M198 378 Q230 350 280 348 Q305 348 340 365 L338 360 Q303 342 278 342 Q228 344 198 372Z'/>
     <path d='M198 375 Q220 342 250 318 Q270 300 300 292 L298 288 Q268 294 247 312 Q218 336 197 370Z'/>
-    <!-- frond - upward -->
     <path d='M197 380 Q200 350 210 320 Q218 295 230 270 L227 270 Q215 295 207 320 Q198 350 194 378Z'/>
   </g>
 
-  <!-- Palm 2 - left, medium, leaning slightly left -->
+  <!-- Palm 2 - left -->
   <g class='f'>
     <path d='M365 680 Q362 610 358 540 Q355 480 350 430 L354 430 Q359 480 362 540 Q366 610 369 680Z'/>
     <path d='M352 430 Q320 415 280 430 Q260 440 230 465 L232 461 Q262 434 282 424 Q322 409 352 426Z'/>
@@ -49,7 +211,7 @@
     <path d='M352 430 Q350 400 345 370 Q342 345 338 318 L341 318 Q345 345 348 370 Q353 400 355 428Z'/>
   </g>
 
-  <!-- Palm 3 - center-left, tall -->
+  <!-- Palm 3 - center-left -->
   <g class='f'>
     <path d='M690 678 Q694 590 698 510 Q702 430 708 370 L712 370 Q706 430 702 510 Q698 590 694 678Z'/>
     <path d='M710 370 Q680 355 640 372 Q618 382 588 410 L590 406 Q620 378 642 366 Q682 349 710 366Z'/>
@@ -61,7 +223,7 @@
     <path d='M710 370 Q712 340 718 310 Q722 285 730 260 L727 260 Q720 285 715 310 Q710 340 708 368Z'/>
   </g>
 
-  <!-- Palm 4 - center-right, medium -->
+  <!-- Palm 4 - center-right -->
   <g class='f'>
     <path d='M1250 675 Q1252 600 1255 530 Q1258 465 1262 415 L1266 415 Q1262 465 1259 530 Q1256 600 1254 675Z'/>
     <path d='M1264 415 Q1235 400 1195 418 Q1175 428 1145 455 L1147 451 Q1177 424 1197 412 Q1237 394 1264 412Z'/>
@@ -85,7 +247,7 @@
     <path d='M1674 330 Q1676 298 1682 265 Q1686 238 1694 210 L1691 210 Q1684 238 1679 265 Q1674 298 1672 328Z'/>
   </g>
 
-  <!-- Palm 6 - far right, medium, leaning right -->
+  <!-- Palm 6 - far right -->
   <g class='f'>
     <path d='M1810 680 Q1814 608 1820 545 Q1826 485 1832 435 L1836 435 Q1830 485 1824 545 Q1818 608 1814 680Z'/>
     <path d='M1834 435 Q1808 420 1772 435 Q1752 445 1725 470 L1727 466 Q1754 439 1774 429 Q1810 414 1834 432Z'/>
@@ -96,12 +258,18 @@
     <path d='M1834 435 Q1838 405 1845 378 Q1850 355 1858 330 L1855 330 Q1848 355 1842 378 Q1836 405 1832 433Z'/>
   </g>
 
-  <!-- Water reflection - darker band -->
+  <!-- ===================== WATER REFLECTION ===================== -->
   <rect class='w' x='0' y='730' width='1920' height='350'/>
 
-  <!-- Subtle water ripple lines -->
-  <line x1='0' y1='755' x2='1920' y2='755' stroke='#06030e' stroke-width='1.5' opacity='.12'/>
-  <line x1='0' y1='790' x2='1920' y2='792' stroke='#06030e' stroke-width='1' opacity='.10'/>
-  <line x1='0' y1='840' x2='1920' y2='838' stroke='#06030e' stroke-width='1' opacity='.08'/>
-  <line x1='0' y1='900' x2='1920' y2='902' stroke='#06030e' stroke-width='1' opacity='.06'/>
+  <!-- Neon water ripple lines -->
+  <line x1='0' y1='755' x2='1920' y2='755' stroke='#ff2d9b' stroke-width='1.5' opacity='.22' filter="url(#glow-pink)"/>
+  <line x1='0' y1='792' x2='1920' y2='792' stroke='#ff2d9b' stroke-width='1.0' opacity='.16'/>
+  <line x1='0' y1='838' x2='1920' y2='838' stroke='rgba(0,230,255,0.6)' stroke-width='1.0' opacity='.14'/>
+  <line x1='0' y1='890' x2='1920' y2='890' stroke='#ff2d9b' stroke-width='0.8' opacity='.10'/>
+  <line x1='0' y1='940' x2='1920' y2='940' stroke='rgba(0,230,255,0.4)' stroke-width='0.7' opacity='.08'/>
+
+  <!-- Sun reflection column in water -->
+  <ellipse cx='960' cy='800' rx='110' ry='7' fill='rgba(255,130,40,0.35)'/>
+  <ellipse cx='960' cy='835' rx='75'  ry='4' fill='rgba(255,80,40,0.22)'/>
+  <ellipse cx='960' cy='865' rx='50'  ry='3' fill='rgba(255,45,155,0.15)'/>
 </svg>
