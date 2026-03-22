@@ -110,6 +110,18 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
       url = `https://${url}`;
     }
 
+    // Validate the URL is well-formed and uses an allowed scheme
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        toast.error('Controller URL must use http or https');
+        return;
+      }
+    } catch {
+      toast.error('Invalid controller URL — please enter a valid address');
+      return;
+    }
+
     const newController = tenantService.addQuickController(
       controllerForm.name.trim(),
       url
@@ -124,6 +136,18 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
   const handleEditController = async () => {
     if (!editingController) return;
+
+    const url = controllerForm.url.trim();
+    try {
+      const parsed = new URL(url.startsWith('http') ? url : `https://${url}`);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        toast.error('Controller URL must use http or https');
+        return;
+      }
+    } catch {
+      toast.error('Invalid controller URL — please enter a valid address');
+      return;
+    }
 
     await tenantService.updateController(editingController.id, {
       name: controllerForm.name,

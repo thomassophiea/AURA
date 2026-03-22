@@ -429,24 +429,27 @@ class TenantService {
   // === Controller Credentials ===
 
   async saveControllerCredentials(
-    controllerId: string, 
+    controllerId: string,
     credentials: Omit<ControllerCredentials, 'controller_id'>
   ): Promise<void> {
-    // For security, we store credentials in Supabase with encryption
-    // In a production app, use Supabase Vault or similar
+    // WARNING: passwords are NOT encrypted here. Only the username / credential_type
+    // are persisted to Supabase. Storing plaintext passwords in the database or
+    // localStorage is a security risk — use Supabase Vault (or omit passwords
+    // entirely and re-prompt the user each session) before shipping to production.
     const { error } = await supabase
       .from('controller_credentials')
       .upsert({
         controller_id: controllerId,
-        ...credentials,
-        // Note: In production, encrypt the password before storing
-        encrypted_password: credentials.password
+        credential_type: credentials.credential_type,
+        username: credentials.username,
+        // Do NOT persist the password — column is misleadingly named; leave null
+        encrypted_password: null
       });
 
     if (error) {
-      // Fallback: store in localStorage (less secure, for development)
-      const key = `controller_creds_${controllerId}`;
-      localStorage.setItem(key, JSON.stringify(credentials));
+      // Supabase unavailable — skip localStorage fallback to avoid storing
+      // plaintext credentials in the browser.
+      console.warn('[TenantService] Could not save controller credentials:', error.message);
     }
   }
 
@@ -454,7 +457,7 @@ class TenantService {
     try {
       const { data, error } = await supabase
         .from('controller_credentials')
-        .select('*')
+        .select('controller_id, credential_type, username')
         .eq('controller_id', controllerId)
         .single();
 
@@ -464,13 +467,10 @@ class TenantService {
         controller_id: data.controller_id,
         credential_type: data.credential_type,
         username: data.username,
-        password: data.encrypted_password // In production, decrypt
+        password: '' // Password is never persisted — caller must re-prompt the user
       };
     } catch {
-      // Fallback to localStorage
-      const key = `controller_creds_${controllerId}`;
-      const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : null;
+      return null;
     }
   }
 

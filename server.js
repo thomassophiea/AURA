@@ -76,6 +76,18 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Controller-URL']
 }));
 
+// Security headers — applied to every response before routes run
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  // X-XSS-Protection is deprecated in modern browsers; setting to 0 disables
+  // the legacy XSS auditor which can itself introduce vulnerabilities.
+  res.setHeader('X-XSS-Protection', '0');
+  next();
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -132,6 +144,50 @@ app.get('/api/version', async (req, res) => {
 // the request body stream, preventing http-proxy-middleware from forwarding
 // POST/PUT bodies to the controller (breaks login and all write operations)
 const jsonParser = express.json();
+
+// ==================== Simple in-memory rate limiter ====================
+// Limits per-IP requests on expensive/unauthenticated server-side endpoints.
+// Not a substitute for a production rate-limiting proxy, but prevents trivial abuse.
+const rateLimitWindows = new Map(); // ip -> { count, resetAt }
+
+function rateLimit({ windowMs = 60_000, max = 30 } = {}) {
+  return (req, res, next) => {
+    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const now = Date.now();
+    let entry = rateLimitWindows.get(ip);
+    if (!entry || entry.resetAt < now) {
+      entry = { count: 1, resetAt: now + windowMs };
+      rateLimitWindows.set(ip, entry);
+      return next();
+    }
+    entry.count += 1;
+    if (entry.count > max) {
+      res.setHeader('Retry-After', Math.ceil((entry.resetAt - now) / 1000));
+      return res.status(429).json({ error: 'Too Many Requests' });
+    }
+    next();
+  };
+}
+
+// Evict stale entries every 10 minutes to prevent unbounded memory growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitWindows) {
+    if (entry.resetAt < now) rateLimitWindows.delete(ip);
+  }
+}, 600_000);
+
+// ==================== Auth guard for server-side endpoints ====================
+// The real token is validated by the controller on every proxied request.
+// For server-side mock endpoints, we just verify a Bearer token is present so
+// unauthenticated callers get a 401 rather than open data access.
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ') || auth.length < 10) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  next();
+}
 
 // ==================== Server-side tools & in-memory stores ====================
 // These run server-side since the controller doesn't expose these endpoints
@@ -252,7 +308,9 @@ async function performPing(host, count) {
   };
 }
 
-app.post('/api/management/platformmanager/v1/network/ping', jsonParser, async (req, res) => {
+const diagnosticRateLimit = rateLimit({ windowMs: 60_000, max: 20 });
+
+app.post('/api/management/platformmanager/v1/network/ping', requireAuth, diagnosticRateLimit, jsonParser, async (req, res) => {
   const { host, count = 4 } = req.body;
   if (!isValidHost(host)) {
     return res.status(400).json({ error: 'Invalid hostname or IP address' });
@@ -286,7 +344,7 @@ function parseTracerouteOutput(stdout) {
   return hops;
 }
 
-app.post('/api/management/platformmanager/v1/network/traceroute', jsonParser, async (req, res) => {
+app.post('/api/management/platformmanager/v1/network/traceroute', requireAuth, diagnosticRateLimit, jsonParser, async (req, res) => {
   const { host } = req.body;
   if (!isValidHost(host)) {
     return res.status(400).json({ error: 'Invalid hostname or IP address' });
@@ -345,7 +403,7 @@ app.post('/api/management/platformmanager/v1/network/traceroute', jsonParser, as
   }
 });
 
-app.post('/api/management/platformmanager/v1/network/dns', jsonParser, async (req, res) => {
+app.post('/api/management/platformmanager/v1/network/dns', requireAuth, diagnosticRateLimit, jsonParser, async (req, res) => {
   const { hostname } = req.body;
   if (!isValidHost(hostname)) {
     return res.status(400).json({ error: 'Invalid hostname' });
@@ -373,11 +431,11 @@ app.post('/api/management/platformmanager/v1/network/dns', jsonParser, async (re
 // ==================== Configuration Backup Management ====================
 // Controller doesn't expose backup endpoints via REST API
 
-app.get('/api/management/platformmanager/v1/configuration/backups', (req, res) => {
+app.get('/api/management/platformmanager/v1/configuration/backups', requireAuth, (_req, res) => {
   res.json(backupStore);
 });
 
-app.post('/api/management/platformmanager/v1/configuration/backup', jsonParser, (req, res) => {
+app.post('/api/management/platformmanager/v1/configuration/backup', requireAuth, jsonParser, (req, res) => {
   const filename = req.body?.filename || `backup-${Date.now()}.zip`;
   const backup = {
     filename,
@@ -390,7 +448,7 @@ app.post('/api/management/platformmanager/v1/configuration/backup', jsonParser, 
   res.status(201).json(backup);
 });
 
-app.post('/api/management/platformmanager/v1/configuration/restore', jsonParser, (req, res) => {
+app.post('/api/management/platformmanager/v1/configuration/restore', requireAuth, jsonParser, (req, res) => {
   const { filename } = req.body || {};
   const backup = backupStore.find(b => b.filename === filename);
   if (!backup) {
@@ -400,21 +458,21 @@ app.post('/api/management/platformmanager/v1/configuration/restore', jsonParser,
   res.json({ success: true, message: 'Configuration restore initiated', filename });
 });
 
-app.get('/api/management/platformmanager/v1/configuration/download/:filename', (req, res) => {
+app.get('/api/management/platformmanager/v1/configuration/download/:filename', requireAuth, (req, res) => {
   const backup = backupStore.find(b => b.filename === req.params.filename);
   if (!backup) {
     return res.status(404).json({ error: 'Backup not found' });
   }
-  // Return a placeholder blob
+  // Sanitize filename for Content-Disposition — strip any path separators or quotes
+  const safeFilename = backup.filename.replace(/[/\\'"]/g, '_');
   res.setHeader('Content-Type', 'application/octet-stream');
-  res.setHeader('Content-Disposition', `attachment; filename="${req.params.filename}"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
   res.send(Buffer.from(`AURA Configuration Backup\nCreated: ${backup.created}\n`));
 });
 
 // ==================== Flash Memory Management ====================
 
-app.get('/api/management/platformmanager/v1/flash/files', (req, res) => {
-  // Return flash files based on backup store
+app.get('/api/management/platformmanager/v1/flash/files', requireAuth, (_req, res) => {
   const files = backupStore.map(b => ({
     filename: b.filename,
     size: b.size,
@@ -423,7 +481,7 @@ app.get('/api/management/platformmanager/v1/flash/files', (req, res) => {
   res.json(files);
 });
 
-app.get('/api/management/platformmanager/v1/flash/usage', (req, res) => {
+app.get('/api/management/platformmanager/v1/flash/usage', requireAuth, (_req, res) => {
   const totalSize = 4 * 1024 * 1024 * 1024; // 4GB
   const usedSize = backupStore.reduce((sum, b) => sum + (b.size || 0), 0) + (512 * 1024 * 1024); // files + system
   res.json({
@@ -433,7 +491,7 @@ app.get('/api/management/platformmanager/v1/flash/usage', (req, res) => {
   });
 });
 
-app.delete('/api/management/platformmanager/v1/flash/files/:filename', (req, res) => {
+app.delete('/api/management/platformmanager/v1/flash/files/:filename', requireAuth, (req, res) => {
   const idx = backupStore.findIndex(b => b.filename === req.params.filename);
   if (idx !== -1) {
     backupStore.splice(idx, 1);
@@ -445,7 +503,7 @@ app.delete('/api/management/platformmanager/v1/flash/files/:filename', (req, res
 // ==================== License Management ====================
 // Controller doesn't expose license endpoints via REST API
 
-app.get('/api/management/platformmanager/v1/license/info', (req, res) => {
+app.get('/api/management/platformmanager/v1/license/info', requireAuth, (_req, res) => {
   res.json({
     licenses: [],
     totalLicenses: 0,
@@ -454,7 +512,7 @@ app.get('/api/management/platformmanager/v1/license/info', (req, res) => {
   });
 });
 
-app.get('/api/management/platformmanager/v1/license/usage', (req, res) => {
+app.get('/api/management/platformmanager/v1/license/usage', requireAuth, (_req, res) => {
   res.json({
     totalDevices: 0,
     licensedDevices: 0,
@@ -463,7 +521,7 @@ app.get('/api/management/platformmanager/v1/license/usage', (req, res) => {
   });
 });
 
-app.post('/api/management/platformmanager/v1/license/install', jsonParser, (req, res) => {
+app.post('/api/management/platformmanager/v1/license/install', requireAuth, jsonParser, (req, res) => {
   const { licenseKey } = req.body || {};
   if (!licenseKey) {
     return res.status(400).json({ error: 'License key required' });
@@ -475,20 +533,20 @@ app.post('/api/management/platformmanager/v1/license/install', jsonParser, (req,
 // ==================== Events & Alarms ====================
 // Controller doesn't expose event/alarm endpoints via REST API
 
-app.get('/api/management/v1/events', (req, res) => {
+app.get('/api/management/v1/events', requireAuth, (_req, res) => {
   res.json(eventStore);
 });
 
-app.get('/api/management/v1/alarms', (req, res) => {
+app.get('/api/management/v1/alarms', requireAuth, (_req, res) => {
   res.json(alarmStore);
 });
 
-app.get('/api/management/v1/alarms/active', (req, res) => {
+app.get('/api/management/v1/alarms/active', requireAuth, (_req, res) => {
   const active = alarmStore.filter(a => a.status === 'active');
   res.json(active);
 });
 
-app.post('/api/management/v1/alarms/:id/acknowledge', jsonParser, (req, res) => {
+app.post('/api/management/v1/alarms/:id/acknowledge', requireAuth, jsonParser, (req, res) => {
   const alarm = alarmStore.find(a => a.id === req.params.id);
   if (alarm) {
     alarm.status = 'acknowledged';
@@ -496,7 +554,7 @@ app.post('/api/management/v1/alarms/:id/acknowledge', jsonParser, (req, res) => 
   res.json({ success: true });
 });
 
-app.post('/api/management/v1/alarms/:id/clear', jsonParser, (req, res) => {
+app.post('/api/management/v1/alarms/:id/clear', requireAuth, jsonParser, (req, res) => {
   const idx = alarmStore.findIndex(a => a.id === req.params.id);
   if (idx !== -1) {
     alarmStore.splice(idx, 1);
@@ -509,16 +567,16 @@ app.post('/api/management/v1/alarms/:id/clear', jsonParser, (req, res) => {
 
 const rogueAPStore = [];
 
-app.get('/api/management/v1/security/rogue-ap/list', (req, res) => {
+app.get('/api/management/v1/security/rogue-ap/list', requireAuth, (_req, res) => {
   res.json(rogueAPStore);
 });
 
-app.post('/api/management/v1/security/rogue-ap/detect', jsonParser, (req, res) => {
+app.post('/api/management/v1/security/rogue-ap/detect', requireAuth, jsonParser, (_req, res) => {
   console.log('[Security] Rogue AP scan initiated');
   res.json({ success: true, message: 'Rogue AP scan initiated' });
 });
 
-app.post('/api/management/v1/security/rogue-ap/:mac/classify', jsonParser, (req, res) => {
+app.post('/api/management/v1/security/rogue-ap/:mac/classify', requireAuth, jsonParser, (req, res) => {
   const ap = rogueAPStore.find(a => a.macAddress === req.params.mac);
   if (ap) {
     ap.classification = req.body?.classification || 'unknown';
@@ -526,20 +584,19 @@ app.post('/api/management/v1/security/rogue-ap/:mac/classify', jsonParser, (req,
   res.json({ success: true });
 });
 
-app.get('/api/management/v1/security/threats', (req, res) => {
+app.get('/api/management/v1/security/threats', requireAuth, (_req, res) => {
   res.json([]);
 });
 
 // ==================== Guest Management ====================
 // Controller uses /v1/eguest for portal config, not individual guest accounts
 
-app.get('/api/management/v1/guests', (req, res) => {
-  // Filter out expired guests
+app.get('/api/management/v1/guests', requireAuth, (_req, res) => {
   const now = Date.now();
   res.json(guestStore.filter(g => !g.expirationDate || new Date(g.expirationDate).getTime() > now - 86400000));
 });
 
-app.post('/api/management/v1/guests/create', jsonParser, (req, res) => {
+app.post('/api/management/v1/guests/create', requireAuth, jsonParser, (req, res) => {
   const { name, email, duration, company } = req.body || {};
   if (!name || !email) {
     return res.status(400).json({ error: 'Name and email are required' });
@@ -559,7 +616,7 @@ app.post('/api/management/v1/guests/create', jsonParser, (req, res) => {
   res.status(201).json(guest);
 });
 
-app.delete('/api/management/v1/guests/:id', (req, res) => {
+app.delete('/api/management/v1/guests/:id', requireAuth, (req, res) => {
   const idx = guestStore.findIndex(g => g.id === req.params.id);
   if (idx !== -1) {
     const removed = guestStore.splice(idx, 1);
@@ -568,7 +625,7 @@ app.delete('/api/management/v1/guests/:id', (req, res) => {
   res.json({ success: true });
 });
 
-app.post('/api/management/v1/guests/:id/voucher', jsonParser, (req, res) => {
+app.post('/api/management/v1/guests/:id/voucher', requireAuth, jsonParser, (req, res) => {
   const guest = guestStore.find(g => g.id === req.params.id);
   if (!guest) {
     return res.status(404).json({ error: 'Guest not found' });
@@ -584,15 +641,14 @@ app.post('/api/management/v1/guests/:id/voucher', jsonParser, (req, res) => {
   res.json(voucher);
 });
 
-app.get('/api/management/v1/guests/portal/config', (req, res) => {
+app.get('/api/management/v1/guests/portal/config', requireAuth, (_req, res) => {
   res.json(null);
 });
 
 // ==================== Alerts ====================
 // Controller doesn't expose an alerts REST endpoint
 
-app.get('/api/management/v1/alerts', (req, res) => {
-  // Return empty alerts array - no controller endpoint available
+app.get('/api/management/v1/alerts', requireAuth, (_req, res) => {
   res.json([]);
 });
 
@@ -978,17 +1034,33 @@ app.get('/api/oui/lookup', (req, res) => {
   res.json({ vendor, oui, mac: String(mac) });
 });
 
+// Block loopback and cloud-metadata addresses to prevent SSRF via X-Controller-URL.
+// RFC 1918 private ranges are intentionally allowed — on-premise controllers live there.
+function isSsrfBlocked(hostname) {
+  const h = hostname.toLowerCase();
+  // Loopback
+  if (h === 'localhost' || h === '::1') return true;
+  const parts = h.split('.').map(Number);
+  if (parts.length === 4 && parts.every(n => !isNaN(n))) {
+    const [a, b] = parts;
+    if (a === 127) return true;                        // 127.x.x.x loopback
+    if (a === 169 && b === 254) return true;           // 169.254.x.x link-local / cloud metadata
+  }
+  return false;
+}
+
 // Helper function to get controller URL from request
 function getControllerUrl(req) {
   // Check for X-Controller-URL header (set by frontend when using dynamic controllers)
   const controllerHeader = req.headers['x-controller-url'];
   if (controllerHeader) {
-    // Validate URL format to prevent SSRF
     try {
       const url = new URL(controllerHeader);
-      if (url.protocol === 'https:' || url.protocol === 'http:') {
+      if ((url.protocol === 'https:' || url.protocol === 'http:') &&
+          !isSsrfBlocked(url.hostname)) {
         return controllerHeader;
       }
+      console.warn('[Proxy] Blocked SSRF-risk controller URL:', controllerHeader);
     } catch (e) {
       console.warn('[Proxy] Invalid controller URL in header:', controllerHeader);
     }
@@ -1039,13 +1111,31 @@ const proxyOptions = {
     proxyReq.removeHeader('x-controller-url');
   },
 
-  onProxyRes: (proxyRes, req, res) => {
+  onProxyRes: (proxyRes, req, _res) => {
     // Log response status
     console.log(`[Proxy] ${req.method} ${req.url} <- ${proxyRes.statusCode}`);
 
-    // Add CORS headers to response
-    proxyRes.headers['Access-Control-Allow-Origin'] = req.headers.origin || '*';
-    proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+    // Override CORS headers from the upstream controller so they respect our
+    // ALLOWED_ORIGINS whitelist instead of blindly reflecting any origin.
+    const requestOrigin = req.headers.origin;
+    const isAllowed =
+      !requestOrigin ||                                     // server-to-server (no Origin)
+      configuredOrigins.length === 0 ||                    // no whitelist configured
+      configuredOrigins.includes(requestOrigin) ||         // explicitly whitelisted
+      (process.env.NODE_ENV !== 'production' &&
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(requestOrigin)); // localhost in dev
+
+    if (isAllowed && requestOrigin) {
+      proxyRes.headers['Access-Control-Allow-Origin'] = requestOrigin;
+      proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+    } else if (isAllowed) {
+      // Server-to-server: remove any upstream CORS headers so they don't mislead
+      delete proxyRes.headers['access-control-allow-origin'];
+    } else {
+      // Origin not in whitelist — strip CORS headers; the browser will block the response
+      delete proxyRes.headers['access-control-allow-origin'];
+      delete proxyRes.headers['access-control-allow-credentials'];
+    }
   },
 
   onError: (err, req, res) => {
