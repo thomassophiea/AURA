@@ -17,14 +17,14 @@ export const branding: Record<ThemeMode, BrandConfig> = {
   default: {
     name: 'AURA',
     fullName: 'AURA',
-    tagline: 'Autonomous Platform Intelligence',
+    tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   dark: {
     name: 'AURA',
     fullName: 'AURA',
-    tagline: 'Autonomous Platform Intelligence',
+    tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   }

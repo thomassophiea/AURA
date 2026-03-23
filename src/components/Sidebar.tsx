@@ -162,7 +162,12 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           {!isCollapsed && (
             <div className="flex items-center space-x-2">
               <div className="text-foreground">
-                <span className="text-muted-foreground text-xs">{branding.fullName}</span>
+                <span className="font-semibold text-sm tracking-widest">{branding.fullName}</span>
+                {branding.tagline && (
+                  <p className="text-[10px] text-muted-foreground/60 tracking-wide leading-tight mt-0.5">
+                    {branding.tagline}
+                  </p>
+                )}
               </div>
             </div>
           )}

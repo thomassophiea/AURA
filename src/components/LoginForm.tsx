@@ -283,7 +283,16 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-bold">AURA</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-widest">AURA</CardTitle>
+            <div className="flex items-center justify-center gap-1.5 mt-1 text-[11px]">
+              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">utonomous</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">U</span><span className="text-muted-foreground">nified</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">R</span><span className="text-muted-foreground">adio</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">gent</span></span>
+            </div>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' : 'Sign in to continue'}
             </CardDescription>
