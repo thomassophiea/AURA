@@ -279,11 +279,11 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
             <div className="flex justify-center mb-4">
               <ImageWithFallback 
                 src={extremeNetworksLogo}
-                alt="API Platform"
+                alt="AURA"
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl"><span className="font-bold">API</span> | Integration ONE</CardTitle>
+            <CardTitle className="text-2xl font-bold">AURA</CardTitle>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' : 'Sign in to continue'}
             </CardDescription>

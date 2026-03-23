@@ -93,7 +93,7 @@ const pageInfo = {
   'guest-management': { title: 'Guest Access', description: 'Manage guest wireless access accounts' },
   'administration': { title: 'Administration', description: 'System administration, users, applications, and licensing' },
   'api-test': { title: 'API Test Tool', description: 'Test and explore API endpoints' },
-  'api-documentation': { title: 'API Documentation', description: 'API Platform REST API reference' },
+  'api-documentation': { title: 'API Documentation', description: 'AURA REST API reference' },
   'configure-sites': { title: 'Sites', description: 'Manage and configure network sites and locations' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },

@@ -579,7 +579,7 @@ export function ApiTestTool() {
     <div className="space-y-6">
       <div>
 
-        <p className="text-muted-foreground">Test and explore API Platform endpoints</p>
+        <p className="text-muted-foreground">Test and explore AURA endpoints</p>
       </div>
 
       <Tabs defaultValue="test" className="space-y-4">
@@ -667,7 +667,7 @@ export function ApiTestTool() {
                 <CardHeader>
                   <CardTitle>API Request</CardTitle>
                   <CardDescription>
-                    Make authenticated requests to the API Platform
+                    Make authenticated requests to the AURA
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

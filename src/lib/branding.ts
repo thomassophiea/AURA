@@ -15,15 +15,15 @@ export interface BrandConfig {
 
 export const branding: Record<ThemeMode, BrandConfig> = {
   default: {
-    name: 'API',
-    fullName: 'API | Integration ONE',
+    name: 'AURA',
+    fullName: 'AURA',
     tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   dark: {
-    name: 'API',
-    fullName: 'API | Integration ONE',
+    name: 'AURA',
+    fullName: 'AURA',
     tagline: 'Autonomous Platform Intelligence',
     logo: '/logo.svg',
     icon: '/favicon.ico'

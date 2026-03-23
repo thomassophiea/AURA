@@ -69,11 +69,11 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
   const menuItems = [
     {
       type: 'item',
-      label: 'About API Platform',
+      label: 'About AURA',
       icon: null,
       beta: true,
       action: () => {
-        console.log('About API Platform');
+        console.log('About AURA');
       }
     },
     {
