@@ -63,7 +63,6 @@ import { AIInsightsPanel } from './AIInsightsPanel';
 import { TimelineCursorControls } from './TimelineCursorControls';
 import { EnvironmentProfileSelector } from './EnvironmentProfileSelector';
 import { AnimatedValue } from './ui/animated-value';
-import { ContextualInsightsDashboard } from './ContextualInsightsDashboard';
 import { VenueStatisticsWidget } from './VenueStatisticsWidget';
 import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
 import { AuditLogsWidget } from './AuditLogsWidget';
@@ -199,7 +198,6 @@ function DashboardEnhancedComponent() {
     throughputUpload: 0,
     throughputDownload: 0
   });
-  const [clientTrend, setClientTrend] = useState<Array<{ time: string; clients: number; upload: number; download: number }>>([]);
   const [throughputTrend, setThroughputTrend] = useState<Array<{ time: string; upload: number; download: number; total: number }>>([]);
   const [topClients, setTopClients] = useState<Array<{ 
     name: string; 
@@ -676,25 +674,9 @@ function DashboardEnhancedComponent() {
         }
       }
 
-      // Fallback: generate data based on current stats if no real RFQI data
-      console.log('[Dashboard] No RFQI data available, using client stats for health visualization');
-      const now = Date.now();
-      const hourInMs = 3600000;
-      const simulatedData = Array.from({ length: 24 }, (_, i) => {
-        const baseHealthy = clientStats.authenticated || 0;
-        const baseTotal = clientStats.total || 1;
-        const healthyPct = (baseHealthy / baseTotal) * 100;
-        // Add some variation for historical hours
-        const variation = i < 23 ? (Math.random() * 10 - 5) : 0;
-        const adjustedHealthy = Math.max(0, Math.min(100, healthyPct + variation));
-        return {
-          timestamp: now - (23 - i) * hourInMs,
-          rfqi: adjustedHealthy,
-          healthy: adjustedHealthy,
-          needsAttention: 100 - adjustedHealthy
-        };
-      });
-      setRfqiData(simulatedData);
+      // No real RFQI data available — show empty state rather than synthetic data
+      console.log('[Dashboard] No RFQI data available from controller; showing empty state');
+      setRfqiData([]);
 
     } catch (error) {
       console.error('[Dashboard] Error fetching RFQI data:', error);
@@ -1229,38 +1211,8 @@ function DashboardEnhancedComponent() {
       });
     }
 
-    // Generate trend data (simulated time series based on current data)
-    generateClientTrend(stations);
-    
     // Load real throughput trend data from database
     loadHistoricalThroughput();
-  };
-
-  const generateClientTrend = (stations: Station[]) => {
-    // Generate last 24 data points (every hour for last 24 hours)
-    const now = Date.now();
-    const trend: Array<{ time: string; clients: number; upload: number; download: number }> = [];
-    
-    for (let i = 23; i >= 0; i--) {
-      const timestamp = now - (i * 3600000); // 1 hour intervals
-      const date = new Date(timestamp);
-      const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      
-      // Simulate realistic variation (±20% of current count)
-      const variation = 0.8 + Math.random() * 0.4;
-      const clients = Math.round(stations.length * variation);
-      const upload = Math.round(clientStats.throughputUpload * variation);
-      const download = Math.round(clientStats.throughputDownload * variation);
-      
-      trend.push({
-        time: timeStr,
-        clients,
-        upload,
-        download
-      });
-    }
-    
-    setClientTrend(trend);
   };
 
   // DEPRECATED: No longer used - we now load real throughput data from database
@@ -1420,15 +1372,14 @@ function DashboardEnhancedComponent() {
       avgRssi,
       avgSnr,
       authenticatedRate,
-      apUptime,
-      latency: 15 + Math.random() * 10, // Simulated latency
-      packetLoss: Math.random() * 0.5 // Simulated packet loss
+      apUptime
     };
   };
 
   const performanceMetrics = calculatePerformanceMetrics();
 
   // Prepare radar chart data for multi-dimensional performance view
+  // Radar chart — only axes backed by real API data (latency/packetLoss removed; no real source)
   const radarData = performanceMetrics ? [
     {
       metric: 'Reliability',
@@ -1441,18 +1392,8 @@ function DashboardEnhancedComponent() {
       fullMark: 100
     },
     {
-      metric: 'Success Rate',
-      value: Math.max(0, 100 - (performanceMetrics.packetLoss * 10)) || 0,
-      fullMark: 100
-    },
-    {
       metric: 'Signal Quality',
-      value: Math.min(100, (performanceMetrics.avgSnr + 100) / 2) || 80,
-      fullMark: 100
-    },
-    {
-      metric: 'Performance',
-      value: Math.max(0, 100 - performanceMetrics.latency) || 85,
+      value: Math.min(100, (performanceMetrics.avgSnr + 100) / 2) || 0,
       fullMark: 100
     }
   ] : [];
