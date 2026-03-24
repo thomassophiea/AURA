@@ -85,6 +85,9 @@ export interface AccessPoint {
   environment?: string;
   profileName?: string;
 
+  // Mesh topology role (populated by getMeshAPRoles)
+  meshRole?: 'BASE' | 'RELAY' | null;
+
   [key: string]: any;
 }
 
@@ -154,8 +157,8 @@ export interface Station {
   snr?: number;            // Signal-to-noise ratio
   band?: string;           // Frequency band (2.4GHz, 5GHz, 6GHz)
   frequencyBand?: string;  // Alternative band field name
-  rxRate?: string;
-  txRate?: string;         // Transmission rate
+  rxRate?: number | string;
+  txRate?: number | string; // Transmission rate (number from API, string in legacy responses)
   transmittedRate?: number; // Alternative Tx rate field
   receivedRate?: number;    // Alternative Rx rate field
   protocol?: string;

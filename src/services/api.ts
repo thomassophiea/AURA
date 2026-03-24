@@ -1160,7 +1160,8 @@ class ApiService {
       if (!response.ok) {
         throw new Error(`Failed to fetch access points: ${response.status}`);
       }
-      return await response.json();
+      const result = await response.json();
+      return Array.isArray(result) ? result : (result?.aps || result?.data || result?.accessPoints || []);
     });
   }
 
@@ -1207,7 +1208,8 @@ class ApiService {
         // If query endpoint fails, fall back to basic endpoint
         return this.getAccessPoints();
       }
-      return await response.json();
+      const result = await response.json();
+      return Array.isArray(result) ? result : (result?.aps || result?.data || result?.accessPoints || []);
     } catch (error) {
       // If query endpoint fails, fall back to basic endpoint
       return this.getAccessPoints();
@@ -6363,6 +6365,83 @@ class ApiService {
       logger.error(`[API] Failed to fetch mesh point tree for ${meshpointId}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Determine mesh role (BASE/RELAY) for each AP.
+   *
+   * Strategy 1 – native field: some API versions return `meshRole` directly on
+   *   the AP object (values like "PORTAL", "BASE", "RELAY", "BACKHAUL").
+   * Strategy 2 – meshpoints tree: fetch /v3/meshpoints and for each point walk
+   *   the tree returned by /v3/meshpoints/tree/{id}.  Root node = BASE, every
+   *   other node = RELAY.
+   *
+   * Returns a Map<serialNumber, 'BASE' | 'RELAY'>.
+   * APs not in any mesh will have no entry in the map.
+   */
+  async getMeshAPRoles(aps: AccessPoint[]): Promise<Map<string, 'BASE' | 'RELAY'>> {
+    const roles = new Map<string, 'BASE' | 'RELAY'>();
+
+    // Strategy 1 – look for native field already present in AP objects
+    for (const ap of aps) {
+      const raw = (ap as any).meshRole ?? (ap as any).apMeshRole ?? (ap as any).meshMode ?? (ap as any).meshNodeType ?? null;
+      if (raw) {
+        const upper = String(raw).toUpperCase();
+        if (upper.includes('PORTAL') || upper.includes('BASE') || upper.includes('ROOT') || upper === 'WIRED') {
+          roles.set(ap.serialNumber, 'BASE');
+        } else if (upper.includes('RELAY') || upper.includes('BACKHAUL') || upper === 'WIRELESS') {
+          roles.set(ap.serialNumber, 'RELAY');
+        }
+      }
+    }
+
+    // Strategy 2 – mesh point tree correlation
+    try {
+      const meshPoints = await this.getMeshPoints();
+      if (meshPoints && meshPoints.length > 0) {
+        logger.log(`[API] Correlating mesh roles from ${meshPoints.length} mesh point(s)`);
+
+        // Helper: recursively walk the tree; root node is BASE, all others RELAY
+        const walkTree = (node: any, isRoot: boolean) => {
+          const serial =
+            node.apSerialNumber ?? node.serialNumber ?? node.apSerial ?? node.serial ?? null;
+          if (serial && !roles.has(serial)) {
+            roles.set(serial, isRoot ? 'BASE' : 'RELAY');
+          }
+          const children: any[] = node.children ?? node.nodes ?? node.relays ?? [];
+          for (const child of children) {
+            walkTree(child, false);
+          }
+        };
+
+        for (const mp of meshPoints) {
+          const mpId: string | undefined = mp.id ?? mp.meshpointId ?? mp.meshPointId;
+
+          // If the mesh point itself carries a serial, it is the root AP
+          const rootSerial: string | undefined =
+            mp.apSerialNumber ?? mp.serialNumber ?? mp.apSerial ?? mp.rootSerialNumber;
+          if (rootSerial && !roles.has(rootSerial)) {
+            roles.set(rootSerial, 'BASE');
+          }
+
+          if (mpId) {
+            try {
+              const tree = await this.getMeshPointTree(mpId);
+              if (tree) {
+                walkTree(tree, true);
+              }
+            } catch {
+              // non-fatal – skip this mesh point tree
+            }
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn('[API] Mesh point tree correlation failed (non-fatal):', error);
+    }
+
+    logger.log(`[API] Mesh role discovery complete: ${roles.size} APs identified (BASE: ${[...roles.values()].filter(v => v === 'BASE').length}, RELAY: ${[...roles.values()].filter(v => v === 'RELAY').length})`);
+    return roles;
   }
 
   // ============================================================================

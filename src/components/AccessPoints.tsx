@@ -381,6 +381,7 @@ const AVAILABLE_COLUMNS: ColumnConfig[] = [
   { key: 'clients', label: 'Connected Clients', defaultVisible: true, category: 'basic' },
 
   // Network columns
+  { key: 'meshRole', label: 'Mesh Role', defaultVisible: false, category: 'network' },
   { key: 'cableHealth', label: 'Cable Health', defaultVisible: false, category: 'network' },
   { key: 'macAddress', label: 'MAC Address', defaultVisible: false, category: 'network' },
   { key: 'ethMode', label: 'Ethernet Mode', defaultVisible: false, category: 'network' },
@@ -431,6 +432,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
+  const [meshRoles, setMeshRoles] = useState<Map<string, 'BASE' | 'RELAY'>>(new Map());
+  const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -652,9 +655,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       // Update last refresh time on successful load
       setLastRefreshTime(new Date());
 
-      // Load client counts and AP metrics in background (non-blocking)
+      // Load client counts, AP metrics, and mesh roles in background (non-blocking)
       loadClientCounts(accessPointsArray);
       loadAPMetrics(accessPointsArray);
+      loadMeshRoles(accessPointsArray);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load access points for selected site';
 
@@ -814,6 +818,19 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
+  const loadMeshRoles = async (aps: AccessPoint[]) => {
+    if (aps.length === 0) return;
+    setIsLoadingMeshRoles(true);
+    try {
+      const roles = await apiService.getMeshAPRoles(aps);
+      setMeshRoles(roles);
+    } catch (err) {
+      console.error('[Mesh Roles] Error loading mesh roles:', err);
+    } finally {
+      setIsLoadingMeshRoles(false);
+    }
+  };
+
   const loadAPDetails = async (serialNumber: string) => {
     setIsLoadingDetails(true);
     try {
@@ -969,6 +986,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return (apAny.description || '').toLowerCase();
       case 'afcAnchor':
         return isAfcAnchor(ap) ? 1 : 0;
+      case 'meshRole': {
+        const r = meshRoles.get(ap.serialNumber);
+        return r === 'BASE' ? 0 : r === 'RELAY' ? 1 : 2;
+      }
       case 'cableHealth':
         // Sort by severity: critical=0, warning=1, unknown=2, good=3
         const health = cableHealthMap[ap.serialNumber];
@@ -1505,6 +1526,27 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           );
         }
         return <span className="text-sm">{ethSpeedValue}</span>;
+      case 'meshRole': {
+        const role = meshRoles.get(ap.serialNumber);
+        if (isLoadingMeshRoles && !role) {
+          return <span className="text-xs text-muted-foreground">...</span>;
+        }
+        if (role === 'BASE') {
+          return (
+            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-xs">
+              Base
+            </Badge>
+          );
+        }
+        if (role === 'RELAY') {
+          return (
+            <Badge variant="outline" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 text-xs">
+              Relay
+            </Badge>
+          );
+        }
+        return <span className="text-sm text-muted-foreground">-</span>;
+      }
       case 'cableHealth':
         const cableHealth = cableHealthMap[ap.serialNumber];
         if (!cableHealth || cableHealth.status === 'unknown') {
@@ -2159,6 +2201,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-red-500" />
               <span className="font-medium text-sm">E911 BSSID</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40">Beta</span>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 dark:bg-slate-800 text-emerald-400 text-xs font-semibold border border-emerald-500/30">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
