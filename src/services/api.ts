@@ -6400,17 +6400,50 @@ class ApiService {
       const meshPoints = await this.getMeshPoints();
       if (meshPoints && meshPoints.length > 0) {
         logger.log(`[API] Correlating mesh roles from ${meshPoints.length} mesh point(s)`);
+        // Log raw structure so we can learn the actual field names
+        logger.log('[API] Raw mesh point sample:', JSON.stringify(meshPoints[0], null, 2));
 
-        // Helper: recursively walk the tree; root node is BASE, all others RELAY
+        // Recursively walk any tree shape; try every plausible serial field name
+        const extractSerial = (node: any): string | null =>
+          node.apSerialNumber ?? node.serialNumber ?? node.apSerial ?? node.serial ??
+          node.ap_serial ?? node.deviceSerial ?? node.device_serial ?? null;
+
         const walkTree = (node: any, isRoot: boolean) => {
-          const serial =
-            node.apSerialNumber ?? node.serialNumber ?? node.apSerial ?? node.serial ?? null;
+          const serial = extractSerial(node);
           if (serial && !roles.has(serial)) {
             roles.set(serial, isRoot ? 'BASE' : 'RELAY');
           }
-          const children: any[] = node.children ?? node.nodes ?? node.relays ?? [];
+          // Also check nested role field
+          const roleRaw = node.role ?? node.meshRole ?? node.nodeRole ?? null;
+          if (serial && roleRaw) {
+            const upper = String(roleRaw).toUpperCase();
+            if (upper.includes('PORTAL') || upper.includes('BASE') || upper.includes('ROOT')) {
+              roles.set(serial, 'BASE');
+            } else if (upper.includes('RELAY') || upper.includes('BACKHAUL')) {
+              roles.set(serial, 'RELAY');
+            }
+          }
+          const children: any[] =
+            node.children ?? node.nodes ?? node.relays ?? node.meshNodes ??
+            node.downstreamAps ?? node.downStreamAps ?? [];
           for (const child of children) {
             walkTree(child, false);
+          }
+        };
+
+        // Also handle flat array: [{serial, role}, ...]
+        const walkFlat = (items: any[]) => {
+          for (const item of items) {
+            const serial = extractSerial(item);
+            const roleRaw = item.role ?? item.meshRole ?? item.nodeRole ?? null;
+            if (serial && roleRaw) {
+              const upper = String(roleRaw).toUpperCase();
+              if (upper.includes('PORTAL') || upper.includes('BASE') || upper.includes('ROOT')) {
+                if (!roles.has(serial)) roles.set(serial, 'BASE');
+              } else if (upper.includes('RELAY') || upper.includes('BACKHAUL')) {
+                if (!roles.has(serial)) roles.set(serial, 'RELAY');
+              }
+            }
           }
         };
 
@@ -6419,7 +6452,8 @@ class ApiService {
 
           // If the mesh point itself carries a serial, it is the root AP
           const rootSerial: string | undefined =
-            mp.apSerialNumber ?? mp.serialNumber ?? mp.apSerial ?? mp.rootSerialNumber;
+            mp.apSerialNumber ?? mp.serialNumber ?? mp.apSerial ?? mp.rootSerialNumber ??
+            mp.portalSerialNumber ?? mp.portal?.serialNumber ?? mp.portal?.apSerialNumber;
           if (rootSerial && !roles.has(rootSerial)) {
             roles.set(rootSerial, 'BASE');
           }
@@ -6428,16 +6462,49 @@ class ApiService {
             try {
               const tree = await this.getMeshPointTree(mpId);
               if (tree) {
-                walkTree(tree, true);
+                logger.log('[API] Raw mesh tree response:', JSON.stringify(tree, null, 2));
+                if (Array.isArray(tree)) {
+                  walkFlat(tree);
+                  // First item with lowest hop count or index 0 is likely the root
+                  if (tree.length > 0) walkTree(tree[0], true);
+                  for (let i = 1; i < tree.length; i++) walkTree(tree[i], false);
+                } else {
+                  walkTree(tree, true);
+                }
               }
             } catch {
-              // non-fatal – skip this mesh point tree
+              // non-fatal
             }
           }
         }
       }
     } catch (error) {
       logger.warn('[API] Mesh point tree correlation failed (non-fatal):', error);
+    }
+
+    // Strategy 3 – ethernet heuristic fallback
+    // APs with at least one mesh point configured are candidates.
+    // Among candidates: no valid wired uplink (all ports speedNA) → RELAY,
+    // valid wired uplink → BASE.
+    if (roles.size === 0 && aps.length > 0) {
+      logger.log('[API] Tree yielded no roles — applying ethernet heuristic for mesh APs');
+      const meshFeatureAPs = aps.filter(ap => {
+        const features: string[] = (ap as any).features ?? [];
+        return features.some((f: string) => f === 'MESH' || f === 'MESHPOINT-BEACON');
+      });
+      logger.log(`[API] APs with MESH feature: ${meshFeatureAPs.map(a => (a as any).apName || a.serialNumber).join(', ')}`);
+
+      if (meshFeatureAPs.length > 0) {
+        for (const ap of meshFeatureAPs) {
+          const ports: any[] = (ap as any).ethPorts ?? [];
+          const hasWiredUplink = ports.some((p: any) => {
+            const spd: string = (p.speed ?? '').toLowerCase();
+            return spd && spd !== 'speedna' && spd !== 'na' && spd !== 'auto' && spd !== 'speedauto';
+          });
+          roles.set(ap.serialNumber, hasWiredUplink ? 'BASE' : 'RELAY');
+          logger.log(`[API] Heuristic: ${(ap as any).apName || ap.serialNumber} → ${hasWiredUplink ? 'BASE' : 'RELAY'} (ports: ${ports.map((p:any) => p.speed).join(', ')})`);
+        }
+      }
     }
 
     logger.log(`[API] Mesh role discovery complete: ${roles.size} APs identified (BASE: ${[...roles.values()].filter(v => v === 'BASE').length}, RELAY: ${[...roles.values()].filter(v => v === 'RELAY').length})`);
