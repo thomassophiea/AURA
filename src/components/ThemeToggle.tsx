@@ -1,17 +1,18 @@
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Sun, Moon, Monitor, Palmtree } from 'lucide-react';
+import { Sun, Moon, Monitor, Palmtree, Layers } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
-  
+
   const getIcon = () => {
     if (resolvedTheme === 'synthwave') return <Palmtree className="h-4 w-4" />;
+    if (resolvedTheme === 'ep1') return <Layers className="h-4 w-4" />;
     if (resolvedTheme === 'dark') return <Moon className="h-4 w-4" />;
     return <Sun className="h-4 w-4" />;
   };
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -36,6 +37,11 @@ export function ThemeToggle() {
           Miami Vice
           {theme === 'synthwave' && ' ✓'}
         </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme('ep1')}>
+          <Layers className="h-4 w-4 mr-2" />
+          EP1
+          {theme === 'ep1' && ' ✓'}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme('system')}>
           <Monitor className="h-4 w-4 mr-2" />
           System
@@ -48,7 +54,7 @@ export function ThemeToggle() {
 
 export function ThemeToggleSimple() {
   const { toggleTheme, isDark } = useTheme();
-  
+
   return (
     <Button variant="ghost" size="sm" onClick={toggleTheme} className="h-9 w-9 p-0">
       {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

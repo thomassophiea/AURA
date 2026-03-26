@@ -2196,3 +2196,466 @@ html.dark.synthwave body {
 .synthwave-card-glow {
   animation: neon-border-pulse 3s ease-in-out infinite;
 }
+
+/* ==========================================================================
+   EP1 THEME — Extreme Platform ONE
+   Deep indigo/slate enterprise dashboard aesthetic
+   Accent: restrained purple, crisp typography, subtle borders
+   ========================================================================== */
+
+/* --- EP1 CSS Variable Block --- */
+html.ep1,
+html[data-theme="ep1"] {
+  /* Core backgrounds */
+  --background: #191C2D !important;
+  --foreground: #F4F5FA !important;
+  --card: #2B2F45 !important;
+  --card-foreground: #F4F5FA !important;
+  --popover: #2B2F45 !important;
+  --popover-foreground: #F4F5FA !important;
+
+  /* Brand / accent purple */
+  --primary: #9C8FEF !important;
+  --primary-foreground: #F9FAFF !important;
+  --secondary: #323650 !important;
+  --secondary-foreground: #D7D9E6 !important;
+
+  /* Muted surfaces */
+  --muted: #323650 !important;
+  --muted-foreground: #A6A9BE !important;
+  --accent: #4A4469 !important;
+  --accent-foreground: #F4F5FA !important;
+
+  /* Status */
+  --destructive: #E06A75 !important;
+  --destructive-foreground: #F9FAFF !important;
+  --success: #77D36A !important;
+  --success-foreground: #0D1A0B !important;
+  --warning: #E5B85C !important;
+  --warning-foreground: #1A1000 !important;
+  --info: #7AA6FF !important;
+  --info-foreground: #0A1525 !important;
+
+  /* Borders and inputs */
+  --border: #4B4F69 !important;
+  --input: #2F334B !important;
+  --input-background: #2F334B !important;
+  --switch-background: #4B4F69 !important;
+  --ring: #B5A9FF !important;
+
+  /* Charts */
+  --chart-1: #9C8FEF !important;
+  --chart-2: #7AA6FF !important;
+  --chart-3: #E5B85C !important;
+  --chart-4: #E06A75 !important;
+  --chart-5: #77D36A !important;
+
+  /* Sidebar */
+  --sidebar: #2C3047 !important;
+  --sidebar-foreground: #F4F5FA !important;
+  --sidebar-primary: #9C8FEF !important;
+  --sidebar-primary-foreground: #F9FAFF !important;
+  --sidebar-accent: rgba(156, 143, 239, 0.12) !important;
+  --sidebar-accent-foreground: #F4F5FA !important;
+  --sidebar-border: #3E425B !important;
+  --sidebar-ring: #B5A9FF !important;
+
+  /* Radius — slightly rounder than Material default */
+  --radius: 0.5rem !important;
+
+  /* Surface elevations */
+  --surface-0dp: #191C2D !important;
+  --surface-1dp: #1D2033 !important;
+  --surface-2dp: #222539 !important;
+  --surface-3dp: #262A3E !important;
+  --surface-4dp: #2B2F45 !important;
+  --surface-6dp: #2E3248 !important;
+  --surface-8dp: #323650 !important;
+  --surface-12dp: #343852 !important;
+  --surface-16dp: #383C56 !important;
+  --surface-24dp: #3E425B !important;
+
+  /* EP1 semantic tokens */
+  --background-default: #191C2D !important;
+  --background-secondary: #1D2033 !important;
+  --background-inverse: #F4F5FA !important;
+
+  --surface-primary: #2B2F45 !important;
+  --surface-secondary: #323650 !important;
+  --surface-elevated: #343852 !important;
+
+  --brand-primary: #9C8FEF !important;
+  --brand-primary-hover: #AA9CFF !important;
+  --brand-primary-active: #8E7BF0 !important;
+  --brand-secondary: #7AA6FF !important;
+  --brand-secondary-hover: #8FB6FF !important;
+
+  --text-primary: #F4F5FA !important;
+  --text-secondary: #D7D9E6 !important;
+  --text-muted: #A6A9BE !important;
+  --text-inverse: #191C2D !important;
+  --text-on-brand: #F9FAFF !important;
+
+  --border-default: #4B4F69 !important;
+  --border-subtle: #3E425B !important;
+  --border-focus: #B5A9FF !important;
+
+  --status-success: #77D36A !important;
+  --status-success-bg: #1A3318 !important;
+  --status-warning: #E5B85C !important;
+  --status-warning-bg: #33270D !important;
+  --status-error: #E06A75 !important;
+  --status-error-bg: #33141A !important;
+  --status-info: #7AA6FF !important;
+  --status-info-bg: #152238 !important;
+
+  --table-header-bg: #30344B !important;
+  --table-header-text: #D7D9E6 !important;
+  --table-header-border: #4B4F69 !important;
+  --table-row-bg: #2E3248 !important;
+  --table-row-hover: #3A3E58 !important;
+  --table-row-selected: #474367 !important;
+  --table-row-border: #3E425B !important;
+  --table-cell-text: #F4F5FA !important;
+  --table-cell-muted: #A6A9BE !important;
+
+  --button-primary-bg: #9588E8 !important;
+  --button-primary-hover: #A396F4 !important;
+  --button-primary-active: #8E7BF0 !important;
+  --button-primary-text: #F9FAFF !important;
+  --button-secondary-bg: transparent !important;
+  --button-secondary-hover: #383C56 !important;
+  --button-secondary-active: #4B476D !important;
+  --button-secondary-text: #D9DBE7 !important;
+  --button-outline-border: #8E82E8 !important;
+  --button-outline-hover-bg: #383C56 !important;
+
+  --nav-background: #2C3047 !important;
+  --nav-text: #F4F5FA !important;
+  --nav-text-muted: #A6A9BE !important;
+  --nav-item-hover: #383C56 !important;
+  --nav-item-active: #4D4A70 !important;
+  --nav-border: #4B4F69 !important;
+
+  --form-label-text: #D7D9E6 !important;
+  --form-label-required: #E06A75 !important;
+  --input-bg: #2F334B !important;
+  --input-border: #707493 !important;
+  --input-border-hover: #9B9EB2 !important;
+  --input-border-focus: #B5A9FF !important;
+  --input-text: #F4F5FA !important;
+  --input-placeholder: #9B9EB2 !important;
+  --input-disabled-bg: #252840 !important;
+  --input-disabled-text: #7C8098 !important;
+  --input-error-border: #E06A75 !important;
+  --input-error-bg: rgba(224, 106, 117, 0.08) !important;
+
+  --link-default: #9C8FEF !important;
+  --link-hover: #AA9CFF !important;
+  --link-visited: #7B6FD4 !important;
+  --link-active: #8E7BF0 !important;
+
+  /* EP1 extended tokens */
+  --ep1-selected-bg: #4D4A70;
+  --ep1-selected-border: #A497FF;
+  --ep1-hover-bg: #383C56;
+  --ep1-active-bg: #4B476D;
+  --ep1-focus-ring: #B5A9FF;
+  --ep1-chip-bg: #4A4E69;
+  --ep1-chip-text: #E6E7F1;
+  --ep1-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --ep1-shadow-overlay: 0 12px 30px rgba(0, 0, 0, 0.32);
+  --ep1-panel-overlay: #343852;
+  --ep1-divider: #5A5E79;
+}
+
+/* Force background on body — override the heavy-handed !important rules */
+html.dark.ep1,
+html.dark.ep1 body {
+  background-color: #191C2D !important;
+  color: #F4F5FA !important;
+}
+
+/* --- EP1 App Background --- */
+html.ep1 body,
+html.ep1 #root,
+html.ep1 [data-slot="app"] {
+  background-color: #191C2D !important;
+}
+
+/* --- EP1 Cards & Panels --- */
+.ep1 .card,
+.ep1 [data-slot="card"] {
+  background-color: #2B2F45 !important;
+  border: 1px solid #3E425B !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
+  border-radius: 12px !important;
+}
+
+.ep1 .card:hover,
+.ep1 [data-slot="card"]:hover {
+  border-color: #4B4F69 !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32) !important;
+}
+
+/* --- EP1 Sidebar --- */
+.ep1 .bg-sidebar,
+.ep1 [class*="bg-sidebar"] {
+  background-color: #2C3047 !important;
+  border-right: 1px solid #3E425B !important;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.20) !important;
+}
+
+/* Active nav item */
+.ep1 [data-active="true"],
+.ep1 [aria-current="page"] {
+  background-color: #4D4A70 !important;
+  color: #F4F5FA !important;
+  border-left: 2px solid #9C8FEF !important;
+}
+
+/* Hover nav item */
+.ep1 [class*="sidebar"] a:hover,
+.ep1 [class*="sidebar"] button:hover {
+  background-color: #383C56 !important;
+}
+
+/* --- EP1 Header Bar --- */
+.ep1 header,
+.ep1 [data-slot="header"],
+.ep1 nav[class*="top"],
+.ep1 .header {
+  background-color: #2E3247 !important;
+  border-bottom: 1px solid #3E425B !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* --- EP1 Tables --- */
+.ep1 table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.ep1 thead,
+.ep1 thead tr {
+  background-color: #30344B !important;
+}
+
+.ep1 thead th {
+  color: #D7D9E6 !important;
+  background-color: #30344B !important;
+  border-bottom: 1px solid #4B4F69 !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.02em !important;
+  text-transform: none !important;
+}
+
+.ep1 tbody tr {
+  background-color: #2E3248 !important;
+  border-bottom: 1px solid #3E425B !important;
+  transition: background-color 150ms ease !important;
+}
+
+.ep1 tbody tr:hover {
+  background-color: #3A3E58 !important;
+}
+
+.ep1 tbody tr[data-selected="true"],
+.ep1 tbody tr[aria-selected="true"] {
+  background-color: #474367 !important;
+}
+
+.ep1 tbody td {
+  color: #F4F5FA !important;
+  border-bottom: 1px solid #3E425B !important;
+}
+
+/* --- EP1 Inputs & Search --- */
+.ep1 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.ep1 textarea,
+.ep1 select {
+  background-color: #2F334B !important;
+  border-color: #707493 !important;
+  color: #F4F5FA !important;
+  border-radius: 8px !important;
+}
+
+.ep1 input::placeholder,
+.ep1 textarea::placeholder {
+  color: #9B9EB2 !important;
+}
+
+.ep1 input:hover:not(:disabled),
+.ep1 textarea:hover:not(:disabled) {
+  border-color: #9B9EB2 !important;
+}
+
+.ep1 input:focus,
+.ep1 textarea:focus,
+.ep1 select:focus {
+  border-color: #B5A9FF !important;
+  box-shadow: 0 0 0 3px rgba(181, 169, 255, 0.18) !important;
+  outline: none !important;
+}
+
+/* --- EP1 Buttons --- */
+.ep1 [data-slot="button"][class*="primary"],
+.ep1 button.bg-primary {
+  background-color: #9588E8 !important;
+  color: #F9FAFF !important;
+  border-radius: 8px !important;
+}
+
+.ep1 [data-slot="button"][class*="primary"]:hover,
+.ep1 button.bg-primary:hover {
+  background-color: #A396F4 !important;
+}
+
+/* --- EP1 Tabs --- */
+.ep1 [role="tablist"] {
+  border-bottom: 1px solid #3E425B !important;
+}
+
+.ep1 [role="tab"] {
+  color: #A6A9BE !important;
+}
+
+.ep1 [role="tab"][data-state="active"] {
+  color: #F4F5FA !important;
+  border-bottom-color: #9C8FEF !important;
+}
+
+.ep1 [role="tab"]:hover:not([data-state="active"]) {
+  color: #D7D9E6 !important;
+  background-color: #383C56 !important;
+}
+
+/* --- EP1 Dropdowns & Popovers --- */
+.ep1 [data-radix-popper-content-wrapper],
+.ep1 [role="dialog"],
+.ep1 [role="menu"],
+.ep1 [role="listbox"] {
+  background-color: #2B2F45 !important;
+  border: 1px solid #4B4F69 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32) !important;
+  border-radius: 10px !important;
+}
+
+/* --- EP1 Menu Items --- */
+.ep1 [role="menuitem"]:hover,
+.ep1 [role="option"]:hover,
+.ep1 [data-highlighted] {
+  background-color: #383C56 !important;
+  color: #F4F5FA !important;
+}
+
+.ep1 [role="menuitem"][data-state="checked"],
+.ep1 [role="option"][aria-selected="true"] {
+  background-color: #4D4A70 !important;
+  color: #F4F5FA !important;
+}
+
+/* --- EP1 Chips / Badges / Pills --- */
+.ep1 [data-slot="badge"],
+.ep1 .badge,
+.ep1 [class*="chip"] {
+  background-color: #4A4E69 !important;
+  color: #E6E7F1 !important;
+  border: 1px solid #5A5E79 !important;
+  border-radius: 6px !important;
+}
+
+/* --- EP1 Dividers / Borders --- */
+.ep1 [class*="border-b"],
+.ep1 [class*="border-t"],
+.ep1 hr,
+.ep1 [class*="separator"] {
+  border-color: #3E425B !important;
+}
+
+/* --- EP1 Interactive States --- */
+.ep1 .interactive-surface:hover {
+  background-color: #383C56 !important;
+}
+
+.ep1 .interactive-surface:focus {
+  background-color: #4B476D !important;
+  outline: 2px solid #B5A9FF !important;
+  outline-offset: 2px !important;
+}
+
+.ep1 .interactive-surface:active {
+  background-color: #4B476D !important;
+}
+
+/* --- EP1 Focus Ring --- */
+.ep1 *:focus-visible {
+  outline: 2px solid #B5A9FF !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 4px rgba(181, 169, 255, 0.15) !important;
+}
+
+/* --- EP1 Modals --- */
+.ep1 [role="dialog"][data-state="open"] {
+  background-color: #2B2F45 !important;
+  border: 1px solid #4B4F69 !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.40) !important;
+  border-radius: 14px !important;
+}
+
+.ep1 [data-slot="dialog-overlay"],
+.ep1 [class*="dialog-overlay"] {
+  background-color: rgba(10, 12, 22, 0.70) !important;
+}
+
+/* --- EP1 Status Colors --- */
+.ep1 .status-healthy {
+  color: #77D36A !important;
+}
+
+.ep1 .status-warning {
+  color: #E5B85C !important;
+}
+
+.ep1 .status-critical {
+  color: #E06A75 !important;
+}
+
+/* --- EP1 Empty States --- */
+.ep1 [class*="empty-state"],
+.ep1 [data-slot="empty"] {
+  color: #A6A9BE !important;
+}
+
+/* --- EP1 Scrollbars — thin, subtle, purple-tinted --- */
+/* Override the global hidden scrollbars for EP1 */
+.ep1 ::-webkit-scrollbar {
+  display: block !important;
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.ep1 ::-webkit-scrollbar-track {
+  background: #1D2033 !important;
+  border-radius: 10px !important;
+}
+
+.ep1 ::-webkit-scrollbar-thumb {
+  background: #4B4F69 !important;
+  border-radius: 10px !important;
+  transition: background 0.2s ease !important;
+}
+
+.ep1 ::-webkit-scrollbar-thumb:hover {
+  background: #707493 !important;
+}
+
+.ep1 ::-webkit-scrollbar-corner {
+  background: #1D2033 !important;
+}
+
+/* Firefox */
+.ep1 * {
+  scrollbar-width: thin !important;
+  scrollbar-color: #4B4F69 #1D2033 !important;
+}
