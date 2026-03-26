@@ -806,11 +806,10 @@ export function AFCRadioHeightCalculator() {
           <Button
             size="sm"
             onClick={() => setShowCampusLookup(v => !v)}
-            className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/30 border-0 relative overflow-hidden"
+            className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/30 border-0"
           >
             <Sparkles className="h-4 w-4" />
             AI Campus Lookup
-            <span className="absolute top-0.5 right-1 text-[9px] font-bold opacity-70 uppercase tracking-wide">DEMO</span>
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowProfiles(v => !v)}>
             <FolderOpen className="h-4 w-4 mr-2" />
