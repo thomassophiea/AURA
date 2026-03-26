@@ -1175,6 +1175,57 @@ const proxyOptions = {
   }
 };
 
+// ==================== XIQ Cloud Proxy ====================
+// Browser cannot call api.extremecloudiq.com directly due to CORS.
+// These routes forward XIQ requests server-side.
+
+const XIQ_REGION_URLS = {
+  global: 'https://api.extremecloudiq.com',
+  eu: 'https://api-eu.extremecloudiq.com',
+  apac: 'https://api-apac.extremecloudiq.com',
+  ca: 'https://api-ca.extremecloudiq.com',
+};
+
+app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, async (req, res) => {
+  const { username, password, region = 'global' } = req.body || {};
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+
+  const baseUrl = XIQ_REGION_URLS[region];
+  if (!baseUrl) {
+    return res.status(400).json({ error: `Unknown XIQ region: ${region}` });
+  }
+
+  try {
+    console.log(`[XIQ Proxy] POST /login -> ${baseUrl} (region: ${region})`);
+    const xiqRes = await fetch(`${baseUrl}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ username: username.trim(), password }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    let body;
+    try { body = await xiqRes.json(); } catch { body = {}; }
+
+    if (!xiqRes.ok) {
+      const message = body.error_message || body.message || body.error || `XIQ login failed (${xiqRes.status})`;
+      console.warn(`[XIQ Proxy] Login failed: ${xiqRes.status} ${message}`);
+      return res.status(xiqRes.status).json({ error: message });
+    }
+
+    console.log(`[XIQ Proxy] Login success`);
+    return res.json(body);
+  } catch (err) {
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+    const message = isTimeout ? 'XIQ request timed out' : (err.message || 'XIQ proxy error');
+    console.error(`[XIQ Proxy] Error: ${message}`);
+    return res.status(isTimeout ? 504 : 502).json({ error: message });
+  }
+});
+
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
 console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
 app.use('/api', (req, res, next) => {

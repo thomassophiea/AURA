@@ -63,24 +63,20 @@ class XIQService {
     region: XIQRegion,
     siteGroupId: string
   ): Promise<XIQStoredToken> {
-    const baseUrl = XIQ_REGIONS[region];
-
-    const response = await fetch(`${baseUrl}/login`, {
+    // Route through the Express proxy to avoid browser CORS restrictions
+    const response = await fetch('/xiq/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ username: email.trim(), password }),
-      signal: AbortSignal.timeout(12000),
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ username: email.trim(), password, region }),
+      signal: AbortSignal.timeout(20000),
     });
 
     if (!response.ok) {
       let message = `XIQ login failed (${response.status})`;
       try {
         const body = await response.json();
-        if (body.message || body.error) {
-          message = body.message || body.error;
+        if (body.error || body.message) {
+          message = body.error || body.message;
         }
       } catch {
         // ignore parse failure
