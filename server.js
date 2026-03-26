@@ -708,6 +708,33 @@ app.delete('/api/management/v1/afc/plans/:id', (req, res) => {
   res.json({ success: true });
 });
 
+// ==================== AFC Radio Height Store ====================
+// Stores per-AP radio height, deployment type, and power class for AFC compliance
+
+const afcRadioHeightStore = [];
+
+app.get('/api/management/v1/afc/radio-heights', (req, res) => {
+  res.json(afcRadioHeightStore);
+});
+
+app.post('/api/management/v1/afc/radio-heights', jsonParser, (req, res) => {
+  const records = req.body;
+  if (!Array.isArray(records)) {
+    return res.status(400).json({ error: 'Expected array of height records' });
+  }
+  records.forEach(r => {
+    const idx = afcRadioHeightStore.findIndex(s => s.serialNumber === r.serialNumber);
+    const entry = { ...r, updatedAt: new Date().toISOString() };
+    if (idx >= 0) {
+      afcRadioHeightStore[idx] = { ...afcRadioHeightStore[idx], ...entry };
+    } else {
+      afcRadioHeightStore.push({ ...entry, createdAt: new Date().toISOString() });
+    }
+  });
+  console.log(`[AFC Heights] Saved ${records.length} radio height record(s)`);
+  res.json({ saved: records.length });
+});
+
 // ==================== Packet Capture ====================
 // Controller doesn't expose packet capture endpoints via REST API
 

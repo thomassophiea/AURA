@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Radio, TestTube, Zap, Network, FileText, RefreshCw, Stethoscope } from 'lucide-react';
+import { Radio, TestTube, Zap, Network, FileText, RefreshCw, Stethoscope, Building2 } from 'lucide-react';
 import { AFCPlanningTool } from './AFCPlanningTool';
+import { AFCRadioHeightCalculator } from './AFCRadioHeightCalculator';
 import { ApiTestTool } from './ApiTestTool';
 import { RFManagementTools } from './RFManagementTools';
 import { PacketCapture } from './PacketCapture';
@@ -49,6 +50,10 @@ export function Tools() {
               <Zap className="h-4 w-4" />
               AFC Planning
             </TabsTrigger>
+            <TabsTrigger value="afc-heights" className="flex items-center gap-2">
+              <Building2 className="h-4 w-4" />
+              Radio Height Calc
+            </TabsTrigger>
             <TabsTrigger value="api-test" className="flex items-center gap-2">
               <TestTube className="h-4 w-4" />
               API Test
@@ -70,6 +75,10 @@ export function Tools() {
 
         <TabsContent value="afc-planning" className="m-0 h-[calc(100%-3rem)]">
           <AFCPlanningTool />
+        </TabsContent>
+
+        <TabsContent value="afc-heights" className="m-0 h-[calc(100%-3rem)] overflow-auto">
+          <AFCRadioHeightCalculator />
         </TabsContent>
 
         <TabsContent value="api-test" className="m-0 h-[calc(100%-3rem)]">
