@@ -1284,9 +1284,9 @@ app.use(express.static(buildPath, {
 
 // Handle React routing - serve index.html for all non-API routes
 app.get('*', (req, res) => {
-  // Skip API routes
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API endpoint not found' });
+  // Skip API and static asset routes — return 404, not index.html
+  if (req.path.startsWith('/api/') || req.path.startsWith('/assets/') || req.path.startsWith('/xiq/')) {
+    return res.status(404).json({ error: 'Not found' });
   }
 
   // Never cache index.html

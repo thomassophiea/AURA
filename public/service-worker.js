@@ -10,7 +10,7 @@
 
 // Cache version - increment this on every deploy to force cache invalidation
 // This should match CACHE_VERSION in versionGate.ts
-const CACHE_VERSION = 17;
+const CACHE_VERSION = 18;
 const CACHE_NAME = `aura-cache-v${CACHE_VERSION}`;
 const STATIC_CACHE = `aura-static-v${CACHE_VERSION}`;
 

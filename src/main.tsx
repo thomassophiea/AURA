@@ -115,6 +115,14 @@ function registerServiceWorker() {
   });
 }
 
+// Auto-reload when a lazy-loaded Vite chunk fails to fetch.
+// This happens when a new Railway deploy replaces chunk filenames and an
+// open browser tab still references the old (now-gone) hashed filenames.
+window.addEventListener('vite:preloadError', () => {
+  console.log('[App] Chunk preload failed — new deployment detected, reloading...');
+  window.location.reload();
+});
+
 // Log version info on startup
 console.log(`[App] Version: ${getAppVersion()} (cache: ${getCacheVersion()})`);
 
