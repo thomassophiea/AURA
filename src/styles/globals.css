@@ -2253,9 +2253,9 @@ html[data-theme="ep1"] {
   /* Sidebar */
   --sidebar: #2C3047 !important;
   --sidebar-foreground: #F4F5FA !important;
-  --sidebar-primary: #9C8FEF !important;
-  --sidebar-primary-foreground: #F9FAFF !important;
-  --sidebar-accent: rgba(156, 143, 239, 0.12) !important;
+  --sidebar-primary: #4D4A70 !important;
+  --sidebar-primary-foreground: #F4F5FA !important;
+  --sidebar-accent: #383C56 !important;
   --sidebar-accent-foreground: #F4F5FA !important;
   --sidebar-border: #3E425B !important;
   --sidebar-ring: #B5A9FF !important;
@@ -2658,4 +2658,151 @@ html.ep1 [data-slot="app"] {
 .ep1 * {
   scrollbar-width: thin !important;
   scrollbar-color: #4B4F69 #1D2033 !important;
+}
+
+/* ==========================================================================
+   EP1 REFINEMENTS — Sidebar, Cards, Badges, Buttons, Content
+   ========================================================================== */
+
+/* --- Active sidebar item: subdued indigo fill + purple left accent --- */
+.ep1 button[class*="bg-sidebar-primary"],
+.ep1 a[class*="bg-sidebar-primary"] {
+  background-color: #4D4A70 !important;
+  color: #F4F5FA !important;
+  box-shadow: inset 3px 0 0 #9C8FEF !important;
+  border-radius: 6px !important;
+}
+
+/* Hover state keeps a lighter tint */
+.ep1 button[class*="hover:bg-sidebar-accent"]:hover {
+  background-color: #383C56 !important;
+  color: #F4F5FA !important;
+}
+
+/* --- SANDBOX / beta badge: replace amber with EP1 chip style --- */
+.ep1 span[class*="bg-amber-500"] {
+  background-color: #393C56 !important;
+  color: #A6A9BE !important;
+}
+.ep1 span[class*="text-amber-500"] {
+  color: #A6A9BE !important;
+}
+
+/* --- Site group status dots: keep semantic colors but soften --- */
+.ep1 span[class*="bg-green-500"] {
+  background-color: #77D36A !important;
+}
+.ep1 span[class*="bg-red-500"] {
+  background-color: #E06A75 !important;
+}
+
+/* --- Clear all hardcoded gradient backgrounds on cards --- */
+.ep1 .card[class*="from-"],
+.ep1 [data-slot="card"][class*="from-"] {
+  background: #2B2F45 !important;
+  background-image: none !important;
+}
+
+/* Also clear gradients on any element inside .ep1 */
+.ep1 [class*="bg-gradient-to-"] {
+  background-image: none !important;
+  background-color: #2B2F45 !important;
+}
+
+/* --- Override hardcoded Tailwind border colors on cards --- */
+.ep1 .card[class*="border-blue-"],
+.ep1 .card[class*="border-violet-"],
+.ep1 .card[class*="border-emerald-"],
+.ep1 .card[class*="border-amber-"],
+.ep1 .card[class*="border-green-"],
+.ep1 .card[class*="border-red-"],
+.ep1 .card[class*="border-orange-"] {
+  border-color: #3E425B !important;
+}
+
+/* --- Teal info/status boxes (dark: variants fire because EP1 has .dark) --- */
+.ep1 [class*="bg-teal-"] {
+  background-color: rgba(37, 40, 64, 0.85) !important;
+}
+.ep1 [class*="border-teal-"] {
+  border-color: #4B4F69 !important;
+}
+.ep1 [class*="text-teal-"] {
+  color: #7AA6FF !important;
+}
+
+/* --- Secondary buttons --- */
+.ep1 button[class*="bg-secondary"],
+.ep1 [data-slot="button"][class*="secondary"] {
+  background-color: #323650 !important;
+  color: #D9DBE7 !important;
+  border: 1px solid #4B4F69 !important;
+}
+.ep1 button[class*="bg-secondary"]:hover {
+  background-color: #383C56 !important;
+}
+
+/* --- Page title in top bar (hardcoded rgba white) --- */
+.ep1 h2[class*="text-\[rgba"] {
+  color: #F4F5FA !important;
+}
+
+/* --- Stat numbers inside cards --- */
+.ep1 .card .text-2xl,
+.ep1 .card .text-3xl,
+.ep1 .card .text-4xl {
+  color: #F4F5FA !important;
+}
+
+/* --- Muted sub-text in cards --- */
+.ep1 .card .text-muted-foreground {
+  color: #A6A9BE !important;
+}
+
+/* --- Progress bars: use EP1 accent for fill --- */
+.ep1 [class*="bg-primary"][style*="width"],
+.ep1 [role="progressbar"] > div {
+  background-color: #9C8FEF !important;
+}
+
+/* --- Dividers in sidebar and content --- */
+.ep1 [data-slot="separator"],
+.ep1 .separator {
+  background-color: #3E425B !important;
+}
+
+/* --- Dropdown trigger buttons (filter chips) --- */
+.ep1 [data-slot="select-trigger"],
+.ep1 button[role="combobox"] {
+  background-color: #2F334B !important;
+  border-color: #707493 !important;
+  color: #F4F5FA !important;
+  border-radius: 8px !important;
+}
+.ep1 [data-slot="select-trigger"]:hover,
+.ep1 button[role="combobox"]:hover {
+  background-color: #383C56 !important;
+  border-color: #9B9EB2 !important;
+}
+
+/* --- Select dropdown content --- */
+.ep1 [data-slot="select-content"],
+.ep1 [role="listbox"] {
+  background-color: #2B2F45 !important;
+  border-color: #4B4F69 !important;
+}
+
+/* --- Select items --- */
+.ep1 [data-slot="select-item"]:hover,
+.ep1 [data-slot="select-item"][data-highlighted],
+.ep1 [role="option"]:hover {
+  background-color: #383C56 !important;
+}
+
+/* --- App shell main area background --- */
+.ep1 main {
+  background-color: #191C2D !important;
+}
+.ep1 .flex-1.overflow-auto {
+  background-color: #191C2D !important;
 }
