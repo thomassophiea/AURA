@@ -113,7 +113,7 @@ export default function App() {
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'ep1' | 'system'>('system');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
@@ -187,7 +187,7 @@ export default function App() {
   useEffect(() => {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'system' | null;
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'ep1' | 'system' | null;
       const initialTheme = savedTheme || 'system';
 
       setTheme(initialTheme);
@@ -627,7 +627,7 @@ export default function App() {
   }, []);
 
   // All special themes that layer on top of dark mode
-  const DARK_OVERLAY_THEMES = ['synthwave', 'pirate', 'mi5'] as const;
+  const DARK_OVERLAY_THEMES = ['synthwave', 'pirate', 'mi5', 'ep1'] as const;
 
   // Helper function to apply theme to document
   const applyTheme = (newTheme: string) => {
@@ -635,10 +635,11 @@ export default function App() {
 
     // All overlay themes use dark as their base
     const isDarkOverlay = DARK_OVERLAY_THEMES.includes(newTheme as any);
-    applyThemeColors(newTheme === 'light' ? 'default' : 'dark');
+    const baseTheme = newTheme === 'light' ? 'default' : newTheme === 'ep1' ? 'ep1' : 'dark';
+    applyThemeColors(baseTheme);
 
     // Remove existing theme classes
-    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
+    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
 
     if (isDarkOverlay) {
       root.classList.add('dark', newTheme);
@@ -650,7 +651,7 @@ export default function App() {
     root.setAttribute('data-theme', newTheme);
 
     // Ensure body also gets the theme class
-    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5');
+    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
     if (isDarkOverlay) {
       document.body.classList.add('dark', newTheme);
     } else {
@@ -659,7 +660,7 @@ export default function App() {
   };
 
   // Helper function to apply theme based on mode (handles system detection)
-  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'system') => {
+  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'ep1' | 'system') => {
     if (mode === 'system') {
       const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       applyTheme(systemTheme);
@@ -672,7 +673,8 @@ export default function App() {
     const newTheme =
       theme === 'light' ? 'dark' :
       theme === 'dark' ? 'synthwave' :
-      theme === 'synthwave' ? 'system' :
+      theme === 'synthwave' ? 'ep1' :
+      theme === 'ep1' ? 'system' :
       'light';
     setTheme(newTheme);
     applyThemeForMode(newTheme);
@@ -689,11 +691,13 @@ export default function App() {
     const themeLabel =
       newTheme === 'system' ? 'System (Auto)' :
       newTheme === 'synthwave' ? 'Miami Vice' :
+      newTheme === 'ep1' ? 'EP1' :
       newTheme.charAt(0).toUpperCase() + newTheme.slice(1);
 
     const themeDescription =
       newTheme === 'system' ? 'The interface will now follow your system preference.' :
       newTheme === 'synthwave' ? 'Welcome to Miami. Neon lights activated.' :
+      newTheme === 'ep1' ? 'Extreme Platform ONE theme activated.' :
       `The interface is now using ${newTheme} theme.`;
 
     toast.success(`Switched to ${themeLabel} mode`, {

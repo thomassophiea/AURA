@@ -17,6 +17,7 @@ import {
   Moon,
   Monitor,
   Zap,
+  Layers,
   BarChart3,
   Wrench,
   AppWindow,
@@ -52,7 +53,7 @@ interface SidebarProps {
   adminRole: string | null;
   currentPage: string;
   onPageChange: (page: string) => void;
-  theme?: 'light' | 'dark' | 'synthwave' | 'system';
+  theme?: 'light' | 'dark' | 'synthwave' | 'ep1' | 'system';
   onThemeToggle?: () => void;
 }
 
@@ -469,6 +470,8 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : theme === 'synthwave' ? (
               <Zap className={cn("h-4 w-4 text-pink-400", !isCollapsed && "mr-2")} />
+            ) : theme === 'ep1' ? (
+              <Layers className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : (
               <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
@@ -477,6 +480,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                 {theme === 'light' ? 'Light' :
                  theme === 'dark' ? 'Dark' :
                  theme === 'synthwave' ? 'Miami Vice' :
+                 theme === 'ep1' ? 'EP1' :
                  'Auto'}
               </span>
             )}

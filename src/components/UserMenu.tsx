@@ -18,7 +18,7 @@ import { Badge } from './ui/badge';
 
 interface UserMenuProps {
   onLogout: () => void;
-  theme: 'light' | 'dark' | 'synthwave' | 'system';
+  theme: 'light' | 'dark' | 'synthwave' | 'ep1' | 'system';
   onThemeToggle: () => void;
   userEmail?: string;
   onNavigateTo?: (page: string) => void;
