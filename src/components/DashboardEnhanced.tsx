@@ -467,7 +467,8 @@ function DashboardEnhancedComponent() {
           const response = await apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000);
           if (response.ok) {
             const data = await response.json();
-            const stations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+            const safe = data ?? {};
+            const stations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
             console.log('[Dashboard] Fetched', stations.length, 'stations for site (API-scoped)');
             return stations;
           }
@@ -481,7 +482,8 @@ function DashboardEnhancedComponent() {
           const response = await apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000);
           if (response.ok) {
             const data = await response.json();
-            const allStations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+            const safe = data ?? {};
+            const allStations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
             const filtered = allStations.filter((s: any) =>
               s.siteName === siteName || s.siteId === siteFilter || s.siteName === siteFilter
             );
@@ -501,7 +503,8 @@ function DashboardEnhancedComponent() {
         }
 
         const data = await response.json();
-        const stations = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+        const safe = data ?? {};
+        const stations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
 
         console.log('[Dashboard] Fetched', stations.length, 'stations');
         return stations;
@@ -534,7 +537,8 @@ function DashboardEnhancedComponent() {
           const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
           if (response.ok) {
             const data = await response.json();
-            const allServices = Array.isArray(data) ? data : (data.services || data.data || []);
+            const safe = data ?? {};
+            const allServices = Array.isArray(data) ? data : (safe.services || safe.data || []);
             const site = await apiService.getSiteById(siteFilter);
             const siteName = site?.name || site?.siteName || siteFilter;
             const filtered = allServices.filter((s: any) =>
@@ -560,7 +564,8 @@ function DashboardEnhancedComponent() {
         throw new Error(`API returned ${response.status}`);
       }
       const data = await response.json();
-      const services = Array.isArray(data) ? data : (data.services || data.data || []);
+      const safe = data ?? {};
+      const services = Array.isArray(data) ? data : (safe.services || safe.data || []);
       console.log('[Dashboard] Fetched', services.length, 'services');
       return services;
     } catch (error) {
@@ -581,14 +586,16 @@ function DashboardEnhancedComponent() {
         const altResponse = await apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000);
         if (altResponse.ok) {
           const altData = await altResponse.json();
-          const allNotifs = Array.isArray(altData) ? altData : (altData.alerts || altData.data || []);
+          const altSafe = altData ?? {};
+          const allNotifs = Array.isArray(altData) ? altData : (altSafe.alerts || altSafe.data || []);
           return siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
         }
         throw new Error(`API returned ${response.status}`);
       }
 
       const data = await response.json();
-      const allNotifs = Array.isArray(data) ? data : (data.notifications || data.data || []);
+      const notifSafe = data ?? {};
+      const allNotifs = Array.isArray(data) ? data : (notifSafe.notifications || notifSafe.data || []);
 
       // STRICT: filter by site device correlation when site-scoped
       const notifications = siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
@@ -622,37 +629,64 @@ function DashboardEnhancedComponent() {
     }
   };
 
+  // Compute composite RFQI score from per-radio ifstats.
+  // Formula (all fields from /v1/aps/ifstats?rfStats=true, per radio):
+  //   score = rfqi_component(40%) + utilization_component(25%) + interference_component(20%) + cochannel_component(15%)
+  // Each component is normalized 0-100 before weighting.
+  // Result clamped to [0, 100].
+  const computeCompositeRFQI = (radios: Array<{
+    rfqi?: number;
+    chUtil?: number;
+    interference?: number;
+    cochannel?: number;
+    noise?: number;
+    clientCount?: number;
+  }>): number => {
+    if (!radios.length) return 0;
+    let totalScore = 0;
+    let count = 0;
+    for (const r of radios) {
+      const rfqiRaw = typeof r.rfqi === 'number' ? r.rfqi : 0;
+      // rfqi is 1-5 scale → normalize to 0-100
+      const rfqiNorm = Math.min(100, Math.max(0, (rfqiRaw / 5) * 100));
+      // chUtil: 0-100% → inverted (lower util = better signal health)
+      const chUtilNorm = Math.min(100, Math.max(0, 100 - (r.chUtil ?? 0)));
+      // interference: 0-100% → inverted
+      const intfNorm = Math.min(100, Math.max(0, 100 - (r.interference ?? 0)));
+      // cochannel: 0-100% → inverted
+      const cochNorm = Math.min(100, Math.max(0, 100 - (r.cochannel ?? 0)));
+      const radioScore = rfqiNorm * 0.40 + chUtilNorm * 0.25 + intfNorm * 0.20 + cochNorm * 0.15;
+      totalScore += radioScore;
+      count++;
+    }
+    return count > 0 ? Math.round(totalScore / count) : 0;
+  };
+
   // Fetch RFQI (RF Quality Index) data from controller for health visualization
   const fetchRFQIData = async () => {
     const siteId = filters.site !== 'all' ? filters.site : undefined;
     console.log('[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites'));
 
     try {
-      // If we have a specific site, use the fetchRFQualityData method
+      // --- Path 1: Site report time-series (site selected) ---
       if (siteId) {
         const rfData = await apiService.fetchRFQualityData(siteId, '24H');
 
         if (rfData && Array.isArray(rfData)) {
-          // Process the RFQI time series data
           const processedData = rfData.flatMap((report: any) => {
             if (report.statistics && Array.isArray(report.statistics)) {
-              // Find the RFQI statistic
               const rfqiStat = report.statistics.find((s: any) =>
                 s.statName?.toLowerCase().includes('rfqi') ||
                 s.statName?.toLowerCase().includes('quality')
               );
-
               if (rfqiStat?.values) {
                 return rfqiStat.values.map((v: any) => {
                   const rfqi = parseFloat(v.value) || 0;
-                  // RFQI is on 1-5 scale - convert to percentage (multiply by 20)
-                  // Values > 5 are already percentages (different data format)
                   const rfqiPercent = rfqi > 5 ? rfqi : rfqi * 20;
-                  // Threshold: >= 60% (3/5) is healthy
                   const healthyPct = Math.min(100, Math.max(0, rfqiPercent));
                   return {
                     timestamp: v.timestamp,
-                    rfqi: rfqi,
+                    rfqi,
                     healthy: healthyPct,
                     needsAttention: 100 - healthyPct
                   };
@@ -663,24 +697,69 @@ function DashboardEnhancedComponent() {
           });
 
           if (processedData.length > 0) {
-            // Sort by timestamp and take last 24 data points
             const sortedData = processedData
               .sort((a: any, b: any) => a.timestamp - b.timestamp)
               .slice(-24);
             setRfqiData(sortedData);
-            console.log('[Dashboard] Processed', sortedData.length, 'RFQI data points from controller');
+            console.log('[Dashboard] RFQI: loaded', sortedData.length, 'time-series points from site report');
             return;
           }
         }
       }
 
-      // No real RFQI data available — show empty state rather than synthetic data
+      // --- Path 2: Composite score from per-radio ifstats ---
+      // Used when no site-report data is available (or no site selected).
+      const ifstats = await apiService.getAPInterfaceStatsWithRF();
+
+      if (ifstats && ifstats.length > 0) {
+        // Collect all radio objects, optionally scoped to the selected site
+        const allRadios: Array<{
+          rfqi?: number; chUtil?: number; interference?: number;
+          cochannel?: number; noise?: number; clientCount?: number;
+        }> = [];
+
+        for (const ap of ifstats) {
+          // Filter by site if selected — match siteId field on the AP object
+          if (siteId && ap.siteId && ap.siteId !== siteId) continue;
+
+          const radios = ap.wirelessRf || ap.radioStats || ap.radios || [];
+          if (Array.isArray(radios)) {
+            allRadios.push(...radios);
+          } else if (ap.rfqi !== undefined) {
+            // AP-level (not per-radio) fallback
+            allRadios.push({
+              rfqi: ap.rfqi,
+              chUtil: ap.chUtil,
+              interference: ap.interference,
+              cochannel: ap.cochannel,
+              noise: ap.noise,
+              clientCount: ap.clientCount
+            });
+          }
+        }
+
+        if (allRadios.length > 0) {
+          const compositeScore = computeCompositeRFQI(allRadios);
+          // Synthesize a single current-time data point (no historical trend available)
+          const now = Date.now();
+          const point = {
+            timestamp: now,
+            rfqi: compositeScore / 20, // back to 1-5 scale for display
+            healthy: compositeScore,
+            needsAttention: 100 - compositeScore
+          };
+          setRfqiData([point]);
+          console.log('[Dashboard] RFQI composite score:', compositeScore, 'from', allRadios.length, 'radios');
+          return;
+        }
+      }
+
+      // No real RFQI data available — show empty state
       console.log('[Dashboard] No RFQI data available from controller; showing empty state');
       setRfqiData([]);
 
     } catch (error) {
       console.error('[Dashboard] Error fetching RFQI data:', error);
-      // Set empty array on error
       setRfqiData([]);
     }
   };
@@ -1261,7 +1340,7 @@ function DashboardEnhancedComponent() {
 
         if (stationsResponse.ok) {
           const stationsData = await stationsResponse.json();
-          const stationList = Array.isArray(stationsData) ? stationsData : (stationsData.stations || []);
+          const stationList = Array.isArray(stationsData) ? stationsData : ((stationsData ?? {}).stations || []);
 
           // Update service with client count
           service.clientCount = stationList.length;

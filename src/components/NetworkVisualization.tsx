@@ -556,17 +556,17 @@ export function NetworkVisualization() {
             <div className="bg-background/50 border border-border rounded-lg p-4 mb-4 w-full">
               <p className="text-sm mb-2 text-foreground">Connection details:</p>
               <div className="text-xs space-y-1 text-muted-foreground mb-3">
-                <p><span className="text-foreground">URL:</span> <span className="font-mono text-primary">https://tsophiea.ddns.net:443/management/v3/sites</span></p>
+                <p><span className="text-foreground">Endpoint:</span> <span className="font-mono text-primary">/management/v3/sites</span></p>
                 <p><span className="text-foreground">Method:</span> GET</p>
                 <p><span className="text-foreground">Timeout:</span> 10 seconds</p>
               </div>
-              
+
               <p className="text-sm mb-2 text-foreground">Common causes:</p>
               <ul className="text-xs space-y-1 list-disc list-inside text-muted-foreground">
                 <li>The controller service is not running or crashed</li>
                 <li>NGINX proxy is misconfigured or not forwarding <span className="font-mono text-primary">/management</span> requests</li>
                 <li>Firewall blocking port 443 or the /management path</li>
-                <li>Network connectivity issue between your browser and tsophiea.ddns.net</li>
+                <li>Network connectivity issue between your browser and the controller</li>
                 <li>SSL certificate issues (check browser console for certificate errors)</li>
                 <li>The /v1/sites API endpoint doesn't exist in your controller version</li>
               </ul>

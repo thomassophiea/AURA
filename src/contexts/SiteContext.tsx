@@ -22,30 +22,18 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const HARDCODED_SITE_ID = 'c7395471-aa5c-46dc-9211-3ed24c5789bd';
-
   const loadSite = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Try to get site by ID first
-      const site = await apiService.getSiteById(HARDCODED_SITE_ID);
-
-      if (site) {
-        console.log('[SiteContext] Loaded site:', site);
-        setCurrentSite(site);
+      const sites = await apiService.getSites();
+      if (sites && sites.length > 0) {
+        console.log('[SiteContext] Loaded first available site:', sites[0]);
+        setCurrentSite(sites[0]);
       } else {
-        // If specific site not found, get first available site
-        const sites = await apiService.getSites();
-        if (sites && sites.length > 0) {
-          const firstSite = sites[0];
-          console.log('[SiteContext] Fallback to first site:', firstSite);
-          setCurrentSite(firstSite);
-        } else {
-          console.warn('[SiteContext] No sites available');
-          setError('No sites available');
-        }
+        console.warn('[SiteContext] No sites available');
+        setCurrentSite(null);
       }
     } catch (err) {
       console.error('[SiteContext] Failed to load site:', err);

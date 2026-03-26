@@ -69,9 +69,16 @@ class SimpleServiceMappingService {
   // Simple data loading - only called once
   private async loadData(): Promise<void> {
     if (this.loaded) return;
-    
+
     const accessToken = localStorage.getItem('access_token');
     if (!accessToken) {
+      this.loaded = true;
+      return;
+    }
+
+    const { tenantService } = await import('./tenantService');
+    const controllerUrl = tenantService.getControllerUrl();
+    if (!controllerUrl) {
       this.loaded = true;
       return;
     }
@@ -83,7 +90,7 @@ class SimpleServiceMappingService {
 
     try {
       // Load services
-      const servicesResponse = await fetch('https://tsophiea.ddns.net:443/management/v1/services', {
+      const servicesResponse = await fetch(`${controllerUrl}/management/v1/services`, {
         headers,
         signal: AbortSignal.timeout(5000)
       });
@@ -109,7 +116,7 @@ class SimpleServiceMappingService {
 
     try {
       // Load roles
-      const rolesResponse = await fetch('https://tsophiea.ddns.net:443/management/roles', {
+      const rolesResponse = await fetch(`${controllerUrl}/management/roles`, {
         headers,
         signal: AbortSignal.timeout(5000)
       });

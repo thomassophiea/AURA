@@ -29,8 +29,14 @@ class ServiceMappingService {
       throw new Error('SUPPRESSED_ANALYTICS_ERROR: No access token available');
     }
 
+    const { tenantService } = await import('./tenantService');
+    const controllerUrl = tenantService.getControllerUrl();
+    if (!controllerUrl) {
+      throw new Error('SUPPRESSED_ANALYTICS_ERROR: No controller URL available');
+    }
+
     try {
-      const response = await fetch(`https://tsophiea.ddns.net:443/management${endpoint}`, {
+      const response = await fetch(`${controllerUrl}/management${endpoint}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

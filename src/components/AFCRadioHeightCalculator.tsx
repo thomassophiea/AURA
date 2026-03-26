@@ -109,40 +109,6 @@ interface CampusData {
   buildings: CampusBuilding[];
 }
 
-const DEMO_CAMPUS_DB: CampusData[] = [
-  {
-    campus: 'Colorado School of Mines',
-    units: { ceiling_height: 'feet' },
-    buildings: [
-      { name: 'CoorsTek Center for Applied Science and Engineering', type: 'academic', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
-      { name: 'Marquez Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
-      { name: 'Brown Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
-      { name: 'Coolbaugh Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
-      { name: 'Chauvenet Hall', type: 'academic', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
-      { name: 'Alderson Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
-      { name: 'Hill Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
-      { name: 'Engineering Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
-      { name: 'Stratton Hall', type: 'administrative', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
-      { name: 'Green Center', type: 'student_center_atrium', floors: 3, ceiling_height: { min: 20, max: 40 }, rf_complexity: 'high' },
-      { name: 'Labriola Innovation Hub', type: 'innovation', floors: 2, ceiling_height: { min: 12, max: 16 }, rf_complexity: 'medium' },
-      { name: 'McNeil Hall', type: 'academic_mixed', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
-      { name: 'Center for Technology and Learning Media', type: 'lab', floors: 2, ceiling_height: { min: 12, max: 16 }, rf_complexity: 'medium' },
-      { name: 'Earth Mechanics Institute', type: 'lab_high_bay', floors: 3, ceiling_height: { min: 16, max: 30 }, rf_complexity: 'high' },
-      { name: 'USGS Research Building', type: 'research_lab', floors: 5, ceiling_height: { min: 14, max: 24 }, rf_complexity: 'high' },
-      { name: 'Volk Gymnasium', type: 'athletics', floors: 2, ceiling_height: { min: 20, max: 30 }, rf_complexity: 'high' },
-      { name: 'Student Recreation Center', type: 'athletics', floors: 3, ceiling_height: { min: 20, max: 40 }, rf_complexity: 'high' },
-      { name: 'Marv Kay Stadium', type: 'stadium', floors: null, ceiling_height: { min: null, max: null }, rf_complexity: 'very_high' },
-      { name: 'Clear Creek Athletic Complex', type: 'athletics', floors: 2, ceiling_height: { min: 15, max: 25 }, rf_complexity: 'medium' },
-      { name: 'Elm Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
-      { name: 'Maple Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
-      { name: 'Spruce Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
-      { name: 'Weaver Towers', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
-      { name: 'Mines Park Apartments', type: 'apartment_complex', floors: 3, ceiling_height: { min: 8, max: 10 }, rf_complexity: 'medium' },
-      { name: 'Sophomore Housing Complex', type: 'residence_hall', floors: 5, ceiling_height: { min: 9, max: 10 }, rf_complexity: 'medium' },
-      { name: 'Main Parking Garage', type: 'parking', floors: 4, ceiling_height: { min: 8, max: 10 }, rf_complexity: 'high' },
-    ],
-  },
-];
 
 const CAMPUS_SEARCH_STEPS = [
   'Querying public campus building databases…',
@@ -275,7 +241,7 @@ export function AFCRadioHeightCalculator() {
 
   // AI Campus Lookup
   const [showCampusLookup, setShowCampusLookup] = useState(false);
-  const [campusSearchQuery, setCampusSearchQuery] = useState('Colorado School of Mines');
+  const [campusSearchQuery, setCampusSearchQuery] = useState('');
   const [campusSearching, setCampusSearching] = useState(false);
   const [campusSearchStep, setCampusSearchStep] = useState(0);
   const [campusResults, setCampusResults] = useState<CampusData | null>(null);
@@ -701,16 +667,8 @@ export function AFCRadioHeightCalculator() {
       setCampusSearchStep(step);
       await new Promise<void>(res => setTimeout(res, 600));
     }
-    const q = campusSearchQuery.toLowerCase();
-    const match = DEMO_CAMPUS_DB.find(d =>
-      d.campus.toLowerCase().includes(q) || q.includes(d.campus.toLowerCase().split(' ').slice(-1)[0]?.toLowerCase() ?? '')
-    );
-    if (match) {
-      setCampusResults(match);
-      setSelectedCampusBuildings(new Set(match.buildings.map(b => b.name)));
-    } else {
-      toast.info('No public data found. Try "Colorado School of Mines" for a live demo.');
-    }
+    // Campus lookup requires a real public data source — no local data available.
+    toast.info('No public data found for this campus. Enter floor heights manually.');
     setCampusSearching(false);
   };
 

@@ -54,6 +54,7 @@ const Workspace = lazy(() => import('./components/Workspace').then(m => ({ defau
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
 const SynthwaveMusicPlayer = lazy(() => import('./components/SynthwaveMusicPlayer').then(m => ({ default: m.SynthwaveMusicPlayer })));
 import { apiService, ApiCallLog } from './services/api';
+import { AppContextProvider } from './contexts/AppContext';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
@@ -1026,6 +1027,7 @@ export default function App() {
   }
 
   return (
+    <AppContextProvider>
     <>
       {/* Miami Vice sunset background - fixed behind everything */}
       {theme === 'synthwave' && (
@@ -1192,5 +1194,6 @@ export default function App() {
       {/* Version Display - Fixed to bottom-left */}
       <VersionDisplay position="bottom-left" />
     </>
+    </AppContextProvider>
   );
 }

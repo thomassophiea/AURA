@@ -19,6 +19,7 @@ import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Badge } from './ui/badge';
 import { useBranding } from '@/lib/branding';
+import { tenantService } from '../services/tenantService';
 
 interface App {
   id: string;
@@ -31,14 +32,16 @@ interface App {
   url?: string;
 }
 
-const APPS: App[] = [
+function buildApps(): App[] {
+  const controllerUrl = tenantService.getControllerUrl();
+  return [
   {
     id: 'mobility-engine-mgmt',
     name: 'API Management',
     description: 'Full-featured management dashboard for API platform',
-    isActive: true,
+    isActive: !!controllerUrl,
     icon: Activity,
-    url: 'https://tsophiea.ddns.net:443/management'
+    url: controllerUrl ? `${controllerUrl}/management` : undefined
   },
   {
     id: 'extremecloud-iq-legacy',
@@ -74,7 +77,8 @@ const APPS: App[] = [
     icon: Layers,
     url: 'https://xiq-migration.up.railway.app/'
   }
-];
+  ];
+}
 
 const handleAppClick = (app: App, setIsOpen: (open: boolean) => void) => {
   if (app.isActive) {
@@ -94,6 +98,7 @@ const handleAppClick = (app: App, setIsOpen: (open: boolean) => void) => {
 export function AppsMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const branding = useBranding();
+  const apps = buildApps();
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -128,7 +133,7 @@ export function AppsMenu() {
           
           {/* Apps Grid */}
           <div className="space-y-2">
-            {APPS.map((app) => (
+            {apps.map((app) => (
               <div
                 key={app.id}
                 className={`

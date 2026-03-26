@@ -31,6 +31,25 @@ export interface Controller {
   created_at?: string;
 }
 
+/**
+ * SiteGroup is the org-level abstraction for a controller pair or single
+ * campus controller domain. Each Controller maps to exactly one SiteGroup.
+ * This layer scales cleanly when more controller pairs are added later.
+ */
+export interface SiteGroup {
+  id: string;
+  org_id: string;
+  name: string;
+  description?: string;
+  /** Resolved base URL — ready for use as the API base without further processing. */
+  controller_url: string;
+  controller_port?: number;
+  connection_status: 'connected' | 'disconnected' | 'error' | 'unknown';
+  last_connected_at?: string;
+  is_default: boolean;
+  created_at?: string;
+}
+
 export interface UserOrganization {
   id: string;
   user_id: string;
@@ -63,43 +82,12 @@ const STORAGE_KEYS = {
   USER_PROFILE: 'api_user_profile'
 };
 
-// Default controller configuration
-const DEFAULT_CONTROLLER: Controller = {
-  id: 'default-controller',
-  org_id: 'default',
-  name: 'TGS-XIQC-VE6120',
-  description: 'Default Platform ONE Controller',
-  url: 'https://tsophiea.ddns.net',
-  port: 443,
-  is_active: true,
-  is_default: true,
-  connection_status: 'unknown',
-  created_at: new Date().toISOString()
-};
-
 class TenantService {
   private currentController: Controller | null = null;
   private currentOrg: Organization | null = null;
 
   constructor() {
     this.loadFromStorage();
-    this.ensureDefaultController();
-  }
-
-  // Ensure default controller exists
-  private ensureDefaultController() {
-    const controllers = this.getLocalControllers();
-    const hasDefault = controllers.some(c => c.id === DEFAULT_CONTROLLER.id);
-    
-    if (!hasDefault) {
-      this.saveControllerLocally(DEFAULT_CONTROLLER);
-    }
-    
-    // If no current controller is set, use the default
-    if (!this.currentController) {
-      this.currentController = DEFAULT_CONTROLLER;
-      this.saveToStorage();
-    }
   }
 
   // Load saved state from localStorage
@@ -255,8 +243,7 @@ class TenantService {
       console.warn('Supabase not available or timed out, using defaults');
     }
 
-    // Fallback - ensure default controller exists and return it
-    this.ensureDefaultController();
+    // No controllers found — return empty so the UI can show an appropriate empty state
     return this.getLocalControllers();
   }
   
@@ -559,6 +546,40 @@ class TenantService {
     return controller;
   }
 
+  // === Site Groups ===
+  // Each Controller maps to one SiteGroup. This layer exists so the rest of the
+  // app can reason about "site groups" without knowing about raw controllers.
+
+  async getSiteGroups(orgId?: string): Promise<SiteGroup[]> {
+    const controllers = await this.getControllers(orgId);
+    return controllers.map(c => this.controllerToSiteGroup(c));
+  }
+
+  private controllerToSiteGroup(c: Controller): SiteGroup {
+    return {
+      id: c.id,
+      org_id: c.org_id,
+      name: c.name,
+      description: c.description,
+      controller_url: this.resolveUrl(c.url, c.port),
+      controller_port: c.port,
+      connection_status: c.connection_status,
+      last_connected_at: c.last_connected_at,
+      is_default: c.is_default,
+      created_at: c.created_at,
+    };
+  }
+
+  private resolveUrl(url: string, port?: number): string {
+    const p = port || 443;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return `https://${url}:${p}`;
+    }
+    // If no explicit port already appended, add it
+    const hasPort = /:\d+$/.test(url);
+    return hasPort ? url : `${url}:${p}`;
+  }
+
   // === Clear All Data ===
 
   clearAll() {
@@ -572,6 +593,3 @@ class TenantService {
 
 // Export singleton instance
 export const tenantService = new TenantService();
-
-// Export default controller for reference
-export { DEFAULT_CONTROLLER };
