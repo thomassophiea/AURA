@@ -13,7 +13,7 @@ import { Checkbox } from './ui/checkbox';
 import {
   Building2, RefreshCw, AlertCircle, CheckCircle, Layers, Zap, RotateCcw, Upload,
   ChevronRight, ChevronDown, Search, Save, FolderOpen, Copy, FileSpreadsheet,
-  AlertTriangle, CheckCheck, MapPin, X, Trash2, Calculator,
+  AlertTriangle, CheckCheck, MapPin, X, Trash2, Calculator, Sparkles,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -93,6 +93,81 @@ const BUILDING_PRESETS = [
 ] as const;
 
 const PROFILES_KEY = 'afc-radio-height-profiles';
+
+// ── AI Campus Lookup — Demo Data ───────────────────────────────────────────────
+
+interface CampusBuilding {
+  name: string;
+  type: string;
+  floors: number | null;
+  ceiling_height: { min: number | null; max: number | null };
+  rf_complexity: string;
+}
+interface CampusData {
+  campus: string;
+  units: { ceiling_height: string };
+  buildings: CampusBuilding[];
+}
+
+const DEMO_CAMPUS_DB: CampusData[] = [
+  {
+    campus: 'Colorado School of Mines',
+    units: { ceiling_height: 'feet' },
+    buildings: [
+      { name: 'CoorsTek Center for Applied Science and Engineering', type: 'academic', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
+      { name: 'Marquez Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
+      { name: 'Brown Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
+      { name: 'Coolbaugh Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
+      { name: 'Chauvenet Hall', type: 'academic', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
+      { name: 'Alderson Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
+      { name: 'Hill Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
+      { name: 'Engineering Hall', type: 'academic', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'medium' },
+      { name: 'Stratton Hall', type: 'administrative', floors: 3, ceiling_height: { min: 10, max: 12 }, rf_complexity: 'low' },
+      { name: 'Green Center', type: 'student_center_atrium', floors: 3, ceiling_height: { min: 20, max: 40 }, rf_complexity: 'high' },
+      { name: 'Labriola Innovation Hub', type: 'innovation', floors: 2, ceiling_height: { min: 12, max: 16 }, rf_complexity: 'medium' },
+      { name: 'McNeil Hall', type: 'academic_mixed', floors: 4, ceiling_height: { min: 10, max: 14 }, rf_complexity: 'medium' },
+      { name: 'Center for Technology and Learning Media', type: 'lab', floors: 2, ceiling_height: { min: 12, max: 16 }, rf_complexity: 'medium' },
+      { name: 'Earth Mechanics Institute', type: 'lab_high_bay', floors: 3, ceiling_height: { min: 16, max: 30 }, rf_complexity: 'high' },
+      { name: 'USGS Research Building', type: 'research_lab', floors: 5, ceiling_height: { min: 14, max: 24 }, rf_complexity: 'high' },
+      { name: 'Volk Gymnasium', type: 'athletics', floors: 2, ceiling_height: { min: 20, max: 30 }, rf_complexity: 'high' },
+      { name: 'Student Recreation Center', type: 'athletics', floors: 3, ceiling_height: { min: 20, max: 40 }, rf_complexity: 'high' },
+      { name: 'Marv Kay Stadium', type: 'stadium', floors: null, ceiling_height: { min: null, max: null }, rf_complexity: 'very_high' },
+      { name: 'Clear Creek Athletic Complex', type: 'athletics', floors: 2, ceiling_height: { min: 15, max: 25 }, rf_complexity: 'medium' },
+      { name: 'Elm Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
+      { name: 'Maple Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
+      { name: 'Spruce Hall', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
+      { name: 'Weaver Towers', type: 'residence_hall', floors: 4, ceiling_height: { min: 8, max: 9 }, rf_complexity: 'medium' },
+      { name: 'Mines Park Apartments', type: 'apartment_complex', floors: 3, ceiling_height: { min: 8, max: 10 }, rf_complexity: 'medium' },
+      { name: 'Sophomore Housing Complex', type: 'residence_hall', floors: 5, ceiling_height: { min: 9, max: 10 }, rf_complexity: 'medium' },
+      { name: 'Main Parking Garage', type: 'parking', floors: 4, ceiling_height: { min: 8, max: 10 }, rf_complexity: 'high' },
+    ],
+  },
+];
+
+const CAMPUS_SEARCH_STEPS = [
+  'Querying public campus building databases…',
+  'Analyzing architectural specifications…',
+  'Estimating RF coverage complexity…',
+  'Computing floor height recommendations…',
+];
+
+function buildingTypeLabel(type: string): string {
+  const map: Record<string, string> = {
+    academic: 'Academic', administrative: 'Administrative',
+    student_center_atrium: 'Student Center / Atrium', innovation: 'Innovation Hub',
+    lab: 'Laboratory', lab_high_bay: 'High Bay Lab', research_lab: 'Research Lab',
+    athletics: 'Athletics', stadium: 'Stadium', residence_hall: 'Residence Hall',
+    apartment_complex: 'Apartment Complex', parking: 'Parking', academic_mixed: 'Academic / Mixed',
+  };
+  return map[type] ?? type;
+}
+
+function rfComplexityColor(level: string): string {
+  if (level === 'low') return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 border';
+  if (level === 'medium') return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 border';
+  if (level === 'high') return 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20 border';
+  return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 border'; // very_high
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -197,6 +272,14 @@ export function AFCRadioHeightCalculator() {
   });
   const [newProfileName, setNewProfileName] = useState('');
   const [showProfiles, setShowProfiles] = useState(false);
+
+  // AI Campus Lookup
+  const [showCampusLookup, setShowCampusLookup] = useState(false);
+  const [campusSearchQuery, setCampusSearchQuery] = useState('Colorado School of Mines');
+  const [campusSearching, setCampusSearching] = useState(false);
+  const [campusSearchStep, setCampusSearchStep] = useState(0);
+  const [campusResults, setCampusResults] = useState<CampusData | null>(null);
+  const [selectedCampusBuildings, setSelectedCampusBuildings] = useState<Set<string>>(new Set());
   const [copySource, setCopySource] = useState<string | null>(null);
 
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -607,6 +690,68 @@ export function AFCRadioHeightCalculator() {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(updated));
   };
 
+  // ── AI Campus Lookup ───────────────────────────────────────────────────────
+
+  const handleCampusSearch = async () => {
+    setCampusSearching(true);
+    setCampusResults(null);
+    setCampusSearchStep(0);
+    // Simulate multi-step AI search with progressive status messages
+    for (let step = 0; step < CAMPUS_SEARCH_STEPS.length; step++) {
+      setCampusSearchStep(step);
+      await new Promise<void>(res => setTimeout(res, 600));
+    }
+    const q = campusSearchQuery.toLowerCase();
+    const match = DEMO_CAMPUS_DB.find(d =>
+      d.campus.toLowerCase().includes(q) || q.includes(d.campus.toLowerCase().split(' ').slice(-1)[0]?.toLowerCase() ?? '')
+    );
+    if (match) {
+      setCampusResults(match);
+      setSelectedCampusBuildings(new Set(match.buildings.map(b => b.name)));
+    } else {
+      toast.info('No public data found. Try "Colorado School of Mines" for a live demo.');
+    }
+    setCampusSearching(false);
+  };
+
+  const applyCampusFloorHeights = () => {
+    if (!campusResults) return;
+    const FT_TO_M = 0.3048;
+    const siteName = campusResults.campus;
+    const newFloors: FloorConfig[] = [];
+
+    campusResults.buildings
+      .filter(b => selectedCampusBuildings.has(b.name) && b.floors && b.floors > 0)
+      .forEach(b => {
+        const avgCeilingFt =
+          b.ceiling_height.min !== null && b.ceiling_height.max !== null
+            ? (b.ceiling_height.min + b.ceiling_height.max) / 2
+            : 10;
+        const avgCeilingM = avgCeilingFt * FT_TO_M;
+        for (let i = 1; i <= (b.floors as number); i++) {
+          const floorLabel = i === 1 ? 'Ground' : String(i);
+          const key = `${siteName}||${b.name}||${floorLabel}`;
+          newFloors.push({
+            key, site: siteName, building: b.name,
+            floor: floorLabel, floorNumber: i,
+            floorHeightAboveGround: Math.round((i - 1) * avgCeilingM * 100) / 100,
+            heightUncertainty: null,
+            apHeightDefault: null,
+            apHeightUncertaintyDefault: null,
+          });
+        }
+      });
+
+    setFloorConfigs(prev => {
+      const nonDemo = prev.filter(fc => fc.site !== siteName);
+      return [...nonDemo, ...newFloors];
+    });
+
+    toast.success(`Populated ${newFloors.length} floor configs across ${selectedCampusBuildings.size} buildings`);
+    setActiveTab('floors');
+    setShowCampusLookup(false);
+  };
+
   // ── Export ─────────────────────────────────────────────────────────────────
 
   const exportData = useMemo(() => filteredRecords.map(r => ({
@@ -658,6 +803,15 @@ export function AFCRadioHeightCalculator() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={() => setShowCampusLookup(v => !v)}
+            className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/30 border-0 relative overflow-hidden"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Campus Lookup
+            <span className="absolute top-0.5 right-1 text-[9px] font-bold opacity-70 uppercase tracking-wide">DEMO</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowProfiles(v => !v)}>
             <FolderOpen className="h-4 w-4 mr-2" />
             Profiles{profiles.length > 0 && <Badge variant="secondary" className="ml-1 text-xs">{profiles.length}</Badge>}
@@ -705,6 +859,168 @@ export function AFCRadioHeightCalculator() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* AI Campus Lookup panel */}
+      {showCampusLookup && (
+        <Card className="border-violet-500/40 shadow-lg shadow-violet-500/10 overflow-hidden">
+          {/* Gradient banner */}
+          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white">
+              <Sparkles className="h-4 w-4" />
+              <span className="font-semibold text-sm">AI Campus Building Lookup</span>
+              <Badge className="bg-white/20 text-white border-white/30 border text-xs">Demo</Badge>
+            </div>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/80 hover:text-white hover:bg-white/20"
+              onClick={() => setShowCampusLookup(false)}><X className="h-3.5 w-3.5" /></Button>
+          </div>
+
+          <CardContent className="pt-4 space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Search publicly available campus building records to auto-populate floor heights. Results are estimates based on architectural specifications and are for demonstration purposes only.
+            </p>
+
+            {/* Search bar */}
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Enter institution or campus name…"
+                  value={campusSearchQuery}
+                  onChange={e => { setCampusSearchQuery(e.target.value); setCampusResults(null); }}
+                  onKeyDown={e => e.key === 'Enter' && !campusSearching && handleCampusSearch()}
+                  className="pl-8 h-9"
+                />
+              </div>
+              <Button onClick={handleCampusSearch} disabled={campusSearching || !campusSearchQuery.trim()}
+                className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0">
+                {campusSearching
+                  ? <RefreshCw className="h-4 w-4 animate-spin" />
+                  : <Sparkles className="h-4 w-4" />}
+                {campusSearching ? 'Searching…' : 'Search'}
+              </Button>
+            </div>
+
+            {/* Loading state */}
+            {campusSearching && (
+              <div className="flex flex-col items-center gap-3 py-6">
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map(i => (
+                    <div key={i} className="h-2 w-2 rounded-full bg-violet-500 animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground animate-pulse">
+                  {CAMPUS_SEARCH_STEPS[campusSearchStep] ?? CAMPUS_SEARCH_STEPS[0]}
+                </p>
+                <div className="flex gap-1 mt-1">
+                  {CAMPUS_SEARCH_STEPS.map((_, i) => (
+                    <div key={i} className={`h-1 w-8 rounded-full transition-all duration-300 ${i <= campusSearchStep ? 'bg-violet-500' : 'bg-muted'}`} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Results */}
+            {campusResults && !campusSearching && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-semibold flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-violet-500" />
+                      {campusResults.campus}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {campusResults.buildings.length} buildings found · Heights in {campusResults.units.ceiling_height} (converted to metres on apply)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs"
+                      onClick={() => setSelectedCampusBuildings(new Set(campusResults.buildings.map(b => b.name)))}>
+                      Select All
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs"
+                      onClick={() => setSelectedCampusBuildings(new Set())}>
+                      Deselect All
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Building cards grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto pr-1">
+                  {campusResults.buildings.map(b => {
+                    const selected = selectedCampusBuildings.has(b.name);
+                    const avgFt = b.ceiling_height.min !== null && b.ceiling_height.max !== null
+                      ? (b.ceiling_height.min + b.ceiling_height.max) / 2 : null;
+                    const avgM = avgFt ? (avgFt * 0.3048).toFixed(1) : null;
+                    const hasFloors = b.floors && b.floors > 0;
+                    return (
+                      <button key={b.name}
+                        onClick={() => setSelectedCampusBuildings(prev => {
+                          const n = new Set(prev);
+                          if (n.has(b.name)) n.delete(b.name); else n.add(b.name);
+                          return n;
+                        })}
+                        className={`text-left p-3 rounded-lg border transition-all ${
+                          selected
+                            ? 'border-violet-500/50 bg-violet-50 dark:bg-violet-950/30 shadow-sm'
+                            : 'border-border bg-muted/20 opacity-50'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-1 mb-1.5">
+                          <span className="text-xs font-semibold leading-snug">{b.name}</span>
+                          <div className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                            selected ? 'bg-violet-600 border-violet-600' : 'border-border'
+                          }`}>
+                            {selected && <CheckCircle className="h-3 w-3 text-white" />}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <Badge className={`text-[10px] px-1.5 py-0 ${rfComplexityColor(b.rf_complexity)}`}>
+                            RF: {b.rf_complexity.replace('_', ' ')}
+                          </Badge>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-muted-foreground">
+                            {buildingTypeLabel(b.type)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {hasFloors ? (
+                            <span className="flex items-center gap-1">
+                              <Layers className="h-3 w-3" />{b.floors} floor{b.floors !== 1 ? 's' : ''}
+                            </span>
+                          ) : (
+                            <span className="italic">No floors (outdoor)</span>
+                          )}
+                          {avgM && (
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />~{avgM} m ceiling
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Apply button */}
+                <div className="flex items-center justify-between pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    {selectedCampusBuildings.size} building{selectedCampusBuildings.size !== 1 ? 's' : ''} selected ·
+                    floor heights computed from average ceiling height
+                  </p>
+                  <Button
+                    onClick={applyCampusFloorHeights}
+                    disabled={selectedCampusBuildings.size === 0}
+                    className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    Apply Floor Heights ({[...selectedCampusBuildings].filter(n => campusResults.buildings.find(b => b.name === n && b.floors && b.floors > 0)).length} buildings)
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
