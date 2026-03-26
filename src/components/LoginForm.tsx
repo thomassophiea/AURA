@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle, Cloud, CloudOff } from 'lucide-react';
+import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
@@ -95,11 +95,19 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
           apiService.setBaseUrl(controllerUrl);
         }
 
-        // Pre-fill saved credentials for this controller
-        const saved = tenantService.getSiteGroupLogin(selectedCtrl.id);
-        if (saved) {
-          setUserId(saved.username);
-          setPassword(saved.password);
+        // Pre-fill saved controller credentials
+        const savedLogin = tenantService.getSiteGroupLogin(selectedCtrl.id);
+        if (savedLogin) {
+          setUserId(savedLogin.username);
+          setPassword(savedLogin.password);
+        }
+
+        // Pre-fill saved ExtremeCloud credentials for this site group
+        const savedXIQ = xiqService.getCredentials(selectedCtrl.id);
+        if (savedXIQ) {
+          setXiqEmail(savedXIQ.email);
+          setXiqPassword(savedXIQ.password);
+          setXiqRegion(savedXIQ.region);
         }
       }
 
@@ -375,7 +383,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
             </div>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' :
-               step === 'xiq' ? 'Connect ExtremeCloud IQ (optional)' :
+               step === 'xiq' ? 'Sign in to ExtremeCloud (optional)' :
                'Sign in to continue'}
             </CardDescription>
           </CardHeader>
@@ -625,14 +633,14 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
               </div>
             )}
 
-            {/* XIQ Step */}
+            {/* ExtremeCloud Step */}
             {step === 'xiq' && (
               <div className="space-y-4">
                 {/* Already authenticated notice */}
                 {xiqService.isAuthenticated('xiq_pending') && (
                   <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-700 dark:text-green-400">
                     <CheckCircle className="h-4 w-4 shrink-0" />
-                    <span>XIQ session active.</span>
+                    <span>ExtremeCloud session active.</span>
                   </div>
                 )}
 
@@ -655,13 +663,13 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
                   {/* Email */}
                   <div className="space-y-2">
-                    <Label htmlFor="xiq-email">XIQ Email</Label>
+                    <Label htmlFor="xiq-email">Email</Label>
                     <Input
                       id="xiq-email"
                       type="email"
                       value={xiqEmail}
                       onChange={e => setXiqEmail(e.target.value)}
-                      placeholder="you@company.com"
+                      placeholder="you@extremenetworks.com"
                       disabled={xiqLoading}
                       autoComplete="username"
                     />
@@ -669,13 +677,13 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
                   {/* Password */}
                   <div className="space-y-2">
-                    <Label htmlFor="xiq-password">XIQ Password</Label>
+                    <Label htmlFor="xiq-password">Password</Label>
                     <Input
                       id="xiq-password"
                       type="password"
                       value={xiqPassword}
                       onChange={e => setXiqPassword(e.target.value)}
-                      placeholder="Enter your XIQ password"
+                      placeholder="Enter your password"
                       disabled={xiqLoading}
                       autoComplete="current-password"
                     />
@@ -695,13 +703,10 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                     {xiqLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Connecting to XIQ...
+                        Signing in...
                       </>
                     ) : (
-                      <>
-                        <Cloud className="mr-2 h-4 w-4" />
-                        Connect XIQ
-                      </>
+                      'Sign In to ExtremeCloud'
                     )}
                   </Button>
                 </form>
@@ -716,7 +721,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 </Button>
 
                 <p className="text-[11px] text-muted-foreground text-center">
-                  XIQ connection enables future migration from ExtremeCloud IQ to AURA.
+                  Connects AURA to your ExtremeCloud organization for future migration.
                   You can connect later from Site Group settings.
                 </p>
               </div>
