@@ -809,7 +809,7 @@ export function AFCRadioHeightCalculator() {
             className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/30 border-0"
           >
             <Sparkles className="h-4 w-4" />
-            AI Campus Lookup
+            Public Information Lookup
           </Button>
           <Button variant="outline" size="sm" onClick={() => setShowProfiles(v => !v)}>
             <FolderOpen className="h-4 w-4 mr-2" />
@@ -871,7 +871,7 @@ export function AFCRadioHeightCalculator() {
           <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2 text-white">
               <Sparkles className="h-4 w-4" />
-              <span className="font-semibold text-sm">AI Campus Building Lookup</span>
+              <span className="font-semibold text-sm">Public Information Lookup</span>
               <Badge className="bg-white/20 text-white border-white/30 border text-xs">Demo</Badge>
             </div>
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-white/80 hover:text-white hover:bg-white/20"
