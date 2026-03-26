@@ -18,7 +18,7 @@ export const XIQ_REGIONS = {
   global: 'https://api.extremecloudiq.com',
   eu: 'https://api-eu.extremecloudiq.com',
   apac: 'https://api-apac.extremecloudiq.com',
-  ca: 'https://api-ca.extremecloudiq.com',
+  ca: 'https://cal-api.extremecloudiq.com',
 } as const;
 
 export type XIQRegion = keyof typeof XIQ_REGIONS;

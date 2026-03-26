@@ -1184,7 +1184,7 @@ const XIQ_REGION_URLS = {
   global: 'https://api.extremecloudiq.com',
   eu: 'https://api-eu.extremecloudiq.com',
   apac: 'https://api-apac.extremecloudiq.com',
-  ca: 'https://api-ca.extremecloudiq.com',
+  ca: 'https://cal-api.extremecloudiq.com',
 };
 
 app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, (req, res) => {
