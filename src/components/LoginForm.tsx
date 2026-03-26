@@ -80,14 +80,21 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
       if (selectedCtrl) {
         setSelectedController(selectedCtrl);
         tenantService.setCurrentController(selectedCtrl);
-        
+
         // Update API service base URL
         const controllerUrl = tenantService.getControllerUrl();
         if (controllerUrl) {
           apiService.setBaseUrl(controllerUrl);
         }
+
+        // Pre-fill saved credentials for this controller
+        const saved = tenantService.getSiteGroupLogin(selectedCtrl.id);
+        if (saved) {
+          setUserId(saved.username);
+          setPassword(saved.password);
+        }
       }
-      
+
       // If only one controller, auto-proceed to credentials
       if (data.length === 1 && selectedCtrl) {
         setStep('credentials');
@@ -206,6 +213,16 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
   const handleSelectController = (controller: Controller) => {
     setSelectedController(controller);
+    // Pre-fill saved credentials when the user selects a controller
+    const saved = tenantService.getSiteGroupLogin(controller.id);
+    if (saved) {
+      setUserId(saved.username);
+      setPassword(saved.password);
+    } else {
+      // Clear any leftover credentials from a previous controller
+      setUserId('');
+      setPassword('');
+    }
   };
 
   const handleProceedToLogin = () => {
@@ -233,15 +250,16 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
     try {
       await apiService.login(userId, password);
-      
-      // Update controller connection status
+
+      // Persist credentials and update connection status for this controller
       if (selectedController) {
+        tenantService.saveSiteGroupLogin(selectedController.id, userId.trim(), password);
         tenantService.updateController(selectedController.id, {
           connection_status: 'connected',
           last_connected_at: new Date().toISOString()
         });
       }
-      
+
       onLoginSuccess();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
@@ -472,12 +490,17 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 {/* Selected Controller Info */}
                 {selectedController && (
                   <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg mb-4">
-                    <div className="flex items-center gap-2">
-                      <Server className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-medium">{selectedController.name}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Server className="h-4 w-4 text-primary shrink-0" />
+                      <div className="min-w-0">
+                        <span className="text-sm font-medium truncate block">{selectedController.name}</span>
+                        {tenantService.getSiteGroupLogin(selectedController.id) && (
+                          <span className="text-[11px] text-muted-foreground">Saved credentials loaded</span>
+                        )}
+                      </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => setStep('controller')}
                     >

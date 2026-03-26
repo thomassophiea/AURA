@@ -413,7 +413,39 @@ class TenantService {
     return url.includes(':') ? url : `${url}:${port}`;
   }
 
-  // === Controller Credentials ===
+  // === Per-Site-Group Login Cache ===
+  // Stores username + password in localStorage so the login form can pre-fill
+  // credentials on subsequent sessions without re-entry.
+  // NOTE: credentials are stored base64-encoded (obfuscated, not encrypted).
+  // This is appropriate for a local admin tool. Do not use in a shared or
+  // public-facing deployment without proper credential encryption.
+
+  private readonly CREDS_PREFIX = 'sg_login_';
+
+  saveSiteGroupLogin(controllerId: string, username: string, password: string): void {
+    try {
+      const payload = JSON.stringify({ username, password });
+      localStorage.setItem(`${this.CREDS_PREFIX}${controllerId}`, btoa(payload));
+    } catch {
+      // localStorage quota or other error — skip silently
+    }
+  }
+
+  getSiteGroupLogin(controllerId: string): { username: string; password: string } | null {
+    try {
+      const raw = localStorage.getItem(`${this.CREDS_PREFIX}${controllerId}`);
+      if (!raw) return null;
+      return JSON.parse(atob(raw)) as { username: string; password: string };
+    } catch {
+      return null;
+    }
+  }
+
+  clearSiteGroupLogin(controllerId: string): void {
+    localStorage.removeItem(`${this.CREDS_PREFIX}${controllerId}`);
+  }
+
+  // === Controller Credentials (Supabase — username only, no password) ===
 
   async saveControllerCredentials(
     controllerId: string,
