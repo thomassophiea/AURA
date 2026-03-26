@@ -13,7 +13,7 @@ import { Checkbox } from './ui/checkbox';
 import {
   Building2, RefreshCw, AlertCircle, CheckCircle, Layers, Zap, RotateCcw, Upload,
   ChevronRight, ChevronDown, Search, Save, FolderOpen, Copy, FileSpreadsheet,
-  AlertTriangle, CheckCheck, MapPin, X, Trash2,
+  AlertTriangle, CheckCheck, MapPin, X, Trash2, Calculator,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -26,14 +26,14 @@ type PowerClass = 'sp' | 'lp';
 type ApplyStatus = 'idle' | 'applied' | 'error';
 
 interface FloorConfig {
-  key: string;                             // `${site}||${building}||${floor}`
+  key: string;                              // `${site}||${building}||${floor}`
   site: string;
   building: string;
-  floor: string;
-  floorNumber: number;
-  ceilingHeight: number | null;            // floor-to-ceiling height (null = global default)
-  heightUncertainty: number | null;        // floor HAG uncertainty (null = global default)
-  apHeightDefault: number | null;          // default AP height above floor for this floor
+  floor: string;                            // label as stored on controller
+  floorNumber: number;                      // parsed — used only by the formula helper
+  floorHeightAboveGround: number;           // directly editable, default 0 m
+  heightUncertainty: number | null;         // null = global default
+  apHeightDefault: number | null;           // null = global default
   apHeightUncertaintyDefault: number | null;
 }
 
@@ -44,18 +44,16 @@ interface APHeightRecord {
   site: string;
   building: string;
   floor: string;
-  floorNumber: number;
   antennaType: string;
-  // Computed heights
+  // Heights (recalculated when settings change)
   floorHeightAboveGround: number;
   floorHeightUncertainty: number;
-  apHeightAboveFloor: number;
-  apHeightUncertainty: number;
+  apHeightAboveFloor: number;              // per-AP editable
+  apHeightUncertainty: number;             // per-AP editable
   // Per-AP floor settings override
   floorSettingsOverride: boolean;
   floorHeightOverride: number | null;
   floorUncertaintyOverride: number | null;
-  // AFC config
   deployment: Deployment;
   powerClass: PowerClass;
   selected: boolean;
@@ -65,7 +63,6 @@ interface APHeightRecord {
 interface ConfigProfile {
   name: string;
   createdAt: string;
-  defaultFloorHeight: number;
   defaultGroundElevation: number;
   defaultApHeight: number;
   defaultFloorUncertainty: number;
@@ -74,7 +71,7 @@ interface ConfigProfile {
   defaultDeployment: Deployment;
   defaultPowerClass: PowerClass;
   siteElevations: Record<string, number>;
-  floorOverrides: Record<string, number | null>;
+  floorOverrides: Record<string, number>;  // key → floorHeightAboveGround
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -83,9 +80,10 @@ const SP_POWER: Record<string, number> = { '20': 36, '40': 39, '80': 42, '160': 
 const LP_POWER: Record<string, number> = { '20': 30, '40': 33, '80': 36, '160': 39 };
 const CHANNEL_WIDTHS = ['20', '40', '80', '160'] as const;
 
-// Fallback model-based outdoor detection (used only when ap.environment is not set)
-const OUTDOOR_MODEL_PATTERNS = ['AP460C', 'AP460S', 'AP560H', 'AP360E'];
+// Fallback model-based outdoor detection (used only when ap.environment is absent)
+const OUTDOOR_MODEL_PATTERNS = ['AP460C', 'AP460S', 'AP560H', 'AP360E', 'AP5050', 'AP5060'];
 
+// Building presets — ceiling height for formula helper
 const BUILDING_PRESETS = [
   { label: 'Office', height: 3.5 },
   { label: 'Warehouse', height: 8.0 },
@@ -107,16 +105,17 @@ function parseFloorNumber(floor: string): number {
   const lMatch = f.match(/^L(\d+)$/);
   if (lMatch) return parseInt(lMatch[1] ?? '1', 10);
   const n = parseInt(f, 10);
-  if (!isNaN(n)) return n === 0 ? 1 : n;
+  // Cap at 20 — larger numbers are floor labels/IDs, not real floor numbers
+  if (!isNaN(n)) return Math.min(Math.abs(n === 0 ? 1 : n), 20);
   return 1;
 }
 
-/** Resolve deployment from the AP's environment field first, fall back to model heuristic. */
+/** Resolve deployment from controller Environment field first, then model heuristic. */
 function resolveDeployment(environment: string | undefined, model: string): Deployment {
   if (environment) {
-    const env = environment.toLowerCase();
-    if (env === 'outdoor') return 'outdoor';
-    if (env === 'indoor') return 'indoor';
+    const e = environment.toLowerCase();
+    if (e === 'outdoor') return 'outdoor';
+    if (e === 'indoor') return 'indoor';
   }
   const m = model.toUpperCase();
   return OUTDOOR_MODEL_PATTERNS.some(p => m.includes(p)) ? 'outdoor' : 'indoor';
@@ -134,7 +133,7 @@ function parseFloorCsv(text: string): { building: string; floor: string; height:
     const parts = (lines[i] ?? '').split(',').map(s => s.trim().replace(/^"|"$/g, ''));
     if (parts.length >= 3) {
       const height = parseFloat(parts[2] ?? '');
-      if (!isNaN(height) && height > 0) {
+      if (!isNaN(height) && height >= 0) {
         result.push({ building: parts[0] ?? '', floor: parts[1] ?? '', height });
       }
     }
@@ -162,17 +161,19 @@ function StatusBadge({ status }: { status: ApplyStatus }) {
 
 export function AFCRadioHeightCalculator() {
   // Global defaults
-  const [defaultFloorHeight, setDefaultFloorHeight] = useState(3.5);
   const [defaultGroundElevation, setDefaultGroundElevation] = useState(0);
   const [defaultApHeight, setDefaultApHeight] = useState(3.0);
   const [defaultFloorUncertainty, setDefaultFloorUncertainty] = useState(1.0);
   const [defaultApUncertainty, setDefaultApUncertainty] = useState(1.0);
   const [defaultAntennaType, setDefaultAntennaType] = useState('');
   const [defaultDeployment, setDefaultDeployment] = useState<Deployment>('indoor');
-  const [defaultPowerClass, setDefaultPowerClass] = useState<PowerClass>('sp');
+  const [defaultPowerClass, setDefaultPowerClass] = useState<PowerClass>('lp');
 
   // Per-site ground elevations
   const [siteElevations, setSiteElevations] = useState<Map<string, number>>(new Map());
+
+  // Per-building ceiling height inputs (for formula helper only — not stored per-floor)
+  const [buildingCeilingHelpers, setBuildingCeilingHelpers] = useState<Map<string, number>>(new Map());
 
   // Data
   const [apRecords, setApRecords] = useState<APHeightRecord[]>([]);
@@ -202,10 +203,7 @@ export function AFCRadioHeightCalculator() {
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
-  const allSites = useMemo(() => {
-    const s = new Set(apRecords.map(r => r.site));
-    return Array.from(s).sort();
-  }, [apRecords]);
+  const allSites = useMemo(() => [...new Set(apRecords.map(r => r.site))].sort(), [apRecords]);
 
   // ── Load data ──────────────────────────────────────────────────────────────
 
@@ -226,7 +224,7 @@ export function AFCRadioHeightCalculator() {
         });
       }
 
-      // Build floor configs
+      // Build floor configs — floorHeightAboveGround defaults to 0 (must be entered directly)
       const floorMap = new Map<string, FloorConfig>();
       apList.forEach(ap => {
         const site = ap.hostSite || ap.site || 'Unknown Site';
@@ -237,7 +235,7 @@ export function AFCRadioHeightCalculator() {
           floorMap.set(key, {
             key, site, building, floor,
             floorNumber: parseFloorNumber(floor),
-            ceilingHeight: null,
+            floorHeightAboveGround: 0,   // ← direct entry, user sets this
             heightUncertainty: null,
             apHeightDefault: null,
             apHeightUncertaintyDefault: null,
@@ -252,15 +250,15 @@ export function AFCRadioHeightCalculator() {
       });
       setFloorConfigs(floors);
 
-      // Default: expand all
-      const initialExpanded = new Set<string>();
+      // Expand all by default
+      const expanded = new Set<string>();
       const seenS = new Set<string>(), seenB = new Set<string>();
       floors.forEach(fc => {
-        if (!seenS.has(fc.site)) { seenS.add(fc.site); initialExpanded.add(`site:${fc.site}`); }
+        if (!seenS.has(fc.site)) { seenS.add(fc.site); expanded.add(`site:${fc.site}`); }
         const bk = `building:${fc.site}||${fc.building}`;
-        if (!seenB.has(bk)) { seenB.add(bk); initialExpanded.add(bk); }
+        if (!seenB.has(bk)) { seenB.add(bk); expanded.add(bk); }
       });
-      setExpandedKeys(initialExpanded);
+      setExpandedKeys(expanded);
 
       // Build AP records
       const records: APHeightRecord[] = apList.map(ap => {
@@ -269,36 +267,34 @@ export function AFCRadioHeightCalculator() {
         const floor = ap.floor || ap.floorName || '1';
         const key = `${site}||${building}||${floor}`;
         const fc = floorMap.get(key);
-        const floorNumber = fc?.floorNumber ?? parseFloorNumber(floor);
         const model = ap.model || ap.apModel || ap.deviceModel || ap.platformName || '';
 
-        // Use ap.environment first, then model heuristic
+        // Primary: controller Environment field. Fallback: model heuristic.
         const autoDeployment = resolveDeployment(ap.environment, model);
+        // Outdoor → SP (AFC required), Indoor → LP (no AFC needed by default)
+        const defaultPC: PowerClass = autoDeployment === 'outdoor' ? 'sp' : 'lp';
 
         const s = saved[ap.serialNumber] ?? {};
-        const fh = fc?.ceilingHeight ?? 3.5;
-        const floorHAG = (floorNumber - 1) * fh; // ground elev = 0 at load; recalculate handles real value
         const apH = typeof s.apHeightAboveFloor === 'number' ? s.apHeightAboveFloor
           : (fc?.apHeightDefault ?? 3.0);
         const apU = typeof s.apHeightUncertainty === 'number' ? s.apHeightUncertainty
           : (fc?.apHeightUncertaintyDefault ?? 1.0);
-        const floorU = fc?.heightUncertainty ?? 1.0;
 
         return {
           serialNumber: ap.serialNumber,
           displayName: ap.displayName || ap.hostname || ap.serialNumber,
           model,
-          site, building, floor, floorNumber,
+          site, building, floor,
           antennaType: typeof s.antennaType === 'string' ? s.antennaType : '',
-          floorHeightAboveGround: floorHAG,
-          floorHeightUncertainty: floorU,
+          floorHeightAboveGround: 0,     // recalculate() fills this in
+          floorHeightUncertainty: fc?.heightUncertainty ?? 1.0,
           apHeightAboveFloor: apH,
           apHeightUncertainty: apU,
           floorSettingsOverride: s.floorSettingsOverride === true,
           floorHeightOverride: typeof s.floorHeightOverride === 'number' ? s.floorHeightOverride : null,
           floorUncertaintyOverride: typeof s.floorUncertaintyOverride === 'number' ? s.floorUncertaintyOverride : null,
           deployment: typeof s.deployment === 'string' ? s.deployment as Deployment : autoDeployment,
-          powerClass: typeof s.powerClass === 'string' ? s.powerClass as PowerClass : 'sp',
+          powerClass: typeof s.powerClass === 'string' ? s.powerClass as PowerClass : defaultPC,
           selected: false,
           autoDeployment,
         };
@@ -316,7 +312,9 @@ export function AFCRadioHeightCalculator() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Recalculate floor heights when settings change ─────────────────────────
+  // ── Recalculate heights when settings change ───────────────────────────────
+  // Floor Height Above Ground = site elevation + floor's directly-entered height above ground.
+  // AP height above floor is per-AP and NOT changed by recalculate.
 
   const recalculate = useCallback(() => {
     const floorMap = new Map<string, FloorConfig>(floorConfigs.map(fc => [fc.key, fc]));
@@ -329,8 +327,7 @@ export function AFCRadioHeightCalculator() {
         floorHAG = ap.floorHeightOverride;
       } else {
         const siteElev = siteElevations.get(ap.site) ?? defaultGroundElevation;
-        const fh = fc?.ceilingHeight ?? defaultFloorHeight;
-        floorHAG = siteElev + (ap.floorNumber - 1) * fh;
+        floorHAG = siteElev + (fc?.floorHeightAboveGround ?? 0);
       }
 
       let floorUncert: number;
@@ -342,7 +339,7 @@ export function AFCRadioHeightCalculator() {
 
       return { ...ap, floorHeightAboveGround: floorHAG, floorHeightUncertainty: floorUncert };
     }));
-  }, [floorConfigs, defaultFloorHeight, defaultGroundElevation, defaultFloorUncertainty, siteElevations]);
+  }, [floorConfigs, defaultGroundElevation, defaultFloorUncertainty, siteElevations]);
 
   useEffect(() => { recalculate(); }, [recalculate]);
 
@@ -365,23 +362,33 @@ export function AFCRadioHeightCalculator() {
   }, [apRecords, selectedSite, searchQuery]);
 
   const hierarchy = useMemo(() => {
-    const siteMap = new Map<string, Map<string, Map<string, APHeightRecord[]>>>();
+    const m = new Map<string, Map<string, Map<string, APHeightRecord[]>>>();
     filteredRecords.forEach(ap => {
-      if (!siteMap.has(ap.site)) siteMap.set(ap.site, new Map());
-      const bMap = siteMap.get(ap.site)!;
-      if (!bMap.has(ap.building)) bMap.set(ap.building, new Map());
-      const fMap = bMap.get(ap.building)!;
-      if (!fMap.has(ap.floor)) fMap.set(ap.floor, []);
-      fMap.get(ap.floor)!.push(ap);
+      if (!m.has(ap.site)) m.set(ap.site, new Map());
+      const bm = m.get(ap.site)!;
+      if (!bm.has(ap.building)) bm.set(ap.building, new Map());
+      const fm = bm.get(ap.building)!;
+      if (!fm.has(ap.floor)) fm.set(ap.floor, []);
+      fm.get(ap.floor)!.push(ap);
     });
-    return siteMap;
+    return m;
   }, [filteredRecords]);
 
+  // APs whose total height is outside a sane range (negative or >150 m)
   const validationWarnings = useMemo(() =>
     filteredRecords.filter(r => {
       const total = r.floorHeightAboveGround + r.apHeightAboveFloor;
       return total < 0 || total > 150;
     }), [filteredRecords]);
+
+  // Floors whose height has never been entered (still at default 0 and that floor has SP APs)
+  const unsetFloors = useMemo(() =>
+    floorConfigs.filter(fc => {
+      const siteElev = siteElevations.get(fc.site) ?? defaultGroundElevation;
+      if (siteElev + fc.floorHeightAboveGround !== 0) return false; // height is non-zero, ok
+      // warn only if this floor has SP APs
+      return apRecords.some(r => r.site === fc.site && r.building === fc.building && r.floor === fc.floor && r.powerClass === 'sp');
+    }), [floorConfigs, apRecords, siteElevations, defaultGroundElevation]);
 
   // ── Selection ──────────────────────────────────────────────────────────────
 
@@ -398,27 +405,26 @@ export function AFCRadioHeightCalculator() {
     setApRecords(prev => prev.map(r => r.serialNumber === sn ? { ...r, selected: !r.selected } : r));
   const toggleSite = (site: string) => {
     const recs = filteredRecords.filter(r => r.site === site);
-    const allSel = recs.every(r => r.selected);
+    const all = recs.every(r => r.selected);
     const sns = new Set(recs.map(r => r.serialNumber));
-    setApRecords(prev => prev.map(r => sns.has(r.serialNumber) ? { ...r, selected: !allSel } : r));
+    setApRecords(prev => prev.map(r => sns.has(r.serialNumber) ? { ...r, selected: !all } : r));
   };
   const toggleBuilding = (site: string, building: string) => {
     const recs = filteredRecords.filter(r => r.site === site && r.building === building);
-    const allSel = recs.every(r => r.selected);
+    const all = recs.every(r => r.selected);
     const sns = new Set(recs.map(r => r.serialNumber));
-    setApRecords(prev => prev.map(r => sns.has(r.serialNumber) ? { ...r, selected: !allSel } : r));
+    setApRecords(prev => prev.map(r => sns.has(r.serialNumber) ? { ...r, selected: !all } : r));
   };
 
   // ── Expand/collapse ────────────────────────────────────────────────────────
 
   const toggleExpanded = (key: string) =>
     setExpandedKeys(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
-
   const expandAll = () => {
     const keys = new Set<string>();
-    hierarchy.forEach((bMap, site) => {
+    hierarchy.forEach((bm, site) => {
       keys.add(`site:${site}`);
-      bMap.forEach((_, building) => keys.add(`building:${site}||${building}`));
+      bm.forEach((_, b) => keys.add(`building:${site}||${b}`));
     });
     setExpandedKeys(keys);
   };
@@ -430,43 +436,50 @@ export function AFCRadioHeightCalculator() {
     setApRecords(prev => prev.map(r => r.serialNumber === sn ? { ...r, ...patch } : r));
 
   const updateAPDeployment = (sn: string, d: Deployment) =>
-    setApRecords(prev => prev.map(r => {
-      if (r.serialNumber !== sn) return r;
-      return { ...r, deployment: d, powerClass: d === 'outdoor' && r.powerClass === 'lp' ? 'sp' : r.powerClass };
-    }));
+    setApRecords(prev => prev.map(r => r.serialNumber !== sn ? r
+      : { ...r, deployment: d, powerClass: d === 'outdoor' && r.powerClass === 'lp' ? 'sp' : r.powerClass }));
 
   const bulkSetDeployment = (d: Deployment) =>
-    setApRecords(prev => prev.map(r => {
-      if (!r.selected) return r;
-      return { ...r, deployment: d, powerClass: d === 'outdoor' && r.powerClass === 'lp' ? 'sp' : r.powerClass };
-    }));
+    setApRecords(prev => prev.map(r => !r.selected ? r
+      : { ...r, deployment: d, powerClass: d === 'outdoor' && r.powerClass === 'lp' ? 'sp' : r.powerClass }));
   const bulkSetPowerClass = (pc: PowerClass) =>
-    setApRecords(prev => prev.map(r => {
-      if (!r.selected || (pc === 'lp' && r.deployment === 'outdoor')) return r;
-      return { ...r, powerClass: pc };
-    }));
+    setApRecords(prev => prev.map(r => (!r.selected || (pc === 'lp' && r.deployment === 'outdoor')) ? r
+      : { ...r, powerClass: pc }));
 
   // ── Floor config updates ────────────────────────────────────────────────────
 
   const updateFloorField = (key: string, patch: Partial<FloorConfig>) =>
     setFloorConfigs(prev => prev.map(fc => fc.key === key ? { ...fc, ...patch } : fc));
 
-  const applyBuildingPreset = (site: string, building: string, height: number) => {
-    setFloorConfigs(prev => prev.map(fc =>
-      fc.site === site && fc.building === building ? { ...fc, ceilingHeight: height } : fc
-    ));
-    toast.success(`Applied ${height}m ceiling height to all floors in ${building}`);
+  /**
+   * Formula helper: calculate per-floor heights from a ceiling height.
+   * Floor 1 → 0 m, Floor 2 → 1×ceiling, Floor 3 → 2×ceiling, etc.
+   * Floor numbers > 20 are treated as ground level (0 m) since they're labels, not real floors.
+   */
+  const applyFloorFormula = (site: string, building: string, ceilingHeight: number) => {
+    setFloorConfigs(prev => prev.map(fc => {
+      if (fc.site !== site || fc.building !== building) return fc;
+      const h = fc.floorNumber > 0 && fc.floorNumber <= 20
+        ? (fc.floorNumber - 1) * ceilingHeight
+        : 0;
+      return { ...fc, floorHeightAboveGround: h };
+    }));
+    toast.success(`Calculated floor heights for ${building} (${ceilingHeight} m ceiling)`);
   };
 
-  const copyBuildingFloors = (srcSite: string, srcBuilding: string, tgtSite: string, tgtBuilding: string) => {
-    const src = floorConfigs.filter(fc => fc.site === srcSite && fc.building === srcBuilding);
+  const copyBuildingFloors = (srcSite: string, srcBldg: string, tgtSite: string, tgtBldg: string) => {
+    const src = floorConfigs.filter(fc => fc.site === srcSite && fc.building === srcBldg);
     setFloorConfigs(prev => prev.map(fc => {
-      if (fc.site !== tgtSite || fc.building !== tgtBuilding) return fc;
+      if (fc.site !== tgtSite || fc.building !== tgtBldg) return fc;
       const match = src.find(sf => sf.floor === fc.floor);
-      return match ? { ...fc, ceilingHeight: match.ceilingHeight, heightUncertainty: match.heightUncertainty,
-        apHeightDefault: match.apHeightDefault, apHeightUncertaintyDefault: match.apHeightUncertaintyDefault } : fc;
+      return match ? { ...fc,
+        floorHeightAboveGround: match.floorHeightAboveGround,
+        heightUncertainty: match.heightUncertainty,
+        apHeightDefault: match.apHeightDefault,
+        apHeightUncertaintyDefault: match.apHeightUncertaintyDefault,
+      } : fc;
     }));
-    toast.success(`Copied floor settings from ${srcBuilding} → ${tgtBuilding}`);
+    toast.success(`Copied floor settings → ${tgtBldg}`);
     setCopySource(null);
   };
 
@@ -485,16 +498,15 @@ export function AFCRadioHeightCalculator() {
     const reader = new FileReader();
     reader.onload = ev => {
       const rows = parseFloorCsv(ev.target?.result as string);
-      if (!rows.length) { toast.error('No valid rows found. Expected: Building,Floor Label,Height (m)'); return; }
+      if (!rows.length) { toast.error('No valid rows. Expected: Building,Floor Label,Floor Height Above Ground (m)'); return; }
       let updated = 0;
       setFloorConfigs(prev => {
         const next = [...prev];
         rows.forEach(row => {
           const idx = next.findIndex(fc =>
             fc.building.toLowerCase() === row.building.toLowerCase() &&
-            fc.floor.toLowerCase() === row.floor.toLowerCase()
-          );
-          if (idx >= 0) { next[idx] = { ...next[idx], ceilingHeight: row.height }; updated++; }
+            fc.floor.toLowerCase() === row.floor.toLowerCase());
+          if (idx >= 0) { next[idx] = { ...next[idx], floorHeightAboveGround: row.height }; updated++; }
         });
         return next;
       });
@@ -546,7 +558,7 @@ export function AFCRadioHeightCalculator() {
 
     setApplying(false);
     setApplyProgress(null);
-    if (!failed) toast.success(`Saved ${applied} radio height record(s)`);
+    if (!failed) toast.success(`Saved ${applied} record(s)`);
     else toast.error(`Saved ${applied}, failed ${failed} record(s)`);
   };
 
@@ -560,11 +572,10 @@ export function AFCRadioHeightCalculator() {
     if (!name) { toast.error('Enter a profile name'); return; }
     const profile: ConfigProfile = {
       name, createdAt: new Date().toISOString(),
-      defaultFloorHeight, defaultGroundElevation, defaultApHeight,
-      defaultFloorUncertainty, defaultApUncertainty, defaultAntennaType,
-      defaultDeployment, defaultPowerClass,
+      defaultGroundElevation, defaultApHeight, defaultFloorUncertainty, defaultApUncertainty,
+      defaultAntennaType, defaultDeployment, defaultPowerClass,
       siteElevations: Object.fromEntries(siteElevations),
-      floorOverrides: Object.fromEntries(floorConfigs.filter(fc => fc.ceilingHeight !== null).map(fc => [fc.key, fc.ceilingHeight])),
+      floorOverrides: Object.fromEntries(floorConfigs.filter(fc => fc.floorHeightAboveGround !== 0).map(fc => [fc.key, fc.floorHeightAboveGround])),
     };
     const updated = [...profiles.filter(p => p.name !== name), profile];
     setProfiles(updated);
@@ -574,7 +585,6 @@ export function AFCRadioHeightCalculator() {
   };
 
   const loadProfile = (p: ConfigProfile) => {
-    setDefaultFloorHeight(p.defaultFloorHeight);
     setDefaultGroundElevation(p.defaultGroundElevation);
     setDefaultApHeight(p.defaultApHeight ?? 3.0);
     setDefaultFloorUncertainty(p.defaultFloorUncertainty ?? 1.0);
@@ -583,7 +593,10 @@ export function AFCRadioHeightCalculator() {
     setDefaultDeployment(p.defaultDeployment);
     setDefaultPowerClass(p.defaultPowerClass);
     setSiteElevations(new Map(Object.entries(p.siteElevations)));
-    setFloorConfigs(prev => prev.map(fc => ({ ...fc, ceilingHeight: (p.floorOverrides[fc.key] as number) ?? null })));
+    setFloorConfigs(prev => prev.map(fc => ({
+      ...fc,
+      floorHeightAboveGround: (p.floorOverrides[fc.key] as number) ?? 0,
+    })));
     toast.success(`Profile "${p.name}" loaded`);
     setShowProfiles(false);
   };
@@ -597,14 +610,13 @@ export function AFCRadioHeightCalculator() {
   // ── Export ─────────────────────────────────────────────────────────────────
 
   const exportData = useMemo(() => filteredRecords.map(r => ({
-    serialNumber: r.serialNumber, displayName: r.displayName, site: r.site,
-    building: r.building, floor: r.floor, antennaType: r.antennaType,
+    serialNumber: r.serialNumber, displayName: r.displayName,
+    site: r.site, building: r.building, floor: r.floor, antennaType: r.antennaType,
     floorHeightAboveGround: r.floorHeightAboveGround.toFixed(2),
     floorHeightUncertainty: r.floorHeightUncertainty.toFixed(2),
     apHeightAboveFloor: r.apHeightAboveFloor.toFixed(2),
     apHeightUncertainty: r.apHeightUncertainty.toFixed(2),
     totalHeight: (r.floorHeightAboveGround + r.apHeightAboveFloor).toFixed(2),
-    floorSettingsOverride: r.floorSettingsOverride,
     deployment: r.deployment, powerClass: r.powerClass.toUpperCase(),
     maxEirp20MHz: getPower(r.powerClass)['20'], maxEirp80MHz: getPower(r.powerClass)['80'],
   })), [filteredRecords]);
@@ -622,7 +634,7 @@ export function AFCRadioHeightCalculator() {
     { key: 'maxEirp20MHz', label: 'Max EIRP 20 MHz (dBm)' }, { key: 'maxEirp80MHz', label: 'Max EIRP 80 MHz (dBm)' },
   ];
 
-  // ── Loading state ──────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
 
   if (loading) return (
     <div className="space-y-4 p-6">
@@ -642,7 +654,7 @@ export function AFCRadioHeightCalculator() {
             <Building2 className="h-6 w-6" /> AFC Radio Height Calculator
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Bulk-calculate and assign radio heights for AFC Standard Power compliance
+            Set floor and AP heights for AFC Standard Power compliance — enter heights directly as shown in Professional Install
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -653,11 +665,11 @@ export function AFCRadioHeightCalculator() {
           <Button size="sm" variant="outline" onClick={handleApplyAll}
             disabled={applying || !filteredRecords.length} className="gap-1.5">
             {applying && applyProgress
-              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Saving {applyProgress.current}/{applyProgress.total}…</>
-              : <><CheckCheck className="h-4 w-4" /> Apply All ({filteredRecords.length})</>}
+              ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" />Saving {applyProgress.current}/{applyProgress.total}…</>
+              : <><CheckCheck className="h-4 w-4" />Apply All ({filteredRecords.length})</>}
           </Button>
-          <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
-            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          <Button variant="outline" size="sm" onClick={loadData}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
           </Button>
         </div>
       </div>
@@ -667,27 +679,25 @@ export function AFCRadioHeightCalculator() {
         <Card className="border-primary/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm flex items-center justify-between">
-              <span className="flex items-center gap-2"><FolderOpen className="h-4 w-4" /> Named Config Profiles</span>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowProfiles(false)}>
-                <X className="h-3.5 w-3.5" />
-              </Button>
+              <span className="flex items-center gap-2"><FolderOpen className="h-4 w-4" />Named Config Profiles</span>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowProfiles(false)}><X className="h-3.5 w-3.5" /></Button>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center gap-2">
               <Input placeholder="Profile name…" value={newProfileName} onChange={e => setNewProfileName(e.target.value)}
                 className="h-8 text-sm max-w-xs" onKeyDown={e => e.key === 'Enter' && saveProfile()} />
-              <Button size="sm" onClick={saveProfile} className="gap-1.5"><Save className="h-3.5 w-3.5" /> Save Current</Button>
+              <Button size="sm" onClick={saveProfile} className="gap-1.5"><Save className="h-3.5 w-3.5" />Save Current</Button>
             </div>
-            {profiles.length === 0 ? <p className="text-xs text-muted-foreground">No saved profiles yet.</p> : (
+            {!profiles.length ? <p className="text-xs text-muted-foreground">No saved profiles.</p> : (
               <div className="space-y-1.5">
                 {profiles.map(p => (
                   <div key={p.name} className="flex items-center justify-between p-2 rounded-md border bg-muted/30">
                     <div>
                       <span className="text-sm font-medium">{p.name}</span>
-                      <span className="text-xs text-muted-foreground ml-2">Saved {new Date(p.createdAt).toLocaleDateString()}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{new Date(p.createdAt).toLocaleDateString()}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex gap-1.5">
                       <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => loadProfile(p)}>Load</Button>
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive" onClick={() => deleteProfile(p.name)}>
                         <Trash2 className="h-3.5 w-3.5" />
@@ -704,51 +714,45 @@ export function AFCRadioHeightCalculator() {
       <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription className="text-sm">
-          <strong>Standard Power (SP)</strong> devices require AFC coordination for 6 GHz operation.
-          Deployment (Indoor/Outdoor) is read from the AP's <strong>Environment</strong> setting on the controller.{' '}
-          <strong>Low Power (LP)</strong> indoor-only devices do not require AFC.
+          <strong>Standard Power (SP)</strong> APs require AFC. Heights are entered directly — matching the values in the
+          controller's <strong>Professional Install</strong> dialog. Outdoor APs (Environment = Outdoor) default to SP;
+          indoor APs default to LP (no AFC needed).
         </AlertDescription>
       </Alert>
 
-      {/* Global Settings */}
+      {/* Global defaults */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Global Defaults</CardTitle>
-          <CardDescription>Applied to all APs unless overridden per-site, per-floor, or per-AP</CardDescription>
+          <CardDescription>Applied when no per-site, per-floor, or per-AP override is set</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
             <div className="space-y-1.5">
-              <Label className="text-xs">Floor-to-Ceiling Height (m)</Label>
-              <Input type="number" step="0.1" min="1" max="20" value={defaultFloorHeight}
-                onChange={e => setDefaultFloorHeight(parseFloat(e.target.value) || 3.5)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Default Ground Elevation (m)</Label>
+              <Label className="text-xs">Ground Elevation (m)</Label>
               <Input type="number" step="0.1" value={defaultGroundElevation}
                 onChange={e => setDefaultGroundElevation(parseFloat(e.target.value) || 0)} />
+              <p className="text-xs text-muted-foreground">Override per-site ↓</p>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">AP Height Above Floor (m)</Label>
-              <Input type="number" step="0.1" min="0" max="20" value={defaultApHeight}
+              <Input type="number" step="0.1" min="0" value={defaultApHeight}
                 onChange={e => setDefaultApHeight(parseFloat(e.target.value) || 3.0)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Default Antenna Type</Label>
-              <Input placeholder="e.g. Internal_5050D" value={defaultAntennaType}
-                onChange={e => setDefaultAntennaType(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Floor Height Uncertainty (m)</Label>
+              <Label className="text-xs">Floor Ht Uncertainty (m)</Label>
               <Input type="number" step="0.1" min="0" value={defaultFloorUncertainty}
                 onChange={e => setDefaultFloorUncertainty(parseFloat(e.target.value) || 1.0)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">AP Height Uncertainty (m)</Label>
+              <Label className="text-xs">AP Ht Uncertainty (m)</Label>
               <Input type="number" step="0.1" min="0" value={defaultApUncertainty}
                 onChange={e => setDefaultApUncertainty(parseFloat(e.target.value) || 1.0)} />
+            </div>
+            <div className="space-y-1.5 col-span-2 md:col-span-1">
+              <Label className="text-xs">Default Antenna Type</Label>
+              <Input placeholder="e.g. Internal_5050D" value={defaultAntennaType}
+                onChange={e => setDefaultAntennaType(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Default Deployment</Label>
@@ -765,8 +769,8 @@ export function AFCRadioHeightCalculator() {
               <Select value={defaultPowerClass} onValueChange={v => setDefaultPowerClass(v as PowerClass)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sp">Standard Power (SP)</SelectItem>
-                  <SelectItem value="lp">Low Power (LP)</SelectItem>
+                  <SelectItem value="sp">SP</SelectItem>
+                  <SelectItem value="lp">LP</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -774,19 +778,19 @@ export function AFCRadioHeightCalculator() {
         </CardContent>
       </Card>
 
-      {/* Main tabs */}
+      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="aps" className="flex items-center gap-1.5">
-            <Layers className="h-3.5 w-3.5" /> APs & Heights
+            <Layers className="h-3.5 w-3.5" />APs & Heights
             <Badge variant="secondary" className="ml-1 text-xs">{filteredRecords.length}</Badge>
           </TabsTrigger>
           <TabsTrigger value="floors" className="flex items-center gap-1.5">
-            <Building2 className="h-3.5 w-3.5" /> Floor Overrides
-            <Badge variant="secondary" className="ml-1 text-xs">{floorConfigs.length}</Badge>
+            <Building2 className="h-3.5 w-3.5" />Floor Heights
+            {unsetFloors.length > 0 && <Badge className="ml-1 text-xs bg-amber-500">{unsetFloors.length} unset</Badge>}
           </TabsTrigger>
           <TabsTrigger value="power-ref" className="flex items-center gap-1.5">
-            <Zap className="h-3.5 w-3.5" /> Power Reference
+            <Zap className="h-3.5 w-3.5" />Power Reference
           </TabsTrigger>
         </TabsList>
 
@@ -796,7 +800,7 @@ export function AFCRadioHeightCalculator() {
           {/* Toolbar */}
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <MapPin className="h-4 w-4 text-muted-foreground" />
               <Select value={selectedSite} onValueChange={setSelectedSite}>
                 <SelectTrigger className="h-8 text-sm w-52"><SelectValue placeholder="All Sites" /></SelectTrigger>
                 <SelectContent>
@@ -817,18 +821,25 @@ export function AFCRadioHeightCalculator() {
                 </button>
               )}
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={expandAll}>Expand All</Button>
-              <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={collapseAll}>Collapse All</Button>
-            </div>
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={expandAll}>Expand All</Button>
+            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={collapseAll}>Collapse All</Button>
           </div>
 
-          {/* Validation warnings */}
-          {validationWarnings.length > 0 && (
+          {/* Warnings */}
+          {unsetFloors.length > 0 && (
             <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
               <AlertTriangle className="h-4 w-4 text-amber-600" />
               <AlertDescription className="text-sm">
-                <strong>{validationWarnings.length} AP{validationWarnings.length !== 1 ? 's' : ''}</strong> have unusual total heights (negative or &gt;150 m) — verify ground elevation and floor settings.
+                <strong>{unsetFloors.length} floor{unsetFloors.length !== 1 ? 's' : ''}</strong> with SP APs still have
+                Floor Height Above Ground = 0. Go to the <strong>Floor Heights</strong> tab and enter the correct values.
+              </AlertDescription>
+            </Alert>
+          )}
+          {validationWarnings.length > 0 && (
+            <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-sm">
+                <strong>{validationWarnings.length} AP{validationWarnings.length !== 1 ? 's' : ''}</strong> have total heights outside 0–150 m — verify floor height settings.
               </AlertDescription>
             </Alert>
           )}
@@ -836,14 +847,13 @@ export function AFCRadioHeightCalculator() {
           <Card>
             <CardContent className="pt-4 space-y-3">
 
-              {/* Bulk bar */}
               {selectedCount > 0 && (
                 <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border">
-                  <span className="text-sm font-medium text-muted-foreground">{selectedCount} AP{selectedCount !== 1 ? 's' : ''} selected:</span>
+                  <span className="text-sm font-medium text-muted-foreground">{selectedCount} selected:</span>
                   <Button size="sm" variant="outline" onClick={() => bulkSetDeployment('indoor')}>Set Indoor</Button>
                   <Button size="sm" variant="outline" onClick={() => bulkSetDeployment('outdoor')}>Set Outdoor</Button>
                   <Button size="sm" variant="outline" onClick={() => bulkSetPowerClass('sp')}>Set SP</Button>
-                  <Button size="sm" variant="outline" onClick={() => bulkSetPowerClass('lp')}>Set LP (indoor)</Button>
+                  <Button size="sm" variant="outline" onClick={() => bulkSetPowerClass('lp')}>Set LP</Button>
                   <div className="flex-1" />
                   <Button size="sm" onClick={handleApplySelected} disabled={applying} className="gap-1.5">
                     {applying ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
@@ -863,18 +873,18 @@ export function AFCRadioHeightCalculator() {
                       <TableRow>
                         <TableHead className="w-10">
                           <Checkbox checked={allSelected ? true : someSelected ? 'indeterminate' : false}
-                            onCheckedChange={toggleAll} aria-label="Select all" />
+                            onCheckedChange={toggleAll} />
                         </TableHead>
                         <TableHead>AP Name</TableHead>
                         <TableHead>Antenna Type</TableHead>
                         <TableHead className="text-right whitespace-nowrap">Floor Ht↑Gnd (m)</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">±Floor Uncert</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">±Floor</TableHead>
                         <TableHead className="text-right whitespace-nowrap">AP Ht↑Floor (m)</TableHead>
-                        <TableHead className="text-right whitespace-nowrap">±AP Uncert</TableHead>
+                        <TableHead className="text-right whitespace-nowrap">±AP</TableHead>
                         <TableHead className="text-right">Total (m)</TableHead>
                         <TableHead>Deploy</TableHead>
                         <TableHead>Power</TableHead>
-                        <TableHead className="text-center">Status</TableHead>
+                        <TableHead className="text-center">Status / Override</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -886,7 +896,6 @@ export function AFCRadioHeightCalculator() {
 
                         return (
                           <>
-                            {/* Site row */}
                             <TableRow key={siteKey} className="bg-muted/40 hover:bg-muted/50">
                               <TableCell>
                                 <Checkbox
@@ -897,7 +906,7 @@ export function AFCRadioHeightCalculator() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <button onClick={() => toggleExpanded(siteKey)} className="flex items-center gap-1.5 font-semibold text-sm hover:text-primary">
                                     {siteExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                                    <MapPin className="h-3.5 w-3.5" /> {site}
+                                    <MapPin className="h-3.5 w-3.5" />{site}
                                   </button>
                                   <Badge variant="secondary" className="text-xs">{siteRecs.length} APs</Badge>
                                   <div className="flex items-center gap-1.5 ml-2">
@@ -922,7 +931,6 @@ export function AFCRadioHeightCalculator() {
 
                               return (
                                 <>
-                                  {/* Building row */}
                                   <TableRow key={bKey} className="bg-muted/20 hover:bg-muted/30">
                                     <TableCell>
                                       <Checkbox
@@ -933,7 +941,7 @@ export function AFCRadioHeightCalculator() {
                                       <div className="flex items-center gap-2 pl-4">
                                         <button onClick={() => toggleExpanded(bKey)} className="flex items-center gap-1.5 font-medium text-sm hover:text-primary">
                                           {bExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                                          <Building2 className="h-3.5 w-3.5" /> {building}
+                                          <Building2 className="h-3.5 w-3.5" />{building}
                                         </button>
                                         <Badge variant="outline" className="text-xs">{bRecs.length} APs</Badge>
                                       </div>
@@ -943,34 +951,35 @@ export function AFCRadioHeightCalculator() {
                                   {bExpanded && (Array.from(floorMap.entries()) as [string, APHeightRecord[]][]).map(([floor, floorAps]) => {
                                     const fKey = `${site}||${building}||${floor}`;
                                     const fc = floorConfigs.find(f => f.key === fKey);
-                                    const effCeiling = fc?.ceilingHeight ?? defaultFloorHeight;
+                                    const floorHAG = (siteElevations.get(site) ?? defaultGroundElevation) + (fc?.floorHeightAboveGround ?? 0);
 
                                     return (
                                       <>
-                                        {/* Floor label row */}
                                         <TableRow key={`fl-${fKey}`} className="bg-background/50">
                                           <TableCell />
                                           <TableCell colSpan={10}>
                                             <div className="flex items-center gap-2 pl-8 text-xs text-muted-foreground">
                                               <Layers className="h-3 w-3" />
                                               <span className="font-medium text-foreground">Floor {floor}</span>
+                                              <span>·</span><span>{floorAps.length} AP{floorAps.length !== 1 ? 's' : ''}</span>
                                               <span>·</span>
-                                              <span>{floorAps.length} AP{floorAps.length !== 1 ? 's' : ''}</span>
-                                              <span>·</span>
-                                              <span>Ceiling height: {effCeiling}m{fc?.ceilingHeight ? ' (override)' : ''}</span>
+                                              <span className={fc?.floorHeightAboveGround === 0 && floorAps.some(a => a.powerClass === 'sp') ? 'text-amber-600 font-medium' : ''}>
+                                                Floor Ht↑Gnd: {floorHAG.toFixed(1)} m
+                                                {fc?.floorHeightAboveGround === 0 && floorAps.some(a => a.powerClass === 'sp') && ' ⚠ not set'}
+                                              </span>
                                             </div>
                                           </TableCell>
                                         </TableRow>
 
-                                        {/* AP rows */}
                                         {floorAps.map(ap => {
                                           const total = ap.floorHeightAboveGround + ap.apHeightAboveFloor;
                                           const isWarn = total < 0 || total > 150;
                                           const status = applyStatus.get(ap.serialNumber) ?? 'idle';
+                                          const isLp = ap.powerClass === 'lp';
 
                                           return (
                                             <TableRow key={ap.serialNumber}
-                                              className={ap.selected ? 'bg-primary/5' : isWarn ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                                              className={ap.selected ? 'bg-primary/5' : isLp ? 'opacity-60' : ''}>
                                               <TableCell className="pl-12">
                                                 <Checkbox checked={ap.selected} onCheckedChange={() => toggleOne(ap.serialNumber)} />
                                               </TableCell>
@@ -978,57 +987,50 @@ export function AFCRadioHeightCalculator() {
                                                 <div className="font-medium text-sm">{ap.displayName}</div>
                                                 {ap.model && <div className="text-xs text-muted-foreground">{ap.model}</div>}
                                               </TableCell>
-                                              {/* Antenna type */}
                                               <TableCell>
-                                                <Input value={ap.antennaType}
-                                                  placeholder={defaultAntennaType || 'Antenna type…'}
-                                                  onChange={e => updateAP(ap.serialNumber, { antennaType: e.target.value })}
-                                                  className="h-7 text-xs w-36" />
+                                                {isLp
+                                                  ? <span className="text-xs text-muted-foreground italic">LP — no AFC</span>
+                                                  : <Input value={ap.antennaType}
+                                                      placeholder={defaultAntennaType || 'Antenna type…'}
+                                                      onChange={e => updateAP(ap.serialNumber, { antennaType: e.target.value })}
+                                                      className="h-7 text-xs w-40" />
+                                                }
                                               </TableCell>
-                                              {/* Floor Ht Above Ground */}
                                               <TableCell className="text-right">
-                                                {ap.floorSettingsOverride ? (
-                                                  <Input type="number" step="0.1"
-                                                    value={ap.floorHeightOverride ?? ap.floorHeightAboveGround}
-                                                    onChange={e => updateAP(ap.serialNumber, { floorHeightOverride: parseFloat(e.target.value) || 0 })}
-                                                    className="h-7 text-xs w-20 text-right" />
-                                                ) : (
-                                                  <span className="font-mono text-sm">{ap.floorHeightAboveGround.toFixed(1)}</span>
-                                                )}
+                                                {ap.floorSettingsOverride
+                                                  ? <Input type="number" step="0.1"
+                                                      value={ap.floorHeightOverride ?? ap.floorHeightAboveGround}
+                                                      onChange={e => updateAP(ap.serialNumber, { floorHeightOverride: parseFloat(e.target.value) || 0 })}
+                                                      className="h-7 text-xs w-20 text-right" />
+                                                  : <span className="font-mono text-sm">{ap.floorHeightAboveGround.toFixed(1)}</span>
+                                                }
                                               </TableCell>
-                                              {/* Floor uncertainty */}
                                               <TableCell className="text-right">
-                                                {ap.floorSettingsOverride ? (
-                                                  <Input type="number" step="0.1" min="0"
-                                                    value={ap.floorUncertaintyOverride ?? ap.floorHeightUncertainty}
-                                                    onChange={e => updateAP(ap.serialNumber, { floorUncertaintyOverride: parseFloat(e.target.value) || 1 })}
-                                                    className="h-7 text-xs w-16 text-right" />
-                                                ) : (
-                                                  <span className="font-mono text-sm text-muted-foreground">{ap.floorHeightUncertainty.toFixed(1)}</span>
-                                                )}
+                                                {ap.floorSettingsOverride
+                                                  ? <Input type="number" step="0.1" min="0"
+                                                      value={ap.floorUncertaintyOverride ?? ap.floorHeightUncertainty}
+                                                      onChange={e => updateAP(ap.serialNumber, { floorUncertaintyOverride: parseFloat(e.target.value) || 1 })}
+                                                      className="h-7 text-xs w-16 text-right" />
+                                                  : <span className="font-mono text-sm text-muted-foreground">{ap.floorHeightUncertainty.toFixed(1)}</span>
+                                                }
                                               </TableCell>
-                                              {/* AP height above floor */}
                                               <TableCell className="text-right">
                                                 <Input type="number" step="0.1" min="0"
                                                   value={ap.apHeightAboveFloor}
                                                   onChange={e => updateAP(ap.serialNumber, { apHeightAboveFloor: parseFloat(e.target.value) || 0 })}
                                                   className="h-7 text-xs w-20 text-right" />
                                               </TableCell>
-                                              {/* AP uncertainty */}
                                               <TableCell className="text-right">
                                                 <Input type="number" step="0.1" min="0"
                                                   value={ap.apHeightUncertainty}
                                                   onChange={e => updateAP(ap.serialNumber, { apHeightUncertainty: parseFloat(e.target.value) || 1 })}
                                                   className="h-7 text-xs w-16 text-right" />
                                               </TableCell>
-                                              {/* Total */}
                                               <TableCell className="text-right">
-                                                <span className={`font-mono font-semibold text-sm ${isWarn ? 'text-amber-600' : ''}`}>
-                                                  {total.toFixed(1)}
-                                                  {isWarn && <AlertTriangle className="inline h-3 w-3 ml-1" />}
+                                                <span className={`font-mono font-semibold text-sm ${isWarn ? 'text-red-600' : ''}`}>
+                                                  {total.toFixed(1)}{isWarn && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                                                 </span>
                                               </TableCell>
-                                              {/* Deployment */}
                                               <TableCell>
                                                 <div className="flex items-center gap-1">
                                                   <Select value={ap.deployment} onValueChange={v => updateAPDeployment(ap.serialNumber, v as Deployment)}>
@@ -1039,11 +1041,10 @@ export function AFCRadioHeightCalculator() {
                                                     </SelectContent>
                                                   </Select>
                                                   {ap.autoDeployment !== ap.deployment && (
-                                                    <span title={`Controller env: ${ap.autoDeployment}`} className="text-amber-500 text-xs cursor-help">*</span>
+                                                    <span title={`Controller env: ${ap.autoDeployment}`} className="text-amber-500 text-xs">*</span>
                                                   )}
                                                 </div>
                                               </TableCell>
-                                              {/* Power class */}
                                               <TableCell>
                                                 <Select value={ap.powerClass}
                                                   onValueChange={v => updateAP(ap.serialNumber, { powerClass: v as PowerClass })}>
@@ -1054,18 +1055,17 @@ export function AFCRadioHeightCalculator() {
                                                   </SelectContent>
                                                 </Select>
                                               </TableCell>
-                                              {/* Status + floor override toggle */}
                                               <TableCell className="text-center">
                                                 <div className="flex flex-col items-center gap-1">
                                                   <StatusBadge status={status} />
                                                   <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer" title="Override floor heights for this AP">
-                                                    <Checkbox checked={ap.floorSettingsOverride}
+                                                    <Checkbox checked={ap.floorSettingsOverride} className="h-3 w-3"
                                                       onCheckedChange={v => updateAP(ap.serialNumber, {
                                                         floorSettingsOverride: !!v,
                                                         floorHeightOverride: v ? ap.floorHeightAboveGround : null,
                                                         floorUncertaintyOverride: v ? ap.floorHeightUncertainty : null,
-                                                      })} className="h-3 w-3" />
-                                                    <span>Override</span>
+                                                      })} />
+                                                    Override
                                                   </label>
                                                 </div>
                                               </TableCell>
@@ -1089,7 +1089,7 @@ export function AFCRadioHeightCalculator() {
               {filteredRecords.length > 0 && (
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-xs text-muted-foreground">
-                    Total Radio Height = Floor Height Above Ground + AP Height Above Floor
+                    Total = Floor Height Above Ground + AP Height Above Floor
                   </p>
                   <ExportButton data={exportData} columns={exportColumns} filename="afc-radio-heights" title="AFC Radio Heights" />
                 </div>
@@ -1098,158 +1098,182 @@ export function AFCRadioHeightCalculator() {
           </Card>
         </TabsContent>
 
-        {/* ── Tab 2: Floor Overrides ────────────────────────────────────── */}
+        {/* ── Tab 2: Floor Heights ──────────────────────────────────────── */}
         <TabsContent value="floors" className="mt-4">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between flex-wrap gap-2">
                 <div>
-                  <CardTitle className="text-base">Per-Floor Overrides</CardTitle>
+                  <CardTitle className="text-base">Floor Heights Above Ground</CardTitle>
                   <CardDescription>
-                    Override ceiling height, uncertainties, and default AP heights per floor.
+                    Enter the height of each floor above ground — exactly as it appears in the controller's
+                    Professional Install dialog. Use the formula helper for multi-floor buildings.
                   </CardDescription>
                 </div>
                 <div className="flex items-center gap-2">
                   <input ref={csvInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleCsvImport} />
                   <Button variant="outline" size="sm" onClick={() => csvInputRef.current?.click()}>
-                    <FileSpreadsheet className="h-4 w-4 mr-2" /> Import CSV
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />Import CSV
                   </Button>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {floorConfigs.length === 0 ? (
-                <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>No floors found.</AlertDescription></Alert>
-              ) : (
-                <>
-                  <p className="text-xs text-muted-foreground">
-                    CSV: <code className="bg-muted px-1 rounded">Building,Floor Label,Ceiling Height (m)</code>
-                  </p>
-                  {([...new Set(floorConfigs.map(fc => fc.site))] as string[]).sort().map((site: string) => (
-                    <div key={site} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <h3 className="font-semibold text-sm">{site}</h3>
-                      </div>
-                      {([...new Set(floorConfigs.filter(fc => fc.site === site).map(fc => fc.building))] as string[]).sort().map((building: string) => {
-                        const bFloors = floorConfigs.filter(fc => fc.site === site && fc.building === building);
-                        const bKey = `${site}||${building}`;
-                        const otherBuildings = ([...new Set(floorConfigs.filter(fc => !(fc.site === site && fc.building === building)).map(fc => `${fc.site}||${fc.building}`))] as string[])
-                          .map(k => { const [s, b] = k.split('||'); return { site: s ?? '', building: b ?? '' }; });
+              {!floorConfigs.length
+                ? <Alert><AlertCircle className="h-4 w-4" /><AlertDescription>No floors found.</AlertDescription></Alert>
+                : (
+                  <>
+                    <p className="text-xs text-muted-foreground">
+                      CSV: <code className="bg-muted px-1 rounded">Building,Floor Label,Floor Height Above Ground (m)</code>
+                    </p>
+                    {([...new Set(floorConfigs.map(fc => fc.site))] as string[]).sort().map((site: string) => (
+                      <div key={site} className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="font-semibold text-sm">{site}</h3>
+                        </div>
+                        {([...new Set(floorConfigs.filter(fc => fc.site === site).map(fc => fc.building))] as string[]).sort().map((building: string) => {
+                          const bFloors = floorConfigs.filter(fc => fc.site === site && fc.building === building);
+                          const bKey = `${site}||${building}`;
+                          const helperCeiling = buildingCeilingHelpers.get(bKey) ?? 3.5;
+                          const otherBuildings = ([...new Set(
+                            floorConfigs.filter(fc => !(fc.site === site && fc.building === building))
+                              .map(fc => `${fc.site}||${fc.building}`)
+                          )] as string[]).map(k => {
+                            const [s, b] = k.split('||');
+                            return { site: s ?? '', building: b ?? '' };
+                          });
 
-                        return (
-                          <div key={bKey} className="ml-4 border rounded-lg">
-                            <div className="flex items-center justify-between p-3 border-b bg-muted/20 rounded-t-lg flex-wrap gap-2">
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium text-sm">{building}</span>
-                                <Badge variant="outline" className="text-xs">{bFloors.length} floor{bFloors.length !== 1 ? 's' : ''}</Badge>
-                              </div>
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-xs text-muted-foreground">Preset:</span>
-                                {BUILDING_PRESETS.map(p => (
-                                  <Button key={p.label} variant="outline" size="sm" className="h-6 text-xs px-2"
-                                    onClick={() => applyBuildingPreset(site, building, p.height)}>
-                                    {p.label} {p.height}m
-                                  </Button>
-                                ))}
-                                {otherBuildings.length > 0 && (
-                                  <div className="relative">
-                                    <Button variant="outline" size="sm" className="h-6 text-xs px-2 gap-1"
-                                      onClick={() => setCopySource(copySource === bKey ? null : bKey)}>
-                                      <Copy className="h-3 w-3" /> Copy to…
+                          return (
+                            <div key={bKey} className="ml-4 border rounded-lg">
+                              {/* Building header */}
+                              <div className="flex items-center justify-between p-3 border-b bg-muted/20 rounded-t-lg flex-wrap gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  <span className="font-medium text-sm">{building}</span>
+                                  <Badge variant="outline" className="text-xs">{bFloors.length} floor{bFloors.length !== 1 ? 's' : ''}</Badge>
+                                </div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {/* Formula helper */}
+                                  <div className="flex items-center gap-1.5 border rounded-md px-2 py-1 bg-background">
+                                    <Calculator className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground">Ceiling:</span>
+                                    <Input type="number" step="0.1" min="1" max="30"
+                                      value={helperCeiling}
+                                      onChange={e => setBuildingCeilingHelpers(prev => {
+                                        const n = new Map(prev); n.set(bKey, parseFloat(e.target.value) || 3.5); return n;
+                                      })}
+                                      className="h-6 w-16 text-xs border-0 p-0 focus-visible:ring-0" />
+                                    <span className="text-xs text-muted-foreground">m</span>
+                                    <Button size="sm" variant="secondary" className="h-6 text-xs px-2"
+                                      onClick={() => applyFloorFormula(site, building, helperCeiling)}>
+                                      Calculate
                                     </Button>
-                                    {copySource === bKey && (
-                                      <div className="absolute right-0 top-8 z-10 bg-popover border rounded-md shadow-md p-2 min-w-48 space-y-1">
-                                        <p className="text-xs text-muted-foreground font-medium px-1 pb-1">Copy settings to:</p>
-                                        {otherBuildings.map(ob => (
-                                          <button key={`${ob.site}||${ob.building}`}
-                                            className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted"
-                                            onClick={() => copyBuildingFloors(site, building, ob.site, ob.building)}>
-                                            {ob.site !== site && <span className="text-muted-foreground">{ob.site} / </span>}{ob.building}
-                                          </button>
-                                        ))}
-                                        <button className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground rounded hover:bg-muted"
-                                          onClick={() => setCopySource(null)}>Cancel</button>
-                                      </div>
-                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </div>
-
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Floor</TableHead>
-                                  <TableHead className="text-center">#</TableHead>
-                                  <TableHead>Ceiling Ht (m)</TableHead>
-                                  <TableHead>Floor Uncert (m)</TableHead>
-                                  <TableHead>AP Ht↑Floor (m)</TableHead>
-                                  <TableHead>AP Uncert (m)</TableHead>
-                                  <TableHead>APs</TableHead>
-                                  <TableHead />
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {bFloors.map(fc => {
-                                  const apCount = apRecords.filter(r => r.site === fc.site && r.building === fc.building && r.floor === fc.floor).length;
-                                  return (
-                                    <TableRow key={fc.key}>
-                                      <TableCell><Badge variant="outline">{fc.floor}</Badge></TableCell>
-                                      <TableCell className="text-center font-mono text-xs">{fc.floorNumber}</TableCell>
-                                      <TableCell>
-                                        <div className="flex items-center gap-1">
-                                          <Input type="number" step="0.1" min="1" max="30"
-                                            placeholder={String(defaultFloorHeight)}
-                                            value={fc.ceilingHeight ?? ''}
-                                            onChange={e => updateFloorField(fc.key, { ceilingHeight: parseFloat(e.target.value) || null })}
-                                            className="w-20 h-7 text-sm" />
-                                          {fc.ceilingHeight !== null && <span className="text-xs text-primary">✓</span>}
+                                  {/* Building presets */}
+                                  {BUILDING_PRESETS.map(p => (
+                                    <Button key={p.label} variant="outline" size="sm" className="h-6 text-xs px-2"
+                                      onClick={() => applyFloorFormula(site, building, p.height)}>
+                                      {p.label} {p.height}m
+                                    </Button>
+                                  ))}
+                                  {/* Copy to */}
+                                  {otherBuildings.length > 0 && (
+                                    <div className="relative">
+                                      <Button variant="outline" size="sm" className="h-6 text-xs px-2 gap-1"
+                                        onClick={() => setCopySource(copySource === bKey ? null : bKey)}>
+                                        <Copy className="h-3 w-3" />Copy to…
+                                      </Button>
+                                      {copySource === bKey && (
+                                        <div className="absolute right-0 top-8 z-10 bg-popover border rounded-md shadow-md p-2 min-w-48 space-y-1">
+                                          <p className="text-xs text-muted-foreground font-medium px-1 pb-1">Copy settings to:</p>
+                                          {otherBuildings.map(ob => (
+                                            <button key={`${ob.site}||${ob.building}`}
+                                              className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-muted"
+                                              onClick={() => copyBuildingFloors(site, building, ob.site, ob.building)}>
+                                              {ob.site !== site && <span className="text-muted-foreground">{ob.site} / </span>}{ob.building}
+                                            </button>
+                                          ))}
+                                          <button className="w-full text-left text-xs px-2 py-1.5 text-muted-foreground rounded hover:bg-muted"
+                                            onClick={() => setCopySource(null)}>Cancel</button>
                                         </div>
-                                      </TableCell>
-                                      <TableCell>
-                                        <Input type="number" step="0.1" min="0"
-                                          placeholder={String(defaultFloorUncertainty)}
-                                          value={fc.heightUncertainty ?? ''}
-                                          onChange={e => updateFloorField(fc.key, { heightUncertainty: parseFloat(e.target.value) || null })}
-                                          className="w-20 h-7 text-sm" />
-                                      </TableCell>
-                                      <TableCell>
-                                        <Input type="number" step="0.1" min="0"
-                                          placeholder={String(defaultApHeight)}
-                                          value={fc.apHeightDefault ?? ''}
-                                          onChange={e => updateFloorField(fc.key, { apHeightDefault: parseFloat(e.target.value) || null })}
-                                          className="w-20 h-7 text-sm" />
-                                      </TableCell>
-                                      <TableCell>
-                                        <Input type="number" step="0.1" min="0"
-                                          placeholder={String(defaultApUncertainty)}
-                                          value={fc.apHeightUncertaintyDefault ?? ''}
-                                          onChange={e => updateFloorField(fc.key, { apHeightUncertaintyDefault: parseFloat(e.target.value) || null })}
-                                          className="w-20 h-7 text-sm" />
-                                      </TableCell>
-                                      <TableCell className="text-sm text-muted-foreground">{apCount}</TableCell>
-                                      <TableCell>
-                                        {(fc.ceilingHeight !== null || fc.heightUncertainty !== null || fc.apHeightDefault !== null) && (
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Floor Label</TableHead>
+                                    <TableHead>Floor Ht Above Ground (m)</TableHead>
+                                    <TableHead>±Uncert (m)</TableHead>
+                                    <TableHead>AP Ht Default (m)</TableHead>
+                                    <TableHead>±AP Uncert (m)</TableHead>
+                                    <TableHead>APs</TableHead>
+                                    <TableHead />
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {bFloors.map(fc => {
+                                    const apCount = apRecords.filter(r => r.site === fc.site && r.building === fc.building && r.floor === fc.floor).length;
+                                    const hasSpAp = apRecords.some(r => r.site === fc.site && r.building === fc.building && r.floor === fc.floor && r.powerClass === 'sp');
+                                    const needsEntry = hasSpAp && fc.floorHeightAboveGround === 0;
+                                    return (
+                                      <TableRow key={fc.key} className={needsEntry ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                                        <TableCell>
+                                          <div className="flex items-center gap-1.5">
+                                            <Badge variant="outline">{fc.floor}</Badge>
+                                            {needsEntry && <AlertTriangle className="h-3 w-3 text-amber-500" title="SP AP — height not set" />}
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          <Input type="number" step="0.1" min="0"
+                                            value={fc.floorHeightAboveGround}
+                                            onChange={e => updateFloorField(fc.key, { floorHeightAboveGround: parseFloat(e.target.value) || 0 })}
+                                            className={`w-24 h-7 text-sm ${needsEntry ? 'border-amber-400' : ''}`} />
+                                        </TableCell>
+                                        <TableCell>
+                                          <Input type="number" step="0.1" min="0"
+                                            placeholder={String(defaultFloorUncertainty)}
+                                            value={fc.heightUncertainty ?? ''}
+                                            onChange={e => updateFloorField(fc.key, { heightUncertainty: parseFloat(e.target.value) || null })}
+                                            className="w-20 h-7 text-sm" />
+                                        </TableCell>
+                                        <TableCell>
+                                          <Input type="number" step="0.1" min="0"
+                                            placeholder={String(defaultApHeight)}
+                                            value={fc.apHeightDefault ?? ''}
+                                            onChange={e => updateFloorField(fc.key, { apHeightDefault: parseFloat(e.target.value) || null })}
+                                            className="w-20 h-7 text-sm" />
+                                        </TableCell>
+                                        <TableCell>
+                                          <Input type="number" step="0.1" min="0"
+                                            placeholder={String(defaultApUncertainty)}
+                                            value={fc.apHeightUncertaintyDefault ?? ''}
+                                            onChange={e => updateFloorField(fc.key, { apHeightUncertaintyDefault: parseFloat(e.target.value) || null })}
+                                            className="w-20 h-7 text-sm" />
+                                        </TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{apCount}</TableCell>
+                                        <TableCell>
                                           <Button size="sm" variant="ghost" className="h-7 text-xs"
-                                            onClick={() => updateFloorField(fc.key, { ceilingHeight: null, heightUncertainty: null, apHeightDefault: null, apHeightUncertaintyDefault: null })}>
-                                            <RotateCcw className="h-3 w-3 mr-1" /> Reset
+                                            onClick={() => updateFloorField(fc.key, { floorHeightAboveGround: 0, heightUncertainty: null, apHeightDefault: null, apHeightUncertaintyDefault: null })}>
+                                            <RotateCcw className="h-3 w-3 mr-1" />Reset
                                           </Button>
-                                        )}
-                                      </TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </>
-              )}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </>
+                )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1258,7 +1282,7 @@ export function AFCRadioHeightCalculator() {
         <TabsContent value="power-ref" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><Zap className="h-4 w-4" /> FCC 6 GHz Power Reference</CardTitle>
+              <CardTitle className="text-base flex items-center gap-2"><Zap className="h-4 w-4" />FCC 6 GHz Power Reference</CardTitle>
               <CardDescription>Maximum EIRP limits for 6 GHz U-NII bands</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -1288,23 +1312,11 @@ export function AFCRadioHeightCalculator() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-sm space-y-1">
-                  <p><strong>Deployment (Indoor/Outdoor)</strong> is read directly from the AP's <strong>Environment</strong> field on the controller. An asterisk (*) in the AP table indicates the value was manually changed from what the controller reports.</p>
-                  <p>Total Radio Height = Floor Height Above Ground + AP Height Above Floor. Both values plus their uncertainties are submitted to the AFC service provider.</p>
-                  <p>Standard Power EIRP: <code className="text-xs bg-muted px-1 rounded">36 + 10·log₁₀(BW/20) dBm</code></p>
+                  <p><strong>Deployment</strong> is read from the AP's Environment field on the controller (Outdoor → SP default, Indoor → LP default). An asterisk (*) indicates the value was manually changed.</p>
+                  <p><strong>Floor Height Above Ground</strong> is entered directly — the same value you see in the controller's Professional Install dialog (not computed from a floor number formula).</p>
+                  <p>Total Radio Height submitted to AFC = Floor Height Above Ground + AP Height Above Floor.</p>
                 </AlertDescription>
               </Alert>
-
-              <div>
-                <h4 className="font-semibold text-sm mb-2">Height Fields Reference</h4>
-                <div className="bg-muted rounded-lg p-4 font-mono text-sm space-y-1">
-                  <p><span className="text-muted-foreground">Floor Height Above Ground =</span></p>
-                  <p className="pl-4">Ground Elevation (per-site)</p>
-                  <p className="pl-4">+ (Floor Number − 1) × Ceiling Height</p>
-                  <p className="mt-2"><span className="text-muted-foreground">Total Radio Height =</span></p>
-                  <p className="pl-4">Floor Height Above Ground</p>
-                  <p className="pl-4">+ AP Height Above Floor</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
