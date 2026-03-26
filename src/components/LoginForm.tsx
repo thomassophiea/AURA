@@ -24,7 +24,7 @@ type LoginStep = 'controller' | 'credentials' | 'xiq';
 
 export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: LoginFormProps) {
   // Login step state
-  const [step, setStep] = useState<LoginStep>('controller');
+  const [step, setStep] = useState<LoginStep>('xiq');
   
   // Controller state
   const [controllers, setControllers] = useState<Controller[]>([]);
@@ -103,10 +103,9 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
         }
       }
 
-      // If only one controller, auto-proceed to credentials
-      if (data.length === 1 && selectedCtrl) {
-        setStep('credentials');
-      }
+      // Auto-proceed to credentials only if the user is already on the controller step
+      // (i.e. they came from XIQ). On initial mount the XIQ step is showing, so don't
+      // skip it by jumping straight to credentials.
     } catch (error) {
       console.error('Failed to load controllers:', error);
     } finally {
@@ -267,17 +266,25 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
           last_connected_at: new Date().toISOString()
         });
 
-        // Pre-fill any saved XIQ credentials for this site group
-        const savedXIQ = xiqService.getCredentials(selectedController.id);
-        if (savedXIQ) {
-          setXiqEmail(savedXIQ.email);
-          setXiqPassword(savedXIQ.password);
-          setXiqRegion(savedXIQ.region);
+        // Migrate any pending XIQ token/credentials to the real controller ID
+        const pendingCreds = xiqService.getCredentials('xiq_pending');
+        if (pendingCreds) {
+          xiqService.saveCredentials(
+            selectedController.id,
+            pendingCreds.email,
+            pendingCreds.password,
+            pendingCreds.region
+          );
+          // Re-establish token under real controller ID (best-effort background call)
+          if (xiqService.getToken('xiq_pending')) {
+            xiqService.login(pendingCreds.email, pendingCreds.password, pendingCreds.region, selectedController.id)
+              .catch(() => {/* silent */});
+          }
+          xiqService.clearCredentials('xiq_pending');
         }
       }
 
-      // Proceed to optional XIQ step before entering the app
-      setStep('xiq');
+      onLoginSuccess();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
       
@@ -294,14 +301,21 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
   };
 
   const handleXIQLogin = async () => {
-    if (!selectedController) return;
     setXiqLoading(true);
     setXiqError('');
     try {
-      await xiqService.login(xiqEmail, xiqPassword, xiqRegion, selectedController.id);
-      xiqService.saveCredentials(selectedController.id, xiqEmail, xiqPassword, xiqRegion);
+      // XIQ login happens before controller selection — store under 'xiq_pending'.
+      // After the user logs into their controller, credentials are re-associated to
+      // the real controller ID.
+      await xiqService.login(xiqEmail, xiqPassword, xiqRegion, 'xiq_pending');
+      xiqService.saveCredentials('xiq_pending', xiqEmail, xiqPassword, xiqRegion);
       toast.success('Connected to XIQ', { description: `Region: ${XIQ_REGION_LABELS[xiqRegion]}` });
-      onLoginSuccess();
+      // Skip controller step if there is only one and it is already selected
+      if (controllers.length === 1 && selectedController) {
+        setStep('credentials');
+      } else {
+        setStep('controller');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'XIQ login failed';
       if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('invalid')) {
@@ -317,7 +331,11 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
   };
 
   const handleSkipXIQ = () => {
-    onLoginSuccess();
+    if (controllers.length === 1 && selectedController) {
+      setStep('credentials');
+    } else {
+      setStep('controller');
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -610,30 +628,11 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
             {/* XIQ Step */}
             {step === 'xiq' && (
               <div className="space-y-4">
-                {/* Context bar */}
-                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Cloud className="h-4 w-4 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <span className="text-sm font-medium block">ExtremeCloud IQ</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {selectedController ? `For: ${selectedController.name}` : ''}
-                        {selectedController && xiqService.isAuthenticated(selectedController.id)
-                          ? ' · Connected'
-                          : ''}
-                      </span>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="sm" onClick={() => setStep('credentials')}>
-                    Back
-                  </Button>
-                </div>
-
                 {/* Already authenticated notice */}
-                {selectedController && xiqService.isAuthenticated(selectedController.id) && (
+                {xiqService.isAuthenticated('xiq_pending') && (
                   <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-700 dark:text-green-400">
                     <CheckCircle className="h-4 w-4 shrink-0" />
-                    <span>XIQ session active for this site group.</span>
+                    <span>XIQ session active.</span>
                   </div>
                 )}
 
