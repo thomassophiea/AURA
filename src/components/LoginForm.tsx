@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle, Cloud, CloudOff } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
 import { tenantService, Controller } from '../services/tenantService';
+import { xiqService, XIQ_REGION_ORDER, XIQ_REGION_LABELS, type XIQRegion } from '../services/xiqService';
 import { toast } from 'sonner';
 
 interface LoginFormProps {
@@ -19,7 +20,7 @@ interface LoginFormProps {
   onThemeToggle?: () => void;
 }
 
-type LoginStep = 'controller' | 'credentials';
+type LoginStep = 'controller' | 'credentials' | 'xiq';
 
 export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: LoginFormProps) {
   // Login step state
@@ -41,6 +42,13 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // XIQ state
+  const [xiqEmail, setXiqEmail] = useState('');
+  const [xiqPassword, setXiqPassword] = useState('');
+  const [xiqRegion, setXiqRegion] = useState<XIQRegion>('global');
+  const [xiqLoading, setXiqLoading] = useState(false);
+  const [xiqError, setXiqError] = useState('');
 
   // Load controllers on mount
   useEffect(() => {
@@ -258,9 +266,18 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
           connection_status: 'connected',
           last_connected_at: new Date().toISOString()
         });
+
+        // Pre-fill any saved XIQ credentials for this site group
+        const savedXIQ = xiqService.getCredentials(selectedController.id);
+        if (savedXIQ) {
+          setXiqEmail(savedXIQ.email);
+          setXiqPassword(savedXIQ.password);
+          setXiqRegion(savedXIQ.region);
+        }
       }
 
-      onLoginSuccess();
+      // Proceed to optional XIQ step before entering the app
+      setStep('xiq');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
       
@@ -274,6 +291,33 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleXIQLogin = async () => {
+    if (!selectedController) return;
+    setXiqLoading(true);
+    setXiqError('');
+    try {
+      await xiqService.login(xiqEmail, xiqPassword, xiqRegion, selectedController.id);
+      xiqService.saveCredentials(selectedController.id, xiqEmail, xiqPassword, xiqRegion);
+      toast.success('Connected to XIQ', { description: `Region: ${XIQ_REGION_LABELS[xiqRegion]}` });
+      onLoginSuccess();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'XIQ login failed';
+      if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('invalid')) {
+        setXiqError('Invalid XIQ email or password.');
+      } else if (msg.toLowerCase().includes('timeout')) {
+        setXiqError('Connection timed out. Check your network and region selection.');
+      } else {
+        setXiqError(msg);
+      }
+    } finally {
+      setXiqLoading(false);
+    }
+  };
+
+  const handleSkipXIQ = () => {
+    onLoginSuccess();
   };
 
   const getStatusIcon = (status: string) => {
@@ -312,7 +356,9 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
               <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">gent</span></span>
             </div>
             <CardDescription className="text-center mt-2">
-              {step === 'controller' ? 'Select a site group to connect' : 'Sign in to continue'}
+              {step === 'controller' ? 'Select a site group to connect' :
+               step === 'xiq' ? 'Connect ExtremeCloud IQ (optional)' :
+               'Sign in to continue'}
             </CardDescription>
           </CardHeader>
 
@@ -558,6 +604,127 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                     )}
                   </Button>
                 </form>
+              </div>
+            )}
+
+            {/* XIQ Step */}
+            {step === 'xiq' && (
+              <div className="space-y-4">
+                {/* Context bar */}
+                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Cloud className="h-4 w-4 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-sm font-medium block">ExtremeCloud IQ</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {selectedController ? `For: ${selectedController.name}` : ''}
+                        {selectedController && xiqService.isAuthenticated(selectedController.id)
+                          ? ' · Connected'
+                          : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => setStep('credentials')}>
+                    Back
+                  </Button>
+                </div>
+
+                {/* Already authenticated notice */}
+                {selectedController && xiqService.isAuthenticated(selectedController.id) && (
+                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-700 dark:text-green-400">
+                    <CheckCircle className="h-4 w-4 shrink-0" />
+                    <span>XIQ session active for this site group.</span>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  {/* Region */}
+                  <div className="space-y-2">
+                    <Label htmlFor="xiq-region">Region</Label>
+                    <select
+                      id="xiq-region"
+                      value={xiqRegion}
+                      onChange={e => setXiqRegion(e.target.value as XIQRegion)}
+                      disabled={xiqLoading}
+                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                    >
+                      {XIQ_REGION_ORDER.map(r => (
+                        <option key={r} value={r}>{XIQ_REGION_LABELS[r]}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Email */}
+                  <div className="space-y-2">
+                    <Label htmlFor="xiq-email">XIQ Email</Label>
+                    <Input
+                      id="xiq-email"
+                      type="email"
+                      value={xiqEmail}
+                      onChange={e => setXiqEmail(e.target.value)}
+                      placeholder="you@company.com"
+                      disabled={xiqLoading}
+                      autoComplete="email"
+                    />
+                  </div>
+
+                  {/* Password */}
+                  <div className="space-y-2">
+                    <Label htmlFor="xiq-password">XIQ Password</Label>
+                    <Input
+                      id="xiq-password"
+                      type="password"
+                      value={xiqPassword}
+                      onChange={e => setXiqPassword(e.target.value)}
+                      placeholder="Enter your XIQ password"
+                      disabled={xiqLoading}
+                      autoComplete="current-password"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && xiqEmail.trim() && xiqPassword.trim()) {
+                          handleXIQLogin();
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {xiqError && (
+                  <Alert variant="destructive">
+                    <AlertDescription>{xiqError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <Button
+                  className="w-full"
+                  onClick={handleXIQLogin}
+                  disabled={xiqLoading || !xiqEmail.trim() || !xiqPassword.trim()}
+                >
+                  {xiqLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting to XIQ...
+                    </>
+                  ) : (
+                    <>
+                      <Cloud className="mr-2 h-4 w-4" />
+                      Connect XIQ
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full text-muted-foreground"
+                  onClick={handleSkipXIQ}
+                  disabled={xiqLoading}
+                >
+                  Skip for now
+                </Button>
+
+                <p className="text-[11px] text-muted-foreground text-center">
+                  XIQ connection enables future migration from ExtremeCloud IQ to AURA.
+                  You can connect later from Site Group settings.
+                </p>
               </div>
             )}
           </CardContent>

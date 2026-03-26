@@ -43,6 +43,10 @@ export interface SiteGroup {
   region?: string;
   tags?: string[];
   created_at?: string;
+  /** XIQ cloud connection — present when the site group has an active XIQ token. */
+  xiq_authenticated?: boolean;
+  /** XIQ region key (global | eu | apac | ca) for this site group's XIQ account. */
+  xiq_region?: string;
 }
 
 export interface Site {
