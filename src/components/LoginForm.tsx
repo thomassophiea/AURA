@@ -636,7 +636,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <form onSubmit={e => { e.preventDefault(); if (xiqEmail.trim() && xiqPassword.trim()) handleXIQLogin(); }} className="space-y-3">
                   {/* Region */}
                   <div className="space-y-2">
                     <Label htmlFor="xiq-region">Region</Label>
@@ -663,7 +663,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                       onChange={e => setXiqEmail(e.target.value)}
                       placeholder="you@company.com"
                       disabled={xiqLoading}
-                      autoComplete="email"
+                      autoComplete="username"
                     />
                   </div>
 
@@ -678,38 +678,33 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                       placeholder="Enter your XIQ password"
                       disabled={xiqLoading}
                       autoComplete="current-password"
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' && xiqEmail.trim() && xiqPassword.trim()) {
-                          handleXIQLogin();
-                        }
-                      }}
                     />
                   </div>
-                </div>
 
-                {xiqError && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{xiqError}</AlertDescription>
-                  </Alert>
-                )}
-
-                <Button
-                  className="w-full"
-                  onClick={handleXIQLogin}
-                  disabled={xiqLoading || !xiqEmail.trim() || !xiqPassword.trim()}
-                >
-                  {xiqLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting to XIQ...
-                    </>
-                  ) : (
-                    <>
-                      <Cloud className="mr-2 h-4 w-4" />
-                      Connect XIQ
-                    </>
+                  {xiqError && (
+                    <Alert variant="destructive">
+                      <AlertDescription>{xiqError}</AlertDescription>
+                    </Alert>
                   )}
-                </Button>
+
+                  <Button
+                    type="submit"
+                    className="w-full"
+                    disabled={xiqLoading || !xiqEmail.trim() || !xiqPassword.trim()}
+                  >
+                    {xiqLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Connecting to XIQ...
+                      </>
+                    ) : (
+                      <>
+                        <Cloud className="mr-2 h-4 w-4" />
+                        Connect XIQ
+                      </>
+                    )}
+                  </Button>
+                </form>
 
                 <Button
                   variant="ghost"

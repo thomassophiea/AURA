@@ -197,6 +197,7 @@ import { promisify } from 'util';
 import dns from 'dns';
 import crypto from 'crypto';
 import net from 'net';
+import https from 'https';
 const execAsync = promisify(exec);
 const dnsResolve = promisify(dns.resolve);
 const dnsResolve4 = promisify(dns.resolve4);
@@ -1186,7 +1187,7 @@ const XIQ_REGION_URLS = {
   ca: 'https://api-ca.extremecloudiq.com',
 };
 
-app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, async (req, res) => {
+app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, (req, res) => {
   const { username, password, region = 'global' } = req.body || {};
 
   if (!username || !password) {
@@ -1198,32 +1199,55 @@ app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, asy
     return res.status(400).json({ error: `Unknown XIQ region: ${region}` });
   }
 
-  try {
-    console.log(`[XIQ Proxy] POST /login -> ${baseUrl} (region: ${region})`);
-    const xiqRes = await fetch(`${baseUrl}/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ username: username.trim(), password }),
-      signal: AbortSignal.timeout(15000),
+  const postData = JSON.stringify({ username: username.trim(), password });
+  const url = new URL(`${baseUrl}/login`);
+
+  console.log(`[XIQ Proxy] POST ${url.hostname}/login (region: ${region})`);
+
+  const options = {
+    hostname: url.hostname,
+    port: 443,
+    path: url.pathname,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Content-Length': Buffer.byteLength(postData),
+    },
+    timeout: 15000,
+  };
+
+  const xiqReq = https.request(options, (xiqRes) => {
+    let raw = '';
+    xiqRes.on('data', chunk => { raw += chunk; });
+    xiqRes.on('end', () => {
+      let body = {};
+      try { body = JSON.parse(raw); } catch { /* non-JSON body */ }
+
+      if (xiqRes.statusCode !== 200) {
+        const message = body.error_message || body.message || body.error || `XIQ login failed (${xiqRes.statusCode})`;
+        console.warn(`[XIQ Proxy] Login failed: ${xiqRes.statusCode} ${message}`);
+        return res.status(xiqRes.statusCode).json({ error: message });
+      }
+
+      console.log(`[XIQ Proxy] Login success`);
+      return res.json(body);
     });
+  });
 
-    let body;
-    try { body = await xiqRes.json(); } catch { body = {}; }
+  xiqReq.on('timeout', () => {
+    xiqReq.destroy();
+    console.error('[XIQ Proxy] Request timed out');
+    if (!res.headersSent) res.status(504).json({ error: 'XIQ request timed out' });
+  });
 
-    if (!xiqRes.ok) {
-      const message = body.error_message || body.message || body.error || `XIQ login failed (${xiqRes.status})`;
-      console.warn(`[XIQ Proxy] Login failed: ${xiqRes.status} ${message}`);
-      return res.status(xiqRes.status).json({ error: message });
-    }
+  xiqReq.on('error', (err) => {
+    console.error(`[XIQ Proxy] Error: ${err.message}`);
+    if (!res.headersSent) res.status(502).json({ error: err.message || 'XIQ proxy error' });
+  });
 
-    console.log(`[XIQ Proxy] Login success`);
-    return res.json(body);
-  } catch (err) {
-    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
-    const message = isTimeout ? 'XIQ request timed out' : (err.message || 'XIQ proxy error');
-    console.error(`[XIQ Proxy] Error: ${message}`);
-    return res.status(isTimeout ? 504 : 502).json({ error: message });
-  }
+  xiqReq.write(postData);
+  xiqReq.end();
 });
 
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
