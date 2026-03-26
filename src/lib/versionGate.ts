@@ -80,19 +80,43 @@ async function unregisterServiceWorkers(): Promise<void> {
   }
 }
 
+// Keys/prefixes that hold user-configured data and must survive version upgrades.
+// These are site group lists, saved credentials, and controller selection — not
+// app state or cache data, so they should NOT be wiped on each deploy.
+const PRESERVE_PREFIXES = [
+  'api_controllers',       // saved site group list
+  'api_current_controller', // last-selected site group
+  'api_current_org',        // last-selected org
+  'sg_login_',              // per-site-group controller credentials
+  'xiq_creds_',             // per-site-group ExtremeCloud credentials
+  'xiq_token_',             // active ExtremeCloud tokens
+];
+
 /**
- * Clear all browser storage
+ * Clear all browser storage, preserving user-configured site group data
  */
 function clearAllStorage(): void {
   try {
-    // Clear localStorage (except version key which we'll set after)
     const keysToRemove: string[] = [];
+    const preserved: Array<[string, string]> = [];
+
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key) keysToRemove.push(key);
+      if (!key) continue;
+      if (PRESERVE_PREFIXES.some(p => key.startsWith(p))) {
+        const val = localStorage.getItem(key);
+        if (val !== null) preserved.push([key, val]);
+      } else {
+        keysToRemove.push(key);
+      }
     }
+
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log(`[VersionGate] Cleared ${keysToRemove.length} localStorage item(s)`);
+
+    // Restore preserved user data after the wipe
+    preserved.forEach(([k, v]) => localStorage.setItem(k, v));
+
+    console.log(`[VersionGate] Cleared ${keysToRemove.length} localStorage item(s), preserved ${preserved.length}`);
   } catch (error) {
     console.warn('[VersionGate] Failed to clear localStorage:', error);
   }
