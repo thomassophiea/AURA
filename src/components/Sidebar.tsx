@@ -16,6 +16,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  Braces,
   Zap,
   Layers,
   BarChart3,
@@ -53,7 +54,7 @@ interface SidebarProps {
   adminRole: string | null;
   currentPage: string;
   onPageChange: (page: string) => void;
-  theme?: 'light' | 'ep1';
+  theme?: 'light' | 'ep1' | 'dev';
   onThemeToggle?: () => void;
 }
 
@@ -90,7 +91,7 @@ const systemItems = [
   { id: 'guest-management', label: 'Guest Access', icon: UserPlus },
 ];
 
-export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'system', onThemeToggle }: SidebarProps) {
+export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'ep1', onThemeToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const branding = useBranding();
@@ -466,11 +467,13 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           >
             {theme === 'ep1' ? (
               <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+            ) : theme === 'dev' ? (
+              <Braces className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : (
               <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
             {!isCollapsed && (
-              <span>{theme === 'ep1' ? 'Dark' : 'Light'}</span>
+              <span>{theme === 'ep1' ? 'Dark' : theme === 'dev' ? 'Dev' : 'Light'}</span>
             )}
           </Button>
         )}

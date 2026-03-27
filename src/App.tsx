@@ -113,7 +113,7 @@ export default function App() {
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'ep1'>('ep1');
+  const [theme, setTheme] = useState<'light' | 'ep1' | 'dev'>('ep1');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
@@ -187,7 +187,7 @@ export default function App() {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
       const saved = localStorage.getItem('theme');
-      const initialTheme: 'light' | 'ep1' = (saved === 'light' || saved === 'ep1') ? saved : 'ep1';
+      const initialTheme: 'light' | 'ep1' | 'dev' = (saved === 'light' || saved === 'ep1' || saved === 'dev') ? saved : 'ep1';
 
       setTheme(initialTheme);
       applyThemeForMode(initialTheme);
@@ -611,17 +611,20 @@ export default function App() {
   }, []);
 
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'ep1') => {
+  const applyTheme = (newTheme: 'light' | 'ep1' | 'dev') => {
     const root = document.documentElement;
-    const baseTheme = newTheme === 'ep1' ? 'ep1' : 'default';
+    const baseTheme = newTheme === 'ep1' ? 'ep1' : newTheme === 'dev' ? 'dev' : 'default';
     applyThemeColors(baseTheme);
 
-    root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
-    document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
+    root.classList.remove('light', 'dark', 'ep1', 'dev', 'synthwave', 'pirate', 'mi5');
+    document.body.classList.remove('light', 'dark', 'ep1', 'dev', 'synthwave', 'pirate', 'mi5');
 
     if (newTheme === 'ep1') {
       root.classList.add('dark', 'ep1');
       document.body.classList.add('dark', 'ep1');
+    } else if (newTheme === 'dev') {
+      root.classList.add('dark', 'dev');
+      document.body.classList.add('dark', 'dev');
     } else {
       root.classList.add('light');
       document.body.classList.add('light');
@@ -634,16 +637,21 @@ export default function App() {
   };
 
   const toggleTheme = () => {
-    const newTheme: 'light' | 'ep1' = theme === 'ep1' ? 'light' : 'ep1';
+    const cycle: Record<'light' | 'ep1' | 'dev', 'light' | 'ep1' | 'dev'> = {
+      ep1: 'dev',
+      dev: 'light',
+      light: 'ep1',
+    };
+    const newTheme = cycle[theme];
     setTheme(newTheme);
     applyTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
-    const themeLabel = newTheme === 'ep1' ? 'Dark' : 'Light';
-    const themeDescription = newTheme === 'ep1' ? 'Dark mode activated.' : 'Light mode activated.';
+    const labels = { ep1: 'Dark', dev: 'Dev', light: 'Light' };
+    const descriptions = { ep1: 'Dark mode activated.', dev: 'Developer mode activated.', light: 'Light mode activated.' };
 
-    toast.success(`Switched to ${themeLabel} mode`, {
-      description: themeDescription,
+    toast.success(`Switched to ${labels[newTheme]} mode`, {
+      description: descriptions[newTheme],
       duration: 2000
     });
   };
@@ -1012,9 +1020,9 @@ export default function App() {
 
           {/* Right side — controls for all themes */}
           <div className="flex items-center gap-1 ml-auto">
-            {!device.isMobile && theme !== 'ep1' && (
+            {!device.isMobile && theme === 'dev' && (
               <>
-                <Button variant={isDevModeOpen ? 'default' : 'ghost'} size="sm" onClick={handleToggleDevMode} title="Developer Mode">
+                <Button variant={isDevModeOpen ? 'default' : 'ghost'} size="sm" onClick={handleToggleDevMode} title="Developer Mode - API Monitor">
                   <Braces className="h-4 w-4" />
                 </Button>
                 <Button variant={currentPage === 'api-test' ? 'default' : 'ghost'} size="sm" onClick={() => setCurrentPage('api-test')} title="API Test Tool">

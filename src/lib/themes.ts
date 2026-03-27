@@ -3,7 +3,7 @@
  * Supports: Default, Dark, and EP1 themes
  */
 
-export type ThemeMode = 'default' | 'dark' | 'ep1';
+export type ThemeMode = 'default' | 'dark' | 'ep1' | 'dev';
 
 export interface Theme {
   name: string;
@@ -124,6 +124,49 @@ export interface Theme {
 }
 
 export const themes: Record<ThemeMode, Theme> = {
+  dev: {
+    name: 'dev',
+    displayName: 'Dev',
+    emoji: '{}',
+    colors: {
+      // OS-ONE Material Design Dark — base surface #121212
+      primary: '#BB86FC',          // Material violet 200
+      primaryForeground: 'rgba(0,0,0,0.87)',
+      secondary: '#03DAC5',        // Material teal 200
+      secondaryForeground: 'rgba(0,0,0,0.87)',
+      background: '#121212',
+      foreground: 'rgba(255,255,255,0.87)',
+      card: '#1d1d1d',             // surface 1dp
+      cardForeground: 'rgba(255,255,255,0.87)',
+      popover: '#212121',          // surface 2dp
+      popoverForeground: 'rgba(255,255,255,0.87)',
+      muted: '#1d1d1d',
+      mutedForeground: 'rgba(255,255,255,0.60)',
+      accent: '#BB86FC',
+      accentForeground: 'rgba(0,0,0,0.87)',
+      destructive: '#CF6679',      // Material error
+      destructiveForeground: 'rgba(0,0,0,0.87)',
+      border: 'rgba(255,255,255,0.12)',
+      input: 'rgba(255,255,255,0.05)',
+      ring: '#BB86FC',
+      // Semantic
+      statusSuccess: '#81C784',
+      statusSuccessBg: '#0a1f0c',
+      statusWarning: '#FFB74D',
+      statusWarningBg: '#1f150a',
+      statusError: '#CF6679',
+      statusErrorBg: '#1f0a0d',
+      statusInfo: '#03DAC5',
+      statusInfoBg: '#031f1e',
+      // Sidebar
+      navBackground: '#1d1d1d',
+      navText: 'rgba(255,255,255,0.87)',
+      navTextMuted: 'rgba(255,255,255,0.60)',
+      navItemHover: '#BB86FC',
+      navItemActive: '#BB86FC',
+      navBorder: 'rgba(255,255,255,0.12)',
+    }
+  },
   default: {
     name: 'default',
     displayName: 'Default',

@@ -14,6 +14,13 @@ export interface BrandConfig {
 }
 
 export const branding: Record<ThemeMode, BrandConfig> = {
+  dev: {
+    name: 'AURA',
+    fullName: 'AURA Mobility Core',
+    tagline: 'Autonomous Unified Radio Agent',
+    logo: '/logo.svg',
+    icon: '/favicon.ico'
+  },
   default: {
     name: 'AURA',
     fullName: 'AURA Mobility Core',
@@ -71,6 +78,7 @@ export function useBranding(): BrandConfig {
       // If preferred key holds a recognized ThemeMode use that, else fall back
       const resolvedTheme: ThemeMode =
         raw === 'ep1' ? 'ep1' :
+        raw === 'dev' ? 'dev' :
         raw === 'dark' ? 'dark' :
         'default';
       setCurrentBranding(getBranding(resolvedTheme));

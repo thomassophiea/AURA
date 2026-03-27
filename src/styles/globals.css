@@ -2941,3 +2941,110 @@ html.ep1 [data-slot="app"] {
 .ep1 [class*="dark:bg-input"] {
   background-color: transparent !important;
 }
+
+/* ============================================================
+   DEV THEME — OS-ONE Material Design Dark (#121212 base)
+   Primary: #BB86FC  Secondary: #03DAC5  Radius: 4px
+   ============================================================ */
+
+html.dev,
+html[data-theme="dev"],
+body.dev {
+  --background: #121212 !important;
+  --foreground: rgba(255,255,255,0.87) !important;
+  --card: #1d1d1d !important;
+  --card-foreground: rgba(255,255,255,0.87) !important;
+  --popover: #212121 !important;
+  --popover-foreground: rgba(255,255,255,0.87) !important;
+
+  --primary: #BB86FC !important;
+  --primary-foreground: rgba(0,0,0,0.87) !important;
+
+  --secondary: #03DAC5 !important;
+  --secondary-foreground: rgba(0,0,0,0.87) !important;
+
+  --muted: #1d1d1d !important;
+  --muted-foreground: rgba(255,255,255,0.60) !important;
+
+  --accent: #BB86FC !important;
+  --accent-foreground: rgba(0,0,0,0.87) !important;
+
+  --destructive: #CF6679 !important;
+  --destructive-foreground: rgba(0,0,0,0.87) !important;
+
+  --success: #81C784 !important;
+  --warning: #FFB74D !important;
+  --info: #03DAC5 !important;
+
+  --border: rgba(255,255,255,0.12) !important;
+  --input: rgba(255,255,255,0.05) !important;
+  --ring: #BB86FC !important;
+  --radius: 0.25rem !important;
+
+  --chart-1: #BB86FC !important;
+  --chart-2: #03DAC5 !important;
+  --chart-3: #FFB74D !important;
+  --chart-4: #CF6679 !important;
+  --chart-5: #81C784 !important;
+
+  --sidebar: #1d1d1d !important;
+  --sidebar-foreground: rgba(255,255,255,0.87) !important;
+  --sidebar-primary: #BB86FC !important;
+  --sidebar-primary-foreground: rgba(0,0,0,0.87) !important;
+  --sidebar-accent: rgba(187,134,252,0.16) !important;
+  --sidebar-accent-foreground: rgba(255,255,255,0.87) !important;
+  --sidebar-border: rgba(255,255,255,0.12) !important;
+  --sidebar-ring: #BB86FC !important;
+
+  --surface-0dp: #121212 !important;
+  --surface-1dp: #1d1d1d !important;
+  --surface-2dp: #212121 !important;
+  --surface-3dp: #242424 !important;
+  --surface-4dp: #272727 !important;
+  --surface-6dp: #2c2c2c !important;
+  --surface-8dp: #2e2e2e !important;
+  --surface-12dp: #333333 !important;
+  --surface-16dp: #363636 !important;
+  --surface-24dp: #383838 !important;
+}
+
+html.dev,
+html.dev body,
+body.dev,
+html.dev #root {
+  background-color: #121212 !important;
+}
+
+/* Dev Cards & Panels */
+.dev .card,
+.dev [data-slot="card"] {
+  background-color: #1d1d1d !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.5) !important;
+}
+
+/* Dev Sidebar */
+.dev .bg-sidebar,
+.dev [class*="bg-sidebar"] {
+  background-color: #1d1d1d !important;
+}
+
+/* Active nav item */
+.dev [data-active="true"],
+.dev [aria-current="page"] {
+  background-color: #BB86FC !important;
+  color: rgba(0,0,0,0.87) !important;
+}
+
+/* Hover nav item */
+.dev [class*="sidebar"] button:hover {
+  background-color: rgba(187,134,252,0.16) !important;
+  color: #BB86FC !important;
+}
+
+/* Dev buttons: sidebar transparent at rest */
+.dev .bg-sidebar [data-slot="button"]:not([class*="bg-sidebar-primary"]):not([class*="bg-primary"]) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
