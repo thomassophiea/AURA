@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
@@ -160,6 +160,15 @@ function FloatingSelect({
   );
 }
 
+// ─── Demo defaults (pre-filled for demo/dev environment) ────────────────────
+const DEMO_CONTROLLER_NAME = 'tsophiea';
+const DEMO_CONTROLLER_URL  = 'https://tsophiea.ddns.net';
+const DEMO_USERNAME        = 'admin';
+const DEMO_PASSWORD        = 'Bronco3.0!';
+const DEMO_XIQ_EMAIL       = 'tsophiea+ep1@extremenetworks.com';
+const DEMO_XIQ_REGION: XIQRegion = 'ca';
+// ────────────────────────────────────────────────────────────────────────────
+
 /* ---------- Main LoginForm ---------- */
 export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle: _onThemeToggle }: LoginFormProps) {
   // Login step state
@@ -182,22 +191,68 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // XIQ state
-  const [xiqEmail, setXiqEmail] = useState('');
+  // XIQ state — pre-filled with demo defaults
+  const [xiqEmail, setXiqEmail] = useState(DEMO_XIQ_EMAIL);
   const [xiqPassword, setXiqPassword] = useState('');
-  const [xiqRegion, setXiqRegion] = useState<XIQRegion>('global');
+  const [xiqRegion, setXiqRegion] = useState<XIQRegion>(DEMO_XIQ_REGION);
   const [xiqLoading, setXiqLoading] = useState(false);
   const [xiqError, setXiqError] = useState('');
+
+  // Prevents auto-login from firing more than once
+  const autoLoginDone = useRef(false);
 
   // Load controllers on mount
   useEffect(() => {
     loadControllers();
   }, []);
 
+  // Auto-login once controllers are loaded and credentials are pre-filled
+  useEffect(() => {
+    if (loadingControllers || autoLoginDone.current) return;
+    if (!selectedController || !userId || !password) return;
+    autoLoginDone.current = true;
+
+    setIsLoading(true);
+    tenantService.setCurrentController(selectedController);
+    const ctrlUrl = tenantService.getControllerUrl();
+    if (ctrlUrl) apiService.setBaseUrl(ctrlUrl);
+
+    apiService.login(userId, password)
+      .then(() => {
+        tenantService.saveSiteGroupLogin(selectedController.id, userId.trim(), password);
+        tenantService.updateController(selectedController.id, {
+          connection_status: 'connected',
+          last_connected_at: new Date().toISOString()
+        });
+        onLoginSuccess();
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : 'Login failed';
+        setError(
+          msg.includes('401') || msg.includes('Invalid credentials')
+            ? 'Invalid username or password.'
+            : msg
+        );
+        setStep('credentials');
+      })
+      .finally(() => setIsLoading(false));
+  // onLoginSuccess is a stable prop — intentionally omitted from deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingControllers, selectedController, userId, password]);
+
   const loadControllers = async () => {
     setLoadingControllers(true);
     try {
-      const data = await tenantService.getControllers();
+      const raw = await tenantService.getControllers();
+
+      // Seed demo controller on first run (no stored controllers)
+      let data = raw;
+      if (raw.length === 0) {
+        const demo = tenantService.addQuickController(DEMO_CONTROLLER_NAME, DEMO_CONTROLLER_URL);
+        tenantService.saveSiteGroupLogin(demo.id, DEMO_USERNAME, DEMO_PASSWORD);
+        data = [demo];
+      }
+
       setControllers(data);
 
       // Auto-select: prefer saved controller, then default controller
@@ -507,8 +562,14 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               />
             </div>
             <CardTitle className="text-2xl font-bold tracking-widest">AURA</CardTitle>
-            <div className="text-[11px] text-muted-foreground mt-1 tracking-widest uppercase">
-              Mobility Core
+            <div className="flex items-center justify-center gap-1.5 mt-1 text-[11px]">
+              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">utonomous</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">U</span><span className="text-muted-foreground">nified</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">R</span><span className="text-muted-foreground">adio</span></span>
+              <span className="text-muted-foreground/40">·</span>
+              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">gent</span></span>
             </div>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' :
