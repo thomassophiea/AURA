@@ -176,7 +176,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       </PopoverTrigger>
       
       <PopoverContent
-        className="w-72 p-0 surface-4dp border-border/50 overflow-y-auto"
+        className="w-72 p-0 bg-popover text-popover-foreground border-border overflow-y-auto"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
         align="end"
         sideOffset={8}

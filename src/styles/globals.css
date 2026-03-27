@@ -2734,7 +2734,7 @@ html.ep1 [data-slot="app"] {
 /* --- Sidebar nav items: flat/transparent by default, no box --- */
 .ep1 nav button,
 .ep1 nav a,
-.ep1 [class*="sidebar"] button:not([class*="bg-sidebar-primary"]),
+.ep1 [class*="sidebar"] button:not([class*="bg-sidebar-primary"]):not(.sle-node-bubble),
 .ep1 [class*="sidebar"] a:not([class*="bg-sidebar-primary"]) {
   background-color: transparent !important;
   background-image: none !important;
