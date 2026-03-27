@@ -507,14 +507,8 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               />
             </div>
             <CardTitle className="text-2xl font-bold tracking-widest">AURA</CardTitle>
-            <div className="flex items-center justify-center gap-1.5 mt-1 text-[11px]">
-              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">utonomous</span></span>
-              <span className="text-muted-foreground/40">·</span>
-              <span><span className="font-semibold text-foreground">U</span><span className="text-muted-foreground">nified</span></span>
-              <span className="text-muted-foreground/40">·</span>
-              <span><span className="font-semibold text-foreground">R</span><span className="text-muted-foreground">adio</span></span>
-              <span className="text-muted-foreground/40">·</span>
-              <span><span className="font-semibold text-foreground">A</span><span className="text-muted-foreground">gent</span></span>
+            <div className="text-[11px] text-muted-foreground mt-1 tracking-widest uppercase">
+              Mobility Core
             </div>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' :

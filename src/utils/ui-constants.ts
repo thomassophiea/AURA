@@ -1,6 +1,5 @@
 /**
- * Unified UI Constants for AURA Platform Management Dashboard
- * Autonomous Unified Radio Agent
+ * Unified UI Constants for AURA Mobility Core Platform Management Dashboard
  * Ensures consistency across all pages
  */
 

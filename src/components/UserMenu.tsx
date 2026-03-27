@@ -69,7 +69,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
   const menuItems = [
     {
       type: 'item',
-      label: 'About AURA',
+      label: 'About AURA Mobility Core',
       icon: null,
       beta: true,
       action: () => {
