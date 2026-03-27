@@ -175,41 +175,29 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
         </Button>
       </PopoverTrigger>
       
-      <PopoverContent 
-        className="w-80 p-0 surface-4dp border-border/50" 
+      <PopoverContent
+        className="w-72 p-0 surface-4dp border-border/50 overflow-y-auto"
+        style={{ maxHeight: 'calc(100vh - 80px)' }}
         align="end"
         sideOffset={8}
       >
-        <div className="p-4">
-          {/* User Info Header */}
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="bg-primary text-primary-foreground font-medium text-lg">
-                {userInfo.initials}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-foreground truncate">
-                {userInfo.name}
-              </h4>
-              <p className="text-sm text-muted-foreground truncate">
-                {userInfo.email}
-              </p>
-              <div className="flex items-center gap-1 mt-1">
-                <Building2 className="h-3 w-3 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground truncate">
-                  {userInfo.organization}
-                </p>
-              </div>
-            </div>
+        {/* Compact user header */}
+        <div className="flex items-center gap-3 px-4 py-3">
+          <Avatar className="h-9 w-9 shrink-0">
+            <AvatarFallback className="bg-primary text-primary-foreground font-medium">
+              {userInfo.initials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground truncate">{userInfo.name}</p>
+            <p className="text-xs text-muted-foreground truncate">{userInfo.email}</p>
           </div>
         </div>
 
         <Separator />
 
         {/* Menu Items */}
-        <div className="py-2">
+        <div className="py-1">
           {menuItems.map((item, index) => {
             if (item.type === 'separator') {
               return <Separator key={index} className="my-2" />;

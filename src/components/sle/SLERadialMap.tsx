@@ -22,9 +22,9 @@ const SLE_ICONS: Record<string, React.ElementType> = {
 };
 
 const STATUS_NODE_BG = {
-  good: 'rgba(22, 101, 52, 0.85)',
-  warn: 'rgba(133, 77, 14, 0.85)',
-  poor: 'rgba(153, 27, 27, 0.85)',
+  good: 'rgba(22, 163, 74, 0.92)',
+  warn: 'rgba(202, 138, 4, 0.92)',
+  poor: 'rgba(220, 38, 38, 0.92)',
 } as const;
 
 const STATUS_NODE_BORDER = {
@@ -78,10 +78,10 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   }, []);
 
   // Derived dimensions
-  const containerH = Math.max(400, containerW * 0.55);
+  const containerH = Math.max(440, containerW * 0.60);
   const centerX = containerW / 2;
   const centerY = containerH / 2;
-  const ringRadius = Math.min(containerW * 0.32, containerH * 0.38);
+  const ringRadius = Math.min(containerW * 0.34, containerH * 0.36);
   const nodeSize = Math.max(52, Math.min(68, containerW * 0.08));
   const hubSize = Math.max(90, Math.min(120, containerW * 0.13));
 
@@ -160,7 +160,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
           const activeCount = sle.classifiers.filter(c => c.affectedClients > 0).length;
 
           // Place text just outside the bubble, radiating away from center
-          const labelGap = nodeSize / 2 + 10;
+          const labelGap = nodeSize / 2 + 18;
           const labelX = pos.x + Math.cos(angle) * labelGap;
           const labelY = pos.y + Math.sin(angle) * labelGap;
           const cosA = Math.cos(angle);
