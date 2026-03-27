@@ -2943,6 +2943,238 @@ html.ep1 [data-slot="app"] {
 }
 
 /* ============================================================
+   EP1 COMPONENT VISIBILITY OVERRIDES
+   Fixes all dark-mode contrast/visibility issues across menus,
+   filters, inputs, tabs, badges, and selects.
+   ============================================================ */
+
+/* --- Inputs, Textareas, Search bars --- */
+.ep1 [data-slot="input"],
+.ep1 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.ep1 textarea,
+.ep1 [class*="input"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 input::placeholder,
+.ep1 textarea::placeholder {
+  color: #babcce !important;
+}
+
+/* --- Select Trigger: was transparent, needs visible surface --- */
+.ep1 [data-slot="select-trigger"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="select-trigger"]:hover {
+  background-color: #333548 !important;
+  border-color: #999cb3 !important;
+}
+
+/* --- Select Content (dropdown panel) --- */
+.ep1 [data-slot="select-content"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="select-item"] {
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="select-item"]:focus,
+.ep1 [data-slot="select-item"][data-highlighted] {
+  background-color: #8981e5 !important;
+  color: #1e1a46 !important;
+}
+.ep1 [data-slot="select-label"] {
+  color: #babcce !important;
+}
+
+/* --- Dropdown Menu --- */
+.ep1 [data-slot="dropdown-menu-content"],
+.ep1 [role="menu"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 [role="menuitem"],
+.ep1 [data-slot="dropdown-menu-item"] {
+  color: #f8f8fb !important;
+}
+.ep1 [role="menuitem"]:focus,
+.ep1 [role="menuitem"][data-highlighted],
+.ep1 [data-slot="dropdown-menu-item"]:focus {
+  background-color: #8981e5 !important;
+  color: #1e1a46 !important;
+}
+.ep1 [data-slot="dropdown-menu-separator"] {
+  background-color: #4d4f63 !important;
+}
+.ep1 [data-slot="dropdown-menu-label"] {
+  color: #babcce !important;
+}
+
+/* --- Tabs: TabsList and TabsTrigger --- */
+.ep1 [data-slot="tabs-list"] {
+  background-color: #2d2f3e !important;
+  border: 1px solid #4d4f63 !important;
+}
+.ep1 [data-slot="tabs-trigger"] {
+  color: #babcce !important;
+}
+.ep1 [data-slot="tabs-trigger"][data-state="active"] {
+  background-color: #8981e5 !important;
+  color: #1e1a46 !important;
+  border-color: transparent !important;
+}
+.ep1 [data-slot="tabs-trigger"]:hover:not([data-state="active"]) {
+  color: #f8f8fb !important;
+  background-color: #333548 !important;
+}
+
+/* --- Popover Content (UserMenu, datepickers, etc.) --- */
+.ep1 [data-slot="popover-content"],
+.ep1 [data-radix-popper-content-wrapper] > div {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+
+/* --- Dialog / Modal --- */
+.ep1 [data-slot="dialog-content"],
+.ep1 [role="dialog"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="dialog-title"],
+.ep1 [data-slot="dialog-description"] {
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="dialog-description"] {
+  color: #babcce !important;
+}
+
+/* --- Alert Dialog --- */
+.ep1 [data-slot="alert-dialog-content"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+
+/* --- Sheet (side panels) --- */
+.ep1 [data-slot="sheet-content"] {
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+
+/* --- Command Palette (search bars with comboboxes) --- */
+.ep1 [data-slot="command"],
+.ep1 [cmdk-root] {
+  background-color: #2d2f3e !important;
+  color: #f8f8fb !important;
+}
+.ep1 [cmdk-input] {
+  background-color: transparent !important;
+  color: #f8f8fb !important;
+}
+.ep1 [cmdk-item] {
+  color: #f8f8fb !important;
+}
+.ep1 [cmdk-item][data-selected="true"] {
+  background-color: #8981e5 !important;
+  color: #1e1a46 !important;
+}
+.ep1 [cmdk-group-heading] {
+  color: #babcce !important;
+}
+.ep1 [cmdk-empty] {
+  color: #babcce !important;
+}
+
+/* --- Tooltip --- */
+.ep1 [data-slot="tooltip-content"],
+.ep1 [role="tooltip"] {
+  background-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+  border-color: #4d4f63 !important;
+}
+
+/* --- Badges in dark mode: ensure readable text --- */
+.ep1 [data-slot="badge"] {
+  color: #f8f8fb;
+}
+.ep1 [data-slot="badge"][class*="bg-primary"] {
+  background-color: #8981e5 !important;
+  color: #1e1a46 !important;
+}
+.ep1 [data-slot="badge"][class*="bg-secondary"] {
+  background-color: #4d4f63 !important;
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="badge"][class*="outline"] {
+  border-color: #4d4f63 !important;
+  color: #babcce !important;
+}
+
+/* --- Table header/rows: already covered by vars but reinforce --- */
+.ep1 thead th,
+.ep1 [data-slot="table-head"] {
+  background-color: #30344B !important;
+  color: #D7D9E6 !important;
+  border-color: #4d4f63 !important;
+}
+.ep1 tbody td,
+.ep1 [data-slot="table-cell"] {
+  color: #f8f8fb !important;
+  border-color: #3a3e5c !important;
+}
+.ep1 tbody tr:hover td {
+  background-color: #3A3E58 !important;
+}
+
+/* --- Scrollbars --- */
+.ep1 ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.ep1 ::-webkit-scrollbar-track {
+  background: #1e1f2a;
+}
+.ep1 ::-webkit-scrollbar-thumb {
+  background: #4d4f63;
+  border-radius: 3px;
+}
+.ep1 ::-webkit-scrollbar-thumb:hover {
+  background: #8981e5;
+}
+
+/* --- Muted text legibility — ensure all muted text is visible --- */
+.ep1 .text-muted-foreground,
+.ep1 [class*="text-muted"] {
+  color: #babcce !important;
+}
+
+/* --- Gray utility classes — override any hardcoded grays --- */
+.ep1 .bg-gray-50, .ep1 .bg-gray-100, .ep1 .bg-gray-200 { background-color: #2d2f3e !important; }
+.ep1 .bg-gray-300, .ep1 .bg-gray-400 { background-color: #3a3e5c !important; }
+.ep1 .bg-gray-500 { background-color: #4d4f63 !important; }
+.ep1 .bg-white { background-color: #2d2f3e !important; }
+.ep1 .text-gray-400, .ep1 .text-gray-500 { color: #babcce !important; }
+.ep1 .text-gray-600, .ep1 .text-gray-700 { color: #D7D9E6 !important; }
+.ep1 .text-gray-800, .ep1 .text-gray-900, .ep1 .text-black { color: #f8f8fb !important; }
+.ep1 .border-gray-200, .ep1 .border-gray-300 { border-color: #4d4f63 !important; }
+
+/* --- Zinc / Slate utility overrides --- */
+.ep1 .bg-zinc-50, .ep1 .bg-zinc-100 { background-color: #2d2f3e !important; }
+.ep1 .bg-zinc-800, .ep1 .bg-zinc-900 { background-color: #1e1f2a !important; }
+.ep1 .bg-slate-50, .ep1 .bg-slate-100 { background-color: #2d2f3e !important; }
+.ep1 .text-zinc-500, .ep1 .text-slate-500 { color: #babcce !important; }
+.ep1 .text-zinc-900, .ep1 .text-slate-900 { color: #f8f8fb !important; }
+
+/* ============================================================
    DEV THEME — OS-ONE Material Design Dark (#121212 base)
    Primary: #BB86FC  Secondary: #03DAC5  Radius: 4px
    ============================================================ */
