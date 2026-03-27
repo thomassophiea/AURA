@@ -91,7 +91,7 @@ const systemItems = [
 ];
 
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'system', onThemeToggle }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(theme === 'ep1');
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const branding = useBranding();
   const device = useDeviceDetection();
@@ -106,6 +106,13 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
   const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
   const [isSiteGroupsExpanded, setIsSiteGroupsExpanded] = useState(true);
+
+  // Collapse sidebar when EP1 theme is active
+  useEffect(() => {
+    if (theme === 'ep1') {
+      setIsCollapsed(true);
+    }
+  }, [theme]);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
