@@ -59,10 +59,11 @@ import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
 import { Button } from './components/ui/button';
-import { Activity, Sun, Moon, Braces, Github, FlaskConical, BarChart3 } from 'lucide-react';
+import { Activity, Sun, Moon, Braces, Github, FlaskConical, BarChart3, Bell, LayoutGrid } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
+import { tenantService } from './services/tenantService';
 import { DevModePanel } from './components/DevModePanel';
 import { VersionDisplay } from './components/VersionDisplay';
 import { toast } from 'sonner';
@@ -1033,6 +1034,80 @@ export default function App() {
   return (
     <AppContextProvider>
     <>
+      {/* EP1 Sticky Top Bar */}
+      {theme === 'ep1' && (() => {
+        const controller = tenantService.getCurrentController();
+        const org = tenantService.getCurrentOrganization();
+        const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
+        const userEmail = localStorage.getItem('user_email') || '';
+        const emailUser = userEmail.split('@')[0] || '';
+        const initials = emailUser ? (emailUser.split(/[._+]/)[0] || emailUser).slice(0, 2).toUpperCase() : 'EX';
+        return (
+          <div
+            className="fixed top-0 left-0 right-0 z-50 flex items-center px-4 gap-4"
+            style={{
+              height: '48px',
+              background: '#12152A',
+              borderBottom: '1px solid #2E3254',
+            }}
+          >
+            {/* E logo */}
+            <div style={{
+              width: 28, height: 28,
+              background: '#7B6FE0',
+              borderRadius: 6,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+              fontSize: 14, fontWeight: 700, color: '#fff',
+              letterSpacing: '-0.5px'
+            }}>E</div>
+
+            {/* Brand text */}
+            <span style={{ color: '#E8E9F4', fontSize: 13, fontWeight: 600, letterSpacing: '0.01em', flexShrink: 0 }}>
+              Extreme Platform ONE™
+            </span>
+            <span style={{ color: '#4D5070', fontSize: 13, flexShrink: 0 }}>|</span>
+            <span style={{ color: '#A6A9BE', fontSize: 13, flexShrink: 0 }}>Networking</span>
+
+            {/* Spacer */}
+            <div style={{ flex: 1 }} />
+
+            {/* Site/org label */}
+            <span style={{
+              color: '#C8C9E0',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              background: '#1E2240',
+              border: '1px solid #3A3E60',
+              borderRadius: 5,
+              padding: '2px 10px',
+              flexShrink: 0,
+            }}>{siteLabel}</span>
+
+            {/* Bell */}
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A8DAE', padding: 4 }}>
+              <Bell size={16} />
+            </button>
+
+            {/* User avatar */}
+            <div style={{
+              width: 28, height: 28,
+              background: '#4D4A70',
+              borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, color: '#E8E9F4',
+              cursor: 'pointer', flexShrink: 0,
+            }}>{initials}</div>
+
+            {/* Grid / apps */}
+            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8A8DAE', padding: 4 }}>
+              <LayoutGrid size={16} />
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Miami Vice sunset background - fixed behind everything */}
       {theme === 'synthwave' && (
         <>
@@ -1064,7 +1139,7 @@ export default function App() {
           />
         </>
       )}
-      <div className={`h-screen flex ${theme === 'synthwave' ? '' : 'bg-background'}`} style={{ position: 'relative', zIndex: 1 }}>
+      <div className={`flex ${theme === 'synthwave' ? '' : 'bg-background'}`} style={{ position: 'relative', zIndex: 1, height: theme === 'ep1' ? 'calc(100vh - 48px)' : '100vh', marginTop: theme === 'ep1' ? 48 : 0 }}>
         <Sidebar
           onLogout={handleLogout}
           adminRole={adminRole}

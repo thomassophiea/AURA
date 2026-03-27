@@ -2511,23 +2511,50 @@ html.ep1 [data-slot="app"] {
   background-color: #A396F4 !important;
 }
 
-/* --- EP1 Tabs --- */
+/* --- EP1 Tabs — flat underline style, no pill/card backgrounds --- */
+
+/* Strip the pill container background */
+.ep1 [data-slot="tabs-list"],
 .ep1 [role="tablist"] {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
   border-bottom: 1px solid #3E425B !important;
+  height: auto !important;
+  gap: 0 !important;
 }
 
+/* Each tab: flat, no box */
+.ep1 [data-slot="tabs-trigger"],
 .ep1 [role="tab"] {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   color: #A6A9BE !important;
+  padding: 8px 14px !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+  border-bottom: 2px solid transparent !important;
+  margin-bottom: -1px !important;
 }
 
+/* Active tab: white text + purple underline */
+.ep1 [data-slot="tabs-trigger"][data-state="active"],
 .ep1 [role="tab"][data-state="active"] {
+  background-color: transparent !important;
   color: #F4F5FA !important;
   border-bottom-color: #9C8FEF !important;
+  box-shadow: none !important;
 }
 
+/* Hover on inactive tabs */
+.ep1 [data-slot="tabs-trigger"]:hover:not([data-state="active"]),
 .ep1 [role="tab"]:hover:not([data-state="active"]) {
   color: #D7D9E6 !important;
-  background-color: #383C56 !important;
+  background-color: rgba(56, 60, 86, 0.4) !important;
 }
 
 /* --- EP1 Dropdowns & Popovers --- */
@@ -2627,44 +2654,33 @@ html.ep1 [data-slot="app"] {
   color: #A6A9BE !important;
 }
 
-/* --- EP1 Scrollbars — thin, subtle, purple-tinted --- */
-/* Override the global hidden scrollbars for EP1 */
+/* --- EP1 Scrollbars — hidden like other themes --- */
 .ep1 ::-webkit-scrollbar {
-  display: block !important;
-  width: 5px !important;
-  height: 5px !important;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
-.ep1 ::-webkit-scrollbar-track {
-  background: #1D2033 !important;
-  border-radius: 10px !important;
-}
-
-.ep1 ::-webkit-scrollbar-thumb {
-  background: #4B4F69 !important;
-  border-radius: 10px !important;
-  transition: background 0.2s ease !important;
-}
-
-.ep1 ::-webkit-scrollbar-thumb:hover {
-  background: #707493 !important;
-}
-
-.ep1 ::-webkit-scrollbar-corner {
-  background: #1D2033 !important;
-}
-
-/* Firefox */
 .ep1 * {
-  scrollbar-width: thin !important;
-  scrollbar-color: #4B4F69 #1D2033 !important;
+  scrollbar-width: none !important;
 }
 
 /* ==========================================================================
    EP1 REFINEMENTS — Sidebar, Cards, Badges, Buttons, Content
    ========================================================================== */
 
-/* --- Active sidebar item: subdued indigo fill + purple left accent --- */
+/* --- Sidebar nav items: flat/transparent by default, no box --- */
+.ep1 nav button,
+.ep1 nav a,
+.ep1 [class*="sidebar"] button:not([class*="bg-sidebar-primary"]),
+.ep1 [class*="sidebar"] a:not([class*="bg-sidebar-primary"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Active sidebar item: subdued indigo fill + purple left accent */
 .ep1 button[class*="bg-sidebar-primary"],
 .ep1 a[class*="bg-sidebar-primary"] {
   background-color: #4D4A70 !important;
@@ -2673,7 +2689,9 @@ html.ep1 [data-slot="app"] {
   border-radius: 6px !important;
 }
 
-/* Hover state keeps a lighter tint */
+/* Hover state: subtle tint */
+.ep1 nav button:hover:not([class*="bg-sidebar-primary"]),
+.ep1 nav a:hover:not([class*="bg-sidebar-primary"]),
 .ep1 button[class*="hover:bg-sidebar-accent"]:hover {
   background-color: #383C56 !important;
   color: #F4F5FA !important;
