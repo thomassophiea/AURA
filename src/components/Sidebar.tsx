@@ -53,7 +53,7 @@ interface SidebarProps {
   adminRole: string | null;
   currentPage: string;
   onPageChange: (page: string) => void;
-  theme?: 'light' | 'dark' | 'synthwave' | 'ep1' | 'system';
+  theme?: 'light' | 'ep1';
   onThemeToggle?: () => void;
 }
 
@@ -469,27 +469,15 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent",
               isCollapsed ? "px-2" : "px-3"
             )}
-            title={`Switch theme (current: ${theme === 'system' ? 'auto' : theme})`}
+            title={`Switch theme (current: ${theme})`}
           >
-            {theme === 'light' ? (
-              <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'dark' ? (
-              <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'synthwave' ? (
-              <Zap className={cn("h-4 w-4 text-pink-400", !isCollapsed && "mr-2")} />
-            ) : theme === 'ep1' ? (
+            {theme === 'ep1' ? (
               <Layers className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : (
-              <Monitor className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+              <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
             {!isCollapsed && (
-              <span>
-                {theme === 'light' ? 'Light' :
-                 theme === 'dark' ? 'Dark' :
-                 theme === 'synthwave' ? 'Miami Vice' :
-                 theme === 'ep1' ? 'EP1' :
-                 'Auto'}
-              </span>
+              <span>{theme === 'ep1' ? 'EP1' : 'Light'}</span>
             )}
           </Button>
         )}

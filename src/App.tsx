@@ -52,7 +52,6 @@ const GuestManagement = lazy(() => import('./components/GuestManagement').then(m
 const ApiDocumentation = lazy(() => import('./components/ApiDocumentation').then(m => ({ default: m.ApiDocumentation })));
 const Workspace = lazy(() => import('./components/Workspace').then(m => ({ default: m.Workspace })));
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
-const SynthwaveMusicPlayer = lazy(() => import('./components/SynthwaveMusicPlayer').then(m => ({ default: m.SynthwaveMusicPlayer })));
 import { apiService, ApiCallLog } from './services/api';
 import { AppContextProvider } from './contexts/AppContext';
 import { sleDataCollectionService } from './services/sleDataCollection';
@@ -114,14 +113,13 @@ export default function App() {
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
-  const [theme, setTheme] = useState<'light' | 'dark' | 'synthwave' | 'ep1' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'ep1'>('ep1');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
     data: null
   });
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
-  const [isMusicPlayerDismissed, setIsMusicPlayerDismissed] = useState(false);
   const [networkAssistantEnabled, setNetworkAssistantEnabled] = useState(() => {
     // Default to false - hidden by default
     return localStorage.getItem('networkAssistantEnabled') === 'true';
@@ -188,8 +186,8 @@ export default function App() {
   useEffect(() => {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'synthwave' | 'ep1' | 'system' | null;
-      const initialTheme = savedTheme || 'system';
+      const saved = localStorage.getItem('theme');
+      const initialTheme: 'light' | 'ep1' = (saved === 'light' || saved === 'ep1') ? saved : 'ep1';
 
       setTheme(initialTheme);
       applyThemeForMode(initialTheme);
@@ -236,19 +234,6 @@ export default function App() {
 
     // Initialize with current logs
     setApiLogs(apiService.getApiLogs());
-
-    // Listen for system theme changes
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      // Only auto-switch if user has selected system theme
-      const savedTheme = localStorage.getItem('theme');
-      if (!savedTheme || savedTheme === 'system') {
-        const systemTheme = e.matches ? 'dark' : 'light';
-        applyTheme(systemTheme);
-      }
-    };
-    
-    mediaQuery.addEventListener('change', handleSystemThemeChange);
 
     // Periodically check authentication status (very infrequently)
     // Only check if tokens are present - rely on API errors for actual session validation
@@ -616,8 +601,6 @@ export default function App() {
       console.warn = originalConsoleWarn;
       // Remove window error listeners
       window.removeEventListener('error', handleGlobalError);
-      // Remove system theme listener
-      mediaQuery.removeEventListener('change', handleSystemThemeChange);
       // Clear auth check interval
       clearInterval(authCheckInterval);
       // Cancel any pending requests on cleanup
@@ -627,79 +610,37 @@ export default function App() {
     };
   }, []);
 
-  // All special themes that layer on top of dark mode
-  const DARK_OVERLAY_THEMES = ['synthwave', 'pirate', 'mi5', 'ep1'] as const;
-
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: string) => {
+  const applyTheme = (newTheme: 'light' | 'ep1') => {
     const root = document.documentElement;
-
-    // All overlay themes use dark as their base
-    const isDarkOverlay = DARK_OVERLAY_THEMES.includes(newTheme as any);
-    const baseTheme = newTheme === 'light' ? 'default' : newTheme === 'ep1' ? 'ep1' : 'dark';
+    const baseTheme = newTheme === 'ep1' ? 'ep1' : 'default';
     applyThemeColors(baseTheme);
 
-    // Remove existing theme classes
     root.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
-
-    if (isDarkOverlay) {
-      root.classList.add('dark', newTheme);
-    } else {
-      root.classList.add(newTheme);
-    }
-
-    // Set data attribute for theme as well (for compatibility)
-    root.setAttribute('data-theme', newTheme);
-
-    // Ensure body also gets the theme class
     document.body.classList.remove('light', 'dark', 'synthwave', 'pirate', 'mi5', 'ep1');
-    if (isDarkOverlay) {
-      document.body.classList.add('dark', newTheme);
+
+    if (newTheme === 'ep1') {
+      root.classList.add('dark', 'ep1');
+      document.body.classList.add('dark', 'ep1');
     } else {
-      document.body.classList.add(newTheme);
+      root.classList.add('light');
+      document.body.classList.add('light');
     }
+    root.setAttribute('data-theme', newTheme);
   };
 
-  // Helper function to apply theme based on mode (handles system detection)
-  const applyThemeForMode = (mode: 'light' | 'dark' | 'synthwave' | 'ep1' | 'system') => {
-    if (mode === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-      applyTheme(systemTheme);
-    } else {
-      applyTheme(mode);
-    }
+  const applyThemeForMode = (mode: 'light' | 'ep1') => {
+    applyTheme(mode);
   };
 
   const toggleTheme = () => {
-    const newTheme =
-      theme === 'light' ? 'dark' :
-      theme === 'dark' ? 'synthwave' :
-      theme === 'synthwave' ? 'ep1' :
-      theme === 'ep1' ? 'system' :
-      'light';
+    const newTheme: 'light' | 'ep1' = theme === 'ep1' ? 'light' : 'ep1';
     setTheme(newTheme);
-    applyThemeForMode(newTheme);
-
-    // Reset music player when switching to synthwave
-    if (newTheme === 'synthwave') {
-      setIsMusicPlayerDismissed(false);
-    }
-
-    // Save to localStorage
+    applyTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
-    // Show a toast notification
-    const themeLabel =
-      newTheme === 'system' ? 'System (Auto)' :
-      newTheme === 'synthwave' ? 'Miami Vice' :
-      newTheme === 'ep1' ? 'EP1' :
-      newTheme.charAt(0).toUpperCase() + newTheme.slice(1);
-
-    const themeDescription =
-      newTheme === 'system' ? 'The interface will now follow your system preference.' :
-      newTheme === 'synthwave' ? 'Welcome to Miami. Neon lights activated.' :
-      newTheme === 'ep1' ? 'Extreme Platform ONE theme activated.' :
-      `The interface is now using ${newTheme} theme.`;
+    const themeLabel = newTheme === 'ep1' ? 'EP1' : 'Light';
+    const themeDescription = newTheme === 'ep1' ? 'Extreme Platform ONE theme activated.' : 'Light theme activated.';
 
     toast.success(`Switched to ${themeLabel} mode`, {
       description: themeDescription,
@@ -1034,37 +975,6 @@ export default function App() {
   return (
     <AppContextProvider>
     <>
-      {/* Miami Vice sunset background - fixed behind everything */}
-      {theme === 'synthwave' && (
-        <>
-          {/* Main gradient sky + SVG silhouette */}
-          <div
-            className="fixed inset-0 w-screen h-screen"
-            style={{
-              zIndex: 0,
-              pointerEvents: 'none',
-              background: [
-                "url('/synthwave-silhouette.svg') center bottom / cover no-repeat fixed",
-                /* Sun — positioned at 62% vertical to match SVG horizon */
-                "radial-gradient(ellipse 18% 13% at 50% 62%, rgba(255,248,100,1.0) 0%, rgba(255,210,60,0.90) 15%, rgba(255,140,30,0.65) 40%, rgba(255,60,10,0.25) 65%, transparent 100%)",
-                /* Outer sun corona */
-                "radial-gradient(ellipse 45% 22% at 50% 62%, rgba(255,100,30,0.22) 0%, transparent 100%)",
-                /* Sky gradient — deeper purple top, warm coral at horizon */
-                "linear-gradient(to bottom, #020010 0%, #070218 4%, #0d0430 10%, #1a0848 16%, #2d1260 24%, #5c1a8e 33%, #8e1580 40%, #c91880 45%, #e83068 49%, #ff5040 53%, #ff7830 57%, #e83068 61%, #c91880 67%, #5c1a8e 77%, #2d1260 87%, #0d0430 94%, #020010 100%)"
-              ].join(', ')
-            }}
-          />
-          {/* Scanline overlay — classic CRT feel */}
-          <div
-            className="fixed inset-0 w-screen h-screen"
-            style={{
-              zIndex: 2,
-              pointerEvents: 'none',
-              background: 'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.03) 3px, rgba(0,0,0,0.03) 4px)',
-            }}
-          />
-        </>
-      )}
       {/* Unified floating-card layout — all themes */}
       <div
         className="flex flex-col bg-background"
@@ -1180,16 +1090,6 @@ export default function App() {
           onHeightChange={setDevPanelHeight}
         />
       )}
-      {/* Synthwave Music Player - Shows when Miami Vice theme is active */}
-      {theme === 'synthwave' && !isMusicPlayerDismissed && (
-        <Suspense fallback={null}>
-          <SynthwaveMusicPlayer
-            isVisible={true}
-            onClose={() => setIsMusicPlayerDismissed(true)}
-          />
-        </Suspense>
-      )}
-
       {/* Version Display - Fixed to bottom-left */}
       <VersionDisplay position="bottom-left" />
     </>

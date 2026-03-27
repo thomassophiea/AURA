@@ -2369,7 +2369,33 @@ html[data-theme="ep1"] {
   --ep1-divider: #5A5E79;
 }
 
-/* Force background on body — override the heavy-handed !important rules */
+/* High-specificity override: html.dark.ep1 beats both html.ep1 and html.dark.
+   This prevents dark-theme's #121212 values from leaking into EP1. */
+html.dark.ep1 {
+  --background: #1e1f2a !important;
+  --foreground: #f8f8fb !important;
+  --card: #2d2f3e !important;
+  --card-foreground: #f8f8fb !important;
+  --popover: #2d2f3e !important;
+  --popover-foreground: #f8f8fb !important;
+  --muted: #2d2f3e !important;
+  --muted-foreground: #babcce !important;
+  --accent: #4d4f63 !important;
+  --accent-foreground: #f8f8fb !important;
+  --secondary: #2d2f3e !important;
+  --secondary-foreground: #babcce !important;
+  --border: #3a3e5c !important;
+  --input: #2d2f3e !important;
+  --input-background: #2d2f3e !important;
+  --primary: #6930DF !important;
+  --primary-foreground: #f8f8fb !important;
+  --sidebar: #2d2f3e !important;
+  --sidebar-foreground: #f8f8fb !important;
+  --sidebar-accent: #4d4f63 !important;
+  --sidebar-accent-foreground: #f8f8fb !important;
+  --sidebar-border: transparent !important;
+}
+
 html.dark.ep1,
 html.dark.ep1 body {
   background-color: #1e1f2a !important;
@@ -2837,4 +2863,43 @@ html.ep1 [data-slot="app"] {
 }
 .ep1 .flex-1.overflow-auto {
   background-color: #1e1f2a !important;
+}
+
+/* --- EP1 Alert/info banners — prevent dark-mode #121212 bleed --- */
+.ep1 [data-slot="alert"],
+.ep1 [role="alert"] {
+  background-color: #2d2f3e !important;
+  border-color: #3a3e5c !important;
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="alert-description"] {
+  color: #babcce !important;
+}
+
+/* --- EP1 Select: ensure text is always visible --- */
+.ep1 [data-slot="select-trigger"],
+.ep1 [data-slot="select-value"],
+.ep1 [data-slot="select-item"] {
+  color: #f8f8fb !important;
+}
+.ep1 [data-slot="select-item"][data-state="checked"],
+.ep1 [data-slot="select-item"][aria-selected="true"] {
+  background-color: #4d4f63 !important;
+}
+
+/* --- EP1 Sidebar buttons: transparent at rest, no dark-mode box artifacts --- */
+.ep1 .bg-sidebar [data-slot="button"]:not([class*="bg-sidebar-primary"]):not([class*="bg-primary"]) {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* --- EP1 Secondary surfaces: prevent #121212 bleed from dark theme --- */
+.ep1 [class*="bg-secondary"],
+.ep1 [class*="bg-muted"]:not([class*="text"]) {
+  background-color: #2d2f3e !important;
+}
+.ep1 [class*="bg-input"],
+.ep1 [class*="dark:bg-input"] {
+  background-color: #2d2f3e !important;
 }
