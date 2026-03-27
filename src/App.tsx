@@ -639,8 +639,8 @@ export default function App() {
     applyTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
-    const themeLabel = newTheme === 'ep1' ? 'EP1' : 'Light';
-    const themeDescription = newTheme === 'ep1' ? 'Extreme Platform ONE theme activated.' : 'Light theme activated.';
+    const themeLabel = newTheme === 'ep1' ? 'Dark' : 'Light';
+    const themeDescription = newTheme === 'ep1' ? 'Dark mode activated.' : 'Light mode activated.';
 
     toast.success(`Switched to ${themeLabel} mode`, {
       description: themeDescription,
@@ -991,28 +991,20 @@ export default function App() {
               : '0 2px 8px rgba(0,0,0,0.12)',
           }}
         >
-          {/* Left side — EP1 brand or page title */}
-          {theme === 'ep1' ? (
-            <>
-              <img src="/branding/extreme-e.png" alt="Extreme Networks" style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }} />
-              <img src="/branding/EP1.png" alt="Extreme Platform ONE" style={{ height: 24, objectFit: 'contain', flexShrink: 0 }} />
-              <div style={{ flex: 1 }} />
-              {(() => {
-                const controller = tenantService.getCurrentController();
-                const org = tenantService.getCurrentOrganization();
-                const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
-                return (
-                  <span className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
-                    {siteLabel}
-                  </span>
-                );
-              })()}
-            </>
-          ) : (
-            <h2 className="text-sm font-semibold text-foreground truncate flex-1">
-              {pageInfo[currentPage as keyof typeof pageInfo]?.title || 'Mobility Engine'}
-            </h2>
-          )}
+          {/* Left side — persistent brand across all themes */}
+          <img src="/branding/extreme-e.png" alt="Extreme Networks" style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }} />
+          <img src="/branding/EP1.png" alt="Extreme Platform ONE Networking" style={{ height: 24, objectFit: 'contain', flexShrink: 0 }} />
+          <div style={{ flex: 1 }} />
+          {(() => {
+            const controller = tenantService.getCurrentController();
+            const org = tenantService.getCurrentOrganization();
+            const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
+            return (
+              <span className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
+                {siteLabel}
+              </span>
+            );
+          })()}
 
           {/* Right side — controls for all themes */}
           <div className="flex items-center gap-1 ml-auto">

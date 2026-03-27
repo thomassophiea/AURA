@@ -91,7 +91,7 @@ const systemItems = [
 ];
 
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'system', onThemeToggle }: SidebarProps) {
-  const [isCollapsed, setIsCollapsed] = useState(theme === 'ep1');
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const branding = useBranding();
   const device = useDeviceDetection();
@@ -106,13 +106,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
   const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
   const [isSiteGroupsExpanded, setIsSiteGroupsExpanded] = useState(true);
-
-  // Collapse sidebar when EP1 theme is active
-  useEffect(() => {
-    if (theme === 'ep1') {
-      setIsCollapsed(true);
-    }
-  }, [theme]);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
@@ -472,12 +465,12 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             title={`Switch theme (current: ${theme})`}
           >
             {theme === 'ep1' ? (
-              <Layers className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+              <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             ) : (
               <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
             )}
             {!isCollapsed && (
-              <span>{theme === 'ep1' ? 'EP1' : 'Light'}</span>
+              <span>{theme === 'ep1' ? 'Dark' : 'Light'}</span>
             )}
           </Button>
         )}
