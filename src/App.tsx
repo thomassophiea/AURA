@@ -1072,7 +1072,7 @@ export default function App() {
       >
         {/* Universal top bar card */}
         <div
-          className="bg-card shrink-0 flex items-center gap-3 rounded-[8px]"
+          className="bg-sidebar shrink-0 flex items-center gap-3 rounded-[8px]"
           style={{
             height: 52,
             padding: '0 16px',
