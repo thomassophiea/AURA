@@ -8,9 +8,15 @@ const alertVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground",
+        default: "bg-card text-card-foreground border-border",
         destructive:
-          "text-destructive bg-card [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90",
+          "text-destructive bg-card border-destructive/30 [&>svg]:text-current *:data-[slot=alert-description]:text-destructive/90",
+        warning:
+          "text-[var(--status-warning,#E65100)] bg-card border-[var(--status-warning,#E65100)]/30 [&>svg]:text-current *:data-[slot=alert-description]:opacity-80",
+        success:
+          "text-[var(--status-success,#2E7D32)] bg-card border-[var(--status-success,#2E7D32)]/30 [&>svg]:text-current *:data-[slot=alert-description]:opacity-80",
+        info:
+          "text-[var(--status-info,#01579B)] bg-card border-[var(--status-info,#01579B)]/30 [&>svg]:text-current *:data-[slot=alert-description]:opacity-80",
       },
     },
     defaultVariants: {
@@ -18,6 +24,8 @@ const alertVariants = cva(
     },
   },
 );
+
+export type AlertVariant = "default" | "destructive" | "warning" | "success" | "info";
 
 function Alert({
   className,
