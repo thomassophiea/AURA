@@ -2943,6 +2943,25 @@ html.ep1 [data-slot="app"] {
 }
 
 /* ============================================================
+   SLE RADIAL MAP — bubble fill colors
+   High-specificity !important rules so no dark/ep1/button reset
+   can strip the circle background from the node buttons.
+   ============================================================ */
+
+button.sle-node-bubble.sle-node-good,
+.sle-node-bubble.sle-node-good {
+  background-color: rgba(22, 163, 74, 0.92) !important;
+}
+button.sle-node-bubble.sle-node-warn,
+.sle-node-bubble.sle-node-warn {
+  background-color: rgba(202, 138, 4, 0.92) !important;
+}
+button.sle-node-bubble.sle-node-poor,
+.sle-node-bubble.sle-node-poor {
+  background-color: rgba(220, 38, 38, 0.92) !important;
+}
+
+/* ============================================================
    EP1 COMPONENT VISIBILITY OVERRIDES
    Fixes all dark-mode contrast/visibility issues across menus,
    filters, inputs, tabs, badges, and selects.
