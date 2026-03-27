@@ -2205,7 +2205,8 @@ html.dark.synthwave body {
 
 /* --- EP1 CSS Variable Block — matched exactly to Extreme Platform ONE template --- */
 html.ep1,
-html[data-theme="ep1"] {
+html[data-theme="ep1"],
+body.ep1 {
   /* Core backgrounds — #1e1f2a outer, #2d2f3e surfaces */
   --background: #1e1f2a !important;
   --foreground: #f8f8fb !important;
@@ -2432,7 +2433,9 @@ html.dark.ep1 body {
 }
 
 /* --- EP1 App Background --- */
+html.ep1,
 html.ep1 body,
+body.ep1,
 html.ep1 #root,
 html.ep1 [data-slot="app"] {
   background-color: #1e1f2a !important;
