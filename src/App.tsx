@@ -1051,8 +1051,13 @@ export default function App() {
             onThemeToggle={toggleTheme}
           />
           <main
-            className="flex-1 overflow-auto transition-all duration-200"
-            style={{ paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0' }}
+            className="flex-1 overflow-auto bg-sidebar rounded-[8px] transition-all duration-200"
+            style={{
+              paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0',
+              boxShadow: theme === 'ep1'
+                ? '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)'
+                : '0 2px 8px rgba(0,0,0,0.12)',
+            }}
           >
             <div className="p-4 sm:p-6">
               <ErrorBoundary key={currentPage} fallbackTitle="Page Error">

@@ -2886,12 +2886,12 @@ html.ep1 [data-slot="app"] {
   color: #1e1a46 !important;
 }
 
-/* --- App shell main area background --- */
+/* --- App shell main area background — same surface as sidebar/top bar (#2d2f3e) --- */
 .ep1 main {
-  background-color: #1e1f2a !important;
+  background-color: #2d2f3e !important;
 }
 .ep1 .flex-1.overflow-auto {
-  background-color: #1e1f2a !important;
+  background-color: #2d2f3e !important;
 }
 
 /* --- EP1 Alert/info banners — prevent dark-mode #121212 bleed --- */
