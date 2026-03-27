@@ -994,7 +994,8 @@ export default function App() {
           {/* Left side — EP1 brand or page title */}
           {theme === 'ep1' ? (
             <>
-              <img src="/branding/EP1.png" alt="Extreme Platform ONE" style={{ height: 28, objectFit: 'contain', flexShrink: 0 }} />
+              <img src="/branding/extreme-e.png" alt="Extreme Networks" style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }} />
+              <img src="/branding/EP1.png" alt="Extreme Platform ONE" style={{ height: 24, objectFit: 'contain', flexShrink: 0 }} />
               <div style={{ flex: 1 }} />
               {(() => {
                 const controller = tenantService.getCurrentController();
