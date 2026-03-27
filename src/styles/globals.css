@@ -102,25 +102,25 @@
 
 .dark {
   /* Material Design Dark Theme */
-  --background: #121212;
+  --background: #1e1f2a;
   --foreground: rgba(255, 255, 255, 0.87);
-  --card: #121212;
+  --card: #1e1f2a;
   --card-foreground: rgba(255, 255, 255, 0.87);
-  --popover: #121212;
+  --popover: #1e1f2a;
   --popover-foreground: rgba(255, 255, 255, 0.87);
   --primary: #BB86FC;
   --primary-foreground: rgba(0, 0, 0, 0.87);
   --secondary: #03DAC5;
   --secondary-foreground: rgba(0, 0, 0, 0.87);
-  --muted: #121212;
+  --muted: #1e1f2a;
   --muted-foreground: rgba(255, 255, 255, 0.60);
-  --accent: #121212;
+  --accent: #1e1f2a;
   --accent-foreground: rgba(255, 255, 255, 0.87);
   --destructive: #CF6679;
   --destructive-foreground: rgba(0, 0, 0, 0.87);
   --border: rgba(255, 255, 255, 0.12);
-  --input: #121212;
-  --input-background: #121212;
+  --input: #1e1f2a;
+  --input-background: #1e1f2a;
   --ring: #BB86FC;
   --chart-1: #BB86FC;
   --chart-2: #03DAC5;

@@ -206,9 +206,10 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
     loadControllers();
   }, []);
 
-  // Auto-login once controllers are loaded and credentials are pre-filled
+  // Auto-login to controller once XIQ is done and credentials are pre-filled
   useEffect(() => {
     if (loadingControllers || autoLoginDone.current) return;
+    if (step !== 'credentials') return;
     if (!selectedController || !userId || !password) return;
     autoLoginDone.current = true;
 
@@ -238,7 +239,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
       .finally(() => setIsLoading(false));
   // onLoginSuccess is a stable prop — intentionally omitted from deps
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingControllers, selectedController, userId, password]);
+  }, [loadingControllers, step, selectedController, userId, password]);
 
   const loadControllers = async () => {
     setLoadingControllers(true);

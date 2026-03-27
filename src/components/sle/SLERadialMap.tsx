@@ -3,7 +3,7 @@
  * Center: overall score. Ring: SLE nodes. Click to expand detail panel.
  */
 
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { Wifi, Signal, Radio, Shield, Clock, Activity, Target } from 'lucide-react';
 import { SLESankeyFlow } from './SLESankeyFlow';
 import { SLERootCausePanel } from './SLERootCausePanel';
@@ -82,7 +82,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   const centerX = containerW / 2;
   const centerY = containerH / 2;
   const ringRadius = Math.min(containerW * 0.32, containerH * 0.38);
-  const nodeSize = Math.max(70, Math.min(100, containerW * 0.11));
+  const nodeSize = Math.max(52, Math.min(68, containerW * 0.08));
   const hubSize = Math.max(90, Math.min(120, containerW * 0.13));
 
   // Node positions around the ring
@@ -154,53 +154,77 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
         {/* SLE nodes */}
         {sles.map((sle, i) => {
           const pos = nodePositions[i];
+          const angle = (i * 2 * Math.PI / sles.length) - Math.PI / 2;
           const Icon = SLE_ICONS[sle.id] || Target;
           const isSelected = sle.id === selectedId;
           const activeCount = sle.classifiers.filter(c => c.affectedClients > 0).length;
 
-          return (
-            <button
-              key={sle.id}
-              onClick={() => setSelectedId(isSelected ? null : sle.id)}
-              className="absolute flex flex-col items-center justify-center rounded-full transition-all duration-300 z-10 hover:brightness-110"
-              style={{
-                width: nodeSize,
-                height: nodeSize,
-                left: pos.x - nodeSize / 2,
-                top: pos.y - nodeSize / 2,
-                background: STATUS_NODE_BG[sle.status],
-                border: `2px solid ${SLE_STATUS_COLORS[sle.status].hex}${isSelected ? '' : 'bb'}`,
-                boxShadow: isSelected
-                  ? `0 0 20px ${SLE_STATUS_COLORS[sle.status].hex}60, 0 0 40px ${SLE_STATUS_COLORS[sle.status].hex}30`
-                  : `0 4px 16px rgba(0,0,0,0.5), 0 0 16px ${SLE_STATUS_COLORS[sle.status].hex}55`,
-                transform: isSelected ? 'scale(1.12)' : 'scale(1)',
-              }}
-            >
-              <Icon className="h-3.5 w-3.5 text-white/90 mb-0.5" />
-              <span className="text-sm font-bold text-white leading-none">
-                {sle.successRate.toFixed(1)}%
-              </span>
-              <span className="text-[8px] text-white/80 uppercase tracking-wider leading-tight mt-0.5 max-w-[80%] truncate">
-                {sle.name}
-              </span>
+          // Place text just outside the bubble, radiating away from center
+          const labelGap = nodeSize / 2 + 10;
+          const labelX = pos.x + Math.cos(angle) * labelGap;
+          const labelY = pos.y + Math.sin(angle) * labelGap;
+          const cosA = Math.cos(angle);
+          const textAlign = cosA < -0.25 ? 'right' : cosA > 0.25 ? 'left' : 'center';
+          const translateX = cosA < -0.25 ? '-100%' : cosA > 0.25 ? '0%' : '-50%';
 
-              {/* Active classifier badge */}
-              {activeCount > 0 && (
-                <span
-                  className="absolute flex items-center justify-center rounded-full text-[8px] font-bold text-white"
-                  style={{
-                    width: 18,
-                    height: 18,
-                    bottom: -2,
-                    right: -2,
-                    background: 'rgba(239, 68, 68, 0.9)',
-                    border: '1.5px solid rgba(0,0,0,0.3)',
-                  }}
-                >
-                  {activeCount}
-                </span>
-              )}
-            </button>
+          return (
+            <Fragment key={sle.id}>
+              {/* Bubble — icon only */}
+              <button
+                onClick={() => setSelectedId(isSelected ? null : sle.id)}
+                className="absolute flex items-center justify-center rounded-full transition-all duration-300 z-10 hover:brightness-110"
+                style={{
+                  width: nodeSize,
+                  height: nodeSize,
+                  left: pos.x - nodeSize / 2,
+                  top: pos.y - nodeSize / 2,
+                  background: STATUS_NODE_BG[sle.status],
+                  border: `2px solid ${SLE_STATUS_COLORS[sle.status].hex}${isSelected ? '' : 'aa'}`,
+                  boxShadow: isSelected
+                    ? `0 0 20px ${SLE_STATUS_COLORS[sle.status].hex}70, 0 0 40px ${SLE_STATUS_COLORS[sle.status].hex}35`
+                    : `0 4px 16px rgba(0,0,0,0.5), 0 0 14px ${SLE_STATUS_COLORS[sle.status].hex}55`,
+                  transform: isSelected ? 'scale(1.14)' : 'scale(1)',
+                }}
+              >
+                <Icon className="h-4 w-4 text-white/90" />
+
+                {/* Active classifier badge */}
+                {activeCount > 0 && (
+                  <span
+                    className="absolute flex items-center justify-center rounded-full text-[8px] font-bold text-white"
+                    style={{
+                      width: 18,
+                      height: 18,
+                      bottom: -3,
+                      right: -3,
+                      background: 'rgba(239, 68, 68, 0.95)',
+                      border: '1.5px solid rgba(0,0,0,0.4)',
+                    }}
+                  >
+                    {activeCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Labels outside the bubble */}
+              <div
+                className="absolute z-10 pointer-events-none"
+                style={{
+                  left: labelX,
+                  top: labelY,
+                  textAlign,
+                  transform: `translate(${translateX}, -50%)`,
+                  lineHeight: 1.2,
+                }}
+              >
+                <div className="text-sm font-bold text-white whitespace-nowrap">
+                  {sle.successRate.toFixed(1)}%
+                </div>
+                <div className="text-[9px] text-white/65 uppercase tracking-widest whitespace-nowrap mt-0.5">
+                  {sle.name}
+                </div>
+              </div>
+            </Fragment>
           );
         })}
       </div>
