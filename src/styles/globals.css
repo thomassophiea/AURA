@@ -2714,11 +2714,18 @@ html.ep1 [data-slot="app"] {
   background-color: #E06A75 !important;
 }
 
-/* --- Sidebar: floating card style with rounded corners + shadow --- */
-.ep1 .bg-sidebar {
+/* --- Sidebar: floating card style — all themes --- */
+.bg-sidebar {
   border-right: none !important;
   border-radius: 8px !important;
+}
+
+.ep1 .bg-sidebar {
   box-shadow: 0px 16px 16px 0px rgba(30,31,42,0.24), 0px 8px 8px 0px rgba(30,31,42,0.24), 0px 4px 4px 0px rgba(30,31,42,0.24), 0px 2px 2px 0px rgba(30,31,42,0.24) !important;
+}
+
+:not(.ep1) .bg-sidebar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
 }
 
 /* --- Clear all hardcoded gradient backgrounds on cards --- */

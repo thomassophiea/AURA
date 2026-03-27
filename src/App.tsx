@@ -1065,70 +1065,73 @@ export default function App() {
           />
         </>
       )}
-      {theme === 'ep1' ? (
-        /* EP1 layout: padded floating-card design per template */
-        <div style={{ height: '100vh', background: '#1e1f2a', padding: 16, display: 'flex', flexDirection: 'column', gap: 16, position: 'relative', zIndex: 1 }}>
-          {/* EP1 App Bar — floating rounded card */}
-          {(() => {
-            const controller = tenantService.getCurrentController();
-            const org = tenantService.getCurrentOrganization();
-            const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
-            const userEmail = localStorage.getItem('user_email') || '';
-            const emailUser = userEmail.split('@')[0] || '';
-            const initials = emailUser ? (emailUser.split(/[._+]/)[0] || emailUser).slice(0, 2).toUpperCase() : 'EX';
-            return (
-              <div style={{ flexShrink: 0, height: 52, background: '#2d2f3e', borderRadius: 8, boxShadow: '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16 }}>
-                <img src="/branding/extreme-e.png" alt="Extreme" style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }} />
-                <span style={{ color: '#f8f8fb', fontSize: 14, fontWeight: 600, flexShrink: 0 }}>Extreme Platform ONE™</span>
-                <span style={{ color: '#4d4f63', fontSize: 14, flexShrink: 0 }}>|</span>
-                <span style={{ color: '#babcce', fontSize: 14, flexShrink: 0 }}>Networking</span>
-                <div style={{ flex: 1 }} />
-                <span style={{ color: '#babcce', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', background: '#1e1f2a', border: '1px solid #3a3e5c', borderRadius: 4, padding: '2px 10px', flexShrink: 0 }}>{siteLabel}</span>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#babcce', padding: 4 }}><Bell size={16} /></button>
-                <div style={{ width: 32, height: 32, background: '#1e1f2a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#f8f8fb', cursor: 'pointer', flexShrink: 0 }}>{initials}</div>
-                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#babcce', padding: 4 }}><LayoutGrid size={16} /></button>
-              </div>
-            );
-          })()}
+      {/* Unified floating-card layout — all themes */}
+      <div
+        className="flex flex-col bg-background"
+        style={{ height: '100vh', padding: 16, gap: 16, position: 'relative', zIndex: 1 }}
+      >
+        {/* Universal top bar card */}
+        <div
+          className="bg-card shrink-0 flex items-center gap-3 rounded-[8px]"
+          style={{
+            height: 52,
+            padding: '0 16px',
+            boxShadow: theme === 'ep1'
+              ? '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)'
+              : '0 2px 8px rgba(0,0,0,0.12)',
+          }}
+        >
+          {/* Left side — EP1 brand or page title */}
+          {theme === 'ep1' ? (
+            <>
+              <img src="/branding/EP1.png" alt="Extreme Platform ONE" style={{ height: 28, objectFit: 'contain', flexShrink: 0 }} />
+              <div style={{ flex: 1 }} />
+              {(() => {
+                const controller = tenantService.getCurrentController();
+                const org = tenantService.getCurrentOrganization();
+                const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
+                return (
+                  <span className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
+                    {siteLabel}
+                  </span>
+                );
+              })()}
+            </>
+          ) : (
+            <h2 className="text-sm font-semibold text-foreground truncate flex-1">
+              {pageInfo[currentPage as keyof typeof pageInfo]?.title || 'Mobility Engine'}
+            </h2>
+          )}
 
-          {/* Sidebar + Content row */}
-          <div style={{ flex: 1, display: 'flex', gap: 16, overflow: 'hidden' }}>
-            <Sidebar
+          {/* Right side — controls for all themes */}
+          <div className="flex items-center gap-1 ml-auto">
+            {!device.isMobile && theme !== 'ep1' && (
+              <>
+                <Button variant={isDevModeOpen ? 'default' : 'ghost'} size="sm" onClick={handleToggleDevMode} title="Developer Mode">
+                  <Braces className="h-4 w-4" />
+                </Button>
+                <Button variant={currentPage === 'api-test' ? 'default' : 'ghost'} size="sm" onClick={() => setCurrentPage('api-test')} title="API Test Tool">
+                  <FlaskConical className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => window.open('https://github.com/thomassophiea/EDGE', '_blank', 'noopener,noreferrer')} title="GitHub">
+                  <Github className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {!device.isMobile && <NotificationsMenu />}
+            {!device.isMobile && <AppsMenu />}
+            <UserMenu
               onLogout={handleLogout}
-              adminRole={adminRole}
-              currentPage={currentPage}
-              onPageChange={handlePageChange}
               theme={theme}
               onThemeToggle={toggleTheme}
+              userEmail={localStorage.getItem('user_email') || undefined}
+              onNavigateTo={handlePageChange}
             />
-            <main className="flex-1 overflow-auto transition-all duration-200" style={{ paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0' }}>
-              <div className="p-4 sm:p-6">
-                <div className="flex justify-between items-center gap-3 mb-4 sm:mb-6">
-                  <h2 className="text-base sm:text-lg font-semibold truncate flex-1" style={{ color: '#f8f8fb' }}>
-                    {pageInfo[currentPage as keyof typeof pageInfo]?.title || 'Mobility Engine'}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    {!device.isMobile && (<><NotificationsMenu /><AppsMenu /></>)}
-                    <UserMenu onLogout={handleLogout} theme={theme} onThemeToggle={toggleTheme} userEmail={localStorage.getItem('user_email') || undefined} onNavigateTo={handlePageChange} />
-                  </div>
-                </div>
-                <div>
-                  <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
-                    <Suspense fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}>
-                      <div className="animate-in fade-in duration-300">{renderPage()}</div>
-                    </Suspense>
-                  </ErrorBoundary>
-                </div>
-              </div>
-            </main>
           </div>
-
-          {!device.isMobile && <Toaster />}
-          {renderDetailPanel()}
         </div>
-      ) : (
-        /* Normal layout */
-        <div className={`h-screen flex ${theme === 'synthwave' ? '' : 'bg-background'}`} style={{ position: 'relative', zIndex: 1 }}>
+
+        {/* Sidebar + Content row */}
+        <div style={{ flex: 1, display: 'flex', gap: 16, overflow: 'hidden' }}>
           <Sidebar
             onLogout={handleLogout}
             adminRole={adminRole}
@@ -1137,50 +1140,23 @@ export default function App() {
             theme={theme}
             onThemeToggle={toggleTheme}
           />
-
           <main
             className="flex-1 overflow-auto transition-all duration-200"
             style={{ paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0' }}
           >
-            <div className="p-4 sm:p-6 pt-16 sm:pt-6">
-              {/* Top Bar */}
-              <div className="flex justify-between items-center gap-3 mb-4 sm:mb-6">
-                <h2 className="text-base sm:text-lg font-semibold text-[rgba(255,255,255,1)] truncate flex-1">
-                  {pageInfo[currentPage as keyof typeof pageInfo]?.title || 'Mobility Engine'}
-                </h2>
-                <div className="flex items-center gap-2">
-                  {!device.isMobile && (
-                    <>
-                      <Button variant={isDevModeOpen ? 'default' : 'secondary'} size="sm" onClick={handleToggleDevMode} className="flex items-center" title="Toggle Developer Mode">
-                        <Braces className="h-4 w-4" />
-                      </Button>
-                      <Button variant={currentPage === 'api-test' ? 'default' : 'secondary'} size="sm" onClick={() => setCurrentPage('api-test')} className="flex items-center" title="API Test Tool">
-                        <FlaskConical className="h-4 w-4" />
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => window.open('https://github.com/thomassophiea/EDGE', '_blank', 'noopener,noreferrer')} className="flex items-center" title="View on GitHub">
-                        <Github className="h-4 w-4" />
-                      </Button>
-                      <NotificationsMenu />
-                      <AppsMenu />
-                    </>
-                  )}
-                  <UserMenu onLogout={handleLogout} theme={theme} onThemeToggle={toggleTheme} userEmail={localStorage.getItem('user_email') || undefined} onNavigateTo={handlePageChange} />
-                </div>
-              </div>
-              <div>
-                <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
-                  <Suspense fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}>
-                    <div className="animate-in fade-in duration-300">{renderPage()}</div>
-                  </Suspense>
-                </ErrorBoundary>
-              </div>
+            <div className="p-4 sm:p-6">
+              <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
+                <Suspense fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}>
+                  <div className="animate-in fade-in duration-300">{renderPage()}</div>
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </main>
-
-          {!device.isMobile && <Toaster />}
-          {renderDetailPanel()}
         </div>
-      )}
+
+        {!device.isMobile && <Toaster />}
+        {renderDetailPanel()}
+      </div>
       
       {/* Network Assistant Chatbot - Only render if enabled in preferences */}
       {networkAssistantEnabled && (
