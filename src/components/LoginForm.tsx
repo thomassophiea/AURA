@@ -1,11 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
-import { Badge } from './ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
@@ -16,27 +12,170 @@ import { toast } from 'sonner';
 
 interface LoginFormProps {
   onLoginSuccess: () => void;
-  theme?: 'light' | 'dark' | 'synthwave' | 'system';
+  theme?: 'light' | 'ep1';
   onThemeToggle?: () => void;
 }
 
 type LoginStep = 'controller' | 'credentials' | 'xiq';
 
-export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: LoginFormProps) {
+/* ---------- Floating-label input (matches XIQ login aesthetic) ---------- */
+function FloatingInput({
+  id, type = 'text', value, onChange, label, disabled, autoComplete, required
+}: {
+  id: string; type?: string; value: string;
+  onChange: (e: ChangeEvent<HTMLInputElement>) => void;
+  label: string; disabled?: boolean; autoComplete?: string; required?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  const isFloated = focused || Boolean(value);
+
+  return (
+    <div style={{ position: 'relative', height: '54px' }}>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        disabled={disabled}
+        autoComplete={autoComplete}
+        required={required}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          paddingTop: '18px',
+          paddingBottom: '4px',
+          paddingLeft: '12px',
+          paddingRight: '12px',
+          boxSizing: 'border-box' as const,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderRadius: '4px',
+          backgroundColor: 'var(--input-bg, transparent)',
+          borderColor: 'var(--input-border, rgba(0,0,0,0.15))',
+          color: 'var(--input-text, inherit)',
+          fontSize: '14px',
+          outline: 'none',
+          opacity: disabled ? 0.5 : 1,
+        }}
+      />
+      <label
+        htmlFor={id}
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: isFloated ? '8px' : '50%',
+          transform: isFloated ? 'none' : 'translateY(-50%)',
+          fontSize: isFloated ? '11px' : '14px',
+          color: focused
+            ? 'var(--input-border-focus, #8981e5)'
+            : 'var(--input-placeholder, #babcce)',
+          pointerEvents: 'none',
+          transition: 'all 0.15s ease',
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </label>
+    </div>
+  );
+}
+
+/* ---------- Floating-label select ---------- */
+function FloatingSelect({
+  id, value, onChange, label, disabled, children
+}: {
+  id: string; value: string;
+  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
+  label: string; disabled?: boolean; children: ReactNode;
+}) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <div style={{ position: 'relative', height: '54px' }}>
+      <select
+        id={id}
+        value={value}
+        onChange={onChange}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        disabled={disabled}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          paddingTop: '18px',
+          paddingBottom: '4px',
+          paddingLeft: '12px',
+          paddingRight: '32px',
+          boxSizing: 'border-box' as const,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderRadius: '4px',
+          backgroundColor: 'var(--input-bg, transparent)',
+          borderColor: 'var(--input-border, rgba(0,0,0,0.15))',
+          color: 'var(--input-text, inherit)',
+          fontSize: '14px',
+          outline: 'none',
+          appearance: 'none' as const,
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >
+        {children}
+      </select>
+      <label
+        htmlFor={id}
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '8px',
+          fontSize: '11px',
+          color: focused
+            ? 'var(--input-border-focus, #8981e5)'
+            : 'var(--input-placeholder, #babcce)',
+          pointerEvents: 'none',
+          transition: 'color 0.15s ease',
+          lineHeight: 1,
+        }}
+      >
+        {label}
+      </label>
+      <div
+        style={{
+          position: 'absolute',
+          right: '12px',
+          top: '56%',
+          transform: 'translateY(-50%)',
+          pointerEvents: 'none',
+          color: 'var(--input-placeholder, #babcce)',
+        }}
+      >
+        <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
+          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Main LoginForm ---------- */
+export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle: _onThemeToggle }: LoginFormProps) {
   // Login step state
   const [step, setStep] = useState<LoginStep>('xiq');
-  
+
   // Controller state
   const [controllers, setControllers] = useState<Controller[]>([]);
   const [selectedController, setSelectedController] = useState<Controller | null>(null);
   const [loadingControllers, setLoadingControllers] = useState(true);
   const [testing, setTesting] = useState<string | null>(null);
-  
+
   // Add/Edit controller state
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingController, setEditingController] = useState<Controller | null>(null);
   const [controllerForm, setControllerForm] = useState({ name: '', url: '', description: '' });
-  
+
   // Credentials state
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
@@ -60,18 +199,18 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
     try {
       const data = await tenantService.getControllers();
       setControllers(data);
-      
+
       // Auto-select: prefer saved controller, then default controller
       const saved = tenantService.getCurrentController();
       let selectedCtrl: Controller | null = null;
-      
+
       if (saved) {
         const found = data.find(c => c.id === saved.id);
         if (found) {
           selectedCtrl = found;
         }
       }
-      
+
       // If no saved controller, use default
       if (!selectedCtrl) {
         const defaultController = data.find(c => c.is_default);
@@ -79,12 +218,12 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
           selectedCtrl = defaultController;
         }
       }
-      
+
       // If still no selection but we have controllers, pick the first one
       if (!selectedCtrl && data.length > 0) {
         selectedCtrl = data[0];
       }
-      
+
       if (selectedCtrl) {
         setSelectedController(selectedCtrl);
         tenantService.setCurrentController(selectedCtrl);
@@ -110,10 +249,6 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
           setXiqRegion(savedXIQ.region);
         }
       }
-
-      // Auto-proceed to credentials only if the user is already on the controller step
-      // (i.e. they came from XIQ). On initial mount the XIQ step is showing, so don't
-      // skip it by jumping straight to credentials.
     } catch (error) {
       console.error('Failed to load controllers:', error);
     } finally {
@@ -177,8 +312,8 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
       description: controllerForm.description
     });
 
-    setControllers(prev => prev.map(c => 
-      c.id === editingController.id 
+    setControllers(prev => prev.map(c =>
+      c.id === editingController.id
         ? { ...c, ...controllerForm }
         : c
     ));
@@ -188,28 +323,28 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
     toast.success('Controller updated');
   };
 
-  const handleDeleteController = async (controller: Controller, e: React.MouseEvent) => {
+  const handleDeleteController = async (controller: Controller, e: MouseEvent) => {
     e.stopPropagation();
     if (!confirm(`Delete "${controller.name}"?`)) return;
 
     await tenantService.deleteController(controller.id);
     setControllers(prev => prev.filter(c => c.id !== controller.id));
-    
+
     if (selectedController?.id === controller.id) {
       setSelectedController(null);
     }
     toast.success('Controller deleted');
   };
 
-  const handleTestConnection = async (controller: Controller, e: React.MouseEvent) => {
+  const handleTestConnection = async (controller: Controller, e: MouseEvent) => {
     e.stopPropagation();
     setTesting(controller.id);
-    
+
     try {
       const result = await tenantService.testControllerConnection(controller);
-      
-      setControllers(prev => prev.map(c => 
-        c.id === controller.id 
+
+      setControllers(prev => prev.map(c =>
+        c.id === controller.id
           ? { ...c, connection_status: result.success ? 'connected' : 'disconnected' }
           : c
       ));
@@ -245,20 +380,20 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
       toast.error('Please select a controller');
       return;
     }
-    
+
     // Set the current controller in tenant service and API service
     tenantService.setCurrentController(selectedController);
-    
+
     // Update API service base URL
     const controllerUrl = tenantService.getControllerUrl();
     if (controllerUrl) {
       apiService.setBaseUrl(controllerUrl);
     }
-    
+
     setStep('credentials');
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -295,7 +430,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
       onLoginSuccess();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
-      
+
       if (errorMessage.includes('401') || errorMessage.includes('Invalid credentials')) {
         setError('Invalid username or password.');
       } else if (errorMessage.includes('timeout')) {
@@ -362,10 +497,10 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-4">
-        <Card className="w-full">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <ImageWithFallback 
+        <Card className="w-full shadow-2xl">
+          <CardHeader className="pb-2 text-center">
+            <div className="flex justify-center mb-5">
+              <ImageWithFallback
                 src={extremeNetworksLogo}
                 alt="AURA"
                 className="h-12 w-12 object-contain"
@@ -383,12 +518,12 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
             </div>
             <CardDescription className="text-center mt-2">
               {step === 'controller' ? 'Select a site group to connect' :
-               step === 'xiq' ? 'Sign in to ExtremeCloud (optional)' :
+               step === 'xiq' ? 'Sign in to ExtremeCloud' :
                'Sign in to continue'}
             </CardDescription>
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="pt-4">
             {/* Controller Selection Step */}
             {step === 'controller' && (
               <div className="space-y-4">
@@ -400,8 +535,8 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                   /* Add/Edit Site Group Form */
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 mb-4">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         onClick={() => {
                           setShowAddForm(false);
@@ -416,27 +551,21 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                       </span>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="ctrl-name">Name</Label>
-                      <Input
-                        id="ctrl-name"
-                        placeholder="Production Sites"
-                        value={controllerForm.name}
-                        onChange={(e) => setControllerForm(prev => ({ ...prev, name: e.target.value }))}
-                      />
-                    </div>
+                    <FloatingInput
+                      id="ctrl-name"
+                      label="Name"
+                      value={controllerForm.name}
+                      onChange={(e) => setControllerForm(prev => ({ ...prev, name: e.target.value }))}
+                    />
 
-                    <div className="space-y-2">
-                      <Label htmlFor="ctrl-url">URL</Label>
-                      <Input
-                        id="ctrl-url"
-                        placeholder="https://controller.example.com"
-                        value={controllerForm.url}
-                        onChange={(e) => setControllerForm(prev => ({ ...prev, url: e.target.value }))}
-                      />
-                    </div>
+                    <FloatingInput
+                      id="ctrl-url"
+                      label="URL"
+                      value={controllerForm.url}
+                      onChange={(e) => setControllerForm(prev => ({ ...prev, url: e.target.value }))}
+                    />
 
-                    <Button 
+                    <Button
                       className="w-full"
                       onClick={editingController ? handleEditController : handleAddController}
                     >
@@ -461,8 +590,8 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                           <div
                             key={controller.id}
                             className={`p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${
-                              selectedController?.id === controller.id 
-                                ? 'border-primary bg-primary/5' 
+                              selectedController?.id === controller.id
+                                ? 'border-primary bg-primary/5'
                                 : ''
                             }`}
                             onClick={() => handleSelectController(controller)}
@@ -470,8 +599,8 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3 min-w-0">
                                 <div className={`p-2 rounded-lg shrink-0 ${
-                                  selectedController?.id === controller.id 
-                                    ? 'bg-primary/20' 
+                                  selectedController?.id === controller.id
+                                    ? 'bg-primary/20'
                                     : 'bg-muted'
                                 }`}>
                                   <Server className="h-4 w-4" />
@@ -487,7 +616,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                                   </div>
                                 </div>
                               </div>
-                              
+
                               <div className="flex items-center gap-1 shrink-0">
                                 <Button
                                   variant="ghost"
@@ -531,8 +660,8 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                           </div>
                         ))}
 
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full"
                           onClick={() => setShowAddForm(true)}
                         >
@@ -545,7 +674,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 )}
 
                 {controllers.length > 0 && !showAddForm && !editingController && (
-                  <Button 
+                  <Button
                     className="w-full mt-4"
                     onClick={handleProceedToLogin}
                     disabled={!selectedController}
@@ -581,40 +710,33 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                   </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="userId">User ID / Username</Label>
-                    <Input
-                      id="userId"
-                      type="text"
-                      value={userId}
-                      onChange={(e) => setUserId(e.target.value)}
-                      placeholder="Enter your username"
-                      required
-                      disabled={isLoading}
-                      autoComplete="username"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      required
-                      disabled={isLoading}
-                      autoComplete="current-password"
-                    />
-                  </div>
-                  
+                <form onSubmit={handleLogin} className="space-y-3">
+                  <FloatingInput
+                    id="userId"
+                    label="User ID / Username"
+                    value={userId}
+                    onChange={(e) => setUserId(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    autoComplete="username"
+                  />
+                  <FloatingInput
+                    id="password"
+                    type="password"
+                    label="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    autoComplete="current-password"
+                  />
+
                   {error && (
                     <Alert variant="destructive">
                       <AlertDescription>{error}</AlertDescription>
                     </Alert>
                   )}
-                  
+
                   <Button
                     type="submit"
                     className="w-full"
@@ -635,7 +757,7 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
 
             {/* ExtremeCloud Step */}
             {step === 'xiq' && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {/* Already authenticated notice */}
                 {xiqService.isAuthenticated('xiq_pending') && (
                   <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-700 dark:text-green-400">
@@ -645,49 +767,37 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 )}
 
                 <form onSubmit={e => { e.preventDefault(); if (xiqEmail.trim() && xiqPassword.trim()) handleXIQLogin(); }} className="space-y-3">
-                  {/* Region */}
-                  <div className="space-y-2">
-                    <Label htmlFor="xiq-region">Region</Label>
-                    <select
-                      id="xiq-region"
-                      value={xiqRegion}
-                      onChange={e => setXiqRegion(e.target.value as XIQRegion)}
-                      disabled={xiqLoading}
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
-                    >
-                      {XIQ_REGION_ORDER.map(r => (
-                        <option key={r} value={r}>{XIQ_REGION_LABELS[r]}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <FloatingSelect
+                    id="xiq-region"
+                    label="Region"
+                    value={xiqRegion}
+                    onChange={e => setXiqRegion(e.target.value as XIQRegion)}
+                    disabled={xiqLoading}
+                  >
+                    {XIQ_REGION_ORDER.map(r => (
+                      <option key={r} value={r}>{XIQ_REGION_LABELS[r]}</option>
+                    ))}
+                  </FloatingSelect>
 
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <Label htmlFor="xiq-email">Email</Label>
-                    <Input
-                      id="xiq-email"
-                      type="email"
-                      value={xiqEmail}
-                      onChange={e => setXiqEmail(e.target.value)}
-                      placeholder="you@extremenetworks.com"
-                      disabled={xiqLoading}
-                      autoComplete="username"
-                    />
-                  </div>
+                  <FloatingInput
+                    id="xiq-email"
+                    type="email"
+                    label="Email"
+                    value={xiqEmail}
+                    onChange={e => setXiqEmail(e.target.value)}
+                    disabled={xiqLoading}
+                    autoComplete="username"
+                  />
 
-                  {/* Password */}
-                  <div className="space-y-2">
-                    <Label htmlFor="xiq-password">Password</Label>
-                    <Input
-                      id="xiq-password"
-                      type="password"
-                      value={xiqPassword}
-                      onChange={e => setXiqPassword(e.target.value)}
-                      placeholder="Enter your password"
-                      disabled={xiqLoading}
-                      autoComplete="current-password"
-                    />
-                  </div>
+                  <FloatingInput
+                    id="xiq-password"
+                    type="password"
+                    label="Password"
+                    value={xiqPassword}
+                    onChange={e => setXiqPassword(e.target.value)}
+                    disabled={xiqLoading}
+                    autoComplete="current-password"
+                  />
 
                   {xiqError && (
                     <Alert variant="destructive">
@@ -712,15 +822,15 @@ export function LoginForm({ onLoginSuccess, theme = 'system', onThemeToggle }: L
                 </form>
 
                 <Button
-                  variant="ghost"
-                  className="w-full text-muted-foreground"
+                  variant="outline"
+                  className="w-full"
                   onClick={handleSkipXIQ}
                   disabled={xiqLoading}
                 >
                   Skip for now
                 </Button>
 
-                <p className="text-[11px] text-muted-foreground text-center">
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
                   Connects AURA to your ExtremeCloud organization for future migration.
                   You can connect later from Site Group settings.
                 </p>

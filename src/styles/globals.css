@@ -2534,6 +2534,11 @@ html.ep1 [data-slot="app"] {
   border-radius: 4px !important;
 }
 
+.ep1 select option {
+  background-color: #2d2f3e !important;
+  color: #f8f8fb !important;
+}
+
 .ep1 input::placeholder,
 .ep1 textarea::placeholder {
   color: #babcce !important;
