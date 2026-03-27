@@ -3094,56 +3094,6 @@ function DashboardEnhancedComponent() {
             <CardDescription>Network quality indicators with insights</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Latency */}
-            {performanceMetrics && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-blue-500" />
-                    <span className="text-sm font-medium">Latency</span>
-                  </div>
-                  <span className={`text-sm font-bold ${
-                    performanceMetrics.latency < 20 ? 'text-green-500' :
-                    performanceMetrics.latency < 50 ? 'text-amber-500' : 'text-red-500'
-                  }`}>
-                    {performanceMetrics.latency.toFixed(1)} ms
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {performanceMetrics.latency < 20 ? '✓ Excellent - Ideal for real-time applications' :
-                   performanceMetrics.latency < 50 ? '⚠ Good - Suitable for most applications' :
-                   '⚠ High - May impact user experience'}
-                </p>
-              </div>
-            )}
-
-            {/* Packet Loss */}
-            {performanceMetrics && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm font-medium">Packet Loss</span>
-                  </div>
-                  <span className={`text-sm font-bold ${
-                    performanceMetrics.packetLoss < 0.5 ? 'text-green-500' :
-                    performanceMetrics.packetLoss < 2 ? 'text-amber-500' : 'text-red-500'
-                  }`}>
-                    {performanceMetrics.packetLoss.toFixed(3)}%
-                  </span>
-                </div>
-                <Progress
-                  value={Math.max(0, 100 - (performanceMetrics.packetLoss * 20))}
-                  className="h-1.5"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {performanceMetrics.packetLoss < 0.5 ? '✓ Excellent - No significant packet loss' :
-                   performanceMetrics.packetLoss < 2 ? '⚠ Acceptable - Minor packet loss detected' :
-                   '⚠ Critical - Check network infrastructure'}
-                </p>
-              </div>
-            )}
-
             {/* RSSI */}
             {performanceMetrics && (
               <div className="space-y-2">
