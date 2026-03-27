@@ -993,7 +993,11 @@ export default function App() {
         >
           {/* Left side — persistent brand across all themes */}
           <img src="/branding/extreme-e.png" alt="Extreme Networks" style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }} />
-          <img src="/branding/EP1.png" alt="Extreme Platform ONE Networking" style={{ height: 24, objectFit: 'contain', flexShrink: 0 }} />
+          <span className="text-sm font-semibold text-foreground" style={{ flexShrink: 0, letterSpacing: '-0.01em' }}>
+            <span style={{ fontWeight: 700 }}>Extreme</span>
+            {' '}
+            <span className="text-muted-foreground" style={{ fontWeight: 400 }}>Platform ONE™ | Networking</span>
+          </span>
           <div style={{ flex: 1 }} />
           {(() => {
             const controller = tenantService.getCurrentController();
