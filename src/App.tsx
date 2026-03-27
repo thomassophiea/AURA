@@ -1051,16 +1051,12 @@ export default function App() {
               borderBottom: '1px solid #2E3254',
             }}
           >
-            {/* E logo */}
-            <div style={{
-              width: 28, height: 28,
-              background: '#7B6FE0',
-              borderRadius: 6,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0,
-              fontSize: 14, fontWeight: 700, color: '#fff',
-              letterSpacing: '-0.5px'
-            }}>E</div>
+            {/* Extreme Networks E logo */}
+            <img
+              src="/branding/extreme-e.png"
+              alt="Extreme"
+              style={{ width: 32, height: 32, objectFit: 'contain', flexShrink: 0 }}
+            />
 
             {/* Brand text */}
             <span style={{ color: '#E8E9F4', fontSize: 13, fontWeight: 600, letterSpacing: '0.01em', flexShrink: 0 }}>
