@@ -2206,29 +2206,29 @@ html.dark.synthwave body {
 /* --- EP1 CSS Variable Block --- */
 html.ep1,
 html[data-theme="ep1"] {
-  /* Core backgrounds */
-  --background: #191C2D !important;
-  --foreground: #F4F5FA !important;
-  --card: #2B2F45 !important;
-  --card-foreground: #F4F5FA !important;
-  --popover: #2B2F45 !important;
-  --popover-foreground: #F4F5FA !important;
+  /* Core backgrounds — matched to EP1 template */
+  --background: #1e1f2a !important;
+  --foreground: #f8f8fb !important;
+  --card: #2d2f3e !important;
+  --card-foreground: #f8f8fb !important;
+  --popover: #2d2f3e !important;
+  --popover-foreground: #f8f8fb !important;
 
-  /* Brand / accent purple */
-  --primary: #9C8FEF !important;
-  --primary-foreground: #F9FAFF !important;
-  --secondary: #323650 !important;
-  --secondary-foreground: #D7D9E6 !important;
+  /* Brand / accent purple — template uses #6930DF */
+  --primary: #6930DF !important;
+  --primary-foreground: #f8f8fb !important;
+  --secondary: #2d2f3e !important;
+  --secondary-foreground: #babcce !important;
 
   /* Muted surfaces */
-  --muted: #323650 !important;
-  --muted-foreground: #A6A9BE !important;
-  --accent: #4A4469 !important;
-  --accent-foreground: #F4F5FA !important;
+  --muted: #2d2f3e !important;
+  --muted-foreground: #babcce !important;
+  --accent: #4d4f63 !important;
+  --accent-foreground: #f8f8fb !important;
 
   /* Status */
   --destructive: #E06A75 !important;
-  --destructive-foreground: #F9FAFF !important;
+  --destructive-foreground: #f8f8fb !important;
   --success: #77D36A !important;
   --success-foreground: #0D1A0B !important;
   --warning: #E5B85C !important;
@@ -2237,50 +2237,50 @@ html[data-theme="ep1"] {
   --info-foreground: #0A1525 !important;
 
   /* Borders and inputs */
-  --border: #4B4F69 !important;
-  --input: #2F334B !important;
-  --input-background: #2F334B !important;
-  --switch-background: #4B4F69 !important;
-  --ring: #B5A9FF !important;
+  --border: #3a3e5c !important;
+  --input: #2d2f3e !important;
+  --input-background: #2d2f3e !important;
+  --switch-background: #4d4f63 !important;
+  --ring: #6930DF !important;
 
   /* Charts */
-  --chart-1: #9C8FEF !important;
+  --chart-1: #6930DF !important;
   --chart-2: #7AA6FF !important;
   --chart-3: #E5B85C !important;
   --chart-4: #E06A75 !important;
   --chart-5: #77D36A !important;
 
-  /* Sidebar */
-  --sidebar: #2C3047 !important;
-  --sidebar-foreground: #F4F5FA !important;
-  --sidebar-primary: #4D4A70 !important;
-  --sidebar-primary-foreground: #F4F5FA !important;
-  --sidebar-accent: #383C56 !important;
-  --sidebar-accent-foreground: #F4F5FA !important;
-  --sidebar-border: #3E425B !important;
-  --sidebar-ring: #B5A9FF !important;
+  /* Sidebar — floating card style, matches #2d2f3e surface */
+  --sidebar: #2d2f3e !important;
+  --sidebar-foreground: #f8f8fb !important;
+  --sidebar-primary: #3d2f80 !important;
+  --sidebar-primary-foreground: #f8f8fb !important;
+  --sidebar-accent: #4d4f63 !important;
+  --sidebar-accent-foreground: #f8f8fb !important;
+  --sidebar-border: transparent !important;
+  --sidebar-ring: #6930DF !important;
 
-  /* Radius — slightly rounder than Material default */
+  /* Radius */
   --radius: 0.5rem !important;
 
   /* Surface elevations */
-  --surface-0dp: #191C2D !important;
-  --surface-1dp: #1D2033 !important;
-  --surface-2dp: #222539 !important;
-  --surface-3dp: #262A3E !important;
-  --surface-4dp: #2B2F45 !important;
-  --surface-6dp: #2E3248 !important;
-  --surface-8dp: #323650 !important;
-  --surface-12dp: #343852 !important;
-  --surface-16dp: #383C56 !important;
-  --surface-24dp: #3E425B !important;
+  --surface-0dp: #1e1f2a !important;
+  --surface-1dp: #242636 !important;
+  --surface-2dp: #292b3b !important;
+  --surface-3dp: #2d2f3e !important;
+  --surface-4dp: #333548 !important;
+  --surface-6dp: #383a4e !important;
+  --surface-8dp: #3d3f54 !important;
+  --surface-12dp: #424559 !important;
+  --surface-16dp: #474960 !important;
+  --surface-24dp: #4d4f63 !important;
 
   /* EP1 semantic tokens */
-  --background-default: #191C2D !important;
+  --background-default: #1e1f2a !important;
   --background-secondary: #1D2033 !important;
-  --background-inverse: #F4F5FA !important;
+  --background-inverse: #f8f8fb !important;
 
-  --surface-primary: #2B2F45 !important;
+  --surface-primary: #2d2f3e !important;
   --surface-secondary: #323650 !important;
   --surface-elevated: #343852 !important;
 
@@ -2290,14 +2290,14 @@ html[data-theme="ep1"] {
   --brand-secondary: #7AA6FF !important;
   --brand-secondary-hover: #8FB6FF !important;
 
-  --text-primary: #F4F5FA !important;
+  --text-primary: #f8f8fb !important;
   --text-secondary: #D7D9E6 !important;
-  --text-muted: #A6A9BE !important;
-  --text-inverse: #191C2D !important;
+  --text-muted: #babcce !important;
+  --text-inverse: #1e1f2a !important;
   --text-on-brand: #F9FAFF !important;
 
-  --border-default: #4B4F69 !important;
-  --border-subtle: #3E425B !important;
+  --border-default: #4d4f63 !important;
+  --border-subtle: #3a3e5c !important;
   --border-focus: #B5A9FF !important;
 
   --status-success: #77D36A !important;
@@ -2311,31 +2311,31 @@ html[data-theme="ep1"] {
 
   --table-header-bg: #30344B !important;
   --table-header-text: #D7D9E6 !important;
-  --table-header-border: #4B4F69 !important;
+  --table-header-border: #4d4f63 !important;
   --table-row-bg: #2E3248 !important;
   --table-row-hover: #3A3E58 !important;
   --table-row-selected: #474367 !important;
-  --table-row-border: #3E425B !important;
-  --table-cell-text: #F4F5FA !important;
-  --table-cell-muted: #A6A9BE !important;
+  --table-row-border: #3a3e5c !important;
+  --table-cell-text: #f8f8fb !important;
+  --table-cell-muted: #babcce !important;
 
   --button-primary-bg: #9588E8 !important;
   --button-primary-hover: #A396F4 !important;
   --button-primary-active: #8E7BF0 !important;
   --button-primary-text: #F9FAFF !important;
   --button-secondary-bg: transparent !important;
-  --button-secondary-hover: #383C56 !important;
+  --button-secondary-hover: #4d4f63 !important;
   --button-secondary-active: #4B476D !important;
   --button-secondary-text: #D9DBE7 !important;
   --button-outline-border: #8E82E8 !important;
-  --button-outline-hover-bg: #383C56 !important;
+  --button-outline-hover-bg: #4d4f63 !important;
 
   --nav-background: #2C3047 !important;
-  --nav-text: #F4F5FA !important;
-  --nav-text-muted: #A6A9BE !important;
-  --nav-item-hover: #383C56 !important;
+  --nav-text: #f8f8fb !important;
+  --nav-text-muted: #babcce !important;
+  --nav-item-hover: #4d4f63 !important;
   --nav-item-active: #4D4A70 !important;
-  --nav-border: #4B4F69 !important;
+  --nav-border: #4d4f63 !important;
 
   --form-label-text: #D7D9E6 !important;
   --form-label-required: #E06A75 !important;
@@ -2343,7 +2343,7 @@ html[data-theme="ep1"] {
   --input-border: #707493 !important;
   --input-border-hover: #9B9EB2 !important;
   --input-border-focus: #B5A9FF !important;
-  --input-text: #F4F5FA !important;
+  --input-text: #f8f8fb !important;
   --input-placeholder: #9B9EB2 !important;
   --input-disabled-bg: #252840 !important;
   --input-disabled-text: #7C8098 !important;
@@ -2358,7 +2358,7 @@ html[data-theme="ep1"] {
   /* EP1 extended tokens */
   --ep1-selected-bg: #4D4A70;
   --ep1-selected-border: #A497FF;
-  --ep1-hover-bg: #383C56;
+  --ep1-hover-bg: #4d4f63;
   --ep1-active-bg: #4B476D;
   --ep1-focus-ring: #B5A9FF;
   --ep1-chip-bg: #4A4E69;
@@ -2372,29 +2372,29 @@ html[data-theme="ep1"] {
 /* Force background on body — override the heavy-handed !important rules */
 html.dark.ep1,
 html.dark.ep1 body {
-  background-color: #191C2D !important;
-  color: #F4F5FA !important;
+  background-color: #1e1f2a !important;
+  color: #f8f8fb !important;
 }
 
 /* --- EP1 App Background --- */
 html.ep1 body,
 html.ep1 #root,
 html.ep1 [data-slot="app"] {
-  background-color: #191C2D !important;
+  background-color: #1e1f2a !important;
 }
 
 /* --- EP1 Cards & Panels --- */
 .ep1 .card,
 .ep1 [data-slot="card"] {
-  background-color: #2B2F45 !important;
-  border: 1px solid #3E425B !important;
+  background-color: #2d2f3e !important;
+  border: 1px solid #3a3e5c !important;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28) !important;
   border-radius: 12px !important;
 }
 
 .ep1 .card:hover,
 .ep1 [data-slot="card"]:hover {
-  border-color: #4B4F69 !important;
+  border-color: #4d4f63 !important;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32) !important;
 }
 
@@ -2402,7 +2402,7 @@ html.ep1 [data-slot="app"] {
 .ep1 .bg-sidebar,
 .ep1 [class*="bg-sidebar"] {
   background-color: #2C3047 !important;
-  border-right: 1px solid #3E425B !important;
+  border-right: 1px solid #3a3e5c !important;
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.20) !important;
 }
 
@@ -2410,14 +2410,14 @@ html.ep1 [data-slot="app"] {
 .ep1 [data-active="true"],
 .ep1 [aria-current="page"] {
   background-color: #4D4A70 !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
   border-left: 2px solid #9C8FEF !important;
 }
 
 /* Hover nav item */
 .ep1 [class*="sidebar"] a:hover,
 .ep1 [class*="sidebar"] button:hover {
-  background-color: #383C56 !important;
+  background-color: #4d4f63 !important;
 }
 
 /* --- EP1 Header Bar --- */
@@ -2426,7 +2426,7 @@ html.ep1 [data-slot="app"] {
 .ep1 nav[class*="top"],
 .ep1 .header {
   background-color: #2E3247 !important;
-  border-bottom: 1px solid #3E425B !important;
+  border-bottom: 1px solid #3a3e5c !important;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18) !important;
 }
 
@@ -2444,7 +2444,7 @@ html.ep1 [data-slot="app"] {
 .ep1 thead th {
   color: #D7D9E6 !important;
   background-color: #30344B !important;
-  border-bottom: 1px solid #4B4F69 !important;
+  border-bottom: 1px solid #4d4f63 !important;
   font-weight: 500 !important;
   letter-spacing: 0.02em !important;
   text-transform: none !important;
@@ -2452,7 +2452,7 @@ html.ep1 [data-slot="app"] {
 
 .ep1 tbody tr {
   background-color: #2E3248 !important;
-  border-bottom: 1px solid #3E425B !important;
+  border-bottom: 1px solid #3a3e5c !important;
   transition: background-color 150ms ease !important;
 }
 
@@ -2466,8 +2466,8 @@ html.ep1 [data-slot="app"] {
 }
 
 .ep1 tbody td {
-  color: #F4F5FA !important;
-  border-bottom: 1px solid #3E425B !important;
+  color: #f8f8fb !important;
+  border-bottom: 1px solid #3a3e5c !important;
 }
 
 /* --- EP1 Inputs & Search --- */
@@ -2476,7 +2476,7 @@ html.ep1 [data-slot="app"] {
 .ep1 select {
   background-color: #2F334B !important;
   border-color: #707493 !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
   border-radius: 8px !important;
 }
 
@@ -2520,7 +2520,7 @@ html.ep1 [data-slot="app"] {
   background-image: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  border-bottom: 1px solid #3E425B !important;
+  border-bottom: 1px solid #3a3e5c !important;
   height: auto !important;
   gap: 0 !important;
 }
@@ -2533,7 +2533,7 @@ html.ep1 [data-slot="app"] {
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  color: #A6A9BE !important;
+  color: #babcce !important;
   padding: 8px 14px !important;
   font-size: 0.875rem !important;
   font-weight: 500 !important;
@@ -2545,7 +2545,7 @@ html.ep1 [data-slot="app"] {
 .ep1 [data-slot="tabs-trigger"][data-state="active"],
 .ep1 [role="tab"][data-state="active"] {
   background-color: transparent !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
   border-bottom-color: #9C8FEF !important;
   box-shadow: none !important;
 }
@@ -2562,8 +2562,8 @@ html.ep1 [data-slot="app"] {
 .ep1 [role="dialog"],
 .ep1 [role="menu"],
 .ep1 [role="listbox"] {
-  background-color: #2B2F45 !important;
-  border: 1px solid #4B4F69 !important;
+  background-color: #2d2f3e !important;
+  border: 1px solid #4d4f63 !important;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32) !important;
   border-radius: 10px !important;
 }
@@ -2572,14 +2572,14 @@ html.ep1 [data-slot="app"] {
 .ep1 [role="menuitem"]:hover,
 .ep1 [role="option"]:hover,
 .ep1 [data-highlighted] {
-  background-color: #383C56 !important;
-  color: #F4F5FA !important;
+  background-color: #4d4f63 !important;
+  color: #f8f8fb !important;
 }
 
 .ep1 [role="menuitem"][data-state="checked"],
 .ep1 [role="option"][aria-selected="true"] {
   background-color: #4D4A70 !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
 }
 
 /* --- EP1 Chips / Badges / Pills --- */
@@ -2597,12 +2597,12 @@ html.ep1 [data-slot="app"] {
 .ep1 [class*="border-t"],
 .ep1 hr,
 .ep1 [class*="separator"] {
-  border-color: #3E425B !important;
+  border-color: #3a3e5c !important;
 }
 
 /* --- EP1 Interactive States --- */
 .ep1 .interactive-surface:hover {
-  background-color: #383C56 !important;
+  background-color: #4d4f63 !important;
 }
 
 .ep1 .interactive-surface:focus {
@@ -2624,8 +2624,8 @@ html.ep1 [data-slot="app"] {
 
 /* --- EP1 Modals --- */
 .ep1 [role="dialog"][data-state="open"] {
-  background-color: #2B2F45 !important;
-  border: 1px solid #4B4F69 !important;
+  background-color: #2d2f3e !important;
+  border: 1px solid #4d4f63 !important;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.40) !important;
   border-radius: 14px !important;
 }
@@ -2651,7 +2651,7 @@ html.ep1 [data-slot="app"] {
 /* --- EP1 Empty States --- */
 .ep1 [class*="empty-state"],
 .ep1 [data-slot="empty"] {
-  color: #A6A9BE !important;
+  color: #babcce !important;
 }
 
 /* --- EP1 Scrollbars — hidden like other themes --- */
@@ -2684,7 +2684,7 @@ html.ep1 [data-slot="app"] {
 .ep1 button[class*="bg-sidebar-primary"],
 .ep1 a[class*="bg-sidebar-primary"] {
   background-color: #4D4A70 !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
   box-shadow: inset 3px 0 0 #9C8FEF !important;
   border-radius: 6px !important;
 }
@@ -2693,17 +2693,17 @@ html.ep1 [data-slot="app"] {
 .ep1 nav button:hover:not([class*="bg-sidebar-primary"]),
 .ep1 nav a:hover:not([class*="bg-sidebar-primary"]),
 .ep1 button[class*="hover:bg-sidebar-accent"]:hover {
-  background-color: #383C56 !important;
-  color: #F4F5FA !important;
+  background-color: #4d4f63 !important;
+  color: #f8f8fb !important;
 }
 
 /* --- SANDBOX / beta badge: replace amber with EP1 chip style --- */
 .ep1 span[class*="bg-amber-500"] {
   background-color: #393C56 !important;
-  color: #A6A9BE !important;
+  color: #babcce !important;
 }
 .ep1 span[class*="text-amber-500"] {
-  color: #A6A9BE !important;
+  color: #babcce !important;
 }
 
 /* --- Site group status dots: keep semantic colors but soften --- */
@@ -2714,17 +2714,24 @@ html.ep1 [data-slot="app"] {
   background-color: #E06A75 !important;
 }
 
+/* --- Sidebar: floating card style with rounded corners + shadow --- */
+.ep1 .bg-sidebar {
+  border-right: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0px 16px 16px 0px rgba(30,31,42,0.24), 0px 8px 8px 0px rgba(30,31,42,0.24), 0px 4px 4px 0px rgba(30,31,42,0.24), 0px 2px 2px 0px rgba(30,31,42,0.24) !important;
+}
+
 /* --- Clear all hardcoded gradient backgrounds on cards --- */
 .ep1 .card[class*="from-"],
 .ep1 [data-slot="card"][class*="from-"] {
-  background: #2B2F45 !important;
+  background: #2d2f3e !important;
   background-image: none !important;
 }
 
 /* Also clear gradients on any element inside .ep1 */
 .ep1 [class*="bg-gradient-to-"] {
   background-image: none !important;
-  background-color: #2B2F45 !important;
+  background-color: #2d2f3e !important;
 }
 
 /* --- Override hardcoded Tailwind border colors on cards --- */
@@ -2735,7 +2742,7 @@ html.ep1 [data-slot="app"] {
 .ep1 .card[class*="border-green-"],
 .ep1 .card[class*="border-red-"],
 .ep1 .card[class*="border-orange-"] {
-  border-color: #3E425B !important;
+  border-color: #3a3e5c !important;
 }
 
 /* --- Teal info/status boxes (dark: variants fire because EP1 has .dark) --- */
@@ -2743,7 +2750,7 @@ html.ep1 [data-slot="app"] {
   background-color: rgba(37, 40, 64, 0.85) !important;
 }
 .ep1 [class*="border-teal-"] {
-  border-color: #4B4F69 !important;
+  border-color: #4d4f63 !important;
 }
 .ep1 [class*="text-teal-"] {
   color: #7AA6FF !important;
@@ -2754,27 +2761,27 @@ html.ep1 [data-slot="app"] {
 .ep1 [data-slot="button"][class*="secondary"] {
   background-color: #323650 !important;
   color: #D9DBE7 !important;
-  border: 1px solid #4B4F69 !important;
+  border: 1px solid #4d4f63 !important;
 }
 .ep1 button[class*="bg-secondary"]:hover {
-  background-color: #383C56 !important;
+  background-color: #4d4f63 !important;
 }
 
 /* --- Page title in top bar (hardcoded rgba white) --- */
 .ep1 h2[class*="text-\[rgba"] {
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
 }
 
 /* --- Stat numbers inside cards --- */
 .ep1 .card .text-2xl,
 .ep1 .card .text-3xl,
 .ep1 .card .text-4xl {
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
 }
 
 /* --- Muted sub-text in cards --- */
 .ep1 .card .text-muted-foreground {
-  color: #A6A9BE !important;
+  color: #babcce !important;
 }
 
 /* --- Progress bars: use EP1 accent for fill --- */
@@ -2786,7 +2793,7 @@ html.ep1 [data-slot="app"] {
 /* --- Dividers in sidebar and content --- */
 .ep1 [data-slot="separator"],
 .ep1 .separator {
-  background-color: #3E425B !important;
+  background-color: #3a3e5c !important;
 }
 
 /* --- Dropdown trigger buttons (filter chips) --- */
@@ -2794,33 +2801,33 @@ html.ep1 [data-slot="app"] {
 .ep1 button[role="combobox"] {
   background-color: #2F334B !important;
   border-color: #707493 !important;
-  color: #F4F5FA !important;
+  color: #f8f8fb !important;
   border-radius: 8px !important;
 }
 .ep1 [data-slot="select-trigger"]:hover,
 .ep1 button[role="combobox"]:hover {
-  background-color: #383C56 !important;
+  background-color: #4d4f63 !important;
   border-color: #9B9EB2 !important;
 }
 
 /* --- Select dropdown content --- */
 .ep1 [data-slot="select-content"],
 .ep1 [role="listbox"] {
-  background-color: #2B2F45 !important;
-  border-color: #4B4F69 !important;
+  background-color: #2d2f3e !important;
+  border-color: #4d4f63 !important;
 }
 
 /* --- Select items --- */
 .ep1 [data-slot="select-item"]:hover,
 .ep1 [data-slot="select-item"][data-highlighted],
 .ep1 [role="option"]:hover {
-  background-color: #383C56 !important;
+  background-color: #4d4f63 !important;
 }
 
 /* --- App shell main area background --- */
 .ep1 main {
-  background-color: #191C2D !important;
+  background-color: #1e1f2a !important;
 }
 .ep1 .flex-1.overflow-auto {
-  background-color: #191C2D !important;
+  background-color: #1e1f2a !important;
 }
