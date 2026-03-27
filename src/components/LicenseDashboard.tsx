@@ -141,13 +141,13 @@ export function LicenseDashboard() {
 
   const getLicenseStatusIcon = (status: string, expirationDate?: string) => {
     if (isExpired(expirationDate)) {
-      return <XCircle className="h-5 w-5 text-red-500" />;
+      return <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />;
     }
     if (isExpiringSoon(expirationDate)) {
-      return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+      return <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />;
     }
     if (status === 'active') {
-      return <CheckCircle className="h-5 w-5 text-green-500" />;
+      return <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />;
     }
     return <Clock className="h-5 w-5 text-muted-foreground" />;
   };
@@ -157,10 +157,10 @@ export function LicenseDashboard() {
       return <Badge variant="destructive">Expired</Badge>;
     }
     if (isExpiringSoon(expirationDate)) {
-      return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Expiring Soon</Badge>;
+      return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Expiring Soon</Badge>;
     }
     if (status === 'active') {
-      return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Active</Badge>;
+      return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Active</Badge>;
     }
     return <Badge variant="outline">{status}</Badge>;
   };
@@ -231,7 +231,7 @@ export function LicenseDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-green-300">
+        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-[color:var(--status-success)]/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Active Licenses
@@ -240,16 +240,16 @@ export function LicenseDashboard() {
           <CardContent>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-green-100 rounded-xl">
-                <CheckCircle className="h-6 w-6 text-green-500" />
+                <CheckCircle className="h-6 w-6 text-[color:var(--status-success)]" />
               </div>
-              <span className="text-3xl font-bold text-green-500">
+              <span className="text-3xl font-bold text-[color:var(--status-success)]">
                 {licenseInfo?.activeLicenses || 0}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-amber-300">
+        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-[color:var(--status-warning)]/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Expiring Soon
@@ -258,16 +258,16 @@ export function LicenseDashboard() {
           <CardContent>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-amber-100 rounded-xl">
-                <AlertTriangle className="h-6 w-6 text-amber-500" />
+                <AlertTriangle className="h-6 w-6 text-[color:var(--status-warning)]" />
               </div>
-              <span className="text-3xl font-bold text-amber-500">
+              <span className="text-3xl font-bold text-[color:var(--status-warning)]">
                 {licenseInfo?.expiringLicenses || 0}
               </span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-blue-300 bg-gradient-to-br from-blue-50/30 to-transparent">
+        <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-[color:var(--status-info)]/50 bg-gradient-to-br from-blue-50/30 to-transparent">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Utilization
@@ -276,9 +276,9 @@ export function LicenseDashboard() {
           <CardContent>
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-blue-100 rounded-xl">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
+                <TrendingUp className="h-6 w-6 text-[color:var(--status-info)]" />
               </div>
-              <span className="text-3xl font-bold text-blue-600">
+              <span className="text-3xl font-bold text-[color:var(--status-info)]">
                 {licenseUsage?.utilizationPercentage.toFixed(0) || 0}%
               </span>
             </div>
@@ -291,8 +291,8 @@ export function LicenseDashboard() {
         <Card className="border-2 shadow-lg hover:shadow-xl transition-shadow duration-300">
           <CardHeader className="pb-4">
             <CardTitle className="text-xl flex items-center gap-2">
-              <div className="p-2 bg-blue-500/10 rounded-lg">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-[color:var(--status-info-bg)] rounded-lg">
+                <TrendingUp className="h-5 w-5 text-[color:var(--status-info)]" />
               </div>
               License Usage
             </CardTitle>
@@ -300,14 +300,14 @@ export function LicenseDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-blue-50/80 to-purple-50/40 p-5 rounded-2xl border-2 border-blue-100/50">
+              <div className="bg-gradient-to-br from-blue-50/80 to-purple-50/40 p-5 rounded-2xl border-2 border-[color:var(--status-info)]/20">
                 <div className="flex justify-between mb-4">
-                  <span className="text-sm font-bold text-gray-700">Device Licensing Status</span>
-                  <span className="text-sm font-mono font-bold text-blue-700">
+                  <span className="text-sm font-bold text-foreground">Device Licensing Status</span>
+                  <span className="text-sm font-mono font-bold text-[color:var(--status-info)]">
                     {licenseUsage.licensedDevices} / {licenseUsage.totalDevices}
                   </span>
                 </div>
-                <div className="w-full bg-white/80 rounded-full h-4 overflow-hidden shadow-inner border border-gray-200" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={licenseUsage.utilizationPercentage} aria-label="License utilization percentage">
+                <div className="w-full bg-muted/50 rounded-full h-4 overflow-hidden shadow-inner border border-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={licenseUsage.utilizationPercentage} aria-label="License utilization percentage">
                   <div
                     className={`h-4 rounded-full transition-all duration-700 ease-out shadow-sm ${
                       licenseUsage.utilizationPercentage > 90
@@ -320,34 +320,34 @@ export function LicenseDashboard() {
                   />
                 </div>
                 <div className="flex justify-between mt-3">
-                  <span className="text-xs font-semibold text-gray-600">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {licenseUsage.utilizationPercentage.toFixed(1)}% utilized
                   </span>
-                  <span className="text-xs font-semibold text-gray-600">
+                  <span className="text-xs font-semibold text-muted-foreground">
                     {licenseUsage.totalDevices - licenseUsage.licensedDevices} remaining
                   </span>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-gray-200 hover:border-gray-300 transition-all shadow-sm hover:shadow-md">
+                <div className="text-center p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-muted hover:border-muted-foreground/30 transition-all shadow-sm hover:shadow-md">
                   <div className="text-3xl font-bold bg-gradient-to-br from-gray-700 to-gray-600 bg-clip-text text-transparent">{licenseUsage.totalDevices}</div>
-                  <div className="text-sm font-medium text-gray-600 mt-1">Total Devices</div>
+                  <div className="text-sm font-medium text-muted-foreground mt-1">Total Devices</div>
                 </div>
-                <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 hover:border-green-300 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-green-500">{licenseUsage.licensedDevices}</div>
-                  <div className="text-sm font-medium text-green-700 mt-1">Licensed</div>
+                <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-[color:var(--status-success)]/30 hover:border-[color:var(--status-success)]/50 transition-all shadow-sm hover:shadow-md">
+                  <div className="text-3xl font-bold text-[color:var(--status-success)]">{licenseUsage.licensedDevices}</div>
+                  <div className="text-sm font-medium text-[color:var(--status-success)] mt-1">Licensed</div>
                 </div>
-                <div className="text-center p-5 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border-2 border-red-200 hover:border-red-300 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-red-500">{licenseUsage.unlicensedDevices}</div>
-                  <div className="text-sm font-medium text-red-700 mt-1">Unlicensed</div>
+                <div className="text-center p-5 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border-2 border-[color:var(--status-error)]/30 hover:border-[color:var(--status-error)]/50 transition-all shadow-sm hover:shadow-md">
+                  <div className="text-3xl font-bold text-[color:var(--status-error)]">{licenseUsage.unlicensedDevices}</div>
+                  <div className="text-sm font-medium text-[color:var(--status-error)] mt-1">Unlicensed</div>
                 </div>
               </div>
 
               {licenseUsage.unlicensedDevices > 0 && (
-                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                <div className="flex items-center gap-2 p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+                  <p className="text-sm text-[color:var(--status-warning)]">
                     {licenseUsage.unlicensedDevices} device(s) require licensing
                   </p>
                 </div>

@@ -260,10 +260,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     if (radioId === 20) {
       return {
         icon: Cable,
-        color: 'text-blue-500',
+        color: 'text-[color:var(--status-info)]',
         label: 'Wired',
         quality: 'Ethernet',
-        bgColor: 'bg-blue-500/10'
+        bgColor: 'bg-[color:var(--status-info-bg)]'
       };
     }
 
@@ -282,42 +282,42 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     if (rss >= -30) {
       return {
         icon: Signal,
-        color: 'text-green-500',
+        color: 'text-[color:var(--status-success)]',
         label: `${rss} dBm`,
         quality: 'Excellent',
-        bgColor: 'bg-green-500/10'
+        bgColor: 'bg-[color:var(--status-success-bg)]'
       };
     } else if (rss >= -50) {
       return {
         icon: SignalHigh,
-        color: 'text-green-400',
+        color: 'text-[color:var(--status-success)]',
         label: `${rss} dBm`,
         quality: 'Very Good',
-        bgColor: 'bg-green-400/10'
+        bgColor: 'bg-[color:var(--status-success-bg)]'
       };
     } else if (rss >= -60) {
       return {
         icon: SignalMedium,
-        color: 'text-amber-500',
+        color: 'text-[color:var(--status-warning)]',
         label: `${rss} dBm`,
         quality: 'Good',
-        bgColor: 'bg-amber-500/10'
+        bgColor: 'bg-[color:var(--status-warning-bg)]'
       };
     } else if (rss >= -70) {
       return {
         icon: SignalLow,
-        color: 'text-orange-500',
+        color: 'text-[color:var(--status-warning)]',
         label: `${rss} dBm`,
         quality: 'Fair',
-        bgColor: 'bg-orange-500/10'
+        bgColor: 'bg-[color:var(--status-warning-bg)]'
       };
     } else {
       return {
         icon: SignalZero,
-        color: 'text-red-500',
+        color: 'text-[color:var(--status-error)]',
         label: `${rss} dBm`,
         quality: 'Poor',
-        bgColor: 'bg-red-500/10'
+        bgColor: 'bg-[color:var(--status-error-bg)]'
       };
     }
   };
@@ -807,7 +807,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       <Dialog open={isGdprDeleteDialogOpen} onOpenChange={setIsGdprDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-500">
+            <DialogTitle className="flex items-center gap-2 text-[color:var(--status-error)]">
               <AlertCircle className="h-5 w-5" />
               Confirm Data Deletion
             </DialogTitle>
@@ -826,7 +826,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                   );
                 })}
               </div>
-              <p className="text-red-500 font-medium">
+              <p className="text-[color:var(--status-error)] font-medium">
                 This action cannot be undone. All connection history, events, and statistics
                 for these devices will be permanently removed.
               </p>

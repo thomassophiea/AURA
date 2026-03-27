@@ -1303,7 +1303,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <CheckCircle2 className="h-4 w-4 text-green-500 cursor-help" />
+            <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)] cursor-help" />
           </TooltipTrigger>
           <TooltipContent>
             <p className="font-medium">Online</p>
@@ -1315,7 +1315,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <XCircle className="h-4 w-4 text-red-500 cursor-help" />
+            <XCircle className="h-4 w-4 text-[color:var(--status-error)] cursor-help" />
           </TooltipTrigger>
           <TooltipContent>
             <p className="font-medium">Offline</p>
@@ -1431,7 +1431,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             {isAfcAnchor(ap) && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Anchor className="h-4 w-4 text-blue-500 cursor-help" />
+                  <Anchor className="h-4 w-4 text-[color:var(--status-info)] cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="font-medium">AFC Anchor</p>
@@ -1443,36 +1443,36 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             {apCableHealth && (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`} />
+                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`} />
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={5}>
                   <div className="max-w-xs">
                     {/* Header */}
-                    <p className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>
+                    <p className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}>
                       {apCableHealth.status === 'critical' ? 'Bad Cable Detected' : 'Possible Cable Issue'}
                     </p>
 
                     {/* Speed info */}
                     <p className="mt-1">
-                      <span className={apCableHealth.status === 'critical' ? 'text-red-400' : 'text-amber-400'}>
+                      <span className={apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}>
                         {apCableHealth.speedDisplay}
                       </span>
                       {' '}(expected{' '}
-                      <span className="text-green-400">
+                      <span className="text-[color:var(--status-success)]">
                         {apCableHealth.expectedSpeedMbps >= 1000 ? `${apCableHealth.expectedSpeedMbps/1000}Gbps` : `${apCableHealth.expectedSpeedMbps}Mbps`}
                       </span>)
                     </p>
 
                     {/* Recommendation */}
                     {apCableHealth.issues && apCableHealth.issues.length > 0 && (
-                      <p className="text-xs mt-2 text-blue-400">
+                      <p className="text-xs mt-2 text-[color:var(--status-info)]">
                         <span className="font-medium">Fix:</span> {apCableHealth.issues[0].recommendation}
                       </p>
                     )}
 
                     {/* Switch comparison */}
                     {apCableHealth.otherAPsOnSwitch && apCableHealth.otherAPsOnSwitch.good > 0 && (
-                      <p className="mt-1 text-emerald-400">
+                      <p className="mt-1 text-[color:var(--status-success)]">
                         {apCableHealth.otherAPsOnSwitch.good} other APs on switch OK - issue is this cable
                       </p>
                     )}
@@ -1514,7 +1514,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-red-500' : 'text-amber-500'}`}>
+                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}>
                   <AlertTriangle className="h-3 w-3" />
                   {ethSpeedValue}
                 </span>
@@ -1533,7 +1533,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         }
         if (role === 'BASE') {
           return (
-            <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-xs">
+            <Badge variant="outline" className="bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30 text-xs">
               Base
             </Badge>
           );
@@ -1554,7 +1554,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         }
         if (cableHealth.status === 'good') {
           return (
-            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
+            <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Good
             </Badge>
@@ -1564,7 +1564,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/30 cursor-help">
+                <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30 cursor-help">
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Warning
                 </Badge>
@@ -1573,7 +1573,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 <p className="font-medium mb-1">Possible Cable Issue</p>
                 <p>{cableHealth.message}</p>
                 {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
-                  <p className="mt-1 text-amber-400">
+                  <p className="mt-1 text-[color:var(--status-warning)]">
                     Other APs on same switch have good rates - issue likely isolated to this cable
                   </p>
                 )}
@@ -1594,7 +1594,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <p className="font-medium mb-1">Likely Cable Problem</p>
               <p>{cableHealth.message}</p>
               {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
-                <p className="mt-1 text-red-300">
+                <p className="mt-1 text-[color:var(--status-error)]">
                   {cableHealth.otherAPsOnSwitch.good} other APs on same switch have good rates - issue is with this cable/connector
                 </p>
               )}
@@ -1664,11 +1664,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <div className="flex items-center gap-2 cursor-help">
                 <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${cpuValue > 80 ? 'bg-red-500' : cpuValue > 60 ? 'bg-amber-500' : 'bg-green-500'}`}
+                    className={`h-full transition-all ${cpuValue > 80 ? 'bg-[color:var(--status-error)]' : cpuValue > 60 ? 'bg-[color:var(--status-warning)]' : 'bg-[color:var(--status-success)]'}`}
                     style={{ width: `${Math.min(cpuValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-red-500' : cpuValue > 60 ? 'text-amber-500' : ''}`}>
+                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-[color:var(--status-error)]' : cpuValue > 60 ? 'text-[color:var(--status-warning)]' : ''}`}>
                   {cpuValue}%
                 </span>
               </div>
@@ -1704,11 +1704,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <div className="flex items-center gap-2 cursor-help">
                 <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all ${memValue > 85 ? 'bg-red-500' : memValue > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                    className={`h-full transition-all ${memValue > 85 ? 'bg-[color:var(--status-error)]' : memValue > 70 ? 'bg-[color:var(--status-warning)]' : 'bg-[color:var(--status-info)]'}`}
                     style={{ width: `${Math.min(memValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${memValue > 85 ? 'text-red-500' : memValue > 70 ? 'text-amber-500' : ''}`}>
+                <span className={`text-sm font-medium ${memValue > 85 ? 'text-[color:var(--status-error)]' : memValue > 70 ? 'text-[color:var(--status-warning)]' : ''}`}>
                   {memValue}%
                 </span>
               </div>
@@ -1724,8 +1724,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1 cursor-help">
-                <Anchor className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-blue-500 font-medium">Yes</span>
+                <Anchor className="h-4 w-4 text-[color:var(--status-info)]" />
+                <span className="text-sm text-[color:var(--status-info)] font-medium">Yes</span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
@@ -1882,7 +1882,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         if (criticalAPs.length === 0 && warningAPs.length === 0) return null;
 
         return (
-          <Alert variant={criticalAPs.length > 0 ? 'destructive' : 'default'} className={criticalAPs.length > 0 ? 'border-red-500 bg-red-500/10' : 'border-amber-500 bg-amber-500/10'}>
+          <Alert variant={criticalAPs.length > 0 ? 'destructive' : 'default'} className={criticalAPs.length > 0 ? 'border-[color:var(--status-error)]/30 bg-[color:var(--status-error-bg)]' : 'border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]'}>
             <Cable className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between w-full">
               <div>
@@ -1896,7 +1896,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     </Badge>
                   )}
                   {warningAPs.length > 0 && (
-                    <Badge variant="outline" className="bg-amber-500/20 text-amber-500 border-amber-500/50">
+                    <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">
                       {warningAPs.length} Warning
                     </Badge>
                   )}
@@ -2118,7 +2118,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)]" />
                   <span className="text-sm font-medium">Online</span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2134,11 +2134,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <WifiOff className="h-4 w-4 text-red-500" />
+                  <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />
                   <span className="text-sm font-medium">Offline</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-red-500">
+                  <span className="text-xl font-bold text-[color:var(--status-error)]">
                     {accessPoints.filter(ap => !isAPOnline(ap)).length}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -2199,10 +2199,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         <CardContent className="py-2 px-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-red-500" />
+              <Phone className="h-4 w-4 text-[color:var(--status-error)]" />
               <span className="font-medium text-sm">E911 BSSID</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/40">Beta</span>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 dark:bg-slate-800 text-emerald-400 text-xs font-semibold border border-emerald-500/30">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">Beta</span>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 text-[color:var(--status-success)] text-xs font-semibold border border-[color:var(--status-success)]/30">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -2222,7 +2222,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     className="relative p-1 hover:opacity-80 transition-opacity cursor-pointer"
                   >
                     <span className="absolute inset-0 bg-red-500/30 rounded-full animate-ping" />
-                    <Settings className="h-4 w-4 text-red-500 relative animate-[spin_4s_linear_infinite]" />
+                    <Settings className="h-4 w-4 text-[color:var(--status-error)] relative animate-[spin_4s_linear_infinite]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -2233,7 +2233,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 onClick={handleDownloadBSSIDs}
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs border-red-500/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+                className="h-7 text-xs border-[color:var(--status-error)]/50 text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)]"
                 disabled={filteredAccessPoints.length === 0}
               >
                 <FileDown className="mr-1 h-3 w-3" />
@@ -2243,7 +2243,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 onClick={handleDownloadBSSIDsJSON}
                 size="sm"
                 variant="outline"
-                className="h-7 text-xs border-red-500/50 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/50"
+                className="h-7 text-xs border-[color:var(--status-error)]/50 text-[color:var(--status-error)] hover:bg-[color:var(--status-error-bg)]"
                 disabled={filteredAccessPoints.length === 0}
               >
                 <Download className="mr-1 h-3 w-3" />
@@ -2749,7 +2749,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                           }
                           
                           return (
-                            <div key={key} className="flex justify-between py-1 border-b border-gray-100 last:border-b-0">
+                            <div key={key} className="flex justify-between py-1 border-b border-border last:border-b-0">
                               <span className="text-muted-foreground capitalize">
                                 {key.replace(/([A-Z])/g, ' $1').trim()}:
                               </span>
@@ -2778,7 +2778,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       >
         <div className="space-y-5">
           {/* Live Sync Status - At top for visibility */}
-          <div className="flex items-center justify-between p-3 rounded-lg border border-green-500/40 bg-green-500/10">
+          <div className="flex items-center justify-between p-3 rounded-lg border border-[color:var(--status-success)]/40 bg-[color:var(--status-success-bg)]">
             <div className="flex items-center gap-3">
               <div className="relative flex items-center justify-center">
                 <span className="absolute h-3 w-3 bg-green-500 rounded-full animate-ping opacity-75" />

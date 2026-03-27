@@ -74,7 +74,12 @@
   --chart-3: #FFB74D; /* Warning amber */
   --chart-4: #CF6679; /* Error red */
   --chart-5: #81C784; /* Success green */
-  
+  --chart-6: #f48fb1; /* Pink */
+  --chart-7: #80deea; /* Cyan light */
+  --chart-8: #ffcc80; /* Orange light */
+  --chart-9: #a5d6a7; /* Green light */
+  --chart-10: #90caf9; /* Blue light */
+
   --radius: 0.25rem; /* Material Design border radius (4px) */
   
   /* Material Design Sidebar */
@@ -128,6 +133,11 @@
   --chart-3: #FFB74D;
   --chart-4: #CF6679;
   --chart-5: #81C784;
+  --chart-6: #f48fb1;
+  --chart-7: #80deea;
+  --chart-8: #ffcc80;
+  --chart-9: #a5d6a7;
+  --chart-10: #90caf9;
   --success: #81C784;
   --success-foreground: rgba(0, 0, 0, 0.87);
   --warning: #FFB74D;
@@ -246,6 +256,11 @@
   --chart-3: #FF6F00;
   --chart-4: #B00020;
   --chart-5: #2E7D32;
+  --chart-6: #c2185b;
+  --chart-7: #0097a7;
+  --chart-8: #e65100;
+  --chart-9: #388e3c;
+  --chart-10: #1565c0;
   --success: #2E7D32;
   --success-foreground: #ffffff;
   --warning: #E65100;
@@ -1087,6 +1102,11 @@ html.theme-kroger body,
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+  --color-chart-9: var(--chart-9);
+  --color-chart-10: var(--chart-10);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -2992,6 +3012,11 @@ body.ep1 {
   --chart-3: #75bf63 !important;  /* rgba(117,191,99) */
   --chart-4: #ed5f56 !important;  /* rgba(237,95,86) */
   --chart-5: #babcce !important;  /* rgba(186,188,206) */
+  --chart-6: #f48fb1 !important;
+  --chart-7: #80deea !important;
+  --chart-8: #ffcc80 !important;
+  --chart-9: #a5d6a7 !important;
+  --chart-10: #90caf9 !important;
 
   /* Radius — template: 4px */
   --radius: 0.25rem !important;
@@ -3977,6 +4002,11 @@ body.dev {
   --chart-3: #FFB74D !important;
   --chart-4: #CF6679 !important;
   --chart-5: #81C784 !important;
+  --chart-6: #f48fb1 !important;
+  --chart-7: #80deea !important;
+  --chart-8: #ffcc80 !important;
+  --chart-9: #a5d6a7 !important;
+  --chart-10: #90caf9 !important;
 
   --sidebar: #1d1d1d !important;
   --sidebar-foreground: rgba(255,255,255,0.87) !important;

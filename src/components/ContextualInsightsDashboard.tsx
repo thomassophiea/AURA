@@ -53,9 +53,9 @@ const groupIcons: Record<InsightGroup, React.ElementType> = {
 
 const groupStyles: Record<InsightGroup, { bg: string; border: string; iconColor: string }> = {
   network_health: {
-    bg: 'bg-blue-500/5',
-    border: 'border-blue-500/20',
-    iconColor: 'text-blue-500'
+    bg: 'bg-[color:var(--status-info-bg)]',
+    border: 'border-[color:var(--status-info)]/30',
+    iconColor: 'text-[color:var(--status-info)]'
   },
   capacity_planning: {
     bg: 'bg-purple-500/5',
@@ -63,21 +63,21 @@ const groupStyles: Record<InsightGroup, { bg: string; border: string; iconColor:
     iconColor: 'text-purple-500'
   },
   anomaly_detection: {
-    bg: 'bg-amber-500/5',
-    border: 'border-amber-500/20',
-    iconColor: 'text-amber-500'
+    bg: 'bg-[color:var(--status-warning-bg)]',
+    border: 'border-[color:var(--status-warning)]/30',
+    iconColor: 'text-[color:var(--status-warning)]'
   },
   predictive_maintenance: {
-    bg: 'bg-red-500/5',
-    border: 'border-red-500/20',
-    iconColor: 'text-red-500'
+    bg: 'bg-[color:var(--status-error-bg)]',
+    border: 'border-[color:var(--status-error)]/30',
+    iconColor: 'text-[color:var(--status-error)]'
   }
 };
 
 const severityStyles: Record<string, { bg: string; border: string }> = {
-  critical: { bg: 'bg-red-500/10', border: 'border-red-500/30' },
-  warning: { bg: 'bg-amber-500/10', border: 'border-amber-500/30' },
-  info: { bg: 'bg-blue-500/10', border: 'border-blue-500/30' }
+  critical: { bg: 'bg-[color:var(--status-error-bg)]', border: 'border-[color:var(--status-error)]/30' },
+  warning: { bg: 'bg-[color:var(--status-warning-bg)]', border: 'border-[color:var(--status-warning)]/30' },
+  info: { bg: 'bg-[color:var(--status-info-bg)]', border: 'border-[color:var(--status-info)]/30' }
 };
 
 export function ContextualInsightsDashboard({ 
@@ -153,8 +153,8 @@ export function ContextualInsightsDashboard({
                       variant="outline" 
                       className={cn(
                         "text-[10px] px-1.5 h-4 gap-0.5",
-                        insight.trend.direction === 'improving' && "border-green-500/20 text-green-500",
-                        insight.trend.direction === 'degrading' && "border-red-500/20 text-red-500"
+                        insight.trend.direction === 'improving' && "border-[color:var(--status-success)]/20 text-[color:var(--status-success)]",
+                        insight.trend.direction === 'degrading' && "border-[color:var(--status-error)]/20 text-[color:var(--status-error)]"
                       )}
                     >
                       {insight.trend.direction === 'improving' ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />}
@@ -207,9 +207,9 @@ export function ContextualInsightsDashboard({
               </div>
               
               {/* Recommended Action */}
-              <div className="p-2 rounded bg-green-500/10 border border-green-500/20">
+              <div className="p-2 rounded bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/20">
                 <div className="flex items-start gap-1.5">
-                  <Lightbulb className="h-3 w-3 text-green-500 mt-0.5 shrink-0" />
+                  <Lightbulb className="h-3 w-3 text-[color:var(--status-success)] mt-0.5 shrink-0" />
                   <p className="text-xs">{insight.recommendedAction}</p>
                 </div>
               </div>
@@ -246,7 +246,7 @@ export function ContextualInsightsDashboard({
           <CardContent>
             <div className="flex items-center justify-center py-4 text-center">
               <div className="flex items-center gap-2 text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)]" />
                 <span className="text-sm">No issues detected</span>
               </div>
             </div>
@@ -309,7 +309,7 @@ export function ContextualInsightsDashboard({
             <Badge variant="destructive">{summary.critical} critical</Badge>
           )}
           {summary.warning > 0 && (
-            <Badge variant="secondary" className="bg-amber-500/20 text-amber-600">
+            <Badge variant="secondary" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]">
               {summary.warning} warning
             </Badge>
           )}
@@ -402,13 +402,13 @@ export function ContextualInsightsDashboard({
 
       {/* All Healthy State */}
       {insights.length === 0 && (
-        <Card className="border-green-500/20 bg-green-500/5">
+        <Card className="border-[color:var(--status-success)]/20 bg-[color:var(--status-success-bg)]">
           <CardContent className="py-8">
             <div className="flex flex-col items-center justify-center text-center">
-              <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
-                <CheckCircle2 className="h-8 w-8 text-green-500" />
+              <div className="h-16 w-16 rounded-full bg-[color:var(--status-success-bg)] flex items-center justify-center mb-4">
+                <CheckCircle2 className="h-8 w-8 text-[color:var(--status-success)]" />
               </div>
-              <p className="font-medium text-green-500">All Systems Healthy</p>
+              <p className="font-medium text-[color:var(--status-success)]">All Systems Healthy</p>
               <p className="text-sm text-muted-foreground mt-1">
                 No issues detected for {profile.name} environment
               </p>

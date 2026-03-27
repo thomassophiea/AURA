@@ -89,13 +89,13 @@ export function BestPractices() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Good':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'Info':
-        return <Info className="h-4 w-4 text-blue-500" />;
+        return <Info className="h-4 w-4 text-[color:var(--status-info)]" />;
       case 'Warning':
-        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+        return <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />;
       case 'Critical':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
       default:
         return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
@@ -104,13 +104,13 @@ export function BestPractices() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Good':
-        return 'bg-green-500/10 text-green-500 border-green-500/20';
+        return 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30';
       case 'Info':
-        return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+        return 'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30';
       case 'Warning':
-        return 'bg-amber-500/10 text-amber-500 border-amber-500/20';
+        return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30';
       case 'Critical':
-        return 'bg-red-500/10 text-red-500 border-red-500/20';
+        return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30';
       default:
         return 'bg-muted/10 text-muted-foreground border-muted/20';
     }
@@ -226,9 +226,9 @@ export function BestPractices() {
       </div>
 
       {/* Development Notice */}
-      <Alert className="border-amber-500/20 bg-amber-500/10">
-        <Info className="h-4 w-4 text-amber-500" />
-        <AlertDescription className="text-amber-700">
+      <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+        <Info className="h-4 w-4 text-[color:var(--status-warning)]" />
+        <AlertDescription className="text-[color:var(--status-warning)]">
           <strong>Demo Mode:</strong> Showing some sample data to populate the widgets. These APIs do exists today.
         </AlertDescription>
       </Alert>
@@ -280,19 +280,19 @@ export function BestPractices() {
           <CardContent>
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-success)]"></div>
                 <span>{networkCounts.good} Good</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-info)]"></div>
                 <span>{networkCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-warning)]"></div>
                 <span>{networkCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-error)]"></div>
                 <span>{networkCounts.critical} Critical</span>
               </div>
             </div>
@@ -307,19 +307,19 @@ export function BestPractices() {
           <CardContent>
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-success)]"></div>
                 <span>{configCounts.good} Good</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-info)]"></div>
                 <span>{configCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-warning)]"></div>
                 <span>{configCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-error)]"></div>
                 <span>{configCounts.critical} Critical</span>
               </div>
             </div>
@@ -334,19 +334,19 @@ export function BestPractices() {
           <CardContent>
             <div className="flex items-center space-x-4 text-sm">
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-success)]"></div>
                 <span>{operationalCounts.good} Good</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-info)]"></div>
                 <span>{operationalCounts.info} Info</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-warning)]"></div>
                 <span>{operationalCounts.warning} Warning</span>
               </div>
               <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                <div className="w-2 h-2 rounded-full bg-[color:var(--status-error)]"></div>
                 <span>{operationalCounts.critical} Critical</span>
               </div>
             </div>

@@ -1603,7 +1603,7 @@ function DashboardEnhancedComponent() {
                   <div>
                     <p className="text-sm text-muted-foreground">Total Access Points</p>
                     <p className="text-2xl font-bold">{apStats.total}</p>
-                    <p className="text-xs text-green-500">{apStats.online} online</p>
+                    <p className="text-xs text-[color:var(--status-success)]">{apStats.online} online</p>
                   </div>
                   <Wifi className="h-8 w-8 text-blue-500/50" />
                 </div>
@@ -1622,13 +1622,13 @@ function DashboardEnhancedComponent() {
                   <div>
                     <p className="text-sm text-muted-foreground">Connected Clients</p>
                     <p className="text-2xl font-bold">{clientStats.total}</p>
-                    <p className="text-xs text-green-500">{clientStats.authenticated} authenticated</p>
+                    <p className="text-xs text-[color:var(--status-success)]">{clientStats.authenticated} authenticated</p>
                   </div>
                   <Users className="h-8 w-8 text-violet-500/50" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-emerald-500/20">
+            <Card className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-[color:var(--status-success)]/20">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1636,22 +1636,22 @@ function DashboardEnhancedComponent() {
                     <p className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</p>
                     <p className="text-xs text-muted-foreground">↑{formatBps(clientStats.throughputUpload)} ↓{formatBps(clientStats.throughputDownload)}</p>
                   </div>
-                  <Activity className="h-8 w-8 text-emerald-500/50" />
+                  <Activity className="h-8 w-8 text-[color:var(--status-success)]/50" />
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20">
+            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-[color:var(--status-warning)]/20">
               <CardContent className="pt-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Active Alerts</p>
                     <p className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</p>
                     <p className="text-xs">
-                      <span className="text-red-500">{alertCounts.critical} critical</span>
-                      {alertCounts.warning > 0 && <span className="text-amber-600 ml-2">{alertCounts.warning} warning</span>}
+                      <span className="text-[color:var(--status-error)]">{alertCounts.critical} critical</span>
+                      {alertCounts.warning > 0 && <span className="text-[color:var(--status-warning)] ml-2">{alertCounts.warning} warning</span>}
                     </p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-amber-500/50" />
+                  <AlertTriangle className="h-8 w-8 text-[color:var(--status-warning)]/50" />
                 </div>
               </CardContent>
             </Card>
@@ -1663,8 +1663,8 @@ function DashboardEnhancedComponent() {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-green-500/10">
-                    <Activity className="h-5 w-5 text-green-500" />
+                  <div className="p-2 rounded-lg bg-[color:var(--status-success-bg)]">
+                    <Activity className="h-5 w-5 text-[color:var(--status-success)]" />
                   </div>
                   <div>
                     <CardTitle className="text-base">Network Health</CardTitle>
@@ -1695,23 +1695,23 @@ function DashboardEnhancedComponent() {
                 {/* RF Quality */}
                 <div className="pt-3 border-t">
                   <div className="flex items-center gap-2 mb-3">
-                    <Signal className="h-4 w-4 text-green-500" />
+                    <Signal className="h-4 w-4 text-[color:var(--status-success)]" />
                     <span className="text-sm font-medium">RF Quality</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/20">
+                    <div className="p-3 rounded-lg bg-gradient-to-br from-green-500/10 to-green-600/5 border border-[color:var(--status-success)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">RFQI</span>
-                        <span className="text-lg font-bold text-green-400">{clientStats.avgRfqi || 85}%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-success)]">{clientStats.avgRfqi || 85}%</span>
                       </div>
-                      <Progress value={clientStats.avgRfqi || 85} className="h-1.5 bg-green-950/50" />
+                      <Progress value={clientStats.avgRfqi || 85} className="h-1.5" />
                     </div>
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20">
+                    <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-[color:var(--status-warning)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">Ch. Util</span>
-                        <span className="text-lg font-bold text-amber-400">{apStats.avgChannelUtil || 23}%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-warning)]">{apStats.avgChannelUtil || 23}%</span>
                       </div>
-                      <Progress value={apStats.avgChannelUtil || 23} className="h-1.5 bg-amber-950/50" />
+                      <Progress value={apStats.avgChannelUtil || 23} className="h-1.5" />
                     </div>
                   </div>
                 </div>
@@ -1743,14 +1743,14 @@ function DashboardEnhancedComponent() {
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <Upload className="h-4 w-4 text-blue-500" />
+                      <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
                       <span className="text-xs text-muted-foreground">Upload</span>
                     </div>
                     <p className="text-lg font-semibold">{formatBps(clientStats.throughputUpload)}</p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2 mb-1">
-                      <Download className="h-4 w-4 text-green-500" />
+                      <Download className="h-4 w-4 text-[color:var(--status-success)]" />
                       <span className="text-xs text-muted-foreground">Download</span>
                     </div>
                     <p className="text-lg font-semibold">{formatBps(clientStats.throughputDownload)}</p>
@@ -1773,12 +1773,12 @@ function DashboardEnhancedComponent() {
                       </div>
                       <Progress value={5.5} className="h-1.5 bg-purple-950/50" />
                     </div>
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/20">
+                    <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">Memory</span>
-                        <span className="text-lg font-bold text-cyan-400">38%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-info)]">38%</span>
                       </div>
-                      <Progress value={38} className="h-1.5 bg-cyan-950/50" />
+                      <Progress value={38} className="h-1.5" />
                     </div>
                   </div>
                 </div>
@@ -1789,8 +1789,8 @@ function DashboardEnhancedComponent() {
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <AlertCircle className="h-5 w-5 text-amber-600" />
+                  <div className="p-2 rounded-lg bg-[color:var(--status-warning-bg)]">
+                    <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)]" />
                   </div>
                   <div>
                     <CardTitle className="text-base">Anomaly Detection</CardTitle>
@@ -1800,28 +1800,28 @@ function DashboardEnhancedComponent() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {apStats.offline > 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <WifiOff className="h-5 w-5 text-red-500 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
+                    <WifiOff className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-500">Offline Access Points</p>
+                      <p className="text-sm font-medium text-[color:var(--status-error)]">Offline Access Points</p>
                       <p className="text-xs text-muted-foreground">{apStats.offline} AP(s) are currently offline and require attention</p>
                     </div>
                   </div>
                 )}
                 {alertCounts.critical > 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20">
-                    <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
+                    <AlertTriangle className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-red-500">Critical Alerts</p>
+                      <p className="text-sm font-medium text-[color:var(--status-error)]">Critical Alerts</p>
                       <p className="text-xs text-muted-foreground">{alertCounts.critical} critical issue(s) need immediate attention</p>
                     </div>
                   </div>
                 )}
                 {apStats.offline === 0 && alertCounts.critical === 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
+                    <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-green-500">All Clear</p>
+                      <p className="text-sm font-medium text-[color:var(--status-success)]">All Clear</p>
                       <p className="text-xs text-muted-foreground">No anomalies detected - network operating normally</p>
                     </div>
                   </div>
@@ -1847,28 +1847,28 @@ function DashboardEnhancedComponent() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {apStats.lowPower > 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <Zap className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
+                    <Zap className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-amber-600">Low Power APs</p>
+                      <p className="text-sm font-medium text-[color:var(--status-warning)]">Low Power APs</p>
                       <p className="text-xs text-muted-foreground">{apStats.lowPower} AP(s) running in low power mode - check PoE budget</p>
                     </div>
                   </div>
                 )}
                 {poorServices.length > 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <Network className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
+                    <Network className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-amber-600">Service Degradation</p>
+                      <p className="text-sm font-medium text-[color:var(--status-warning)]">Service Degradation</p>
                       <p className="text-xs text-muted-foreground">{poorServices.length} service(s) showing performance issues</p>
                     </div>
                   </div>
                 )}
                 {apStats.lowPower === 0 && poorServices.length === 0 && (
-                  <div className="flex items-start gap-3 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
+                    <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-green-500">Systems Healthy</p>
+                      <p className="text-sm font-medium text-[color:var(--status-success)]">Systems Healthy</p>
                       <p className="text-xs text-muted-foreground">No maintenance issues predicted in the near term</p>
                     </div>
                   </div>
@@ -1923,7 +1923,7 @@ function DashboardEnhancedComponent() {
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-amber-500" />
+                  <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)]" />
                   <CardTitle className="text-base font-semibold">Recent Events</CardTitle>
                 </div>
                 <span className="text-xs text-muted-foreground">Last 24h</span>
@@ -1932,7 +1932,7 @@ function DashboardEnhancedComponent() {
             <CardContent className="pt-0">
               <div className="space-y-2">
                 {apStats.offline > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-red-500" />
                       <span className="text-sm">APs Offline</span>
@@ -1941,7 +1941,7 @@ function DashboardEnhancedComponent() {
                   </div>
                 )}
                 {alertCounts.critical > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-red-500" />
                       <span className="text-sm">Critical Alerts</span>
@@ -1950,18 +1950,18 @@ function DashboardEnhancedComponent() {
                   </div>
                 )}
                 {alertCounts.warning > 0 && (
-                  <div className="flex items-center justify-between p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
                     <div className="flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
                       <span className="text-sm">Warnings</span>
                     </div>
-                    <Badge className="text-xs bg-amber-500/20 text-amber-600 border-amber-500/30">{alertCounts.warning}</Badge>
+                    <Badge className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">{alertCounts.warning}</Badge>
                   </div>
                 )}
                 {apStats.offline === 0 && alertCounts.critical === 0 && alertCounts.warning === 0 && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span className="text-sm text-green-500">No issues detected - all systems operational</span>
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
+                    <span className="text-sm text-[color:var(--status-success)]">No issues detected - all systems operational</span>
                   </div>
                 )}
               </div>
@@ -1975,22 +1975,22 @@ function DashboardEnhancedComponent() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Radio className="h-6 w-6 text-cyan-400 animate-pulse" />
+                    <Radio className="h-6 w-6 text-[color:var(--status-info)] animate-pulse" />
                     <div className="absolute inset-0 h-6 w-6 bg-cyan-400/30 blur-md animate-pulse" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg font-bold text-slate-100">
+                    <CardTitle className="text-lg font-bold text-foreground">
                       {filters.site === 'all'
                         ? 'Org'
                         : healthViewMode === 'sites' ? 'Site' : healthViewMode === 'devices' ? 'Device' : 'Client'} Health Overview
                     </CardTitle>
-                    <p className="text-xs text-slate-400">Real-time RF Quality Intelligence</p>
+                    <p className="text-xs text-muted-foreground">Real-time RF Quality Intelligence</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
-                  <span className="text-sm font-medium text-cyan-400">LIVE</span>
-                  <span className="text-xs text-slate-500 border-l border-slate-700 pl-2 ml-1">24h</span>
+                  <span className="text-sm font-medium text-[color:var(--status-info)]">LIVE</span>
+                  <span className="text-xs text-muted-foreground border-l border-border pl-2 ml-1">24h</span>
                 </div>
               </div>
             </CardHeader>
@@ -2001,7 +2001,7 @@ function DashboardEnhancedComponent() {
                 <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20">
                   <div className="flex items-center gap-2 mb-1">
                     <Signal className="h-4 w-4 text-purple-400" />
-                    <span className="text-xs font-medium text-slate-400">RFQI Score</span>
+                    <span className="text-xs font-medium text-muted-foreground">RFQI Score</span>
                   </div>
                   <AnimatedValue 
                     value={`${rfqiData.length > 0 ? Math.round(rfqiData.reduce((acc, d) => acc + (d.rfqi > 5 ? d.rfqi : d.rfqi * 20), 0) / rfqiData.length) : '--'}%`}
@@ -2011,41 +2011,41 @@ function DashboardEnhancedComponent() {
                 </div>
 
                 {/* Average RSSI */}
-                <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/20">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
                   <div className="flex items-center gap-2 mb-1">
-                    <Wifi className="h-4 w-4 text-cyan-400" />
-                    <span className="text-xs font-medium text-slate-400">Avg RSSI</span>
+                    <Wifi className="h-4 w-4 text-[color:var(--status-info)]" />
+                    <span className="text-xs font-medium text-muted-foreground">Avg RSSI</span>
                   </div>
-                  <AnimatedValue 
+                  <AnimatedValue
                     value={avgRssi !== 0 ? `${avgRssi} dBm` : '--'}
-                    className="text-2xl font-bold text-cyan-400 tabular-nums"
-                    pulseColor="bg-cyan-500/30"
+                    className="text-2xl font-bold text-[color:var(--status-info)] tabular-nums"
+                    pulseColor="bg-[color:var(--status-info-bg)]"
                   />
                 </div>
 
                 {/* Average SNR */}
-                <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20">
+                <div className="p-3 rounded-xl bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/20">
                   <div className="flex items-center gap-2 mb-1">
-                    <Activity className="h-4 w-4 text-emerald-400" />
-                    <span className="text-xs font-medium text-slate-400">Avg SNR</span>
+                    <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
+                    <span className="text-xs font-medium text-muted-foreground">Avg SNR</span>
                   </div>
-                  <AnimatedValue 
+                  <AnimatedValue
                     value={avgSnr > 0 ? `${avgSnr} dB` : '--'}
-                    className="text-2xl font-bold text-emerald-400 tabular-nums"
-                    pulseColor="bg-emerald-500/30"
+                    className="text-2xl font-bold text-[color:var(--status-success)] tabular-nums"
+                    pulseColor="bg-[color:var(--status-success-bg)]"
                   />
                 </div>
 
                 {/* Total Clients */}
-                <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-500/20">
+                <div className="p-3 rounded-xl bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/20">
                   <div className="flex items-center gap-2 mb-1">
-                    <Users className="h-4 w-4 text-amber-400" />
-                    <span className="text-xs font-medium text-slate-400">Connected</span>
+                    <Users className="h-4 w-4 text-[color:var(--status-warning)]" />
+                    <span className="text-xs font-medium text-muted-foreground">Connected</span>
                   </div>
-                  <AnimatedValue 
+                  <AnimatedValue
                     value={clientStats.total}
-                    className="text-2xl font-bold text-amber-400 tabular-nums"
-                    pulseColor="bg-amber-500/30"
+                    className="text-2xl font-bold text-[color:var(--status-warning)] tabular-nums"
+                    pulseColor="bg-[color:var(--status-warning-bg)]"
                   />
                 </div>
               </div>
@@ -2056,10 +2056,10 @@ function DashboardEnhancedComponent() {
                 <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Radio className="h-4 w-4 text-blue-400" />
-                      <span className="text-sm font-semibold text-slate-200">Client Distribution by Band</span>
+                      <Radio className="h-4 w-4 text-[color:var(--status-info)]" />
+                      <span className="text-sm font-semibold text-foreground">Client Distribution by Band</span>
                     </div>
-                    <span className="text-xs text-slate-500">{clientStats.total} total</span>
+                    <span className="text-xs text-muted-foreground">{clientStats.total} total</span>
                   </div>
                   {bandDistribution.length > 0 ? (
                     <div className="space-y-2">
@@ -2068,7 +2068,7 @@ function DashboardEnhancedComponent() {
                         return (
                           <div key={band.band} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-300 font-medium">{band.band}</span>
+                              <span className="text-foreground font-medium">{band.band}</span>
                               <span className="tabular-nums" style={{ color: band.color }}>{band.count} ({Math.round(percentage)}%)</span>
                             </div>
                             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -2082,7 +2082,7 @@ function DashboardEnhancedComponent() {
                       })}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-16 text-slate-500 text-sm">
+                    <div className="flex items-center justify-center h-16 text-muted-foreground text-sm">
                       No band data available
                     </div>
                   )}
@@ -2092,10 +2092,10 @@ function DashboardEnhancedComponent() {
                 <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <Activity className="h-4 w-4 text-emerald-400" />
-                      <span className="text-sm font-semibold text-slate-200">Signal Quality (SNR)</span>
+                      <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
+                      <span className="text-sm font-semibold text-foreground">Signal Quality (SNR)</span>
                     </div>
-                    <span className="text-xs text-slate-500">
+                    <span className="text-xs text-muted-foreground">
                       {snrDistribution.reduce((acc, s) => acc + s.count, 0)} clients
                     </span>
                   </div>
@@ -2107,7 +2107,7 @@ function DashboardEnhancedComponent() {
                         return (
                           <div key={snr.category} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
-                              <span className="text-slate-300 font-medium">{snr.category}</span>
+                              <span className="text-foreground font-medium">{snr.category}</span>
                               <span className="tabular-nums" style={{ color: snr.color }}>{snr.count} ({Math.round(percentage)}%)</span>
                             </div>
                             <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -2121,7 +2121,7 @@ function DashboardEnhancedComponent() {
                       })}
                     </div>
                   ) : (
-                    <div className="flex items-center justify-center h-16 text-slate-500 text-sm">
+                    <div className="flex items-center justify-center h-16 text-muted-foreground text-sm">
                       No SNR data available
                     </div>
                   )}
@@ -2142,7 +2142,7 @@ function DashboardEnhancedComponent() {
                         onClick={() => { setAiActiveHealthTab('needsAttention'); setSelectedNetworkEvent(null); }}
                         className={`pb-2 px-3 transition-colors border-b-2 ${
                           aiActiveHealthTab === 'needsAttention' && !selectedNetworkEvent
-                            ? 'text-red-500 border-red-500'
+                            ? 'text-[color:var(--status-error)] border-[color:var(--status-error)]'
                             : 'text-muted-foreground border-transparent hover:text-foreground'
                         }`}
                       >
@@ -2162,7 +2162,7 @@ function DashboardEnhancedComponent() {
                         onClick={() => { setAiActiveHealthTab('healthy'); setSelectedNetworkEvent(null); }}
                         className={`pb-2 px-3 transition-colors border-b-2 ${
                           aiActiveHealthTab === 'healthy' && !selectedNetworkEvent
-                            ? 'text-green-500 border-green-500'
+                            ? 'text-[color:var(--status-success)] border-[color:var(--status-success)]'
                             : 'text-muted-foreground border-transparent hover:text-foreground'
                         }`}
                       >
@@ -2246,17 +2246,17 @@ function DashboardEnhancedComponent() {
                           /* Issues View */
                           <div className="space-y-3">
                             {apStats.offline > 0 && (
-                              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 backdrop-blur-sm">
+                              <div className="bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg p-3 backdrop-blur-sm">
                                 <div className="flex items-start gap-3">
-                                  <div className="bg-red-500/20 p-2 rounded-lg">
-                                    <Wifi className="w-4 h-4 text-red-400" />
+                                  <div className="bg-[color:var(--status-error-bg)] p-2 rounded-lg">
+                                    <Wifi className="w-4 h-4 text-[color:var(--status-error)]" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-red-300">{apStats.offline} AP{apStats.offline > 1 ? 's' : ''} Offline</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-red-500/30 text-red-300 rounded-full font-medium">CRITICAL</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-error)]">{apStats.offline} AP{apStats.offline > 1 ? 's' : ''} Offline</span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">CRITICAL</span>
                                     </div>
-                                    <p className="text-xs text-red-200/70 mt-1">Reduced wireless coverage in affected areas</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Reduced wireless coverage in affected areas</p>
                                     <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Check PoE power and network cables
                                     </p>
@@ -2265,17 +2265,17 @@ function DashboardEnhancedComponent() {
                               </div>
                             )}
                             {alertCounts.critical > 0 && (
-                              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 backdrop-blur-sm">
+                              <div className="bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-lg p-3 backdrop-blur-sm">
                                 <div className="flex items-start gap-3">
-                                  <div className="bg-amber-500/20 p-2 rounded-lg">
-                                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                                  <div className="bg-[color:var(--status-warning-bg)] p-2 rounded-lg">
+                                    <AlertTriangle className="w-4 h-4 text-[color:var(--status-warning)]" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-amber-300">{alertCounts.critical} Critical Alert{alertCounts.critical > 1 ? 's' : ''}</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-amber-500/30 text-amber-300 rounded-full font-medium">ACTION NEEDED</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-warning)]">{alertCounts.critical} Critical Alert{alertCounts.critical > 1 ? 's' : ''}</span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">ACTION NEEDED</span>
                                     </div>
-                                    <p className="text-xs text-amber-200/70 mt-1">Potential service degradation detected</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Potential service degradation detected</p>
                                     <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Review alert details and remediate
                                     </p>
@@ -2284,17 +2284,17 @@ function DashboardEnhancedComponent() {
                               </div>
                             )}
                             {clientStats.total > clientStats.authenticated && (
-                              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 backdrop-blur-sm">
+                              <div className="bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg p-3 backdrop-blur-sm">
                                 <div className="flex items-start gap-3">
-                                  <div className="bg-blue-500/20 p-2 rounded-lg">
-                                    <Users className="w-4 h-4 text-blue-400" />
+                                  <div className="bg-[color:var(--status-info-bg)] p-2 rounded-lg">
+                                    <Users className="w-4 h-4 text-[color:var(--status-info)]" />
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-blue-300">{clientStats.total - clientStats.authenticated} Pending Auth</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/30 text-blue-300 rounded-full font-medium">INFO</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-info)]">{clientStats.total - clientStats.authenticated} Pending Auth</span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">INFO</span>
                                     </div>
-                                    <p className="text-xs text-blue-200/70 mt-1">Clients waiting for authentication</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Clients waiting for authentication</p>
                                     <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Verify RADIUS/auth server status
                                     </p>
@@ -2303,14 +2303,14 @@ function DashboardEnhancedComponent() {
                               </div>
                             )}
                             {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
-                              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 backdrop-blur-sm">
+                              <div className="bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg p-3 backdrop-blur-sm">
                                 <div className="flex items-center gap-3">
-                                  <div className="bg-green-500/20 p-2 rounded-lg">
-                                    <CheckCircle className="w-4 h-4 text-green-400" />
+                                  <div className="bg-[color:var(--status-success-bg)] p-2 rounded-lg">
+                                    <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
                                   </div>
                                   <div>
-                                    <span className="text-sm font-semibold text-green-300">All Systems Operational</span>
-                                    <p className="text-xs text-green-200/70 mt-0.5">No issues detected. Network performing optimally.</p>
+                                    <span className="text-sm font-semibold text-[color:var(--status-success)]">All Systems Operational</span>
+                                    <p className="text-xs text-muted-foreground mt-0.5">No issues detected. Network performing optimally.</p>
                                   </div>
                                 </div>
                               </div>
@@ -2320,20 +2320,20 @@ function DashboardEnhancedComponent() {
                           /* Healthy Summary View */
                           <div className="grid grid-cols-2 gap-3">
                             {/* Access Points Card */}
-                            <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-500/20 rounded-lg p-4 backdrop-blur-sm">
+                            <div className="bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg p-4 backdrop-blur-sm">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="bg-emerald-500/20 p-2 rounded-md">
-                                  <Wifi className="w-5 h-5 text-emerald-400" />
+                                <div className="bg-[color:var(--status-success-bg)] p-2 rounded-md">
+                                  <Wifi className="w-5 h-5 text-[color:var(--status-success)]" />
                                 </div>
-                                <AnimatedValue value={apStats.online} className="text-2xl font-bold text-emerald-300" pulseColor="bg-emerald-500/30" />
+                                <AnimatedValue value={apStats.online} className="text-2xl font-bold text-[color:var(--status-success)]" pulseColor="bg-[color:var(--status-success-bg)]" />
                               </div>
-                              <div className="text-sm text-emerald-200/80 font-medium">Access Points Online</div>
+                              <div className="text-sm text-[color:var(--status-success)] font-medium">Access Points Online</div>
                               <div className="mt-3">
-                                <div className="flex items-center justify-between text-xs text-emerald-300/60 mb-1">
+                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>Availability</span>
-                                  <AnimatedValue value={`${apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%`} pulseColor="bg-emerald-500/30" />
+                                  <AnimatedValue value={`${apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%`} pulseColor="bg-[color:var(--status-success-bg)]" />
                                 </div>
-                                <div className="h-2 bg-emerald-950/50 rounded-full overflow-hidden">
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
                                     style={{ width: `${apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0}%` }}
@@ -2343,18 +2343,18 @@ function DashboardEnhancedComponent() {
                             </div>
 
                             {/* Clients Card */}
-                            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/20 rounded-lg p-4 backdrop-blur-sm">
+                            <div className="bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg p-4 backdrop-blur-sm">
                               <div className="flex items-center justify-between mb-2">
-                                <div className="bg-blue-500/20 p-2 rounded-md">
-                                  <Users className="w-5 h-5 text-blue-400" />
+                                <div className="bg-[color:var(--status-info-bg)] p-2 rounded-md">
+                                  <Users className="w-5 h-5 text-[color:var(--status-info)]" />
                                 </div>
-                                <AnimatedValue value={clientStats.authenticated} className="text-2xl font-bold text-blue-300" pulseColor="bg-blue-500/30" />
+                                <AnimatedValue value={clientStats.authenticated} className="text-2xl font-bold text-[color:var(--status-info)]" pulseColor="bg-[color:var(--status-info-bg)]" />
                               </div>
-                              <div className="text-sm text-blue-200/80 font-medium">Clients Authenticated</div>
+                              <div className="text-sm text-[color:var(--status-info)] font-medium">Clients Authenticated</div>
                               <div className="mt-3">
-                                <div className="flex items-center justify-between text-xs text-blue-300/60 mb-1">
+                                <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>Auth Rate</span>
-                                  <AnimatedValue value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`} pulseColor="bg-blue-500/30" />
+                                  <AnimatedValue value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`} pulseColor="bg-[color:var(--status-info-bg)]" />
                                 </div>
                                 <div className="h-2 bg-blue-950/50 rounded-full overflow-hidden">
                                   <div
@@ -2380,23 +2380,23 @@ function DashboardEnhancedComponent() {
                               </div>
                               <div className="grid grid-cols-2 gap-3">
                                 <div className="flex items-center gap-2">
-                                  <ArrowUp className="w-3 h-3 text-green-400" />
+                                  <ArrowUp className="w-3 h-3 text-[color:var(--status-success)]" />
                                   <div className="flex-1">
                                     <div className="flex justify-between text-[10px] mb-1">
-                                      <span className="text-green-300/70">Upload</span>
-                                      <span className="text-green-300 font-medium">{formatBps(clientStats.throughputUpload)}</span>
+                                      <span className="text-muted-foreground">Upload</span>
+                                      <span className="text-[color:var(--status-success)] font-medium">{formatBps(clientStats.throughputUpload)}</span>
                                     </div>
-                                    <div className="h-1 bg-green-950/50 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                                       <div className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full w-3/5" />
                                     </div>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <ArrowDown className="w-3 h-3 text-cyan-400" />
+                                  <ArrowDown className="w-3 h-3 text-[color:var(--status-info)]" />
                                   <div className="flex-1">
                                     <div className="flex justify-between text-[10px] mb-1">
-                                      <span className="text-cyan-300/70">Download</span>
-                                      <span className="text-cyan-300 font-medium">{formatBps(clientStats.throughputDownload)}</span>
+                                      <span className="text-muted-foreground">Download</span>
+                                      <span className="text-[color:var(--status-info)] font-medium">{formatBps(clientStats.throughputDownload)}</span>
                                     </div>
                                     <div className="h-1 bg-cyan-950/50 rounded-full overflow-hidden">
                                       <div className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full w-2/5" />
@@ -2428,7 +2428,7 @@ function DashboardEnhancedComponent() {
                     {/* Events Table */}
                     <div className="border rounded-lg">
                       <div className="bg-muted/50 px-4 py-2 border-b flex items-center gap-2">
-                        <AlertCircle className="w-4 h-4 text-teal-600" />
+                        <AlertCircle className="w-4 h-4 text-[color:var(--status-info)]" />
                         <h3 className="text-sm font-medium">Recent Events</h3>
                       </div>
                       <div className="overflow-x-auto">
@@ -2458,7 +2458,7 @@ function DashboardEnhancedComponent() {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.offline} APs</td>
                                     <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-500 bg-red-50">Requires Action</span>
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">Requires Action</span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">AI detected {apStats.offline} access point(s) are offline. Check network connectivity, PoE power delivery, or hardware status.</td>
                                     <td className="px-4 py-3">
@@ -2473,7 +2473,7 @@ function DashboardEnhancedComponent() {
                                           severity: 'high',
                                           status: 'requires-action'
                                         })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                        className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
@@ -2491,7 +2491,7 @@ function DashboardEnhancedComponent() {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground">{alertCounts.critical} alerts</td>
                                     <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-red-500 bg-red-50">Critical</span>
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">Critical</span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Multiple critical alerts require immediate attention to prevent service degradation.</td>
                                     <td className="px-4 py-3">
@@ -2506,7 +2506,7 @@ function DashboardEnhancedComponent() {
                                           severity: 'high',
                                           status: 'requires-action'
                                         })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                        className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
@@ -2524,7 +2524,7 @@ function DashboardEnhancedComponent() {
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.total - clientStats.authenticated} clients</td>
                                     <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-amber-600 bg-amber-50">Monitoring</span>
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)]">Monitoring</span>
                                     </td>
                                     <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Some clients are connected but not fully authenticated. This may indicate captive portal users or authentication issues.</td>
                                     <td className="px-4 py-3">
@@ -2539,7 +2539,7 @@ function DashboardEnhancedComponent() {
                                           severity: 'medium',
                                           status: 'monitoring'
                                         })}
-                                        className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                        className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
                                       </button>
@@ -2549,7 +2549,7 @@ function DashboardEnhancedComponent() {
                                 {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
                                   <tr className="border-b">
                                     <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-green-500 opacity-50" />
+                                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-[color:var(--status-success)] opacity-50" />
                                       No issues requiring attention
                                     </td>
                                   </tr>
@@ -2567,13 +2567,13 @@ function DashboardEnhancedComponent() {
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.online} APs</td>
                                   <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-500 bg-green-50">Stable</span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Stable</span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All {apStats.online} access points are operational with normal performance metrics.</td>
                                   <td className="px-4 py-3">
                                     <button
                                       onClick={() => setSelectorTab('access-point')}
-                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                      className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                     >
                                       <Eye className="w-4 h-4" />
                                     </button>
@@ -2589,13 +2589,13 @@ function DashboardEnhancedComponent() {
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.authenticated} clients</td>
                                   <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-500 bg-green-50">Stable</span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Stable</span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All authenticated clients have stable connections with good signal quality.</td>
                                   <td className="px-4 py-3">
                                     <button
                                       onClick={() => setSelectorTab('client')}
-                                      className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600"
+                                      className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                     >
                                       <Eye className="w-4 h-4" />
                                     </button>
@@ -2611,11 +2611,11 @@ function DashboardEnhancedComponent() {
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</td>
                                   <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-green-500 bg-green-50">Optimal</span>
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Optimal</span>
                                   </td>
                                   <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Network throughput is within normal parameters with no congestion detected.</td>
                                   <td className="px-4 py-3">
-                                    <button className="p-2 hover:bg-teal-100 rounded-lg transition-colors text-teal-600">
+                                    <button className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]">
                                       <Eye className="w-4 h-4" />
                                     </button>
                                   </td>
@@ -2631,13 +2631,13 @@ function DashboardEnhancedComponent() {
                   /* Selected Event Detail View */
                   <div className="space-y-4">
                     {/* Event Context Header */}
-                    <div className="bg-teal-50 dark:bg-teal-950/30 border border-teal-200 dark:border-teal-800 rounded-lg p-4">
+                    <div className="bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-sm font-medium text-teal-900 dark:text-teal-100 mb-1">Root Cause Analysis</h3>
-                          <p className="text-sm text-teal-700 dark:text-teal-300">{selectedNetworkEvent.description}</p>
+                          <h3 className="text-sm font-medium text-foreground mb-1">Root Cause Analysis</h3>
+                          <p className="text-sm text-[color:var(--status-info)]">{selectedNetworkEvent.description}</p>
                         </div>
-                        <div className="text-sm text-teal-600 dark:text-teal-400">
+                        <div className="text-sm text-[color:var(--status-info)]">
                           Event Time: {selectedNetworkEvent.time}
                         </div>
                       </div>
@@ -2739,7 +2739,7 @@ function DashboardEnhancedComponent() {
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <Brain className="h-4 w-4" />
-                  <span>Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong> <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-600">Beta</Badge>, or <strong>Client</strong> above to drill into specific details</span>
+                  <span>Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong> <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]">Beta</Badge>, or <strong>Client</strong> above to drill into specific details</span>
                 </div>
                 <p className="text-xs opacity-60 mt-2">UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line</p>
               </div>
@@ -2885,12 +2885,12 @@ function DashboardEnhancedComponent() {
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{apStats.total}</div>
             <div className="flex flex-col gap-1.5 mt-2">
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-green-500 border-green-500 text-xs">
+                <Badge variant="outline" className="text-[color:var(--status-success)] border-[color:var(--status-success)] text-xs">
                   <CheckCircle className="h-3 w-3 mr-1" />
                   {apStats.online} Online
                 </Badge>
                 {apStats.offline > 0 && (
-                  <Badge variant="outline" className="text-red-500 border-red-500 text-xs">
+                  <Badge variant="outline" className="text-[color:var(--status-error)] border-[color:var(--status-error)] text-xs">
                     <WifiOff className="h-3 w-3 mr-1" />
                     {apStats.offline} Offline
                   </Badge>
@@ -2902,7 +2902,7 @@ function DashboardEnhancedComponent() {
               </div>
               <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Status</span>
-                <span className="font-medium text-green-500">{apStats.offline === 0 ? 'Optimal' : 'Check Required'}</span>
+                <span className="font-medium text-[color:var(--status-success)]">{apStats.offline === 0 ? 'Optimal' : 'Check Required'}</span>
               </div>
               {Object.keys(apStats.models).length > 0 && (
                 <div className="mt-2 pt-2 border-t border-border">
@@ -2945,8 +2945,8 @@ function DashboardEnhancedComponent() {
                 <span className="font-medium">{clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%</span>
               </div>
               <div className="flex items-center gap-1 text-xs">
-                <TrendingUp className="h-3 w-3 text-green-500" />
-                <span className="text-green-500 font-medium">Active</span>
+                <TrendingUp className="h-3 w-3 text-[color:var(--status-success)]" />
+                <span className="text-[color:var(--status-success)] font-medium">Active</span>
               </div>
             </div>
           </CardContent>
@@ -2976,14 +2976,14 @@ function DashboardEnhancedComponent() {
                   <TrendingUp className="h-3 w-3" />
                   <span title="Upload throughput in Mbps/Gbps">Upload</span>
                 </div>
-                <div className="font-medium text-blue-600">{formatBps(clientStats.throughputUpload)}</div>
+                <div className="font-medium text-[color:var(--status-info)]">{formatBps(clientStats.throughputUpload)}</div>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <TrendingDown className="h-3 w-3" />
                   <span title="Download throughput in Mbps/Gbps">Download</span>
                 </div>
-                <div className="font-medium text-green-500">{formatBps(clientStats.throughputDownload)}</div>
+                <div className="font-medium text-[color:var(--status-success)]">{formatBps(clientStats.throughputDownload)}</div>
               </div>
             </div>
 
@@ -3055,18 +3055,18 @@ function DashboardEnhancedComponent() {
               {alertCounts.critical === 0 && alertCounts.warning === 0 ? (
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-xs">
-                    <CheckCircle className="h-3 w-3 text-green-500" />
-                    <span className="text-green-500 font-medium">All systems normal</span>
+                    <CheckCircle className="h-3 w-3 text-[color:var(--status-success)]" />
+                    <span className="text-[color:var(--status-success)] font-medium">All systems normal</span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium text-green-500">Optimal</span>
+                    <span className="font-medium text-[color:var(--status-success)]">Optimal</span>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-muted-foreground">Action needed</span>
-                  <span className="font-medium text-amber-600">Review alerts</span>
+                  <span className="font-medium text-[color:var(--status-warning)]">Review alerts</span>
                 </div>
               )}
             </div>
@@ -3099,12 +3099,12 @@ function DashboardEnhancedComponent() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Radio className="h-4 w-4 text-green-500" />
+                    <Radio className="h-4 w-4 text-[color:var(--status-success)]" />
                     <span className="text-sm font-medium">Signal Strength (RSSI)</span>
                   </div>
                   <span className={`text-sm font-bold ${
-                    performanceMetrics.avgRssi >= -50 ? 'text-green-500' :
-                    performanceMetrics.avgRssi >= -70 ? 'text-amber-500' : 'text-red-500'
+                    performanceMetrics.avgRssi >= -50 ? 'text-[color:var(--status-success)]' :
+                    performanceMetrics.avgRssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
                   }`}>
                     {performanceMetrics.avgRssi.toFixed(0)} dBm
                   </span>
@@ -3127,12 +3127,12 @@ function DashboardEnhancedComponent() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Signal className="h-4 w-4 text-cyan-500" />
+                    <Signal className="h-4 w-4 text-[color:var(--status-info)]" />
                     <span className="text-sm font-medium">Signal Quality (SNR)</span>
                   </div>
                   <span className={`text-sm font-bold ${
-                    performanceMetrics.avgSnr >= 40 ? 'text-green-500' :
-                    performanceMetrics.avgSnr >= 25 ? 'text-amber-500' : 'text-red-500'
+                    performanceMetrics.avgSnr >= 40 ? 'text-[color:var(--status-success)]' :
+                    performanceMetrics.avgSnr >= 25 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
                   }`}>
                     {performanceMetrics.avgSnr.toFixed(0)} dB
                   </span>
@@ -3154,12 +3154,12 @@ function DashboardEnhancedComponent() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     <span className="text-sm font-medium">Success Rate</span>
                   </div>
                   <span className={`text-sm font-bold ${
-                    performanceMetrics.authenticatedRate >= 98 ? 'text-green-500' :
-                    performanceMetrics.authenticatedRate >= 95 ? 'text-amber-500' : 'text-red-500'
+                    performanceMetrics.authenticatedRate >= 98 ? 'text-[color:var(--status-success)]' :
+                    performanceMetrics.authenticatedRate >= 95 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
                   }`}>
                     {performanceMetrics.authenticatedRate.toFixed(2)}%
                   </span>
@@ -3263,19 +3263,19 @@ function DashboardEnhancedComponent() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-green-500" />
+                      <Zap className="h-4 w-4 text-[color:var(--status-success)]" />
                       <span className="text-sm">Normal Power</span>
                     </div>
-                    <div className="text-sm font-medium text-green-500">
+                    <div className="text-sm font-medium text-[color:var(--status-success)]">
                       {apStats.normalPower} ({apStats.total > 0 ? Math.round((apStats.normalPower / apStats.total) * 100) : 0}%)
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-amber-500" />
+                      <Zap className="h-4 w-4 text-[color:var(--status-warning)]" />
                       <span className="text-sm">Low Power</span>
                     </div>
-                    <div className="text-sm font-medium text-amber-500">
+                    <div className="text-sm font-medium text-[color:var(--status-warning)]">
                       {apStats.lowPower} ({apStats.total > 0 ? Math.round((apStats.lowPower / apStats.total) * 100) : 0}%)
                     </div>
                   </div>
@@ -3494,14 +3494,14 @@ function DashboardEnhancedComponent() {
                   {/* Traffic Stats Row */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
-                      <Upload className="h-4 w-4 text-blue-500" />
+                      <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
                       <div>
                         <div className="text-xs text-muted-foreground">Upload</div>
                         <div className="text-sm font-medium">{formatBps(client.upload)}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
-                      <Download className="h-4 w-4 text-green-500" />
+                      <Download className="h-4 w-4 text-[color:var(--status-success)]" />
                       <div>
                         <div className="text-xs text-muted-foreground">Download</div>
                         <div className="text-sm font-medium">{formatBps(client.download)}</div>
@@ -3552,10 +3552,10 @@ function DashboardEnhancedComponent() {
 
       {/* Poor Services Alert */}
       {poorServices.length > 0 && (
-        <Card className="border-amber-500">
+        <Card className="border-[color:var(--status-warning)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
               Services Requiring Attention
             </CardTitle>
             <CardDescription>Services with degraded performance</CardDescription>
@@ -3563,7 +3563,7 @@ function DashboardEnhancedComponent() {
           <CardContent>
             <div className="space-y-3">
               {poorServices.map(service => (
-                <div key={service.id} className="flex items-center justify-between p-3 rounded-lg border border-amber-500/50 bg-amber-500/5">
+                <div key={service.id} className="flex items-center justify-between p-3 rounded-lg border border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]">
                   <div>
                     <div className="font-medium">{service.name}</div>
                     <div className="text-sm text-muted-foreground">
@@ -3575,7 +3575,7 @@ function DashboardEnhancedComponent() {
                       )}
                     </div>
                   </div>
-                  <Badge variant="outline" className="border-amber-500 text-amber-500">
+                  <Badge variant="outline" className="border-[color:var(--status-warning)] text-[color:var(--status-warning)]">
                     Degraded
                   </Badge>
                 </div>
@@ -3611,17 +3611,17 @@ function DashboardEnhancedComponent() {
                   <div 
                     key={notif.id} 
                     className={`flex items-start gap-3 p-3 rounded-lg border ${
-                      isCritical ? 'border-red-500/50 bg-red-500/5' : 
-                      isWarning ? 'border-amber-500/50 bg-amber-500/5' : 
+                      isCritical ? 'border-[color:var(--status-error)]/50 bg-[color:var(--status-error-bg)]' :
+                      isWarning ? 'border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]' :
                       'border-border'
                     }`}
                   >
                     {isCritical ? (
-                      <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      <AlertCircle className="h-4 w-4 text-[color:var(--status-error)] mt-0.5 flex-shrink-0" />
                     ) : isWarning ? (
-                      <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                      <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)] mt-0.5 flex-shrink-0" />
                     ) : (
-                      <Activity className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <Activity className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium">{notif.message}</div>
@@ -3744,10 +3744,10 @@ function DashboardEnhancedComponent() {
                       {selectedClient.rssi !== undefined && (
                         <div className="flex items-center gap-2">
                           <Signal className={`h-4 w-4 ${
-                            selectedClient.rssi >= -50 ? 'text-green-500' :
-                            selectedClient.rssi >= -60 ? 'text-blue-600' :
-                            selectedClient.rssi >= -70 ? 'text-amber-500' :
-                            'text-red-500'
+                            selectedClient.rssi >= -50 ? 'text-[color:var(--status-success)]' :
+                            selectedClient.rssi >= -60 ? 'text-[color:var(--status-info)]' :
+                            selectedClient.rssi >= -70 ? 'text-[color:var(--status-warning)]' :
+                            'text-[color:var(--status-error)]'
                           }`} />
                           <div>
                             <p className="text-xs text-muted-foreground">RSSI</p>
@@ -3781,7 +3781,7 @@ function DashboardEnhancedComponent() {
                     <div className="grid grid-cols-2 gap-4">
                       {(selectedClient.txRate !== undefined || selectedClient.txBytes !== undefined || selectedClient.outBytes !== undefined) && (
                         <div className="flex items-center gap-2">
-                          <Upload className="h-4 w-4 text-blue-500" />
+                          <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
                           <div>
                             <p className="text-xs text-muted-foreground">Upload</p>
                             <p className="text-sm font-medium">
@@ -3794,7 +3794,7 @@ function DashboardEnhancedComponent() {
                       )}
                       {(selectedClient.rxRate !== undefined || selectedClient.rxBytes !== undefined || selectedClient.inBytes !== undefined) && (
                         <div className="flex items-center gap-2">
-                          <Download className="h-4 w-4 text-green-500" />
+                          <Download className="h-4 w-4 text-[color:var(--status-success)]" />
                           <div>
                             <p className="text-xs text-muted-foreground">Download</p>
                             <p className="text-sm font-medium">
@@ -4118,16 +4118,16 @@ function DashboardEnhancedComponent() {
                           {client.rssi !== undefined && (
                             <div className="flex items-center gap-1">
                               <Signal className={`h-4 w-4 ${
-                                client.rssi >= -50 ? 'text-green-500' :
-                                client.rssi >= -60 ? 'text-blue-600' :
-                                client.rssi >= -70 ? 'text-amber-500' :
-                                'text-red-500'
+                                client.rssi >= -50 ? 'text-[color:var(--status-success)]' :
+                                client.rssi >= -60 ? 'text-[color:var(--status-info)]' :
+                                client.rssi >= -70 ? 'text-[color:var(--status-warning)]' :
+                                'text-[color:var(--status-error)]'
                               }`} />
                               <span className="text-muted-foreground">{client.rssi} dBm</span>
                             </div>
                           )}
                           {client.authenticated !== false && (
-                            <Badge variant="outline" className="text-green-500 border-green-500">
+                            <Badge variant="outline" className="text-[color:var(--status-success)] border-[color:var(--status-success)]">
                               <CheckCircle className="h-3 w-3 mr-1" />
                               Authenticated
                             </Badge>

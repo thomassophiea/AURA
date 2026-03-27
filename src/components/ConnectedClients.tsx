@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2 } from 'lucide-react';
+import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -686,11 +686,11 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       </div>
 
       {/* GDPR Data Rights Panel - Prominent */}
-      <Card className="border-2 border-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+      <Card className="border border-info/30 bg-[color:var(--status-info-bg)]">
         <CardContent className="py-4">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500 rounded-lg">
+              <div className="p-2 bg-[color:var(--status-info)] rounded-lg">
                 <Shield className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -705,20 +705,19 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
-                className="bg-white dark:bg-background border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950"
                 onClick={handleDownloadSelectedClients}
                 disabled={selectedStations.size === 0}
               >
-                <FileDown className="mr-2 h-4 w-4 text-blue-600" />
+                <FileDown className="mr-2 h-4 w-4 text-[color:var(--status-info)]" />
                 Download Data ({selectedStations.size})
               </Button>
               <Button
                 variant="outline"
-                className="bg-white dark:bg-background border-red-300 hover:bg-red-50 dark:hover:bg-red-950"
+                className="border-destructive/30 hover:bg-destructive/5"
                 onClick={handleDeleteSelectedClients}
                 disabled={selectedStations.size === 0}
               >
-                <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                 Delete Data ({selectedStations.size})
               </Button>
             </div>
@@ -897,9 +896,18 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       <TableHead
                         key={column.key}
                         className="p-1 text-[10px] cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                        onClick={() => handleSort(column.key)}
+                        onClick={() => column.sortable !== false && handleSort(column.key)}
                       >
-                        {column.label}
+                        <span className="flex items-center gap-1">
+                          {column.label}
+                          {column.sortable !== false && (
+                            sortColumn === column.key
+                              ? sortDirection === 'asc'
+                                ? <ChevronUp className="h-3 w-3 text-primary shrink-0" />
+                                : <ChevronDown className="h-3 w-3 text-primary shrink-0" />
+                              : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                          )}
+                        </span>
                       </TableHead>
                     ))}
                   </TableRow>

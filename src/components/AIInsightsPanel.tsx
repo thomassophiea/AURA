@@ -61,20 +61,20 @@ const groupColors: Record<InsightGroup, string> = {
 };
 
 const severityStyles: Record<string, { bg: string; border: string; icon: React.ElementType }> = {
-  critical: { 
-    bg: 'bg-red-500/10', 
-    border: 'border-red-500/30', 
-    icon: AlertCircle 
+  critical: {
+    bg: 'bg-[color:var(--status-error-bg)]',
+    border: 'border-[color:var(--status-error)]/30',
+    icon: AlertCircle
   },
-  warning: { 
-    bg: 'bg-amber-500/10', 
-    border: 'border-amber-500/30', 
-    icon: AlertTriangle 
+  warning: {
+    bg: 'bg-[color:var(--status-warning-bg)]',
+    border: 'border-[color:var(--status-warning)]/30',
+    icon: AlertTriangle
   },
-  info: { 
-    bg: 'bg-blue-500/10', 
-    border: 'border-blue-500/30', 
-    icon: Info 
+  info: {
+    bg: 'bg-[color:var(--status-info-bg)]',
+    border: 'border-[color:var(--status-info)]/30',
+    icon: Info
   }
 };
 
@@ -111,19 +111,19 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
 
   if (insights.length === 0) {
     return (
-      <Card className={cn("border-green-500/20", className)}>
+      <Card className={cn("border-[color:var(--status-success)]/20", className)}>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
+            <CheckCircle2 className="h-5 w-5 text-[color:var(--status-success)]" />
             <CardTitle className="text-base">Network Health</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-8 w-8 text-green-500" />
+            <div className="h-16 w-16 rounded-full bg-[color:var(--status-success-bg)] flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-8 w-8 text-[color:var(--status-success)]" />
             </div>
-            <p className="font-medium text-green-500">All Systems Healthy</p>
+            <p className="font-medium text-[color:var(--status-success)]">All Systems Healthy</p>
             <p className="text-sm text-muted-foreground mt-1">
               No issues detected for {profile.name} environment
             </p>
@@ -148,7 +148,7 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
               </Badge>
             )}
             {summary.warning > 0 && (
-              <Badge variant="secondary" className="text-xs bg-amber-500/20 text-amber-600">
+              <Badge variant="secondary" className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]">
                 {summary.warning} Warning
               </Badge>
             )}
@@ -190,15 +190,15 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
                       <div className="p-3 flex items-start gap-3">
                         <div className={cn(
                           "p-2 rounded-lg",
-                          insight.severity === 'critical' && "bg-red-500/20",
-                          insight.severity === 'warning' && "bg-amber-500/20",
-                          insight.severity === 'info' && "bg-blue-500/20"
+                          insight.severity === 'critical' && "bg-[color:var(--status-error-bg)]",
+                          insight.severity === 'warning' && "bg-[color:var(--status-warning-bg)]",
+                          insight.severity === 'info' && "bg-[color:var(--status-info-bg)]"
                         )}>
                           <CategoryIcon className={cn(
                             "h-4 w-4",
-                            insight.severity === 'critical' && "text-red-500",
-                            insight.severity === 'warning' && "text-amber-500",
-                            insight.severity === 'info' && "text-blue-500"
+                            insight.severity === 'critical' && "text-[color:var(--status-error)]",
+                            insight.severity === 'warning' && "text-[color:var(--status-warning)]",
+                            insight.severity === 'info' && "text-[color:var(--status-info)]"
                           )} />
                         </div>
                         
@@ -214,9 +214,9 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
                                 variant="outline" 
                                 className={cn(
                                   "text-[10px] px-1.5 h-4 gap-0.5",
-                                  insight.trend.direction === 'improving' && "border-green-500/20 text-green-500",
-                                  insight.trend.direction === 'degrading' && "border-red-500/20 text-red-500",
-                                  insight.trend.direction === 'stable' && "border-gray-500/50 text-gray-600"
+                                  insight.trend.direction === 'improving' && "border-[color:var(--status-success)]/20 text-[color:var(--status-success)]",
+                                  insight.trend.direction === 'degrading' && "border-[color:var(--status-error)]/20 text-[color:var(--status-error)]",
+                                  insight.trend.direction === 'stable' && "border-muted-foreground/50 text-muted-foreground"
                                 )}
                               >
                                 {insight.trend.direction === 'improving' && <ArrowUp className="h-2.5 w-2.5" />}
@@ -290,8 +290,8 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
                         </div>
                         
                         {/* Recommended Action */}
-                        <div className="p-2 rounded-md bg-green-500/10 border border-green-500/20">
-                          <p className="text-xs font-medium text-green-500 mb-1 flex items-center gap-1">
+                        <div className="p-2 rounded-md bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/20">
+                          <p className="text-xs font-medium text-[color:var(--status-success)] mb-1 flex items-center gap-1">
                             <Lightbulb className="h-3 w-3" />
                             Recommended Action
                           </p>

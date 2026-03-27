@@ -630,10 +630,10 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
             <span><strong>{stats.totalRoams}</strong> roams</span>
             <span><strong>{stats.roamsPerHour.toFixed(1)}</strong>/hr</span>
             {stats.failedRoams > 0 && (
-              <span className="text-red-500"><strong>{stats.failedRoams}</strong> failed</span>
+              <span className="text-[color:var(--status-error)]"><strong>{stats.failedRoams}</strong> failed</span>
             )}
             {stats.interbandRoams > 0 && (
-              <span className="text-red-500"><strong>{stats.interbandRoams}</strong> interband</span>
+              <span className="text-[color:var(--status-error)]"><strong>{stats.interbandRoams}</strong> interband</span>
             )}
           </div>
 
@@ -790,9 +790,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                 className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs border cursor-pointer transition-all ${
                   isSelected ? 'ring-2 ring-offset-1 ring-primary scale-105' : 'hover:scale-105'
                 } ${
-                  info.severity === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
-                  info.severity === 'warning' ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400' :
-                  'bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400'
+                  info.severity === 'error' ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30 text-[color:var(--status-error)]' :
+                  info.severity === 'warning' ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]' :
+                  'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30 text-[color:var(--status-info)]'
                 }`}
               >
                 {info.severity === 'error' ? <XCircle className="h-3 w-3" /> :
@@ -810,7 +810,7 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
               <button
                 key={idx}
                 onClick={() => togglePingPongFilter(pair.ap1, pair.ap2)}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400 cursor-pointer transition-all ${
+                className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)] cursor-pointer transition-all ${
                   isSelected ? 'ring-2 ring-offset-1 ring-primary scale-105' : 'hover:scale-105'
                 }`}
               >
@@ -1203,10 +1203,10 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   <Badge variant="destructive" className="text-xs">Failed</Badge>
                 )}
                 {selectedEvent.isLateRoam && (
-                  <Badge variant="secondary" className="text-xs bg-orange-500/20 text-orange-700">Late Roam</Badge>
+                  <Badge variant="secondary" className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]">Late Roam</Badge>
                 )}
                 {selectedEvent.isBandSteering && (
-                  <Badge variant="outline" className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 text-xs">Interband</Badge>
+                  <Badge variant="outline" className="bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 text-xs">Interband</Badge>
                 )}
               </div>
             </div>
@@ -1227,9 +1227,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                 if (!info) return null;
                 return (
                   <div className={`p-3 rounded border-l-4 ${
-                    info.severity === 'error' ? 'bg-red-500/10 border-red-500' :
-                    info.severity === 'warning' ? 'bg-amber-500/10 border-amber-500' :
-                    'bg-blue-500/10 border-blue-500'
+                    info.severity === 'error' ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]' :
+                    info.severity === 'warning' ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]' :
+                    'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]'
                   }`}>
                     <div className="font-medium text-sm">Reason Code {selectedEvent.reasonCode}: {info.short}</div>
                     <div className="text-xs text-muted-foreground mt-1">{info.description}</div>
@@ -1401,10 +1401,10 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                         <div
                           key={idx}
                           className={`p-2 rounded text-xs border-l-2 ${
-                            insight.type === 'success' ? 'bg-green-500/10 border-green-500 text-green-800 dark:text-green-300' :
-                            insight.type === 'warning' ? 'bg-amber-500/10 border-amber-500 text-amber-800 dark:text-amber-300' :
-                            insight.type === 'error' ? 'bg-red-500/10 border-red-500 text-red-800 dark:text-red-300' :
-                            'bg-blue-500/10 border-blue-500 text-blue-800 dark:text-blue-300'
+                            insight.type === 'success' ? 'bg-[color:var(--status-success-bg)] border-[color:var(--status-success)] text-[color:var(--status-success)]' :
+                            insight.type === 'warning' ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)] text-[color:var(--status-warning)]' :
+                            insight.type === 'error' ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)] text-[color:var(--status-error)]' :
+                            'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)] text-[color:var(--status-info)]'
                           }`}
                         >
                           <div className="font-medium mb-0.5">{insight.title}</div>
@@ -1418,15 +1418,15 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
 
               {/* Interband Roaming Info */}
               {selectedEvent.isBandSteering && (
-                <div className="p-3 bg-red-50 dark:bg-red-950 border-l-4 border-red-500 rounded">
+                <div className="p-3 bg-[color:var(--status-error-bg)] border-l-4 border-[color:var(--status-error)] rounded">
                   <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle className="h-4 w-4 text-red-500" />
-                    <span className="font-semibold text-red-700 dark:text-red-300">Interband Roaming (Same AP)</span>
+                    <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
+                    <span className="font-semibold text-[color:var(--status-error)]">Interband Roaming (Same AP)</span>
                   </div>
                   <div className="text-sm">
                     {selectedEvent.bandSteeringFrom} → {selectedEvent.bandSteeringTo}
                   </div>
-                  <div className="text-xs text-red-500/80 dark:text-red-400/80 mt-1">
+                  <div className="text-xs text-[color:var(--status-error)] opacity-80 mt-1">
                     Band change on the same AP indicates poor band steering configuration or interference issues.
                   </div>
                 </div>
@@ -1441,9 +1441,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   <div className="ml-6 flex items-center gap-2">
                     <span className={`font-mono ${
-                      selectedEvent.rssi >= -60 ? 'text-green-500' :
-                      selectedEvent.rssi >= -70 ? 'text-orange-500' :
-                      'text-red-500'
+                      selectedEvent.rssi >= -60 ? 'text-[color:var(--status-success)]' :
+                      selectedEvent.rssi >= -70 ? 'text-[color:var(--status-warning)]' :
+                      'text-[color:var(--status-error)]'
                     }`}>{selectedEvent.rssi} dBm</span>
                     {selectedEvent.previousRssi && (
                       <span className="text-xs text-muted-foreground">
@@ -1486,11 +1486,11 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   {selectedEvent.ipAddress && (
                     <div className="ml-6 flex items-center gap-2">
-                      <span className={`font-mono text-xs ${selectedEvent.ipAddress.startsWith('169.') ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                      <span className={`font-mono text-xs ${selectedEvent.ipAddress.startsWith('169.') ? 'text-[color:var(--status-warning)]' : 'text-muted-foreground'}`}>
                         {selectedEvent.ipAddress}
                       </span>
                       {selectedEvent.ipAddress.startsWith('169.') && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded font-medium">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded font-medium">
                           Self-Assigned (DHCP Issue)
                         </span>
                       )}
@@ -1513,31 +1513,31 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   <div className="space-y-2">
                     {selectedEvent.isFailedRoam && (
-                      <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
-                        <div className="font-medium text-red-700 dark:text-red-400">Authentication Failure</div>
-                        <div className="text-red-500/80 dark:text-red-400/80 mt-1">
+                      <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
+                        <div className="font-medium text-[color:var(--status-error)]">Authentication Failure</div>
+                        <div className="text-[color:var(--status-error)] opacity-80 mt-1">
                           Client failed to authenticate. Check RADIUS logs, verify credentials, and ensure PMK caching is working properly.
                         </div>
                       </div>
                     )}
                     {selectedEvent.isLateRoam && (
-                      <div className="p-2 bg-orange-500/10 border border-orange-500/30 rounded text-xs">
-                        <div className="font-medium text-orange-700 dark:text-orange-400">Late Roaming</div>
-                        <div className="text-orange-600/80 dark:text-orange-400/80 mt-1">
+                      <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
+                        <div className="font-medium text-[color:var(--status-warning)]">Late Roaming</div>
+                        <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
                           Client roamed at {selectedEvent.rssi} dBm (below -75 dBm threshold). Consider adjusting client roaming aggressiveness or AP coverage overlap.
                         </div>
                       </div>
                     )}
                     {selectedEvent.isBandSteering && (
-                      <div className="p-2 bg-red-500/10 border border-red-500/30 rounded text-xs">
-                        <div className="font-medium text-red-700 dark:text-red-400">Interband Roaming (Same AP)</div>
-                        <div className="text-red-500/80 dark:text-red-400/80 mt-1">
+                      <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
+                        <div className="font-medium text-[color:var(--status-error)]">Interband Roaming (Same AP)</div>
+                        <div className="text-[color:var(--status-error)] opacity-80 mt-1">
                           Client changed bands from {selectedEvent.bandSteeringFrom || selectedEvent.previousFrequency || 'unknown band'} to {selectedEvent.bandSteeringTo || selectedEvent.frequency || 'unknown band'} on <strong>{selectedEvent.apName}</strong>.
                         </div>
-                        <div className="text-red-500/80 dark:text-red-400/80 mt-2 font-medium">
+                        <div className="text-[color:var(--status-error)] opacity-80 mt-2 font-medium">
                           This is especially problematic because:
                         </div>
-                        <ul className="text-red-500/80 dark:text-red-400/80 mt-1 ml-3 list-disc space-y-0.5">
+                        <ul className="text-[color:var(--status-error)] opacity-80 mt-1 ml-3 list-disc space-y-0.5">
                           <li>The client couldn't maintain connection on the preferred band</li>
                           <li>May indicate interference, poor signal, or band steering misconfiguration</li>
                           <li>If falling to 2.4GHz: likely 5GHz coverage/interference issues</li>
@@ -1546,9 +1546,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                       </div>
                     )}
                     {selectedEvent.dwell && selectedEvent.dwell > 600000 && selectedEvent.previousRssi && selectedEvent.previousRssi < -75 && (
-                      <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs">
-                        <div className="font-medium text-amber-700 dark:text-amber-400">Sticky Client Behavior</div>
-                        <div className="text-amber-600/80 dark:text-amber-400/80 mt-1">
+                      <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
+                        <div className="font-medium text-[color:var(--status-warning)]">Sticky Client Behavior</div>
+                        <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
                           Client stayed at {selectedEvent.previousApName} for {formatDuration(selectedEvent.dwell)} with poor signal ({selectedEvent.previousRssi} dBm). Consider enabling 802.11v BSS Transition Management or adjusting minimum RSSI thresholds.
                         </div>
                       </div>
@@ -1624,9 +1624,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   <div className="ml-6 text-muted-foreground">
                     {(selectedCorrelationEvent as RRMEvent).previousChannel && (
-                      <span className="text-red-500">{(selectedCorrelationEvent as RRMEvent).previousChannel} → </span>
+                      <span className="text-[color:var(--status-error)]">{(selectedCorrelationEvent as RRMEvent).previousChannel} → </span>
                     )}
-                    <span className="text-green-500 font-medium">{selectedCorrelationEvent.channel}</span>
+                    <span className="text-[color:var(--status-success)] font-medium">{selectedCorrelationEvent.channel}</span>
                   </div>
                 </div>
               )}
@@ -1640,9 +1640,9 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
                   </div>
                   <div className="ml-6 text-muted-foreground">
                     {(selectedCorrelationEvent as RRMEvent).previousTxPower && (
-                      <span className="text-red-500">{(selectedCorrelationEvent as RRMEvent).previousTxPower} dBm → </span>
+                      <span className="text-[color:var(--status-error)]">{(selectedCorrelationEvent as RRMEvent).previousTxPower} dBm → </span>
                     )}
-                    <span className="text-green-500 font-medium">{(selectedCorrelationEvent as RRMEvent).txPower} dBm</span>
+                    <span className="text-[color:var(--status-success)] font-medium">{(selectedCorrelationEvent as RRMEvent).txPower} dBm</span>
                   </div>
                 </div>
               )}

@@ -229,17 +229,17 @@ const KPITileContent: React.FC<{ data: any }> = ({ data }) => {
   const components = data?.score_components || {};
 
   const getScoreColor = (value: number) => {
-    if (value >= 90) return 'text-green-500';
-    if (value >= 75) return 'text-blue-500';
-    if (value >= 60) return 'text-amber-500';
-    return 'text-red-500';
+    if (value >= 90) return 'text-[color:var(--status-success)]';
+    if (value >= 75) return 'text-[color:var(--status-info)]';
+    if (value >= 60) return 'text-[color:var(--status-warning)]';
+    return 'text-[color:var(--status-error)]';
   };
 
   const getScoreBg = (value: number) => {
-    if (value >= 90) return 'bg-green-500/10';
-    if (value >= 75) return 'bg-blue-500/10';
-    if (value >= 60) return 'bg-amber-500/10';
-    return 'bg-red-500/10';
+    if (value >= 90) return 'bg-[color:var(--status-success-bg)]';
+    if (value >= 75) return 'bg-[color:var(--status-info-bg)]';
+    if (value >= 60) return 'bg-[color:var(--status-warning-bg)]';
+    return 'bg-[color:var(--status-error-bg)]';
   };
 
   return (
@@ -271,13 +271,13 @@ const KPITileContent: React.FC<{ data: any }> = ({ data }) => {
 const getExperienceStyle = (state: string): string => {
   switch (state?.toLowerCase()) {
     case 'excellent':
-      return 'text-green-500';
+      return 'text-[color:var(--status-success)]';
     case 'good':
-      return 'text-blue-500';
+      return 'text-[color:var(--status-info)]';
     case 'fair':
-      return 'text-amber-500';
+      return 'text-[color:var(--status-warning)]';
     case 'poor':
-      return 'text-red-500';
+      return 'text-[color:var(--status-error)]';
     default:
       return 'text-muted-foreground';
   }
@@ -376,9 +376,9 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
 
     // RFQI score gets color based on value
     if (column === 'rfqi_score' && typeof value === 'number') {
-      const color = value >= 90 ? 'text-green-500' :
-                   value >= 75 ? 'text-blue-500' :
-                   value >= 60 ? 'text-amber-500' : 'text-red-500';
+      const color = value >= 90 ? 'text-[color:var(--status-success)]' :
+                   value >= 75 ? 'text-[color:var(--status-info)]' :
+                   value >= 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]';
       return <span className={cn('font-medium', color)}>{value.toFixed(0)}</span>;
     }
 
@@ -468,7 +468,7 @@ const TimeseriesContent: React.FC<{ data: any }> = ({ data }) => {
                 {typeof latest === 'number' ? latest.toFixed(1) : latest}
               </span>
               {trend !== 0 && (
-                <span className={cn('flex items-center text-xs', trend > 0 ? 'text-green-500' : 'text-red-500')}>
+                <span className={cn('flex items-center text-xs', trend > 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-error)]')}>
                   {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                   {trendPercent}%
                 </span>
@@ -498,11 +498,11 @@ const TimelineFeedContent: React.FC<{ data: any[]; isExpanded: boolean }> = ({ d
   const getSeverityColor = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case 'critical':
-        return 'bg-red-500/10 border-red-500/20 text-red-400';
+        return 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/20 text-[color:var(--status-error)]';
       case 'warning':
-        return 'bg-amber-500/10 border-amber-500/20 text-amber-400';
+        return 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/20 text-[color:var(--status-warning)]';
       case 'info':
-        return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
+        return 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/20 text-[color:var(--status-info)]';
       default:
         return 'bg-muted border-border text-muted-foreground';
     }

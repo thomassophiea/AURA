@@ -89,9 +89,14 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       const hostname = station.hostName || station.hostname;
+      if (!hostname) return <span className="text-muted-foreground">—</span>;
+      const isTruncated = hostname.length > 28;
       return (
-        <div className="text-base font-semibold text-foreground">
-          {hostname || '—'}
+        <div
+          className="font-semibold text-foreground max-w-[220px] truncate"
+          title={isTruncated ? hostname : undefined}
+        >
+          {hostname}
         </div>
       );
     }
@@ -158,7 +163,15 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     fieldPath: 'apName',
     defaultVisible: true,
     sortable: true,
-    renderCell: (station) => station.apName || station.apDisplayName || '—'
+    renderCell: (station) => {
+      const name = station.apName || station.apDisplayName;
+      if (!name) return '—';
+      return (
+        <div className="max-w-[180px] truncate" title={name.length > 22 ? name : undefined}>
+          {name}
+        </div>
+      );
+    }
   },
 
   {

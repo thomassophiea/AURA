@@ -18,9 +18,9 @@ import type {
  */
 export function ClientCountWidget({ data }: { data: ClientCountData }) {
   const getTrendIcon = () => {
-    if (data.trend === 'up') return <ArrowUp className="h-4 w-4 text-green-500" />;
-    if (data.trend === 'down') return <ArrowDown className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-gray-500" />;
+    if (data.trend === 'up') return <ArrowUp className="h-4 w-4 text-[color:var(--status-success)]" />;
+    if (data.trend === 'down') return <ArrowDown className="h-4 w-4 text-[color:var(--status-error)]" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   return (
@@ -53,9 +53,9 @@ export function ClientCountWidget({ data }: { data: ClientCountData }) {
  */
 export function APHealthWidget({ data }: { data: APHealthData }) {
   const getHealthColor = (uptime: number) => {
-    if (uptime >= 95) return 'text-green-500';
-    if (uptime >= 80) return 'text-amber-500';
-    return 'text-red-500';
+    if (uptime >= 95) return 'text-[color:var(--status-success)]';
+    if (uptime >= 80) return 'text-[color:var(--status-warning)]';
+    return 'text-[color:var(--status-error)]';
   };
 
   return (
@@ -73,14 +73,14 @@ export function APHealthWidget({ data }: { data: APHealthData }) {
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-500" />
+              <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
               <div>
                 <div className="text-lg font-semibold">{data.online}</div>
                 <p className="text-xs text-muted-foreground">Online</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <WifiOff className="h-4 w-4 text-red-500" />
+              <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />
               <div>
                 <div className="text-lg font-semibold">{data.offline}</div>
                 <p className="text-xs text-muted-foreground">Offline</p>
@@ -110,9 +110,9 @@ export function APHealthWidget({ data }: { data: APHealthData }) {
  */
 export function NetworkOverviewWidget({ data }: { data: NetworkOverviewData }) {
   const getHealthColor = (score: number) => {
-    if (score >= 90) return 'text-green-500';
-    if (score >= 70) return 'text-amber-500';
-    return 'text-red-500';
+    if (score >= 90) return 'text-[color:var(--status-success)]';
+    if (score >= 70) return 'text-[color:var(--status-warning)]';
+    return 'text-[color:var(--status-error)]';
   };
 
   return (
@@ -148,14 +148,14 @@ export function NetworkOverviewWidget({ data }: { data: NetworkOverviewData }) {
           <div className="pt-2 border-t grid grid-cols-2 gap-4">
             <div>
               <div className="text-lg font-semibold flex items-center gap-1">
-                <ArrowUp className="h-4 w-4 text-blue-500" />
+                <ArrowUp className="h-4 w-4 text-[color:var(--status-info)]" />
                 {data.throughput.upload} Mbps
               </div>
               <p className="text-xs text-muted-foreground">Upload</p>
             </div>
             <div>
               <div className="text-lg font-semibold flex items-center gap-1">
-                <ArrowDown className="h-4 w-4 text-green-500" />
+                <ArrowDown className="h-4 w-4 text-[color:var(--status-success)]" />
                 {data.throughput.download} Mbps
               </div>
               <p className="text-xs text-muted-foreground">Download</p>

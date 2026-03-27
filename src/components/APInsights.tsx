@@ -724,7 +724,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                   <div className="flex gap-2 text-xs">
                     {lockedRssValues['Rss Upper'] !== null && lockedRssValues['Rss Upper'] !== undefined && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-gray-400 font-semibold mr-1">Upper:</span> {lockedRssValues['Rss Upper'].toFixed(0)} dBm
+                        <span className="text-muted-foreground font-semibold mr-1">Upper:</span> {lockedRssValues['Rss Upper'].toFixed(0)} dBm
                       </Badge>
                     )}
                     {lockedRssValues.Rss !== null && lockedRssValues.Rss !== undefined && (
@@ -734,7 +734,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     )}
                     {lockedRssValues['Rss Lower'] !== null && lockedRssValues['Rss Lower'] !== undefined && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-gray-400 font-semibold mr-1">Lower:</span> {lockedRssValues['Rss Lower'].toFixed(0)} dBm
+                        <span className="text-muted-foreground font-semibold mr-1">Lower:</span> {lockedRssValues['Rss Lower'].toFixed(0)} dBm
                       </Badge>
                     )}
                   </div>

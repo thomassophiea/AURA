@@ -299,10 +299,10 @@ export function RFQualityWidgetAnchored() {
 
   // Get status based on percentage score (0-100)
   const getRFQIStatus = (percent: number): { label: string; color: string; bgColor: string; variant: 'default' | 'secondary' | 'destructive' } => {
-    if (percent >= 80) return { label: 'Excellent', color: 'text-green-500', bgColor: 'from-green-500', variant: 'default' };
-    if (percent >= 60) return { label: 'Good', color: 'text-blue-500', bgColor: 'from-blue-500', variant: 'default' };
-    if (percent >= 40) return { label: 'Fair', color: 'text-amber-500', bgColor: 'from-amber-500', variant: 'secondary' };
-    return { label: 'Poor', color: 'text-red-500', bgColor: 'from-red-500', variant: 'destructive' };
+    if (percent >= 80) return { label: 'Excellent', color: 'text-[color:var(--status-success)]', bgColor: 'from-green-500', variant: 'default' };
+    if (percent >= 60) return { label: 'Good', color: 'text-[color:var(--status-info)]', bgColor: 'from-blue-500', variant: 'default' };
+    if (percent >= 40) return { label: 'Fair', color: 'text-[color:var(--status-warning)]', bgColor: 'from-amber-500', variant: 'secondary' };
+    return { label: 'Poor', color: 'text-[color:var(--status-error)]', bgColor: 'from-red-500', variant: 'destructive' };
   };
 
   // Render circular score gauge
@@ -402,9 +402,9 @@ export function RFQualityWidgetAnchored() {
           </div>
         </div>
         {error && !metrics && (
-          <Alert className="mt-2 py-2 border-amber-500/50 bg-amber-500/10">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <AlertDescription className="text-xs text-amber-600">{error}</AlertDescription>
+          <Alert className="mt-2 py-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+            <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+            <AlertDescription className="text-xs text-[color:var(--status-warning)]">{error}</AlertDescription>
           </Alert>
         )}
       </CardHeader>
@@ -436,12 +436,12 @@ export function RFQualityWidgetAnchored() {
           {metrics?.source === 'realtime' && (
             <div className="flex items-center gap-1 ml-auto">
               {/* Live indicator */}
-              <div className="flex items-center gap-1.5 mr-3 px-2 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center gap-1.5 mr-3 px-2 py-1 rounded-full bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <span className="text-[10px] font-medium text-green-500 uppercase tracking-wide">Live</span>
+                <span className="text-[10px] font-medium text-[color:var(--status-success)] uppercase tracking-wide">Live</span>
               </div>
               
               {/* Metrics */}
@@ -450,7 +450,7 @@ export function RFQualityWidgetAnchored() {
                   <div className="flex items-center gap-1.5">
                     <Activity className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Ch. Util</span>
-                    <span className={`text-sm font-bold tabular-nums ${metrics.channelUtilization > 70 ? 'text-amber-500' : 'text-green-500'}`}>
+                    <span className={`text-sm font-bold tabular-nums ${metrics.channelUtilization > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
                       {metrics.channelUtilization.toFixed(0)}%
                     </span>
                   </div>
@@ -460,7 +460,7 @@ export function RFQualityWidgetAnchored() {
                   <div className="flex items-center gap-1.5">
                     <Zap className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Interference</span>
-                    <span className={`text-sm font-bold tabular-nums ${metrics.interference > 20 ? 'text-amber-500' : 'text-green-500'}`}>
+                    <span className={`text-sm font-bold tabular-nums ${metrics.interference > 20 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
                       {metrics.interference.toFixed(0)}%
                     </span>
                   </div>
@@ -470,7 +470,7 @@ export function RFQualityWidgetAnchored() {
                   <div className="flex items-center gap-1.5">
                     <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">Noise</span>
-                    <span className="text-sm font-bold tabular-nums text-blue-500">
+                    <span className="text-sm font-bold tabular-nums text-[color:var(--status-info)]">
                       {metrics.noiseFloorDbm.toFixed(0)} dBm
                     </span>
                   </div>

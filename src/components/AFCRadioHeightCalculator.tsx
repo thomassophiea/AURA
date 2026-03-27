@@ -129,10 +129,10 @@ function buildingTypeLabel(type: string): string {
 }
 
 function rfComplexityColor(level: string): string {
-  if (level === 'low') return 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20 border';
-  if (level === 'medium') return 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 border';
-  if (level === 'high') return 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20 border';
-  return 'bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20 border'; // very_high
+  if (level === 'low') return 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/20 border';
+  if (level === 'medium') return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/20 border';
+  if (level === 'high') return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/20 border';
+  return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 border'; // very_high
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -186,12 +186,12 @@ function parseFloorCsv(text: string): { building: string; floor: string; height:
 
 function StatusBadge({ status }: { status: ApplyStatus }) {
   if (status === 'applied') return (
-    <Badge className="bg-green-500/10 text-green-700 dark:text-green-400 border border-green-500/30 text-xs gap-1">
+    <Badge className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/30 text-xs gap-1">
       <CheckCircle className="h-2.5 w-2.5" /> Applied
     </Badge>
   );
   if (status === 'error') return (
-    <Badge className="bg-red-500/10 text-red-700 dark:text-red-400 border border-red-500/30 text-xs gap-1">
+    <Badge className="bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border border-[color:var(--status-error)]/30 text-xs gap-1">
       <AlertCircle className="h-2.5 w-2.5" /> Error
     </Badge>
   );
@@ -984,7 +984,7 @@ export function AFCRadioHeightCalculator() {
         </Card>
       )}
 
-      <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+      <Alert className="border-[color:var(--status-info)]/50 bg-[color:var(--status-info-bg)]">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription className="text-sm">
           <strong>Standard Power (SP)</strong> APs require AFC. Heights are entered directly — matching the values in the
@@ -1060,7 +1060,7 @@ export function AFCRadioHeightCalculator() {
           </TabsTrigger>
           <TabsTrigger value="floors" className="flex items-center gap-1.5">
             <Building2 className="h-3.5 w-3.5" />Floor Heights
-            {unsetFloors.length > 0 && <Badge className="ml-1 text-xs bg-amber-500">{unsetFloors.length} unset</Badge>}
+            {unsetFloors.length > 0 && <Badge className="ml-1 text-xs bg-[color:var(--status-warning)] text-white">{unsetFloors.length} unset</Badge>}
           </TabsTrigger>
           <TabsTrigger value="power-ref" className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5" />Power Reference
@@ -1100,8 +1100,8 @@ export function AFCRadioHeightCalculator() {
 
           {/* Warnings */}
           {unsetFloors.length > 0 && (
-            <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
-              <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <Alert className="border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
               <AlertDescription className="text-sm">
                 <strong>{unsetFloors.length} floor{unsetFloors.length !== 1 ? 's' : ''}</strong> with SP APs still have
                 Floor Height Above Ground = 0. Go to the <strong>Floor Heights</strong> tab and enter the correct values.
@@ -1109,8 +1109,8 @@ export function AFCRadioHeightCalculator() {
             </Alert>
           )}
           {validationWarnings.length > 0 && (
-            <Alert className="border-red-500 bg-red-50 dark:bg-red-950">
-              <AlertTriangle className="h-4 w-4 text-red-600" />
+            <Alert className="border-[color:var(--status-error)]/50 bg-[color:var(--status-error-bg)]">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
               <AlertDescription className="text-sm">
                 <strong>{validationWarnings.length} AP{validationWarnings.length !== 1 ? 's' : ''}</strong> have total heights outside 0–150 m — verify floor height settings.
               </AlertDescription>
@@ -1236,7 +1236,7 @@ export function AFCRadioHeightCalculator() {
                                               <span className="font-medium text-foreground">Floor {floor}</span>
                                               <span>·</span><span>{floorAps.length} AP{floorAps.length !== 1 ? 's' : ''}</span>
                                               <span>·</span>
-                                              <span className={fc?.floorHeightAboveGround === 0 && floorAps.some(a => a.powerClass === 'sp') ? 'text-amber-600 font-medium' : ''}>
+                                              <span className={fc?.floorHeightAboveGround === 0 && floorAps.some(a => a.powerClass === 'sp') ? 'text-[color:var(--status-warning)] font-medium' : ''}>
                                                 Floor Ht↑Gnd: {floorHAG.toFixed(1)} m
                                                 {fc?.floorHeightAboveGround === 0 && floorAps.some(a => a.powerClass === 'sp') && ' ⚠ not set'}
                                               </span>
@@ -1300,7 +1300,7 @@ export function AFCRadioHeightCalculator() {
                                                   className="h-7 text-xs w-16 text-right" />
                                               </TableCell>
                                               <TableCell className="text-right">
-                                                <span className={`font-mono font-semibold text-sm ${isWarn ? 'text-red-600' : ''}`}>
+                                                <span className={`font-mono font-semibold text-sm ${isWarn ? 'text-[color:var(--status-error)]' : ''}`}>
                                                   {total.toFixed(1)}{isWarn && <AlertTriangle className="inline h-3 w-3 ml-1" />}
                                                 </span>
                                               </TableCell>
@@ -1314,7 +1314,7 @@ export function AFCRadioHeightCalculator() {
                                                     </SelectContent>
                                                   </Select>
                                                   {ap.autoDeployment !== ap.deployment && (
-                                                    <span title={`Controller env: ${ap.autoDeployment}`} className="text-amber-500 text-xs">*</span>
+                                                    <span title={`Controller env: ${ap.autoDeployment}`} className="text-[color:var(--status-warning)] text-xs">*</span>
                                                   )}
                                                 </div>
                                               </TableCell>
@@ -1494,18 +1494,18 @@ export function AFCRadioHeightCalculator() {
                                     const hasSpAp = apRecords.some(r => r.site === fc.site && r.building === fc.building && r.floor === fc.floor && r.powerClass === 'sp');
                                     const needsEntry = hasSpAp && fc.floorHeightAboveGround === 0;
                                     return (
-                                      <TableRow key={fc.key} className={needsEntry ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                                      <TableRow key={fc.key} className={needsEntry ? 'bg-[color:var(--status-warning-bg)]' : ''}>
                                         <TableCell>
                                           <div className="flex items-center gap-1.5">
                                             <Badge variant="outline">{fc.floor}</Badge>
-                                            {needsEntry && <AlertTriangle className="h-3 w-3 text-amber-500" title="SP AP — height not set" />}
+                                            {needsEntry && <AlertTriangle className="h-3 w-3 text-[color:var(--status-warning)]" title="SP AP — height not set" />}
                                           </div>
                                         </TableCell>
                                         <TableCell>
                                           <Input type="number" step="0.1" min="0"
                                             value={fc.floorHeightAboveGround}
                                             onChange={e => updateFloorField(fc.key, { floorHeightAboveGround: parseFloat(e.target.value) || 0 })}
-                                            className={`w-24 h-7 text-sm ${needsEntry ? 'border-amber-400' : ''}`} />
+                                            className={`w-24 h-7 text-sm ${needsEntry ? 'border-[color:var(--status-warning)]/60' : ''}`} />
                                         </TableCell>
                                         <TableCell>
                                           <Input type="number" step="0.1" min="0"
@@ -1568,9 +1568,9 @@ export function AFCRadioHeightCalculator() {
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell><Badge className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20 border">Standard Power (SP)</Badge></TableCell>
+                    <TableCell><Badge className="bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/20 border">Standard Power (SP)</Badge></TableCell>
                     <TableCell className="text-sm">Indoor & Outdoor</TableCell>
-                    <TableCell><CheckCircle className="h-4 w-4 text-green-500" /></TableCell>
+                    <TableCell><CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" /></TableCell>
                     {CHANNEL_WIDTHS.map(w => <TableCell key={w} className="text-center font-mono font-semibold">{SP_POWER[w]} dBm</TableCell>)}
                   </TableRow>
                   <TableRow>

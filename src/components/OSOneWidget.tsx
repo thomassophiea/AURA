@@ -96,7 +96,7 @@ export function OSOneWidget({
   const getServiceStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
     if (statusLower === 'available' || statusLower === 'onboarded' || statusLower === 'connected') {
-      return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">{status}</Badge>;
+      return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">{status}</Badge>;
     } else if (statusLower === 'unavailable' || statusLower === 'error') {
       return <Badge variant="destructive">{status}</Badge>;
     }
@@ -104,16 +104,16 @@ export function OSOneWidget({
   };
 
   const getCpuColor = (usage: number): string => {
-    if (usage > 80) return 'bg-red-500';
-    if (usage > 60) return 'bg-amber-500';
-    return 'bg-green-500';
+    if (usage > 80) return 'bg-[color:var(--status-error)]';
+    if (usage > 60) return 'bg-[color:var(--status-warning)]';
+    return 'bg-[color:var(--status-success)]';
   };
 
   const getMemoryColor = (freePercent: number): string => {
     const usedPercent = 100 - freePercent;
-    if (usedPercent > 85) return 'bg-red-500';
-    if (usedPercent > 70) return 'bg-amber-500';
-    return 'bg-blue-500';
+    if (usedPercent > 85) return 'bg-[color:var(--status-error)]';
+    if (usedPercent > 70) return 'bg-[color:var(--status-warning)]';
+    return 'bg-[color:var(--status-info)]';
   };
 
   if (isLoading) {
@@ -181,14 +181,14 @@ export function OSOneWidget({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">CPU</span>
-              <span className={`text-sm font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-amber-500' : 'text-green-500'}`}>
+              <span className={`text-sm font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
                 {cpuUsage.toFixed(1)}%
               </span>
             </div>
             <Progress value={cpuUsage} className="h-1.5" />
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-muted-foreground">Memory</span>
-              <span className={`text-sm font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-amber-500' : 'text-blue-500'}`}>
+              <span className={`text-sm font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}>
                 {memoryUsed.toFixed(0)}% used
               </span>
             </div>
@@ -246,7 +246,7 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Usage</span>
-                <span className={`font-bold ${cpuUsage > 80 ? 'text-red-500' : cpuUsage > 60 ? 'text-amber-500' : 'text-green-500'}`}>
+                <span className={`font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
                   {cpuUsage.toFixed(1)}%
                 </span>
               </div>
@@ -268,7 +268,7 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Used</span>
-                <span className={`font-bold ${memoryUsed > 85 ? 'text-red-500' : memoryUsed > 70 ? 'text-amber-500' : 'text-blue-500'}`}>
+                <span className={`font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}>
                   {memoryUsed.toFixed(0)}%
                 </span>
               </div>
@@ -304,7 +304,7 @@ export function OSOneWidget({
                   <TooltipTrigger>
                     <Badge
                       variant={port.state === 'up' ? 'default' : 'secondary'}
-                      className={port.state === 'up' ? 'bg-green-500' : ''}
+                      className={port.state === 'up' ? 'bg-[color:var(--status-success)]' : ''}
                     >
                       P{port.port}: {port.speed / 1000}G
                     </Badge>
@@ -337,9 +337,9 @@ export function OSOneWidget({
                   className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
-                    {service.service === 'Cloud' && <Cloud className="h-4 w-4 text-blue-500" />}
+                    {service.service === 'Cloud' && <Cloud className="h-4 w-4 text-[color:var(--status-info)]" />}
                     {service.service === 'Afc' && <Wifi className="h-4 w-4 text-purple-500" />}
-                    {service.service === 'Licensing' && <Key className="h-4 w-4 text-amber-500" />}
+                    {service.service === 'Licensing' && <Key className="h-4 w-4 text-[color:var(--status-warning)]" />}
                     <span className="text-sm">{service.service}</span>
                   </div>
                   {getServiceStatusBadge(service.status)}
@@ -367,7 +367,7 @@ export function OSOneWidget({
                   <div key={partition.name} className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-mono text-xs">{partition.name}</span>
-                      <span className={partition.usePercent > 80 ? 'text-red-500' : ''}>
+                      <span className={partition.usePercent > 80 ? 'text-[color:var(--status-error)]' : ''}>
                         {partition.usePercent}%
                       </span>
                     </div>

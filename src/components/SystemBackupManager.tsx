@@ -253,9 +253,9 @@ export function SystemBackupManager() {
               </div>
 
               {getUsagePercentage() > 80 && (
-                <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                <div className="flex items-center gap-2 p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
+                  <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+                  <p className="text-sm text-[color:var(--status-warning)]">
                     Storage is running low. Consider deleting old backup files.
                   </p>
                 </div>
@@ -341,7 +341,7 @@ export function SystemBackupManager() {
                       size="sm"
                       onClick={() => handleDownloadBackup(backup.filename)}
                       aria-label={`Download backup ${backup.filename}`}
-                      className="hover:bg-green-50 hover:text-green-700 hover:border-green-300 transition-colors"
+                      className="hover:bg-green-50 hover:text-[color:var(--status-success)] hover:border-green-300 transition-colors"
                     >
                       <Download className="h-4 w-4 md:mr-2" />
                       <span className="hidden md:inline">Download</span>
@@ -419,7 +419,7 @@ export function SystemBackupManager() {
                       setShowDeleteDialog(true);
                     }}
                     aria-label={`Delete file ${file.filename}`}
-                    className="hover:bg-red-50 hover:text-red-700 transition-colors"
+                    className="hover:bg-red-50 hover:text-[color:var(--status-error)] transition-colors"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -497,9 +497,9 @@ export function SystemBackupManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex items-center gap-2 p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+              <p className="text-sm text-[color:var(--status-warning)]">
                 <strong>Warning:</strong> This action will restart the controller and may cause
                 temporary service disruption.
               </p>

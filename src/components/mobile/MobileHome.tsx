@@ -242,12 +242,12 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
 
       {/* Offline Banner */}
       {isOffline && (
-        <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+        <div className="p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-lg flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-amber-500 font-medium">Offline Mode</p>
+            <p className="text-sm text-[color:var(--status-warning)] font-medium">Offline Mode</p>
             {lastUpdated && (
-              <p className="text-xs text-amber-500/70">
+              <p className="text-xs text-[color:var(--status-warning)]/70">
                 Last updated {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}
@@ -288,12 +288,12 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
 
       {/* Stale Data Banner */}
       {isStale && !isOffline && (
-        <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg flex items-center gap-2">
-          <RefreshCw className="h-5 w-5 text-blue-500 flex-shrink-0" />
+        <div className="p-3 bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg flex items-center gap-2">
+          <RefreshCw className="h-5 w-5 text-[color:var(--status-info)] flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm text-blue-500 font-medium">Data may be stale</p>
+            <p className="text-sm text-[color:var(--status-info)] font-medium">Data may be stale</p>
             {lastUpdated && (
-              <p className="text-xs text-blue-500/70">
+              <p className="text-xs text-[color:var(--status-info)]/70">
                 Last updated {new Date(lastUpdated).toLocaleTimeString()}
               </p>
             )}
@@ -346,8 +346,8 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
 
       {/* Error State */}
       {statsError && !cachedStats && (
-        <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
-          <p className="text-sm text-red-500">Failed to load stats: {statsError}</p>
+        <div className="p-4 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg">
+          <p className="text-sm text-[color:var(--status-error)]">Failed to load stats: {statsError}</p>
           <Button variant="outline" size="sm" onClick={handleRefresh} className="mt-2">
             Retry
           </Button>
@@ -401,7 +401,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
         <div className="p-4 space-y-3">
           {offlineAPs.length === 0 && disabledNetworks.length === 0 ? (
             <div className="text-center py-8">
-              <AlertCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
+              <AlertCircle className="h-12 w-12 text-[color:var(--status-success)] mx-auto mb-3" />
               <p className="text-lg font-semibold text-foreground">No Issues Found</p>
               <p className="text-sm text-muted-foreground mt-1">
                 All access points and networks are operating normally
@@ -418,7 +418,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
                   {offlineAPs.map((ap: any) => (
                     <div
                       key={ap.serialNumber || ap.macAddress}
-                      className="p-3 rounded-lg border border-red-500/20 bg-red-500/5"
+                      className="p-3 rounded-lg border border-[color:var(--status-error)]/20 bg-[color:var(--status-error-bg)]"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
@@ -430,7 +430,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
                             {ap.ipAddress ? ` · ${ap.ipAddress}` : ''}
                           </p>
                         </div>
-                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-500">
+                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[color:var(--status-error-bg)] text-[color:var(--status-error)]">
                           Offline
                         </span>
                       </div>
@@ -448,7 +448,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
                   {disabledNetworks.map((n: any) => (
                     <div
                       key={n.id}
-                      className="p-3 rounded-lg border border-amber-500/20 bg-amber-500/5"
+                      className="p-3 rounded-lg border border-[color:var(--status-warning)]/20 bg-[color:var(--status-warning-bg)]"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
@@ -459,7 +459,7 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
                             {n.security || 'Unknown security'}
                           </p>
                         </div>
-                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600">
+                        <span className="flex-shrink-0 ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]">
                           Disabled
                         </span>
                       </div>
