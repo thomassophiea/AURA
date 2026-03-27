@@ -763,16 +763,16 @@ html {
   --safe-secondary: var(--secondary, #018786);
 }
 
-/* Ensure body styles use Material Design colors */
-html, body {
+/* Ensure body styles use Material Design colors — EP1 manages its own */
+html:not(.ep1), body:not(.ep1) {
   background-color: var(--safe-background) !important;
   color: var(--safe-foreground) !important;
   font-family: var(--font-family-sans) !important;
 }
 
-/* Material Design theme enforcement */
-html.dark, html.dark body, .dark {
-  background-color: #121212 !important;
+/* Material Design theme enforcement — exclude EP1 which manages its own background */
+html.dark:not(.ep1), html.dark:not(.ep1) body, body.dark:not(.ep1) {
+  background-color: #1e1f2a !important;
   color: rgba(255, 255, 255, 0.87) !important;
 }
 
@@ -782,8 +782,8 @@ html.light, html.light body, .light {
 }
 
 /* Material Design data attribute support */
-html[data-theme="dark"], html.dark {
-  background: #121212 !important;
+html[data-theme="dark"]:not(.ep1), html.dark:not(.ep1) {
+  background: #1e1f2a !important;
   color: rgba(255, 255, 255, 0.87) !important;
 }
 
