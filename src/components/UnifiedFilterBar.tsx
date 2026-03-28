@@ -421,13 +421,14 @@ export function UnifiedFilterBar({
       </div>
 
       {/* Context Selector — popover with tabs */}
+      <div className="shrink-0">
       <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={popoverOpen}
-            className="h-10 justify-between gap-2 px-3 font-normal min-w-[160px] max-w-[240px] shrink-0"
+            className="h-10 justify-between gap-2 px-3 font-normal min-w-[160px] max-w-[240px]"
           >
             <div className="flex items-center gap-2 truncate">
               <CurrentIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -635,13 +636,14 @@ export function UnifiedFilterBar({
           )}
         </PopoverContent>
       </Popover>
+      </div>
 
       {/* Context Settings Button */}
       <Button
         variant="outline"
         size="icon"
         onClick={() => setIsContextModalOpen(true)}
-        className="h-10 w-10"
+        className="h-10 w-10 shrink-0"
         title="Configure Context Settings"
       >
         <Settings2 className="h-4 w-4" />
@@ -649,41 +651,45 @@ export function UnifiedFilterBar({
 
       {/* Environment Dropdown */}
       {showEnvironment && (
-        <Select
-          value={filters.environment}
-          onValueChange={(value) => updateFilter('environment', value)}
-        >
-          <SelectTrigger className="w-44 h-10 shrink-0">
-            <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
-            <SelectValue placeholder="Environment" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Environments</SelectItem>
-            <SelectItem value="production">Production</SelectItem>
-            <SelectItem value="lab">Lab</SelectItem>
-            <SelectItem value="staging">Staging</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="shrink-0">
+          <Select
+            value={filters.environment}
+            onValueChange={(value) => updateFilter('environment', value)}
+          >
+            <SelectTrigger className="w-44 h-10">
+              <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
+              <SelectValue placeholder="Environment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Environments</SelectItem>
+              <SelectItem value="production">Production</SelectItem>
+              <SelectItem value="lab">Lab</SelectItem>
+              <SelectItem value="staging">Staging</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {/* Time Range Dropdown */}
       {showTimeRange && (
-        <Select
-          value={filters.timeRange}
-          onValueChange={(value) => updateFilter('timeRange', value)}
-        >
-          <SelectTrigger className="w-48 h-10 shrink-0">
-            <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
-            <SelectValue placeholder="Time Range" />
-          </SelectTrigger>
-          <SelectContent>
-            {TIME_RANGE_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="shrink-0">
+          <Select
+            value={filters.timeRange}
+            onValueChange={(value) => updateFilter('timeRange', value)}
+          >
+            <SelectTrigger className="w-48 h-10">
+              <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
+              <SelectValue placeholder="Time Range" />
+            </SelectTrigger>
+            <SelectContent>
+              {TIME_RANGE_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {/* Divider + Page-Specific Filters */}
