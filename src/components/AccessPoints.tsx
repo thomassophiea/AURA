@@ -364,6 +364,46 @@ function analyzeCableHealth(
 }
 
 
+// Wi-Fi generation model prefix mapping (order matters — longer/more-specific prefixes first)
+type WifiGen = 'Wi-Fi 7' | 'Wi-Fi 6E' | 'Wi-Fi 6' | 'Wi-Fi 5' | 'Unknown';
+const WIFI_GEN_PREFIXES: Array<{ prefix: string; gen: WifiGen }> = [
+  // Wi-Fi 7
+  { prefix: 'AP5020',  gen: 'Wi-Fi 7'  },
+  { prefix: 'AP4060',  gen: 'Wi-Fi 7'  },
+  // Wi-Fi 6E
+  { prefix: 'AP3000',  gen: 'Wi-Fi 6E' },
+  { prefix: 'AP4000',  gen: 'Wi-Fi 6E' },
+  { prefix: 'AP5010',  gen: 'Wi-Fi 6E' },
+  { prefix: 'AP5050',  gen: 'Wi-Fi 6E' },
+  // Wi-Fi 6
+  { prefix: 'AP302W',  gen: 'Wi-Fi 6'  },
+  { prefix: 'AP305C',  gen: 'Wi-Fi 6'  },  // must precede AP305 (Wi-Fi 5)
+  { prefix: 'AP360',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP410',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP460',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP505',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP510',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP560',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP650',   gen: 'Wi-Fi 6'  },
+  // Wi-Fi 5
+  { prefix: 'AP305',   gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3705',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3825',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3865',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3912',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3935',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP3965',  gen: 'Wi-Fi 5'  },
+];
+
+function getWifiGeneration(model?: string): WifiGen {
+  if (!model) return 'Unknown';
+  const m = model.toUpperCase().trim();
+  for (const { prefix, gen } of WIFI_GEN_PREFIXES) {
+    if (m.startsWith(prefix.toUpperCase())) return gen;
+  }
+  return 'Unknown';
+}
+
 interface AccessPointsProps {
   onShowDetail?: (serialNumber: string, displayName?: string) => void;
 }
@@ -416,6 +456,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   // Derive visible column keys from the customization hook
   const visibleColumns = customization.visibleColumns;
+
+  // Wi-Fi generation breakdown counts
+  const wifiGenCounts = useMemo(() => {
+    const counts: Record<WifiGen, number> = { 'Wi-Fi 7': 0, 'Wi-Fi 6E': 0, 'Wi-Fi 6': 0, 'Wi-Fi 5': 0, 'Unknown': 0 };
+    accessPoints.forEach(ap => { counts[getWifiGeneration(ap.model)]++; });
+    return counts;
+  }, [accessPoints]);
 
   // Compute cable health for all APs (memoized for performance)
   const cableHealthMap = useMemo(() => {
@@ -1850,9 +1897,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </CardHeader>
           <CardContent className="relative">
             <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{accessPoints.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Managed devices
-            </p>
+            <p className="text-xs text-muted-foreground mb-2">Managed devices</p>
+            <div className="space-y-0.5">
+              {(['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const).map(gen => wifiGenCounts[gen] > 0 && (
+                <div key={gen} className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground">{gen}</span>
+                  <span className="font-medium tabular-nums">{wifiGenCounts[gen]}</span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
 

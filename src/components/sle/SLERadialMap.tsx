@@ -216,10 +216,10 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
                   lineHeight: 1.2,
                 }}
               >
-                <div className="text-sm font-bold text-white whitespace-nowrap">
+                <div className="text-sm font-bold text-foreground whitespace-nowrap">
                   {sle.successRate.toFixed(1)}%
                 </div>
-                <div className="text-[9px] text-white/65 uppercase tracking-widest whitespace-nowrap mt-0.5">
+                <div className="text-[9px] text-muted-foreground uppercase tracking-widest whitespace-nowrap mt-0.5">
                   {sle.name}
                 </div>
               </div>

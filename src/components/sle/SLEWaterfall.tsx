@@ -56,17 +56,17 @@ export function SLEWaterfall({ sles, stations, aps, onClientClick }: SLEWaterfal
         return (
           <div key={sle.id}>
             <button
-              className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 text-left ${isSelected ? 'bg-white/5' : 'hover:bg-white/[0.03]'}`}
+              className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-lg transition-all duration-200 text-left ${isSelected ? 'bg-muted/40' : 'hover:bg-muted/20'}`}
               onClick={() => setSelectedId(isSelected ? null : sle.id)}
             >
               {/* Label */}
               <div className="w-36 shrink-0">
-                <div className="text-xs font-semibold text-white/90 uppercase tracking-wide">{sle.name}</div>
+                <div className="text-xs font-semibold text-foreground uppercase tracking-wide">{sle.name}</div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">{sle.totalUserMinutes} clients</div>
               </div>
 
               {/* Bar */}
-              <div className="flex-1 relative h-8 rounded overflow-hidden bg-white/5">
+              <div className="flex-1 relative h-8 rounded overflow-hidden bg-muted/30">
                 {/* Success portion */}
                 <div
                   className="absolute left-0 top-0 h-full transition-all duration-500"
@@ -93,7 +93,7 @@ export function SLEWaterfall({ sles, stations, aps, onClientClick }: SLEWaterfal
                 })}
                 {/* Classifier names overlay */}
                 <div className="absolute inset-0 flex items-center px-2">
-                  <span className="text-[10px] font-medium text-white/45 truncate">
+                  <span className="text-[10px] font-medium text-muted-foreground truncate">
                     {activeClassifiers.length > 0 ? activeClassifiers.map(c => c.name).join(' · ') : 'No issues detected'}
                   </span>
                 </div>
