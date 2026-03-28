@@ -7,13 +7,12 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
+// Button imported by PageHeader internally
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Skeleton } from './ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
   AppWindow,
-  RefreshCw,
   TrendingUp,
   TrendingDown,
   Users,
@@ -55,6 +54,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { Site } from '../services/api';
+import { PageHeader } from './PageHeader';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import {
   PieChart as RechartsPieChart,
@@ -457,63 +457,43 @@ export function AppInsights({ api }: AppInsightsProps) {
   return (
     <div className="p-4 space-y-3">
       {/* Header */}
-      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/8 rounded-full blur-3xl" />
-        <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-primary/8 rounded-full blur-3xl" />
+      <PageHeader
+        title="App Insights"
+        subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${sites.find(s => s.id === selectedSite)?.name || selectedSite}` : ''}`}
+        icon={AppWindow}
+        onRefresh={fetchData}
+        refreshing={loading}
+        actions={
+          <>
+            <Select value={selectedSite} onValueChange={setSelectedSite}>
+              <SelectTrigger className="w-[145px] h-8 text-xs">
+                <Building className="h-3.5 w-3.5 mr-1.5" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Sites</SelectItem>
+                {sites.map(site => (
+                  <SelectItem key={site.id} value={site.id}>
+                    {site.name || site.id}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        <div className="flex items-center gap-2.5 relative z-10">
-          <div className="p-2 rounded-lg bg-primary shadow-sm">
-            <AppWindow className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">
-              App Insights
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              Application visibility and traffic analytics
-              {selectedSite !== 'all' && (
-                <span className="ml-1 text-primary font-medium">
-                  • {sites.find(s => s.id === selectedSite)?.name || selectedSite}
-                </span>
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <Select value={selectedSite} onValueChange={setSelectedSite}>
-            <SelectTrigger className="w-[145px] h-8 text-xs">
-              <Building className="h-3.5 w-3.5 mr-1.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sites</SelectItem>
-              {sites.map(site => (
-                <SelectItem key={site.id} value={site.id}>
-                  {site.name || site.id}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={duration} onValueChange={setDuration}>
-            <SelectTrigger className="w-[120px] h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1D">Last 24 Hours</SelectItem>
-              <SelectItem value="7D">Last 7 Days</SelectItem>
-              <SelectItem value="14D">Last 14 Days</SelectItem>
-              <SelectItem value="30D">Last 30 Days</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button variant="outline" size="sm" onClick={fetchData} disabled={loading} className="h-8 px-3 text-xs">
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger className="w-[120px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1D">Last 24 Hours</SelectItem>
+                <SelectItem value="7D">Last 7 Days</SelectItem>
+                <SelectItem value="14D">Last 14 Days</SelectItem>
+                <SelectItem value="30D">Last 30 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </>
+        }
+      />
 
       {/* Summary Cards */}
       {stats && (
