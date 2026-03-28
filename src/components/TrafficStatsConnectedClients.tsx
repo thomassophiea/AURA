@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, Building, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -33,12 +33,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [apFilter, setApFilter] = useState<string>('all');
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [deviceTypeFilter, setDeviceTypeFilter] = useState<string>('all');
-  const [macTypeFilter, setMacTypeFilter] = useState<string>('all'); // all, randomized, permanent
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -322,34 +317,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
-  // Filter stations based on search and filters
+  // Filter stations by site
   const filteredStations = stations.filter((station) => {
-    const matchesSearch = !searchTerm ||
-      station.macAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.ipAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.hostName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.apName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.apSerial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.siteName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.network?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.manufacturer?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.deviceType?.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesStatus = statusFilter === 'all' || station.status?.toLowerCase() === statusFilter.toLowerCase();
-    const matchesAP = apFilter === 'all' || station.apSerial === apFilter || station.apName === apFilter;
-    const matchesSite = selectedSite === 'all' || station.siteName === selectedSite;
-    const matchesDeviceType = deviceTypeFilter === 'all' || station.deviceType === deviceTypeFilter;
-
-    // MAC address type filter
-    let matchesMacType = true;
-    if (macTypeFilter === 'randomized') {
-      matchesMacType = isRandomizedMac(station.macAddress);
-    } else if (macTypeFilter === 'permanent') {
-      matchesMacType = !isRandomizedMac(station.macAddress);
-    }
-
-    return matchesSearch && matchesStatus && matchesAP && matchesSite && matchesDeviceType && matchesMacType;
+    return selectedSite === 'all' || station.siteName === selectedSite;
   });
 
   // Sort filtered stations
@@ -412,7 +382,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, apFilter, selectedSite, deviceTypeFilter, macTypeFilter]);
+  }, [selectedSite]);
 
   const getUniqueStatuses = () => {
     const statuses = new Set(stations.map(station => station.status).filter(Boolean));
@@ -905,54 +875,16 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             Select clients using checkboxes to manage GDPR data rights. Click any client to view detailed connection information. Signal strength (RSS/RSSI) included.
           </CardDescription>
           
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-[2] min-w-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search clients by name, MAC, device type, or site..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
-            </div>
-            
+          <div className="flex items-center gap-3">
             <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-48 h-10">
-                <Building className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Select Site" />
+              <SelectTrigger className="w-44 h-10 shrink-0">
+                <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
                 {getUniqueSites().map((site) => (
                   <SelectItem key={site} value={site}>{site}</SelectItem>
                 ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={apFilter} onValueChange={setApFilter}>
-              <SelectTrigger className="w-36 h-10">
-                <Wifi className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Access Point" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites</SelectItem>
-                {getUniqueAPs().map((ap) => (
-                  <SelectItem key={ap} value={ap}>{ap}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={macTypeFilter} onValueChange={setMacTypeFilter}>
-              <SelectTrigger className="w-48 h-10">
-                <Shuffle className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="MAC Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All MACs</SelectItem>
-                <SelectItem value="randomized">Randomized Only</SelectItem>
-                <SelectItem value="permanent">Permanent Only</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -963,8 +895,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Connected Clients Found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || apFilter !== 'all' || selectedSite !== 'all' || deviceTypeFilter !== 'all' || macTypeFilter !== 'all'
-                  ? 'No clients match your current filters.' 
+                {selectedSite !== 'all'
+                  ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
             </div>
