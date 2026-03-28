@@ -2180,13 +2180,14 @@ class ApiService {
   // Get AAA Policies (RADIUS configurations)
   async getAaaPolicies(): Promise<AaaPolicy[]> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aaa-policies', {}, 8000);
+      // Swagger: GET /v1/aaapolicy (no hyphen)
+      const response = await this.makeAuthenticatedRequest('/v1/aaapolicy', {}, 8000);
       if (!response.ok) {
         logger.warn(`AAA Policies API returned status ${response.status}`);
         return [];
       }
       const data = await response.json();
-      return Array.isArray(data) ? data : [];
+      return Array.isArray(data) ? data : (data?.policies ?? data?.aaapolicies ?? []);
     } catch (error) {
       logger.warn('Failed to fetch AAA policies:', error);
       return [];
@@ -4087,12 +4088,12 @@ class ApiService {
 
   /**
    * Get all ADSP profiles
-   * Endpoint: GET /v3/adsp
+   * Endpoint: GET /v4/adsp
    */
   async getADSPProfiles(): Promise<any[]> {
     try {
       logger.log('[API] Fetching ADSP profiles');
-      const response = await this.makeAuthenticatedRequest('/v3/adsp', {}, 10000);
+      const response = await this.makeAuthenticatedRequest('/v4/adsp', {}, 10000);
 
       if (!response.ok) {
         logger.warn(`ADSP profiles API returned ${response.status}`);
@@ -4109,7 +4110,7 @@ class ApiService {
   }
 
   async createADSPProfile(profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest('/v3/adsp', {
+    const response = await this.makeAuthenticatedRequest('/v4/adsp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(profileData)
@@ -4122,7 +4123,7 @@ class ApiService {
   }
 
   async updateADSPProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/adsp/${encodeURIComponent(profileId)}`, {
+    const response = await this.makeAuthenticatedRequest(`/v4/adsp/${encodeURIComponent(profileId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(profileData)
@@ -4135,7 +4136,7 @@ class ApiService {
   }
 
   async deleteADSPProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/adsp/${encodeURIComponent(profileId)}`, {
+    const response = await this.makeAuthenticatedRequest(`/v4/adsp/${encodeURIComponent(profileId)}`, {
       method: 'DELETE'
     });
     if (!response.ok) {

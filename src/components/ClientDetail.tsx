@@ -138,16 +138,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const loadSiteName = async (siteId: string) => {
     try {
       setIsLoadingSiteName(true);
-      console.log(`ClientDetail: Loading site name for siteId: ${siteId}`);
-      
-      // Run diagnostic if this is the problematic site ID
-      if (siteId === 'c7395471-aa5c-46dc-9211-3ed24c5789bd') {
-        console.log('Running diagnostic for problematic site ID...');
-        await siteMappingService.diagnoseSiteMapping(siteId);
-      }
-      
       const siteName = await siteMappingService.getSiteName(siteId);
-      console.log(`ClientDetail: Resolved site name: ${siteId} -> ${siteName}`);
       setResolvedSiteName(siteName);
     } catch (error) {
       console.warn('Failed to resolve site name:', error);

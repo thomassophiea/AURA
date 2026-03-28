@@ -140,12 +140,13 @@ function transformReportData(report: APInsightsReport | undefined, duration: str
 function hasActualChartData(data: any[]): boolean {
   if (!data || data.length === 0) return false;
 
-  // Check if any entry has values beyond just timestamp/time
+  // Check if any entry has non-null values beyond just timestamp/time
+  // Note: 0 is a valid value (e.g. idle AP, zero clients) — only exclude null/undefined/NaN
   return data.some(entry => {
     const keys = Object.keys(entry).filter(k => k !== 'timestamp' && k !== 'time');
     return keys.some(k => {
       const value = entry[k];
-      return value !== null && value !== undefined && !isNaN(value) && value !== 0;
+      return value !== null && value !== undefined && !isNaN(Number(value));
     });
   });
 }
@@ -223,10 +224,10 @@ export function APInsights({ serialNumber, apName, onOpenFullScreen }: APInsight
       ? Math.max(...avgClientsValues.map(v => parseFloat(v.value) || 0))
       : null;
 
-    // Check if we have any valid data
-    const hasValidData = (avgThroughput !== null && !isNaN(avgThroughput) && avgThroughput > 0) ||
-                         (avgPower !== null && !isNaN(avgPower) && avgPower > 0) ||
-                         (peakClients !== null && !isNaN(peakClients) && peakClients > 0);
+    // Check if we have any valid data (0 is a valid reading for idle APs)
+    const hasValidData = (avgThroughput !== null && !isNaN(avgThroughput)) ||
+                         (avgPower !== null && !isNaN(avgPower)) ||
+                         (peakClients !== null && !isNaN(peakClients));
 
     if (!hasValidData) return null;
 

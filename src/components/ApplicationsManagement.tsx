@@ -160,12 +160,15 @@ export function ApplicationsManagement() {
   };
 
   const generateClientId = () => {
-    return 'app-' + Math.random().toString(36).substring(2, 15);
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    return 'app-' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const generateClientSecret = () => {
-    return 'secret-' + Math.random().toString(36).substring(2, 15) +
-           Math.random().toString(36).substring(2, 15);
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleOpenDialog = (app?: Application) => {

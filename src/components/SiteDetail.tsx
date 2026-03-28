@@ -16,6 +16,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiService } from '../services/api';
 
 interface SiteDetailProps {
   siteId: string;
@@ -41,20 +42,40 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
   const loadSiteDetails = async () => {
     try {
       setIsLoading(true);
-      
-      // Mock site data - in real implementation, this would come from the API
-      const mockSiteInfo: SiteInfo = {
+
+      // Fetch site state (operational status) and AP/client counts in parallel
+      const [siteState, aps, stations] = await Promise.all([
+        apiService.makeAuthenticatedRequest(`/v1/state/sites/${encodeURIComponent(siteId)}`).then(r => r.ok ? r.json() : null).catch(() => null),
+        apiService.getAccessPointsBySite(siteId).catch(() => [] as any[]),
+        apiService.getStations().catch(() => [] as any[]),
+      ]);
+
+      const apCount = Array.isArray(aps) ? aps.length : 0;
+      const clientCount = Array.isArray(stations)
+        ? stations.filter((s: any) => s.siteId === siteId || s.siteName === siteName).length
+        : 0;
+
+      const opStatus: string = siteState?.operationalStatus || siteState?.state || '';
+      const troubles: any[] = siteState?.troubles || [];
+      let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+      if (opStatus.toLowerCase().includes('outofservice') || opStatus.toLowerCase() === 'down') {
+        status = 'critical';
+      } else if (troubles.length > 0) {
+        status = 'warning';
+      }
+
+      setSiteInfo({
         id: siteId,
         name: siteName,
-        location: 'Building A, Floor 3',
-        description: 'Main office site with conference rooms and workspaces',
-        accessPointCount: Math.floor(Math.random() * 50) + 10,
-        clientCount: Math.floor(Math.random() * 200) + 50,
-        status: ['healthy', 'warning', 'critical'][Math.floor(Math.random() * 3)] as 'healthy' | 'warning' | 'critical',
+        location: siteState?.treeNode?.city
+          ? `${siteState.treeNode.city}, ${siteState.treeNode.region || ''}`
+          : siteState?.location || undefined,
+        description: siteState?.description || undefined,
+        accessPointCount: apCount,
+        clientCount,
+        status,
         lastUpdated: new Date().toISOString()
-      };
-      
-      setSiteInfo(mockSiteInfo);
+      });
     } catch (error) {
       console.error('Failed to load site details:', error);
       toast.error('Failed to load site details');

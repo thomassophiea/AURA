@@ -28,7 +28,8 @@ export function RFAnalyticsWidget() {
         const radios = ap.radios || [];
         radios.forEach((radio: any) => {
           const channel = radio.channel || 0;
-          const util = radio.channelUtilization || radio.utilization || Math.random() * 60;
+          const util = radio.channelUtilization ?? radio.utilization ?? null;
+          if (util === null) return; // skip radios with no utilization data
           const clients = radio.clientCount || 0;
           
           if (channelMap.has(channel)) {
@@ -50,12 +51,18 @@ export function RFAnalyticsWidget() {
         }))
         .sort((a, b) => a.channel - b.channel);
       
+      // Derive aggregate RF metrics from real AP radio data
+      const allNoise = aps.flatMap((ap: any) => (ap.radios || []).map((r: any) => r.noiseFloor ?? r.noise).filter((v: any) => typeof v === 'number'));
+      const allRssi = aps.flatMap((ap: any) => (ap.radios || []).map((r: any) => r.avgRssi ?? r.rssi ?? r.signalStrength).filter((v: any) => typeof v === 'number'));
+      const avgNoise = allNoise.length > 0 ? Math.round(allNoise.reduce((s: number, v: number) => s + v, 0) / allNoise.length) : null;
+      const avgSignal = allRssi.length > 0 ? Math.round(allRssi.reduce((s: number, v: number) => s + v, 0) / allRssi.length) : null;
+
       setRfData({
         channelUtilization,
         interference: { level: channelUtilization.some(c => c.utilization > 70) ? 'high' : channelUtilization.some(c => c.utilization > 40) ? 'medium' : 'low', sources: 0 },
-        noiseFloor: -95 + Math.floor(Math.random() * 10),
-        avgSignalStrength: -55 + Math.floor(Math.random() * 15),
-        channelChanges24h: Math.floor(Math.random() * 10)
+        noiseFloor: avgNoise ?? -95,
+        avgSignalStrength: avgSignal ?? -55,
+        channelChanges24h: 0 // requires event log data not available from current endpoints
       });
     } catch (error) {
       console.error('Failed to fetch RF data:', error);

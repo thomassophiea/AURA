@@ -161,8 +161,12 @@ export function APFirmwareManager() {
 
   const getUpgradeStatus = (ap: AccessPoint) => {
     if (firmwareImages.length === 0) return { status: 'unknown', color: 'gray' };
-    // If AP firmware matches any available image, consider it up to date
-    if (ap.currentFirmware && firmwareImages.some(img => img.name.includes(ap.currentFirmware!))) {
+    // Check exact version match — avoid substring false-positives (e.g. "5.9.2" inside "5.9.2.1")
+    if (ap.currentFirmware && firmwareImages.some(img =>
+      img.name === ap.currentFirmware ||
+      img.version === ap.currentFirmware ||
+      img.name.split(/[\s_-]/)[0] === ap.currentFirmware
+    )) {
       return { status: 'up-to-date', color: 'green' };
     }
     return { status: 'update-available', color: 'yellow' };

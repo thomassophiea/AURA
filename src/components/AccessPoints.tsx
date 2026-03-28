@@ -420,6 +420,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [meshRoles, setMeshRoles] = useState<Map<string, 'BASE' | 'RELAY'>>(new Map());
   const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
+  const [apStates, setApStates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
@@ -589,27 +590,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       const accessPointsArray = Array.isArray(apsData) ? apsData : [];
 
-      // Debug: Log ethernet data for specific AP and all APs
-      if (accessPointsArray.length > 0) {
-        // Log specific AP we're investigating
-        const targetAP = accessPointsArray.find((ap: any) => ap.serialNumber === 'CV012408S-C0102');
-        if (targetAP) {
-          console.log('[AP Debug] CV012408S-C0102 ethPorts:', (targetAP as any).ethPorts);
-          console.log('[AP Debug] CV012408S-C0102 ethSpeed:', (targetAP as any).ethSpeed);
-          console.log('[AP Debug] CV012408S-C0102 status:', (targetAP as any).status);
-          console.log('[AP Debug] CV012408S-C0102 full data:', JSON.stringify(targetAP, null, 2));
-        } else {
-          console.log('[AP Debug] CV012408S-C0102 not found in AP list');
-        }
-
-        // Log all APs ethPorts for comparison
-        console.log('[AP Debug] All APs ethernet data:');
-        accessPointsArray.forEach((ap: any) => {
-          const speed = ap.ethPorts?.[0]?.speed || ap.ethSpeed || 'N/A';
-          console.log(`  ${ap.apName || ap.serialNumber}: ethPorts[0].speed=${ap.ethPorts?.[0]?.speed}, ethSpeed=${ap.ethSpeed}, status=${ap.status}`);
-        });
-      }
-
       // Map sysUptime to uptime field and format it
       const enrichedAPs = accessPointsArray.map(ap => ({
         ...ap,
@@ -625,10 +605,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       // Update last refresh time on successful load
       setLastRefreshTime(new Date());
 
-      // Load client counts, AP metrics, and mesh roles in background (non-blocking)
+      // Load client counts, AP metrics, mesh roles, and AP states in background (non-blocking)
       loadClientCounts(accessPointsArray);
       loadAPMetrics(accessPointsArray);
       loadMeshRoles(accessPointsArray);
+      loadAPStates();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load access points for selected site';
 
@@ -798,6 +779,23 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       console.error('[Mesh Roles] Error loading mesh roles:', err);
     } finally {
       setIsLoadingMeshRoles(false);
+    }
+  };
+
+  // Fetch real AP operational status from EntityStateManager and merge into display
+  const loadAPStates = async () => {
+    try {
+      const states = await apiService.getAPStates();
+      if (!Array.isArray(states) || states.length === 0) return;
+      const stateMap: Record<string, string> = {};
+      states.forEach((s: any) => {
+        const id = s.serialNumber || s.serial || s.apSerial || s.id;
+        const status = s.operationalStatus || s.state || s.connectionState;
+        if (id && status) stateMap[id] = status;
+      });
+      if (Object.keys(stateMap).length > 0) setApStates(stateMap);
+    } catch {
+      // Non-critical: fall back to query-endpoint status field
     }
   };
 
@@ -1567,8 +1565,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return <span className="text-sm">{(ap as any).tunnel || '-'}</span>;
       case 'wiredClients':
         return <span className="text-sm">{(ap as any).wiredClients || '0'}</span>;
-      case 'status':
-        return <Badge variant={getStatusBadgeVariant(ap.status || '')}>{ap.status || '-'}</Badge>;
+      case 'status': {
+        const liveStatus = apStates[ap.serialNumber] || ap.status || '-';
+        return <Badge variant={getStatusBadgeVariant(liveStatus)}>{liveStatus}</Badge>;
+      }
       case 'uptime':
         return <span className="text-sm">{ap.uptime || '-'}</span>;
       case 'adoptedBy':

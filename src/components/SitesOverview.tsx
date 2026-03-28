@@ -64,18 +64,20 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
   const fetchSitesOverview = async () => {
     try {
       setError(null);
-      
-      // Fetch sites from the correct v3 endpoint
-      const response = await apiService.makeAuthenticatedRequest('/v3/sites', {
-        method: 'GET'
-      });
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sites: ${response.status} ${response.statusText}`);
+      // Fetch sites list and site states in parallel
+      const [sitesResponse, siteStates, stations] = await Promise.all([
+        apiService.makeAuthenticatedRequest('/v3/sites', { method: 'GET' }),
+        apiService.getSiteStates().catch(() => [] as any[]),
+        apiService.getStations().catch(() => [] as any[]),
+      ]);
+
+      if (!sitesResponse.ok) {
+        throw new Error(`Failed to fetch sites: ${sitesResponse.status} ${sitesResponse.statusText}`);
       }
 
-      const sitesData = await response.json();
-      
+      const sitesData = await sitesResponse.json();
+
       // Ensure we have an array and handle various API response formats
       let sitesList: any[] = [];
       if (Array.isArray(sitesData)) {
@@ -86,25 +88,75 @@ export function SitesOverview({ onShowDetail }: SitesOverviewProps) {
         sitesList = sitesData.data;
       }
 
+      // Build state lookup map: siteId -> state
+      const stateMap = new Map<string, any>();
+      if (Array.isArray(siteStates)) {
+        siteStates.forEach((s: any) => {
+          const id = s.id || s.siteId;
+          if (id) stateMap.set(id, s);
+        });
+      } else if (siteStates && typeof siteStates === 'object') {
+        Object.entries(siteStates).forEach(([id, s]) => stateMap.set(id, s));
+      }
+
+      // Build client count lookup: siteName -> count
+      const clientsBySite = new Map<string, number>();
+      if (Array.isArray(stations)) {
+        stations.forEach((st: any) => {
+          const siteName = st.siteName || st.site || st.location;
+          if (siteName) {
+            clientsBySite.set(siteName, (clientsBySite.get(siteName) || 0) + 1);
+          }
+        });
+      }
+
       // Process sites data for display
       const enhancedSites = sitesList.map(site => {
-        // Count devices from device groups
+        // Count APs from device groups
         const totalAPs = site.deviceGroups?.reduce((total: number, group: any) => {
           return total + (group.apSerialNumbers?.length || 0);
-        }, 0) || 0;
-        
+        }, 0) || site.apSerialNumbers?.length || 0;
+
         const totalSwitches = site.switchSerialNumbers?.length || 0;
+
+        // Derive status from real state data
+        const stateEntry = stateMap.get(site.id) || stateMap.get(site.name);
+        const opStatus: string = stateEntry?.operationalStatus || stateEntry?.state || '';
+        const troubles: any[] = stateEntry?.troubles || [];
+
+        let status: string;
+        let healthPercentage: number;
+
+        if (opStatus) {
+          const op = opStatus.toLowerCase();
+          if (op === 'inservice' || op === 'online' || op === 'up') {
+            status = troubles.length === 0 ? 'online' : 'partial';
+            healthPercentage = troubles.length === 0 ? 100 : Math.max(50, 100 - troubles.length * 10);
+          } else if (op === 'outofservice' || op === 'offline' || op === 'down') {
+            status = 'offline';
+            healthPercentage = 0;
+          } else {
+            status = troubles.length > 0 ? 'partial' : 'online';
+            healthPercentage = troubles.length === 0 ? 100 : Math.max(50, 100 - troubles.length * 10);
+          }
+        } else {
+          // No state data — derive from device presence only
+          status = totalAPs + totalSwitches > 0 ? 'online' : 'offline';
+          healthPercentage = totalAPs + totalSwitches > 0 ? 100 : 0;
+        }
+
+        const clientCount = clientsBySite.get(site.siteName) || clientsBySite.get(site.name) || 0;
 
         return {
           ...site,
           name: site.siteName,
           aps: totalAPs,
           switches: totalSwitches,
-          clients: 0, // Would need additional API call to get client counts
+          clients: clientCount,
           totalDevices: totalAPs + totalSwitches,
-          onlineDevices: totalAPs + totalSwitches, // Assume online for now
-          healthPercentage: totalAPs + totalSwitches > 0 ? 100 : 0, // Default to 100% for existing devices
-          status: totalAPs + totalSwitches > 0 ? 'online' : 'offline',
+          onlineDevices: status === 'offline' ? 0 : totalAPs + totalSwitches,
+          healthPercentage,
+          status,
           location: site.treeNode?.city ? `${site.treeNode.city}, ${site.treeNode.region}` : site.treeNode?.region || 'Not specified'
         };
       });

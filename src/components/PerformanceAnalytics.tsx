@@ -415,8 +415,8 @@ export function PerformanceAnalytics() {
           siteName: ap.siteName,
           status: ap.status || 'unknown',
           clientCount: ap.clientCount || ap.clients || 0,
-          health: ap.health || ap.healthScore || (ap.status === 'online' ? 85 : 0),
-          uptime: ap.uptime || (ap.status === 'online' ? 95 : 0),
+          health: ap.health ?? ap.healthScore ?? null,
+          uptime: ap.uptime ?? null,
           throughput: ap.throughput || 0
         }));
         
@@ -431,9 +431,9 @@ export function PerformanceAnalytics() {
             metrics: {
               apCount: processedAPReports.length,
               clientCount: processedAPReports.reduce((sum, ap) => sum + ap.clientCount, 0),
-              uptime: processedAPReports.length > 0 ? processedAPReports.reduce((sum, ap) => sum + ap.uptime, 0) / processedAPReports.length : 0,
+              uptime: (() => { const vals = processedAPReports.map(ap => ap.uptime).filter((v): v is number => v != null); return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : null; })(),
               throughput: processedAPReports.reduce((sum, ap) => sum + (ap.throughput || 0), 0),
-              health: processedAPReports.length > 0 ? processedAPReports.reduce((sum, ap) => sum + ap.health, 0) / processedAPReports.length : 0
+              health: (() => { const vals = processedAPReports.map(ap => ap.health).filter((v): v is number => v != null); return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : null; })()
             }
           };
           setSiteReports([updatedSiteReport]);

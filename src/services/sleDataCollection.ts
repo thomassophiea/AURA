@@ -245,8 +245,8 @@ class SLEDataCollectionService {
         c => c.rssi !== undefined && c.rssi < this.POOR_RSSI_THRESHOLD
       ).length;
 
-      // Calculate total throughput (Mbps)
-      const totalThroughput = (avgTxRate + avgRxRate) / 2;
+      // Calculate total throughput (Mbps) — sum of TX + RX rates across all clients
+      const totalThroughput = avgTxRate + avgRxRate;
 
       const siteName = siteClients[0]?.siteName || `Site ${siteId}`;
 
@@ -275,12 +275,11 @@ class SLEDataCollectionService {
   private generateWirelessMetrics(metrics: SiteMetrics, timestamp: number): SLEDataPoint[] {
     const dataPoints: SLEDataPoint[] = [];
 
-    // Coverage (user minutes below RSSI threshold)
-    // Convert poor signal percentage to a coverage metric
+    // Coverage: % of clients with acceptable signal (higher = better coverage)
     const coverageValue = metrics.wirelessClients > 0
-      ? (metrics.poorSignalCount / metrics.wirelessClients) * 100
-      : 0;
-    
+      ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
+      : 100;
+
     dataPoints.push({
       metric_key: 'coverage',
       scope: 'wireless',
@@ -288,7 +287,7 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(coverageValue.toFixed(2)),
-      unit: 'percent_poor_coverage'
+      unit: 'percent_good_coverage'
     });
 
     // Throughput (average of TX/RX rates)
@@ -302,39 +301,32 @@ class SLEDataCollectionService {
       unit: 'Mbps'
     });
 
-    // Capacity (based on client density - inverse relationship)
-    // Assume 50 clients per AP is 100% capacity
-    const capacityValue = Math.max(0, Math.min(100, 100 - (metrics.wirelessClients * 2)));
-    dataPoints.push({
-      metric_key: 'capacity',
-      scope: 'wireless',
-      site_id: metrics.siteId,
-      site_name: metrics.siteName,
-      timestamp,
-      value: parseFloat(capacityValue.toFixed(2)),
-      unit: 'percent_available_channel_capacity'
-    });
+    // Capacity: SNR-based proxy — high SNR indicates less interference/contention.
+    // Real channel utilization requires /v1/aps/ifstats (not fetched in this loop).
+    // SNR > 30 dB → high capacity available; SNR < 15 dB → low capacity.
+    const capacityValue = metrics.avgSnr > 0
+      ? Math.max(0, Math.min(100, (metrics.avgSnr / 40) * 100))
+      : null;
+    if (capacityValue !== null) {
+      dataPoints.push({
+        metric_key: 'capacity',
+        scope: 'wireless',
+        site_id: metrics.siteId,
+        site_name: metrics.siteName,
+        timestamp,
+        value: parseFloat(capacityValue.toFixed(2)),
+        unit: 'percent_available_channel_capacity'
+      });
+    }
 
-    // Successful Connects (assume 95% + based on current connected clients)
-    const successRate = 95 + Math.random() * 4; // 95-99% typical range
-    dataPoints.push({
-      metric_key: 'successful_connects',
-      scope: 'wireless',
-      site_id: metrics.siteId,
-      site_name: metrics.siteName,
-      timestamp,
-      value: parseFloat(successRate.toFixed(2)),
-      unit: 'percent_success'
-    });
-
-    // Time to Connect (estimated based on signal quality)
-    // Better RSSI = faster connection
-    let timeToConnect = 3.0; // baseline 3 seconds
+    // Time to Connect: RSSI-based heuristic (no connect-event data available from API)
+    // Better RSSI correlates with faster 802.11 association. This is an estimate only.
+    let timeToConnect = 3.0;
     if (metrics.avgRssi > -50) timeToConnect = 1.5;
     else if (metrics.avgRssi > -60) timeToConnect = 2.0;
     else if (metrics.avgRssi > -70) timeToConnect = 3.0;
     else timeToConnect = 5.0;
-    
+
     dataPoints.push({
       metric_key: 'time_to_connect',
       scope: 'wireless',
@@ -345,8 +337,11 @@ class SLEDataCollectionService {
       unit: 'seconds'
     });
 
-    // AP Health (assume healthy if clients are connected with good signal)
-    const apHealth = metrics.avgRssi > -70 ? 95 + Math.random() * 5 : 80 + Math.random() * 10;
+    // AP Health: derived from signal quality (% of clients with acceptable RSSI ≥ -70 dBm)
+    // Real AP operational state requires /v1/state/aps — not available in this polling loop.
+    const apHealth = metrics.wirelessClients > 0
+      ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
+      : 100;
     dataPoints.push({
       metric_key: 'ap_health',
       scope: 'wireless',
@@ -391,29 +386,9 @@ class SLEDataCollectionService {
       unit: 'Mbps'
     });
 
-    // Switch Health (assume healthy if clients connected)
-    const switchHealth = 92 + Math.random() * 7; // 92-99%
-    dataPoints.push({
-      metric_key: 'switch_health',
-      scope: 'wired',
-      site_id: metrics.siteId,
-      site_name: metrics.siteName,
-      timestamp,
-      value: parseFloat(switchHealth.toFixed(2)),
-      unit: 'percent_healthy'
-    });
-
-    // Successful Connects
-    const successRate = 96 + Math.random() * 3; // 96-99%
-    dataPoints.push({
-      metric_key: 'successful_connects',
-      scope: 'wired',
-      site_id: metrics.siteId,
-      site_name: metrics.siteName,
-      timestamp,
-      value: parseFloat(successRate.toFixed(2)),
-      unit: 'percent_success'
-    });
+    // Switch health and wired successful_connects require switch port state data
+    // (/v1/state/switches) which is not fetched in this polling loop.
+    // These metrics are intentionally omitted until real switch state data is available.
 
     return dataPoints;
   }
