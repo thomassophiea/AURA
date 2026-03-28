@@ -389,9 +389,9 @@ export function DeviceDetail({ deviceId }: DeviceDetailProps) {
                   <label className="text-sm text-muted-foreground">Operational Status</label>
                   <div className="flex items-center space-x-2">
                     {(device.status?.toLowerCase().includes('online') || device.operationalStatus?.toLowerCase() === 'up') ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     ) : (
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
                     )}
                     <span className="font-medium">{device.status || device.operationalStatus || 'Unknown'}</span>
                   </div>
@@ -400,9 +400,9 @@ export function DeviceDetail({ deviceId }: DeviceDetailProps) {
                   <label className="text-sm text-muted-foreground">Admin Status</label>
                   <div className="flex items-center space-x-2">
                     {device.adminStatus === 'enabled' ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     ) : (
-                      <Power className="h-4 w-4 text-gray-500" />
+                      <Power className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className="font-medium">{device.adminStatus || 'Unknown'}</span>
                   </div>
@@ -624,9 +624,9 @@ export function DeviceDetail({ deviceId }: DeviceDetailProps) {
                   <label className="text-sm text-muted-foreground">Network Status</label>
                   <div className="flex items-center space-x-2">
                     {(device.status?.toLowerCase().includes('online') || device.operationalStatus?.toLowerCase() === 'up') ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                     ) : (
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
                     )}
                     <span className="font-medium">
                       {(device.status?.toLowerCase().includes('online') || device.operationalStatus?.toLowerCase() === 'up') ? 'Connected' : 'Disconnected'}

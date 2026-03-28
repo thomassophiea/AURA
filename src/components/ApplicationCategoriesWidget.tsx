@@ -140,11 +140,11 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
 
   if (error || !data) {
     return (
-      <Card className="w-full border-amber-200">
+      <Card className="w-full border-[color:var(--status-warning)]/30">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
               <CardTitle>Application Categories</CardTitle>
             </div>
             <Button
@@ -159,9 +159,9 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
           </div>
         </CardHeader>
         <CardContent>
-          <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
+          <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+            <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+            <AlertDescription className="text-[color:var(--status-warning)]">
               {error || 'Application category data is not available for this site. This feature may require DPI (Deep Packet Inspection) licensing.'}
             </AlertDescription>
           </Alert>
@@ -229,7 +229,7 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
             <Card className="border-2">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-purple-500" />
+                  <Zap className="h-4 w-4 text-muted-foreground" />
                   Top Categories by Usage
                 </CardTitle>
                 <CardDescription>Total data transferred</CardDescription>
@@ -274,7 +274,7 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
             <Card className="border-2">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <Users className="h-4 w-4 text-green-500" />
+                  <Users className="h-4 w-4 text-[color:var(--status-success)]" />
                   Top Categories by Client Count
                 </CardTitle>
                 <CardDescription>Users per category</CardDescription>
@@ -335,7 +335,7 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
             <Card className="border-2">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-500" />
+                  <TrendingUp className="h-4 w-4 text-[color:var(--status-info)]" />
                   Top Categories by Throughput
                 </CardTitle>
                 <CardDescription>Bandwidth per category</CardDescription>

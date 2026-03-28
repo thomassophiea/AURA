@@ -606,7 +606,7 @@ export function PacketCapture() {
         </div>
 
         {error && (
-          <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -971,8 +971,8 @@ export function PacketCapture() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className={`w-2 h-2 rounded-full animate-pulse ${
-                              capture.status === 'running' ? 'bg-green-500' :
-                              capture.status === 'stopping' ? 'bg-amber-500' :
+                              capture.status === 'running' ? 'bg-[color:var(--status-success)]' :
+                              capture.status === 'stopping' ? 'bg-[color:var(--status-warning)]' :
                               'bg-gray-400'
                             }`} />
                             <Badge variant={
@@ -1115,7 +1115,7 @@ export function PacketCapture() {
                               {file.status}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+                            <Badge variant="outline" className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
                               Ready
                             </Badge>
                           )}

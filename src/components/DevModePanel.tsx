@@ -64,27 +64,27 @@ export function DevModePanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightCh
 
   const getStatusColor = (status?: number) => {
     if (!status) return 'text-muted-foreground';
-    if (status >= 200 && status < 300) return 'text-green-500';
-    if (status >= 400 && status < 500) return 'text-amber-500';
-    if (status >= 500) return 'text-red-500';
+    if (status >= 200 && status < 300) return 'text-[color:var(--status-success)]';
+    if (status >= 400 && status < 500) return 'text-[color:var(--status-warning)]';
+    if (status >= 500) return 'text-[color:var(--status-error)]';
     return 'text-muted-foreground';
   };
 
   const getStatusIcon = (log: ApiCallLog) => {
-    if (log.isPending) return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-    if (log.error) return <XCircle className="h-4 w-4 text-red-500" />;
-    if (log.status && log.status >= 200 && log.status < 300) return <CheckCircle className="h-4 w-4 text-green-500" />;
-    if (log.status && log.status >= 400) return <AlertCircle className="h-4 w-4 text-amber-500" />;
+    if (log.isPending) return <Loader2 className="h-4 w-4 animate-spin text-[color:var(--status-info)]" />;
+    if (log.error) return <XCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
+    if (log.status && log.status >= 200 && log.status < 300) return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
+    if (log.status && log.status >= 400) return <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />;
     return <Activity className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getMethodColor = (method: string) => {
     switch (method) {
-      case 'GET': return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-      case 'POST': return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'PUT': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'PATCH': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-      case 'DELETE': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      case 'GET': return 'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30';
+      case 'POST': return 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30';
+      case 'PUT': return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30';
+      case 'PATCH': return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30';
+      case 'DELETE': return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30';
       default: return 'bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30';
     }
   };
@@ -336,8 +336,8 @@ export function DevModePanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightCh
                       {/* Error Details */}
                       {log.error && (
                         <div>
-                          <span className="text-red-500 text-xs uppercase tracking-wide">Error</span>
-                          <pre className="bg-red-950/20 border border-red-500/30 rounded p-2 overflow-x-auto text-xs text-red-400 mt-1">
+                          <span className="text-[color:var(--status-error)] text-xs uppercase tracking-wide">Error</span>
+                          <pre className="bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded p-2 overflow-x-auto text-xs text-[color:var(--status-error)] mt-1">
                             {log.error}
                           </pre>
                         </div>

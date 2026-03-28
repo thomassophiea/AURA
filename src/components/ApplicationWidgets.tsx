@@ -236,9 +236,9 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
             </Button>
           </div>
 
-          <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
+          <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+            <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+            <AlertDescription className="text-[color:var(--status-warning)]">
               Application analytics API endpoints are not available on this controller version. This feature requires API v1/applications support.
             </AlertDescription>
           </Alert>
@@ -294,7 +294,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-blue-500" />
+              <TrendingUp className="h-4 w-4 text-[color:var(--status-info)]" />
               Top Applications by Traffic
             </CardTitle>
             <CardDescription>Bandwidth consumption</CardDescription>
@@ -330,7 +330,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
-              <Network className="h-4 w-4 text-green-500" />
+              <Network className="h-4 w-4 text-[color:var(--status-success)]" />
               Top Applications by Sessions
             </CardTitle>
             <CardDescription>Active connections</CardDescription>
@@ -379,7 +379,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
             <div className="space-y-4">
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                 <div className="flex items-center gap-2">
-                  <Database className="h-4 w-4 text-blue-500" />
+                  <Database className="h-4 w-4 text-[color:var(--status-info)]" />
                   <span className="text-sm font-medium">Total Traffic</span>
                 </div>
                 <span className="text-sm font-bold">{formatBytes(totalTraffic)}</span>
@@ -387,7 +387,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
 
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-green-500" />
+                  <BarChart3 className="h-4 w-4 text-[color:var(--status-success)]" />
                   <span className="text-sm font-medium">Applications</span>
                 </div>
                 <span className="text-sm font-bold">{applications.length}</span>
@@ -395,7 +395,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
 
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                 <div className="flex items-center gap-2">
-                  <Network className="h-4 w-4 text-purple-500" />
+                  <Network className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Total Sessions</span>
                 </div>
                 <span className="text-sm font-bold">
@@ -406,7 +406,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
               {applications.length > 0 && (
                 <div className="flex items-center justify-between p-3 rounded-lg bg-muted/20">
                   <div className="flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-orange-500" />
+                    <Zap className="h-4 w-4 text-[color:var(--status-warning)]" />
                     <span className="text-sm font-medium">Avg per App</span>
                   </div>
                   <span className="text-sm font-bold">

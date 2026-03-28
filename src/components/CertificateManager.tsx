@@ -43,9 +43,9 @@ export function CertificateManager() {
 
   const getStatusBadge = (status: CertificateStatus) => {
     switch (status) {
-      case 'valid': return <Badge className="bg-green-500"><CheckCircle className="h-3 w-3 mr-1" />Valid</Badge>;
+      case 'valid': return <Badge className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/30"><CheckCircle className="h-3 w-3 mr-1" />Valid</Badge>;
       case 'expired': return <Badge variant="destructive"><AlertTriangle className="h-3 w-3 mr-1" />Expired</Badge>;
-      case 'expiring-soon': return <Badge className="bg-yellow-500"><Clock className="h-3 w-3 mr-1" />Expiring Soon</Badge>;
+      case 'expiring-soon': return <Badge className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30"><Clock className="h-3 w-3 mr-1" />Expiring Soon</Badge>;
       default: return <Badge variant="secondary">Unknown</Badge>;
     }
   };
@@ -248,7 +248,7 @@ export function CertificateManager() {
                 onChange={handleFileUpload('certificate')}
               />
               {uploadForm.certificate && (
-                <div className="text-sm text-green-600 flex items-center gap-1">
+                <div className="text-sm text-[color:var(--status-success)] flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" /> Certificate loaded
                 </div>
               )}
@@ -261,7 +261,7 @@ export function CertificateManager() {
                 onChange={handleFileUpload('privateKey')}
               />
               {uploadForm.privateKey && (
-                <div className="text-sm text-green-600 flex items-center gap-1">
+                <div className="text-sm text-[color:var(--status-success)] flex items-center gap-1">
                   <CheckCircle className="h-3 w-3" /> Private key loaded
                 </div>
               )}
@@ -327,7 +327,7 @@ export function CertificateManager() {
                   <Label className="text-muted-foreground">Private Key</Label>
                   <div className="flex items-center gap-2">
                     {selectedCert.privateKeyPresent ? (
-                      <Badge className="bg-green-500"><Key className="h-3 w-3 mr-1" />Present</Badge>
+                      <Badge className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/30"><Key className="h-3 w-3 mr-1" />Present</Badge>
                     ) : (
                       <Badge variant="secondary">Not Present</Badge>
                     )}

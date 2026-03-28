@@ -383,7 +383,7 @@ export function NetworkChatbot({
             onClick={() => handleCopyValue(item.value, item.label)}
           >
             {copiedValue === item.value ? (
-              <Check className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1 text-green-500`} />
+              <Check className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1 text-[color:var(--status-success)]`} />
             ) : (
               <Copy className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1`} />
             )}
@@ -810,7 +810,7 @@ export function NetworkChatbot({
                   />
                   {isListening && (
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                      <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse"></div>
+                      <div className="h-3 w-3 bg-[color:var(--status-error)] rounded-full animate-pulse"></div>
                     </div>
                   )}
                 </div>
@@ -820,7 +820,7 @@ export function NetworkChatbot({
                   size="icon"
                   onClick={handleVoiceInput}
                   disabled={isLoading || isInitializing}
-                  className={`h-12 w-12 ${isListening ? 'text-red-500' : ''}`}
+                  className={`h-12 w-12 ${isListening ? 'text-[color:var(--status-error)]' : ''}`}
                   title="Voice input"
                 >
                   {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
@@ -1091,7 +1091,7 @@ export function NetworkChatbot({
                   />
                   {isListening && (
                     <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                      <div className="h-2 w-2 bg-red-500 rounded-full animate-pulse"></div>
+                      <div className="h-2 w-2 bg-[color:var(--status-error)] rounded-full animate-pulse"></div>
                     </div>
                   )}
                 </div>
@@ -1101,7 +1101,7 @@ export function NetworkChatbot({
                   size="icon"
                   onClick={handleVoiceInput}
                   disabled={isLoading || isInitializing}
-                  className={`${isMobile ? 'h-9 w-9' : 'h-8 w-8'} ${isListening ? 'text-red-500' : ''}`}
+                  className={`${isMobile ? 'h-9 w-9' : 'h-8 w-8'} ${isListening ? 'text-[color:var(--status-error)]' : ''}`}
                   title="Voice input"
                 >
                   {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}

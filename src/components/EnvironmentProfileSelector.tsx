@@ -107,9 +107,9 @@ export function EnvironmentProfileSelector({
   const getConfidenceColor = (level: 'none' | 'low' | 'moderate' | 'high') => {
     switch (level) {
       case 'none': return 'text-muted-foreground';
-      case 'low': return 'text-amber-500';
-      case 'moderate': return 'text-blue-500';
-      case 'high': return 'text-green-500';
+      case 'low': return 'text-[color:var(--status-warning)]';
+      case 'moderate': return 'text-[color:var(--status-info)]';
+      case 'high': return 'text-[color:var(--status-success)]';
     }
   };
   

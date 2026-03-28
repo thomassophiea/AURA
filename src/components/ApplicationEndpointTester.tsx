@@ -91,18 +91,18 @@ export function ApplicationEndpointTester() {
   const getStatusIcon = (status: EndpointResult['status']) => {
     switch (status) {
       case 'testing':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+        return <Loader2 className="h-4 w-4 animate-spin text-[color:var(--status-info)]" />;
       case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'failed':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
     }
   };
 
   const successfulEndpoints = results.filter(r => r.status === 'success');
 
   return (
-    <Card className="border-2 border-amber-500">
+    <Card className="border-2 border-[color:var(--status-warning)]/30">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
@@ -132,8 +132,8 @@ export function ApplicationEndpointTester() {
       </CardHeader>
       <CardContent>
         {successfulEndpoints.length > 0 && (
-          <div className="mb-4 p-4 bg-green-500/10 border border-green-500 rounded-lg">
-            <h3 className="font-semibold text-green-700 dark:text-green-400 mb-2">
+          <div className="mb-4 p-4 bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg">
+            <h3 className="font-semibold text-[color:var(--status-success)] mb-2">
               ✓ Found {successfulEndpoints.length} working endpoint(s)!
             </h3>
             {successfulEndpoints.map((result) => (
@@ -184,8 +184,8 @@ export function ApplicationEndpointTester() {
         )}
 
         {!testing && results.length > 0 && successfulEndpoints.length === 0 && (
-          <div className="mt-4 p-4 bg-red-500/10 border border-red-500 rounded-lg">
-            <p className="text-sm text-red-700 dark:text-red-400">
+          <div className="mt-4 p-4 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg">
+            <p className="text-sm text-[color:var(--status-error)]">
               No working endpoints found. The controller may not have an application analytics API available.
             </p>
           </div>

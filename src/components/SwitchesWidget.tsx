@@ -179,14 +179,14 @@ export function SwitchesWidget({ siteId }: SwitchesWidgetProps) {
           <div className="grid grid-cols-2 gap-4">
             <div className="p-3 rounded-lg border bg-card">
               <div className="flex items-center gap-2 mb-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                 <div className="text-sm font-medium">Online</div>
               </div>
               <div className="text-2xl font-bold">{stats.online}</div>
             </div>
             <div className="p-3 rounded-lg border bg-card">
               <div className="flex items-center gap-2 mb-1">
-                <AlertCircle className="h-4 w-4 text-red-500" />
+                <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />
                 <div className="text-sm font-medium">Offline</div>
               </div>
               <div className="text-2xl font-bold">{stats.offline}</div>
@@ -231,9 +231,9 @@ export function SwitchesWidget({ siteId }: SwitchesWidgetProps) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             {isOnline ? (
-                              <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                              <CheckCircle className="h-4 w-4 text-[color:var(--status-success)] flex-shrink-0" />
                             ) : (
-                              <AlertCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                              <AlertCircle className="h-4 w-4 text-[color:var(--status-error)] flex-shrink-0" />
                             )}
                             <span className="font-medium truncate">
                               {sw.displayName || sw.serialNumber}
@@ -284,13 +284,13 @@ export function SwitchesWidget({ siteId }: SwitchesWidgetProps) {
                   selectedSwitch.connectionState === 'connected' ||
                   selectedSwitch.operationalState === 'up') ? (
                   <>
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                    <span className="font-medium text-green-500">Online</span>
+                    <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
+                    <span className="font-medium text-[color:var(--status-success)]">Online</span>
                   </>
                 ) : (
                   <>
-                    <AlertCircle className="h-5 w-5 text-red-500" />
-                    <span className="font-medium text-red-500">Offline</span>
+                    <AlertCircle className="h-5 w-5 text-[color:var(--status-error)]" />
+                    <span className="font-medium text-[color:var(--status-error)]">Offline</span>
                   </>
                 )}
               </div>

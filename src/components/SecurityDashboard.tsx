@@ -76,7 +76,7 @@ export function SecurityDashboard() {
       case 'malicious':
         return <Badge variant="destructive">Malicious</Badge>;
       case 'friendly':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Friendly</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Friendly</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
@@ -87,9 +87,9 @@ export function SecurityDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'high':
-        return <Badge variant="outline" className="bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">High</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">High</Badge>;
       case 'medium':
-        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Medium</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Medium</Badge>;
       case 'low':
         return <Badge variant="secondary">Low</Badge>;
       default:
@@ -173,7 +173,7 @@ export function SecurityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
+              <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
               <span className="text-2xl font-bold">{stats.malicious}</span>
             </div>
           </CardContent>
@@ -187,7 +187,7 @@ export function SecurityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
               <span className="text-2xl font-bold">{stats.friendly}</span>
             </div>
           </CardContent>
@@ -201,7 +201,7 @@ export function SecurityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <Eye className="h-5 w-5 text-amber-500" />
+              <Eye className="h-5 w-5 text-[color:var(--status-warning)]" />
               <span className="text-2xl font-bold">{stats.unknown}</span>
             </div>
           </CardContent>
@@ -215,7 +215,7 @@ export function SecurityDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-orange-500" />
+              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
               <span className="text-2xl font-bold">{stats.threats}</span>
             </div>
           </CardContent>
@@ -233,7 +233,7 @@ export function SecurityDashboard() {
         <CardContent>
           {rogueAPs.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <Shield className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
+              <Shield className="h-12 w-12 mx-auto mb-4 opacity-50 text-[color:var(--status-success)]" />
               <p>No rogue access points detected</p>
               <p className="text-sm mt-2">Your wireless environment is secure</p>
             </div>
@@ -305,7 +305,7 @@ export function SecurityDashboard() {
         <CardContent>
           {threats.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
+              <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-[color:var(--status-success)]" />
               <p>No security threats detected</p>
             </div>
           ) : (
@@ -315,7 +315,7 @@ export function SecurityDashboard() {
                   key={idx}
                   className="flex items-start gap-3 p-4 border rounded-lg"
                 >
-                  <AlertTriangle className="h-5 w-5 text-orange-500 mt-0.5" />
+                  <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold">{threat.type || 'Security Threat'}</h3>

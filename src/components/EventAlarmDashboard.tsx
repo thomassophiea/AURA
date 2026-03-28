@@ -74,11 +74,11 @@ export function EventAlarmDashboard() {
   const getSeverityIcon = (severity: string) => {
     switch (severity?.toLowerCase()) {
       case 'critical':
-        return <XCircle className="h-5 w-5 text-red-500" />;
+        return <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />;
       case 'warning':
-        return <AlertTriangle className="h-5 w-5 text-amber-500" />;
+        return <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />;
       case 'info':
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return <Info className="h-5 w-5 text-[color:var(--status-info)]" />;
       default:
         return <Bell className="h-5 w-5 text-muted-foreground" />;
     }
@@ -89,7 +89,7 @@ export function EventAlarmDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'warning':
-        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Warning</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Warning</Badge>;
       case 'info':
         return <Badge variant="secondary">Info</Badge>;
       default:
@@ -148,7 +148,7 @@ export function EventAlarmDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
               <span className="text-2xl font-bold">{alarms.length}</span>
             </div>
           </CardContent>
@@ -162,7 +162,7 @@ export function EventAlarmDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <Info className="h-5 w-5 text-blue-500" />
+              <Info className="h-5 w-5 text-[color:var(--status-info)]" />
               <span className="text-2xl font-bold">{events.length}</span>
             </div>
           </CardContent>
@@ -176,7 +176,7 @@ export function EventAlarmDashboard() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
+              <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
               <span className="text-2xl font-bold">
                 {alarms.filter(a => a.severity?.toLowerCase() === 'critical').length}
               </span>
@@ -212,7 +212,7 @@ export function EventAlarmDashboard() {
             <CardContent>
               {activeAlarms.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-green-500" />
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50 text-[color:var(--status-success)]" />
                   <p>No active alarms</p>
                   <p className="text-sm mt-2">All systems operating normally</p>
                 </div>
@@ -321,7 +321,7 @@ export function EventAlarmDashboard() {
                     key={idx}
                     className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
-                    <Info className="h-4 w-4 text-blue-500 mt-0.5" />
+                    <Info className="h-4 w-4 text-[color:var(--status-info)] mt-0.5" />
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-sm">{event.type || 'Event'}</span>

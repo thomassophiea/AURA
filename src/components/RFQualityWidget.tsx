@@ -82,10 +82,10 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
 
   const getScoreColor = (score?: number): string => {
     if (!score) return 'text-muted-foreground';
-    if (score >= 90) return 'text-green-500';
-    if (score >= 75) return 'text-blue-600';
-    if (score >= 60) return 'text-amber-500';
-    return 'text-red-500';
+    if (score >= 90) return 'text-[color:var(--status-success)]';
+    if (score >= 75) return 'text-[color:var(--status-info)]';
+    if (score >= 60) return 'text-[color:var(--status-warning)]';
+    return 'text-[color:var(--status-error)]';
   };
 
   const getScoreStatus = (score?: number): { label: string; variant: any; icon: any } => {
@@ -133,9 +133,9 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
-            <AlertDescription className="text-amber-800 dark:text-amber-200">
+          <Alert className="border-2 border-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)]">
+            <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+            <AlertDescription className="text-foreground">
               {error || 'RF quality data is not available for this site. This feature may require additional licensing or controller configuration.'}
             </AlertDescription>
           </Alert>
@@ -241,7 +241,7 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center gap-2">
-              <Signal className="h-4 w-4 text-blue-500" />
+              <Signal className="h-4 w-4 text-[color:var(--status-info)]" />
               Overall RF Quality
             </CardTitle>
             <CardDescription>Current network RF health</CardDescription>
@@ -297,7 +297,7 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
           <Card>
             <CardHeader>
               <CardTitle className="text-sm flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500" />
+                <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
                 Interference Level
               </CardTitle>
               <CardDescription>RF interference detected</CardDescription>
@@ -322,7 +322,7 @@ export function RFQualityWidget({ siteId, duration = '24H' }: RFQualityWidgetPro
 
       {/* Debug info when no structured data */}
       {overallScore === 0 && (
-        <Card className="border-amber-500">
+        <Card className="border-[color:var(--status-warning)]/30">
           <CardHeader>
             <CardTitle className="text-sm">Raw RF Data (Debug)</CardTitle>
           </CardHeader>

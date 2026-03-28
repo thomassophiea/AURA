@@ -860,7 +860,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Network Configuration</CardTitle>
                 <CardDescription className="text-xs">
-                  Basic WLAN settings • <span className="text-red-500 font-medium">* Required fields</span>
+                  Basic WLAN settings • <span className="text-[color:var(--status-error)] font-medium">* Required fields</span>
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -868,7 +868,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
                 <div className="space-y-2">
                   <Label htmlFor="serviceName">
-                    Network Name {!formData.serviceName?.trim() && <span className="text-red-500">*</span>}
+                    Network Name {!formData.serviceName?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
                   </Label>
                   <Input
                     id="serviceName"
@@ -883,17 +883,17 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       }
                     }}
                     placeholder="e.g. Corporate WiFi"
-                    className={!formData.serviceName?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
+                    className={!formData.serviceName?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
                   />
                   {!formData.serviceName?.trim() && (
-                    <p className="text-xs text-red-500">Network name is required</p>
+                    <p className="text-xs text-[color:var(--status-error)]">Network name is required</p>
                   )}
                 </div>
 
                 {/* SSID - can be different from Network Name */}
                 <div className="space-y-2">
                   <Label htmlFor="ssid">
-                    SSID {!formData.ssid?.trim() && <span className="text-red-500">*</span>}
+                    SSID {!formData.ssid?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
                   </Label>
                   <Input
                     id="ssid"
@@ -903,10 +903,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       setFormData({ ...formData, ssid: e.target.value });
                     }}
                     placeholder="Broadcast name (visible to clients)"
-                    className={!formData.ssid?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
+                    className={!formData.ssid?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
                   />
                   {!formData.ssid?.trim() && (
-                    <p className="text-xs text-red-500">SSID is required</p>
+                    <p className="text-xs text-[color:var(--status-error)]">SSID is required</p>
                   )}
                 </div>
 
@@ -960,9 +960,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                 {/* 6GHz Security Warning */}
                 {show6GHzWarning && (
-                  <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-                    <AlertCircle className="h-4 w-4 text-amber-600" />
-                    <AlertDescription className="text-amber-700 dark:text-amber-400">
+                  <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+                    <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
+                    <AlertDescription className="text-[color:var(--status-warning)]">
                       6GHz (Radio 3) requires WPA3 or OWE security. The controller may reject this configuration.
                     </AlertDescription>
                   </Alert>
@@ -972,8 +972,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.security) && (
                   <div className="space-y-2">
                     <Label htmlFor="passphrase">
-                      {formData.security === 'wpa3-personal' ? 'WPA3 Key' : 'WPA2 Key'} 
-                      {!formData.passphrase?.trim() && <span className="text-red-500">*</span>}
+                      {formData.security === 'wpa3-personal' ? 'WPA3 Key' : 'WPA2 Key'}
+                      {!formData.passphrase?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
                     </Label>
                     <Input
                       id="passphrase"
@@ -981,10 +981,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       value={formData.passphrase || ''}
                       onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
                       placeholder="8–63 characters"
-                      className={!formData.passphrase?.trim() ? 'border-red-300 focus-visible:border-red-500' : ''}
+                      className={!formData.passphrase?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
                     />
                     {!formData.passphrase?.trim() && (
-                      <p className="text-xs text-red-500">Passphrase is required (8–63 characters)</p>
+                      <p className="text-xs text-[color:var(--status-error)]">Passphrase is required (8–63 characters)</p>
                     )}
                   </div>
                 )}
@@ -1556,7 +1556,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-medium">
-                      Site Assignment {getExpandedSiteIds().length === 0 && <span className="text-red-500">*</span>}
+                      Site Assignment {getExpandedSiteIds().length === 0 && <span className="text-[color:var(--status-error)]">*</span>}
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
                       Select sites or site groups ({getExpandedSiteIds().length} total sites selected)

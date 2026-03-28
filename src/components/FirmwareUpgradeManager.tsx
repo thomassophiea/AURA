@@ -162,7 +162,7 @@ export function FirmwareUpgradeManager() {
 
   const getVersionBadge = (version: FirmwareVersion) => {
     if (version.recommended) {
-      return <Badge className="ml-2 bg-green-500">Recommended</Badge>;
+      return <Badge className="ml-2 bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/30">Recommended</Badge>;
     }
     return null;
   };
@@ -286,13 +286,13 @@ export function FirmwareUpgradeManager() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline">{ap.currentVersion}</Badge>
                         {ap.needsUpgrade && upgradeConfig.targetVersion && ap.currentVersion !== upgradeConfig.targetVersion && (
-                          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                          <Badge variant="secondary" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]">
                             <AlertTriangle className="h-3 w-3 mr-1" />
                             Needs Upgrade
                           </Badge>
                         )}
                         {ap.status === 'online' && (
-                          <Badge className="bg-green-500">Online</Badge>
+                          <Badge className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/30">Online</Badge>
                         )}
                       </div>
                     </div>
@@ -404,7 +404,7 @@ export function FirmwareUpgradeManager() {
                       <div className="flex items-center gap-2 mt-2 text-sm">
                         {progress < 100 ? (
                           <>
-                            <Download className="h-4 w-4 text-blue-500" />
+                            <Download className="h-4 w-4 text-[color:var(--status-info)]" />
                             <span>Downloading firmware...</span>
                           </>
                         ) : (

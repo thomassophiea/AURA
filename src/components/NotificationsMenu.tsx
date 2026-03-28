@@ -90,12 +90,12 @@ const getCategoryIcon = (category: string) => {
 const getSeverityColor = (severity: string) => {
   switch (severity.toLowerCase()) {
     case 'critical':
-      return 'text-red-500 bg-red-500/10 border-red-500/20';
+      return 'text-[color:var(--status-error)] bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
     case 'warning':
-      return 'text-amber-500 bg-amber-500/10 border-amber-500/20';
+      return 'text-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
     case 'info':
     case 'low':
-      return 'text-blue-600 bg-blue-600/10 border-blue-600/20';
+      return 'text-[color:var(--status-info)] bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30';
     default:
       return 'text-muted-foreground bg-muted/20 border-border';
   }
@@ -104,12 +104,12 @@ const getSeverityColor = (severity: string) => {
 const getStatusIcon = (status: string) => {
   switch (status) {
     case 'active':
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
+      return <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
     case 'acknowledged':
-      return <Clock className="h-4 w-4 text-amber-500" />;
+      return <Clock className="h-4 w-4 text-[color:var(--status-warning)]" />;
     case 'resolved':
     case 'cleared':
-      return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      return <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)]" />;
     default:
       return <Info className="h-4 w-4 text-muted-foreground" />;
   }

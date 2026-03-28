@@ -261,14 +261,14 @@ export function NetworkDiagnostics() {
                     <div className="text-2xl font-bold">{pingResult.packets.transmitted}</div>
                     <div className="text-sm text-muted-foreground">Transmitted</div>
                   </div>
-                  <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-green-500">
+                  <div className="p-4 bg-[color:var(--status-success-bg)] rounded-lg">
+                    <div className="text-2xl font-bold text-[color:var(--status-success)]">
                       {pingResult.packets.received}
                     </div>
                     <div className="text-sm text-muted-foreground">Received</div>
                   </div>
-                  <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <div className="text-2xl font-bold text-red-500">
+                  <div className="p-4 bg-[color:var(--status-error-bg)] rounded-lg">
+                    <div className="text-2xl font-bold text-[color:var(--status-error)]">
                       {pingResult.packets.loss}%
                     </div>
                     <div className="text-sm text-muted-foreground">Packet Loss</div>
@@ -305,7 +305,7 @@ export function NetworkDiagnostics() {
                         <div className="flex items-center gap-4 text-sm">
                           <span>TTL: {ping.ttl}</span>
                           <span className="font-medium">{ping.time.toFixed(2)} ms</span>
-                          <CheckCircle className="h-4 w-4 text-green-500" />
+                          <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                         </div>
                       </div>
                     ))}
@@ -439,9 +439,9 @@ export function NetworkDiagnostics() {
               </CardHeader>
               <CardContent>
                 {dnsResult.addresses.length === 0 ? (
-                  <div className="flex items-center gap-2 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                    <AlertCircle className="h-4 w-4 text-amber-500" />
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
+                  <div className="flex items-center gap-2 p-4 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
+                    <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
+                    <p className="text-sm text-[color:var(--status-warning)]">
                       No DNS records found for this hostname
                     </p>
                   </div>

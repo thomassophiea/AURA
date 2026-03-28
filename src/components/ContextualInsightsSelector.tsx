@@ -388,7 +388,7 @@ export function ContextualInsightsSelector({
               <tab.icon className="h-4 w-4 flex-shrink-0" />
               <span>{tab.shortLabel}</span>
               {tab.beta && (
-                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-amber-500/50 text-amber-500 dark:text-amber-400">
+                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]">
                   Beta
                 </Badge>
               )}
@@ -442,9 +442,9 @@ export function ContextualInsightsSelector({
                     <div className="pt-1">
                       <span className={cn(
                         "block w-2 h-2 rounded-full flex-shrink-0",
-                        item.status === 'online' && "bg-green-500",
-                        item.status === 'offline' && "bg-red-500",
-                        item.status === 'warning' && "bg-amber-500"
+                        item.status === 'online' && "bg-[color:var(--status-success)]",
+                        item.status === 'offline' && "bg-[color:var(--status-error)]",
+                        item.status === 'warning' && "bg-[color:var(--status-warning)]"
                       )} />
                     </div>
                   )}
@@ -508,7 +508,7 @@ export function ContextualInsightsSelector({
                           {item.rssi !== undefined && (
                             <span className={cn(
                               "flex items-center gap-1",
-                              item.rssi >= -60 ? "text-green-500" : item.rssi >= -70 ? "text-amber-500" : "text-red-500"
+                              item.rssi >= -60 ? "text-[color:var(--status-success)]" : item.rssi >= -70 ? "text-[color:var(--status-warning)]" : "text-[color:var(--status-error)]"
                             )}>
                               <Signal className="h-3 w-3" />
                               {item.rssi} dBm

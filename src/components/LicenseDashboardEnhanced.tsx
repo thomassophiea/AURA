@@ -55,11 +55,11 @@ export function LicenseDashboardEnhanced() {
 
   const getStateColor = (state: string) => {
     switch (state) {
-      case 'valid': return 'bg-green-500';
-      case 'grace-period': return 'bg-yellow-500';
-      case 'expired': return 'bg-red-500';
-      case 'evaluation': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      case 'valid': return 'bg-[color:var(--status-success)]';
+      case 'grace-period': return 'bg-[color:var(--status-warning)]';
+      case 'expired': return 'bg-[color:var(--status-error)]';
+      case 'evaluation': return 'bg-[color:var(--status-info)]';
+      default: return 'bg-muted';
     }
   };
 
@@ -102,7 +102,7 @@ export function LicenseDashboardEnhanced() {
   return (
     <div className="space-y-6">
       {licenseInfo?.expirationDate && getDaysUntilExpiry(licenseInfo.expirationDate) <= 30 && (
-        <Alert className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+        <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Your license expires in {getDaysUntilExpiry(licenseInfo.expirationDate)} days. 
@@ -178,7 +178,7 @@ export function LicenseDashboardEnhanced() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {licenseInfo?.features?.map(feature => (
               <div key={feature} className="flex items-center gap-2 p-2 bg-muted rounded">
-                <CheckCircle className="h-4 w-4 text-green-500" />
+                <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
                 <span className="text-sm">{feature}</span>
               </div>
             ))}

@@ -190,11 +190,11 @@ export function APsUpgradeReport() {
   const getStatusBadge = (status: APUpgradeInfo['status']) => {
     switch (status) {
       case 'current':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Up to Date</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Up to Date</Badge>;
       case 'upgrade_available':
-        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">Update Available</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30">Update Available</Badge>;
       case 'upgrading':
-        return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">Upgrading...</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Upgrading...</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -205,13 +205,13 @@ export function APsUpgradeReport() {
   const getStatusIcon = (status: APUpgradeInfo['status']) => {
     switch (status) {
       case 'current':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'upgrade_available':
-        return <Download className="h-4 w-4 text-blue-500" />;
+        return <Download className="h-4 w-4 text-[color:var(--status-info)]" />;
       case 'upgrading':
-        return <Clock className="h-4 w-4 text-amber-500 animate-spin" />;
+        return <Clock className="h-4 w-4 text-[color:var(--status-warning)] animate-spin" />;
       case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
+        return <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
     }
   };
 
@@ -257,7 +257,7 @@ export function APsUpgradeReport() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Up to Date</p>
-              <p className="text-3xl font-bold text-green-500">{stats.current}</p>
+              <p className="text-3xl font-bold text-[color:var(--status-success)]">{stats.current}</p>
             </div>
           </CardContent>
         </Card>
@@ -265,7 +265,7 @@ export function APsUpgradeReport() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Updates Available</p>
-              <p className="text-3xl font-bold text-blue-500">{stats.updateAvailable}</p>
+              <p className="text-3xl font-bold text-[color:var(--status-info)]">{stats.updateAvailable}</p>
             </div>
           </CardContent>
         </Card>
@@ -273,7 +273,7 @@ export function APsUpgradeReport() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Upgrading</p>
-              <p className="text-3xl font-bold text-amber-500">{stats.upgrading}</p>
+              <p className="text-3xl font-bold text-[color:var(--status-warning)]">{stats.upgrading}</p>
             </div>
           </CardContent>
         </Card>
@@ -421,7 +421,7 @@ export function APsUpgradeReport() {
                     <TableCell className="font-mono text-sm">
                       {ap.availableVersion}
                       {ap.updateAvailable && (
-                        <span className="ml-2 text-blue-500">⬆</span>
+                        <span className="ml-2 text-[color:var(--status-info)]">⬆</span>
                       )}
                     </TableCell>
                     <TableCell>{getStatusBadge(ap.status)}</TableCell>

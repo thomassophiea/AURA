@@ -230,7 +230,7 @@ export function APFirmwareManager() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
               <span className="text-2xl font-bold">{stats.upToDate}</span>
             </div>
           </CardContent>
@@ -244,7 +244,7 @@ export function APFirmwareManager() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
               <span className="text-2xl font-bold">{stats.updateAvailable}</span>
             </div>
           </CardContent>
@@ -286,7 +286,7 @@ export function APFirmwareManager() {
                     <div className="flex items-center gap-2">
                       <span>{image.name}</span>
                       {image.isRecommended && (
-                        <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Latest</Badge>
+                        <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Latest</Badge>
                       )}
                     </div>
                   </SelectItem>
@@ -392,9 +392,9 @@ export function APFirmwareManager() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <p className="text-sm text-amber-800 dark:text-amber-200">
+            <div className="flex items-center gap-2 p-3 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded-md">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+              <p className="text-sm text-[color:var(--status-warning)]">
                 Access points will reboot during the upgrade process
               </p>
             </div>

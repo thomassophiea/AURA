@@ -212,7 +212,7 @@ export function AFCPlanningTool() {
       case 'analyzing':
         return <Badge variant="default">Analyzing...</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Completed</Badge>;
+        return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Completed</Badge>;
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -239,7 +239,7 @@ export function AFCPlanningTool() {
         <p className="text-muted-foreground">
           Automated Frequency Coordination - Optimize channel and power settings
 
-      <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950">
+      <Alert className="border-[color:var(--status-info)]/30 bg-[color:var(--status-info-bg)]">
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
           <strong>Important Context:</strong> AFC (Automated Frequency Coordination) planning in 6GHz spectrum requires registration with an AFC service provider. 
@@ -581,7 +581,7 @@ export function AFCPlanningTool() {
                     <CardContent className="pt-6">
                       <div className="text-center">
                         <p className="text-sm text-muted-foreground">Coverage Score</p>
-                        <p className="text-3xl font-bold text-green-500">
+                        <p className="text-3xl font-bold text-[color:var(--status-success)]">
                           {selectedPlan.coverageScore || 0}%
                         </p>
                       </div>
@@ -596,7 +596,7 @@ export function AFCPlanningTool() {
                     AP Coverage Map
                   </h3>
                   <Card className="p-4 bg-muted/30">
-                    <div className="relative w-full h-[400px] bg-slate-100 dark:bg-slate-900 rounded-lg border-2 border-dashed border-border overflow-hidden">
+                    <div className="relative w-full h-[400px] bg-muted/30 rounded-lg border-2 border-dashed border-border overflow-hidden">
                       {/* Simple SVG Map Placeholder */}
                       <svg className="w-full h-full" viewBox="0 0 800 400">
                         {/* Grid Background */}

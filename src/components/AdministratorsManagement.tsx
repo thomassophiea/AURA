@@ -333,10 +333,10 @@ export function AdministratorsManagement() {
 
   const getRoleBadge = (role: Administrator['role']) => {
     const colors: Record<Administrator['role'], string> = {
-      super_admin: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
-      admin: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-      operator: 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20',
-      viewer: 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20'
+      super_admin: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
+      admin: 'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30',
+      operator: 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30',
+      viewer: 'bg-muted/50 text-muted-foreground border-border'
     };
 
     const labels: Record<Administrator['role'], string> = {
@@ -398,9 +398,9 @@ export function AdministratorsManagement() {
               </Button>
             </div>
 
-            <Alert className="border-2 border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <AlertDescription className="text-amber-800 dark:text-amber-200">
+            <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+              <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+              <AlertDescription className="text-[color:var(--status-warning)]">
                 Administrators management API endpoints are not available on this controller version. This feature requires API v1/administrators support.
               </AlertDescription>
             </Alert>
@@ -444,9 +444,9 @@ export function AdministratorsManagement() {
       </div>
 
       {apiNotAvailable && (
-        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
+        <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+          <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
+          <AlertDescription className="text-[color:var(--status-warning)]">
             Administrators management API endpoints are not available on this controller version.
             This feature requires API v1/administrators support.
           </AlertDescription>

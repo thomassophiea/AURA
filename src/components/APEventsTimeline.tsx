@@ -82,17 +82,17 @@ function getEventIcon(category?: string, context?: string) {
 // Get color for severity level
 function getSeverityColor(level?: string): string {
   const l = (level || '').toLowerCase();
-  if (l === 'critical' || l === 'error') return 'text-red-500';
-  if (l === 'major' || l === 'warning') return 'text-amber-500';
-  if (l === 'minor') return 'text-blue-500';
+  if (l === 'critical' || l === 'error') return 'text-[color:var(--status-error)]';
+  if (l === 'major' || l === 'warning') return 'text-[color:var(--status-warning)]';
+  if (l === 'minor') return 'text-[color:var(--status-info)]';
   return 'text-muted-foreground';
 }
 
 function getSeverityBg(level?: string): string {
   const l = (level || '').toLowerCase();
-  if (l === 'critical' || l === 'error') return 'bg-red-500/10 border-red-500/30';
-  if (l === 'major' || l === 'warning') return 'bg-amber-500/10 border-amber-500/30';
-  if (l === 'minor') return 'bg-blue-500/10 border-blue-500/30';
+  if (l === 'critical' || l === 'error') return 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
+  if (l === 'major' || l === 'warning') return 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
+  if (l === 'minor') return 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30';
   return 'bg-muted/30 border-muted';
 }
 

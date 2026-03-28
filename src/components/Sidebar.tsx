@@ -218,7 +218,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                 <span className="flex items-center gap-2">
                   {item.label}
                   {item.badge && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-medium uppercase tracking-wide">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
                       {item.badge}
                     </span>
                   )}
@@ -259,9 +259,9 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                     <span
                       className={cn(
                         'ml-auto h-1.5 w-1.5 rounded-full shrink-0',
-                        sg.connection_status === 'connected' ? 'bg-green-500' :
-                        sg.connection_status === 'disconnected' ? 'bg-red-500' :
-                        sg.connection_status === 'error' ? 'bg-amber-500' :
+                        sg.connection_status === 'connected' ? 'bg-[color:var(--status-success)]' :
+                        sg.connection_status === 'disconnected' ? 'bg-[color:var(--status-error)]' :
+                        sg.connection_status === 'error' ? 'bg-[color:var(--status-warning)]' :
                         'bg-muted-foreground/40'
                       )}
                       title={sg.connection_status}

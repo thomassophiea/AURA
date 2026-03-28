@@ -335,10 +335,10 @@ export function AnomalyDetector() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-red-500 dark:text-red-400 border-red-500';
-      case 'medium': return 'text-amber-500 dark:text-amber-400 border-amber-500';
-      case 'low': return 'text-blue-500 dark:text-blue-400 border-blue-500';
-      default: return 'text-gray-500 dark:text-gray-400 border-gray-500';
+      case 'high': return 'text-[color:var(--status-error)] border-[color:var(--status-error)]';
+      case 'medium': return 'text-[color:var(--status-warning)] border-[color:var(--status-warning)]';
+      case 'low': return 'text-[color:var(--status-info)] border-[color:var(--status-info)]';
+      default: return 'text-muted-foreground border-muted-foreground';
     }
   };
 
@@ -405,8 +405,8 @@ export function AnomalyDetector() {
           </div>
         ) : anomalies.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
-            <Activity className="h-8 w-8 text-green-500 mb-2" />
-            <div className="text-sm font-medium text-green-500">No anomalies detected</div>
+            <Activity className="h-8 w-8 text-[color:var(--status-success)] mb-2" />
+            <div className="text-sm font-medium text-[color:var(--status-success)]">No anomalies detected</div>
             <div className="text-xs text-muted-foreground mt-1">
               All metrics within normal ranges
             </div>
@@ -438,7 +438,7 @@ export function AnomalyDetector() {
                         {' - '}
                         {anomaly.metric}: {anomaly.baseline.toFixed(1)} → {anomaly.current.toFixed(1)}
                         {' '}
-                        <span className={anomaly.changePercent > 0 ? 'text-green-500' : 'text-red-500'}>
+                        <span className={anomaly.changePercent > 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-error)]'}>
                           ({anomaly.changePercent > 0 ? '+' : ''}{anomaly.changePercent}%)
                         </span>
                       </div>
@@ -452,10 +452,10 @@ export function AnomalyDetector() {
             ))}
 
             {historicalData.length < 2 && (
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <div className="mt-4 p-3 bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg">
                 <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <div className="text-xs text-blue-800 dark:text-blue-200">
+                  <Info className="h-4 w-4 text-[color:var(--status-info)] mt-0.5" />
+                  <div className="text-xs text-foreground">
                     <strong>Building baseline...</strong> Anomaly detection improves with more data.
                     Currently using {historicalData.length} snapshot(s) for comparison.
                   </div>

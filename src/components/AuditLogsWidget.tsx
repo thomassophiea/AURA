@@ -94,15 +94,15 @@ export function AuditLogsWidget() {
     const status = (log.status || '').toLowerCase();
 
     if (status.includes('error') || status.includes('fail')) {
-      return <AlertCircle className="h-4 w-4 text-red-500" />;
+      return <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
     }
     if (status.includes('success') || action.includes('create') || action.includes('add')) {
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
     }
     if (action.includes('delete') || action.includes('remove')) {
-      return <AlertCircle className="h-4 w-4 text-orange-500" />;
+      return <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />;
     }
-    return <Info className="h-4 w-4 text-blue-500" />;
+    return <Info className="h-4 w-4 text-[color:var(--status-info)]" />;
   };
 
   const getActionBadge = (log: AuditLog) => {
@@ -118,13 +118,13 @@ export function AuditLogsWidget() {
     }
 
     if (action.toLowerCase().includes('create') || action.toLowerCase().includes('add')) {
-      return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">Create</Badge>;
+      return <Badge variant="outline" className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Create</Badge>;
     }
     if (action.toLowerCase().includes('update') || action.toLowerCase().includes('modify')) {
-      return <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">Update</Badge>;
+      return <Badge variant="outline" className="text-xs bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30">Update</Badge>;
     }
     if (action.toLowerCase().includes('delete') || action.toLowerCase().includes('remove')) {
-      return <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20">Delete</Badge>;
+      return <Badge variant="outline" className="text-xs bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30">Delete</Badge>;
     }
     return <Badge variant="secondary" className="text-xs">{action}</Badge>;
   };

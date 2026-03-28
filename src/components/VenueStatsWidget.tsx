@@ -83,10 +83,10 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
 
   if (error) {
     return (
-      <Card className="w-full border-red-200">
+      <Card className="w-full border-[color:var(--status-error)]/30">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <AlertTriangle className="h-5 w-5 text-[color:var(--status-error)]" />
             <CardTitle>Venue Statistics</CardTitle>
           </div>
         </CardHeader>
@@ -146,7 +146,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
           {/* Total Unique Clients */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-600" />
+              <Users className="h-4 w-4 text-[color:var(--status-info)]" />
               <span className="text-sm text-muted-foreground">Total Clients</span>
             </div>
             <div className="text-2xl font-bold">{totalClients}</div>
@@ -156,7 +156,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
           {/* Peak Concurrent Clients */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <TrendingUp className="h-4 w-4 text-[color:var(--status-success)]" />
               <span className="text-sm text-muted-foreground">Peak Concurrent</span>
             </div>
             <div className="text-2xl font-bold">{peakClients}</div>
@@ -176,7 +176,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
           {/* Peak Download */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-cyan-600" />
+              <TrendingUp className="h-4 w-4 text-[color:var(--status-info)]" />
               <span className="text-sm text-muted-foreground">Peak Download</span>
             </div>
             <div className="text-lg font-bold">{formatBitsPerSecond(peakDownload)}</div>
@@ -227,7 +227,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
           <div className="space-y-2">
             {totalClients > 0 && (
               <div className="flex items-start gap-2 text-sm">
-                <Users className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <Users className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   <strong>{totalClients}</strong> unique clients served with peak concurrency of <strong>{peakClients}</strong> users.
                 </p>
@@ -235,7 +235,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
             )}
             {peakUpload > 0 || peakDownload > 0 && (
               <div className="flex items-start gap-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <TrendingUp className="h-4 w-4 text-[color:var(--status-success)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   Peak throughput: {formatBitsPerSecond(peakUpload * 1000000)} upload, {formatBitsPerSecond(peakDownload * 1000000)} download.
                 </p>

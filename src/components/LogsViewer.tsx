@@ -175,15 +175,15 @@ export function LogsViewer() {
   const getLevelIcon = (level: LogEntry['level']) => {
     switch (level) {
       case 'debug':
-        return <Info className="h-4 w-4 text-gray-500" />;
+        return <Info className="h-4 w-4 text-muted-foreground" />;
       case 'info':
-        return <CheckCircle className="h-4 w-4 text-blue-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-info)]" />;
       case 'warning':
-        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+        return <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />;
       case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
       case 'critical':
-        return <AlertCircle className="h-4 w-4 text-red-700" />;
+        return <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
       default:
         return <Info className="h-4 w-4" />;
     }
@@ -297,9 +297,9 @@ export function LogsViewer() {
                   onCheckedChange={setAutoRefresh}
                 />
                 {autoRefresh ? (
-                  <Play className="h-4 w-4 text-green-500" />
+                  <Play className="h-4 w-4 text-[color:var(--status-success)]" />
                 ) : (
-                  <Pause className="h-4 w-4 text-gray-500" />
+                  <Pause className="h-4 w-4 text-muted-foreground" />
                 )}
               </div>
             </div>

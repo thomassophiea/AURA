@@ -638,10 +638,10 @@ export function ApiTestTool() {
                                   <Badge 
                                     variant="outline" 
                                     className={
-                                      item.method === 'GET' ? 'border-green-500 text-green-700' :
-                                      item.method === 'POST' ? 'border-blue-500 text-blue-700' :
-                                      item.method === 'PUT' ? 'border-orange-500 text-orange-700' :
-                                      item.method === 'DELETE' ? 'border-red-500 text-red-700' :
+                                      item.method === 'GET' ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]' :
+                                      item.method === 'POST' ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]' :
+                                      item.method === 'PUT' ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]' :
+                                      item.method === 'DELETE' ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]' :
                                       ''
                                     }
                                   >
@@ -780,10 +780,10 @@ export function ApiTestTool() {
                             <Badge 
                               variant="outline"
                               className={
-                                request.method === 'GET' ? 'border-green-500 text-green-700' :
-                                request.method === 'POST' ? 'border-blue-500 text-blue-700' :
-                                request.method === 'PUT' ? 'border-orange-500 text-orange-700' :
-                                request.method === 'DELETE' ? 'border-red-500 text-red-700' :
+                                request.method === 'GET' ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]' :
+                                request.method === 'POST' ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]' :
+                                request.method === 'PUT' ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]' :
+                                request.method === 'DELETE' ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]' :
                                 ''
                               }
                             >

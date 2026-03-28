@@ -200,11 +200,11 @@ export function ControllerSelector({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'disconnected':
-        return <WifiOff className="h-4 w-4 text-red-500" />;
+        return <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-amber-500" />;
+        return <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />;
       default:
         return <Wifi className="h-4 w-4 text-muted-foreground" />;
     }
@@ -213,11 +213,11 @@ export function ControllerSelector({
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'connected':
-        return <Badge variant="outline" className="text-green-500 border-green-500">Connected</Badge>;
+        return <Badge variant="outline" className="text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Connected</Badge>;
       case 'disconnected':
-        return <Badge variant="outline" className="text-red-500 border-red-500">Offline</Badge>;
+        return <Badge variant="outline" className="text-[color:var(--status-error)] border-[color:var(--status-error)]/30">Offline</Badge>;
       case 'error':
-        return <Badge variant="outline" className="text-amber-500 border-amber-500">Error</Badge>;
+        return <Badge variant="outline" className="text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Error</Badge>;
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }

@@ -80,11 +80,11 @@ export function BestPracticesWidget() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Good':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'Warning':
-        return <AlertTriangle className="h-4 w-4 text-amber-500" />;
+        return <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />;
       case 'Error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
+        return <XCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
       default:
         return null;
     }
@@ -142,7 +142,7 @@ export function BestPracticesWidget() {
 
   if (error) {
     return (
-      <Card className="border-amber-500">
+      <Card className="border-[color:var(--status-warning)]">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5" />
@@ -160,7 +160,7 @@ export function BestPracticesWidget() {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
+              <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
               Best Practices Evaluation
             </CardTitle>
             <CardDescription>Configuration and operational recommendations</CardDescription>
@@ -175,13 +175,13 @@ export function BestPracticesWidget() {
         <div className="grid grid-cols-3 gap-4">
           <button
             onClick={() => setStatusFilter(statusFilter === 'Good' ? 'All' : 'Good')}
-            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 ${
+            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-success-bg)] hover:opacity-80 ${
               statusFilter === 'Good'
                 ? 'ring-2 ring-purple-500'
                 : ''
             }`}
           >
-            <CheckCircle className="h-5 w-5 text-green-500" />
+            <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
             <div className="text-left">
               <div className="text-2xl font-bold">{statusCounts.Good}</div>
               <div className="text-xs text-muted-foreground">Good</div>
@@ -189,13 +189,13 @@ export function BestPracticesWidget() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === 'Warning' ? 'All' : 'Warning')}
-            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-amber-50 dark:bg-amber-950 hover:bg-amber-100 dark:hover:bg-amber-900 ${
+            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-warning-bg)] hover:opacity-80 ${
               statusFilter === 'Warning'
                 ? 'ring-2 ring-purple-500'
                 : ''
             }`}
           >
-            <AlertTriangle className="h-5 w-5 text-amber-500" />
+            <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
             <div className="text-left">
               <div className="text-2xl font-bold">{statusCounts.Warning}</div>
               <div className="text-xs text-muted-foreground">Warnings</div>
@@ -203,13 +203,13 @@ export function BestPracticesWidget() {
           </button>
           <button
             onClick={() => setStatusFilter(statusFilter === 'Error' ? 'All' : 'Error')}
-            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 ${
+            className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-error-bg)] hover:opacity-80 ${
               statusFilter === 'Error'
                 ? 'ring-2 ring-purple-500'
                 : ''
             }`}
           >
-            <XCircle className="h-5 w-5 text-red-500" />
+            <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
             <div className="text-left">
               <div className="text-2xl font-bold">{statusCounts.Error}</div>
               <div className="text-xs text-muted-foreground">Errors</div>
@@ -297,7 +297,7 @@ export function BestPracticesWidget() {
         )}
 
         {practices.length === 0 && !loading && (
-          <div className="text-center py-6 text-green-500 dark:text-green-400">
+          <div className="text-center py-6 text-[color:var(--status-success)]">
             <CheckCircle className="h-12 w-12 mx-auto mb-2" />
             <p className="font-semibold">All Best Practices Met!</p>
             <p className="text-sm text-muted-foreground">Your configuration follows all recommended best practices.</p>

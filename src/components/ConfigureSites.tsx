@@ -350,11 +350,11 @@ export function ConfigureSites({ onShowDetail }: ConfigureSitesProps) {
     
     switch (status.toLowerCase()) {
       case 'active':
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Active</Badge>;
+        return <Badge className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Active</Badge>;
       case 'inactive':
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Inactive</Badge>;
+        return <Badge className="bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30">Inactive</Badge>;
       case 'pending':
-        return <Badge className="bg-amber-100 text-amber-800 border-amber-200">Pending</Badge>;
+        return <Badge className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Pending</Badge>;
       default:
         return <Badge variant="secondary">{status}</Badge>;
     }

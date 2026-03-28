@@ -540,11 +540,11 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'connected':
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
+        return <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />;
       case 'disconnected':
-        return <WifiOff className="h-4 w-4 text-red-500" />;
+        return <WifiOff className="h-4 w-4 text-[color:var(--status-error)]" />;
       case 'error':
-        return <AlertCircle className="h-4 w-4 text-amber-500" />;
+        return <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />;
       default:
         return <Wifi className="h-4 w-4 text-muted-foreground" />;
     }
@@ -810,7 +810,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               <div className="space-y-3">
                 {/* Already authenticated notice */}
                 {xiqService.isAuthenticated('xiq_pending') && (
-                  <div className="flex items-center gap-2 p-3 bg-green-500/10 border border-green-500/20 rounded-lg text-sm text-green-700 dark:text-green-400">
+                  <div className="flex items-center gap-2 p-3 bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg text-sm text-[color:var(--status-success)]">
                     <CheckCircle className="h-4 w-4 shrink-0" />
                     <span>ExtremeCloud session active.</span>
                   </div>

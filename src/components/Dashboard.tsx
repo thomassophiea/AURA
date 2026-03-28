@@ -913,9 +913,9 @@ export function Dashboard() {
               </div>
               <div>
                 <p className={`text-2xl font-semibold ${
-                  healthScore >= 90 ? 'text-green-500' :
-                  healthScore >= 70 ? 'text-amber-500' :
-                  'text-red-500'
+                  healthScore >= 90 ? 'text-[color:var(--status-success)]' :
+                  healthScore >= 70 ? 'text-[color:var(--status-warning)]' :
+                  'text-[color:var(--status-error)]'
                 }`}>
                   {healthScore}%
                 </p>
@@ -949,9 +949,9 @@ export function Dashboard() {
               </div>
               <div>
                 <p className={`text-2xl font-semibold ${
-                  healthScore >= 90 ? 'text-green-500' :
-                  healthScore >= 70 ? 'text-amber-500' :
-                  'text-red-500'
+                  healthScore >= 90 ? 'text-[color:var(--status-success)]' :
+                  healthScore >= 70 ? 'text-[color:var(--status-warning)]' :
+                  'text-[color:var(--status-error)]'
                 }`}>
                   {healthScore >= 90 ? 'Excellent' :
                    healthScore >= 70 ? 'Good' :

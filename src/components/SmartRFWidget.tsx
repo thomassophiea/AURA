@@ -89,10 +89,10 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
 
   if (error) {
     return (
-      <Card className="w-full border-red-200">
+      <Card className="w-full border-[color:var(--status-error)]/30">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-red-500" />
+            <AlertTriangle className="h-5 w-5 text-[color:var(--status-error)]" />
             <CardTitle>Site RRM</CardTitle>
           </div>
         </CardHeader>
@@ -135,7 +135,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
           {/* Channel Changes */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <Activity className="h-4 w-4 text-blue-600" />
+              <Activity className="h-4 w-4 text-[color:var(--status-info)]" />
               <span className="text-sm text-muted-foreground">Channel Changes</span>
             </div>
             <div className="text-2xl font-bold">{channelChanges}</div>
@@ -147,7 +147,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
           {/* Power Changes */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
+              <TrendingUp className="h-4 w-4 text-[color:var(--status-success)]" />
               <span className="text-sm text-muted-foreground">Power Changes</span>
             </div>
             <div className="text-2xl font-bold">{powerChanges}</div>
@@ -174,7 +174,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
           {/* Signal-to-Noise Ratio */}
           <div className="p-4 rounded-lg border bg-card">
             <div className="flex items-center gap-2 mb-2">
-              <Radio className="h-4 w-4 text-cyan-600" />
+              <Radio className="h-4 w-4 text-[color:var(--status-info)]" />
               <span className="text-sm text-muted-foreground">Avg SNR</span>
             </div>
             <div className="text-2xl font-bold">{Math.round(avgSnr)} dB</div>
@@ -193,7 +193,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
           <div className="space-y-2">
             {channelChanges > 10 && (
               <div className="flex items-start gap-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <TrendingUp className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   High channel change activity detected. Site RRM is actively optimizing for interference.
                 </p>
@@ -201,7 +201,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {avgChannelUtil > 70 && (
               <div className="flex items-start gap-2 text-sm">
-                <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   Channel utilization is high. Consider adding more APs or optimizing channel assignments.
                 </p>
@@ -209,7 +209,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {avgSnr < 20 && (
               <div className="flex items-start gap-2 text-sm">
-                <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   Low SNR detected. Check for interference sources or adjust AP placement.
                 </p>
@@ -217,7 +217,7 @@ export function SmartRFWidget({ siteId, duration = '24H' }: SmartRFWidgetProps) 
             )}
             {channelChanges <= 5 && powerChanges <= 5 && avgSnr > 30 && (
               <div className="flex items-start gap-2 text-sm">
-                <Radio className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                <Radio className="h-4 w-4 text-[color:var(--status-success)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
                   RF environment is stable with excellent signal quality. Site RRM optimizations are minimal.
                 </p>

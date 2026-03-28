@@ -971,7 +971,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                                   {(parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI) && (() => {
                                     const rssi = parseInt(parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI);
                                     if (isNaN(rssi)) return null;
-                                    const color = rssi >= -60 ? 'text-green-500' : rssi >= -70 ? 'text-orange-500' : 'text-red-500';
+                                    const color = rssi >= -60 ? 'text-[color:var(--status-success)]' : rssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]';
                                     return (
                                       <div>
                                         <span className="text-muted-foreground">Signal: </span>
@@ -1089,7 +1089,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                           {event.rssi && (
                             <div>
                               <span className="text-muted-foreground">Signal: </span>
-                              <span className={`font-medium ${event.rssi >= -60 ? 'text-green-500' : event.rssi >= -70 ? 'text-orange-500' : 'text-red-500'}`}>
+                              <span className={`font-medium ${event.rssi >= -60 ? 'text-[color:var(--status-success)]' : event.rssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'}`}>
                                 {event.rssi} dBm
                               </span>
                             </div>

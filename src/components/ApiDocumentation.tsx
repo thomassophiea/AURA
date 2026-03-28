@@ -753,12 +753,12 @@ export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
 
   const getMethodColor = (method: string) => {
     switch (method) {
-      case 'GET': return 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20';
-      case 'POST': return 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20';
-      case 'PUT': return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20';
-      case 'DELETE': return 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20';
-      case 'PATCH': return 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20';
-      default: return 'bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20';
+      case 'GET': return 'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30';
+      case 'POST': return 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30';
+      case 'PUT': return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30';
+      case 'DELETE': return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30';
+      case 'PATCH': return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30';
+      default: return 'bg-muted/50 text-muted-foreground border-border';
     }
   };
 
@@ -893,7 +893,7 @@ export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
                                 onClick={() => copyPath(endpoint.path)}
                               >
                                 {copiedPath === endpoint.path ? (
-                                  <Check className="h-3 w-3 text-green-500" />
+                                  <Check className="h-3 w-3 text-[color:var(--status-success)]" />
                                 ) : (
                                   <Copy className="h-3 w-3" />
                                 )}

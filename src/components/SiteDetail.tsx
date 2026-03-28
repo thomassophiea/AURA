@@ -103,10 +103,10 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'healthy': return 'text-green-500';
-      case 'warning': return 'text-amber-500';
-      case 'critical': return 'text-red-500';
-      default: return 'text-gray-500';
+      case 'healthy': return 'text-[color:var(--status-success)]';
+      case 'warning': return 'text-[color:var(--status-warning)]';
+      case 'critical': return 'text-[color:var(--status-error)]';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -207,7 +207,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
               <span className="text-sm">Access Points Online</span>
               <div className="flex items-center space-x-2">
                 <div className="w-16 bg-muted rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '85%' }}></div>
+                  <div className="bg-[color:var(--status-success)] h-2 rounded-full" style={{ width: '85%' }}></div>
                 </div>
                 <span className="text-sm font-medium">85%</span>
               </div>
@@ -217,7 +217,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
               <span className="text-sm">Network Performance</span>
               <div className="flex items-center space-x-2">
                 <div className="w-16 bg-muted rounded-full h-2">
-                  <div className="bg-green-500 h-2 rounded-full" style={{ width: '92%' }}></div>
+                  <div className="bg-[color:var(--status-success)] h-2 rounded-full" style={{ width: '92%' }}></div>
                 </div>
                 <span className="text-sm font-medium">92%</span>
               </div>
@@ -227,7 +227,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
               <span className="text-sm">Client Satisfaction</span>
               <div className="flex items-center space-x-2">
                 <div className="w-16 bg-muted rounded-full h-2">
-                  <div className="bg-amber-500 h-2 rounded-full" style={{ width: '78%' }}></div>
+                  <div className="bg-[color:var(--status-warning)] h-2 rounded-full" style={{ width: '78%' }}></div>
                 </div>
                 <span className="text-sm font-medium">78%</span>
               </div>
