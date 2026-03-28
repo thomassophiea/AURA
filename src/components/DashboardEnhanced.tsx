@@ -53,15 +53,13 @@ import { getVendor, getVendorIcon, getShortVendor } from '../services/oui-lookup
 import { formatBitsPerSecond, formatBytes as formatBytesUnit, formatThroughput, formatDataVolume, TOOLTIPS } from '../lib/units';
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { OperationalContextSummary } from './OperationalContextSummary';
-import { FilterBar } from './FilterBar';
 import { VersionBadge } from './VersionBadge';
-import { ContextualInsightsSelector, SelectorTab } from './ContextualInsightsSelector';
+import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
 import { RFQualityWidgetAnchored } from './RFQualityWidgetAnchored';
 import { AIInsightsPanel } from './AIInsightsPanel';
 import { TimelineCursorControls } from './TimelineCursorControls';
-import { EnvironmentProfileSelector } from './EnvironmentProfileSelector';
 import { AnimatedValue } from './ui/animated-value';
 import { VenueStatisticsWidget } from './VenueStatisticsWidget';
 import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
@@ -246,6 +244,9 @@ function DashboardEnhancedComponent() {
 
   // Collapsible sections state
   const [isTopClientsCollapsed, setIsTopClientsCollapsed] = useState(true);
+
+  // Dashboard search state (for UnifiedFilterBar)
+  const [dashboardSearch, setDashboardSearch] = useState('');
 
   // Contextual Insights Selector state
   const [selectorTab, setSelectorTab] = useState<SelectorTab>('ai-insights');
@@ -1542,40 +1543,15 @@ function DashboardEnhancedComponent() {
 
       {/* Filter Bar with Context Selector */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-3">
-          <ContextualInsightsSelector
-            activeTab={selectorTab}
-            selectedId={selectedEntityId || undefined}
-            onTabChange={(tab) => {
-              setSelectorTab(tab);
-              setSelectedEntityId(null);
-              setSelectedEntityName(null);
-              // Reset site filter when switching away from site-scoped views
-              if (tab === 'ai-insights') {
-                updateFilter('site', 'all');
-              }
-            }}
-            onSelectionChange={(tab, id, name) => {
-              setSelectedEntityId(id);
-              setSelectedEntityName(name || null);
-              console.log('[Dashboard] Selection changed:', { tab, id, name });
-              // Sync site selection to global filters so all data fetching is site-scoped
-              if (tab === 'site' && id) {
-                updateFilter('site', id);
-              } else if (tab === 'site' && !id) {
-                // "All Sites" selected - reset to global view
-                updateFilter('site', 'all');
-              }
-            }}
-          />
-          <FilterBar
-            showSiteFilter={false}
-            showTimeRangeFilter={true}
-            showContextFilter={false}
-          />
-          <EnvironmentProfileSelector showThresholds={false} />
-        </div>
-        
+        <UnifiedFilterBar
+          searchPlaceholder="Search widgets, metrics..."
+          searchValue={dashboardSearch}
+          onSearchChange={setDashboardSearch}
+          defaultContextTab="site"
+          showEnvironment={true}
+          showTimeRange={true}
+        />
+
         {/* Timeline Cursor Controls - visible when exploring data */}
         <TimelineCursorControls />
       </div>

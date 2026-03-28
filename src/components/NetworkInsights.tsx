@@ -7,7 +7,7 @@ import { ApplicationAnalyticsEnhancedWidget } from './ApplicationAnalyticsEnhanc
 import { ApplicationCategoriesWidget } from './ApplicationCategoriesWidget';
 import { SmartRFWidget } from './SmartRFWidget';
 import { VenueStatsWidget } from './VenueStatsWidget';
-import { FilterBar } from './FilterBar';
+import { UnifiedFilterBar } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { apiService } from '../services/api';
 
@@ -29,6 +29,7 @@ export function NetworkInsights() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [insightsSearch, setInsightsSearch] = useState('');
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [sites, setSites] = useState<any[]>([]);
 
@@ -112,7 +113,12 @@ export function NetworkInsights() {
             </p>
           </div>
         </div>
-        <FilterBar showSiteFilter={true} showTimeRangeFilter={true} />
+        <UnifiedFilterBar
+          searchPlaceholder="Search insights..."
+          searchValue={insightsSearch}
+          onSearchChange={setInsightsSearch}
+          defaultContextTab="ai-insights"
+        />
         <div className="text-center py-12 text-muted-foreground">
           Loading site information...
         </div>
@@ -148,7 +154,12 @@ export function NetworkInsights() {
       </div>
 
       {/* Filter Bar */}
-      <FilterBar showSiteFilter={true} showTimeRangeFilter={true} />
+      <UnifiedFilterBar
+        searchPlaceholder="Search insights..."
+        searchValue={insightsSearch}
+        onSearchChange={setInsightsSearch}
+        defaultContextTab="ai-insights"
+      />
 
       {/* Anomaly Detector - What Changed? */}
       <div className="widget-container">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { RefreshCw, TrendingUp, BarChart3, Wifi, Users, Radio, AppWindow, MapPin, Activity, User } from 'lucide-react';
-import { FilterBar } from './FilterBar';
+import { UnifiedFilterBar } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { apiService } from '../services/api';
 import { fetchWidgetData, WIDGET_CATEGORIES } from '../services/widgetService';
@@ -41,6 +41,7 @@ export function NetworkInsightsEnhanced() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [insightsSearch, setInsightsSearch] = useState('');
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(null);
   const [sites, setSites] = useState<any[]>([]);
   const [widgetData, setWidgetData] = useState<any>({});
@@ -184,7 +185,12 @@ export function NetworkInsightsEnhanced() {
       </div>
 
       {/* Filter Bar */}
-      <FilterBar showSiteFilter={true} showTimeRangeFilter={true} />
+      <UnifiedFilterBar
+        searchPlaceholder="Search insights, anomalies..."
+        searchValue={insightsSearch}
+        onSearchChange={setInsightsSearch}
+        defaultContextTab="ai-insights"
+      />
 
       {/* Category Tabs */}
       <div className="border-b border-border">

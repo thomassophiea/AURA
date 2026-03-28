@@ -5,6 +5,8 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { UnifiedFilterBar } from './UnifiedFilterBar';
+import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -409,13 +411,11 @@ interface AccessPointsProps {
 }
 
 export function AccessPoints({ onShowDetail }: AccessPointsProps) {
+  const { filters } = useGlobalFilters();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
-  const [selectedSite, setSelectedSite] = useState<string>('all');
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<Record<string, { cpuUsage?: number; memoryUsage?: number }>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
   const [meshRoles, setMeshRoles] = useState<Map<string, 'BASE' | 'RELAY'>>(new Map());
@@ -480,9 +480,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   useEffect(() => {
     // Load access points when selected site changes
-    // This will trigger on initial load (selectedSite starts as 'all') and when user changes selection
+    // This will trigger on initial load (filters.site starts as 'all') and when user changes selection
     loadAccessPointsForSite();
-  }, [selectedSite]);
+  }, [filters.site]);
 
   // Auto-refresh polling
   useEffect(() => {
@@ -501,7 +501,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [selectedSite]); // Re-create interval when selected site changes
+  }, [filters.site]); // Re-create interval when selected site changes
 
   // Pause polling when tab becomes inactive
   useEffect(() => {
@@ -517,7 +517,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [selectedSite]);
+  }, [filters.site]);
 
   // Force re-render every 10 seconds to update "time ago" text
   useEffect(() => {
@@ -530,11 +530,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   const loadData = async () => {
     setError('');
-    
+
     try {
-      // Load sites first
-      await loadSites();
-      
       // Try to load query columns if available (optional)
       try {
         const columnsData = await apiService.getAPQueryColumns();
@@ -543,34 +540,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         console.log('Query columns not available:', columnError);
         setQueryColumns([]);
       }
-      
-      // Note: Access points will be loaded by the useEffect that watches selectedSite
-      
+
+      // Note: Access points will be loaded by the useEffect that watches filters.site
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load access points data');
       console.error('Error loading access points:', err);
-    }
-  };
-
-  const loadSites = async () => {
-    setIsLoadingSites(true);
-    try {
-      // Check if authenticated before making API call
-      if (!apiService.isAuthenticated()) {
-        setSites([]);
-        return;
-      }
-
-      const sitesData = await apiService.getSites();
-
-      // Ensure we have an array
-      const sitesArray = Array.isArray(sitesData) ? sitesData : [];
-      setSites(sitesArray);
-    } catch (err) {
-      // Silently handle errors
-      setSites([]);
-    } finally {
-      setIsLoadingSites(false);
     }
   };
 
@@ -580,12 +555,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     try {
       let apsData;
-      if (!selectedSite || selectedSite === 'all') {
+      if (!filters.site || filters.site === 'all') {
         // Load all access points
         apsData = await apiService.getAccessPoints();
       } else {
         // Load access points for specific site
-        apsData = await apiService.getAccessPointsBySite(selectedSite);
+        apsData = await apiService.getAccessPointsBySite(filters.site);
       }
 
       const accessPointsArray = Array.isArray(apsData) ? apsData : [];
@@ -1056,12 +1031,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       }
     }
     
-    // If no direct location found, try to get it from the sites list as fallback
-    if (selectedSite !== 'all' && sites.length > 0) {
-      const selectedSiteObj = sites.find(s => s.id === selectedSite);
-      if (selectedSiteObj) {
-        return selectedSiteObj.name || selectedSiteObj.siteName || 'Selected Site';
-      }
+    // If no direct location found, try to get it from the selected site filter as fallback
+    if (filters.site !== 'all') {
+      return 'Selected Site';
     }
     
     // Debug: Log available fields if no site/location found (only for first few APs to avoid spam)
@@ -1088,8 +1060,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         locationFieldsChecked: locationFields.map(field => `${field}: ${ap[field]}`),
         
         // Show filtering context
-        selectedSite,
-        sitesAvailable: sites.length,
+        selectedSite: filters.site,
+        sitesAvailable: 'N/A (managed by UnifiedFilterBar)',
         
         // Show the actual AP object structure for analysis
         rawAPObject: ap
@@ -1182,8 +1154,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const siteName = selectedSite !== 'all'
-        ? sites.find(s => s.id === selectedSite || s.name === selectedSite)?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
+      const siteName = filters.site !== 'all'
+        ? filters.site.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
         : 'all-sites';
       link.download = `e911-bssids-${siteName}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
@@ -1212,9 +1184,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         exportDate: new Date().toISOString(),
         exportType: 'E911_BSSID_LOCATION_DATA',
         totalAccessPoints: apsToExport.length,
-        siteName: selectedSite !== 'all'
-          ? sites.find(s => s.id === selectedSite || s.name === selectedSite)?.name || 'All Sites'
-          : 'All Sites',
+        siteName: filters.site !== 'all' ? filters.site : 'All Sites',
         accessPoints: apsToExport.map(ap => ({
           bssid: ap.macAddress || (ap as any).bssid || '',
           apName: getAPName(ap),
@@ -1241,8 +1211,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const siteName = selectedSite !== 'all'
-        ? sites.find(s => s.id === selectedSite || s.name === selectedSite)?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
+      const siteName = filters.site !== 'all'
+        ? filters.site.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
         : 'all-sites';
       link.download = `e911-bssids-${siteName}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
@@ -1778,7 +1748,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         </div>
         <div className="flex items-center space-x-2">
           <Button onClick={() => {
-            // Refresh both sites and access points
+            // Refresh columns metadata and access points
             loadData();
             loadAccessPointsForSite();
           }} variant="outline" size="sm" disabled={isAutoRefreshing}>
@@ -2072,46 +2042,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             />
           </div>
           <CardDescription>
-            {selectedSite !== 'all' 
-              ? `Access points in ${sites.find(s => s.id === selectedSite)?.name || 'selected site'}. Click any access point for details.`
+            {filters.site !== 'all'
+              ? `Access points in selected site. Click any access point for details.`
               : 'Click any access point to view detailed information and connected clients'
             }
           </CardDescription>
-          
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by serial number, name, model, IP, or site..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-10"
-              />
-            </div>
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-44 h-10 shrink-0">
-                <SelectValue placeholder="All Sites" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites</SelectItem>
-                {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.name || site.siteName} {site.aps ? `(${site.aps} APs)` : ''}
-                  </SelectItem>
-                ))}
-                {sites.length === 0 && !isLoadingSites && (
-                  <SelectItem value="no-sites" disabled>
-                    No sites available
-                  </SelectItem>
-                )}
-                {isLoadingSites && (
-                  <SelectItem value="loading" disabled>
-                    Loading sites...
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
+
+          <UnifiedFilterBar
+            searchPlaceholder="Search APs by name, serial, model, IP, or site..."
+            searchValue={searchTerm}
+            onSearchChange={setSearchTerm}
+            defaultContextTab="access-point"
+            showEnvironment={true}
+            showTimeRange={true}
+          />
         </CardHeader>
         <CardContent>
           {sortedAccessPoints.length === 0 ? (
@@ -2119,7 +2063,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Wifi className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Access Points Found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || selectedSite !== 'all'
+                {searchTerm || filters.site !== 'all'
                   ? 'No access points match your current filters.'
                   : 'No access points are currently configured.'}
               </p>

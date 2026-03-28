@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { RefreshCw, TrendingUp, BarChart3, Wifi, Users, Radio, MapPin, Activity } from 'lucide-react';
-import { FilterBar } from './FilterBar';
+import { UnifiedFilterBar } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { fetchSimplifiedWidgetData, type SimplifiedWidgetData } from '../services/simplifiedWidgetService';
 import {
@@ -44,6 +44,7 @@ export function NetworkInsightsSimplified() {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [insightsSearch, setInsightsSearch] = useState('');
   const [widgetData, setWidgetData] = useState<SimplifiedWidgetData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +122,13 @@ export function NetworkInsightsSimplified() {
       </div>
 
       {/* Filter Bar */}
-      <FilterBar showSiteFilter={true} showTimeRangeFilter={false} />
+      <UnifiedFilterBar
+        searchPlaceholder="Search insights..."
+        searchValue={insightsSearch}
+        onSearchChange={setInsightsSearch}
+        defaultContextTab="site"
+        showTimeRange={false}
+      />
 
       {/* Category Tabs */}
       <div className="border-b border-border">

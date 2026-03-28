@@ -1,3 +1,45 @@
+# UnifiedFilterBar Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Replace FilterBar.tsx, ContextualInsightsSelector.tsx, and all ad-hoc local filter UIs with a single `UnifiedFilterBar` component used across the entire AURA app.
+
+**Architecture:** New `UnifiedFilterBar` component combines a context-aware search input, a rich context selector popover (AI/Site/AP/Switch/Client tabs), global dropdowns (environment, time range), and an `extraFilters` slot for page-specific filters — all in one horizontal row. Internally uses existing `useGlobalFilters` and `useOperationalContext` hooks. Each page passes search state and optional extra filter elements as props.
+
+**Tech Stack:** React, TypeScript, shadcn/ui (Popover, Select, ScrollArea, Input, Badge, Button), Radix primitives, lucide-react icons
+
+**Spec:** `docs/superpowers/specs/2026-03-28-unified-filter-bar-design.md`
+
+---
+
+## File Structure
+
+| Action | File | Responsibility |
+|--------|------|----------------|
+| Create | `src/components/UnifiedFilterBar.tsx` | Main component: search input, context selector popover, environment/time dropdowns, extra filters slot, active filter badge |
+| Modify | `src/components/DashboardEnhanced.tsx` | Replace `FilterBar` + `ContextualInsightsSelector` imports with `UnifiedFilterBar` |
+| Modify | `src/components/AccessPoints.tsx` | Replace local search/site UI with `UnifiedFilterBar`, keep local `searchTerm` state |
+| Modify | `src/components/ConnectedClients.tsx` | Replace local search/site UI with `UnifiedFilterBar`, keep local `searchTerm` state |
+| Modify | `src/components/NetworkInsightsEnhanced.tsx` | Replace `FilterBar` import with `UnifiedFilterBar` |
+| Modify | `src/components/NetworkInsights.tsx` | Replace `FilterBar` import with `UnifiedFilterBar` |
+| Modify | `src/components/NetworkInsightsSimplified.tsx` | Replace `FilterBar` import with `UnifiedFilterBar` |
+| Delete | `src/components/FilterBar.tsx` | Fully replaced |
+| Delete | `src/components/ContextualInsightsSelector.tsx` | Fully replaced |
+
+---
+
+### Task 1: Build UnifiedFilterBar Component
+
+**Files:**
+- Create: `src/components/UnifiedFilterBar.tsx`
+
+This is the core task. The component merges FilterBar.tsx (global dropdowns) and ContextualInsightsSelector.tsx (context popover with tabs) into a single component, and adds an always-visible search input and extra filters slot.
+
+- [ ] **Step 1: Create UnifiedFilterBar.tsx with full implementation**
+
+Create `src/components/UnifiedFilterBar.tsx` with the following content:
+
+```tsx
 /**
  * UnifiedFilterBar Component
  *
@@ -156,7 +198,7 @@ export function UnifiedFilterBar({
 }: UnifiedFilterBarProps) {
   // Global state hooks
   const { filters, updateFilter, resetFilters, hasActiveFilters } = useGlobalFilters();
-  const { setMode, selectSite, selectAP, selectClient } = useOperationalContext();
+  const { ctx, setMode, selectSite, selectAP, selectClient } = useOperationalContext();
 
   // Context selector state
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -720,3 +762,358 @@ export function UnifiedFilterBar({
     </div>
   );
 }
+```
+
+- [ ] **Step 2: Verify the component compiles**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npx tsc --noEmit src/components/UnifiedFilterBar.tsx 2>&1 | head -20`
+
+If there are import errors, fix them. The component should compile cleanly.
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add src/components/UnifiedFilterBar.tsx
+git commit -m "feat: add UnifiedFilterBar component
+
+Merges FilterBar + ContextualInsightsSelector into a single standardized
+filter bar with search input, context selector popover, global dropdowns,
+and page-specific filter slot."
+```
+
+---
+
+### Task 2: Integrate on DashboardEnhanced
+
+**Files:**
+- Modify: `src/components/DashboardEnhanced.tsx`
+
+The Dashboard currently uses both `FilterBar` (for time range) and `ContextualInsightsSelector` (for context tabs). Replace both with `UnifiedFilterBar`.
+
+- [ ] **Step 1: Read the current Dashboard filter section**
+
+Read `src/components/DashboardEnhanced.tsx` around lines 56-58 (imports) and lines 1550-1580 (FilterBar + ContextualInsightsSelector rendering) to understand the exact current usage.
+
+- [ ] **Step 2: Update imports**
+
+Replace:
+```tsx
+import { FilterBar } from './FilterBar';
+```
+and:
+```tsx
+import { ContextualInsightsSelector, SelectorTab } from './ContextualInsightsSelector';
+```
+with:
+```tsx
+import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
+```
+
+- [ ] **Step 3: Add search state**
+
+Add near the other state declarations:
+```tsx
+const [dashboardSearch, setDashboardSearch] = useState('');
+```
+
+- [ ] **Step 4: Replace the FilterBar + ContextualInsightsSelector rendering**
+
+Find the section where `<FilterBar` and `<ContextualInsightsSelector` are rendered (around lines 1570-1580). Replace both components with a single:
+```tsx
+<UnifiedFilterBar
+  searchPlaceholder="Search widgets, metrics..."
+  searchValue={dashboardSearch}
+  onSearchChange={setDashboardSearch}
+  defaultContextTab="site"
+  showEnvironment={true}
+  showTimeRange={true}
+/>
+```
+
+Keep the `EnvironmentProfileSelector` and `TimelineCursorControls` that follow — those are separate components.
+
+- [ ] **Step 5: Remove unused ContextualInsightsSelector callback props**
+
+If there were `onTabChange` or `onSelectionChange` callbacks passed to `ContextualInsightsSelector`, remove the callback handler functions that are now unused. The UnifiedFilterBar manages context internally via `useOperationalContext`.
+
+- [ ] **Step 6: Verify it compiles and renders**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npm run build 2>&1 | tail -20`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/DashboardEnhanced.tsx
+git commit -m "refactor(dashboard): replace FilterBar + ContextualInsightsSelector with UnifiedFilterBar"
+```
+
+---
+
+### Task 3: Integrate on AccessPoints
+
+**Files:**
+- Modify: `src/components/AccessPoints.tsx`
+
+The AP page has local `searchTerm`, `selectedSite`, `sites` state and inline search+site UI in CardHeader (~lines 2081-2113). Replace the inline UI with `UnifiedFilterBar` while keeping the local `searchTerm` for client-side filtering.
+
+- [ ] **Step 1: Read the current filter state and UI**
+
+Read `src/components/AccessPoints.tsx` at:
+- Lines 410-430 (state declarations for `searchTerm`, `selectedSite`, `sites`, `isLoadingSites`)
+- Lines 555-575 (`loadSites` function)
+- Lines 2060-2120 (inline filter UI in CardHeader)
+
+- [ ] **Step 2: Remove site-related state and loadSites**
+
+Remove these local state declarations (the UnifiedFilterBar manages them internally):
+- `const [selectedSite, setSelectedSite] = useState<string>('all');`
+- `const [sites, setSites] = useState<Site[]>([]);`
+- `const [isLoadingSites, setIsLoadingSites] = useState(false);`
+- The `loadSites` async function
+- The `loadSites()` call inside `loadData()`
+
+Keep `searchTerm` — it's still used for client-side filtering.
+
+- [ ] **Step 3: Wire site filter to useGlobalFilters**
+
+Add at the top of the component:
+```tsx
+const { filters } = useGlobalFilters();
+```
+
+Replace all references to `selectedSite` with `filters.site`. This includes:
+- The `useEffect` that watches `selectedSite` to call `loadAccessPointsForSite()`
+- The `loadAccessPointsForSite` function which checks `if (!selectedSite || selectedSite === 'all')`
+- The CardDescription conditional on `selectedSite !== 'all'`
+
+- [ ] **Step 4: Replace inline filter UI with UnifiedFilterBar**
+
+In the CardHeader, replace the entire `<div className="flex items-center gap-3">` block containing the Search Input and Site Select (lines ~2081-2113) with:
+```tsx
+<UnifiedFilterBar
+  searchPlaceholder="Search APs by name, serial, model, IP, or site..."
+  searchValue={searchTerm}
+  onSearchChange={setSearchTerm}
+  defaultContextTab="access-point"
+  showEnvironment={true}
+  showTimeRange={true}
+/>
+```
+
+- [ ] **Step 5: Update imports**
+
+Add `import { UnifiedFilterBar } from './UnifiedFilterBar';` and `import { useGlobalFilters } from '../hooks/useGlobalFilters';`. Remove unused `Select`, `SelectContent`, `SelectItem`, `SelectTrigger`, `SelectValue` imports if they are no longer used elsewhere in the file (check first — the table column selector may still use them).
+
+- [ ] **Step 6: Verify it compiles**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npm run build 2>&1 | tail -20`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/AccessPoints.tsx
+git commit -m "refactor(ap): replace local search/site filters with UnifiedFilterBar"
+```
+
+---
+
+### Task 4: Integrate on ConnectedClients
+
+**Files:**
+- Modify: `src/components/ConnectedClients.tsx`
+
+Same pattern as AccessPoints — replace local `searchTerm`, `siteFilter`, `sites` state and inline UI with `UnifiedFilterBar`.
+
+- [ ] **Step 1: Read the current filter state and UI**
+
+Read `src/components/ConnectedClients.tsx` at:
+- Lines 30-50 (state declarations)
+- Lines 800-860 (filter UI)
+- Find the filtering logic that uses `siteFilter` and `searchTerm`
+
+- [ ] **Step 2: Remove site-related state**
+
+Remove these:
+- `const [siteFilter, setSiteFilter] = useState<string>('all');`
+- `const [sites, setSites] = useState<Site[]>([]);`
+- `const [isLoadingSites, setIsLoadingSites] = useState(false);`
+- The `loadSites` function and its call
+
+Keep `searchTerm`.
+
+- [ ] **Step 3: Wire site filter to useGlobalFilters**
+
+Add `const { filters } = useGlobalFilters();` and replace all `siteFilter` references with `filters.site`.
+
+- [ ] **Step 4: Replace inline filter UI with UnifiedFilterBar**
+
+Replace the search + site dropdown block (lines ~817-845) with:
+```tsx
+<UnifiedFilterBar
+  searchPlaceholder="Search by hostname, MAC, IP, AP, or site..."
+  searchValue={searchTerm}
+  onSearchChange={setSearchTerm}
+  defaultContextTab="client"
+  showEnvironment={true}
+  showTimeRange={true}
+/>
+```
+
+- [ ] **Step 5: Update imports**
+
+Add `UnifiedFilterBar` and `useGlobalFilters` imports. Remove unused Select/site-related imports.
+
+- [ ] **Step 6: Verify it compiles**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npm run build 2>&1 | tail -20`
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/components/ConnectedClients.tsx
+git commit -m "refactor(clients): replace local search/site filters with UnifiedFilterBar"
+```
+
+---
+
+### Task 5: Integrate on Network Insights Pages
+
+**Files:**
+- Modify: `src/components/NetworkInsightsEnhanced.tsx`
+- Modify: `src/components/NetworkInsights.tsx`
+- Modify: `src/components/NetworkInsightsSimplified.tsx`
+
+All three import `FilterBar` and use it with simple props. Replace with `UnifiedFilterBar`.
+
+- [ ] **Step 1: Read each file's FilterBar usage**
+
+Read the import line and the `<FilterBar .../>` rendering in each of the three files.
+
+- [ ] **Step 2: Update NetworkInsightsEnhanced.tsx**
+
+Replace import:
+```tsx
+import { FilterBar } from './FilterBar';
+// →
+import { UnifiedFilterBar } from './UnifiedFilterBar';
+```
+
+Add search state:
+```tsx
+const [insightsSearch, setInsightsSearch] = useState('');
+```
+
+Replace rendering:
+```tsx
+<FilterBar showSiteFilter={true} showTimeRangeFilter={true} />
+// →
+<UnifiedFilterBar
+  searchPlaceholder="Search insights, anomalies..."
+  searchValue={insightsSearch}
+  onSearchChange={setInsightsSearch}
+  defaultContextTab="ai-insights"
+/>
+```
+
+- [ ] **Step 3: Update NetworkInsights.tsx**
+
+Same pattern. Replace `FilterBar` import with `UnifiedFilterBar`. Add search state. Replace rendering with:
+```tsx
+<UnifiedFilterBar
+  searchPlaceholder="Search insights..."
+  searchValue={insightsSearch}
+  onSearchChange={setInsightsSearch}
+  defaultContextTab="ai-insights"
+/>
+```
+
+- [ ] **Step 4: Update NetworkInsightsSimplified.tsx**
+
+Same pattern. This one had `showTimeRangeFilter` disabled, so pass `showTimeRange={false}`:
+```tsx
+<UnifiedFilterBar
+  searchPlaceholder="Search insights..."
+  searchValue={insightsSearch}
+  onSearchChange={setInsightsSearch}
+  defaultContextTab="site"
+  showTimeRange={false}
+/>
+```
+
+- [ ] **Step 5: Verify all compile**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npm run build 2>&1 | tail -20`
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/components/NetworkInsightsEnhanced.tsx src/components/NetworkInsights.tsx src/components/NetworkInsightsSimplified.tsx
+git commit -m "refactor(insights): replace FilterBar with UnifiedFilterBar on all Network Insights pages"
+```
+
+---
+
+### Task 6: Delete Deprecated Components
+
+**Files:**
+- Delete: `src/components/FilterBar.tsx`
+- Delete: `src/components/ContextualInsightsSelector.tsx`
+
+- [ ] **Step 1: Verify no remaining imports**
+
+Run: `grep -r "import.*FilterBar\|import.*ContextualInsightsSelector" src/`
+
+Expected: No results. If any remain, fix them first.
+
+- [ ] **Step 2: Delete the files**
+
+```bash
+rm src/components/FilterBar.tsx
+rm src/components/ContextualInsightsSelector.tsx
+```
+
+- [ ] **Step 3: Final build check**
+
+Run: `cd "/Users/m4pro/Library/CloudStorage/OneDrive-ExtremeNetworks,Inc/Visual Studio/AURA" && npm run build 2>&1 | tail -20`
+
+Expected: Clean build with no errors.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add -u src/components/FilterBar.tsx src/components/ContextualInsightsSelector.tsx
+git commit -m "chore: delete deprecated FilterBar and ContextualInsightsSelector
+
+Replaced by UnifiedFilterBar across all pages."
+```
+
+---
+
+### Task 7: Smoke Test
+
+- [ ] **Step 1: Start dev server and test each page**
+
+Run: `npm run dev`
+
+Manually verify on each page:
+1. **Dashboard** — UnifiedFilterBar renders with context selector, environment, time range
+2. **Access Points** — Search filters APs by name/serial/model/IP. Context selector defaults to AP tab.
+3. **Connected Clients** — Search filters clients. Context selector defaults to Client tab.
+4. **Network Insights Enhanced** — Context selector defaults to AI Insights tab.
+5. **Network Insights** — Same as above.
+6. **Network Insights Simplified** — Time range dropdown hidden.
+
+- [ ] **Step 2: Test context selector popover**
+
+Click the context selector on any page:
+- Tabs switch correctly (AI Insights, Site, AP, Switch, Client)
+- Search within popover filters items
+- Selecting a site/AP/client updates the page data
+- "All" option resets selection
+
+- [ ] **Step 3: Test filter reset**
+
+Click the "X" button next to the active filter badge:
+- All global filters reset to defaults
+- Search input clears
+- Context selector resets
