@@ -410,7 +410,7 @@ export function UnifiedFilterBar({
   return (
     <div className={cn("flex items-center gap-2 flex-wrap", className)}>
       {/* Search Input — always visible */}
-      <div className="relative min-w-[180px] max-w-[320px] flex-shrink">
+      <div className="relative w-[280px] shrink min-w-[140px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={searchPlaceholder}
