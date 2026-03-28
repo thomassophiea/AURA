@@ -2037,7 +2037,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </div>
             <Select value={selectedSite} onValueChange={setSelectedSite}>
               <SelectTrigger className="w-44 h-10 shrink-0">
-                <MapPin className="mr-2 h-4 w-4 shrink-0" />
                 <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>

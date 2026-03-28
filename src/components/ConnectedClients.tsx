@@ -814,7 +814,6 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </div>
             <Select value={siteFilter} onValueChange={setSiteFilter}>
               <SelectTrigger className="w-44 h-10 shrink-0">
-                <MapPin className="mr-2 h-4 w-4 shrink-0" />
                 <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>
