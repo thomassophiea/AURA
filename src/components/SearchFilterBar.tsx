@@ -11,7 +11,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Search, Clock, X, Calendar } from 'lucide-react';
+import { Search, Clock, X, Calendar, Building } from 'lucide-react';
 import { cn } from './ui/utils';
 import { type TimePreset } from '../hooks/useTimeRangeFilter';
 
@@ -28,6 +28,12 @@ export interface SearchFilterBarProps {
   timePreset?: TimePreset;
   onTimePresetChange?: (preset: TimePreset) => void;
   onCustomRange?: (from: Date, to: Date) => void;
+
+  /** Site filter */
+  showSiteFilter?: boolean;
+  sites?: string[];
+  selectedSite?: string;
+  onSiteChange?: (site: string) => void;
 
   /** Active filter indicators */
   resultCount?: number;
@@ -47,6 +53,10 @@ export function SearchFilterBar({
   timePreset = '24h',
   onTimePresetChange,
   onCustomRange,
+  showSiteFilter = false,
+  sites = [],
+  selectedSite = 'all',
+  onSiteChange,
   resultCount,
   totalCount,
   className = '',
@@ -54,12 +64,13 @@ export function SearchFilterBar({
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const hasActiveFilters = searchValue.trim().length > 0 || (showTimeRange && timePreset !== '24h');
+  const hasActiveFilters = searchValue.trim().length > 0 || (showTimeRange && timePreset !== '24h') || (showSiteFilter && selectedSite !== 'all');
   const showResultCount = resultCount !== undefined && totalCount !== undefined && hasActiveFilters;
 
   const handleClear = () => {
     onSearchChange('');
-    onTimePresetChange('24h');
+    if (onTimePresetChange) onTimePresetChange('24h');
+    if (onSiteChange) onSiteChange('all');
   };
 
   const handleCustomApply = () => {
@@ -71,7 +82,7 @@ export function SearchFilterBar({
   return (
     <div className={cn("flex items-center gap-2 flex-wrap", className)}>
       {/* Search Input */}
-      <div className="relative w-[320px] shrink min-w-[140px]">
+      <div className="relative flex-1 min-w-[200px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={searchPlaceholder}
@@ -150,6 +161,26 @@ export function SearchFilterBar({
             </div>
           </PopoverContent>
         </Popover>
+      )}
+
+      {/* Site Filter */}
+      {showSiteFilter && onSiteChange && (
+        <div className="shrink-0">
+          <Select value={selectedSite} onValueChange={onSiteChange}>
+            <SelectTrigger className="w-48 h-10">
+              <Building className="mr-2 h-4 w-4 flex-shrink-0" />
+              <SelectValue placeholder="All Sites" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {sites.map((site) => (
+                <SelectItem key={site} value={site}>
+                  {site}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       )}
 
       {/* Result Count + Clear */}

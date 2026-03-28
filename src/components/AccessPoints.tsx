@@ -1998,10 +1998,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               catalogId="table_aps_all"
             />
           </div>
-          <CardDescription>
-            Click any access point to view detailed information and connected clients
-          </CardDescription>
-
           <SearchFilterBar
             searchPlaceholder="Search by name, serial, model, IP, site, status..."
             searchValue={searchQuery}
