@@ -5,12 +5,13 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { UnifiedFilterBar } from './UnifiedFilterBar';
-import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { SearchFilterBar } from './SearchFilterBar';
+import { useCompoundSearch } from '../hooks/useCompoundSearch';
+import { useTimeRangeFilter } from '../hooks/useTimeRangeFilter';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Wifi, Search, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
+import { AlertCircle, Wifi, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -411,7 +412,6 @@ interface AccessPointsProps {
 }
 
 export function AccessPoints({ onShowDetail }: AccessPointsProps) {
-  const { filters } = useGlobalFilters();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<Record<string, { cpuUsage?: number; memoryUsage?: number }>>({});
@@ -422,7 +422,24 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
   const [apStates, setApStates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
+
+  // Compound tokenized AND search (replaces old single-term search + site filter)
+  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<AccessPoint>({
+    storageKey: 'ap-search',
+    fields: [
+      ap => ap.serialNumber,
+      ap => (ap as any).displayName || (ap as any).name || (ap as any).hostname,
+      ap => ap.model || ap.hardwareType || (ap as any).platformName,
+      ap => ap.ipAddress,
+      ap => (ap as any).macAddress || (ap as any).mac,
+      ap => ap.hostSite || (ap as any).siteName || (ap as any).location,
+      ap => ap.status || (ap as any).connectionState || (ap as any).operationalState,
+      ap => (ap as any).firmwareVersion || (ap as any).fwVersion || (ap as any).softwareVersion,
+    ],
+  });
+
+  // Time range filter (visible for UI consistency; not applied to AP rows since AP data is current-state)
+  const { timeRange, setPreset: setTimePreset, setCustomRange } = useTimeRangeFilter('ap-time-range');
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
   const [apStations, setApStations] = useState<APStation[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -479,10 +496,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   }, []);
 
   useEffect(() => {
-    // Load access points when selected site changes
-    // This will trigger on initial load (filters.site starts as 'all') and when user changes selection
-    loadAccessPointsForSite();
-  }, [filters.site]);
+    // Load all access points on mount (compound search handles filtering client-side)
+    loadAccessPoints();
+  }, []);
 
   // Auto-refresh polling
   useEffect(() => {
@@ -493,7 +509,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       if (document.visibilityState === 'visible') {
         console.log('Auto-refreshing AP data...');
         setIsAutoRefreshing(true);
-        loadAccessPointsForSite().finally(() => {
+        loadAccessPoints().finally(() => {
           setIsAutoRefreshing(false);
         });
       }
@@ -501,14 +517,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
-  }, [filters.site]); // Re-create interval when selected site changes
+  }, []);
 
   // Pause polling when tab becomes inactive
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('Tab became active, refreshing AP data...');
-        loadAccessPointsForSite();
+        loadAccessPoints();
       }
     };
 
@@ -517,7 +533,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [filters.site]);
+  }, []);
 
   // Force re-render every 10 seconds to update "time ago" text
   useEffect(() => {
@@ -541,7 +557,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         setQueryColumns([]);
       }
 
-      // Note: Access points will be loaded by the useEffect that watches filters.site
+      // Note: Access points will be loaded by the useEffect that runs on mount
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load access points data');
@@ -549,19 +565,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  const loadAccessPointsForSite = async () => {
+  const loadAccessPoints = async () => {
     setIsLoading(true);
     setError('');
 
     try {
-      let apsData;
-      if (!filters.site || filters.site === 'all') {
-        // Load all access points
-        apsData = await apiService.getAccessPoints();
-      } else {
-        // Load access points for specific site
-        apsData = await apiService.getAccessPointsBySite(filters.site);
-      }
+      // Always fetch all APs — compound search handles filtering client-side
+      const apsData = await apiService.getAccessPoints();
 
       const accessPointsArray = Array.isArray(apsData) ? apsData : [];
 
@@ -832,16 +842,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  const filteredAccessPoints = accessPoints.filter((ap) => {
-    const matchesSearch = !searchTerm ||
-      ap.serialNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getAPName(ap)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ap.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ap.ipAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      getAPSite(ap)?.toLowerCase().includes(searchTerm.toLowerCase()); // Include site in search
-
-    return matchesSearch;
-  });
+  const filteredAccessPoints = filterBySearch(accessPoints);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
   const isAfcAnchor = (ap: AccessPoint): boolean => {
@@ -1031,43 +1032,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       }
     }
     
-    // If no direct location found, try to get it from the selected site filter as fallback
-    if (filters.site !== 'all') {
-      return 'Selected Site';
-    }
-    
-    // Debug: Log available fields if no site/location found (only for first few APs to avoid spam)
-    if (accessPoints.indexOf(ap) < 3) {
-      console.log(`AP ${ap.serialNumber} COMPLETE FIELD ANALYSIS:`, {
-        // Show ALL fields in the AP object
-        allAPFields: Object.keys(ap).sort().map(key => `${key}: ${ap[key]}`),
-        
-        // Show only potential location-related fields
-        locationRelatedFields: Object.keys(ap).filter(key => 
-          key.toLowerCase().includes('site') || 
-          key.toLowerCase().includes('location') ||
-          key.toLowerCase().includes('campus') ||
-          key.toLowerCase().includes('building') ||
-          key.toLowerCase().includes('place') ||
-          key.toLowerCase().includes('area') ||
-          key.toLowerCase().includes('zone') ||
-          key.toLowerCase().includes('address') ||
-          key.toLowerCase().includes('room') ||
-          key.toLowerCase().includes('floor')
-        ).map(key => `${key}: ${ap[key]}`),
-        
-        // Show what fields we're specifically checking
-        locationFieldsChecked: locationFields.map(field => `${field}: ${ap[field]}`),
-        
-        // Show filtering context
-        selectedSite: filters.site,
-        sitesAvailable: 'N/A (managed by UnifiedFilterBar)',
-        
-        // Show the actual AP object structure for analysis
-        rawAPObject: ap
-      });
-    }
-    
     return '';
   };
 
@@ -1154,9 +1118,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const siteName = filters.site !== 'all'
-        ? filters.site.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
-        : 'all-sites';
+      const siteName = hasActiveSearch ? 'filtered' : 'all-sites';
       link.download = `e911-bssids-${siteName}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(link);
       link.click();
@@ -1184,7 +1146,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         exportDate: new Date().toISOString(),
         exportType: 'E911_BSSID_LOCATION_DATA',
         totalAccessPoints: apsToExport.length,
-        siteName: filters.site !== 'all' ? filters.site : 'All Sites',
+        siteName: hasActiveSearch ? searchQuery : 'All Sites',
         accessPoints: apsToExport.map(ap => ({
           bssid: ap.macAddress || (ap as any).bssid || '',
           apName: getAPName(ap),
@@ -1211,10 +1173,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const siteName = filters.site !== 'all'
-        ? filters.site.replace(/[^a-zA-Z0-9]/g, '-') || 'selected-site'
-        : 'all-sites';
-      link.download = `e911-bssids-${siteName}-${new Date().toISOString().split('T')[0]}.json`;
+      const jsonSiteName = hasActiveSearch ? 'filtered' : 'all-sites';
+      link.download = `e911-bssids-${jsonSiteName}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1750,7 +1710,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           <Button onClick={() => {
             // Refresh columns metadata and access points
             loadData();
-            loadAccessPointsForSite();
+            loadAccessPoints();
           }} variant="outline" size="sm" disabled={isAutoRefreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
             Refresh APs
@@ -2042,19 +2002,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             />
           </div>
           <CardDescription>
-            {filters.site !== 'all'
-              ? `Access points in selected site. Click any access point for details.`
-              : 'Click any access point to view detailed information and connected clients'
-            }
+            Click any access point to view detailed information and connected clients
           </CardDescription>
 
-          <UnifiedFilterBar
-            searchPlaceholder="Search APs by name, serial, model, IP, or site..."
-            searchValue={searchTerm}
-            onSearchChange={setSearchTerm}
-            defaultContextTab="access-point"
-            showEnvironment={true}
-            showTimeRange={true}
+          <SearchFilterBar
+            searchPlaceholder="Search by name, serial, model, IP, site, status..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            timePreset={timeRange.preset}
+            onTimePresetChange={setTimePreset}
+            onCustomRange={setCustomRange}
+            resultCount={filteredAccessPoints.length}
+            totalCount={accessPoints.length}
           />
         </CardHeader>
         <CardContent>
@@ -2063,8 +2022,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Wifi className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Access Points Found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || filters.site !== 'all'
-                  ? 'No access points match your current filters.'
+                {hasActiveSearch
+                  ? 'No access points match your current search.'
                   : 'No access points are currently configured.'}
               </p>
             </div>

@@ -9,14 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, Station, type StationEvent, type APEvent, type RRMEvent } from '../services/api';
 import { RoamingTrail } from './RoamingTrail';
-import { UnifiedFilterBar } from './UnifiedFilterBar';
-import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { SearchFilterBar } from './SearchFilterBar';
+import { useCompoundSearch } from '../hooks/useCompoundSearch';
+import { useTimeRangeFilter } from '../hooks/useTimeRangeFilter';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { toast } from 'sonner';
 import { useTableCustomization } from '@/hooks/useTableCustomization';
@@ -29,12 +30,29 @@ interface ConnectedClientsProps {
 }
 
 function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
-  const { filters } = useGlobalFilters();
-
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
+    storageKey: 'client-search',
+    fields: [
+      s => s.hostName,
+      s => s.macAddress,
+      s => s.ipAddress,
+      s => s.siteName,
+      s => s.apName || (s as any).apDisplayName || (s as any).apHostname,
+      s => (s as any).deviceType,
+      s => (s as any).manufacturer,
+      s => (s as any).username,
+      s => s.network || (s as any).ssid || (s as any).serviceName,
+      s => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
+      s => s.status,
+      s => (s as any).band || (s as any).frequencyBand,
+    ],
+  });
+
+  const { timeRange, setPreset: setTimePreset, setCustomRange, filterByTime } = useTimeRangeFilter('client-time-range');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -152,18 +170,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     }
   };
 
-  const filteredStations = stations.filter((station) => {
-    const matchesSite = filters.site === 'all' || (station as any).siteId === filters.site || station.siteName === filters.site;
-    const q = searchTerm.toLowerCase();
-    const matchesSearch = !q ||
-      station.hostName?.toLowerCase().includes(q) ||
-      station.macAddress?.toLowerCase().includes(q) ||
-      station.ipAddress?.toLowerCase().includes(q) ||
-      station.siteName?.toLowerCase().includes(q) ||
-      station.apName?.toLowerCase().includes(q) ||
-      (station as any).deviceType?.toLowerCase().includes(q);
-    return matchesSite && matchesSearch;
-  });
+  const searchFiltered = filterBySearch(stations);
+  const filteredStations = filterByTime(searchFiltered, (s) => (s as any).lastSeen || (s as any).associationTime);
 
   // Helper function to get sortable value for a column
   const getSortValue = (station: Station, columnKey: string): string | number => {
@@ -800,13 +808,15 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             Select clients using the checkboxes to manage their GDPR data rights
           </CardDescription>
           
-          <UnifiedFilterBar
-            searchPlaceholder="Search by hostname, MAC, IP, AP, or site..."
-            searchValue={searchTerm}
-            onSearchChange={setSearchTerm}
-            defaultContextTab="client"
-            showEnvironment={true}
-            showTimeRange={true}
+          <SearchFilterBar
+            searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            timePreset={timeRange.preset}
+            onTimePresetChange={setTimePreset}
+            onCustomRange={setCustomRange}
+            resultCount={filteredStations.length}
+            totalCount={stations.length}
           />
         </CardHeader>
         <CardContent>
@@ -815,7 +825,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
               <h3 className="text-base font-medium mb-1">No Connected Clients Found</h3>
               <p className="text-sm text-muted-foreground">
-                {filters.site !== 'all'
+                {hasActiveSearch
                   ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
