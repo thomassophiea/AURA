@@ -803,8 +803,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       </Dialog>
 
       <Card className="surface-2dp">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between mb-2">
             <CardTitle>Connected Clients</CardTitle>
             <SaveToWorkspace
               widgetId="connected-clients-table"
