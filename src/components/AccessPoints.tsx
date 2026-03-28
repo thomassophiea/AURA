@@ -460,7 +460,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   // Wi-Fi generation breakdown counts
   const wifiGenCounts = useMemo(() => {
     const counts: Record<WifiGen, number> = { 'Wi-Fi 7': 0, 'Wi-Fi 6E': 0, 'Wi-Fi 6': 0, 'Wi-Fi 5': 0, 'Unknown': 0 };
-    accessPoints.forEach(ap => { counts[getWifiGeneration(ap.model)]++; });
+    accessPoints.forEach(ap => { counts[getWifiGeneration(ap.model || ap.hardwareType || ap.apModel || ap.platformName)]++; });
     return counts;
   }, [accessPoints]);
 
