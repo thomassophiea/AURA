@@ -4,12 +4,13 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { DetailSlideOut } from './DetailSlideOut';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown, Building } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -53,6 +54,16 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   });
 
   const { timeRange, setPreset: setTimePreset, setCustomRange, filterByTime } = useTimeRangeFilter('client-time-range');
+
+  // Site filter — persisted to sessionStorage
+  const [selectedSite, setSelectedSiteState] = useState<string>(() => {
+    try { return sessionStorage.getItem('client-site-filter') || 'all'; } catch { return 'all'; }
+  });
+  const setSelectedSite = (site: string) => {
+    setSelectedSiteState(site);
+    try { sessionStorage.setItem('client-site-filter', site); } catch {}
+  };
+
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -170,7 +181,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     }
   };
 
-  const searchFiltered = filterBySearch(stations);
+  const siteFiltered = selectedSite === 'all' ? stations : stations.filter(s => s.siteName === selectedSite || (s as any).siteId === selectedSite);
+  const searchFiltered = filterBySearch(siteFiltered);
   const filteredStations = filterByTime(searchFiltered, (s) => (s as any).lastSeen || (s as any).associationTime);
 
   // Helper function to get sortable value for a column
@@ -808,16 +820,35 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             Select clients using the checkboxes to manage their GDPR data rights
           </CardDescription>
           
-          <SearchFilterBar
-            searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
-            searchValue={searchQuery}
-            onSearchChange={setSearchQuery}
-            timePreset={timeRange.preset}
-            onTimePresetChange={setTimePreset}
-            onCustomRange={setCustomRange}
-            resultCount={filteredStations.length}
-            totalCount={stations.length}
-          />
+          <div className="flex items-center gap-2 flex-wrap">
+            <SearchFilterBar
+              searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
+              searchValue={searchQuery}
+              onSearchChange={setSearchQuery}
+              timePreset={timeRange.preset}
+              onTimePresetChange={setTimePreset}
+              onCustomRange={setCustomRange}
+              resultCount={filteredStations.length}
+              totalCount={stations.length}
+              className="flex-1 min-w-0"
+            />
+            <div className="shrink-0">
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
+                <SelectTrigger className="w-48 h-10">
+                  <Building className="mr-2 h-4 w-4 flex-shrink-0" />
+                  <SelectValue placeholder="All Sites" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sites</SelectItem>
+                  {getUniqueSites().sort().map((site) => (
+                    <SelectItem key={site} value={site}>
+                      {site}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {sortedStations.length === 0 ? (
