@@ -80,9 +80,9 @@ export function SearchFilterBar({
   };
 
   return (
-    <div className={cn("flex items-center gap-2 flex-wrap", className)}>
+    <div className={cn("flex items-center gap-2 flex-wrap", className)} style={{ maxWidth: '100%' }}>
       {/* Search Input */}
-      <div className="relative flex-1 min-w-[200px] max-w-[480px]">
+      <div className="relative" style={{ flex: '1 1 0%', minWidth: 200, maxWidth: 480 }}>
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder={searchPlaceholder}
