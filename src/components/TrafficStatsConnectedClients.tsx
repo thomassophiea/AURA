@@ -643,8 +643,42 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         <div className="flex items-center space-x-2">
           <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            {isLoading ? 'Refreshing...' : 'Refresh'}
+            Refresh Clients
           </Button>
+          <Button
+            onClick={() => loadTrafficStatisticsForCurrentPage(stations)}
+            variant="outline"
+            size="sm"
+            disabled={isLoadingTraffic}
+          >
+            <Activity className="mr-2 h-4 w-4" />
+            {isLoadingTraffic ? 'Loading...' : 'Refresh Traffic'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsColumnDialogOpen(true)}
+          >
+            <Columns className="mr-2 h-4 w-4" />
+            Customize Columns
+          </Button>
+          <ExportButton
+            data={sortedStations}
+            columns={[
+              { key: 'hostName', label: 'Hostname' },
+              { key: 'macAddress', label: 'MAC Address' },
+              { key: 'ipAddress', label: 'IP Address' },
+              { key: 'status', label: 'Status' },
+              { key: 'apName', label: 'Access Point' },
+              { key: 'ssid', label: 'SSID' },
+              { key: 'band', label: 'Band' },
+              { key: 'signalStrength', label: 'Signal (dBm)' },
+              { key: 'deviceType', label: 'Device Type' },
+              { key: 'siteName', label: 'Site' },
+            ]}
+            filename="connected-clients"
+            title="Connected Clients"
+          />
         </div>
       </div>
 
@@ -850,50 +884,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       </Dialog>
 
       <Card className="surface-2dp">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between mb-2">
-            <CardTitle>Connected Clients</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
-                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh Clients
-              </Button>
-              <Button
-                onClick={() => loadTrafficStatisticsForCurrentPage(stations)}
-                variant="outline"
-                size="sm"
-                disabled={isLoadingTraffic}
-              >
-                <Activity className="mr-2 h-4 w-4" />
-                {isLoadingTraffic ? 'Loading...' : 'Refresh Traffic'}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsColumnDialogOpen(true)}
-              >
-                <Columns className="mr-2 h-4 w-4" />
-                Customize Columns
-              </Button>
-              <ExportButton
-                data={sortedStations}
-                columns={[
-                  { key: 'hostName', label: 'Hostname' },
-                  { key: 'macAddress', label: 'MAC Address' },
-                  { key: 'ipAddress', label: 'IP Address' },
-                  { key: 'status', label: 'Status' },
-                  { key: 'apName', label: 'Access Point' },
-                  { key: 'ssid', label: 'SSID' },
-                  { key: 'band', label: 'Band' },
-                  { key: 'signalStrength', label: 'Signal (dBm)' },
-                  { key: 'deviceType', label: 'Device Type' },
-                  { key: 'siteName', label: 'Site' },
-                ]}
-                filename="connected-clients"
-                title="Connected Clients"
-              />
-            </div>
-          </div>
+        <CardHeader className="pb-3 pt-4">
           <SearchFilterBar
             searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
             searchValue={searchQuery}
