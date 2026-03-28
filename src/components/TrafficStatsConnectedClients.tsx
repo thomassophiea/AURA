@@ -1,15 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns, Search } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -21,6 +20,9 @@ import { resolveClientIdentity, type ClientIdentity } from '../lib/clientIdentit
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { ExportButton } from './ExportButton';
+import { SearchFilterBar } from './SearchFilterBar';
+import { useCompoundSearch } from '../hooks/useCompoundSearch';
+import { useTimeRangeFilter } from '../hooks/useTimeRangeFilter';
 import { useTableCustomization } from '../hooks/useTableCustomization';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
@@ -33,8 +35,36 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [searchTerm, setSearchTerm] = useState('');
+
+  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
+    storageKey: 'client-search',
+    fields: [
+      s => s.hostName,
+      s => s.macAddress,
+      s => s.ipAddress,
+      s => s.siteName,
+      s => s.apName || (s as any).apDisplayName || (s as any).apHostname,
+      s => (s as any).deviceType,
+      s => (s as any).manufacturer,
+      s => (s as any).username,
+      s => s.network || (s as any).ssid || (s as any).serviceName,
+      s => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
+      s => s.status,
+      s => (s as any).band || (s as any).frequencyBand,
+    ],
+  });
+
+  const { timeRange, setPreset: setTimePreset, setCustomRange, filterByTime } = useTimeRangeFilter('client-time-range');
+
+  // Site filter — persisted to sessionStorage
+  const [selectedSite, setSelectedSiteState] = useState<string>(() => {
+    try { return sessionStorage.getItem('client-site-filter') || 'all'; } catch { return 'all'; }
+  });
+  const setSelectedSite = (site: string) => {
+    setSelectedSiteState(site);
+    try { sessionStorage.setItem('client-site-filter', site); } catch {}
+  };
+
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -318,19 +348,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
-  // Filter stations by site and search term
-  const filteredStations = stations.filter((station) => {
-    const matchesSite = selectedSite === 'all' || station.siteName === selectedSite;
-    const q = searchTerm.toLowerCase();
-    const matchesSearch = !q ||
-      station.hostName?.toLowerCase().includes(q) ||
-      station.macAddress?.toLowerCase().includes(q) ||
-      station.ipAddress?.toLowerCase().includes(q) ||
-      station.siteName?.toLowerCase().includes(q) ||
-      station.apName?.toLowerCase().includes(q) ||
-      (station as any).deviceType?.toLowerCase().includes(q);
-    return matchesSite && matchesSearch;
-  });
+  // Filter stations by site, compound search, and time range
+  const siteFiltered = selectedSite === 'all' ? stations : stations.filter(s => s.siteName === selectedSite || (s as any).siteId === selectedSite);
+  const searchFiltered = filterBySearch(siteFiltered);
+  const filteredStations = filterByTime(searchFiltered, (s) => (s as any).lastSeen || (s as any).associationTime);
 
   // Sort filtered stations
   const sortedStations = [...filteredStations].sort((a, b) => {
@@ -392,7 +413,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSite]);
+  }, [selectedSite, searchQuery, timeRange]);
 
   const getUniqueStatuses = () => {
     const statuses = new Set(stations.map(station => station.status).filter(Boolean));
@@ -842,8 +863,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       </Dialog>
 
       <Card className="surface-2dp">
-        <CardHeader>
-          <div className="flex items-center justify-between">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between mb-2">
             <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -881,32 +902,20 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               />
             </div>
           </div>
-          <CardDescription>
-            Select clients using checkboxes to manage GDPR data rights. Click any client to view detailed connection information. Signal strength (RSS/RSSI) included.
-          </CardDescription>
-          
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by hostname, MAC, IP, AP, or site..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-10"
-              />
-            </div>
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-44 h-10 shrink-0">
-                <SelectValue placeholder="All Sites" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites</SelectItem>
-                {getUniqueSites().map((site) => (
-                  <SelectItem key={site} value={site}>{site}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <SearchFilterBar
+            searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
+            searchValue={searchQuery}
+            onSearchChange={setSearchQuery}
+            timePreset={timeRange.preset}
+            onTimePresetChange={setTimePreset}
+            onCustomRange={setCustomRange}
+            showSiteFilter={true}
+            sites={getUniqueSites().sort()}
+            selectedSite={selectedSite}
+            onSiteChange={setSelectedSite}
+            resultCount={filteredStations.length}
+            totalCount={stations.length}
+          />
         </CardHeader>
         <CardContent>
           {filteredStations.length === 0 ? (
@@ -914,7 +923,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Connected Clients Found</h3>
               <p className="text-muted-foreground">
-                {selectedSite !== 'all'
+                {hasActiveSearch || selectedSite !== 'all'
                   ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
