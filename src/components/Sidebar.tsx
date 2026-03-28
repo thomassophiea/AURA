@@ -32,7 +32,6 @@ import {
   LayoutDashboard,
   HelpCircle,
   Target,
-  Server,
   Building2
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -46,7 +45,6 @@ import { VersionBadge } from './VersionBadge';
 import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { useEffect } from 'react';
 import { prefetchComponent } from '@/lib/prefetch';
-import { useSiteGroups } from '@/hooks/useSiteGroups';
 import { tenantService } from '../services/tenantService';
 
 interface SidebarProps {
@@ -71,7 +69,7 @@ const navigationItems = [
 
 // Configure items
 const configureItems = [
-  { id: 'configure-sites', label: 'Sites', icon: MapPin },
+  { id: 'configure-sites', label: 'Sites & Site Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
@@ -96,7 +94,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const branding = useBranding();
   const device = useDeviceDetection();
-  const { siteGroups } = useSiteGroups();
   const org = tenantService.getCurrentOrganization();
 
   // Check if any configure sub-item is currently active
@@ -106,7 +103,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   // Auto-expand sections if an item is active
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
   const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
-  const [isSiteGroupsExpanded, setIsSiteGroupsExpanded] = useState(true);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
@@ -228,51 +224,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           );
         })}
         
-        {/* Site Groups Section */}
-        {!isCollapsed && siteGroups.length > 0 && (
-          <div className="space-y-1 pt-1">
-            <Button
-              variant="ghost"
-              className="w-full justify-start h-9 px-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              onClick={() => setIsSiteGroupsExpanded(!isSiteGroupsExpanded)}
-            >
-              <Building2 className="h-4 w-4 mr-2" />
-              <span className="flex-1 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Site Groups
-              </span>
-              {isSiteGroupsExpanded ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-            </Button>
-
-            {isSiteGroupsExpanded && (
-              <div className="ml-4 space-y-0.5">
-                {siteGroups.map(sg => (
-                  <div
-                    key={sg.id}
-                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-default"
-                  >
-                    <Server className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{sg.name}</span>
-                    <span
-                      className={cn(
-                        'ml-auto h-1.5 w-1.5 rounded-full shrink-0',
-                        sg.connection_status === 'connected' ? 'bg-[color:var(--status-success)]' :
-                        sg.connection_status === 'disconnected' ? 'bg-[color:var(--status-error)]' :
-                        sg.connection_status === 'error' ? 'bg-[color:var(--status-warning)]' :
-                        'bg-muted-foreground/40'
-                      )}
-                      title={sg.connection_status}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Configure Section */}
         <div className="space-y-1">
           <Button
