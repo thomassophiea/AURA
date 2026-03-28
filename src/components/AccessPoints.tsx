@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -382,8 +382,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [hardwareFilter, setHardwareFilter] = useState<string>('all');
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
   const [apStations, setApStations] = useState<APStation[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -822,10 +820,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       ap.ipAddress?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       getAPSite(ap)?.toLowerCase().includes(searchTerm.toLowerCase()); // Include site in search
 
-    const matchesStatus = statusFilter === 'all' || ap.status?.toLowerCase() === statusFilter.toLowerCase();
-    const matchesHardware = hardwareFilter === 'all' || ap.hardwareType === hardwareFilter;
-
-    return matchesSearch && matchesStatus && matchesHardware;
+    return matchesSearch;
   });
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
@@ -956,11 +951,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     return sortDirection === 'asc' ? comparison : -comparison;
   });
-
-  const getUniqueStatuses = () => {
-    const statuses = new Set(accessPoints.map(ap => ap.status).filter(Boolean));
-    return Array.from(statuses);
-  };
 
   const getUniqueHardwareTypes = () => {
     const types = new Set(accessPoints.map(ap => ap.hardwareType).filter(Boolean));
@@ -2035,26 +2025,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             }
           </CardDescription>
           
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by serial number, name, model, IP, or site..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by serial number, name, model, IP, or site..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
             </div>
-            
-            <Select value={selectedSite} onValueChange={(value) => {
-              console.log('Site selection changed to:', value);
-              setSelectedSite(value);
-            }}>
-              <SelectTrigger className="w-48">
-                <Building className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Select Site" />
+            <Select value={selectedSite} onValueChange={setSelectedSite}>
+              <SelectTrigger className="w-44 h-10 shrink-0">
+                <MapPin className="mr-2 h-4 w-4 shrink-0" />
+                <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
@@ -2075,31 +2059,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 )}
               </SelectContent>
             </Select>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {getUniqueStatuses().map((status) => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={hardwareFilter} onValueChange={setHardwareFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Hardware" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Hardware</SelectItem>
-                {getUniqueHardwareTypes().map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -2108,7 +2067,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Wifi className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Access Points Found</h3>
               <p className="text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || hardwareFilter !== 'all'
+                {searchTerm || selectedSite !== 'all'
                   ? 'No access points match your current filters.'
                   : 'No access points are currently configured.'}
               </p>

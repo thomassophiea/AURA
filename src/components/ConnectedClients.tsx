@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, Search, RefreshCw, Filter, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { AlertCircle, Users, Search, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -32,10 +32,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [apFilter, setApFilter] = useState<string>('all');
   const [siteFilter, setSiteFilter] = useState<string>('all');
-  const [deviceTypeFilter, setDeviceTypeFilter] = useState<string>('all');
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -165,12 +162,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       station.network?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       station.manufacturer?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = statusFilter === 'all' || station.status?.toLowerCase() === statusFilter.toLowerCase();
-    const matchesAP = apFilter === 'all' || station.apSerial === apFilter || station.apName === apFilter;
     const matchesSite = siteFilter === 'all' || station.siteName === siteFilter;
-    const matchesDeviceType = deviceTypeFilter === 'all' || station.deviceType === deviceTypeFilter;
 
-    return matchesSearch && matchesStatus && matchesAP && matchesSite && matchesDeviceType;
+    return matchesSearch && matchesSite;
   });
 
   // Helper function to get sortable value for a column
@@ -262,24 +256,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
-  const getUniqueStatuses = () => {
-    const statuses = new Set(stations.map(station => station.status).filter(Boolean));
-    return Array.from(statuses);
-  };
-
-  const getUniqueAPs = () => {
-    const aps = new Set(stations.map(station => station.apName || station.apSerial).filter(Boolean));
-    return Array.from(aps);
-  };
-
   const getUniqueSites = () => {
     const sites = new Set(stations.map(station => station.siteName).filter(Boolean));
     return Array.from(sites);
-  };
-
-  const getUniqueDeviceTypes = () => {
-    const deviceTypes = new Set(stations.map(station => station.deviceType).filter(Boolean));
-    return Array.from(deviceTypes);
   };
 
   const getUniqueNetworks = () => {
@@ -823,66 +802,25 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             Select clients using the checkboxes to manage their GDPR data rights
           </CardDescription>
           
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-[2] min-w-0">
-              <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search clients by name, MAC, or site..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10 h-10"
-                />
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search clients by name, MAC, device type, or site..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
             </div>
-            
             <Select value={siteFilter} onValueChange={setSiteFilter}>
-              <SelectTrigger className="w-36 h-10">
-                <MapPin className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Site" />
+              <SelectTrigger className="w-44 h-10 shrink-0">
+                <MapPin className="mr-2 h-4 w-4 shrink-0" />
+                <SelectValue placeholder="All Sites" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
                 {getUniqueSites().map((site) => (
                   <SelectItem key={site} value={site}>{site}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-28 h-10">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {getUniqueStatuses().map((status) => (
-                  <SelectItem key={status} value={status}>{status}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={deviceTypeFilter} onValueChange={setDeviceTypeFilter}>
-              <SelectTrigger className="w-32 h-10">
-                <SelectValue placeholder="Device Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {getUniqueDeviceTypes().map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Select value={apFilter} onValueChange={setApFilter}>
-              <SelectTrigger className="w-36 h-10">
-                <Wifi className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Access Point" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                {getUniqueAPs().map((ap) => (
-                  <SelectItem key={ap} value={ap}>{ap}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -894,7 +832,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
               <h3 className="text-base font-medium mb-1">No Connected Clients Found</h3>
               <p className="text-sm text-muted-foreground">
-                {searchTerm || statusFilter !== 'all' || apFilter !== 'all' || siteFilter !== 'all' || deviceTypeFilter !== 'all'
+                {searchTerm || siteFilter !== 'all'
                   ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
