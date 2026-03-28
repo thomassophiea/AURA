@@ -852,8 +852,21 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       <Card className="surface-2dp">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between mb-2">
-            <CardTitle>Device Monitoring & Traffic Analytics</CardTitle>
-            <div className="flex items-center gap-2">
+            <CardTitle>Connected Clients</CardTitle>
+            <div className="flex items-center space-x-2">
+              <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
+                <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh Clients
+              </Button>
+              <Button
+                onClick={() => loadTrafficStatisticsForCurrentPage(stations)}
+                variant="outline"
+                size="sm"
+                disabled={isLoadingTraffic}
+              >
+                <Activity className="mr-2 h-4 w-4" />
+                {isLoadingTraffic ? 'Loading...' : 'Refresh Traffic'}
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -878,14 +891,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                 ]}
                 filename="connected-clients"
                 title="Connected Clients"
-              />
-              <SaveToWorkspace
-                widgetId="connected-clients-table"
-                widgetType="topn_table"
-                title="All Connected Clients"
-                endpointRefs={['clients.list']}
-                sourcePage="clients"
-                catalogId="table_clients_all"
               />
             </div>
           </div>
