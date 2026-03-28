@@ -843,6 +843,17 @@ html.light, html.light body, body.light, html.light #root {
   color: rgba(255, 255, 255, 0.87) !important;
 }
 
+/* Dark: Checkboxes */
+.dark:not(.ep1):not(.dev) [data-slot="checkbox"] {
+  border-color: rgba(187, 134, 252, 0.6) !important;
+  background-color: transparent !important;
+}
+.dark:not(.ep1):not(.dev) [data-slot="checkbox"][data-state="checked"] {
+  background-color: #BB86FC !important;
+  border-color: #BB86FC !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
 /* Dark: Dialog */
 .dark:not(.ep1):not(.dev) [data-slot="dialog-content"],
 .dark:not(.ep1):not(.dev) [role="dialog"][data-state="open"] {
@@ -3690,18 +3701,18 @@ html.ep1 [data-slot="app"] {
   background-color: #4d4f63 !important;
 }
 
-/* --- Dropdown trigger buttons — template: transparent bg, #4d4f63 border --- */
+/* --- Dropdown trigger buttons — elevated surface so visible against card/page bg --- */
 .ep1 [data-slot="select-trigger"],
 .ep1 button[role="combobox"] {
-  background-color: transparent !important;
-  border-color: #4d4f63 !important;
+  background-color: #333548 !important;
+  border: 1px solid #6b6d8a !important;
   color: #f8f8fb !important;
   border-radius: 4px !important;
 }
 .ep1 [data-slot="select-trigger"]:hover,
 .ep1 button[role="combobox"]:hover {
-  background-color: rgba(137, 129, 229, 0.12) !important;
-  border-color: #999cb3 !important;
+  background-color: #3a3e5c !important;
+  border-color: #8981e5 !important;
 }
 
 /* --- Select dropdown content --- */
@@ -3806,15 +3817,15 @@ button.sle-node-bubble.sle-node-poor,
   color: #babcce !important;
 }
 
-/* --- Select Trigger: was transparent, needs visible surface --- */
+/* --- Select Trigger: elevated surface so it's visible against #2d2f3e card/page bg --- */
 .ep1 [data-slot="select-trigger"] {
-  background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  background-color: #333548 !important;
+  border: 1px solid #6b6d8a !important;
   color: #f8f8fb !important;
 }
 .ep1 [data-slot="select-trigger"]:hover {
-  background-color: #333548 !important;
-  border-color: #999cb3 !important;
+  background-color: #3a3e5c !important;
+  border-color: #8981e5 !important;
 }
 
 /* --- Select Content (dropdown panel) --- */
@@ -3936,6 +3947,17 @@ button.sle-node-bubble.sle-node-poor,
 }
 .ep1 [cmdk-empty] {
   color: #babcce !important;
+}
+
+/* --- Checkboxes: explicit border visibility in EP1 dark surface --- */
+.ep1 [data-slot="checkbox"] {
+  border-color: #aba3fb !important;
+  background-color: transparent !important;
+}
+.ep1 [data-slot="checkbox"][data-state="checked"] {
+  background-color: #8981e5 !important;
+  border-color: #8981e5 !important;
+  color: #ffffff !important;
 }
 
 /* --- Tooltip --- */
@@ -4393,6 +4415,17 @@ html.dev #root {
 }
 .dev [data-slot="dialog-description"] {
   color: rgba(255,255,255,0.60) !important;
+}
+
+/* Dev: Checkboxes */
+.dev [data-slot="checkbox"] {
+  border-color: rgba(187, 134, 252, 0.7) !important;
+  background-color: transparent !important;
+}
+.dev [data-slot="checkbox"][data-state="checked"] {
+  background-color: #BB86FC !important;
+  border-color: #BB86FC !important;
+  color: rgba(0, 0, 0, 0.87) !important;
 }
 
 /* Dev: Alert Dialog */
