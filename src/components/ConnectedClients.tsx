@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown, Search } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -32,6 +32,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [siteFilter, setSiteFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [sites, setSites] = useState<Site[]>([]);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -166,7 +167,16 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   };
 
   const filteredStations = stations.filter((station) => {
-    return siteFilter === 'all' || station.siteName === siteFilter;
+    const matchesSite = siteFilter === 'all' || station.siteName === siteFilter;
+    const q = searchTerm.toLowerCase();
+    const matchesSearch = !q ||
+      station.hostName?.toLowerCase().includes(q) ||
+      station.macAddress?.toLowerCase().includes(q) ||
+      station.ipAddress?.toLowerCase().includes(q) ||
+      station.siteName?.toLowerCase().includes(q) ||
+      station.apName?.toLowerCase().includes(q) ||
+      (station as any).deviceType?.toLowerCase().includes(q);
+    return matchesSite && matchesSearch;
   });
 
   // Helper function to get sortable value for a column
@@ -805,6 +815,15 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           </CardDescription>
           
           <div className="flex items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by hostname, MAC, IP, AP, or site..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 h-10"
+              />
+            </div>
             <Select value={siteFilter} onValueChange={setSiteFilter}>
               <SelectTrigger className="w-44 h-10 shrink-0">
                 <SelectValue placeholder="All Sites" />
