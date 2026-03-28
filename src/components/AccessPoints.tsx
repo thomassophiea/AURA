@@ -7,7 +7,6 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
-import { useTimeRangeFilter } from '../hooks/useTimeRangeFilter';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -438,8 +437,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     ],
   });
 
-  // Time range filter (visible for UI consistency; not applied to AP rows since AP data is current-state)
-  const { timeRange, setPreset: setTimePreset, setCustomRange } = useTimeRangeFilter('ap-time-range');
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
   const [apStations, setApStations] = useState<APStation[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -2009,9 +2006,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             searchPlaceholder="Search by name, serial, model, IP, site, status..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
-            timePreset={timeRange.preset}
-            onTimePresetChange={setTimePreset}
-            onCustomRange={setCustomRange}
+            showTimeRange={false}
             resultCount={filteredAccessPoints.length}
             totalCount={accessPoints.length}
           />

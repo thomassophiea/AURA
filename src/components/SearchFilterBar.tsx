@@ -24,8 +24,9 @@ export interface SearchFilterBarProps {
   onSearchChange: (value: string) => void;
 
   /** Time range */
-  timePreset: TimePreset;
-  onTimePresetChange: (preset: TimePreset) => void;
+  showTimeRange?: boolean;
+  timePreset?: TimePreset;
+  onTimePresetChange?: (preset: TimePreset) => void;
   onCustomRange?: (from: Date, to: Date) => void;
 
   /** Active filter indicators */
@@ -42,7 +43,8 @@ export function SearchFilterBar({
   searchPlaceholder = 'Search...',
   searchValue,
   onSearchChange,
-  timePreset,
+  showTimeRange = true,
+  timePreset = '24h',
   onTimePresetChange,
   onCustomRange,
   resultCount,
@@ -52,7 +54,7 @@ export function SearchFilterBar({
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
 
-  const hasActiveFilters = searchValue.trim().length > 0 || timePreset !== '24h';
+  const hasActiveFilters = searchValue.trim().length > 0 || (showTimeRange && timePreset !== '24h');
   const showResultCount = resultCount !== undefined && totalCount !== undefined && hasActiveFilters;
 
   const handleClear = () => {
@@ -88,6 +90,7 @@ export function SearchFilterBar({
       </div>
 
       {/* Time Range Dropdown */}
+      {showTimeRange && onTimePresetChange && (
       <div className="shrink-0">
         <Select value={timePreset} onValueChange={(v) => onTimePresetChange(v as TimePreset)}>
           <SelectTrigger className="w-48 h-10">
@@ -104,9 +107,10 @@ export function SearchFilterBar({
           </SelectContent>
         </Select>
       </div>
+      )}
 
       {/* Custom Date Range Picker */}
-      {timePreset === 'custom' && (
+      {showTimeRange && timePreset === 'custom' && (
         <Popover>
           <PopoverTrigger asChild>
             <Button variant="outline" size="sm" className="h-10 gap-2 shrink-0">
