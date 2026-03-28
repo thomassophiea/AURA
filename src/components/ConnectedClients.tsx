@@ -830,7 +830,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               onCustomRange={setCustomRange}
               resultCount={filteredStations.length}
               totalCount={stations.length}
-              className="flex-1 min-w-0"
+              className=""
             />
             <div className="shrink-0">
               <Select value={selectedSite} onValueChange={setSelectedSite}>
