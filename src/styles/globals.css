@@ -3405,18 +3405,18 @@ html.ep1 [data-slot="app"] {
   border-radius: 4px !important;
 }
 
-/* --- EP1 Menu Items — template accent hover: #8981e5 --- */
+/* --- EP1 Menu Items — template accent hover: #8981e5 with white text --- */
 .ep1 [role="menuitem"]:hover,
 .ep1 [role="option"]:hover,
 .ep1 [data-highlighted] {
   background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  color: #ffffff !important;
 }
 
 .ep1 [role="menuitem"][data-state="checked"],
 .ep1 [role="option"][aria-selected="true"] {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  background-color: rgba(137, 129, 229, 0.2) !important;
+  color: #f8f8fb !important;
 }
 
 /* --- EP1 Chips / Badges / Pills — template: #4d4f63 bg, #f8f8fb text --- */
@@ -3716,7 +3716,7 @@ html.ep1 [data-slot="app"] {
 .ep1 [data-slot="select-item"][data-highlighted],
 .ep1 [role="option"]:hover {
   background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  color: #ffffff !important;
 }
 
 /* --- App shell main area background — same surface as sidebar/top bar (#2d2f3e) --- */
@@ -3746,8 +3746,8 @@ html.ep1 [data-slot="app"] {
 }
 .ep1 [data-slot="select-item"][data-state="checked"],
 .ep1 [data-slot="select-item"][aria-selected="true"] {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  background-color: rgba(137, 129, 229, 0.2) !important;
+  color: #f8f8fb !important;
 }
 
 /* --- EP1 Sidebar buttons: transparent at rest, no dark-mode box artifacts --- */
@@ -3829,7 +3829,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [data-slot="select-item"]:focus,
 .ep1 [data-slot="select-item"][data-highlighted] {
   background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  color: #ffffff !important;
 }
 .ep1 [data-slot="select-label"] {
   color: #babcce !important;
@@ -3850,7 +3850,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [role="menuitem"][data-highlighted],
 .ep1 [data-slot="dropdown-menu-item"]:focus {
   background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  color: #ffffff !important;
 }
 .ep1 [data-slot="dropdown-menu-separator"] {
   background-color: #4d4f63 !important;

@@ -1422,10 +1422,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return <span className="font-mono text-sm">{ap.ipAddress || '-'}</span>;
       case 'clients':
         return (
-          <div className="flex items-center space-x-1 bg-secondary/10 border border-secondary/20 rounded-full px-3 py-1.5 min-w-[60px] justify-center">
-            <Users className="h-4 w-4 text-secondary" />
-            <span className="text-sm font-semibold text-secondary">{getClientCount(ap)}</span>
-            {isLoadingClients && <Activity className="h-3 w-3 text-secondary/60 animate-pulse ml-1" />}
+          <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center">
+            <Users className="h-3.5 w-3.5 text-primary" />
+            <span className="text-sm font-semibold text-foreground tabular-nums">{getClientCount(ap)}</span>
+            {isLoadingClients && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
           </div>
         );
       case 'macAddress':
