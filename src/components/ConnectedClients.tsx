@@ -602,18 +602,25 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Connected Clients</h1>
-          <p className="text-muted-foreground">
-            Monitor and manage connected wireless client devices across your network
-          </p>
+    <div className="space-y-4 p-4">
+      {/* Page header — consistent with Access Points style */}
+      <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20 overflow-hidden">
+        <div className="absolute -right-10 -top-10 w-32 h-32 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-10 -bottom-10 w-32 h-32 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
+        <div className="flex items-center gap-2.5 relative z-10">
+          <div className="p-2 rounded-lg bg-primary shadow-sm shrink-0">
+            <Users className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Connected Clients</h1>
+            <p className="text-xs text-muted-foreground">
+              Monitor and manage wireless clients across your network
+            </p>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button onClick={loadStations} variant="outline" size="sm">
-            <RefreshCw className="mr-2 h-4 w-4" />
+        <div className="flex items-center gap-1.5 relative z-10 flex-wrap">
+          <Button onClick={loadStations} variant="outline" size="sm" className="h-8 px-3 text-xs">
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
           </Button>
           <ColumnCustomizationDialog
@@ -631,56 +638,68 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stations.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Connected devices
-            </p>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.07]" />
+          <CardContent className="p-3 relative">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Clients</p>
+                <p className="text-xl font-bold text-foreground">{stations.length}</p>
+                <p className="text-[10px] text-muted-foreground">Connected devices</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+                <Users className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Connections</CardTitle>
-            <Wifi className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{getActiveClientsCount()}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently active
-            </p>
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.07]" />
+          <CardContent className="p-3 relative">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Active</p>
+                <p className="text-xl font-bold" style={{ color: 'var(--status-success)' }}>{getActiveClientsCount()}</p>
+                <p className="text-[10px] text-muted-foreground">Currently active</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md">
+                <Wifi className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Sites</CardTitle>
-            <MapPin className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{getUniqueSiteCount()}</div>
-            <p className="text-xs text-muted-foreground">
-              Active sites
-            </p>
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.07]" />
+          <CardContent className="p-3 relative">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Sites</p>
+                <p className="text-xl font-bold text-foreground">{getUniqueSiteCount()}</p>
+                <p className="text-[10px] text-muted-foreground">Active sites</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+                <MapPin className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Traffic</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatBytes(getTotalTraffic())}</div>
-            <p className="text-xs text-muted-foreground">
-              Data transferred
-            </p>
+        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-[0.07]" />
+          <CardContent className="p-3 relative">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Traffic</p>
+                <p className="text-xl font-bold text-foreground">{formatBytes(getTotalTraffic())}</p>
+                <p className="text-[10px] text-muted-foreground">Data transferred</p>
+              </div>
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md">
+                <Activity className="h-3.5 w-3.5 text-white" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -871,21 +890,21 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         </CardHeader>
         <CardContent>
           {sortedStations.length === 0 ? (
-            <div className="text-center py-8">
-              <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">No Connected Clients Found</h3>
-              <p className="text-muted-foreground">
+            <div className="text-center py-10">
+              <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+              <h3 className="text-base font-medium mb-1">No Connected Clients Found</h3>
+              <p className="text-sm text-muted-foreground">
                 {searchTerm || statusFilter !== 'all' || apFilter !== 'all' || siteFilter !== 'all' || deviceTypeFilter !== 'all'
                   ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table className="text-[11px]">
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="text-[11px] min-w-[640px]">
                 <TableHeader>
-                  <TableRow className="h-8">
-                    <TableHead className="w-10 p-1 text-[10px]">
+                  <TableRow className="h-9">
+                    <TableHead className="w-10 px-2 py-1 text-[10px]">
                       <Checkbox
                         checked={selectedStations.size === sortedStations.length && sortedStations.length > 0}
                         onCheckedChange={handleSelectAll}
@@ -895,7 +914,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                     {customization.visibleColumnConfigs.map(column => (
                       <TableHead
                         key={column.key}
-                        className="p-1 text-[10px] cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                        className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide cursor-pointer select-none hover:bg-muted/50 transition-colors whitespace-nowrap"
                         onClick={() => column.sortable !== false && handleSort(column.key)}
                       >
                         <span className="flex items-center gap-1">
@@ -914,9 +933,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 </TableHeader>
                 <TableBody>
                   {sortedStations.map((station, index) => (
-                    <TableRow 
+                    <TableRow
                       key={station.macAddress || index}
-                      className="cursor-pointer hover:bg-muted/50 h-10"
+                      className="cursor-pointer hover:bg-muted/50 h-11"
                       onClick={(e) => {
                         // Don't trigger row click if clicking on checkbox
                         if ((e.target as HTMLElement).closest('[data-checkbox]')) {
@@ -930,7 +949,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                         }
                       }}
                     >
-                      <TableCell className="p-1" data-checkbox>
+                      <TableCell className="px-2 py-1" data-checkbox>
                         <Checkbox
                           checked={selectedStations.has(station.macAddress)}
                           onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
@@ -940,8 +959,14 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       </TableCell>
 
                       {customization.visibleColumnConfigs.map(column => (
-                        <TableCell key={column.key}>
-                          {column.renderCell ? column.renderCell(station) : (station as any)[column.key]}
+                        <TableCell key={column.key} className="px-2 py-1 max-w-[260px]">
+                          <div className="truncate" title={
+                            typeof (column.renderCell ? column.renderCell(station) : (station as any)[column.key]) === 'string'
+                              ? String((station as any)[column.fieldPath || column.key] || '')
+                              : undefined
+                          }>
+                            {column.renderCell ? column.renderCell(station) : (station as any)[column.key]}
+                          </div>
                         </TableCell>
                       ))}
                     </TableRow>

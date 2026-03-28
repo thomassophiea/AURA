@@ -45,7 +45,8 @@ export type ColumnCategory =
   | 'connection'
   | 'advanced'
   | 'security'
-  | 'performance';
+  | 'performance'
+  | 'hardware';
 
 /**
  * Scope types for table preferences

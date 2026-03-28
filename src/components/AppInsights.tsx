@@ -627,7 +627,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       {/* Category Distribution Visualizations */}
       {chartData && stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
-          {/* Top Categories Donut Chart */}
+          {/* Top Categories Donut Chart — no external labels (avoids overlap); legend below */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -645,70 +645,69 @@ export function AppInsights({ api }: AppInsightsProps) {
                 />
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="h-64">
+            <CardContent className="pb-3">
+              {/* Donut — compact height, labels removed to prevent overlap */}
+              <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
                     <Pie
                       data={chartData.topUsage.slice(0, 6)}
                       cx="50%"
                       cy="50%"
-                      innerRadius={65}
-                      outerRadius={95}
-                      paddingAngle={2}
+                      innerRadius={50}
+                      outerRadius={78}
+                      paddingAngle={3}
                       dataKey="value"
-                      label={({ name, cx, cy, midAngle, outerRadius }) => {
-                        const RADIAN = Math.PI / 180;
-                        const radius = outerRadius + 25;
-                        const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                        const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                        const displayName = name.length > 15 ? name.substring(0, 15) + '...' : name;
-
-                        return (
-                          <text
-                            x={x}
-                            y={y}
-                            fill="var(--foreground)"
-                            textAnchor={x > cx ? 'start' : 'end'}
-                            dominantBaseline="central"
-                            fontSize={12}
-                            fontWeight={500}
-                            style={{
-                              paintOrder: 'stroke',
-                              stroke: 'var(--card)',
-                              strokeWidth: 3,
-                              strokeLinecap: 'round',
-                              strokeLinejoin: 'round'
-                            }}
-                          >
-                            {displayName}
-                          </text>
-                        );
-                      }}
-                      labelLine={{ stroke: 'var(--border)', strokeWidth: 1 }}
+                      isAnimationActive={true}
                     >
                       {chartData.topUsage.slice(0, 6).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} />
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} stroke="transparent" />
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number) => formatBytes(value)}
-                      labelFormatter={() => ''}
+                      formatter={(value: number, name: string) => [formatBytes(value), name]}
                       contentStyle={{
                         backgroundColor: 'var(--popover)',
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         fontSize: '12px',
-                        color: 'var(--popover-foreground)'
+                        color: 'var(--popover-foreground)',
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
                       }}
                     />
                   </RechartsPieChart>
                 </ResponsiveContainer>
               </div>
+              {/* Legend grid — two columns, no overlap possible */}
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 px-1">
+                {chartData.topUsage.slice(0, 6).map((entry, index) => {
+                  const color = getCategoryColor(entry.name, index);
+                  const pct = stats.totalUsage > 0
+                    ? ((entry.value / stats.totalUsage) * 100).toFixed(0)
+                    : '0';
+                  return (
+                    <div key={entry.id} className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="inline-block h-2.5 w-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: color }}
+                      />
+                      <span
+                        className="text-[11px] text-foreground/80 truncate flex-1"
+                        title={entry.name}
+                      >
+                        {entry.name}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                        {pct}%
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Top Applications Bar Chart */}
+          {/* Application Bandwidth Distribution — horizontal bars eliminate label rotation / overlap */}
           <Card className="border-border/50">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -726,31 +725,31 @@ export function AppInsights({ api }: AppInsightsProps) {
                 />
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pb-3">
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={chartData.topThroughput.slice(0, 8)}
-                    layout="horizontal"
-                    margin={{ top: 10, right: 10, left: 0, bottom: 5 }}
+                    layout="vertical"
+                    margin={{ top: 2, right: 64, left: 4, bottom: 2 }}
+                    barCategoryGap="20%"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.6} vertical={false} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} horizontal={false} />
                     <XAxis
-                      dataKey="name"
-                      tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={60}
-                      interval={0}
+                      type="number"
+                      tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
+                      tickFormatter={(v) => formatThroughputCompact(v)}
                       axisLine={{ stroke: 'var(--border)' }}
-                      tickLine={{ stroke: 'var(--border)' }}
+                      tickLine={false}
                     />
                     <YAxis
+                      type="category"
+                      dataKey="name"
                       tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
-                      tickFormatter={(v) => formatThroughputCompact(v)}
-                      width={45}
-                      axisLine={{ stroke: 'var(--border)' }}
-                      tickLine={{ stroke: 'var(--border)' }}
+                      width={110}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v: string) => v.length > 15 ? v.substring(0, 15) + '…' : v}
                     />
                     <Tooltip
                       formatter={(value: number) => [formatThroughput(value), 'Throughput']}
@@ -763,11 +762,17 @@ export function AppInsights({ api }: AppInsightsProps) {
                         color: 'var(--popover-foreground)',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
                       }}
-                      cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
+                      cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
                     />
                     <Bar
                       dataKey="value"
-                      radius={[6, 6, 0, 0]}
+                      radius={[0, 6, 6, 0]}
+                      label={{
+                        position: 'right',
+                        fontSize: 10,
+                        fill: 'var(--muted-foreground)',
+                        formatter: (v: number) => formatThroughputCompact(v)
+                      }}
                     >
                       {chartData.topThroughput.slice(0, 8).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} />

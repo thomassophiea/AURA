@@ -3152,7 +3152,7 @@ html.dark.ep1 {
   --foreground: #f8f8fb !important;
   --card: #2d2f3e !important;
   --card-foreground: #f8f8fb !important;
-  --popover: #2d2f3e !important;
+  --popover: #323650 !important;
   --popover-foreground: #f8f8fb !important;
   --primary: #8981e5 !important;
   --primary-foreground: #1e1a46 !important;
@@ -3164,15 +3164,21 @@ html.dark.ep1 {
   --accent-foreground: #1e1a46 !important;
   --destructive: #ed5f56 !important;
   --destructive-foreground: #f8f8fb !important;
-  --border: #999cb3 !important;
+  --border: #4d4f63 !important;
   --input: transparent !important;
   --input-background: transparent !important;
   --ring: #8981e5 !important;
-  --chart-1: #8981e5 !important;
-  --chart-2: #aba3fb !important;
-  --chart-3: #75bf63 !important;
-  --chart-4: #ed5f56 !important;
-  --chart-5: #babcce !important;
+  /* EP1 chart palette — 10 harmonious colors built around the #8981e5 identity */
+  --chart-1: #8981e5 !important;   /* EP1 violet — primary */
+  --chart-2: #aba3fb !important;   /* lavender — secondary */
+  --chart-3: #75bf63 !important;   /* sage green */
+  --chart-4: #ed5f56 !important;   /* coral red */
+  --chart-5: #E5B85C !important;   /* warm amber */
+  --chart-6: #5bc4cf !important;   /* teal */
+  --chart-7: #c4beff !important;   /* pale lavender */
+  --chart-8: #e08060 !important;   /* salmon */
+  --chart-9: #9ac67e !important;   /* light sage */
+  --chart-10: #7ab8e8 !important;  /* sky blue */
   --sidebar: #2d2f3e !important;
   --sidebar-foreground: #f8f8fb !important;
   --sidebar-primary: #8981e5 !important;
@@ -3184,6 +3190,15 @@ html.dark.ep1 {
   --font-weight-medium: 600 !important;
   --font-weight-normal: 400 !important;
   --radius: 0.25rem !important;
+  /* EP1 semantic status tokens */
+  --status-success: #75bf63 !important;
+  --status-success-bg: rgba(117, 191, 99, 0.12) !important;
+  --status-warning: #E5B85C !important;
+  --status-warning-bg: rgba(229, 184, 92, 0.12) !important;
+  --status-error: #ed5f56 !important;
+  --status-error-bg: rgba(237, 95, 86, 0.12) !important;
+  --status-info: #8981e5 !important;
+  --status-info-bg: rgba(137, 129, 229, 0.12) !important;
 }
 
 html.dark.ep1,
@@ -3405,13 +3420,54 @@ html.ep1 [data-slot="app"] {
 }
 
 /* --- EP1 Chips / Badges / Pills — template: #4d4f63 bg, #f8f8fb text --- */
-.ep1 [data-slot="badge"],
-.ep1 .badge,
+/* Exempt semantic status badges so online/offline/warning retain meaning */
+.ep1 [data-slot="badge"]:not([class*="green-"]):not([class*="red-"]):not([class*="amber-"]):not([class*="emerald-"]):not([class*="yellow-"]):not([class*="orange-"]):not([class*="blue-"]):not([class*="teal-"]),
+.ep1 .badge:not([class*="green-"]):not([class*="red-"]):not([class*="amber-"]):not([class*="emerald-"]):not([class*="yellow-"]):not([class*="orange-"]):not([class*="blue-"]):not([class*="teal-"]),
 .ep1 [class*="chip"] {
   background-color: #4d4f63 !important;
   color: #f8f8fb !important;
   border: 1px solid #4d4f63 !important;
   border-radius: 40px !important;  /* template --radius-chip: 40px */
+}
+
+/* EP1: Preserve semantic status badge colors — green = online/success */
+.ep1 [data-slot="badge"][class*="green-"],
+.ep1 .badge[class*="green-"],
+.ep1 [data-slot="badge"][class*="emerald-"],
+.ep1 .badge[class*="emerald-"] {
+  background-color: rgba(117, 191, 99, 0.15) !important;
+  color: #75bf63 !important;
+  border-color: rgba(117, 191, 99, 0.35) !important;
+}
+
+/* EP1: red = offline/error */
+.ep1 [data-slot="badge"][class*="red-"],
+.ep1 .badge[class*="red-"] {
+  background-color: rgba(237, 95, 86, 0.15) !important;
+  color: #ed5f56 !important;
+  border-color: rgba(237, 95, 86, 0.35) !important;
+}
+
+/* EP1: amber/orange/yellow = warning */
+.ep1 [data-slot="badge"][class*="amber-"],
+.ep1 .badge[class*="amber-"],
+.ep1 [data-slot="badge"][class*="yellow-"],
+.ep1 .badge[class*="yellow-"],
+.ep1 [data-slot="badge"][class*="orange-"],
+.ep1 .badge[class*="orange-"] {
+  background-color: rgba(229, 184, 92, 0.15) !important;
+  color: #E5B85C !important;
+  border-color: rgba(229, 184, 92, 0.35) !important;
+}
+
+/* EP1: blue = info */
+.ep1 [data-slot="badge"][class*="blue-"],
+.ep1 .badge[class*="blue-"],
+.ep1 [data-slot="badge"][class*="teal-"],
+.ep1 .badge[class*="teal-"] {
+  background-color: rgba(137, 129, 229, 0.15) !important;
+  color: #aba3fb !important;
+  border-color: rgba(137, 129, 229, 0.35) !important;
 }
 
 /* --- EP1 Dividers / Borders --- */
@@ -3549,17 +3605,26 @@ html.ep1 [data-slot="app"] {
   box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
 }
 
-/* --- Clear all hardcoded gradient backgrounds on cards --- */
+/* --- Clear hardcoded gradient backgrounds on CARDS only — not small elements --- */
 .ep1 .card[class*="from-"],
 .ep1 [data-slot="card"][class*="from-"] {
   background: #2d2f3e !important;
   background-image: none !important;
 }
 
-/* Also clear gradients on any element inside .ep1 */
-.ep1 [class*="bg-gradient-to-"] {
+/* Clear full-bleed gradient divs (page headers, hero areas) but NOT small icon badges/pills */
+.ep1 [class*="bg-gradient-to-"][class*="inset-0"],
+.ep1 [class*="bg-gradient-to-"][class*="absolute"] {
   background-image: none !important;
-  background-color: #2d2f3e !important;
+  background-color: transparent !important;
+}
+
+/* EP1: Small icon badge backgrounds — show EP1-accent flat color instead of gradient */
+.ep1 [class*="bg-gradient-to-"][class*="rounded-lg"],
+.ep1 [class*="bg-gradient-to-"][class*="rounded-xl"],
+.ep1 [class*="bg-gradient-to-"][class*="rounded-md"] {
+  background-image: none !important;
+  background-color: #4d4f63 !important;
 }
 
 /* --- Override hardcoded Tailwind border colors on cards — template border: #4d4f63 --- */
@@ -4500,10 +4565,24 @@ html.dev #root {
   color: rgba(255,255,255,0.60) !important;
 }
 
-/* Dev: Gradient backgrounds — neutralize */
-.dev [class*="bg-gradient-to-"] {
+/* Dev: Gradient backgrounds — neutralize full-bleed overlays only */
+.dev [class*="bg-gradient-to-"][class*="inset-0"],
+.dev [class*="bg-gradient-to-"][class*="absolute"] {
   background-image: none !important;
-  background-color: #1d1d1d !important;
+  background-color: transparent !important;
+}
+/* Dev: Card-level gradients → flat surface */
+.dev .card[class*="from-"],
+.dev [data-slot="card"][class*="from-"] {
+  background: #1d1d1d !important;
+  background-image: none !important;
+}
+/* Dev: Small icon badge gradients → flat #2e2e2e */
+.dev [class*="bg-gradient-to-"][class*="rounded-lg"],
+.dev [class*="bg-gradient-to-"][class*="rounded-xl"],
+.dev [class*="bg-gradient-to-"][class*="rounded-md"] {
+  background-image: none !important;
+  background-color: #2e2e2e !important;
 }
 
 /* Dev: Interactive surface states */
@@ -4540,4 +4619,297 @@ html.dev #root {
 }
 .dev ::-webkit-scrollbar-thumb:hover {
   background: rgba(255,255,255,0.28);
+}
+
+/* ==========================================================================
+   CHART & VISUALIZATION POLISH — all themes
+   Recharts overrides, SVG label safety, tooltip readability
+   ========================================================================== */
+
+/* Prevent SVG chart text from being clipped by card overflow */
+.recharts-wrapper,
+.recharts-surface {
+  overflow: visible !important;
+}
+
+/* Chart wrapper — clip at the ResponsiveContainer boundary only */
+.recharts-responsive-container {
+  overflow: hidden !important;
+}
+
+/* Tooltip z-index — float above table rows and badges */
+.recharts-tooltip-wrapper {
+  z-index: 50 !important;
+}
+
+/* Chart text — inherit foreground color from theme */
+.recharts-cartesian-axis-tick-value,
+.recharts-label {
+  fill: var(--muted-foreground);
+}
+
+/* Recharts grid lines — subtle across all themes */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+  stroke: var(--border);
+  opacity: 0.6;
+}
+
+/* Axis lines */
+.recharts-cartesian-axis-line {
+  stroke: var(--border);
+}
+
+/* Light mode: tooltip needs white bg with border */
+.light .recharts-default-tooltip,
+.light .recharts-tooltip-item-list {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.12) !important;
+  color: rgba(0,0,0,0.87) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+}
+
+/* Dark mode: tooltip */
+.dark:not(.ep1):not(.dev) .recharts-default-tooltip {
+  background-color: #252637 !important;
+  border: 1px solid rgba(255,255,255,0.20) !important;
+  color: rgba(255,255,255,0.87) !important;
+}
+
+/* EP1 mode: tooltip */
+.ep1 .recharts-default-tooltip {
+  background-color: #323650 !important;
+  border: 1px solid #4d4f63 !important;
+  color: #f8f8fb !important;
+  border-radius: 4px !important;
+}
+
+/* Dev mode: tooltip */
+.dev .recharts-default-tooltip {
+  background-color: #212121 !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: rgba(255,255,255,0.87) !important;
+}
+
+/* Legend text */
+.recharts-legend-item-text {
+  color: var(--foreground) !important;
+  font-size: 12px !important;
+}
+
+/* Bar/Area chart cursor highlight */
+.recharts-rectangle.recharts-cursor {
+  fill: var(--muted) !important;
+  opacity: 0.4 !important;
+}
+
+/* ==========================================================================
+   TABLE POLISH — all themes
+   Dense-data readability improvements
+   ========================================================================== */
+
+/* Prevent horizontal overflow breaking page layout */
+.table-container-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Sticky header for long tables */
+.sticky-table-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Dense table row minimum height */
+.dense-table tbody tr {
+  min-height: 2.5rem;
+}
+
+/* Long text in table cells — truncate with ellipsis */
+.table-cell-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 0; /* Required for truncation in table cells */
+}
+
+/* Column header sort indicator spacing */
+thead th .sort-icon {
+  opacity: 0.4;
+  transition: opacity 150ms;
+}
+thead th:hover .sort-icon,
+thead th[aria-sort] .sort-icon {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   PAGE HEADER CONSISTENCY — all themes
+   Unified page header for Connected Clients, App Insights, etc.
+   ========================================================================== */
+
+/* Ensure page header blur decorations don't clip on small viewports */
+.page-header-decor {
+  overflow: hidden;
+}
+
+/* Primary tint adjustments per theme */
+.light .bg-primary\/5 {
+  background-color: rgba(98, 0, 238, 0.04) !important;
+}
+.light .border-primary\/20 {
+  border-color: rgba(98, 0, 238, 0.16) !important;
+}
+
+.ep1 .bg-primary\/5 {
+  background-color: rgba(137, 129, 229, 0.08) !important;
+}
+.ep1 .border-primary\/20 {
+  border-color: rgba(137, 129, 229, 0.25) !important;
+}
+
+.dev .bg-primary\/5 {
+  background-color: rgba(187, 134, 252, 0.06) !important;
+}
+.dev .border-primary\/20 {
+  border-color: rgba(187, 134, 252, 0.20) !important;
+}
+
+/* ==========================================================================
+   GDPR / INFO PANELS — theme-consistent status info panels
+   ========================================================================== */
+
+/* Light: info panel */
+.light [class*="border-info\/30"],
+.light .border-info\/30 {
+  border-color: rgba(1, 87, 155, 0.22) !important;
+}
+
+/* EP1: remap info panel colors to EP1 palette */
+.ep1 [class*="border-info\/30"] {
+  border-color: rgba(137, 129, 229, 0.30) !important;
+}
+
+/* ==========================================================================
+   FORM + FILTER BAR POLISH
+   ========================================================================== */
+
+/* Filter bar gap consistency */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* ==========================================================================
+   CONNECTED CLIENTS — dense table improvements
+   ========================================================================== */
+
+/* Ensure code/mono cells don't expand columns aggressively */
+.clients-table td code,
+.clients-table td .font-mono {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Multi-line cell height consistency */
+.clients-table td > div.leading-snug {
+  line-height: 1.375;
+}
+
+/* ==========================================================================
+   VISUAL CONSISTENCY — status color aliases across all themes
+   Ensures Tailwind semantic classes map to theme status tokens
+   ========================================================================== */
+
+/* Green semantic: map text-green-500 to --status-success in dark/EP1/dev */
+.dark:not(.ep1):not(.dev) .text-green-500 { color: var(--status-success) !important; }
+.ep1 .text-green-500 { color: #75bf63 !important; }
+.dev .text-green-500 { color: #81C784 !important; }
+
+/* Red semantic */
+.dark:not(.ep1):not(.dev) .text-red-500 { color: var(--status-error) !important; }
+.ep1 .text-red-500 { color: #ed5f56 !important; }
+.dev .text-red-500 { color: #CF6679 !important; }
+
+/* Amber/orange semantic */
+.dark:not(.ep1):not(.dev) .text-amber-500,
+.dark:not(.ep1):not(.dev) .text-orange-500 { color: var(--status-warning) !important; }
+.ep1 .text-amber-500,
+.ep1 .text-orange-500 { color: #E5B85C !important; }
+.dev .text-amber-500,
+.dev .text-orange-500 { color: #FFB74D !important; }
+
+/* ==========================================================================
+   LIGHT THEME — additional missing overrides
+   ========================================================================== */
+
+/* Light: ensure progress bars are visible */
+.light [role="progressbar"] > div {
+  background-color: #6200EE !important;
+}
+
+/* Light: skeleton loading animation */
+.light [data-slot="skeleton"],
+.light .skeleton {
+  background-color: rgba(0,0,0,0.08) !important;
+}
+
+/* Light: chart axis tick color */
+.light .recharts-cartesian-axis-tick-value {
+  fill: rgba(0,0,0,0.60) !important;
+}
+
+/* Light: chart grid lines */
+.light .recharts-cartesian-grid-horizontal line,
+.light .recharts-cartesian-grid-vertical line {
+  stroke: rgba(0,0,0,0.10) !important;
+}
+
+/* ==========================================================================
+   DARK THEME — additional chart + badge polish
+   ========================================================================== */
+
+/* Dark: chart axis tick */
+.dark:not(.ep1):not(.dev) .recharts-cartesian-axis-tick-value {
+  fill: rgba(255,255,255,0.60) !important;
+}
+
+/* Dark: chart grid */
+.dark:not(.ep1):not(.dev) .recharts-cartesian-grid-horizontal line,
+.dark:not(.ep1):not(.dev) .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255,255,255,0.14) !important;
+}
+
+/* ==========================================================================
+   EP1 THEME — chart axis polish
+   ========================================================================== */
+
+.ep1 .recharts-cartesian-axis-tick-value {
+  fill: #babcce !important;
+}
+.ep1 .recharts-cartesian-grid-horizontal line,
+.ep1 .recharts-cartesian-grid-vertical line {
+  stroke: #4d4f63 !important;
+}
+.ep1 .recharts-legend-item-text {
+  color: #babcce !important;
+}
+
+/* ==========================================================================
+   DEV THEME — chart axis polish
+   ========================================================================== */
+
+.dev .recharts-cartesian-axis-tick-value {
+  fill: rgba(255,255,255,0.60) !important;
+}
+.dev .recharts-cartesian-grid-horizontal line,
+.dev .recharts-cartesian-grid-vertical line {
+  stroke: rgba(255,255,255,0.12) !important;
 }

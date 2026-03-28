@@ -88,13 +88,12 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => {
-      const hostname = station.hostName || station.hostname;
+      const hostname = station.hostName || (station as any).hostname;
       if (!hostname) return <span className="text-muted-foreground">—</span>;
-      const isTruncated = hostname.length > 28;
       return (
         <div
-          className="font-semibold text-foreground max-w-[220px] truncate"
-          title={isTruncated ? hostname : undefined}
+          className="font-semibold text-foreground max-w-[200px] truncate leading-snug"
+          title={hostname}
         >
           {hostname}
         </div>
@@ -104,34 +103,32 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
 
   {
     key: 'clientInfo',
-    label: 'Client Info',
+    label: 'MAC Address',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'macAddress',
     defaultVisible: true,
     sortable: true,
-    renderCell: (station) => {
-      return (
-        <div className="font-mono text-sm text-muted-foreground">
-          {station.macAddress || 'Unknown'}
-        </div>
-      );
-    }
+    renderCell: (station) => (
+      <code className="font-mono text-[11px] text-muted-foreground tracking-tight">
+        {station.macAddress || '—'}
+      </code>
+    )
   },
 
   {
     key: 'deviceInfo',
-    label: 'Device Info',
+    label: 'Device',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'manufacturer',
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => {
+      const label = station.manufacturer || (station as any).deviceType;
+      if (!label) return <span className="text-muted-foreground">—</span>;
       return (
-        <div className="text-sm">
-          {station.manufacturer || station.deviceType || '—'}
-        </div>
+        <div className="max-w-[140px] truncate text-sm" title={label}>{label}</div>
       );
     }
   },
@@ -146,10 +143,17 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => {
+      const user = station.username;
+      const net = (station as any).networkName || (station as any).ssid;
       return (
-        <div className="text-sm">
-          <div>{station.username || '—'}</div>
-          <div className="text-muted-foreground">{station.networkName || station.ssid || '—'}</div>
+        <div className="text-xs leading-snug max-w-[160px]">
+          {user && (
+            <div className="truncate text-foreground/90 font-medium" title={user}>{user}</div>
+          )}
+          {net && (
+            <div className="truncate text-muted-foreground" title={net}>{net}</div>
+          )}
+          {!user && !net && <span className="text-muted-foreground">—</span>}
         </div>
       );
     }
@@ -164,10 +168,10 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => {
-      const name = station.apName || station.apDisplayName;
-      if (!name) return '—';
+      const name = station.apName || (station as any).apDisplayName;
+      if (!name) return <span className="text-muted-foreground">—</span>;
       return (
-        <div className="max-w-[180px] truncate" title={name.length > 22 ? name : undefined}>
+        <div className="max-w-[180px] truncate text-foreground/90" title={name}>
           {name}
         </div>
       );
@@ -182,7 +186,13 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     fieldPath: 'siteName',
     defaultVisible: false,
     sortable: true,
-    renderCell: (station) => station.siteName || '—'
+    renderCell: (station) => {
+      const name = (station as any).siteName;
+      if (!name) return <span className="text-muted-foreground">—</span>;
+      return (
+        <div className="max-w-[160px] truncate" title={name}>{name}</div>
+      );
+    }
   },
 
   {

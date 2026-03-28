@@ -8,18 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { ScrollArea } from './ui/scroll-area';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Columns, Anchor, Phone, FileDown, Radio, Cable, Loader2 } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Building, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { Checkbox } from './ui/checkbox';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
 import { ExportButton } from './ExportButton';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
+import { useTableCustomization } from '@/hooks/useTableCustomization';
+import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
+import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -362,61 +363,6 @@ function analyzeCableHealth(
   };
 }
 
-// Define available columns with friendly labels
-interface ColumnConfig {
-  key: string;
-  label: string;
-  defaultVisible: boolean;
-  category: 'basic' | 'network' | 'status' | 'performance' | 'hardware' | 'advanced';
-}
-
-const AVAILABLE_COLUMNS: ColumnConfig[] = [
-  // Basic columns (always visible core columns)
-  { key: 'connection', label: 'Connection Status', defaultVisible: true, category: 'basic' },
-  { key: 'apName', label: 'AP Name', defaultVisible: true, category: 'basic' },
-  { key: 'serialNumber', label: 'Serial Number', defaultVisible: true, category: 'basic' },
-  { key: 'hostSite', label: 'Site/Location', defaultVisible: true, category: 'basic' },
-  { key: 'model', label: 'Model', defaultVisible: true, category: 'basic' },
-  { key: 'ipAddress', label: 'IP Address', defaultVisible: true, category: 'basic' },
-  { key: 'clients', label: 'Connected Clients', defaultVisible: true, category: 'basic' },
-
-  // Network columns
-  { key: 'meshRole', label: 'Mesh Role', defaultVisible: false, category: 'network' },
-  { key: 'cableHealth', label: 'Cable Health', defaultVisible: false, category: 'network' },
-  { key: 'macAddress', label: 'MAC Address', defaultVisible: false, category: 'network' },
-  { key: 'ethMode', label: 'Ethernet Mode', defaultVisible: false, category: 'network' },
-  { key: 'ethSpeed', label: 'Ethernet Speed', defaultVisible: false, category: 'network' },
-  { key: 'tunnel', label: 'Tunnel', defaultVisible: false, category: 'network' },
-  { key: 'wiredClients', label: 'Wired Clients', defaultVisible: false, category: 'network' },
-
-  // Status columns
-  { key: 'status', label: 'Status', defaultVisible: false, category: 'status' },
-  { key: 'uptime', label: 'Uptime', defaultVisible: false, category: 'status' },
-  { key: 'adoptedBy', label: 'Adopted By', defaultVisible: false, category: 'status' },
-  { key: 'home', label: 'Home Platform', defaultVisible: false, category: 'status' },
-
-  // Performance columns
-  { key: 'cpuUsage', label: 'CPU %', defaultVisible: false, category: 'performance' },
-  { key: 'memoryUsage', label: 'Memory %', defaultVisible: false, category: 'performance' },
-  { key: 'pwrUsage', label: 'Power Usage (W)', defaultVisible: false, category: 'performance' },
-  { key: 'pwrSource', label: 'Power Source', defaultVisible: false, category: 'performance' },
-  { key: 'channelUtilization', label: 'Avg Channel Util %', defaultVisible: false, category: 'performance' },
-
-  // Hardware columns
-  { key: 'softwareVersion', label: 'Firmware Version', defaultVisible: false, category: 'hardware' },
-  { key: 'platformName', label: 'Platform', defaultVisible: false, category: 'hardware' },
-  { key: 'environment', label: 'Environment', defaultVisible: false, category: 'hardware' },
-  { key: 'ethPowerStatus', label: 'Ethernet Power Status', defaultVisible: false, category: 'hardware' },
-
-  // Advanced columns
-  { key: 'profileName', label: 'Profile Name', defaultVisible: false, category: 'advanced' },
-  { key: 'rfMgmtPolicyName', label: 'RF Management Policy', defaultVisible: false, category: 'advanced' },
-  { key: 'switchPorts', label: 'Switch Ports', defaultVisible: false, category: 'advanced' },
-  { key: 'source', label: 'Location Source', defaultVisible: false, category: 'advanced' },
-  { key: 'floorName', label: 'Floor Name', defaultVisible: false, category: 'advanced' },
-  { key: 'description', label: 'Description', defaultVisible: false, category: 'advanced' },
-  { key: 'afcAnchor', label: 'AFC Anchor', defaultVisible: false, category: 'advanced' },
-];
 
 interface AccessPointsProps {
   onShowDetail?: (serialNumber: string, displayName?: string) => void;
@@ -458,21 +404,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     lastSync: null as Date | null
   });
   const [, setTimeUpdateCounter] = useState(0);
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    // Load from localStorage or use defaults
-    const saved = localStorage.getItem('apVisibleColumns');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse saved columns:', e);
-      }
-    }
-    return AVAILABLE_COLUMNS.filter(col => col.defaultVisible).map(col => col.key);
-  });
-  const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Universal column customization (matches ConnectedClients pattern)
+  const customization = useTableCustomization({
+    tableId: 'access-points',
+    columns: AP_TABLE_COLUMNS,
+    storageKey: 'apVisibleColumns',
+    enableViews: true,
+    enablePersistence: true,
+  });
+
+  // Derive visible column keys from the customization hook
+  const visibleColumns = customization.visibleColumns;
 
   // Compute cable health for all APs (memoized for performance)
   const cableHealthMap = useMemo(() => {
@@ -536,26 +481,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
     return () => clearInterval(intervalId);
   }, []);
-
-  // Save visible columns to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem('apVisibleColumns', JSON.stringify(visibleColumns));
-  }, [visibleColumns]);
-
-  const toggleColumn = (columnKey: string) => {
-    setVisibleColumns(prev => {
-      if (prev.includes(columnKey)) {
-        return prev.filter(k => k !== columnKey);
-      } else {
-        return [...prev, columnKey];
-      }
-    });
-  };
-
-  const resetColumns = () => {
-    const defaults = AVAILABLE_COLUMNS.filter(col => col.defaultVisible).map(col => col.key);
-    setVisibleColumns(defaults);
-  };
 
   const loadData = async () => {
     setError('');
@@ -1841,14 +1766,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <Cpu className="mr-2 h-4 w-4" />
             {isLoadingMetrics ? 'Loading...' : 'Refresh Metrics'}
           </Button>
-          <Button
-            onClick={() => setIsColumnDialogOpen(true)}
-            variant="outline"
-            size="sm"
-          >
-            <Columns className="mr-2 h-4 w-4" />
-            Customize Columns
-          </Button>
+          <ColumnCustomizationDialog customization={customization} />
           <ExportButton
             data={sortedAccessPoints}
             columns={[
@@ -1929,163 +1847,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         );
       })()}
 
-      {/* Column Customization Dialog */}
-      <DetailSlideOut
-        isOpen={isColumnDialogOpen}
-        onClose={() => setIsColumnDialogOpen(false)}
-        title="Customize Table Columns"
-        description="Select which columns you want to display in the Access Points table"
-        width="lg"
-      >
-        <div className="space-y-6">
-            <div className="space-y-6">
-              {/* Basic Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Basic Information</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'basic').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Network Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Network</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'network').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Status Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Status</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'status').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Performance Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Performance</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'performance').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Hardware Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Hardware</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'hardware').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Advanced Columns */}
-              <div>
-                <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Advanced</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {AVAILABLE_COLUMNS.filter(col => col.category === 'advanced').map(column => (
-                    <div key={column.key} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.key}
-                        checked={visibleColumns.includes(column.key)}
-                        onCheckedChange={() => toggleColumn(column.key)}
-                      />
-                      <label
-                        htmlFor={column.key}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                      >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-          {/* Footer Actions */}
-          <div className="flex justify-between items-center pt-6 border-t mt-6">
-            <Button variant="outline" onClick={resetColumns}>
-              Reset to Default
-            </Button>
-            <div className="text-sm text-muted-foreground">
-              {visibleColumns.length} of {AVAILABLE_COLUMNS.length} columns selected
-            </div>
-            <Button onClick={() => setIsColumnDialogOpen(false)}>
-              Done
-            </Button>
-          </div>
-        </div>
-      </DetailSlideOut>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
@@ -2358,7 +2119,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 <TableHeader>
                   <TableRow>
                     {visibleColumns.map(columnKey => {
-                      const column = AVAILABLE_COLUMNS.find(c => c.key === columnKey);
+                      const column = AP_TABLE_COLUMNS.find(c => c.key === columnKey);
                       return (
                         <TableHead
                           key={columnKey}
