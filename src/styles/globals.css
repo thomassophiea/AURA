@@ -3313,12 +3313,12 @@ html.ep1 [data-slot="app"] {
   border-bottom: 1px solid #3a3e5c !important;
 }
 
-/* --- EP1 Inputs & Search — template: transparent bg, #4d4f63 border --- */
+/* --- EP1 Inputs & Search — elevated surface with visible border --- */
 .ep1 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 .ep1 textarea,
 .ep1 select {
-  background-color: transparent !important;
-  border-color: #4d4f63 !important;
+  background-color: #2d2f3e !important;
+  border-color: #6b6d8a !important;
   color: #f8f8fb !important;
   border-radius: 4px !important;
 }
@@ -3809,7 +3809,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 textarea,
 .ep1 [class*="input"] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: #6b6d8a !important;
   color: #f8f8fb !important;
 }
 .ep1 input::placeholder,

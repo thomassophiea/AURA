@@ -10,7 +10,7 @@
 
 // Cache version - increment this on every deploy to force cache invalidation
 // This should match CACHE_VERSION in versionGate.ts
-const CACHE_VERSION = 18;
+const CACHE_VERSION = 19;
 const CACHE_NAME = `aura-cache-v${CACHE_VERSION}`;
 const STATIC_CACHE = `aura-static-v${CACHE_VERSION}`;
 
@@ -102,7 +102,9 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           // Only use cache as absolute fallback (offline)
-          return caches.match(request);
+          return caches.match(request).then(
+            (cached) => cached || new Response('App offline', { status: 503, headers: { 'Content-Type': 'text/plain' } })
+          );
         })
     );
     return;
@@ -119,7 +121,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => cachedResponse);
+          }).catch(() => cachedResponse || new Response('', { status: 503 }));
 
           return cachedResponse || fetchPromise;
         });
@@ -138,7 +140,7 @@ self.addEventListener('fetch', (event) => {
               cache.put(request, networkResponse.clone());
             }
             return networkResponse;
-          }).catch(() => cachedResponse);
+          }).catch(() => cachedResponse || new Response('', { status: 503 }));
 
           return cachedResponse || fetchPromise;
         });
@@ -149,7 +151,9 @@ self.addEventListener('fetch', (event) => {
 
   // Network-first for everything else
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch(() =>
+      caches.match(request).then((cached) => cached || new Response('Network error', { status: 503 }))
+    )
   );
 });
 
