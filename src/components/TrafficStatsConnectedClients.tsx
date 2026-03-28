@@ -22,7 +22,6 @@ import { SaveToWorkspace } from './SaveToWorkspace';
 import { ExportButton } from './ExportButton';
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
-import { useTimeRangeFilter } from '../hooks/useTimeRangeFilter';
 import { useTableCustomization } from '../hooks/useTableCustomization';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
@@ -53,8 +52,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       s => (s as any).band || (s as any).frequencyBand,
     ],
   });
-
-  const { timeRange, setPreset: setTimePreset, setCustomRange, filterByTime } = useTimeRangeFilter('client-time-range');
 
   // Site filter — persisted to sessionStorage
   const [selectedSite, setSelectedSiteState] = useState<string>(() => {
@@ -350,8 +347,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
   // Filter stations by site, compound search, and time range
   const siteFiltered = selectedSite === 'all' ? stations : stations.filter(s => s.siteName === selectedSite || (s as any).siteId === selectedSite);
-  const searchFiltered = filterBySearch(siteFiltered);
-  const filteredStations = filterByTime(searchFiltered, (s) => (s as any).lastSeen || (s as any).associationTime);
+  const filteredStations = filterBySearch(siteFiltered);
 
   // Sort filtered stations
   const sortedStations = [...filteredStations].sort((a, b) => {
@@ -413,7 +409,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSite, searchQuery, timeRange]);
+  }, [selectedSite, searchQuery]);
 
   const getUniqueStatuses = () => {
     const statuses = new Set(stations.map(station => station.status).filter(Boolean));
@@ -906,9 +902,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
-            timePreset={timeRange.preset}
-            onTimePresetChange={setTimePreset}
-            onCustomRange={setCustomRange}
+            showTimeRange={false}
             showSiteFilter={true}
             sites={getUniqueSites().sort()}
             selectedSite={selectedSite}
