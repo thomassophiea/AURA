@@ -53,14 +53,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     ],
   });
 
-  // Site filter — persisted to sessionStorage
-  const [selectedSite, setSelectedSiteState] = useState<string>(() => {
-    try { return sessionStorage.getItem('client-site-filter') || 'all'; } catch { return 'all'; }
-  });
-  const setSelectedSite = (site: string) => {
-    setSelectedSiteState(site);
-    try { sessionStorage.setItem('client-site-filter', site); } catch {}
-  };
 
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -346,8 +338,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   };
 
   // Filter stations by site, compound search, and time range
-  const siteFiltered = selectedSite === 'all' ? stations : stations.filter(s => s.siteName === selectedSite || (s as any).siteId === selectedSite);
-  const filteredStations = filterBySearch(siteFiltered);
+  const filteredStations = filterBySearch(stations);
 
   // Sort filtered stations
   const sortedStations = [...filteredStations].sort((a, b) => {
@@ -409,7 +400,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedSite, searchQuery]);
+  }, [searchQuery]);
 
   const getUniqueStatuses = () => {
     const statuses = new Set(stations.map(station => station.status).filter(Boolean));
@@ -903,10 +894,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             searchValue={searchQuery}
             onSearchChange={setSearchQuery}
             showTimeRange={false}
-            showSiteFilter={true}
-            sites={getUniqueSites().sort()}
-            selectedSite={selectedSite}
-            onSiteChange={setSelectedSite}
             resultCount={filteredStations.length}
             totalCount={stations.length}
           />
@@ -917,7 +904,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-2">No Connected Clients Found</h3>
               <p className="text-muted-foreground">
-                {hasActiveSearch || selectedSite !== 'all'
+                {hasActiveSearch
                   ? 'No clients match your current filters.'
                   : 'No clients are currently connected to the network.'}
               </p>
