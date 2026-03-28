@@ -153,7 +153,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   };
 
   const filteredStations = stations.filter((station) => {
-    const matchesSite = filters.site === 'all' || station.siteName === filters.site;
+    const matchesSite = filters.site === 'all' || (station as any).siteId === filters.site || station.siteName === filters.site;
     const q = searchTerm.toLowerCase();
     const matchesSearch = !q ||
       station.hostName?.toLowerCase().includes(q) ||
