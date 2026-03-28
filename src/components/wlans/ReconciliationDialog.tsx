@@ -210,9 +210,9 @@ export function ReconciliationDialog({
 
               {/* Status Alert */}
               {result.mismatched === 0 ? (
-                <Alert className="border-green-500/20 bg-green-50 dark:bg-green-900/10">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <AlertDescription className="text-green-800 dark:text-green-200">
+                <Alert className="border-[color:var(--status-success)]/20 bg-[color:var(--status-success-bg)]">
+                  <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
+                  <AlertDescription className="text-[color:var(--status-success)]">
                     All profile assignments match expectations. No action needed.
                   </AlertDescription>
                 </Alert>

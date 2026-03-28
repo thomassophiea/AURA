@@ -232,7 +232,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
       </div>
 
       {apiNotAvailable && (
-        <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/20">
+        <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             System configuration API endpoints are not available on this controller version.

@@ -129,7 +129,7 @@ export function TimelineControls({
       {showHelp && (
         <div className="px-4 py-3 bg-blue-500/5 border-t border-blue-500/20">
           <div className="text-sm space-y-2">
-            <div className="font-semibold text-blue-600 dark:text-blue-400">⏱️ Timeline Navigation Guide</div>
+            <div className="font-semibold text-[color:var(--status-info)]">⏱️ Timeline Navigation Guide</div>
             <ul className="space-y-1.5 text-xs text-muted-foreground ml-4">
               <li><strong>Hover:</strong> Move mouse over any chart to preview time - reference line appears across all charts</li>
               <li><strong>🎯 Click to Lock:</strong> Click directly on any chart to lock the timeline at that exact moment (click again to unlock)</li>

@@ -434,9 +434,9 @@ export function MobileOptimizedDashboardExample() {
 
       {/* Pattern #3: Simplified navigation hint */}
       <MobileOnly>
-        <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
+        <Card className="bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30">
           <CardContent className="pt-6">
-            <p className="text-sm text-blue-900 dark:text-blue-100">
+            <p className="text-sm text-[color:var(--status-info)]">
               💡 <strong>Tip:</strong> Use the menu button in the top-left to navigate between sections
             </p>
           </CardContent>

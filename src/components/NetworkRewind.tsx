@@ -169,7 +169,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
           </div>
           <div className="flex items-center space-x-2">
             {isLive ? (
-              <Badge variant="outline" className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20">
+              <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span>
                 LIVE
               </Badge>
