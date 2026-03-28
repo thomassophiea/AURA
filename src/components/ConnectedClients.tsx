@@ -14,7 +14,7 @@ import { AlertCircle, Users, Search, RefreshCw, Wifi, Activity, Timer, Signal, D
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, Station, type StationEvent, type APEvent, type RRMEvent } from '../services/api';
+import { apiService, Station, Site, type StationEvent, type APEvent, type RRMEvent } from '../services/api';
 import { RoamingTrail } from './RoamingTrail';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { toast } from 'sonner';
@@ -33,6 +33,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [error, setError] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [siteFilter, setSiteFilter] = useState<string>('all');
+  const [sites, setSites] = useState<Site[]>([]);
+  const [isLoadingSites, setIsLoadingSites] = useState(false);
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
@@ -65,6 +67,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
 
   useEffect(() => {
     loadStations();
+    loadSites();
   }, []);
 
   const loadStations = async () => {
@@ -87,6 +90,19 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       console.error('Error loading stations:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadSites = async () => {
+    setIsLoadingSites(true);
+    try {
+      if (!apiService.isAuthenticated()) { setSites([]); return; }
+      const sitesData = await apiService.getSites();
+      setSites(Array.isArray(sitesData) ? sitesData : []);
+    } catch {
+      setSites([]);
+    } finally {
+      setIsLoadingSites(false);
     }
   };
 
@@ -818,9 +834,17 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
-                {getUniqueSites().map((site) => (
-                  <SelectItem key={site} value={site}>{site}</SelectItem>
+                {sites.map((site) => (
+                  <SelectItem key={site.id} value={site.name || site.siteName || site.id}>
+                    {site.name || site.siteName}
+                  </SelectItem>
                 ))}
+                {sites.length === 0 && !isLoadingSites && (
+                  <SelectItem value="no-sites" disabled>No sites available</SelectItem>
+                )}
+                {isLoadingSites && (
+                  <SelectItem value="loading" disabled>Loading sites...</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
