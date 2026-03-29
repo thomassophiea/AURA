@@ -23,7 +23,7 @@
  */
 
 import { Badge } from './ui/badge';
-import { cn } from '../lib/utils';
+import { cn } from './ui/utils';
 import { CheckCircle, AlertTriangle, XCircle, Info, Circle, AlertCircle } from 'lucide-react';
 import {
   type SemanticStatus,
