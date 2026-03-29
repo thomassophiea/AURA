@@ -125,3 +125,106 @@
 - /platformmanager/v1/* endpoints: Not in main Swagger. Separate Platform Manager API.
 - /v1/aaa-policies: Swagger shows /v3/aaa — verify actual path on controller.
 - AP model field: API may return model in hardwareType, apModel, or platformName rather than model field.
+
+---
+
+# Plan 2 Findings: Monitor & Dashboard API Audit
+
+Generated: 2026-03-28
+Scope: 7 Monitor/Dashboard pages + 3 detail panels
+
+## Plan 2 Summary
+
+| Metric | Count |
+|--------|-------|
+| Pages audited | 10 (7 pages + 3 detail panels) |
+| Endpoints validated | 37 |
+| Issues found | 11 |
+| Code fixes applied | 8 |
+| Enhancement opportunities documented | 14 |
+| Pages cleaner than expected | 5 (AppInsights, ConnectedClients, AccessPoints, ClientDetail, SiteDetail) |
+
+## Workspace
+
+| Endpoint | Swagger? | Status | Fix Applied |
+|----------|----------|--------|-------------|
+| `/v1/aps/query` | YES | REAL | — |
+| `/v1/stations` | YES | REAL | — |
+| `/v3/sites` | YES | REAL | — |
+| `/v1/report/sites/{siteId}` | YES | REAL | — |
+| `/v1/notifications` | YES | REAL (after fix) | fetchAlertsList now uses /v1/notifications |
+| `/v1/alarms/active` (via getActiveAlarms) | NO | NON-SWAGGER | fetchAlarmsList now uses /v1/notifications filtered |
+| `/v1/aps/{serial}/alarms` (contextual_insights.*) | NO | NON-SWAGGER | Documented — see AP Detail fix |
+| `/v1/auditlogs` | YES | REAL | — |
+
+Fixes: 2
+
+## Dashboard Enhanced
+
+All 11 endpoints are Swagger-documented. Notifications chain (`/v1/notifications` → `/v1/alerts` fallback) acceptable. No fixes needed.
+
+## SLE Dashboard
+
+All 4 endpoints are Swagger-documented. SLE calculations are legitimate derived metrics from station RSSI/SNR/txRate fields. No fixes needed.
+
+## App Insights
+
+Both endpoints (`/v3/sites`, `/v1/report/sites`) are Swagger-documented. Cleanest page in scope. No fixes needed.
+
+## Connected Clients
+
+All 6 endpoints are Swagger-documented. Reference pattern page. No fixes needed.
+
+## Access Points
+
+All 7 endpoints are Swagger-documented. Cable health is correctly derived from `ap.ethPorts[].speed`. No fixes needed.
+
+## Report Widgets (highest priority)
+
+| Widget | Pre-Fix Status | Fix Applied |
+|--------|----------------|-------------|
+| Network Utilization (→ Client Load Index) | PARTIAL: `count/10` formula | Renamed + formula fixed (raw count) |
+| Connected Clients | REAL | — |
+| AP Health | REAL | — |
+| Network Throughput (→ Total Traffic Volume) | PARTIAL: `bytes/60` assumes 60s window | Renamed + shows cumulative MB |
+| Signal Quality | REAL | — |
+| Security Events (→ Security Notifications) | MOCK: `/v1/events?type=security` not in Swagger | Fixed: uses `/v1/notifications` filtered |
+| Active Alerts | MOCK: `/v1/alerts` not in Swagger | Fixed: uses `/v1/notifications` severity filter |
+| Performance Score (→ Performance Score Derived) | PARTIAL: synthetic composite | Labeled "(Derived)" with code comment |
+
+Fixes: 5
+
+## AP Detail Panel
+
+| Endpoint | Swagger? | Fix Applied |
+|----------|----------|-------------|
+| `/v1/aps/{serial}` | YES | — |
+| `/v1/aps/{serial}/stations` | YES | — |
+| `/v1/aps/{serial}/alarms` | NO | try/catch added — returns [] on failure with warn log |
+
+Fix: `getAccessPointEvents()` now returns `[]` instead of throwing when alarms endpoint unavailable.
+
+## Client Detail Panel
+
+Both endpoints (`/v1/stations/{mac}`, `/v1/stations/{stationId}/report`) are Swagger-documented. No fixes needed.
+
+## Site Detail Panel
+
+All 3 endpoints (`/v1/state/sites/{siteId}`, `/v1/aps/query`, `/v1/stations`) are Swagger-documented. SiteDetail is simpler than the feature matrix suggested — does not call fetchWidgetData or getAppInsights. No fixes needed.
+
+## Enhancement Opportunities (Plan 5)
+
+| Page | Endpoint | Use Case |
+|------|----------|----------|
+| Workspace | `/v1/state/entityDistribution` | Health overview widget |
+| Workspace | `/v1/bestpractices/evaluate` | Best practices widget |
+| Dashboard Enhanced | `/v1/state/sites` | Site health in header |
+| Report Widgets | `/v1/reports/widgets` | Dynamic widget catalog |
+| Report Widgets | `/v1/report/sites/{siteId}` channelUtil | Real channel utilization |
+| Access Points | `/v1/aps/{serial}/cert` | Certificate expiry |
+| Access Points | `/v1/aps/{serial}/lldp` | Switch topology |
+| Access Points | `/v1/aps/hardwaretypes` | Model filter |
+| AP Detail | `/v1/aps/{serial}/report` | Migrate from non-Swagger /alarms |
+| AP Detail | `/v1/report/aps/{serial}/smartrf` | Smart RF analytics |
+| Client Detail | `/v1/stations/{stationId}/location` | Location history |
+| Site Detail | `/v1/report/sites/{siteId}/smartrf` | Site Smart RF data |

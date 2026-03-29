@@ -1470,20 +1470,27 @@ async function fetchAlertsList(
   timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
-    const alerts = await api.getAlerts?.() || [];
+    // NOTE: /v1/alerts is NOT in Swagger. Use /v1/notifications (Swagger: NotificationManager).
+    // Count warning/critical notifications as "alerts".
+    const response = await api.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
+    if (!response.ok) {
+      return { data: [], metadata: { source: 'alerts.list' } };
+    }
+    const notifData = await response.json();
+    let notifications = Array.isArray(notifData) ? notifData : (notifData.notifications || []);
 
-    const filteredAlerts = siteId
-      ? alerts.filter((a: any) => a.siteId === siteId || a.siteName === siteId)
-      : alerts;
+    if (siteId) {
+      notifications = notifications.filter((n: any) => n.siteId === siteId || n.siteName === siteId);
+    }
 
-    const transformed = filteredAlerts.map((alert: any) => ({
-      alert_id: alert.id,
-      severity: alert.severity || 'info',
-      category: alert.category || 'general',
-      message: alert.message || alert.description || '',
-      source: alert.source || alert.apSerial || alert.apName || '',
-      status: alert.status || 'active',
-      timestamp: alert.timestamp || alert.createdAt,
+    const transformed = notifications.map((n: any) => ({
+      alert_id: n.id,
+      severity: n.severity || 'info',
+      category: n.category || 'general',
+      message: n.message || n.description || '',
+      source: n.source || n.apSerial || n.apName || '',
+      status: n.status || 'active',
+      timestamp: n.timestamp || n.createdAt,
     }));
 
     return {
@@ -1491,7 +1498,7 @@ async function fetchAlertsList(
       metadata: { totalCount: transformed.length, source: 'alerts.list' },
     };
   } catch (error) {
-    console.warn('[WorkspaceDataService] Failed to fetch alerts:', error);
+    console.warn('[WorkspaceDataService] Failed to fetch alerts via notifications:', error);
     return { data: [], metadata: { source: 'alerts.list' } };
   }
 }
@@ -1531,18 +1538,31 @@ async function fetchAlarmsList(
   timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
-    const alarms = await api.getActiveAlarms?.() || [];
+    // NOTE: /v1/alarms and /v1/alarms/active are NOT in Swagger. Use /v1/notifications.
+    // Treat warning/critical severity notifications as "alarms".
+    const response = await api.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
+    if (!response.ok) {
+      return { data: [], metadata: { source: 'alarms.list' } };
+    }
+    const notifData = await response.json();
+    let notifications = Array.isArray(notifData) ? notifData : (notifData.notifications || []);
 
-    const filteredAlarms = siteId
-      ? alarms.filter((a: any) => a.siteId === siteId)
-      : alarms;
+    // Filter to warning/critical severity as active "alarms"
+    let alarms = notifications.filter((n: any) => {
+      const sev = (n.severity || '').toLowerCase();
+      return sev === 'warning' || sev === 'critical';
+    });
 
-    const transformed = filteredAlarms.map((alarm: any) => ({
+    if (siteId) {
+      alarms = alarms.filter((a: any) => a.siteId === siteId);
+    }
+
+    const transformed = alarms.map((alarm: any) => ({
       alarm_id: alarm.id,
       severity: alarm.severity || 'warning',
       category: alarm.category || 'system',
-      message: alarm.message || alarm.log || '',
-      source: alarm.apName || alarm.ApName || alarm.apSerial || alarm.ApSerial || '',
+      message: alarm.message || alarm.description || '',
+      source: alarm.apName || alarm.apSerial || alarm.source || '',
       timestamp: alarm.timestamp || alarm.ts,
     }));
 
@@ -1551,7 +1571,7 @@ async function fetchAlarmsList(
       metadata: { totalCount: transformed.length, source: 'alarms.list' },
     };
   } catch (error) {
-    console.warn('[WorkspaceDataService] Failed to fetch alarms:', error);
+    console.warn('[WorkspaceDataService] Failed to fetch alarms via notifications:', error);
     return { data: [], metadata: { source: 'alarms.list' } };
   }
 }
