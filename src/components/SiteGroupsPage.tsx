@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Server, Globe, Wifi, WifiOff, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import { Server, Globe, Wifi, WifiOff, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, ArrowUpDown, LogIn } from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -143,9 +143,15 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
     }
   };
 
+  const { enterSiteGroup } = useAppContext();
+
   const handleRowClick = (sg: SiteGroup) => {
     setSelectedGroup(sg);
     setIsDetailOpen(true);
+  };
+
+  const handleRowDoubleClick = (sg: SiteGroup) => {
+    enterSiteGroup(sg);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -320,6 +326,7 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
                         key={sg.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(sg)}
+                        onDoubleClick={() => handleRowDoubleClick(sg)}
                       >
                         <TableCell onClick={e => e.stopPropagation()}>
                           <Checkbox
@@ -428,6 +435,7 @@ interface SiteGroupDetailContentProps {
 }
 
 function SiteGroupDetailContent({ group, onNavigateToSites, onClose }: SiteGroupDetailContentProps) {
+  const { enterSiteGroup } = useAppContext();
   const statusConfig: Record<string, { className: string; label: string }> = {
     connected:    { className: 'text-green-500', label: 'Connected' },
     disconnected: { className: 'text-red-500',   label: 'Disconnected' },
@@ -453,6 +461,18 @@ function SiteGroupDetailContent({ group, onNavigateToSites, onClose }: SiteGroup
           {status.label}
         </Badge>
       </div>
+
+      {/* Enter Site Group */}
+      <Button
+        className="w-full"
+        onClick={() => {
+          enterSiteGroup(group);
+          onClose?.();
+        }}
+      >
+        <LogIn className="h-4 w-4 mr-2" />
+        Enter Site Group
+      </Button>
 
       {/* Overview */}
       <div className="space-y-3 text-sm">

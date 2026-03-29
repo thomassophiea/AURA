@@ -8,6 +8,7 @@ import {
   Menu,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   Cog,
   Network,
   Shield,
@@ -34,6 +35,7 @@ import {
   Target,
   Building2,
   Server,
+  Globe,
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -47,6 +49,7 @@ import { useDeviceDetection } from '@/hooks/useDeviceDetection';
 import { useEffect } from 'react';
 import { prefetchComponent } from '@/lib/prefetch';
 import { tenantService } from '../services/tenantService';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -57,9 +60,16 @@ interface SidebarProps {
   onThemeToggle?: () => void;
 }
 
-// Navigation items
-const navigationItems = [
+// ── Global-scope navigation (AURA level, no site group required) ──
+const globalNavigationItems = [
   { id: 'workspace', label: 'Workspace', icon: LayoutDashboard, badge: 'Sandbox' },
+  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
+  { id: 'global-templates', label: 'Templates', icon: Layers },
+  { id: 'global-variables', label: 'Variables', icon: Braces },
+];
+
+// ── Site-group-scope navigation (controller level) ──
+const monitoringItems = [
   { id: 'service-levels', label: 'Contextual Insights', icon: Brain, badge: 'Sandbox' },
   { id: 'sle-dashboard', label: 'Service Levels', icon: Target },
   { id: 'app-insights', label: 'App Insights', icon: AppWindow },
@@ -68,21 +78,16 @@ const navigationItems = [
   { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
 ];
 
-// Configure items
 const configureItems = [
-  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
   { id: 'configure-sites', label: 'Sites', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
-  { id: 'global-templates', label: 'Templates', icon: Layers },
-  { id: 'global-variables', label: 'Variables', icon: Braces },
   { id: 'site-group-settings', label: 'SG Settings', icon: Cog },
 ];
 
-// System Management items
 const systemItems = [
   { id: 'system-backup', label: 'Backup & Storage', icon: Database },
   { id: 'license-dashboard', label: 'License Management', icon: Key },
@@ -94,20 +99,26 @@ const systemItems = [
   { id: 'guest-management', label: 'Guest Access', icon: UserPlus },
 ];
 
+// Legacy combined list for checking active states
+const allSiteGroupItems = [...monitoringItems, ...configureItems, ...systemItems];
+
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'ep1', onThemeToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const branding = useBranding();
   const device = useDeviceDetection();
   const org = tenantService.getCurrentOrganization();
+  const { navigationScope, siteGroup, exitSiteGroup } = useAppContext();
 
   // Check if any configure sub-item is currently active
   const isConfigureActive = configureItems.some(item => currentPage === item.id);
   const isSystemActive = systemItems.some(item => currentPage === item.id);
+  const isMonitoringActive = monitoringItems.some(item => currentPage === item.id);
 
   // Auto-expand sections if an item is active
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
   const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
+  const [isMonitoringExpanded, setIsMonitoringExpanded] = useState(true);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
@@ -197,204 +208,309 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-2 space-y-1">
-        {navigationItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Button
-              key={item.id}
-              variant={currentPage === item.id ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10",
-                isCollapsed ? "px-2" : "px-3",
-                currentPage === item.id
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-              onClick={() => handlePageChange(item.id)}
-              onMouseEnter={() => prefetchComponent(item.id)}
-            >
-              <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && (
-                <span className="flex items-center gap-2">
-                  {item.label}
-                  {item.badge && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
-                      {item.badge}
-                    </span>
-                  )}
-                </span>
-              )}
-            </Button>
-          );
-        })}
-        
-        {/* Configure Section */}
-        <div className="space-y-1">
-          <Button
-            variant={isConfigureActive ? "default" : "ghost"}
-            className={cn(
-              "w-full justify-start h-10",
-              isCollapsed ? "px-2" : "px-3",
-              isConfigureActive 
-                ? "bg-sidebar-primary text-sidebar-primary-foreground" 
-                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )}
-            onClick={() => {
-              if (!isCollapsed) {
-                setIsConfigureExpanded(!isConfigureExpanded);
-              }
-            }}
-          >
-            <Cog className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+      <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+        {navigationScope === 'site-group' && (
+          <>
+            {/* Back to AURA global level */}
             {!isCollapsed && (
-              <>
-                <span className="flex-1 text-left">Configure</span>
-                {isConfigureExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </>
+              <Button
+                variant="ghost"
+                className="w-full justify-start h-10 px-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mb-1"
+                onClick={() => {
+                  exitSiteGroup();
+                  handlePageChange('configure-site-groups');
+                }}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                <Globe className="h-3.5 w-3.5 mr-1.5" />
+                <span className="text-xs">Back to AURA</span>
+              </Button>
             )}
-          </Button>
-          
-          {/* Configure Sub-items */}
-          {!isCollapsed && isConfigureExpanded && (
-            <div className="ml-6 space-y-1">
-              {configureItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <Button
-                    key={item.id}
-                    variant={currentPage === item.id ? "default" : "ghost"}
-                    className={cn(
-                      "w-full justify-start h-9 text-sm",
-                      "px-3",
-                      currentPage === item.id
-                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                        : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                    )}
-                    onClick={() => handlePageChange(item.id)}
-                    onMouseEnter={() => prefetchComponent(item.id)}
-                  >
-                    <Icon className="h-3 w-3 mr-2" />
-                    <span>{item.label}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* System Section - Desktop only */}
-        {!device.isMobile && (
-          <div className="space-y-1">
-            <Button
-              variant={isSystemActive ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10",
-                isCollapsed ? "px-2" : "px-3",
-                isSystemActive
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-              onClick={() => {
-                if (!isCollapsed) {
-                  setIsSystemExpanded(!isSystemExpanded);
-                }
-              }}
-            >
-              <HardDrive className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && (
-                <>
-                  <span className="flex-1 text-left">System</span>
-                  {isSystemExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronRight className="h-4 w-4" />
-                  )}
-                </>
-              )}
-            </Button>
-
-            {/* System Sub-items */}
-            {!isCollapsed && isSystemExpanded && (
-              <div className="ml-6 space-y-1">
-                {systemItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <Button
-                      key={item.id}
-                      variant={currentPage === item.id ? "default" : "ghost"}
-                      className={cn(
-                        "w-full justify-start h-9 text-sm",
-                        "px-3",
-                        currentPage === item.id
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                      )}
-                      onClick={() => handlePageChange(item.id)}
-                      onMouseEnter={() => prefetchComponent(item.id)}
-                    >
-                      <Icon className="h-3 w-3 mr-2" />
-                      <span>{item.label}</span>
-                    </Button>
-                  );
-                })}
+            {isCollapsed && (
+              <Button
+                variant="ghost"
+                className="w-full justify-center h-10 px-2 text-sidebar-foreground/70 hover:bg-sidebar-accent"
+                onClick={() => {
+                  exitSiteGroup();
+                  handlePageChange('configure-site-groups');
+                }}
+                title="Back to AURA"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {/* Site group label */}
+            {!isCollapsed && siteGroup && (
+              <div className="px-3 py-1.5 mb-1">
+                <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider font-medium">Site Group</div>
+                <div className="text-xs text-sidebar-foreground font-medium truncate">{siteGroup.name}</div>
               </div>
             )}
-          </div>
-        )}
 
-        {/* Desktop-only: Tools and Administration */}
-        {!device.isMobile && (
-          <>
-            {/* Tools - Navigation Item */}
-            <Button
-              variant={currentPage === 'tools' ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10",
-                isCollapsed ? "px-2" : "px-3",
-                currentPage === 'tools'
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            {/* Monitoring Section */}
+            <div className="space-y-1">
+              <Button
+                variant={isMonitoringActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-10",
+                  isCollapsed ? "px-2" : "px-3",
+                  isMonitoringActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+                onClick={() => {
+                  if (!isCollapsed) {
+                    setIsMonitoringExpanded(!isMonitoringExpanded);
+                  }
+                }}
+              >
+                <BarChart3 className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-left">Monitoring</span>
+                    {isMonitoringExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </>
+                )}
+              </Button>
+              {!isCollapsed && isMonitoringExpanded && (
+                <div className="ml-6 space-y-1">
+                  {monitoringItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={currentPage === item.id ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start h-9 text-sm",
+                          "px-3",
+                          currentPage === item.id
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                        onClick={() => handlePageChange(item.id)}
+                        onMouseEnter={() => prefetchComponent(item.id)}
+                      >
+                        <Icon className="h-3 w-3 mr-2" />
+                        <span className="flex items-center gap-2">
+                          {item.label}
+                          {item.badge && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                              {item.badge}
+                            </span>
+                          )}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
               )}
-              onClick={() => handlePageChange('tools')}
-            >
-              <Wrench className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && <span>Tools</span>}
-            </Button>
-            <Button
-              variant={currentPage === 'administration' ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10",
-                isCollapsed ? "px-2" : "px-3",
-                currentPage === 'administration'
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            </div>
+
+            {/* Configure Section */}
+            <div className="space-y-1">
+              <Button
+                variant={isConfigureActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-10",
+                  isCollapsed ? "px-2" : "px-3",
+                  isConfigureActive
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+                onClick={() => {
+                  if (!isCollapsed) {
+                    setIsConfigureExpanded(!isConfigureExpanded);
+                  }
+                }}
+              >
+                <Cog className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && (
+                  <>
+                    <span className="flex-1 text-left">Configure</span>
+                    {isConfigureExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
+                  </>
+                )}
+              </Button>
+              {!isCollapsed && isConfigureExpanded && (
+                <div className="ml-6 space-y-1">
+                  {configureItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <Button
+                        key={item.id}
+                        variant={currentPage === item.id ? "default" : "ghost"}
+                        className={cn(
+                          "w-full justify-start h-9 text-sm",
+                          "px-3",
+                          currentPage === item.id
+                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                        onClick={() => handlePageChange(item.id)}
+                        onMouseEnter={() => prefetchComponent(item.id)}
+                      >
+                        <Icon className="h-3 w-3 mr-2" />
+                        <span>{item.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
               )}
-              onClick={() => handlePageChange('administration')}
-            >
-              <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && <span>Administration</span>}
-            </Button>
-            <Button
-              variant={currentPage === 'help' ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10",
-                isCollapsed ? "px-2" : "px-3",
-                currentPage === 'help'
-                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-              onClick={() => handlePageChange('help')}
-            >
-              <HelpCircle className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-              {!isCollapsed && <span>Help</span>}
-            </Button>
+            </div>
+
+            {/* System Section - Desktop only */}
+            {!device.isMobile && (
+              <div className="space-y-1">
+                <Button
+                  variant={isSystemActive ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start h-10",
+                    isCollapsed ? "px-2" : "px-3",
+                    isSystemActive
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                  onClick={() => {
+                    if (!isCollapsed) {
+                      setIsSystemExpanded(!isSystemExpanded);
+                    }
+                  }}
+                >
+                  <HardDrive className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 text-left">System</span>
+                      {isSystemExpanded ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4" />
+                      )}
+                    </>
+                  )}
+                </Button>
+                {!isCollapsed && isSystemExpanded && (
+                  <div className="ml-6 space-y-1">
+                    {systemItems.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <Button
+                          key={item.id}
+                          variant={currentPage === item.id ? "default" : "ghost"}
+                          className={cn(
+                            "w-full justify-start h-9 text-sm",
+                            "px-3",
+                            currentPage === item.id
+                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                          )}
+                          onClick={() => handlePageChange(item.id)}
+                          onMouseEnter={() => prefetchComponent(item.id)}
+                        >
+                          <Icon className="h-3 w-3 mr-2" />
+                          <span>{item.label}</span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Desktop-only: Tools and Administration */}
+            {!device.isMobile && (
+              <>
+                <Button
+                  variant={currentPage === 'tools' ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start h-10",
+                    isCollapsed ? "px-2" : "px-3",
+                    currentPage === 'tools'
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                  onClick={() => handlePageChange('tools')}
+                >
+                  <Wrench className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                  {!isCollapsed && <span>Tools</span>}
+                </Button>
+                <Button
+                  variant={currentPage === 'administration' ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start h-10",
+                    isCollapsed ? "px-2" : "px-3",
+                    currentPage === 'administration'
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                  onClick={() => handlePageChange('administration')}
+                >
+                  <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                  {!isCollapsed && <span>Administration</span>}
+                </Button>
+              </>
+            )}
           </>
         )}
+
+        {navigationScope === 'global' && (
+          <>
+            {/* Global-scope navigation items */}
+            {globalNavigationItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  key={item.id}
+                  variant={currentPage === item.id ? "default" : "ghost"}
+                  className={cn(
+                    "w-full justify-start h-10",
+                    isCollapsed ? "px-2" : "px-3",
+                    currentPage === item.id
+                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                  onClick={() => handlePageChange(item.id)}
+                  onMouseEnter={() => prefetchComponent(item.id)}
+                >
+                  <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                  {!isCollapsed && (
+                    <span className="flex items-center gap-2">
+                      {item.label}
+                      {item.badge && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                          {item.badge}
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </Button>
+              );
+            })}
+          </>
+        )}
+
+        {/* Help - always visible */}
+        <Button
+          variant={currentPage === 'help' ? "default" : "ghost"}
+          className={cn(
+            "w-full justify-start h-10",
+            isCollapsed ? "px-2" : "px-3",
+            currentPage === 'help'
+              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )}
+          onClick={() => handlePageChange('help')}
+        >
+          <HelpCircle className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+          {!isCollapsed && <span>Help</span>}
+        </Button>
       </nav>
 
       <Separator className="bg-sidebar-border" />
