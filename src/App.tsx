@@ -6,7 +6,6 @@ import { Sidebar } from './components/Sidebar';
 import { MobileApp } from './components/mobile/MobileApp';
 import { DetailSlideOut } from './components/DetailSlideOut';
 import { PlaceholderPage } from './components/PlaceholderPage';
-import { PerformanceAnalytics } from './components/PerformanceAnalytics';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
 // Lazy load route components for better performance with prefetch
@@ -52,6 +51,7 @@ const GuestManagement = lazy(() => import('./components/GuestManagement').then(m
 const ApiDocumentation = lazy(() => import('./components/ApiDocumentation').then(m => ({ default: m.ApiDocumentation })));
 const Workspace = lazy(() => import('./components/Workspace').then(m => ({ default: m.Workspace })));
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
+const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytics').then(m => ({ default: m.PerformanceAnalytics })));
 import { apiService, ApiCallLog } from './services/api';
 import { AppContextProvider } from './contexts/AppContext';
 import { sleDataCollectionService } from './services/sleDataCollection';
