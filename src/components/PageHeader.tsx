@@ -1,7 +1,7 @@
 import { Button } from './ui/button';
 import { RefreshCw, LucideIcon } from 'lucide-react';
 import { TYPOGRAPHY, LAYOUTS, BUTTON_STYLES } from '../utils/ui-constants';
-import { cn } from '../lib/utils';
+import { cn } from './ui/utils';
 
 interface PageHeaderProps {
   title: string;

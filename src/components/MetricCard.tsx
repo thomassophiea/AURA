@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { LucideIcon } from 'lucide-react';
 import { TYPOGRAPHY, CARD_STYLES, ICON_SIZES, SPACING } from '../utils/ui-constants';
-import { cn } from '../lib/utils';
+import { cn } from './ui/utils';
 
 interface MetricCardProps {
   title: string;

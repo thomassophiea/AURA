@@ -1,5 +1,5 @@
 import { TABLE_STYLES, STATES } from '../utils/ui-constants';
-import { cn } from '../lib/utils';
+import { cn } from './ui/utils';
 import { Skeleton } from './ui/skeleton';
 
 export interface Column<T> {
