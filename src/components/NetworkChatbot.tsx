@@ -62,9 +62,6 @@ export function NetworkChatbot({
   onShowAccessPointDetail,
   onShowSiteDetail
 }: NetworkChatbotProps) {
-  // Debug logging
-  console.log('NetworkChatbot render:', { isOpen, onToggle: !!onToggle });
-
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);

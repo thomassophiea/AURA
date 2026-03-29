@@ -98,7 +98,6 @@ class AssignmentStorageService {
    * Save a site assignment
    */
   saveWLANSiteAssignment(assignment: WLANSiteAssignment): void {
-    console.log('[AssignmentStorage] Saving site assignment:', assignment);
     const allAssignments = this.getAllSiteAssignments();
     const key = this.getSiteAssignmentKey(assignment.wlanId, assignment.siteId);
 
@@ -156,7 +155,6 @@ class AssignmentStorageService {
    * Save a profile assignment
    */
   saveWLANProfileAssignment(assignment: WLANProfileAssignment): void {
-    console.log('[AssignmentStorage] Saving profile assignment:', assignment);
     const allAssignments = this.getAllProfileAssignments();
     const key = this.getProfileAssignmentKey(assignment.wlanId, assignment.profileId);
 
@@ -172,7 +170,6 @@ class AssignmentStorageService {
    * Save multiple profile assignments (batch operation)
    */
   saveWLANProfileAssignmentsBatch(assignments: WLANProfileAssignment[]): void {
-    console.log(`[AssignmentStorage] Batch saving ${assignments.length} profile assignments`);
     const allAssignments = this.getAllProfileAssignments();
 
     for (const assignment of assignments) {
@@ -295,7 +292,6 @@ class AssignmentStorageService {
    * Delete all assignments for a WLAN (cleanup when WLAN is deleted)
    */
   deleteAllWLANAssignments(wlanId: string): void {
-    console.log(`[AssignmentStorage] Deleting all assignments for WLAN: ${wlanId}`);
     this.deleteWLANSiteAssignments(wlanId);
     this.deleteWLANProfileAssignments(wlanId);
   }

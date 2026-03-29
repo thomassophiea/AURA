@@ -362,7 +362,7 @@ export function ApplicationsManagement() {
             <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
               <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
               <AlertDescription className="text-[color:var(--status-warning)]">
-                OAuth applications management API endpoints are not available on this controller version. This feature requires API v1/oauth/applications support.
+                Applications API (/platformmanager/v1/apps) is not available on this controller. This is a Platform Manager endpoint not in the standard Swagger specification. Note: /v1/appkeys provides OAuth application key credentials but serves a different purpose (API auth tokens, not installed applications).
               </AlertDescription>
             </Alert>
 

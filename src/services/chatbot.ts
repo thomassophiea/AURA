@@ -87,7 +87,6 @@ export class ChatbotService {
       // Load basic context data
       await this.refreshContext();
       this.isInitialized = true;
-      console.log('Chatbot service initialized with context');
     } catch (error) {
       console.warn('Failed to initialize chatbot context:', error);
     }

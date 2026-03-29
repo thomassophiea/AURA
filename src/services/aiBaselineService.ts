@@ -67,7 +67,6 @@ class AIBaselineService {
         const parsed = JSON.parse(stored);
         // Validate structure
         if (parsed.samples && Array.isArray(parsed.samples)) {
-          console.log(`[AIBaseline] Loaded ${parsed.samples.length} samples from storage`);
           return parsed;
         }
       }
@@ -93,7 +92,6 @@ class AIBaselineService {
     this.saveDebounceTimer = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
-        console.log(`[AIBaseline] Saved ${this.data.samples.length} samples to storage`);
       } catch (error) {
         console.error('[AIBaseline] Failed to save to storage:', error);
       }
@@ -193,7 +191,6 @@ class AIBaselineService {
     
     if (samples.length === 0) {
       // Return defaults if no data
-      console.log('[AIBaseline] No samples available, returning defaults');
       return {
         rfqiTarget: 75,
         rfqiPoor: 55,
@@ -226,7 +223,6 @@ class AIBaselineService {
     this.data.lastCalculated = Date.now();
     this.saveToStorage();
 
-    console.log(`[AIBaseline] Calculated thresholds from ${samples.length} samples:`, thresholds);
     return thresholds;
   }
 
@@ -324,7 +320,6 @@ class AIBaselineService {
       calculatedThresholds: null
     };
     localStorage.removeItem(STORAGE_KEY);
-    console.log('[AIBaseline] Cleared all baseline data');
   }
 
   /**

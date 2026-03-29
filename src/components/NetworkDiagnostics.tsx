@@ -180,6 +180,12 @@ export function NetworkDiagnostics() {
         </p>
       </div>
 
+      {/* Platform Manager dependency notice */}
+      <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+        <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>Network diagnostics require Platform Manager API access (/platformmanager/v1/network/*). These tools may not be available on all controller versions.</span>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="ping">

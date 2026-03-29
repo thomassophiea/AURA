@@ -1239,6 +1239,11 @@ class ApiService {
    * @param serialNumber - AP serial number
    * @param duration - Duration in days (default: 14)
    * @returns Array of alarm categories with nested alarm types and alarms
+   *
+   * NOTE: /v1/aps/{serial}/alarms is NOT in the Swagger catalog.
+   * The Swagger-documented alternative is GET /v1/aps/{serial}/report (widgetList-based).
+   * We attempt the alarms endpoint first (works on many XCA builds) and silently fall back
+   * to an empty array if not available — the AP Detail page handles empty events gracefully.
    */
   async getAccessPointEvents(serialNumber: string, duration: number = 14): Promise<APAlarmCategory[]> {
     const endTime = Date.now();
@@ -1247,17 +1252,23 @@ class ApiService {
 
     const endpoint = `/v1/aps/${encodeURIComponent(serialNumber)}/alarms?startTime=${startTime}&endTime=${endTime}&noCache=${noCache}`;
 
-    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D)`);
+    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D) via non-Swagger /alarms endpoint`);
 
-    const response = await this.makeAuthenticatedRequest(endpoint);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AP events: ${response.status} ${response.statusText}`);
+    try {
+      const response = await this.makeAuthenticatedRequest(endpoint);
+      if (!response.ok) {
+        logger.warn(`[API] AP alarms endpoint returned ${response.status} for ${serialNumber} — endpoint may not exist on this controller build`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      logger.warn(`[API] AP alarms endpoint unavailable for ${serialNumber}: ${error}`);
+      return [];
     }
-
-    const data = await response.json();
-    logger.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
-
-    return Array.isArray(data) ? data : [];
   }
 
   /**
@@ -2070,9 +2081,10 @@ class ApiService {
   }
 
   // Get Class of Service (CoS) options
+  // NOTE: Swagger only catalogs /v1/cos; /v3/cos may exist on some controllers but is non-standard.
   async getClassOfService(): Promise<ClassOfService[]> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v3/cos', {}, 8000);
+      const response = await this.makeAuthenticatedRequest('/v1/cos', {}, 8000);
       
       if (!response.ok) {
         logger.warn(`Failed to fetch CoS: ${response.status} ${response.statusText}`);
@@ -8276,6 +8288,8 @@ class ApiService {
   /**
    * Get system events
    * Endpoint: GET /v1/events
+   * @deprecated /v1/events is NOT in the Swagger catalog. Use getAuditLogs() instead.
+   * EventAlarmDashboard and Tools.tsx have been updated to use /v1/auditlogs.
    */
   async getEvents(startTime?: number, endTime?: number, severity?: string): Promise<any[]> {
     try {
@@ -8618,25 +8632,23 @@ class ApiService {
   /**
    * Get guest accounts
    * Endpoint: GET /v1/guests
+   * NOTE: /v1/guests is not in the Swagger catalog. This endpoint may not be available
+   * on all controllers. Throws on non-ok responses so callers can surface the error.
    */
   async getGuests(): Promise<any[]> {
-    try {
-      const endpoint = '/v1/guests';
-      logger.log('[API] Fetching guest accounts');
-      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+    const endpoint = '/v1/guests';
+    logger.log('[API] Fetching guest accounts');
+    const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
-      if (!response.ok) {
-        logger.warn(`Guests API returned ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
-      logger.log(`[API] ✓ Loaded ${data?.length || 0} guest accounts`);
-      return data || [];
-    } catch (error) {
-      logger.error('[API] Failed to fetch guests:', error);
-      return [];
+    if (!response.ok) {
+      const msg = `Guest accounts API returned ${response.status} — endpoint may not be available on this controller`;
+      logger.warn(`[API] ${msg}`);
+      throw new Error(msg);
     }
+
+    const data = await response.json();
+    logger.log(`[API] ✓ Loaded ${data?.length || 0} guest accounts`);
+    return data || [];
   }
 
   /**

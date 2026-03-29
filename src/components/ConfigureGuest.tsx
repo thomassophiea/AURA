@@ -30,7 +30,8 @@ import {
   Key,
   Calendar,
   Ticket,
-  Save
+  Save,
+  AlertCircle
 } from 'lucide-react';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
@@ -53,6 +54,7 @@ export function ConfigureGuest() {
   const [guestRoles, setGuestRoles] = useState<Role[]>([]);
   const [eGuestProfiles, setEGuestProfiles] = useState<any[]>([]);
   const [guestAccounts, setGuestAccounts] = useState<any[]>([]);
+  const [guestAccountsApiAvailable, setGuestAccountsApiAvailable] = useState<boolean | null>(null);
   const [activeTab, setActiveTab] = useState('networks');
   const [error, setError] = useState<string>('');
 
@@ -125,6 +127,9 @@ export function ConfigureGuest() {
 
       if (guestsData.status === 'fulfilled') {
         setGuestAccounts(Array.isArray(guestsData.value) ? guestsData.value : []);
+        setGuestAccountsApiAvailable(true);
+      } else {
+        setGuestAccountsApiAvailable(false);
       }
 
     } catch (err) {
@@ -610,7 +615,16 @@ export function ConfigureGuest() {
               </div>
             </CardHeader>
             <CardContent>
-              {guestAccounts.length === 0 ? (
+              {guestAccountsApiAvailable === false ? (
+                <div className="text-center py-12">
+                  <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-70" />
+                  <h3 className="mt-4 text-lg">Guest accounts unavailable</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    The guest accounts API (/v1/guests) is not available on this controller.
+                    This endpoint is not part of the standard Swagger specification.
+                  </p>
+                </div>
+              ) : guestAccounts.length === 0 ? (
                 <div className="text-center py-12">
                   <Users className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
                   <h3 className="mt-4 text-lg">No guest accounts</h3>
