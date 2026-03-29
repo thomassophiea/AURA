@@ -93,11 +93,6 @@ class WLANReconciliationService {
         timestamp: new Date().toISOString()
       };
 
-        wlanId,
-        matched,
-        mismatched
-      });
-
       return result;
 
     } catch (error) {
@@ -176,10 +171,6 @@ class WLANReconciliationService {
         console.error(`[WLANReconciliation] Failed to reconcile WLAN ${wlanId}:`, error);
       }
     }
-
-      total: results.length,
-      withMismatches: results.filter(r => r.mismatched > 0).length
-    });
 
     return results;
   }
@@ -272,10 +263,6 @@ class WLANReconciliationService {
         failed++;
       }
     }
-
-      successful,
-      failed
-    });
 
     return { successful, failed, results };
   }

@@ -71,10 +71,6 @@ export async function fetchSimplifiedWidgetData(siteId?: string): Promise<Simpli
     // Fetch stations with retry logic (can be slow)
     const stationsData = await fetchStations();
 
-      aps: apsData?.length || 0,
-      sites: sitesData?.length || 0,
-      stations: stationsData?.length || 0
-    });
 
     // Filter by site if specified
     const filteredAPs = siteId ? apsData.filter((ap: any) => ap.siteId === siteId) : apsData;
