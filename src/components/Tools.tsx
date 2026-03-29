@@ -22,16 +22,24 @@ export function Tools() {
   const handleRefreshLogs = async () => {
     setLoadingLogs(true);
     try {
-      const events = await apiService.getEvents(undefined, undefined, logLevel === 'info' ? undefined : logLevel);
-      const mapped = events.map((e: any) => ({
-        timestamp: e.timestamp || e.createdAt || e.time || new Date().toISOString(),
-        level: e.severity || e.level || 'info',
-        message: e.message || e.description || e.text || JSON.stringify(e),
-      }));
+      // Use /v1/auditlogs (Swagger-documented) instead of /v1/events (non-Swagger)
+      const endTime = Date.now();
+      const startTime = endTime - 24 * 60 * 60 * 1000; // last 24 hours
+      const logs = await apiService.getAuditLogs(startTime, endTime);
+      const mapped = logs
+        .map((log: any) => ({
+          timestamp: log.timestamp || log.time || new Date().toISOString(),
+          level: log.severity || (log.status?.toLowerCase().includes('error') ? 'error' : 'info'),
+          message: log.description || log.message || `${log.action || ''} ${log.resource || ''}`.trim() || JSON.stringify(log),
+        }))
+        .filter((entry: { level: string }) => {
+          if (logLevel === 'info') return true;
+          return entry.level?.toLowerCase() === logLevel;
+        });
       setLogEntries(mapped);
       if (mapped.length === 0) toast.info('No log entries found');
     } catch {
-      toast.error('Failed to fetch logs');
+      toast.error('Failed to fetch audit logs');
     } finally {
       setLoadingLogs(false);
     }
