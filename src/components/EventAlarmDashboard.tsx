@@ -33,14 +33,39 @@ export function EventAlarmDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [eventsData, alarmsData, activeAlarmsData] = await Promise.all([
-        apiService.getEvents(),
+      // Use /v1/auditlogs (Swagger-documented) instead of /v1/events (non-Swagger)
+      // Map auditlog fields to the event shape used in the Events tab
+      const endTime = Date.now();
+      const startTime = endTime - 7 * 24 * 60 * 60 * 1000; // last 7 days
+      const [auditLogs, alarmsData, activeAlarmsData] = await Promise.allSettled([
+        apiService.getAuditLogs(startTime, endTime),
         apiService.getAlarms(),
         apiService.getActiveAlarms()
       ]);
-      setEvents(eventsData);
-      setAlarms(alarmsData);
-      setActiveAlarms(activeAlarmsData);
+
+      if (auditLogs.status === 'fulfilled') {
+        const mapped = auditLogs.value.map((log: any) => ({
+          type: log.action || log.actionType || log.resourceType || 'Audit Event',
+          severity: log.severity || (log.status?.toLowerCase().includes('error') ? 'critical' : undefined),
+          message: log.description || log.message || `${log.action || ''} ${log.resource || ''}`.trim(),
+          timestamp: log.timestamp || log.time,
+          user: log.user || log.username || log.userId,
+        }));
+        setEvents(mapped);
+      } else {
+        console.warn('Failed to load audit logs:', auditLogs.reason);
+        setEvents([]);
+      }
+
+      setAlarms(alarmsData.status === 'fulfilled' ? alarmsData.value : []);
+      setActiveAlarms(activeAlarmsData.status === 'fulfilled' ? activeAlarmsData.value : []);
+
+      if (alarmsData.status === 'rejected') {
+        console.warn('Alarms API unavailable (non-Swagger endpoint):', alarmsData.reason);
+      }
+      if (activeAlarmsData.status === 'rejected') {
+        console.warn('Active alarms API unavailable (non-Swagger endpoint):', activeAlarmsData.reason);
+      }
     } catch (error) {
       console.error('Failed to load data:', error);
       toast.error('Failed to load events and alarms');

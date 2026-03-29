@@ -84,6 +84,7 @@ export function SystemBackupManager() {
       setFlashUsage(usage);
     } catch (error) {
       console.error('Failed to load flash info:', error);
+      // Flash info uses Platform Manager API — may not be available on all controllers
     }
   };
 
@@ -208,6 +209,12 @@ export function SystemBackupManager() {
             </p>
           </DesktopOnly>
         </div>
+      </div>
+
+      {/* Platform Manager dependency notice */}
+      <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>Backup features require Platform Manager API access. These endpoints (/platformmanager/v1/*) are not part of the standard Swagger specification and may not be available on all controller versions.</span>
       </div>
 
       {/* Flash Storage Overview */}

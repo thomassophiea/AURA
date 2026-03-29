@@ -211,6 +211,12 @@ export function LicenseDashboard() {
         </div>
       </div>
 
+      {/* Platform Manager dependency notice */}
+      <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+        <span>License features require Platform Manager API access. These endpoints (/platformmanager/v1/license/*) are not part of the standard Swagger specification and may not be available on all controller versions.</span>
+      </div>
+
       {/* License Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-primary/50">

@@ -24,6 +24,7 @@ export function SecurityDashboard() {
   const [threats, setThreats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
+  const [securityApiAvailable, setSecurityApiAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadData();
@@ -32,14 +33,32 @@ export function SecurityDashboard() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [rogueList, threatList] = await Promise.all([
+      // NOTE: /v1/security/rogue-ap/list and /v1/security/threats are non-Swagger endpoints.
+      // /v3/adsp returns Air Defense profile configs, not detected rogue APs — not a substitute.
+      const [rogueResult, threatResult] = await Promise.allSettled([
         apiService.getRogueAPList(),
         apiService.getSecurityThreats()
       ]);
+
+      const rogueList = rogueResult.status === 'fulfilled' ? rogueResult.value : [];
+      const threatList = threatResult.status === 'fulfilled' ? threatResult.value : [];
+
       setRogueAPs(rogueList);
       setThreats(threatList);
+
+      // Mark API as available only if at least one endpoint responded
+      const anyAvailable = rogueResult.status === 'fulfilled' || threatResult.status === 'fulfilled';
+      setSecurityApiAvailable(anyAvailable);
+
+      if (rogueResult.status === 'rejected') {
+        console.warn('[SecurityDashboard] Rogue AP API unavailable (non-Swagger endpoint):', rogueResult.reason);
+      }
+      if (threatResult.status === 'rejected') {
+        console.warn('[SecurityDashboard] Threats API unavailable (non-Swagger endpoint):', threatResult.reason);
+      }
     } catch (error) {
       console.error('Failed to load security data:', error);
+      setSecurityApiAvailable(false);
       toast.error('Failed to load security information');
     } finally {
       setLoading(false);
@@ -148,6 +167,14 @@ export function SecurityDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* Non-Swagger API notice */}
+      {securityApiAvailable === false && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>Security API endpoints (/v1/security/*) are not available on this controller. These are non-Swagger endpoints that may require a specific controller version or security module. Note: /v3/adsp provides Air Defense profile configuration, not rogue AP detections.</span>
+        </div>
+      )}
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
