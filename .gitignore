@@ -32,3 +32,4 @@ build
 .mcp.json
 .vercel
 .env*.local
+.claude/worktrees/
