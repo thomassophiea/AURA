@@ -37,12 +37,16 @@ export interface SiteGroup {
   /** Resolved base URL for the backing controller — ready for API calls. */
   controller_url: string;
   controller_port?: number;
+  primary_controller?: string;
+  secondary_controller?: string;
   connection_status: 'connected' | 'disconnected' | 'error' | 'unknown';
   last_connected_at?: string;
   is_default: boolean;
   region?: string;
   tags?: string[];
+  site_count?: number;
   created_at?: string;
+  updated_at?: string;
   /** XIQ cloud connection — present when the site group has an active XIQ token. */
   xiq_authenticated?: boolean;
   /** XIQ region key (global | eu | apac | ca) for this site group's XIQ account. */
@@ -51,12 +55,25 @@ export interface SiteGroup {
 
 export interface Site {
   id: string;
-  name?: string;
-  siteName?: string;
-  displayName?: string;
-  /** Populated when the site has been associated with a SiteGroup. */
-  site_group_id?: string;
+  name: string;
+  site_group_id: string;
+  site_group_name?: string;
   org_id?: string;
+  location?: string;
+  country?: string;
+  timezone?: string;
+  description?: string;
+  status?: 'active' | 'inactive' | 'provisioning' | 'error';
+  ap_count?: number;
+  client_count?: number;
+  network_count?: number;
+  tags?: string[];
+  created_at?: string;
+  updated_at?: string;
+  /** @deprecated Use name instead */
+  siteName?: string;
+  /** @deprecated Use name instead */
+  displayName?: string;
 }
 
 export interface Device {

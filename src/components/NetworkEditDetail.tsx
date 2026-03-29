@@ -16,7 +16,19 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { ScrollArea } from './ui/scroll-area';
 import { apiService, Service, Role, Topology, AaaPolicy, ClassOfService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
-import type { Site, SiteGroup, Profile } from '../types/network';
+import type { Site, Profile } from '../types/network';
+
+// Legacy manual site-grouping concept used by the WLAN assignment UI (local to this component).
+// The canonical LegacySiteGroup (controller pair) lives in src/types/domain.ts.
+interface LegacyLegacySiteGroup {
+  id: string;
+  name: string;
+  description?: string;
+  siteIds: string[];
+  createdAt?: string;
+  lastModified?: string;
+  color?: string;
+}
 import { generateDefaultService, generatePrivacyConfig, validateServiceData } from '../utils/serviceDefaults';
 import { toast } from 'sonner';
 
@@ -153,9 +165,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   
   // Site Assignment State
   const [sites, setSites] = useState<Site[]>([]);
-  const [siteGroups, setSiteGroups] = useState<SiteGroup[]>([]);
+  const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
-  const [selectedSiteGroups, setSelectedSiteGroups] = useState<string[]>([]);
+  const [selectedLegacySiteGroups, setSelectedLegacySiteGroups] = useState<string[]>([]);
   const [loadingSites, setLoadingSites] = useState(false);
   const [assigningSites, setAssigningSites] = useState(false);
   const [profilesBySite, setProfilesBySite] = useState<Map<string, Profile[]>>(new Map());
@@ -497,9 +509,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       
       if (savedGroups) {
         try {
-          setSiteGroups(JSON.parse(savedGroups));
+          setLegacySiteGroups(JSON.parse(savedGroups));
         } catch {
-          setSiteGroups([]);
+          setLegacySiteGroups([]);
         }
       }
     } catch (err) {
@@ -532,7 +544,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
   // Get all site IDs including those from site groups
   const getExpandedSiteIds = (): string[] => {
-    const siteIdsFromGroups = selectedSiteGroups.flatMap(groupId => {
+    const siteIdsFromGroups = selectedLegacySiteGroups.flatMap(groupId => {
       const group = siteGroups.find(g => g.id === groupId);
       return group?.siteIds || [];
     });
@@ -549,8 +561,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   };
 
   // Toggle site group selection
-  const toggleSiteGroup = (groupId: string) => {
-    setSelectedSiteGroups(prev =>
+  const toggleLegacySiteGroup = (groupId: string) => {
+    setSelectedLegacySiteGroups(prev =>
       prev.includes(groupId)
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
@@ -636,7 +648,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     if (expandedSites.length > 0 && activeTab === 'sites') {
       discoverProfilesForSites(expandedSites);
     }
-  }, [selectedSites, selectedSiteGroups, activeTab]);
+  }, [selectedSites, selectedLegacySiteGroups, activeTab]);
 
   const handleSave = async () => {
     try {
@@ -1558,15 +1570,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                           <div
                             key={group.id}
                             className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                              selectedSiteGroups.includes(group.id)
+                              selectedLegacySiteGroups.includes(group.id)
                                 ? 'border-primary bg-primary/5'
                                 : 'hover:bg-accent/50'
                             }`}
-                            onClick={() => toggleSiteGroup(group.id)}
+                            onClick={() => toggleLegacySiteGroup(group.id)}
                           >
                             <input
                               type="checkbox"
-                              checked={selectedSiteGroups.includes(group.id)}
+                              checked={selectedLegacySiteGroups.includes(group.id)}
                               onChange={() => {}}
                               className="h-4 w-4"
                             />

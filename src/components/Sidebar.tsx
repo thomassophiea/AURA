@@ -32,7 +32,8 @@ import {
   LayoutDashboard,
   HelpCircle,
   Target,
-  Building2
+  Building2,
+  Server,
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -69,7 +70,8 @@ const navigationItems = [
 
 // Configure items
 const configureItems = [
-  { id: 'configure-sites', label: 'Sites & Site Groups', icon: Building2 },
+  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
+  { id: 'configure-sites', label: 'Sites', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
