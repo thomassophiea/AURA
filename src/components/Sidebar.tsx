@@ -77,6 +77,8 @@ const configureItems = [
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
+  { id: 'global-templates', label: 'Templates', icon: Layers },
+  { id: 'global-variables', label: 'Variables', icon: Braces },
 ];
 
 // System Management items
