@@ -27,6 +27,8 @@ const AlertsEventsEnhanced = lazy(() => import('./components/AlertsEventsEnhance
 const ReportWidgets = lazy(() => import('./components/ReportWidgets').then(m => ({ default: m.ReportWidgets })));
 const ConfigureNetworks = lazy(() => import('./components/ConfigureNetworks').then(m => ({ default: m.ConfigureNetworks })));
 const ConfigureSites = lazy(() => import('./components/ConfigureSites').then(m => ({ default: m.ConfigureSites })));
+const SiteGroupsPage = lazy(() => import('./components/SiteGroupsPage').then(m => ({ default: m.SiteGroupsPage })));
+const SitesPage = lazy(() => import('./components/SitesPage').then(m => ({ default: m.SitesPage })));
 const ConfigurePolicy = lazy(() => import('./components/ConfigurePolicy').then(m => ({ default: m.ConfigurePolicy })));
 const ConfigureAAAPolicies = lazy(() => import('./components/ConfigureAAAPolicies').then(m => ({ default: m.ConfigureAAAPolicies })));
 const ConfigureAdoptionRules = lazy(() => import('./components/ConfigureAdoptionRules').then(m => ({ default: m.ConfigureAdoptionRules })));
@@ -95,7 +97,8 @@ const pageInfo = {
   'administration': { title: 'Administration', description: 'System administration, users, applications, and licensing' },
   'api-test': { title: 'API Test Tool', description: 'Test and explore API endpoints' },
   'api-documentation': { title: 'API Documentation', description: 'AURA Mobility Core REST API reference' },
-  'configure-sites': { title: 'Sites & Site Groups', description: 'Manage sites, site groups, and network locations' },
+  'configure-site-groups': { title: 'Site Groups', description: 'Manage controller pairs and site group assignments' },
+  'configure-sites': { title: 'Sites', description: 'Manage network sites and their assignments' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
   'help': { title: 'Help & Support', description: 'Get assistance with the EDGE platform using AI' },
@@ -103,7 +106,7 @@ const pageInfo = {
 
 interface DetailPanelState {
   isOpen: boolean;
-  type: 'access-point' | 'client' | 'site' | null;
+  type: 'access-point' | 'client' | 'site' | 'site-group' | null;
   data: any;
 }
 
@@ -128,6 +131,14 @@ export default function App() {
   const [apiLogs, setApiLogs] = useState<ApiCallLog[]>([]);
   const [devPanelHeight, setDevPanelHeight] = useState(0);
   const [siteName, setSiteName] = useState<string>('');
+
+  // Cross-page filter for Sites page (set when navigating from Site Groups → Sites)
+  const [siteGroupFilter, setSiteGroupFilter] = useState<{ id: string; name: string } | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('sites-group-filter');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
 
   // Global filters for site context
   const { filters, updateFilter } = useGlobalFilters();
@@ -733,6 +744,19 @@ export default function App() {
     });
   };
 
+  const handleNavigateToSites = (siteGroupId: string, siteGroupName: string) => {
+    const filter = { id: siteGroupId, name: siteGroupName };
+    try { sessionStorage.setItem('sites-group-filter', JSON.stringify(filter)); } catch { /* noop */ }
+    setSiteGroupFilter(filter);
+    setCurrentPage('configure-sites');
+    setDetailPanel({ isOpen: false, type: null, data: null });
+  };
+
+  const handleClearSiteGroupFilter = () => {
+    try { sessionStorage.removeItem('sites-group-filter'); } catch { /* noop */ }
+    setSiteGroupFilter(null);
+  };
+
   // Toggle Network Assistant preference
   const handleToggleNetworkAssistant = (enabled: boolean) => {
     setNetworkAssistantEnabled(enabled);
@@ -883,8 +907,20 @@ export default function App() {
         return <ConfigureGuest />;
       case 'configure-advanced':
         return <ConfigureAdvanced />;
+      case 'configure-site-groups':
+        return (
+          <SiteGroupsPage
+            onNavigateToSites={handleNavigateToSites}
+          />
+        );
       case 'configure-sites':
-        return <ConfigureSites onShowDetail={handleShowSiteDetail} />;
+        return (
+          <SitesPage
+            siteGroupFilter={siteGroupFilter}
+            onClearFilter={handleClearSiteGroupFilter}
+            onShowDetail={handleShowSiteDetail}
+          />
+        );
       case 'tools':
         return <Tools />;
       case 'administration':
@@ -957,6 +993,21 @@ export default function App() {
             <Suspense fallback={<div className="flex items-center justify-center p-8">Loading...</div>}>
               <SiteDetail siteId={detailPanel.data.siteId} siteName={detailPanel.data.siteName} />
             </Suspense>
+          </DetailSlideOut>
+        );
+      case 'site-group':
+        return (
+          <DetailSlideOut
+            isOpen={detailPanel.isOpen}
+            onClose={handleCloseDetailPanel}
+            title={detailPanel.data.siteGroupName || 'Site Group Details'}
+            description="Controller pair details and site assignments"
+            width="lg"
+          >
+            {/* Site group detail is rendered inline in SiteGroupsPage */}
+            <div className="py-4 text-center text-muted-foreground text-sm">
+              Open the Site Groups page and click a row to see details.
+            </div>
           </DetailSlideOut>
         );
       default:
