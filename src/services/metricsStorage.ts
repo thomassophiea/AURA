@@ -38,7 +38,6 @@ export class MetricsStorageService {
         throw error;
       }
 
-      console.log(`[MetricsStorage] Saved metrics for service ${snapshot.service_name}`);
     } catch (error) {
       console.error('[MetricsStorage] Failed to save service metrics:', error);
       // Don't throw - we don't want to break the app if storage fails
@@ -67,7 +66,6 @@ export class MetricsStorageService {
         throw error;
       }
 
-      console.log('[MetricsStorage] Saved network snapshot');
     } catch (error) {
       console.error('[MetricsStorage] Failed to save network snapshot:', error);
     }
@@ -214,7 +212,6 @@ export class MetricsStorageService {
       if (serviceError || networkError) {
         console.error('[MetricsStorage] Error cleaning up old data:', serviceError || networkError);
       } else {
-        console.log('[MetricsStorage] Successfully cleaned up data older than 90 days');
       }
     } catch (error) {
       console.error('[MetricsStorage] Failed to cleanup old data:', error);
@@ -232,7 +229,6 @@ export class MetricsStorageService {
     }
 
     this.isCollecting = true;
-    console.log(`[MetricsStorage] Starting periodic collection every ${intervalMinutes} minutes`);
 
     // Collect immediately
     collectCallback().catch(err =>
@@ -255,7 +251,6 @@ export class MetricsStorageService {
       clearInterval(this.collectionInterval);
       this.collectionInterval = null;
       this.isCollecting = false;
-      console.log('[MetricsStorage] Stopped periodic collection');
     }
   }
 

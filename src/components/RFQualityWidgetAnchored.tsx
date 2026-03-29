@@ -187,7 +187,7 @@ export function RFQualityWidgetAnchored() {
       };
 
     } catch (err) {
-      console.log('[RFQualityWidgetAnchored] Could not fetch realtime stats:', err);
+      console.error('[RFQualityWidgetAnchored] Could not fetch realtime stats:', err);
       return null;
     }
   };
@@ -248,7 +248,7 @@ export function RFQualityWidgetAnchored() {
       return { series, currentMetrics };
 
     } catch (err) {
-      console.log('[RFQualityWidgetAnchored] Could not fetch historical data:', err);
+      console.error('[RFQualityWidgetAnchored] Could not fetch historical data:', err);
       return { series: [], currentMetrics: null };
     }
   };

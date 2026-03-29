@@ -261,7 +261,6 @@ function createEmptyState(): WorkspacePersistedState {
 
 function migrateState(state: WorkspacePersistedState): WorkspacePersistedState {
   // Handle version migrations here
-  console.log('[WorkspacePersistence] Migrating state from version', state.version);
   state.version = STORAGE_VERSION;
   return state;
 }

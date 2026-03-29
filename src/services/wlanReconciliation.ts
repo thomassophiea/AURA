@@ -26,7 +26,6 @@ class WLANReconciliationService {
    * @returns ReconciliationResult with mismatch details
    */
   async reconcileWLAN(wlanId: string): Promise<ReconciliationResult> {
-    console.log(`[WLANReconciliation] Starting reconciliation for WLAN: ${wlanId}`);
 
     try {
       // Get expected assignments from storage
@@ -94,7 +93,6 @@ class WLANReconciliationService {
         timestamp: new Date().toISOString()
       };
 
-      console.log('[WLANReconciliation] Reconciliation complete:', {
         wlanId,
         matched,
         mismatched
@@ -165,10 +163,8 @@ class WLANReconciliationService {
    * @returns Array of reconciliation results
    */
   async reconcileAllWLANs(): Promise<ReconciliationResult[]> {
-    console.log('[WLANReconciliation] Starting reconciliation for all tracked WLANs');
 
     const wlanIds = assignmentStorageService.getAllTrackedWLANs();
-    console.log(`[WLANReconciliation] Found ${wlanIds.length} tracked WLANs`);
 
     const results: ReconciliationResult[] = [];
 
@@ -181,7 +177,6 @@ class WLANReconciliationService {
       }
     }
 
-    console.log('[WLANReconciliation] All reconciliations complete:', {
       total: results.length,
       withMismatches: results.filter(r => r.mismatched > 0).length
     });
@@ -196,7 +191,6 @@ class WLANReconciliationService {
    * @returns Array of remediation actions
    */
   generateRemediationActions(mismatches: WLANProfileAssignment[]): RemediationAction[] {
-    console.log(`[WLANReconciliation] Generating remediation actions for ${mismatches.length} mismatches`);
 
     const actions: RemediationAction[] = [];
 
@@ -247,7 +241,6 @@ class WLANReconciliationService {
       });
     }
 
-    console.log(`[WLANReconciliation] Generated ${actions.length} remediation actions`);
     return actions;
   }
 
@@ -262,7 +255,6 @@ class WLANReconciliationService {
     failed: number;
     results: Array<{ action: RemediationAction; success: boolean; error?: string }>;
   }> {
-    console.log(`[WLANReconciliation] Executing ${actions.length} remediation actions`);
 
     const results: Array<{ action: RemediationAction; success: boolean; error?: string }> = [];
     let successful = 0;
@@ -281,7 +273,6 @@ class WLANReconciliationService {
       }
     }
 
-    console.log('[WLANReconciliation] Remediation execution complete:', {
       successful,
       failed
     });
@@ -295,7 +286,6 @@ class WLANReconciliationService {
    * @param action - Remediation action to execute
    */
   private async executeRemediationAction(action: RemediationAction): Promise<void> {
-    console.log(`[WLANReconciliation] Executing remediation action:`, action);
 
     switch (action.type) {
       case 'ADD_ASSIGNMENT':
@@ -336,7 +326,6 @@ class WLANReconciliationService {
         throw new Error(`Unknown remediation action type: ${action.type}`);
     }
 
-    console.log(`[WLANReconciliation] Remediation action executed successfully:`, action.type);
   }
 
   /**

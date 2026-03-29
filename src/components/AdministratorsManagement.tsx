@@ -57,19 +57,12 @@ export function AdministratorsManagement() {
   const loadAdministrators = async () => {
     setLoading(true);
     try {
-      console.log('[AdministratorsManagement] Fetching administrators from /v1/administrators...');
-
       const response = await apiService.makeAuthenticatedRequest('/v1/administrators', {
         method: 'GET'
       });
 
-      console.log('[AdministratorsManagement] Response status:', response.status);
-      console.log('[AdministratorsManagement] Response ok:', response.ok);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[AdministratorsManagement] Raw API response:', data);
-        console.log('[AdministratorsManagement] Response type:', typeof data, 'isArray:', Array.isArray(data));
 
         // Parse administrators data with flexible schema detection
         let rawAdmins: any[] = [];
@@ -81,20 +74,10 @@ export function AdministratorsManagement() {
           const possibleKeys = ['administrators', 'admins', 'users', 'data', 'items', 'results'];
           for (const key of possibleKeys) {
             if (data[key] && Array.isArray(data[key])) {
-              console.log('[AdministratorsManagement] Found administrators array at key:', key);
               rawAdmins = data[key];
               break;
             }
           }
-
-          if (rawAdmins.length === 0) {
-            console.log('[AdministratorsManagement] No admins found. Available keys:', Object.keys(data));
-          }
-        }
-
-        console.log('[AdministratorsManagement] Parsed administrators count:', rawAdmins.length);
-        if (rawAdmins.length > 0) {
-          console.log('[AdministratorsManagement] Sample admin:', rawAdmins[0]);
         }
 
         // Transform Extreme Platform ONE format to our interface
@@ -121,7 +104,6 @@ export function AdministratorsManagement() {
           };
         });
 
-        console.log('[AdministratorsManagement] Transformed administrators:', adminList);
 
         setAdministrators(adminList);
         setApiNotAvailable(false);

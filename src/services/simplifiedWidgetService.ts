@@ -60,7 +60,6 @@ export interface APRankingsData {
  * Fetch and process all simplified widget data
  */
 export async function fetchSimplifiedWidgetData(siteId?: string): Promise<SimplifiedWidgetData> {
-  console.log('[SimplifiedWidgetService] Fetching data for widgets...', { siteId });
 
   try {
     // Fetch data from working endpoints in parallel
@@ -72,7 +71,6 @@ export async function fetchSimplifiedWidgetData(siteId?: string): Promise<Simpli
     // Fetch stations with retry logic (can be slow)
     const stationsData = await fetchStations();
 
-    console.log('[SimplifiedWidgetService] Fetched raw data:', {
       aps: apsData?.length || 0,
       sites: sitesData?.length || 0,
       stations: stationsData?.length || 0
@@ -92,7 +90,6 @@ export async function fetchSimplifiedWidgetData(siteId?: string): Promise<Simpli
     const clientDistribution = processClientDistribution(filteredStations);
     const apRankings = processAPRankings(filteredAPs, filteredStations);
 
-    console.log('[SimplifiedWidgetService] Processed widget data successfully');
 
     return {
       clientCount,

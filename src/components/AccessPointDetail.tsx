@@ -411,7 +411,6 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
     const intervalId = setInterval(() => {
       // Only auto-refresh if the page is visible
       if (document.visibilityState === 'visible') {
-        console.log('Auto-refreshing AP detail data...');
         setIsAutoRefreshing(true);
         loadApDetails().finally(() => {
           setIsAutoRefreshing(false);
@@ -427,7 +426,6 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('Tab became active, refreshing AP detail data...');
         loadApDetails();
       }
     };
