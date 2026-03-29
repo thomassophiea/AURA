@@ -33,3 +33,7 @@ build
 .vercel
 .env*.local
 .claude/worktrees/
+.remember/
+.superpowers/
+Prototype Template for Extreme Platform ONE/
+public/version.json
