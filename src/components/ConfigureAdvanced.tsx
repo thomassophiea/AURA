@@ -4,6 +4,7 @@ import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -1326,66 +1327,116 @@ function LocationServicesTab() {
 // ==================== MAIN COMPONENT ====================
 export function ConfigureAdvanced() {
   const [activeTab, setActiveTab] = useState('topologies');
+  const [counts, setCounts] = useState({ topologies: 0, cos: 0, rateLimiters: 0, profiles: 0, iot: 0, meshpoints: 0, location: 0 });
 
-  const tabs = [
-    { id: 'topologies', label: 'Topologies', icon: Network },
-    { id: 'cos', label: 'Class of Service', icon: Gauge },
-    { id: 'ratelimiters', label: 'Rate Limiters', icon: Gauge },
-    { id: 'profiles', label: 'AP Profiles', icon: Layers },
-    { id: 'iot', label: 'IoT Profiles', icon: Bluetooth },
-    { id: 'meshpoints', label: 'Meshpoints', icon: Cable },
-    { id: 'accesscontrol', label: 'Access Control', icon: Shield },
-    { id: 'location', label: 'Location Services', icon: Globe },
+  useEffect(() => {
+    const loadCounts = async () => {
+      const results = await Promise.allSettled([
+        apiService.getTopologies(),
+        apiService.getCoSProfiles(),
+        apiService.getRateLimiters(),
+        apiService.getProfiles(),
+        apiService.getIoTProfiles(),
+        apiService.getMeshPoints(),
+        apiService.getXLocationProfiles(),
+      ]);
+      setCounts({
+        topologies: results[0].status === 'fulfilled' && Array.isArray(results[0].value) ? results[0].value.length : 0,
+        cos: results[1].status === 'fulfilled' && Array.isArray(results[1].value) ? results[1].value.length : 0,
+        rateLimiters: results[2].status === 'fulfilled' && Array.isArray(results[2].value) ? results[2].value.length : 0,
+        profiles: results[3].status === 'fulfilled' && Array.isArray(results[3].value) ? results[3].value.length : 0,
+        iot: results[4].status === 'fulfilled' && Array.isArray(results[4].value) ? results[4].value.length : 0,
+        meshpoints: results[5].status === 'fulfilled' && Array.isArray(results[5].value) ? results[5].value.length : 0,
+        location: results[6].status === 'fulfilled' && Array.isArray(results[6].value) ? results[6].value.length : 0,
+      });
+    };
+    loadCounts();
+  }, []);
+
+  const statCards = [
+    { label: 'Topologies', count: counts.topologies, desc: 'VLAN definitions', icon: Network },
+    { label: 'CoS Profiles', count: counts.cos, desc: 'Quality of service', icon: Gauge },
+    { label: 'AP Profiles', count: counts.profiles, desc: 'Access point configs', icon: Layers },
+    { label: 'Rate Limiters', count: counts.rateLimiters, desc: 'Traffic shaping rules', icon: Gauge },
   ];
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'topologies': return <TopologiesTab />;
-      case 'cos': return <CoSTab />;
-      case 'ratelimiters': return <RateLimitersTab />;
-      case 'profiles': return <ProfilesTab />;
-      case 'iot': return <IoTTab />;
-      case 'meshpoints': return <MeshpointsTab />;
-      case 'accesscontrol': return <AccessControlTab />;
-      case 'location': return <LocationServicesTab />;
-      default: return <TopologiesTab />;
-    }
-  };
-
   return (
-    <div className="h-full overflow-auto">
-      <div className="p-6">
-        <div className="flex gap-6">
-          {/* Left sidebar navigation */}
-          <div className="w-48 flex-shrink-0">
-            <nav className="space-y-1 sticky top-0">
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-colors text-left ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 flex-shrink-0" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </nav>
-          </div>
-
-          {/* Main content area */}
-          <div className="flex-1 min-w-0">
-            {renderContent()}
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl tracking-tight">Advanced Configuration</h2>
+          <p className="text-muted-foreground">
+            Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services
+          </p>
         </div>
       </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        {statCards.map(card => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.label}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm">{card.label}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl">{card.count}</div>
+                <p className="text-xs text-muted-foreground">{card.desc}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="topologies">
+            <Network className="mr-2 h-4 w-4" />
+            Topologies
+          </TabsTrigger>
+          <TabsTrigger value="cos">
+            <Gauge className="mr-2 h-4 w-4" />
+            Class of Service
+          </TabsTrigger>
+          <TabsTrigger value="ratelimiters">
+            <Gauge className="mr-2 h-4 w-4" />
+            Rate Limiters
+          </TabsTrigger>
+          <TabsTrigger value="profiles">
+            <Layers className="mr-2 h-4 w-4" />
+            AP Profiles
+          </TabsTrigger>
+          <TabsTrigger value="iot">
+            <Bluetooth className="mr-2 h-4 w-4" />
+            IoT
+          </TabsTrigger>
+          <TabsTrigger value="meshpoints">
+            <Cable className="mr-2 h-4 w-4" />
+            Mesh
+          </TabsTrigger>
+          <TabsTrigger value="accesscontrol">
+            <Shield className="mr-2 h-4 w-4" />
+            Access Control
+          </TabsTrigger>
+          <TabsTrigger value="location">
+            <Globe className="mr-2 h-4 w-4" />
+            Location
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="topologies"><TopologiesTab /></TabsContent>
+        <TabsContent value="cos"><CoSTab /></TabsContent>
+        <TabsContent value="ratelimiters"><RateLimitersTab /></TabsContent>
+        <TabsContent value="profiles"><ProfilesTab /></TabsContent>
+        <TabsContent value="iot"><IoTTab /></TabsContent>
+        <TabsContent value="meshpoints"><MeshpointsTab /></TabsContent>
+        <TabsContent value="accesscontrol"><AccessControlTab /></TabsContent>
+        <TabsContent value="location"><LocationServicesTab /></TabsContent>
+      </Tabs>
     </div>
   );
 }
