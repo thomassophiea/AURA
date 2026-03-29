@@ -60,15 +60,7 @@ interface SidebarProps {
   onThemeToggle?: () => void;
 }
 
-// ── Global-scope navigation (AURA level, no site group required) ──
-const globalNavigationItems = [
-  { id: 'workspace', label: 'Workspace', icon: LayoutDashboard, badge: 'Sandbox' },
-  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
-  { id: 'global-templates', label: 'Templates', icon: Layers },
-  { id: 'global-variables', label: 'Variables', icon: Braces },
-];
-
-// ── Site-group-scope navigation (controller level) ──
+// ── Org-level navigation (primary scope) ──
 const monitoringItems = [
   { id: 'service-levels', label: 'Contextual Insights', icon: Brain, badge: 'Sandbox' },
   { id: 'sle-dashboard', label: 'Service Levels', icon: Target },
@@ -79,28 +71,36 @@ const monitoringItems = [
 ];
 
 const configureItems = [
+  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
   { id: 'configure-sites', label: 'Sites', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
-  { id: 'site-group-settings', label: 'SG Settings', icon: Cog },
+  { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
 ];
 
-const systemItems = [
-  { id: 'system-backup', label: 'Backup & Storage', icon: Database },
-  { id: 'license-dashboard', label: 'License Management', icon: Key },
-  { id: 'firmware-manager', label: 'Firmware Manager', icon: Download },
-  { id: 'network-diagnostics', label: 'Network Diagnostics', icon: Activity },
+const templateItems = [
+  { id: 'global-templates', label: 'Templates', icon: Layers },
+  { id: 'global-variables', label: 'Variables', icon: Braces },
+];
+
+const operationsItems = [
   { id: 'event-alarm-dashboard', label: 'Events & Alarms', icon: Bell },
   { id: 'security-dashboard', label: 'Security', icon: Shield },
   { id: 'pci-report', label: 'PCI DSS Report', icon: FileCheck },
-  { id: 'guest-management', label: 'Guest Access', icon: UserPlus },
 ];
 
-// Legacy combined list for checking active states
-const allSiteGroupItems = [...monitoringItems, ...configureItems, ...systemItems];
+// ── Site-group scope (controller drill-down only) ──
+const controllerItems = [
+  { id: 'system-backup', label: 'Backup & Storage', icon: Database },
+  { id: 'firmware-manager', label: 'Firmware Manager', icon: Download },
+  { id: 'network-diagnostics', label: 'Network Diagnostics', icon: Activity },
+  { id: 'license-dashboard', label: 'License Management', icon: Key },
+  { id: 'site-group-settings', label: 'Controller Settings', icon: Cog },
+  { id: 'guest-management', label: 'Guest Accounts', icon: UserPlus },
+];
 
 export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme = 'ep1', onThemeToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -110,15 +110,18 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   const org = tenantService.getCurrentOrganization();
   const { navigationScope, siteGroup, exitSiteGroup } = useAppContext();
 
-  // Check if any configure sub-item is currently active
-  const isConfigureActive = configureItems.some(item => currentPage === item.id);
-  const isSystemActive = systemItems.some(item => currentPage === item.id);
+  // Check if any section sub-item is currently active
   const isMonitoringActive = monitoringItems.some(item => currentPage === item.id);
+  const isConfigureActive = configureItems.some(item => currentPage === item.id);
+  const isTemplateActive = templateItems.some(item => currentPage === item.id);
+  const isOperationsActive = operationsItems.some(item => currentPage === item.id);
+  const isControllerActive = controllerItems.some(item => currentPage === item.id);
 
   // Auto-expand sections if an item is active
-  const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
-  const [isSystemExpanded, setIsSystemExpanded] = useState(isSystemActive);
   const [isMonitoringExpanded, setIsMonitoringExpanded] = useState(true);
+  const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
+  const [isTemplateExpanded, setIsTemplateExpanded] = useState(isTemplateActive);
+  const [isOperationsExpanded, setIsOperationsExpanded] = useState(isOperationsActive);
 
   // Close mobile sidebar when page changes
   useEffect(() => {
@@ -144,6 +147,71 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
       setIsMobileOpen(false);
     }
   };
+
+  // Reusable collapsible section renderer
+  const renderCollapsibleSection = ({
+    label, icon: SectionIcon, items, isActive, isExpanded, onToggle,
+  }: {
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    items: Array<{ id: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }>;
+    isActive: boolean;
+    isExpanded: boolean;
+    onToggle: () => void;
+  }) => (
+    <div className="space-y-1">
+      <Button
+        variant={isActive ? "default" : "ghost"}
+        className={cn(
+          "w-full justify-start h-10",
+          isCollapsed ? "px-2" : "px-3",
+          isActive
+            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+            : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )}
+        onClick={() => { if (!isCollapsed) onToggle(); }}
+      >
+        <SectionIcon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+        {!isCollapsed && (
+          <>
+            <span className="flex-1 text-left">{label}</span>
+            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </>
+        )}
+      </Button>
+      {!isCollapsed && isExpanded && (
+        <div className="ml-6 space-y-1">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Button
+                key={item.id}
+                variant={currentPage === item.id ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-9 text-sm px-3",
+                  currentPage === item.id
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+                onClick={() => handlePageChange(item.id)}
+                onMouseEnter={() => prefetchComponent(item.id)}
+              >
+                <Icon className="h-3 w-3 mr-2" />
+                <span className="flex items-center gap-2">
+                  {item.label}
+                  {item.badge && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                      {item.badge}
+                    </span>
+                  )}
+                </span>
+              </Button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <>
@@ -209,220 +277,71 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
 
       {/* Navigation */}
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-        {navigationScope === 'site-group' && (
+        {navigationScope === 'global' && (
           <>
-            {/* Back to AURA global level */}
-            {!isCollapsed && (
-              <Button
-                variant="ghost"
-                className="w-full justify-start h-10 px-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mb-1"
-                onClick={() => {
-                  exitSiteGroup();
-                  handlePageChange('configure-site-groups');
-                }}
-              >
-                <ChevronLeft className="h-4 w-4 mr-1" />
-                <Globe className="h-3.5 w-3.5 mr-1.5" />
-                <span className="text-xs">Back to AURA</span>
-              </Button>
-            )}
-            {isCollapsed && (
-              <Button
-                variant="ghost"
-                className="w-full justify-center h-10 px-2 text-sidebar-foreground/70 hover:bg-sidebar-accent"
-                onClick={() => {
-                  exitSiteGroup();
-                  handlePageChange('configure-site-groups');
-                }}
-                title="Back to AURA"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {/* Site group label */}
-            {!isCollapsed && siteGroup && (
-              <div className="px-3 py-1.5 mb-1">
-                <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider font-medium">Site Group</div>
-                <div className="text-xs text-sidebar-foreground font-medium truncate">{siteGroup.name}</div>
-              </div>
-            )}
+            {/* Workspace — top-level item */}
+            <Button
+              variant={currentPage === 'workspace' ? "default" : "ghost"}
+              className={cn(
+                "w-full justify-start h-10",
+                isCollapsed ? "px-2" : "px-3",
+                currentPage === 'workspace'
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+              onClick={() => handlePageChange('workspace')}
+              onMouseEnter={() => prefetchComponent('workspace')}
+            >
+              <LayoutDashboard className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+              {!isCollapsed && (
+                <span className="flex items-center gap-2">
+                  Workspace
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                    Sandbox
+                  </span>
+                </span>
+              )}
+            </Button>
 
             {/* Monitoring Section */}
-            <div className="space-y-1">
-              <Button
-                variant={isMonitoringActive ? "default" : "ghost"}
-                className={cn(
-                  "w-full justify-start h-10",
-                  isCollapsed ? "px-2" : "px-3",
-                  isMonitoringActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-                onClick={() => {
-                  if (!isCollapsed) {
-                    setIsMonitoringExpanded(!isMonitoringExpanded);
-                  }
-                }}
-              >
-                <BarChart3 className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1 text-left">Monitoring</span>
-                    {isMonitoringExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </>
-                )}
-              </Button>
-              {!isCollapsed && isMonitoringExpanded && (
-                <div className="ml-6 space-y-1">
-                  {monitoringItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Button
-                        key={item.id}
-                        variant={currentPage === item.id ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start h-9 text-sm",
-                          "px-3",
-                          currentPage === item.id
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        )}
-                        onClick={() => handlePageChange(item.id)}
-                        onMouseEnter={() => prefetchComponent(item.id)}
-                      >
-                        <Icon className="h-3 w-3 mr-2" />
-                        <span className="flex items-center gap-2">
-                          {item.label}
-                          {item.badge && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
-                              {item.badge}
-                            </span>
-                          )}
-                        </span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {renderCollapsibleSection({
+              label: 'Monitoring',
+              icon: BarChart3,
+              items: monitoringItems,
+              isActive: isMonitoringActive,
+              isExpanded: isMonitoringExpanded,
+              onToggle: () => setIsMonitoringExpanded(!isMonitoringExpanded),
+            })}
 
             {/* Configure Section */}
-            <div className="space-y-1">
-              <Button
-                variant={isConfigureActive ? "default" : "ghost"}
-                className={cn(
-                  "w-full justify-start h-10",
-                  isCollapsed ? "px-2" : "px-3",
-                  isConfigureActive
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-                onClick={() => {
-                  if (!isCollapsed) {
-                    setIsConfigureExpanded(!isConfigureExpanded);
-                  }
-                }}
-              >
-                <Cog className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                {!isCollapsed && (
-                  <>
-                    <span className="flex-1 text-left">Configure</span>
-                    {isConfigureExpanded ? (
-                      <ChevronDown className="h-4 w-4" />
-                    ) : (
-                      <ChevronRight className="h-4 w-4" />
-                    )}
-                  </>
-                )}
-              </Button>
-              {!isCollapsed && isConfigureExpanded && (
-                <div className="ml-6 space-y-1">
-                  {configureItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <Button
-                        key={item.id}
-                        variant={currentPage === item.id ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start h-9 text-sm",
-                          "px-3",
-                          currentPage === item.id
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        )}
-                        onClick={() => handlePageChange(item.id)}
-                        onMouseEnter={() => prefetchComponent(item.id)}
-                      >
-                        <Icon className="h-3 w-3 mr-2" />
-                        <span>{item.label}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            {renderCollapsibleSection({
+              label: 'Configure',
+              icon: Cog,
+              items: configureItems,
+              isActive: isConfigureActive,
+              isExpanded: isConfigureExpanded,
+              onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
+            })}
 
-            {/* System Section - Desktop only */}
-            {!device.isMobile && (
-              <div className="space-y-1">
-                <Button
-                  variant={isSystemActive ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-10",
-                    isCollapsed ? "px-2" : "px-3",
-                    isSystemActive
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                  onClick={() => {
-                    if (!isCollapsed) {
-                      setIsSystemExpanded(!isSystemExpanded);
-                    }
-                  }}
-                >
-                  <HardDrive className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                  {!isCollapsed && (
-                    <>
-                      <span className="flex-1 text-left">System</span>
-                      {isSystemExpanded ? (
-                        <ChevronDown className="h-4 w-4" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4" />
-                      )}
-                    </>
-                  )}
-                </Button>
-                {!isCollapsed && isSystemExpanded && (
-                  <div className="ml-6 space-y-1">
-                    {systemItems.map((item) => {
-                      const Icon = item.icon;
-                      return (
-                        <Button
-                          key={item.id}
-                          variant={currentPage === item.id ? "default" : "ghost"}
-                          className={cn(
-                            "w-full justify-start h-9 text-sm",
-                            "px-3",
-                            currentPage === item.id
-                              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                              : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                          )}
-                          onClick={() => handlePageChange(item.id)}
-                          onMouseEnter={() => prefetchComponent(item.id)}
-                        >
-                          <Icon className="h-3 w-3 mr-2" />
-                          <span>{item.label}</span>
-                        </Button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Templates & Variables Section */}
+            {renderCollapsibleSection({
+              label: 'Templates & Variables',
+              icon: Layers,
+              items: templateItems,
+              isActive: isTemplateActive,
+              isExpanded: isTemplateExpanded,
+              onToggle: () => setIsTemplateExpanded(!isTemplateExpanded),
+            })}
+
+            {/* Operations Section - Desktop only */}
+            {!device.isMobile && renderCollapsibleSection({
+              label: 'Operations',
+              icon: Bell,
+              items: operationsItems,
+              isActive: isOperationsActive,
+              isExpanded: isOperationsExpanded,
+              onToggle: () => setIsOperationsExpanded(!isOperationsExpanded),
+            })}
 
             {/* Desktop-only: Tools and Administration */}
             {!device.isMobile && (
@@ -460,38 +379,46 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           </>
         )}
 
-        {navigationScope === 'global' && (
+        {navigationScope === 'site-group' && (
           <>
-            {/* Global-scope navigation items */}
-            {globalNavigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant={currentPage === item.id ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-10",
-                    isCollapsed ? "px-2" : "px-3",
-                    currentPage === item.id
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                  onClick={() => handlePageChange(item.id)}
-                  onMouseEnter={() => prefetchComponent(item.id)}
-                >
-                  <Icon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                  {!isCollapsed && (
-                    <span className="flex items-center gap-2">
-                      {item.label}
-                      {item.badge && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
-                          {item.badge}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </Button>
-              );
+            {/* Back to Organization */}
+            {!isCollapsed && (
+              <Button
+                variant="ghost"
+                className="w-full justify-start h-10 px-3 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mb-1"
+                onClick={() => exitSiteGroup()}
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                <Globe className="h-3.5 w-3.5 mr-1.5" />
+                <span className="text-xs">Back to Organization</span>
+              </Button>
+            )}
+            {isCollapsed && (
+              <Button
+                variant="ghost"
+                className="w-full justify-center h-10 px-2 text-sidebar-foreground/70 hover:bg-sidebar-accent"
+                onClick={() => exitSiteGroup()}
+                title="Back to Organization"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            )}
+            {/* Site group label */}
+            {!isCollapsed && siteGroup && (
+              <div className="px-3 py-1.5 mb-1">
+                <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider font-medium">Controller</div>
+                <div className="text-xs text-sidebar-foreground font-medium truncate">{siteGroup.name}</div>
+              </div>
+            )}
+
+            {/* Controller Management items */}
+            {renderCollapsibleSection({
+              label: 'Controller Management',
+              icon: HardDrive,
+              items: controllerItems,
+              isActive: isControllerActive,
+              isExpanded: true,
+              onToggle: () => {},
             })}
           </>
         )}

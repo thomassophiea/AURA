@@ -2,22 +2,17 @@
  * Navigation Scope Classification
  *
  * AURA uses a two-tier navigation model:
- * - Global scope: cross-site-group management (templates, variables, site group list)
- * - Site Group scope: features scoped to a specific controller / HA pair
+ * - Organization scope (primary): monitoring, configuration, templates, operations, admin
+ * - Site Group scope (controller drill-down): firmware, backup, diagnostics, system config
+ *
+ * The org level is the primary working level (Mist-style enterprise model).
+ * Users only enter a site group for controller-specific management.
  */
 
-/** Pages visible at the AURA global level (no site group selected) */
-export const GLOBAL_PAGES = new Set([
-  'workspace',
-  'configure-site-groups',
-  'global-templates',
-  'global-variables',
-  'help',
-]);
-
-/** Pages that require a site group context (controller-scoped) */
-export const SITE_GROUP_PAGES = new Set([
+/** Pages visible at the organization level (primary scope) */
+export const ORG_PAGES = new Set([
   // Monitoring
+  'workspace',
   'service-levels',
   'sle-dashboard',
   'app-insights',
@@ -25,7 +20,8 @@ export const SITE_GROUP_PAGES = new Set([
   'access-points',
   'report-widgets',
   'performance-analytics',
-  // Configuration
+  // Configure
+  'configure-site-groups',
   'configure-sites',
   'configure-networks',
   'configure-policy',
@@ -33,21 +29,33 @@ export const SITE_GROUP_PAGES = new Set([
   'configure-adoption-rules',
   'configure-guest',
   'configure-advanced',
-  'site-group-settings',
-  // System Management
-  'system-backup',
-  'license-dashboard',
-  'firmware-manager',
-  'network-diagnostics',
+  // Templates & Variables
+  'global-templates',
+  'global-variables',
+  // Operations
   'event-alarm-dashboard',
   'security-dashboard',
   'pci-report',
-  'guest-management',
-  // Tools & Administration
+  // Admin & Tools
   'tools',
   'administration',
   'api-test',
   'api-documentation',
+  // Help
+  'help',
 ]);
+
+/** Pages that require entering a site group (controller-specific management) */
+export const SITE_GROUP_PAGES = new Set([
+  'system-backup',
+  'firmware-manager',
+  'network-diagnostics',
+  'license-dashboard',
+  'site-group-settings',
+  'guest-management',
+]);
+
+/** @deprecated Use ORG_PAGES instead */
+export const GLOBAL_PAGES = ORG_PAGES;
 
 export type NavigationScope = 'global' | 'site-group';

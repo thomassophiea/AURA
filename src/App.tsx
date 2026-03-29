@@ -58,7 +58,7 @@ const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytic
 import { apiService, ApiCallLog } from './services/api';
 import { AppContextProvider } from './contexts/AppContext';
 import type { NavigationScope } from './config/navigationScopes';
-import { GLOBAL_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
+import { ORG_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
@@ -118,8 +118,8 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('sle-dashboard');
-  const [navigationScope, setNavigationScope] = useState<NavigationScope>('site-group');
+  const [currentPage, setCurrentPage] = useState('workspace');
+  const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -276,7 +276,7 @@ export default function App() {
       console.log('Session expired - logging out user');
       setIsAuthenticated(false);
       setAdminRole(null);
-      setCurrentPage('service-levels');
+      setCurrentPage('workspace');
       // Cancel any pending requests
       apiService.cancelAllRequests();
       toast.error('Session expired', {
@@ -711,7 +711,7 @@ export default function App() {
     await apiService.logout();
     setIsAuthenticated(false);
     setAdminRole(null);
-    setCurrentPage('service-levels');
+    setCurrentPage('workspace');
   };
 
   const handlePageChange = (page: string) => {
@@ -720,7 +720,7 @@ export default function App() {
     apiService.cancelAllRequests();
 
     // Auto-switch scope based on page classification
-    if (GLOBAL_PAGES.has(page) && navigationScope !== 'global') {
+    if (ORG_PAGES.has(page) && navigationScope !== 'global') {
       setNavigationScope('global');
     } else if (SITE_GROUP_PAGES.has(page) && navigationScope !== 'site-group') {
       setNavigationScope('site-group');
@@ -961,7 +961,7 @@ export default function App() {
         const info = pageInfo[currentPage as keyof typeof pageInfo];
         if (!info) {
           // If page info doesn't exist, redirect to service levels and show placeholder
-          setCurrentPage('service-levels');
+          setCurrentPage('workspace');
           return <PlaceholderPage title="Page Not Found" description="The requested page is not available. Redirecting to Service Levels." />;
         }
         return <PlaceholderPage title={info.title} description={info.description} />;

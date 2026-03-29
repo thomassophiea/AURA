@@ -107,12 +107,12 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
       apiService.setBaseUrl(`${sg.controller_url}/management`);
     }
     onNavigationScopeChange('site-group');
-    onPageChange?.('sle-dashboard');
+    onPageChange?.('system-backup');
   }, [onNavigationScopeChange, onPageChange]);
 
   const exitSiteGroup = useCallback(() => {
     onNavigationScopeChange('global');
-    onPageChange?.('configure-site-groups');
+    onPageChange?.('workspace');
   }, [onNavigationScopeChange, onPageChange]);
 
   return (
