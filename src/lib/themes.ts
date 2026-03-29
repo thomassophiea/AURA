@@ -190,7 +190,15 @@ export const themes: Record<ThemeMode, Theme> = {
       destructiveForeground: '210 40% 98%',
       border: '214.3 31.8% 91.4%',
       input: '214.3 31.8% 91.4%',
-      ring: '222.2 47.4% 11.2%'
+      ring: '222.2 47.4% 11.2%',
+      statusSuccess: '#16a34a',
+      statusSuccessBg: '#f0fdf4',
+      statusWarning: '#d97706',
+      statusWarningBg: '#fffbeb',
+      statusError: '#dc2626',
+      statusErrorBg: '#fef2f2',
+      statusInfo: '#2563eb',
+      statusInfoBg: '#eff6ff',
     }
   },
   dark: {
@@ -216,7 +224,15 @@ export const themes: Record<ThemeMode, Theme> = {
       destructiveForeground: '210 40% 98%',
       border: '217.2 32.6% 17.5%',
       input: '#1e1f2a',
-      ring: '212.7 26.8% 83.9%'
+      ring: '212.7 26.8% 83.9%',
+      statusSuccess: '#4ade80',
+      statusSuccessBg: '#052e16',
+      statusWarning: '#fbbf24',
+      statusWarningBg: '#451a03',
+      statusError: '#f87171',
+      statusErrorBg: '#450a0a',
+      statusInfo: '#60a5fa',
+      statusInfoBg: '#172554',
     }
   },
   ep1: {

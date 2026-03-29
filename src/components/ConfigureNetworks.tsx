@@ -841,7 +841,7 @@ export function ConfigureNetworks() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Card className="surface-2dp">
+        <Card>
           <CardHeader>
             <Skeleton className="h-6 w-48" />
             <Skeleton className="h-4 w-80 mt-2" />
@@ -898,7 +898,7 @@ export function ConfigureNetworks() {
         </Alert>
       )}
 
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -1264,7 +1264,7 @@ export function ConfigureNetworks() {
 
           {/* Summary Stats */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Card className="surface-1dp">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
                   <Network className="h-4 w-4 text-muted-foreground" />
@@ -1274,7 +1274,7 @@ export function ConfigureNetworks() {
               </CardContent>
             </Card>
             
-            <Card className="surface-1dp">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
                   <Users className="h-4 w-4 text-muted-foreground" />
@@ -1286,7 +1286,7 @@ export function ConfigureNetworks() {
               </CardContent>
             </Card>
             
-            <Card className="surface-1dp">
+            <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />

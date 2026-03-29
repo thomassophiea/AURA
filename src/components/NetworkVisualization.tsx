@@ -476,7 +476,7 @@ export function NetworkVisualization() {
       )}
       
       {/* Header */}
-      <Card className="surface-2dp p-6">
+      <Card className="p-6">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-foreground mb-1">Network Topology Visualization</h3>
@@ -514,7 +514,7 @@ export function NetworkVisualization() {
       </Card>
 
       {/* Topology Canvas */}
-      <Card className="surface-2dp p-4">
+      <Card className="p-4">
         {loadingSites ? (
           <div className="flex flex-col items-center justify-center h-[600px]">
             <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />

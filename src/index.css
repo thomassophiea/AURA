@@ -4371,71 +4371,6 @@ html {
   font-family: var(--font-family-sans);
 }
 
-.surface-0dp {
-  background-color: var(--background);
-  box-shadow: none;
-}
-
-.surface-1dp {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 2px 1px -1px #0003, 0 1px 1px #00000024, 0 1px 3px #0000001f;
-}
-
-.surface-1dp:before {
-  content: "";
-  background-color: var(--surface-1dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.surface-2dp {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 3px 1px -2px #0003, 0 2px 2px #00000024, 0 1px 5px #0000001f;
-}
-
-.surface-2dp:before {
-  content: "";
-  background-color: var(--surface-2dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.surface-4dp {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 2px 4px -1px #0003, 0 4px 5px #00000024, 0 1px 10px #0000001f;
-}
-
-.surface-4dp:before {
-  content: "";
-  background-color: var(--surface-4dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.surface-8dp {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 5px 5px -3px #0003, 0 8px 10px 1px #00000024, 0 3px 14px 2px #0000001f;
-}
-
-.surface-8dp:before {
-  content: "";
-  background-color: var(--surface-8dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
 .status-healthy {
   color: var(--success);
 }
@@ -4463,49 +4398,6 @@ html {
   color: var(--destructive-foreground);
 }
 
-.card-elevated {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
-}
-
-.card-elevated:before {
-  content: "";
-  background-color: var(--surface-2dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.card-floating {
-  background-color: var(--background);
-  position: relative;
-  box-shadow: 0 20px 25px -5px #0000001a, 0 8px 10px -6px #0000001a;
-}
-
-.card-floating:before {
-  content: "";
-  background-color: var(--surface-8dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.navigation-elevated {
-  background-color: var(--background);
-  position: relative;
-}
-
-.navigation-elevated:before {
-  content: "";
-  background-color: var(--surface-4dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
 
 .interactive-surface {
   transition: all .2s cubic-bezier(.4, 0, .2, 1);
@@ -4787,47 +4679,6 @@ html[data-theme="light"], html.light {
   color: var(--foreground);
 }
 
-.material-surface-container-low {
-  background-color: var(--background);
-  position: relative;
-}
-
-.material-surface-container-low:before {
-  content: "";
-  background-color: var(--surface-1dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.material-surface-container-high {
-  background-color: var(--background);
-  position: relative;
-}
-
-.material-surface-container-high:before {
-  content: "";
-  background-color: var(--surface-2dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
-
-.material-surface-container-highest {
-  background-color: var(--background);
-  position: relative;
-}
-
-.material-surface-container-highest:before {
-  content: "";
-  background-color: var(--surface-4dp);
-  border-radius: inherit;
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-}
 
 @property --tw-translate-x {
   syntax: "*";

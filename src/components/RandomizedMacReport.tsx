@@ -142,7 +142,7 @@ export function RandomizedMacReport() {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
@@ -155,7 +155,7 @@ export function RandomizedMacReport() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Randomized MACs</CardTitle>
             <Shuffle className="h-4 w-4 text-purple-500" />
@@ -168,7 +168,7 @@ export function RandomizedMacReport() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Permanent MACs</CardTitle>
             <Shield className="h-4 w-4 text-green-500" />
@@ -181,7 +181,7 @@ export function RandomizedMacReport() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Privacy Rate</CardTitle>
             <Shuffle className="h-4 w-4 text-muted-foreground" />
@@ -198,7 +198,7 @@ export function RandomizedMacReport() {
       </div>
 
       {/* Randomized MAC Addresses Table */}
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader>
           <CardTitle>Randomized MAC Addresses ({randomizedStations.length})</CardTitle>
           <CardDescription>
@@ -275,7 +275,7 @@ export function RandomizedMacReport() {
       </Card>
 
       {/* Examples and Reference */}
-      <Card className="surface-1dp">
+      <Card>
         <CardHeader>
           <CardTitle>Examples of Randomized MAC Addresses</CardTitle>
           <CardDescription>

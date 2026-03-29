@@ -535,7 +535,7 @@ export function Dashboard() {
     }
 
     return (
-      <Card className="surface-2dp border-primary/10">
+      <Card className="border-primary/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -744,7 +744,7 @@ export function Dashboard() {
     const avgClients = Math.round(values.reduce((sum, v) => sum + parseInt(v.value || '0'), 0) / values.length);
 
     return (
-      <Card className="surface-2dp border-info/10">
+      <Card className="border-info/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -817,7 +817,7 @@ export function Dashboard() {
     if (clientCountSites.length === 0) return null;
 
     return (
-      <Card className="surface-2dp border-secondary/10">
+      <Card className="border-secondary/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -885,7 +885,7 @@ export function Dashboard() {
     if (totalAPs === 0 && avgClients === 0) return null;
 
     return (
-      <Card className="surface-2dp border-primary/10">
+      <Card className="border-primary/10">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -991,7 +991,7 @@ export function Dashboard() {
   if (error && !dashboardData) {
     return (
       <div className="space-y-6">
-        <Card className="surface-2dp border-warning/50">
+        <Card className="border-warning/50">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-warning" />
@@ -1047,7 +1047,7 @@ export function Dashboard() {
         </Card>
 
         {/* Quick Stats Card - Always show some info */}
-        <Card className="surface-2dp border-primary/10">
+        <Card className="border-primary/10">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
@@ -1147,7 +1147,7 @@ export function Dashboard() {
 
       {/* Info Banner for Partial Data */}
       {hasPartialData && !hasFullData && (
-        <Card className="surface-1dp border-info/30">
+        <Card className="border-info/30">
           <CardContent className="py-3">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-info mt-0.5" />
@@ -1206,7 +1206,7 @@ export function Dashboard() {
       
       {/* Show placeholder if we have partial data but no charts */}
       {hasPartialData && !hasFullData && (
-        <Card className="surface-2dp border-muted">
+        <Card className="border-muted">
           <CardHeader>
             <CardTitle>Additional Analytics</CardTitle>
             <CardDescription>Advanced metrics require full dashboard API support</CardDescription>

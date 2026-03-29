@@ -121,7 +121,7 @@ export function AppsMenu() {
       </PopoverTrigger>
       
       <PopoverContent 
-        className="w-72 p-0 surface-4dp border-border/50" 
+        className="w-72 p-0 border-border/50" 
         align="end" 
         sideOffset={8}
       >

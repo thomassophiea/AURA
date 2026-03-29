@@ -472,7 +472,7 @@ export function ReportWidgets() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="surface-2dp">
+            <Card key={i}>
               <CardHeader className="pb-3">
                 <div className="h-4 bg-muted rounded animate-pulse mb-2" />
                 <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
@@ -512,7 +512,7 @@ export function ReportWidgets() {
       </div>
 
       {/* Filters */}
-      <Card className="surface-1dp">
+      <Card>
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
@@ -564,7 +564,7 @@ export function ReportWidgets() {
           const IconComponent = widget.icon;
           
           return (
-            <Card key={widget.id} className="surface-2dp hover:surface-4dp transition-all duration-200">
+            <Card key={widget.id} className="hover:transition-all duration-200">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -616,7 +616,7 @@ export function ReportWidgets() {
       </div>
 
       {filteredWidgets.length === 0 && !loading && (
-        <Card className="surface-1dp">
+        <Card>
           <CardContent className="p-12 text-center">
             <Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium mb-2">No widgets found</h3>
@@ -628,7 +628,7 @@ export function ReportWidgets() {
       )}
 
       {/* Summary Stats */}
-      <Card className="surface-1dp">
+      <Card>
         <CardHeader>
           <CardTitle className="text-lg">Widget Summary</CardTitle>
         </CardHeader>

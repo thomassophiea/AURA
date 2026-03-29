@@ -103,7 +103,7 @@ export function HelpPage() {
 
       {/* Quick Links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="surface-1dp hover:surface-2dp transition-all cursor-pointer">
+        <Card className="hover:transition-all cursor-pointer">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5 text-primary" />
@@ -118,7 +118,7 @@ export function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp hover:surface-2dp transition-all cursor-pointer">
+        <Card className="hover:transition-all cursor-pointer">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <Book className="h-5 w-5 text-primary" />
@@ -135,7 +135,7 @@ export function HelpPage() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp hover:surface-2dp transition-all cursor-pointer">
+        <Card className="hover:transition-all cursor-pointer">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <HelpCircle className="h-5 w-5 text-primary" />
@@ -151,7 +151,7 @@ export function HelpPage() {
       </div>
 
       {/* Chat Container - Chatbase will inject the widget */}
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />

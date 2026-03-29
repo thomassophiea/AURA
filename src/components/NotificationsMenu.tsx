@@ -434,7 +434,7 @@ export function NotificationsMenu() {
         </Button>
       </SheetTrigger>
       
-      <SheetContent className="w-96 surface-4dp border-border/50 p-0" side="right">
+      <SheetContent className="w-96 border-border/50 p-0" side="right">
         <div className="flex flex-col h-full">
           {/* Header */}
           <SheetHeader className="p-4 pb-3 border-b border-border/50">
