@@ -1,0 +1,64 @@
+<h2>Context Selector Tabs</h2>
+<p class="subtitle">The ContextualInsightsSelector has rich tabs (AI Insights / Site / AP / Switch / Client) with a popover. What happens to these in the unified bar?</p>
+
+<div class="section">
+  <div class="label">CURRENT — Insights page only</div>
+  <div class="mockup">
+    <div class="mockup-header">ContextualInsightsSelector popover</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <div style="display: flex; gap: 0; border-bottom: 1px solid #333; margin-bottom: 12px;">
+        <div style="padding: 8px 16px; color: #888; font-size: 13px;">AI Insights</div>
+        <div style="padding: 8px 16px; color: #a78bfa; border-bottom: 2px solid #7c3aed; font-size: 13px; font-weight: 600;">Site</div>
+        <div style="padding: 8px 16px; color: #888; font-size: 13px;">((*)) AP</div>
+        <div style="padding: 8px 16px; color: #888; font-size: 13px;">Switch <span style="background: #333; color: #888; padding: 1px 6px; border-radius: 4px; font-size: 10px;">Beta</span></div>
+        <div style="padding: 8px 16px; color: #888; font-size: 13px;">Client</div>
+      </div>
+      <div style="padding: 8px 12px; border: 1px solid #333; border-radius: 6px; background: #111; margin-bottom: 8px;">
+        <span style="color: #555; font-size: 13px;">🔍 Search Site...</span>
+      </div>
+      <div style="padding: 8px 12px; background: #1a1a2e; border-radius: 6px;">
+        <div style="font-weight: 600; color: #ccc;">All Sites <span style="color: #666; font-size: 12px; font-weight: 400;">— 2 sites</span></div>
+        <div style="padding: 4px 0 4px 16px; color: #aaa; font-size: 13px;">Site1</div>
+        <div style="padding: 4px 0 4px 16px; color: #aaa; font-size: 13px;">Production Site</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Should the unified bar include the context tabs?</h3>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Yes — the Site dropdown becomes a context selector popover</h3>
+      <p>Replace the simple "Site" dropdown with the rich popover. When on the AP page, clicking it defaults to the AP tab. On Clients page, defaults to Client tab. On Dashboard, defaults to Site tab. The popover lets you drill into Site → AP → Client from anywhere.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Powerful cross-page context switching</li><li>Consistent drill-down everywhere</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>More complex — might be overkill on simple config pages</li><li>Heavier component</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Optional — pages opt in via a prop</h3>
+      <p>By default, the bar shows a simple Site dropdown (like current FilterBar). Pages that want the rich context tabs pass <code>showContextSelector={true}</code>. Insights and Dashboard get tabs; AP, Clients, and config pages get the simple dropdown.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Right-sized for each page</li><li>Config pages stay simple</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Two modes to maintain</li><li>Slightly less unified</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Drop the tabs — just keep the rich Site popover with search</h3>
+      <p>The Site dropdown becomes a searchable popover (search + scrollable list + status indicators) but WITHOUT the AI/AP/Switch/Client tabs. Those tabs only made sense in the Insights context. The AP/Client search already lives in the main search input.</p>
+      <div class="pros-cons" style="margin-top: 8px;">
+        <div class="pros"><h4>Pros</h4><ul><li>Simpler, no tab confusion</li><li>Search box handles AP/client filtering</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Loses the drill-down navigation</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

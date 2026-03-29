@@ -26,7 +26,6 @@ const SLEDashboard = lazy(() => import('./components/sle/SLEDashboard').then(m =
 const AlertsEventsEnhanced = lazy(() => import('./components/AlertsEventsEnhanced').then(m => ({ default: m.AlertsEventsEnhanced })));
 const ReportWidgets = lazy(() => import('./components/ReportWidgets').then(m => ({ default: m.ReportWidgets })));
 const ConfigureNetworks = lazy(() => import('./components/ConfigureNetworks').then(m => ({ default: m.ConfigureNetworks })));
-const ConfigureSites = lazy(() => import('./components/ConfigureSites').then(m => ({ default: m.ConfigureSites })));
 const SiteGroupsPage = lazy(() => import('./components/SiteGroupsPage').then(m => ({ default: m.SiteGroupsPage })));
 const SitesPage = lazy(() => import('./components/SitesPage').then(m => ({ default: m.SitesPage })));
 const ConfigurePolicy = lazy(() => import('./components/ConfigurePolicy').then(m => ({ default: m.ConfigurePolicy })));

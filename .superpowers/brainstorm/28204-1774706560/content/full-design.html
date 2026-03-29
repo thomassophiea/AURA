@@ -1,0 +1,247 @@
+<h2>UnifiedFilterBar — Full Design</h2>
+<p class="subtitle">Review each section. This replaces FilterBar.tsx, ContextualInsightsSelector.tsx, and all ad-hoc local filters.</p>
+
+<div class="section">
+  <div class="label">VISUAL LAYOUT</div>
+  <div class="mockup">
+    <div class="mockup-header">UnifiedFilterBar — Access Points page example</div>
+    <div class="mockup-body" style="padding: 16px;">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px;">
+        <!-- Search -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #444; border-radius: 8px; background: #1a1a2e; min-width: 220px; flex: 1; max-width: 320px;">
+          <span style="color: #666;">🔍</span>
+          <span style="color: #555;">Search APs by name, serial, model...</span>
+        </div>
+        <!-- Context Selector (replaces simple Site dropdown) -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #7c3aed66; border-radius: 8px; background: #1a1a2e; min-width: 180px; cursor: pointer;">
+          <span style="color: #a78bfa;">📡</span>
+          <span style="color: #ccc;">AP</span>
+          <span style="color: #666;">▾</span>
+        </div>
+        <!-- Environment -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #444; border-radius: 8px; background: #1a1a2e;">
+          <span style="color: #888;">🌐</span>
+          <span style="color: #ccc;">All Environments</span>
+          <span style="color: #666;">▾</span>
+        </div>
+        <!-- Time Range -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #444; border-radius: 8px; background: #1a1a2e;">
+          <span style="color: #888;">🕐</span>
+          <span style="color: #ccc;">Last 24 hours</span>
+          <span style="color: #666;">▾</span>
+        </div>
+        <!-- Divider -->
+        <div style="width: 1px; height: 28px; background: #333;"></div>
+        <!-- Page-specific filters -->
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #7c3aed33; border-radius: 8px; background: #1a1a2e;">
+          <span style="color: #a78bfa;">⚡</span>
+          <span style="color: #a78bfa;">Status</span>
+          <span style="color: #666;">▾</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px; padding: 7px 14px; border: 1px solid #7c3aed33; border-radius: 8px; background: #1a1a2e;">
+          <span style="color: #a78bfa;">📦</span>
+          <span style="color: #a78bfa;">Model</span>
+          <span style="color: #666;">▾</span>
+        </div>
+        <!-- Clear -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="background: #7c3aed33; color: #a78bfa; padding: 3px 8px; border-radius: 4px; font-size: 11px;">3 active</span>
+          <span style="color: #888; font-size: 12px; cursor: pointer;">✕</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" style="margin-top: 12px;">
+    <div class="mockup-header">Context Selector Popover — opened from "AP" button above</div>
+    <div class="mockup-body" style="padding: 16px; max-width: 480px;">
+      <div style="display: flex; gap: 0; border-bottom: 1px solid #333; margin-bottom: 12px;">
+        <div style="padding: 8px 14px; color: #888; font-size: 13px;">🧠 AI</div>
+        <div style="padding: 8px 14px; color: #888; font-size: 13px;">🏢 Site</div>
+        <div style="padding: 8px 14px; color: #a78bfa; border-bottom: 2px solid #7c3aed; font-size: 13px; font-weight: 600;">📡 AP</div>
+        <div style="padding: 8px 14px; color: #888; font-size: 13px;">🔌 Switch <span style="background: #333; padding: 1px 5px; border-radius: 3px; font-size: 10px;">Beta</span></div>
+        <div style="padding: 8px 14px; color: #888; font-size: 13px;">👤 Client</div>
+      </div>
+      <div style="padding: 8px 12px; border: 1px solid #333; border-radius: 6px; background: #111; margin-bottom: 10px;">
+        <span style="color: #555; font-size: 13px;">🔍 Search Access Points...</span>
+      </div>
+      <div style="background: #1a1a2e; border-radius: 6px; padding: 4px 0; max-height: 200px; overflow-y: auto;">
+        <div style="padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 600; color: #ccc;">All Access Points</div>
+            <div style="color: #666; font-size: 12px;">24 APs</div>
+          </div>
+          <span style="color: #a78bfa;">✓</span>
+        </div>
+        <div style="height: 1px; background: #333; margin: 2px 12px;"></div>
+        <div style="padding: 8px 12px 4px 24px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #aaa; font-size: 13px;">AP-Lobby-01</span>
+            <span style="color: #4ade80; font-size: 11px;">● online</span>
+          </div>
+          <div style="color: #666; font-size: 11px;">AP4000 • 10.1.1.50 • Site1 • 12 clients</div>
+        </div>
+        <div style="padding: 8px 12px 4px 24px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #aaa; font-size: 13px;">AP-Conf-Room</span>
+            <span style="color: #4ade80; font-size: 11px;">● online</span>
+          </div>
+          <div style="color: #666; font-size: 11px;">AP5010 • 10.1.1.51 • Production Site • 8 clients</div>
+        </div>
+        <div style="padding: 8px 12px 4px 24px;">
+          <div style="display: flex; justify-content: space-between;">
+            <span style="color: #aaa; font-size: 13px;">AP-Warehouse-03</span>
+            <span style="color: #ef4444; font-size: 11px;">● offline</span>
+          </div>
+          <div style="color: #666; font-size: 11px;">AP3000 • 10.1.2.10 • Site1 • 0 clients</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 32px;">
+  <div class="label">COMPONENT API</div>
+  <div style="background: #111; border: 1px solid #333; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 12px; line-height: 1.8; color: #ccc; overflow-x: auto;">
+    <span style="color: #7c3aed;">&lt;UnifiedFilterBar</span><br>
+    &nbsp;&nbsp;<span style="color: #888;">// Search config — always visible</span><br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">searchPlaceholder</span>=<span style="color: #4ade80;">"Search APs by name, serial..."</span><br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">searchValue</span>={searchTerm}<br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">onSearchChange</span>={setSearchTerm}<br>
+    <br>
+    &nbsp;&nbsp;<span style="color: #888;">// Context selector — defaults tab to page context</span><br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">defaultContextTab</span>=<span style="color: #4ade80;">"access-point"</span><br>
+    <br>
+    &nbsp;&nbsp;<span style="color: #888;">// Global filters (all enabled by default)</span><br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">showEnvironment</span>={true}<br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">showTimeRange</span>={true}<br>
+    <br>
+    &nbsp;&nbsp;<span style="color: #888;">// Page-specific filters (inline after divider)</span><br>
+    &nbsp;&nbsp;<span style="color: #60a5fa;">extraFilters</span>={&lt;&gt;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&lt;StatusFilter value={status} onChange={setStatus} /&gt;<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&lt;ModelFilter value={model} onChange={setModel} /&gt;<br>
+    &nbsp;&nbsp;&lt;/&gt;}<br>
+    <span style="color: #7c3aed;">/&gt;</span>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">STATE MANAGEMENT</div>
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px; font-size: 13px; color: #ccc; line-height: 1.8;">
+    <div style="margin-bottom: 8px;"><strong style="color: #a78bfa;">Global state</strong> (useGlobalFilters — persisted, synced)</div>
+    <div style="padding-left: 16px; color: #aaa;">• site / environment / timeRange / dateFrom / dateTo</div>
+    <div style="padding-left: 16px; color: #aaa;">• Operational context: mode, siteId, apId, clientId</div>
+    <div style="margin-top: 12px; margin-bottom: 8px;"><strong style="color: #a78bfa;">Local state</strong> (owned by each page)</div>
+    <div style="padding-left: 16px; color: #aaa;">• searchTerm — text input, not persisted</div>
+    <div style="padding-left: 16px; color: #aaa;">• extraFilters — page-specific dropdowns (band, security, status, model)</div>
+    <div style="margin-top: 12px; margin-bottom: 8px;"><strong style="color: #a78bfa;">Active filter count</strong></div>
+    <div style="padding-left: 16px; color: #aaa;">• Badge shows count of non-default filters • "✕" resets all to defaults</div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">DEPRECATION PLAN</div>
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px; font-size: 13px; color: #ccc; line-height: 1.8;">
+    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 8px 16px; align-items: center;">
+      <span style="color: #ef4444;">🗑️</span>
+      <span><strong>FilterBar.tsx</strong> — replaced entirely by UnifiedFilterBar</span>
+      <span style="color: #ef4444; font-size: 11px;">DELETE</span>
+
+      <span style="color: #ef4444;">🗑️</span>
+      <span><strong>ContextualInsightsSelector.tsx</strong> — context tabs absorbed into UnifiedFilterBar</span>
+      <span style="color: #ef4444; font-size: 11px;">DELETE</span>
+
+      <span style="color: #f59e0b;">🔄</span>
+      <span><strong>useGlobalFilters.ts</strong> — kept as-is, used internally by UnifiedFilterBar</span>
+      <span style="color: #4ade80; font-size: 11px;">KEEP</span>
+
+      <span style="color: #f59e0b;">🔄</span>
+      <span><strong>useOperationalContext.ts</strong> — kept as-is, used by context selector</span>
+      <span style="color: #4ade80; font-size: 11px;">KEEP</span>
+
+      <span style="color: #ef4444;">🗑️</span>
+      <span><strong>Ad-hoc local searchTerm/selectedSite/siteFilter</strong> in AccessPoints.tsx, ConnectedClients.tsx — replaced by UnifiedFilterBar props</span>
+      <span style="color: #ef4444; font-size: 11px;">REMOVE</span>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top: 24px;">
+  <div class="label">PER-PAGE INTEGRATION</div>
+  <div style="background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px; font-size: 13px; color: #ccc; line-height: 1.6;">
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="border-bottom: 1px solid #333;">
+        <th style="text-align: left; padding: 6px 8px; color: #a78bfa; font-size: 12px;">Page</th>
+        <th style="text-align: left; padding: 6px 8px; color: #a78bfa; font-size: 12px;">Default Tab</th>
+        <th style="text-align: left; padding: 6px 8px; color: #a78bfa; font-size: 12px;">Search Fields</th>
+        <th style="text-align: left; padding: 6px 8px; color: #a78bfa; font-size: 12px;">Extra Filters</th>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Dashboard</td>
+        <td style="padding: 6px 8px; color: #888;">site</td>
+        <td style="padding: 6px 8px; color: #888;">widgets, metrics</td>
+        <td style="padding: 6px 8px; color: #666;">—</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Access Points</td>
+        <td style="padding: 6px 8px; color: #888;">access-point</td>
+        <td style="padding: 6px 8px; color: #888;">name, serial, model, IP, site</td>
+        <td style="padding: 6px 8px; color: #888;">Status, Model</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Connected Clients</td>
+        <td style="padding: 6px 8px; color: #888;">client</td>
+        <td style="padding: 6px 8px; color: #888;">hostname, MAC, IP, AP, site</td>
+        <td style="padding: 6px 8px; color: #666;">—</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Network Insights</td>
+        <td style="padding: 6px 8px; color: #888;">ai-insights</td>
+        <td style="padding: 6px 8px; color: #888;">insights, anomalies</td>
+        <td style="padding: 6px 8px; color: #666;">—</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">SLE Dashboard</td>
+        <td style="padding: 6px 8px; color: #888;">site</td>
+        <td style="padding: 6px 8px; color: #888;">metrics, SLE names</td>
+        <td style="padding: 6px 8px; color: #666;">—</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Configure Networks</td>
+        <td style="padding: 6px 8px; color: #888;">site</td>
+        <td style="padding: 6px 8px; color: #888;">network name</td>
+        <td style="padding: 6px 8px; color: #888;">Band, Security, Status</td>
+      </tr>
+      <tr style="border-bottom: 1px solid #222;">
+        <td style="padding: 6px 8px;">Alerts &amp; Events</td>
+        <td style="padding: 6px 8px; color: #888;">site</td>
+        <td style="padding: 6px 8px; color: #888;">alert text, source</td>
+        <td style="padding: 6px 8px; color: #888;">Severity, Category, Status</td>
+      </tr>
+      <tr>
+        <td style="padding: 6px 8px;">AP Upgrade Report</td>
+        <td style="padding: 6px 8px; color: #888;">access-point</td>
+        <td style="padding: 6px 8px; color: #888;">AP name, firmware</td>
+        <td style="padding: 6px 8px; color: #888;">Upgrade Status</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">Does this design look right?</h3>
+<p class="subtitle">Approve to proceed to the written spec, or flag anything to revise</p>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Approve — looks good, write the spec</h3>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✎</div>
+    <div class="content">
+      <h3>Needs changes — I'll describe what to revise</h3>
+    </div>
+  </div>
+</div>

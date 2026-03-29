@@ -1,0 +1,222 @@
+<h2>Site Groups & Sites Page Layouts</h2>
+<p class="subtitle">Both pages follow the Connected Clients / Access Points pattern exactly</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Site Groups Page</div>
+    <div class="mockup-body" style="padding: 16px; font-family: system-ui, sans-serif; background: #0f1117; color: #e4e4e7;">
+
+      <!-- Page Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+          <div style="font-size: 20px; font-weight: 600; color: #fafafa;">Site Groups</div>
+          <div style="font-size: 12px; color: #71717a;">Manage controller pairs and organizational hierarchy</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Refresh</div>
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Columns</div>
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Export</div>
+        </div>
+      </div>
+
+      <!-- Metric Cards -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px;">
+        <div style="padding: 12px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #a5b4fc;">Total Groups</div>
+          <div style="font-size: 22px; font-weight: 700; color: #c7d2fe;">4</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #052e16 0%, #14532d 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #86efac;">Connected</div>
+          <div style="font-size: 22px; font-weight: 700; color: #bbf7d0;">3</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #fca5a5;">Disconnected</div>
+          <div style="font-size: 22px; font-weight: 700; color: #fecaca;">1</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #172554 0%, #1e3a5f 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #93c5fd;">Total Sites</div>
+          <div style="font-size: 22px; font-weight: 700; color: #bfdbfe;">47</div>
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div style="background: #18181b; border: 1px solid #27272a; border-radius: 8px; overflow: hidden;">
+        <!-- Search in CardHeader -->
+        <div style="padding: 10px 14px; border-bottom: 1px solid #27272a;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; max-width: 400px; padding: 6px 10px; background: #09090b; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #71717a;">Search site groups...</div>
+            <div style="font-size: 10px; color: #52525b;">4 groups</div>
+          </div>
+        </div>
+        <!-- Table -->
+        <div style="font-size: 10px;">
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.5fr 0.8fr 0.8fr 0.8fr; padding: 6px 14px; background: #09090b; color: #71717a; border-bottom: 1px solid #27272a;">
+            <div>&#9744;</div><div>Name</div><div>Controller Pair</div><div style="text-align:center">Sites</div><div>Status</div><div>Region</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.5fr 0.8fr 0.8fr 0.8fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">US-East Campus</div>
+            <div>ctrl-east-01 / ctrl-east-02</div>
+            <div style="text-align:center; color: #60a5fa; text-decoration: underline; cursor: pointer;">18</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Connected</div>
+            <div>us-east-1</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.5fr 0.8fr 0.8fr 0.8fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">US-West Campus</div>
+            <div>ctrl-west-01 / ctrl-west-02</div>
+            <div style="text-align:center; color: #60a5fa; text-decoration: underline; cursor: pointer;">12</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Connected</div>
+            <div>us-west-2</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.5fr 0.8fr 0.8fr 0.8fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">EU Distribution</div>
+            <div>ctrl-eu-01 / ctrl-eu-02</div>
+            <div style="text-align:center; color: #60a5fa; text-decoration: underline; cursor: pointer;">11</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Connected</div>
+            <div>eu-west-1</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.5fr 0.8fr 0.8fr 0.8fr; padding: 8px 14px; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">APAC Retail</div>
+            <div>ctrl-apac-01</div>
+            <div style="text-align:center; color: #60a5fa; text-decoration: underline; cursor: pointer;">6</div>
+            <div><span style="color: #ef4444;">&#9679;</span> Disconnected</div>
+            <div>ap-southeast-1</div>
+          </div>
+        </div>
+        <!-- Pagination -->
+        <div style="padding: 8px 14px; border-top: 1px solid #27272a; display: flex; justify-content: space-between; font-size: 10px; color: #71717a;">
+          <div>Showing 1-4 of 4 groups</div>
+          <div>Page 1 of 1</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Sites Page</div>
+    <div class="mockup-body" style="padding: 16px; font-family: system-ui, sans-serif; background: #0f1117; color: #e4e4e7;">
+
+      <!-- Page Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+          <div style="font-size: 20px; font-weight: 600; color: #fafafa;">Sites</div>
+          <div style="font-size: 12px; color: #71717a;">All sites across the organization</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Refresh</div>
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Columns</div>
+          <div style="padding: 4px 10px; background: #27272a; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #a1a1aa;">Export</div>
+        </div>
+      </div>
+
+      <!-- Metric Cards -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px;">
+        <div style="padding: 12px; background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #a5b4fc;">Total Sites</div>
+          <div style="font-size: 22px; font-weight: 700; color: #c7d2fe;">47</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #052e16 0%, #14532d 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #86efac;">Active</div>
+          <div style="font-size: 22px; font-weight: 700; color: #bbf7d0;">42</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #fca5a5;">Inactive</div>
+          <div style="font-size: 22px; font-weight: 700; color: #fecaca;">5</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #172554 0%, #1e3a5f 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #93c5fd;">Total APs</div>
+          <div style="font-size: 22px; font-weight: 700; color: #bfdbfe;">312</div>
+        </div>
+        <div style="padding: 12px; background: linear-gradient(135deg, #3b0764 0%, #581c87 100%); border-radius: 8px;">
+          <div style="font-size: 10px; color: #d8b4fe;">Total Clients</div>
+          <div style="font-size: 22px; font-weight: 700; color: #e9d5ff;">1,847</div>
+        </div>
+      </div>
+
+      <!-- Filter badge (when navigated from Site Groups) -->
+      <div style="display: flex; gap: 6px; margin-bottom: 12px;">
+        <div style="padding: 3px 10px; background: #312e81; border: 1px solid #4338ca; border-radius: 12px; font-size: 10px; color: #c7d2fe; display: flex; align-items: center; gap: 4px;">
+          Site Group: US-East Campus <span style="cursor: pointer; opacity: 0.6;">&times;</span>
+        </div>
+      </div>
+
+      <!-- Table Card -->
+      <div style="background: #18181b; border: 1px solid #27272a; border-radius: 8px; overflow: hidden;">
+        <!-- Search in CardHeader -->
+        <div style="padding: 10px 14px; border-bottom: 1px solid #27272a;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="flex: 1; max-width: 400px; padding: 6px 10px; background: #09090b; border: 1px solid #3f3f46; border-radius: 6px; font-size: 11px; color: #71717a;">Search sites...</div>
+            <div style="font-size: 10px; color: #52525b;">18 of 47 sites</div>
+          </div>
+        </div>
+        <!-- Table -->
+        <div style="font-size: 10px;">
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.2fr 1fr 0.7fr 0.7fr 0.7fr; padding: 6px 14px; background: #09090b; color: #71717a; border-bottom: 1px solid #27272a;">
+            <div>&#9744;</div><div>Site Name</div><div>Site Group</div><div>Location</div><div>Status</div><div style="text-align:center">APs</div><div style="text-align:center">Clients</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.2fr 1fr 0.7fr 0.7fr 0.7fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">NYC HQ - Floor 1</div>
+            <div style="color: #71717a;">US-East Campus</div>
+            <div>New York, NY</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Active</div>
+            <div style="text-align:center">24</div>
+            <div style="text-align:center">186</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.2fr 1fr 0.7fr 0.7fr 0.7fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">NYC HQ - Floor 2</div>
+            <div style="color: #71717a;">US-East Campus</div>
+            <div>New York, NY</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Active</div>
+            <div style="text-align:center">22</div>
+            <div style="text-align:center">154</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.2fr 1fr 0.7fr 0.7fr 0.7fr; padding: 8px 14px; border-bottom: 1px solid #27272a22; color: #d4d4d8; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">Boston Office</div>
+            <div style="color: #71717a;">US-East Campus</div>
+            <div>Boston, MA</div>
+            <div><span style="color: #4ade80;">&#9679;</span> Active</div>
+            <div style="text-align:center">16</div>
+            <div style="text-align:center">98</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 1.5fr 1.2fr 1fr 0.7fr 0.7fr 0.7fr; padding: 8px 14px; color: #a1a1aa; cursor: pointer;">
+            <div>&#9744;</div>
+            <div style="color: #a5b4fc; font-weight: 500;">Warehouse B</div>
+            <div style="color: #71717a;">US-East Campus</div>
+            <div>Newark, NJ</div>
+            <div><span style="color: #ef4444;">&#9679;</span> Inactive</div>
+            <div style="text-align:center">8</div>
+            <div style="text-align:center">0</div>
+          </div>
+        </div>
+        <!-- Pagination -->
+        <div style="padding: 8px 14px; border-top: 1px solid #27272a; display: flex; justify-content: space-between; font-size: 10px; color: #71717a;">
+          <div>Showing 1-18 of 18 sites</div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <span>50 per page</span>
+            <span style="margin: 0 8px;">|</span>
+            <span>Page 1 of 1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top: 24px;">
+  <h3>Key patterns matched from Connected Clients / Access Points</h3>
+  <ul style="font-size: 14px; color: #aaa; line-height: 1.8;">
+    <li><strong>PageHeader</strong> — title + subtitle left, toolbar buttons right (Refresh, Columns, Export)</li>
+    <li><strong>Gradient metric cards</strong> — 4 for Site Groups, 5 for Sites</li>
+    <li><strong>Search in CardHeader</strong> — compound tokenized AND search with result count</li>
+    <li><strong>Table</strong> — sticky checkbox column, sortable headers, clickable rows → detail slide-out</li>
+    <li><strong>Sites page filter badge</strong> — appears when navigated from Site Groups via site count click, dismissible</li>
+    <li><strong>Pagination</strong> — items per page selector + page navigation below table</li>
+    <li><strong>Site count in Site Groups</strong> — clickable link that navigates to Sites page with pre-applied filter</li>
+  </ul>
+</div>

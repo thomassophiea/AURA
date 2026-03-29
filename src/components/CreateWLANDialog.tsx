@@ -17,11 +17,21 @@ import { effectiveSetCalculator } from '../services/effectiveSetCalculator';
 import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
 import { ProfilePickerDialog } from './wlans/ProfilePickerDialog';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
-import { SiteGroupManagementDialog } from './SiteGroupManagementDialog';
 import { ProfileInterfaceAssignmentDialog, type ProfileWithInterfaces } from './wlans/ProfileInterfaceAssignmentDialog';
+// Legacy manual site-grouping concept (color-coded groups stored in localStorage).
+// The canonical SiteGroup (controller pair) is in src/types/domain.ts.
+interface LegacySiteGroup {
+  id: string;
+  name: string;
+  description?: string;
+  siteIds: string[];
+  createdAt?: string;
+  lastModified?: string;
+  color?: string;
+}
+
 import type {
   Site,
-  SiteGroup,
   Profile,
   AutoAssignmentResponse,
   WLANFormData,
@@ -57,7 +67,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     band: 'dual',
     enabled: true,
     selectedSites: [],
-    selectedSiteGroups: [],
+    selectedLegacySiteGroups: [],
     authenticatedUserDefaultRoleID: null,
     // Basic options
     hidden: false,
@@ -87,8 +97,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const [loadingSites, setLoadingSites] = useState(false);
 
   // Site groups
-  const [siteGroups, setSiteGroups] = useState<SiteGroup[]>([]);
-  const [siteGroupDialogOpen, setSiteGroupDialogOpen] = useState(false);
+  const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
+  const [siteGroupDialogOpen, setLegacySiteGroupDialogOpen] = useState(false);
 
   // Roles
   const [roles, setRoles] = useState<any[]>([]);
@@ -148,7 +158,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     const savedGroups = localStorage.getItem('siteGroups');
     if (savedGroups) {
       try {
-        setSiteGroups(JSON.parse(savedGroups));
+        setLegacySiteGroups(JSON.parse(savedGroups));
       } catch (error) {
         console.error('Failed to load site groups:', error);
       }
@@ -173,7 +183,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         band: 'dual',
         enabled: true,
         selectedSites: [], // Will be populated with all sites after load
-        selectedSiteGroups: [],
+        selectedLegacySiteGroups: [],
         authenticatedUserDefaultRoleID: null, // Will be set to 'bridged' after roles load
         // Basic options
         hidden: false,
@@ -249,7 +259,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setProfilesBySite(new Map());
       setEffectiveSets([]);
     }
-  }, [formData.selectedSites, formData.selectedSiteGroups]);
+  }, [formData.selectedSites, formData.selectedLegacySiteGroups]);
 
   // Recalculate effective sets when site configs change
   useEffect(() => {
@@ -454,7 +464,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Get all sites from selected site groups
   const getExpandedSiteIds = (): string[] => {
-    const groupSites = formData.selectedSiteGroups.flatMap(groupId => {
+    const groupSites = formData.selectedLegacySiteGroups.flatMap(groupId => {
       const group = siteGroups.find(g => g.id === groupId);
       return group?.siteIds || [];
     });
@@ -462,8 +472,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   // Save site groups to localStorage
-  const handleSaveSiteGroups = (groups: SiteGroup[]) => {
-    setSiteGroups(groups);
+  const handleSaveLegacySiteGroups = (groups: LegacySiteGroup[]) => {
+    setLegacySiteGroups(groups);
     localStorage.setItem('siteGroups', JSON.stringify(groups));
   };
 
@@ -483,12 +493,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     }
   };
 
-  const toggleSiteGroup = (groupId: string) => {
+  const toggleLegacySiteGroup = (groupId: string) => {
     setFormData(prev => ({
       ...prev,
-      selectedSiteGroups: prev.selectedSiteGroups.includes(groupId)
-        ? prev.selectedSiteGroups.filter(id => id !== groupId)
-        : [...prev.selectedSiteGroups, groupId]
+      selectedLegacySiteGroups: prev.selectedLegacySiteGroups.includes(groupId)
+        ? prev.selectedLegacySiteGroups.filter(id => id !== groupId)
+        : [...prev.selectedLegacySiteGroups, groupId]
     }));
   };
 
@@ -1585,7 +1595,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                         variant="ghost"
                         size="sm"
                         className="h-7 text-xs"
-                        onClick={() => setSiteGroupDialogOpen(true)}
+                        onClick={() => setLegacySiteGroupDialogOpen(true)}
                       >
                         <Settings className="h-3 w-3 mr-1" />
                         Manage
@@ -1596,15 +1606,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                         <div
                           key={group.id}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                            formData.selectedSiteGroups.includes(group.id)
+                            formData.selectedLegacySiteGroups.includes(group.id)
                               ? 'border-primary bg-primary/5'
                               : 'hover:bg-accent/50'
                           }`}
-                          onClick={() => toggleSiteGroup(group.id)}
+                          onClick={() => toggleLegacySiteGroup(group.id)}
                         >
                           <input
                             type="checkbox"
-                            checked={formData.selectedSiteGroups.includes(group.id)}
+                            checked={formData.selectedLegacySiteGroups.includes(group.id)}
                             onChange={() => {}}
                             className="h-4 w-4"
                           />
@@ -1635,7 +1645,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={() => setSiteGroupDialogOpen(true)}
+                    onClick={() => setLegacySiteGroupDialogOpen(true)}
                   >
                     <Folder className="h-4 w-4 mr-2" />
                     Create Site Groups
@@ -1785,14 +1795,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         />
       )}
 
-      {/* Site Group Management Dialog */}
-      <SiteGroupManagementDialog
-        open={siteGroupDialogOpen}
-        onOpenChange={setSiteGroupDialogOpen}
-        sites={sites}
-        siteGroups={siteGroups}
-        onSave={handleSaveSiteGroups}
-      />
+      {/* Note: Legacy SiteGroupManagementDialog removed — manual color-coded grouping deprecated */}
 
       {/* Profile Interface Assignment Dialog - for granular radio/port selection */}
       {createdServiceId && (
