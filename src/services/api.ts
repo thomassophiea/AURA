@@ -1239,6 +1239,11 @@ class ApiService {
    * @param serialNumber - AP serial number
    * @param duration - Duration in days (default: 14)
    * @returns Array of alarm categories with nested alarm types and alarms
+   *
+   * NOTE: /v1/aps/{serial}/alarms is NOT in the Swagger catalog.
+   * The Swagger-documented alternative is GET /v1/aps/{serial}/report (widgetList-based).
+   * We attempt the alarms endpoint first (works on many XCA builds) and silently fall back
+   * to an empty array if not available — the AP Detail page handles empty events gracefully.
    */
   async getAccessPointEvents(serialNumber: string, duration: number = 14): Promise<APAlarmCategory[]> {
     const endTime = Date.now();
@@ -1247,17 +1252,23 @@ class ApiService {
 
     const endpoint = `/v1/aps/${encodeURIComponent(serialNumber)}/alarms?startTime=${startTime}&endTime=${endTime}&noCache=${noCache}`;
 
-    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D)`);
+    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D) via non-Swagger /alarms endpoint`);
 
-    const response = await this.makeAuthenticatedRequest(endpoint);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AP events: ${response.status} ${response.statusText}`);
+    try {
+      const response = await this.makeAuthenticatedRequest(endpoint);
+      if (!response.ok) {
+        logger.warn(`[API] AP alarms endpoint returned ${response.status} for ${serialNumber} — endpoint may not exist on this controller build`);
+        return [];
+      }
+
+      const data = await response.json();
+      logger.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
+
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      logger.warn(`[API] AP alarms endpoint unavailable for ${serialNumber}: ${error}`);
+      return [];
     }
-
-    const data = await response.json();
-    logger.log(`[API] ✓ Fetched AP events for ${serialNumber}`);
-
-    return Array.isArray(data) ? data : [];
   }
 
   /**
