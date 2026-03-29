@@ -5,7 +5,7 @@
 | Plan | Scope | Status |
 |------|-------|--------|
 | Plan 1 | Discovery & Swagger Mapping | ✅ COMPLETE |
-| Plan 2 | API Audit — Monitor & Dashboard Pages | PENDING |
+| Plan 2 | API Audit — Monitor & Dashboard Pages | ✅ COMPLETE |
 | Plan 3 | API Audit — Configure & System Pages | PENDING |
 | Plan 4 | Cross-Cutting Quality (Security, Accessibility, Theme, Performance) | PENDING |
 | Plan 5 | Final Reporting | PENDING |
@@ -43,6 +43,15 @@
 - **Dead Code Candidates:** 13
 - **Mock Data Flags:** 20 (10 high severity)
 - **Unused Swagger GET Endpoints:** ~131 enhancement opportunities
+
+## Key Findings from Plan 2 (2026-03-28)
+
+- **8 code fixes applied** across ReportWidgets, workspaceDataService, and api.ts
+- **5 non-Swagger endpoints replaced** with Swagger analogs (all via `/v1/notifications`)
+- **3 misleading metrics** renamed and clarified (Network Utilization → Client Load Index; Network Throughput → Total Traffic Volume; Performance Score → Performance Score Derived)
+- **5 pages cleaner than expected**: AppInsights, Connected Clients, Access Points, ClientDetail, SiteDetail — all Swagger-clean with proper error handling
+- **AP Detail alarm endpoint** (`/v1/aps/{serial}/alarms`) confirmed non-Swagger; error handling improved to return `[]` gracefully rather than throwing
+- **14 enhancement opportunities** documented for Plan 5
 
 ## Critical Findings from Plan 1
 
