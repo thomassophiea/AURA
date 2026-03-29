@@ -585,8 +585,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
       </div>
 
       {/* Status Overview */}
-      <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.01] transition-all duration-300 group">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+      <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.01] transition-all duration-300 group">
         <div className="absolute -right-6 -top-6 w-20 h-20 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all" />
         <CardHeader className="relative">
           <CardTitle className="flex items-center justify-between">
@@ -599,39 +598,39 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         <CardContent className="space-y-4 relative">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
                 <Users className="h-4 w-4 text-white" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Connected Clients</p>
-                <p className="text-lg font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">{stations.length}</p>
+                <p className="text-lg font-bold text-foreground">{stations.length}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
                 <Activity className="h-4 w-4 text-white" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Uptime</p>
-                <p className="text-lg font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">{apDetails.uptime || 'N/A'}</p>
+                <p className="text-lg font-bold text-foreground">{apDetails.uptime || 'N/A'}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
                 <Wifi className="h-4 w-4 text-white" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Active Radios</p>
-                <p className="text-lg font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{apDetails.radios?.filter(r => r.adminState).length || 0}/{apDetails.radios?.length || 0}</p>
+                <p className="text-lg font-bold text-foreground">{apDetails.radios?.filter(r => r.adminState).length || 0}/{apDetails.radios?.length || 0}</p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
                 <Signal className="h-4 w-4 text-white" />
               </div>
               <div>
                 <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Modes</p>
-                <p className="text-lg font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">{apDetails.radios?.map(r => r.mode.toUpperCase()).join(', ') || 'N/A'}</p>
+                <p className="text-lg font-bold text-foreground">{apDetails.radios?.map(r => r.mode.toUpperCase()).join(', ') || 'N/A'}</p>
               </div>
             </div>
           </div>

@@ -199,7 +199,7 @@ export function SystemBackupManager() {
     <div className="space-y-6 p-4 md:p-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <h2 className="text-2xl md:text-3xl font-bold flex items-center gap-3 text-foreground">
             <Database className="h-6 w-6 md:h-8 md:w-8 text-primary" />
             System Backup & Storage Manager
           </h2>

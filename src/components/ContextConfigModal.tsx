@@ -239,7 +239,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <CardTitle className={`text-sm font-medium truncate ${isAI ? 'bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent' : ''}`}>
+                                <CardTitle className={`text-sm font-medium truncate ${isAI ? 'text-foreground' : ''}`}>
                                   {context.name}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-0.5 line-clamp-2">

@@ -6363,3 +6363,17 @@ body.mi5 {
 .kroger a:active {
   color: #052D66 !important;
 }
+
+/* ========================================
+   Stat Card Badge Gradients
+   Tailwind v4 gradient utilities (from-*, to-*) are not in the compiled CSS.
+   These provide the colored icon badge backgrounds for stat cards.
+   ======================================== */
+.badge-gradient-blue { background: linear-gradient(to bottom right, #3b82f6, #06b6d4); }
+.badge-gradient-green { background: linear-gradient(to bottom right, #10b981, #22c55e); }
+.badge-gradient-violet { background: linear-gradient(to bottom right, #8b5cf6, #a855f7); }
+.badge-gradient-amber { background: linear-gradient(to bottom right, #f59e0b, #f97316); }
+.badge-gradient-indigo { background: linear-gradient(to bottom right, #6366f1, #8b5cf6); }
+.badge-gradient-red { background: linear-gradient(to bottom right, #ef4444, #f43f5e); }
+.badge-gradient-pink { background: linear-gradient(to bottom right, #ec4899, #f43f5e); }
+.badge-gradient-indigo-purple { background: linear-gradient(to bottom right, #6366f1, #a855f7); }

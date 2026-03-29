@@ -168,12 +168,10 @@ export function OSOneWidget({
   // Compact view for dashboard cards
   if (compact) {
     return (
-      <Card className={`relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group ${className}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-        <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all" />
+      <Card className={`relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group ${className}`}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
           <CardTitle className="text-sm font-semibold">OS ONE Control</CardTitle>
-          <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md group-hover:scale-110 transition-transform">
+          <div className="p-1.5 rounded-lg badge-gradient-indigo-purple shadow-md group-hover:scale-110 transition-transform">
             <Server className="h-3.5 w-3.5 text-white" />
           </div>
         </CardHeader>
@@ -210,7 +208,7 @@ export function OSOneWidget({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 shadow-md">
+            <div className="p-2 rounded-lg badge-gradient-indigo-purple shadow-md">
               <Server className="h-5 w-5 text-white" />
             </div>
             <div>

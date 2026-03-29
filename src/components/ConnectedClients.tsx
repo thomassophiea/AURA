@@ -635,8 +635,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.07]" />
+        <Card className="relative overflow-hidden">
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
@@ -644,15 +643,14 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 <p className="text-xl font-bold text-foreground">{stations.length}</p>
                 <p className="text-[10px] text-muted-foreground">Connected devices</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md">
+              <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md">
                 <Users className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.07]" />
+        <Card className="relative overflow-hidden">
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
@@ -660,15 +658,14 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 <p className="text-xl font-bold" style={{ color: 'var(--status-success)' }}>{getActiveClientsCount()}</p>
                 <p className="text-[10px] text-muted-foreground">Currently active</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md">
+              <div className="p-1.5 rounded-lg badge-gradient-green shadow-md">
                 <Wifi className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.07]" />
+        <Card className="relative overflow-hidden">
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
@@ -676,15 +673,14 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 <p className="text-xl font-bold text-foreground">{getUniqueSiteCount()}</p>
                 <p className="text-[10px] text-muted-foreground">Active sites</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md">
+              <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md">
                 <MapPin className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-[0.07]" />
+        <Card className="relative overflow-hidden">
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
@@ -692,7 +688,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 <p className="text-xl font-bold text-foreground">{formatBytes(getTotalTraffic())}</p>
                 <p className="text-[10px] text-muted-foreground">Data transferred</p>
               </div>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md">
+              <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md">
                 <Activity className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
