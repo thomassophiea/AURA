@@ -272,7 +272,7 @@ export function BestPractices() {
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-medium">Network</CardTitle>
             <Router className="h-4 w-4 text-muted-foreground" />
@@ -299,7 +299,7 @@ export function BestPractices() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-medium">Configuration</CardTitle>
             <Settings className="h-4 w-4 text-muted-foreground" />
@@ -326,7 +326,7 @@ export function BestPractices() {
           </CardContent>
         </Card>
 
-        <Card className="surface-1dp">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base font-medium">Operational</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />

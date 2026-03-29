@@ -508,7 +508,7 @@ export function ServiceLevels() {
       </div>
 
       {/* Filters Bar */}
-      <Card className="surface-2dp border-primary/10 overflow-hidden">
+      <Card className="border-primary/10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-secondary/5 pointer-events-none" />
         <CardHeader className="relative">
           <CardTitle className="flex items-center gap-2">
@@ -673,7 +673,7 @@ export function ServiceLevels() {
 
       {/* Empty State */}
       {showEmptyState && (
-        <Card className="surface-1dp border-primary/10">
+        <Card className="border-primary/10">
           <CardContent className="flex flex-col items-center justify-center py-16">
             <div className="p-4 rounded-full bg-muted/20 mb-4">
               <BarChart3 className="h-12 w-12 text-muted-foreground" />
@@ -696,7 +696,7 @@ export function ServiceLevels() {
 
       {/* Network Rewind Slider */}
       {!showEmptyState && (
-      <Card className="surface-2dp border-primary/10 overflow-hidden">
+      <Card className="border-primary/10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
         <CardHeader className="relative">
           <CardTitle className="flex items-center gap-2">
@@ -775,7 +775,7 @@ export function ServiceLevels() {
             {currentMetrics.map((metric, index) => (
               <div 
                 key={metric.key} 
-                className="group relative overflow-hidden border rounded-xl p-5 surface-2dp hover:surface-4dp transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                className="group relative overflow-hidden border rounded-xl p-5 hover:transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
               >
                 <div 
                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
@@ -836,7 +836,7 @@ export function ServiceLevels() {
 
       {/* Metrics Chart */}
       {!showEmptyState && (
-      <Card className="surface-1dp border-primary/10 overflow-hidden">
+      <Card className="border-primary/10 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-secondary/5 via-transparent to-primary/5 pointer-events-none" />
         <CardHeader className="relative">
           <CardTitle className="flex items-center gap-2">
@@ -911,7 +911,7 @@ export function ServiceLevels() {
 
       {/* Details Table */}
       {!showEmptyState && (
-      <Card className="surface-1dp border-primary/10">
+      <Card className="border-primary/10">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-warning/10 border border-warning/20">

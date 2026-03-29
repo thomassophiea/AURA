@@ -883,7 +883,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         </DialogContent>
       </Dialog>
 
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader className="pb-3 pt-4">
           <SearchFilterBar
             searchPlaceholder="Search by hostname, MAC, IP, AP, site, SSID, device type..."

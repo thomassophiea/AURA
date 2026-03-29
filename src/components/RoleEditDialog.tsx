@@ -501,13 +501,13 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                 </div>
 
                 {l3Filters.length === 0 ? (
-                  <Card className="surface-1dp p-6 text-center text-muted-foreground">
+                  <Card className="p-6 text-center text-muted-foreground">
                     No Layer 3 filters configured. Click "Add L3 Filter" to create one.
                   </Card>
                 ) : (
                   <div className="space-y-3">
                     {l3Filters.map((filter, index) => (
-                      <Card key={index} className="surface-1dp p-4">
+                      <Card key={index} className="p-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label className="text-sm">Filter #{index + 1}</Label>
@@ -612,13 +612,13 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                 </div>
 
                 {l7Filters.length === 0 ? (
-                  <Card className="surface-1dp p-6 text-center text-muted-foreground">
+                  <Card className="p-6 text-center text-muted-foreground">
                     No Layer 7 filters configured. Click "Add L7 Filter" to create one.
                   </Card>
                 ) : (
                   <div className="space-y-3">
                     {l7Filters.map((filter, index) => (
-                      <Card key={index} className="surface-1dp p-4">
+                      <Card key={index} className="p-4">
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label className="text-sm">Application Filter #{index + 1}</Label>
@@ -882,7 +882,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleCancel()}>
       <DialogContent
         ref={dialogRef}
-        className="surface-2dp max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
+        className="max-w-5xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
         style={{
           position: 'fixed',
           left: '50%',

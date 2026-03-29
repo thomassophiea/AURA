@@ -64,10 +64,10 @@ export const SPACING = {
 // ==================== Card Styles ====================
 export const CARD_STYLES = {
   // Base Card
-  base: 'surface-2dp rounded border border-border overflow-hidden',
+  base: 'rounded border border-border overflow-hidden',
   
   // Card with Hover
-  interactive: 'surface-2dp rounded border border-border overflow-hidden transition-all hover:shadow-lg cursor-pointer',
+  interactive: 'rounded border border-border overflow-hidden transition-all hover:shadow-lg cursor-pointer',
   
   // Card Header
   header: 'p-6 border-b border-border',
@@ -79,7 +79,7 @@ export const CARD_STYLES = {
   footer: 'p-6 border-t border-border',
   
   // Compact Card
-  compact: 'surface-2dp rounded border border-border p-4',
+  compact: 'rounded border border-border p-4',
 } as const;
 
 // ==================== Button Styles ====================
@@ -355,7 +355,7 @@ export const LAYOUTS = {
   metricGrid: 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6',
   
   // Table Container
-  tableContainer: 'surface-2dp rounded border border-border overflow-hidden',
+  tableContainer: 'rounded border border-border overflow-hidden',
   
   // Flex Layouts
   flexBetween: 'flex items-center justify-between',
@@ -367,7 +367,7 @@ export const LAYOUTS = {
 // ==================== Table Styles ====================
 export const TABLE_STYLES = {
   // Table wrapper
-  wrapper: 'surface-2dp rounded border border-border overflow-hidden',
+  wrapper: 'rounded border border-border overflow-hidden',
   
   // Table element
   table: 'w-full',

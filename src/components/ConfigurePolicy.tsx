@@ -271,7 +271,7 @@ export function ConfigurePolicy() {
       </div>
 
       {/* Main Content */}
-      <Card className="surface-2dp">
+      <Card>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="border-b border-border px-6 pt-6">
             <TabsList className="bg-transparent border-b-0 h-auto p-0 space-x-6">
@@ -347,10 +347,10 @@ export function ConfigurePolicy() {
                 {filteredRoles.map((role) => (
                   <div key={role.id}>
                     <Card
-                      className={`surface-1dp p-4 transition-all cursor-pointer ${
+                      className={`p-4 transition-all cursor-pointer ${
                         expandedRoleId === role.id
                           ? 'ring-2 ring-primary'
-                          : 'hover:surface-2dp'
+                          : 'hover:'
                       }`}
                       onClick={() => handleToggleRole(role)}
                     >
@@ -521,7 +521,7 @@ export function ConfigurePolicy() {
             ) : (
               <div className="grid gap-3">
                 {filteredTopologies.map((topology) => (
-                  <Card key={topology.id} className="surface-1dp p-4 hover:surface-3dp transition-all">
+                  <Card key={topology.id} className="p-4 transition-all">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-blue-500/10">
@@ -588,7 +588,7 @@ export function ConfigurePolicy() {
             ) : (
               <div className="grid gap-3">
                 {cosProfiles.map((cos) => (
-                  <Card key={cos.id} className="surface-1dp p-4 hover:surface-3dp transition-all">
+                  <Card key={cos.id} className="p-4 transition-all">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-purple-500/10">
@@ -635,7 +635,7 @@ export function ConfigurePolicy() {
 
       {/* Role Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="surface-2dp max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
               {selectedRole?.name}
@@ -708,7 +708,7 @@ export function ConfigurePolicy() {
                     <Label>L3 Filter Rules</Label>
                     <div className="space-y-2">
                       {selectedRole.l3Filters.map((filter, idx) => (
-                        <Card key={idx} className="surface-1dp p-3">
+                        <Card key={idx} className="p-3">
                           <div className="text-sm space-y-1">
                             <div className="font-medium">{filter.name}</div>
                             <div className="text-xs text-muted-foreground grid grid-cols-2 gap-2">
@@ -730,7 +730,7 @@ export function ConfigurePolicy() {
                     <Label>L7 Application Filters</Label>
                     <div className="space-y-2">
                       {selectedRole.l7Filters.map((filter, idx) => (
-                        <Card key={idx} className="surface-1dp p-3">
+                        <Card key={idx} className="p-3">
                           <div className="text-sm space-y-1">
                             <div className="font-medium">{filter.name}</div>
                             <div className="text-xs text-muted-foreground">
@@ -830,7 +830,7 @@ export function ConfigurePolicy() {
 
       {/* CoS Detail Dialog */}
       <Dialog open={isCosDetailOpen} onOpenChange={setIsCosDetailOpen}>
-        <DialogContent className="surface-2dp max-w-2xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Gauge className="h-5 w-5" />
@@ -906,7 +906,7 @@ export function ConfigurePolicy() {
 
       {/* Topology Detail Dialog */}
       <Dialog open={isTopologyDetailOpen} onOpenChange={setIsTopologyDetailOpen}>
-        <DialogContent className="surface-2dp max-w-2xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Layers className="h-5 w-5" />
@@ -957,7 +957,7 @@ export function ConfigurePolicy() {
 
       {/* Topology Edit/Create Dialog */}
       <Dialog open={isTopologyEditOpen} onOpenChange={setIsTopologyEditOpen}>
-        <DialogContent className="surface-2dp max-w-2xl">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{editingTopology ? 'Edit Topology' : 'Create Topology'}</DialogTitle>
             <DialogDescription>Configure VLAN topology settings</DialogDescription>

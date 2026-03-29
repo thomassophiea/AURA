@@ -1985,7 +1985,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         </CardContent>
       </Card>
 
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between mb-2">
             <CardTitle className="text-headline-6 text-high-emphasis">Access Points</CardTitle>

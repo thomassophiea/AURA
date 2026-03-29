@@ -726,7 +726,7 @@ export function NetworkChatbot({
                       className={`max-w-[70%] rounded-lg px-4 py-3 ${
                         message.type === 'user'
                           ? 'bg-primary text-primary-foreground'
-                          : 'surface-1dp border border-border'
+                          : 'border border-border'
                       }`}
                     >
                       <div className="flex items-start space-x-3">
@@ -776,7 +776,7 @@ export function NetworkChatbot({
 
                 {isLoading && (
                   <div className="flex justify-start">
-                    <div className="max-w-[70%] surface-1dp border border-border rounded-lg px-4 py-3">
+                    <div className="max-w-[70%] border border-border rounded-lg px-4 py-3">
                       <div className="flex items-center space-x-3">
                         <Bot className="h-5 w-5 text-primary" />
                         <div className="flex space-x-1">
@@ -982,7 +982,7 @@ export function NetworkChatbot({
                         className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
                           message.type === 'user'
                             ? 'bg-primary text-primary-foreground'
-                            : 'surface-1dp border border-border'
+                            : 'border border-border'
                         }`}
                       >
                         <div className="flex items-start space-x-2">
@@ -1037,7 +1037,7 @@ export function NetworkChatbot({
 
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="max-w-[85%] surface-1dp border border-border rounded-lg px-3 py-2">
+                      <div className="max-w-[85%] border border-border rounded-lg px-3 py-2">
                         <div className="flex items-center space-x-2">
                           <Bot className="h-4 w-4 text-primary" />
                           <div className="flex space-x-1">

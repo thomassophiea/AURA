@@ -1866,7 +1866,7 @@ function DashboardEnhancedComponent() {
               onClick={() => setHealthViewMode('sites')}
               className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
                 healthViewMode === 'sites'
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
@@ -1876,7 +1876,7 @@ function DashboardEnhancedComponent() {
               onClick={() => setHealthViewMode('devices')}
               className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
                 healthViewMode === 'devices'
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
@@ -1886,7 +1886,7 @@ function DashboardEnhancedComponent() {
               onClick={() => setHealthViewMode('clients')}
               className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
                 healthViewMode === 'clients'
-                  ? 'bg-teal-600 text-white'
+                  ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >

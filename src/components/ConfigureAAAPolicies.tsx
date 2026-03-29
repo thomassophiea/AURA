@@ -382,7 +382,7 @@ export function ConfigureAAAPolicies() {
       </div>
 
       {/* Default AAA Configuration Card */}
-      <Card className="surface-2dp border-border">
+      <Card className="border-border">
         <div className="p-6 border-b border-border">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
@@ -537,7 +537,7 @@ export function ConfigureAAAPolicies() {
 
         {/* AAA Policies Tab (Controller API) */}
         <TabsContent value="policies" className="space-y-4">
-          <Card className="surface-2dp border-border">
+          <Card className="border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div>
                 <h3 className="font-medium">Controller AAA Policies</h3>
@@ -630,7 +630,7 @@ export function ConfigureAAAPolicies() {
 
         {/* RADIUS Servers Tab */}
         <TabsContent value="radius" className="space-y-4">
-          <Card className="surface-2dp border-border">
+          <Card className="border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-medium">RADIUS Servers</h3>
               <Button
@@ -730,7 +730,7 @@ export function ConfigureAAAPolicies() {
 
         {/* LDAP Configurations Tab */}
         <TabsContent value="ldap" className="space-y-4">
-          <Card className="surface-2dp border-border">
+          <Card className="border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-medium">LDAP Configurations</h3>
               <Button
@@ -822,7 +822,7 @@ export function ConfigureAAAPolicies() {
 
         {/* Local Password Repository Tab */}
         <TabsContent value="local" className="space-y-4">
-          <Card className="surface-2dp border-border">
+          <Card className="border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <h3 className="font-medium">Local Users</h3>
               <Button

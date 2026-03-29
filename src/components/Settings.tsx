@@ -480,7 +480,7 @@ export function Settings() {
       </div>
 
       <Tabs defaultValue="preferences" className="w-full">
-        <TabsList className="surface-1dp">
+        <TabsList>
           <TabsTrigger value="preferences">
             <Palette className="h-4 w-4 mr-2" />
             Preferences
@@ -497,7 +497,7 @@ export function Settings() {
 
         {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-6 mt-6">
-          <Card className="surface-2dp p-6">
+          <Card className="p-6">
             <h3 className="mb-6">User Preferences</h3>
 
             <div className="space-y-6">
@@ -622,7 +622,7 @@ export function Settings() {
 
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="space-y-6 mt-6">
-          <Card className="surface-2dp p-6">
+          <Card className="p-6">
             <h3 className="mb-6">Notification Settings</h3>
 
             <div className="space-y-6">
@@ -708,7 +708,7 @@ export function Settings() {
         {/* System Configuration Tab */}
         <TabsContent value="system" className="space-y-6 mt-6">
           <Tabs defaultValue="global" className="w-full">
-            <TabsList className="surface-1dp flex-wrap">
+            <TabsList className="flex-wrap">
               <TabsTrigger value="global">
                 <Server className="h-4 w-4 mr-2" />
                 Global Settings
@@ -741,7 +741,7 @@ export function Settings() {
 
             {/* Global Settings */}
             <TabsContent value="global" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-medium">Global Settings</h3>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -801,7 +801,7 @@ export function Settings() {
 
             {/* Network Time Configuration */}
             <TabsContent value="networktime" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-medium">Network Time Settings</h3>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -939,7 +939,7 @@ export function Settings() {
 
             {/* System Information */}
             <TabsContent value="systeminfo" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                   <div>
                     <h3 className="font-medium">System Information</h3>
@@ -1017,7 +1017,7 @@ export function Settings() {
 
             {/* Logging Settings */}
             <TabsContent value="logging" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-medium">Logging Settings</h3>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -1110,7 +1110,7 @@ export function Settings() {
 
             {/* SNMP Settings */}
             <TabsContent value="snmp" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-medium">SNMP Settings</h3>
                   <p className="text-sm text-muted-foreground mt-1">
@@ -1184,7 +1184,7 @@ export function Settings() {
 
             {/* Audit Logs */}
             <TabsContent value="audit" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border flex items-center justify-between">
                   <div>
                     <h3 className="font-medium">Audit Logs</h3>
@@ -1267,7 +1267,7 @@ export function Settings() {
 
             {/* Device Adoption Rules */}
             <TabsContent value="adoption" className="space-y-4 mt-6">
-              <Card className="surface-2dp border-border">
+              <Card className="border-border">
                 <div className="p-4 border-b border-border">
                   <h3 className="font-medium">Device Adoption Rules</h3>
                   <p className="text-sm text-muted-foreground mt-1">

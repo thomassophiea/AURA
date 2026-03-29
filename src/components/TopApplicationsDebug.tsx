@@ -179,7 +179,7 @@ export function TopApplicationsDebug() {
 
       {/* Error Display */}
       {error && (
-        <Card className="surface-2dp border-destructive/50">
+        <Card className="border-destructive/50">
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-destructive" />
@@ -194,7 +194,7 @@ export function TopApplicationsDebug() {
 
       {/* Parsed Applications */}
       {parsedApps.length > 0 && (
-        <Card className="surface-2dp border-primary/10">
+        <Card className="border-primary/10">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -233,7 +233,7 @@ export function TopApplicationsDebug() {
 
       {/* Raw JSON Response */}
       {rawResponse && (
-        <Card className="surface-2dp border-secondary/10">
+        <Card className="border-secondary/10">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -298,7 +298,7 @@ export function TopApplicationsDebug() {
 
       {/* Loading State */}
       {loading && !rawResponse && (
-        <Card className="surface-2dp border-primary/10">
+        <Card className="border-primary/10">
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center space-y-4">
               <RefreshCw className="h-12 w-12 text-primary animate-spin" />
@@ -312,7 +312,7 @@ export function TopApplicationsDebug() {
 
       {/* No Data State */}
       {!loading && !rawResponse && !error && (
-        <Card className="surface-2dp border-border">
+        <Card className="border-border">
           <CardContent className="py-12">
             <div className="flex flex-col items-center justify-center space-y-4">
               <BarChart3 className="h-12 w-12 text-muted-foreground" />

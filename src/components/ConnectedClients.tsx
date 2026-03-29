@@ -802,7 +802,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         </DialogContent>
       </Dialog>
 
-      <Card className="surface-2dp">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between mb-2">
             <CardTitle>Connected Clients</CardTitle>
