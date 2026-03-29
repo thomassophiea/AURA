@@ -11,7 +11,8 @@ import { MobileKPITile } from './MobileKPITile';
 import { NetworkHealthScore } from './NetworkHealthScore';
 import { MobileBottomSheet } from './MobileBottomSheet';
 import { PullToRefreshIndicator } from './PullToRefreshIndicator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+// Native <select> used instead of Radix Select to avoid composedRefs infinite loop
+// bug in @radix-ui/react-select@2.1.6 (setRef recursion on mobile viewports)
 import { Button } from '../ui/button';
 import { apiService } from '@/services/api';
 import { useHaptic } from '@/hooks/useHaptic';
@@ -301,21 +302,20 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
         </div>
       )}
 
-      {/* Site Selector */}
+      {/* Site Selector — native <select> for mobile (avoids Radix composedRefs bug) */}
       <div className="flex items-center gap-2">
-        <Select value={currentSite} onValueChange={handleSiteChange}>
-          <SelectTrigger className="flex-1 h-12 text-base">
-            <SelectValue placeholder="Select site" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Sites</SelectItem>
-            {sites.map((site) => (
-              <SelectItem key={site.siteId} value={site.siteId}>
-                {site.displayName || site.name || site.siteName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <select
+          value={currentSite}
+          onChange={(e) => handleSiteChange(e.target.value)}
+          className="flex-1 h-12 text-base rounded-md border border-border bg-input-background text-foreground px-3 py-2 outline-none focus:ring-2 focus:ring-ring appearance-none"
+        >
+          <option value="all">All Sites</option>
+          {sites.map((site) => (
+            <option key={site.siteId} value={site.siteId}>
+              {site.displayName || site.name || site.siteName}
+            </option>
+          ))}
+        </select>
         <Button
           variant="outline"
           size="icon"

@@ -33,6 +33,7 @@ const ConfigureAAAPolicies = lazy(() => import('./components/ConfigureAAAPolicie
 const ConfigureAdoptionRules = lazy(() => import('./components/ConfigureAdoptionRules').then(m => ({ default: m.ConfigureAdoptionRules })));
 const ConfigureGuest = lazy(() => import('./components/ConfigureGuest').then(m => ({ default: m.ConfigureGuest })));
 const ConfigureAdvanced = lazy(() => import('./components/ConfigureAdvanced').then(m => ({ default: m.ConfigureAdvanced })));
+const GlobalElementsPage = lazy(() => import('./components/global-elements/GlobalElementsPage').then(m => ({ default: m.GlobalElementsPage })));
 const Administration = lazy(() => import('./components/Administration').then(m => ({ default: m.Administration })));
 const Tools = lazy(() => import('./components/Tools').then(m => ({ default: m.Tools })));
 const ApiTestTool = lazy(() => import('./components/ApiTestTool').then(m => ({ default: m.ApiTestTool })));
@@ -100,6 +101,8 @@ const pageInfo = {
   'configure-sites': { title: 'Sites', description: 'Manage network sites and their assignments' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
+  'global-templates': { title: 'Global Templates', description: 'Manage configuration templates with variable substitution' },
+  'global-variables': { title: 'Global Variables', description: 'Define and manage variables for template resolution' },
   'help': { title: 'Help & Support', description: 'Get assistance with the EDGE platform using AI' },
 };
 
@@ -906,6 +909,10 @@ export default function App() {
         return <ConfigureGuest />;
       case 'configure-advanced':
         return <ConfigureAdvanced />;
+      case 'global-templates':
+        return <GlobalElementsPage initialTab="templates" />;
+      case 'global-variables':
+        return <GlobalElementsPage initialTab="variables" />;
       case 'configure-site-groups':
         return (
           <SiteGroupsPage
