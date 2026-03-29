@@ -962,7 +962,7 @@ function MeshpointsTab() {
             <TableRow key={item.id}>
               <TableCell className="font-medium">{item.name}</TableCell>
               <TableCell>{item.meshId}</TableCell>
-              <TableCell><Badge className={item.status === 'enabled' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>{item.status}</Badge></TableCell>
+              <TableCell><Badge className={item.status === 'enabled' ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'}>{item.status}</Badge></TableCell>
               <TableCell>{item.neighborTimeout}s</TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-1">

@@ -256,7 +256,7 @@ export function RFManagementTools() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge className={profile.canEdit ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                        <Badge className={profile.canEdit ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'}>
                           {profile.canEdit ? 'Editable' : 'Read-only'}
                         </Badge>
                       </TableCell>
