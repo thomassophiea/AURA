@@ -30,6 +30,7 @@ import {
 
 export function GuestManagement() {
   const [guests, setGuests] = useState<any[]>([]);
+  const [guestsApiAvailable, setGuestsApiAvailable] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -50,9 +51,11 @@ export function GuestManagement() {
     try {
       const data = await apiService.getGuests();
       setGuests(data);
+      setGuestsApiAvailable(true);
     } catch (error) {
       console.error('Failed to load guests:', error);
-      toast.error('Failed to load guest accounts');
+      setGuestsApiAvailable(false);
+      toast.error('Guest accounts API unavailable on this controller');
     } finally {
       setLoading(false);
     }
@@ -231,7 +234,16 @@ export function GuestManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {guests.length === 0 ? (
+          {guestsApiAvailable === false ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
+              <p className="font-medium">Guest accounts API not available</p>
+              <p className="text-sm mt-2 max-w-sm mx-auto">
+                The /v1/guests endpoint is not available on this controller.
+                This feature may require a different controller version or configuration.
+              </p>
+            </div>
+          ) : guests.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No guest accounts</p>
