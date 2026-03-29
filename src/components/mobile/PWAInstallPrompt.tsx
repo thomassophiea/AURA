@@ -20,7 +20,7 @@ export function PWAInstallPrompt({ onInstall, onDismiss }: PWAInstallPromptProps
         <div className="p-4">
           <div className="flex items-start gap-4">
             {/* App Icon */}
-            <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="flex-shrink-0 w-14 h-14 rounded-xl badge-gradient-indigo-purple flex items-center justify-center shadow-lg">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"

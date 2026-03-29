@@ -498,8 +498,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       {/* Summary Cards */}
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
@@ -511,15 +510,14 @@ export function AppInsights({ api }: AppInsightsProps) {
                   <p className="text-lg font-bold" style={{ color: 'var(--chart-2)' }}>{formatBytes(stats.totalUsage)}</p>
                   <p className="text-[10px] text-muted-foreground">{stats.totalCategories} categories</p>
                 </div>
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md group-hover:scale-110 transition-transform">
+                <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
                   <HardDrive className="h-3.5 w-3.5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
@@ -531,15 +529,14 @@ export function AppInsights({ api }: AppInsightsProps) {
                   <p className="text-lg font-bold" style={{ color: 'var(--chart-5)' }}>{formatThroughput(stats.totalThroughput)}</p>
                   <p className="text-[10px] text-muted-foreground">Avg bandwidth</p>
                 </div>
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md group-hover:scale-110 transition-transform">
+                <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
                   <Gauge className="h-3.5 w-3.5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all" />
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
@@ -551,15 +548,14 @@ export function AppInsights({ api }: AppInsightsProps) {
                   <p className="text-lg font-bold text-primary">{formatNumber(stats.totalClients)}</p>
                   <p className="text-[10px] text-muted-foreground">Using apps</p>
                 </div>
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md group-hover:scale-110 transition-transform">
+                <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
                   <Users className="h-3.5 w-3.5 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-500 to-orange-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
+          <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
             <div className="absolute -right-6 -top-6 w-20 h-20 bg-amber-500/10 rounded-full blur-2xl group-hover:bg-amber-500/20 transition-all" />
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
@@ -571,7 +567,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                   <p className="text-base font-bold truncate" style={{ color: 'var(--chart-3)' }}>{stats.topCategory}</p>
                   <p className="text-[10px] text-muted-foreground">{stats.topCategoryPercent}% of traffic</p>
                 </div>
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-md group-hover:scale-110 transition-transform">
+                <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
                   <Zap className="h-3.5 w-3.5 text-white" />
                 </div>
               </div>
@@ -775,7 +771,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             title="Data Usage"
             unit="bytes"
             icon={HardDrive}
-            color="bg-gradient-to-br from-blue-500 to-cyan-500"
+            color="badge-gradient-blue"
             widgetId="app-insights-data-usage"
             endpointRef="app_insights.top_apps"
           />
@@ -785,7 +781,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             title="Client Count"
             unit="users"
             icon={Users}
-            color="bg-gradient-to-br from-violet-500 to-purple-500"
+            color="badge-gradient-violet"
             widgetId="app-insights-client-count"
             endpointRef="app_insights.top_apps"
           />
@@ -795,7 +791,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             title="Throughput"
             unit="bps"
             icon={Gauge}
-            color="bg-gradient-to-br from-emerald-500 to-green-500"
+            color="badge-gradient-green"
             widgetId="app-insights-throughput"
             endpointRef="app_insights.top_apps"
           />

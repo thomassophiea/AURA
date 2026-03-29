@@ -248,81 +248,71 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
       {/* Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Sites */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-violet-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-          <div className="absolute -right-8 -top-8 w-24 h-24 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-indigo-500/20 transition-all" />
+        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
           <div className="p-4 relative">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold">Total Sites</span>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-indigo shadow-md group-hover:scale-110 transition-transform">
                 <Building2 className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">{filteredSites.length}</div>
+            <div className="text-2xl font-bold text-foreground">{filteredSites.length}</div>
             <p className="text-xs text-muted-foreground mt-1">{siteGroupFilter ? 'Filtered' : 'All sites'}</p>
           </div>
         </Card>
 
         {/* Active */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-green-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-          <div className="absolute -right-8 -top-8 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all" />
+        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
           <div className="p-4 relative">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold">Active</span>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-green-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
                 <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
               </div>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">{activeSiteCount}</div>
+            <div className="text-2xl font-bold text-foreground">{activeSiteCount}</div>
             <p className="text-xs text-muted-foreground mt-1">Operational</p>
           </div>
         </Card>
 
         {/* Inactive */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-red-500 to-rose-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-          <div className="absolute -right-8 -top-8 w-24 h-24 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all" />
+        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
           <div className="p-4 relative">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold">Inactive</span>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-red-500 to-rose-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-red shadow-md group-hover:scale-110 transition-transform">
                 <MapPin className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent">{inactiveSiteCount}</div>
+            <div className="text-2xl font-bold text-foreground">{inactiveSiteCount}</div>
             <p className="text-xs text-muted-foreground mt-1">Non-active</p>
           </div>
         </Card>
 
         {/* Total APs */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-          <div className="absolute -right-8 -top-8 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all" />
+        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
           <div className="p-4 relative">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold">Total APs</span>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
                 <Wifi className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{totalAPs}</div>
+            <div className="text-2xl font-bold text-foreground">{totalAPs}</div>
             <p className="text-xs text-muted-foreground mt-1">Access points</p>
           </div>
         </Card>
 
         {/* Total Clients */}
-        <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-card to-card/50 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-500 opacity-[0.08] group-hover:opacity-[0.12] transition-opacity" />
-          <div className="absolute -right-8 -top-8 w-24 h-24 bg-violet-500/10 rounded-full blur-2xl group-hover:bg-violet-500/20 transition-all" />
+        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
           <div className="p-4 relative">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-semibold">Total Clients</span>
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 shadow-md group-hover:scale-110 transition-transform">
+              <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
                 <Users className="h-3.5 w-3.5 text-white" />
               </div>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">{totalClients}</div>
+            <div className="text-2xl font-bold text-foreground">{totalClients}</div>
             <p className="text-xs text-muted-foreground mt-1">Connected clients</p>
           </div>
         </Card>
