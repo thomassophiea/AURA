@@ -79,6 +79,7 @@ const configureItems = [
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
   { id: 'global-templates', label: 'Templates', icon: Layers },
   { id: 'global-variables', label: 'Variables', icon: Braces },
+  { id: 'site-group-settings', label: 'SG Settings', icon: Cog },
 ];
 
 // System Management items

@@ -15,6 +15,7 @@ import type {
   VariableValue,
   ResolvedTemplate,
   ResolutionContext,
+  TemplateAssignment,
 } from '../types/globalElements';
 import type { VariableScope } from '../types/siteVariables';
 
@@ -190,6 +191,67 @@ export function useVariableValues(
   );
 
   return { values, loading, error, refresh, setValue, deleteValue, bulkSetValues };
+}
+
+// ---------------------------------------------------------------------------
+// useTemplateAssignments
+// ---------------------------------------------------------------------------
+
+export function useTemplateAssignments(orgId: string | undefined) {
+  const [assignments, setAssignments] = useState<(TemplateAssignment & { template_name?: string; element_type?: string })[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!orgId) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await globalElementsService.getAssignmentsByOrg(orgId);
+      setAssignments(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load assignments');
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const assign = useCallback(
+    async (assignment: Omit<TemplateAssignment, 'id' | 'created_at'>) => {
+      const created = await globalElementsService.assignTemplate(assignment);
+      await refresh();
+      return created;
+    },
+    [refresh]
+  );
+
+  const unassign = useCallback(
+    async (assignmentId: string) => {
+      await globalElementsService.unassignTemplate(assignmentId);
+      await refresh();
+    },
+    [refresh]
+  );
+
+  const toggleActive = useCallback(
+    async (assignmentId: string, isActive: boolean) => {
+      // Re-upsert with toggled is_active
+      const existing = assignments.find(a => a.id === assignmentId);
+      if (!existing) return;
+      await globalElementsService.assignTemplate({
+        template_id: existing.template_id,
+        scope_type: existing.scope_type,
+        scope_id: existing.scope_id,
+        is_active: isActive,
+      });
+      await refresh();
+    },
+    [assignments, refresh]
+  );
+
+  return { assignments, loading, error, refresh, assign, unassign, toggleActive };
 }
 
 // ---------------------------------------------------------------------------

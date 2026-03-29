@@ -1,21 +1,25 @@
 /**
  * GlobalElementsPage — Top-level page with tab navigation for
- * Templates, Variables, and Resolution Preview.
+ * Templates, Variables, Assignments, Preview, and Deployments.
  */
 
 import { useState } from 'react';
-import { Layers, Braces, Eye } from 'lucide-react';
+import { Layers, Braces, Eye, Link2, Rocket } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { TemplateList } from './TemplateList';
 import { TemplateEditor } from './TemplateEditor';
 import { VariableManagement } from './VariableManagement';
 import { ResolutionPreview } from './ResolutionPreview';
+import { AssignmentManager } from './AssignmentManager';
+import { DeploymentHistory } from './DeploymentHistory';
 import { useTemplates, useVariableDefinitions, useVariableValues } from '../../hooks/useGlobalElements';
 import { useAppContext } from '../../contexts/AppContext';
 import type { GlobalElementTemplate } from '../../types/globalElements';
 
+type TabId = 'templates' | 'variables' | 'assignments' | 'preview' | 'deployments';
+
 interface Props {
-  initialTab?: 'templates' | 'variables' | 'preview';
+  initialTab?: TabId;
 }
 
 export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
@@ -28,7 +32,7 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
   const { definitions } = useVariableDefinitions(orgId);
   const { values } = useVariableValues(orgId);
 
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [editingTemplate, setEditingTemplate] = useState<GlobalElementTemplate | null | 'new'>(null);
 
   if (!orgId) {
@@ -72,7 +76,7 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
         <TabsList>
           <TabsTrigger value="templates">
             <Layers className="h-4 w-4 mr-2" />
@@ -82,9 +86,17 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
             <Braces className="h-4 w-4 mr-2" />
             Variables
           </TabsTrigger>
+          <TabsTrigger value="assignments">
+            <Link2 className="h-4 w-4 mr-2" />
+            Assignments
+          </TabsTrigger>
           <TabsTrigger value="preview">
             <Eye className="h-4 w-4 mr-2" />
             Preview
+          </TabsTrigger>
+          <TabsTrigger value="deployments">
+            <Rocket className="h-4 w-4 mr-2" />
+            Deployments
           </TabsTrigger>
         </TabsList>
 
@@ -102,8 +114,20 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
           <VariableManagement />
         </TabsContent>
 
+        <TabsContent value="assignments" className="mt-6">
+          <AssignmentManager />
+        </TabsContent>
+
         <TabsContent value="preview" className="mt-6">
           <ResolutionPreview
+            templates={templates}
+            definitions={definitions}
+            values={values}
+          />
+        </TabsContent>
+
+        <TabsContent value="deployments" className="mt-6">
+          <DeploymentHistory
             templates={templates}
             definitions={definitions}
             values={values}
