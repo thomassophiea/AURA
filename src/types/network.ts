@@ -261,15 +261,8 @@ export interface Site {
   status?: string;
 }
 
-export interface SiteGroup {
-  id: string;
-  name: string;
-  description?: string;
-  siteIds: string[];
-  createdAt?: string;
-  lastModified?: string;
-  color?: string; // For visual grouping in UI
-}
+// SiteGroup was removed — canonical definition is in src/types/domain.ts.
+// SiteGroup represents a controller pair (not a manual color-coded grouping).
 
 export interface DeviceGroup {
   id: string;
