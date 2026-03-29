@@ -187,7 +187,7 @@ export function ConfigureAdoptionRules() {
 
   const loadSites = async () => {
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/sites', {
+      const response = await apiService.makeAuthenticatedRequest('/v3/sites', {
         method: 'GET'
       });
 

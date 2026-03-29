@@ -2081,9 +2081,10 @@ class ApiService {
   }
 
   // Get Class of Service (CoS) options
+  // NOTE: Swagger only catalogs /v1/cos; /v3/cos may exist on some controllers but is non-standard.
   async getClassOfService(): Promise<ClassOfService[]> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v3/cos', {}, 8000);
+      const response = await this.makeAuthenticatedRequest('/v1/cos', {}, 8000);
       
       if (!response.ok) {
         logger.warn(`Failed to fetch CoS: ${response.status} ${response.statusText}`);
@@ -8287,6 +8288,8 @@ class ApiService {
   /**
    * Get system events
    * Endpoint: GET /v1/events
+   * @deprecated /v1/events is NOT in the Swagger catalog. Use getAuditLogs() instead.
+   * EventAlarmDashboard and Tools.tsx have been updated to use /v1/auditlogs.
    */
   async getEvents(startTime?: number, endTime?: number, severity?: string): Promise<any[]> {
     try {
@@ -8629,25 +8632,23 @@ class ApiService {
   /**
    * Get guest accounts
    * Endpoint: GET /v1/guests
+   * NOTE: /v1/guests is not in the Swagger catalog. This endpoint may not be available
+   * on all controllers. Throws on non-ok responses so callers can surface the error.
    */
   async getGuests(): Promise<any[]> {
-    try {
-      const endpoint = '/v1/guests';
-      logger.log('[API] Fetching guest accounts');
-      const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
+    const endpoint = '/v1/guests';
+    logger.log('[API] Fetching guest accounts');
+    const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 
-      if (!response.ok) {
-        logger.warn(`Guests API returned ${response.status}`);
-        return [];
-      }
-
-      const data = await response.json();
-      logger.log(`[API] ✓ Loaded ${data?.length || 0} guest accounts`);
-      return data || [];
-    } catch (error) {
-      logger.error('[API] Failed to fetch guests:', error);
-      return [];
+    if (!response.ok) {
+      const msg = `Guest accounts API returned ${response.status} — endpoint may not be available on this controller`;
+      logger.warn(`[API] ${msg}`);
+      throw new Error(msg);
     }
+
+    const data = await response.json();
+    logger.log(`[API] ✓ Loaded ${data?.length || 0} guest accounts`);
+    return data || [];
   }
 
   /**
