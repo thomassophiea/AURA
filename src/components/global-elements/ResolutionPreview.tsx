@@ -5,7 +5,8 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Eye, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Eye, AlertTriangle, CheckCircle2, ChevronRight, Rocket } from 'lucide-react';
+import { DeployButton } from './DeployButton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
 import {
@@ -121,6 +122,23 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Resolved Configuration</CardTitle>
+                <div className="flex items-center gap-2">
+                  {selectedTemplate && resolved && context && selectedSiteGroupId && selectedSiteGroupId !== '__none__' && (
+                    (() => {
+                      const sg = siteGroups.find(g => g.id === selectedSiteGroupId);
+                      return sg ? (
+                        <DeployButton
+                          template={selectedTemplate}
+                          resolved={resolved}
+                          definitions={definitions}
+                          values={values}
+                          context={context}
+                          siteGroup={sg}
+                          disabled={!validation?.valid}
+                        />
+                      ) : null;
+                    })()
+                  )}
                 {validation && (
                   <Badge variant={validation.valid ? 'success' : 'warning'}>
                     {validation.valid ? (
@@ -130,6 +148,7 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                     )}
                   </Badge>
                 )}
+                </div>
               </div>
               <CardDescription>
                 {resolved.is_fully_resolved

@@ -261,6 +261,27 @@ class GlobalElementsService {
   // Template Assignments
   // -----------------------------------------------------------------------
 
+  async getAssignmentsByOrg(orgId: string): Promise<(TemplateAssignment & { template_name?: string; element_type?: string })[]> {
+    const { data, error } = await supabase
+      .from('template_assignments')
+      .select('*, global_element_templates!inner(name, element_type, org_id)')
+      .eq('global_element_templates.org_id', orgId);
+
+    if (error) {
+      console.error('[GlobalElements] Failed to fetch org assignments:', error);
+      return [];
+    }
+    return (data ?? []).map((row: Record<string, unknown>) => {
+      const tpl = row.global_element_templates as Record<string, unknown> | undefined;
+      return {
+        ...row,
+        template_name: tpl?.name as string | undefined,
+        element_type: tpl?.element_type as string | undefined,
+        global_element_templates: undefined,
+      } as TemplateAssignment & { template_name?: string; element_type?: string };
+    });
+  }
+
   async getAssignments(templateId: string): Promise<TemplateAssignment[]> {
     const { data, error } = await supabase
       .from('template_assignments')
