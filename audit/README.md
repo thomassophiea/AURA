@@ -6,7 +6,7 @@
 |------|-------|--------|
 | Plan 1 | Discovery & Swagger Mapping | ✅ COMPLETE |
 | Plan 2 | API Audit — Monitor & Dashboard Pages | ✅ COMPLETE |
-| Plan 3 | API Audit — Configure & System Pages | PENDING |
+| Plan 3 | API Audit — Configure & System Pages | ✅ COMPLETE |
 | Plan 4 | Cross-Cutting Quality (Security, Accessibility, Theme, Performance) | PENDING |
 | Plan 5 | Final Reporting | PENDING |
 
@@ -43,6 +43,18 @@
 - **Dead Code Candidates:** 13
 - **Mock Data Flags:** 20 (10 high severity)
 - **Unused Swagger GET Endpoints:** ~131 enhancement opportunities
+
+## Key Findings from Plan 3 (2026-03-28)
+
+- **10 code fixes applied** across 8 components and api.ts
+- **2 non-Swagger endpoints replaced** with Swagger analogs: `/v1/events` → `/v1/auditlogs` (EventAlarmDashboard + Tools)
+- **1 endpoint version corrected**: `getClassOfService()` `/v3/cos` → `/v1/cos` (Swagger primary)
+- **1 URL version corrected**: ConfigureAdoptionRules `/v1/sites` → `/v3/sites`
+- **3 Platform Manager pages** (SystemBackupManager, LicenseDashboard, NetworkDiagnostics) given info banners explaining Platform Manager dependency
+- **2 guest pages** (ConfigureGuest, GuestManagement) now surface API unavailability rather than misleading empty state
+- **SecurityDashboard**: ADSP confirmed as incompatible replacement (profile configs ≠ detected rogue APs); improved to show availability banner
+- **5 pages fully clean**: ConfigureSites, ConfigureAAAPolicies, ConfigureAdvanced, APFirmwareManager, PCIReport
+- **6 enhancement opportunities** documented for Plan 5
 
 ## Key Findings from Plan 2 (2026-03-28)
 
