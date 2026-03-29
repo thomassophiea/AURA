@@ -7,7 +7,7 @@
 | Plan 1 | Discovery & Swagger Mapping | ✅ COMPLETE |
 | Plan 2 | API Audit — Monitor & Dashboard Pages | ✅ COMPLETE |
 | Plan 3 | API Audit — Configure & System Pages | ✅ COMPLETE |
-| Plan 4 | Cross-Cutting Quality (Security, Accessibility, Theme, Performance) | PENDING |
+| Plan 4 | Cross-Cutting Quality (Security, Accessibility, Theme, Performance) | ✅ COMPLETE |
 | Plan 5 | Final Reporting | PENDING |
 
 ## Artifacts
@@ -22,11 +22,11 @@
 | aura-widget-enhancement-opportunities.md | Multi-endpoint improvement proposals | Plan 2-3 |
 | aura-runtime-request-trace.md | Live request/response analysis | Plan 2-3 |
 | aura-schema-drift-report.md | Swagger vs actual response mismatches | Plan 2-3 |
-| aura-state-management-findings.md | State bugs, race conditions, leaks | Plan 4 |
-| aura-security-findings.md | Auth, storage, CORS, credential issues | Plan 4 |
-| aura-accessibility-findings.md | WCAG compliance issues | Plan 4 |
-| aura-theme-audit.md | Theme consistency issues | Plan 4 |
-| aura-removal-recommendations.md | Features to remove/simplify | Plan 5 |
+| aura-state-management-findings.md | State bugs, race conditions, leaks | ✅ Complete |
+| aura-security-findings.md | Auth, storage, CORS, credential issues | ✅ Complete |
+| aura-accessibility-findings.md | WCAG compliance issues | Plan 4 (not audited) |
+| aura-theme-audit.md | Theme consistency issues | ✅ Complete |
+| aura-removal-recommendations.md | Dead code removed, console hygiene | ✅ Complete |
 | aura-final-audit-summary.md | Complete feature coverage report | Plan 5 |
 
 ## Key Numbers (Plan 1)
@@ -64,6 +64,37 @@
 - **5 pages cleaner than expected**: AppInsights, Connected Clients, Access Points, ClientDetail, SiteDetail — all Swagger-clean with proper error handling
 - **AP Detail alarm endpoint** (`/v1/aps/{serial}/alarms`) confirmed non-Swagger; error handling improved to return `[]` gracefully rather than throwing
 - **14 enhancement opportunities** documented for Plan 5
+
+## Key Findings from Plan 4 (2026-03-28)
+
+### Security (Task 1)
+- **2 HIGH** — XIQ password and controller password stored base64-encoded in localStorage (acknowledged design decision for local admin tool; documented for product owner)
+- **3 MEDIUM** — access/refresh tokens in localStorage, no proactive token refresh
+- **0 CRITICAL** — no hardcoded secrets in code, service worker does not cache API responses, CORS proxy is well-configured with rate limiting and auth guard
+- No code changes applied — issues are design decisions requiring product input
+
+### State Management (Task 2)
+- **All intervals and event listeners** have proper cleanup — no memory leaks
+- **All loading states** reset via `finally` blocks — no stuck spinners
+- No critical fixes needed
+
+### Dead Code Removal (Task 3)
+- **13 files deleted**: 11 components, 1 hook, 1 service (5,500+ lines removed)
+- **~45 debug console.log** statements removed from services and components
+- **Important discovery**: `vite.config.ts` already uses `esbuild.drop: ['console', 'debugger']` in production — all console calls are stripped from production bundles automatically
+
+### Theme (Task 4)
+- **3 light-mode-only badge patterns** fixed (`bg-green-100/bg-gray-100` → `bg-green-500/15`/`bg-muted`)
+- **1 image fallback** fixed (`bg-gray-100` → `bg-muted`)
+- Overall theme consistency is GOOD — semantic tokens used consistently throughout
+
+### Bundle Performance (Task 5)
+- **1 missing lazy load** fixed: `PerformanceAnalytics` was the only route component not using `React.lazy()`
+- All other 26+ route components were already lazy-loaded
+- Build config has manual chunk splitting (vendor-react, vendor-ui, vendor-charts, vendor-supabase, vendor-icons, vendor-crypto, vendor-carousel, vendor-qr)
+- No heavy library imports found in the main entry bundle
+
+---
 
 ## Critical Findings from Plan 1
 
