@@ -57,6 +57,8 @@ const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default
 const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytics').then(m => ({ default: m.PerformanceAnalytics })));
 import { apiService, ApiCallLog } from './services/api';
 import { AppContextProvider } from './contexts/AppContext';
+import type { NavigationScope } from './config/navigationScopes';
+import { GLOBAL_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
@@ -117,6 +119,7 @@ interface DetailPanelState {
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState('sle-dashboard');
+  const [navigationScope, setNavigationScope] = useState<NavigationScope>('site-group');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
@@ -715,7 +718,14 @@ export default function App() {
     // Cancel any pending API requests when switching pages
     console.log(`Switching to page: ${page}, canceling pending requests`);
     apiService.cancelAllRequests();
-    
+
+    // Auto-switch scope based on page classification
+    if (GLOBAL_PAGES.has(page) && navigationScope !== 'global') {
+      setNavigationScope('global');
+    } else if (SITE_GROUP_PAGES.has(page) && navigationScope !== 'site-group') {
+      setNavigationScope('site-group');
+    }
+
     // Use startTransition to keep old content visible while loading new page
     startTransition(() => {
       setCurrentPage(page);
@@ -923,6 +933,7 @@ export default function App() {
             onNavigateToSites={handleNavigateToSites}
           />
         );
+      // Note: SiteGroupsPage uses useAppContext().enterSiteGroup for entering site groups
       case 'configure-sites':
         return (
           <SitesPage
@@ -1042,7 +1053,7 @@ export default function App() {
   }
 
   return (
-    <AppContextProvider>
+    <AppContextProvider navigationScope={navigationScope} onNavigationScopeChange={setNavigationScope} onPageChange={handlePageChange}>
     <>
       {/* Unified floating-card layout — all themes */}
       <div
@@ -1071,9 +1082,16 @@ export default function App() {
           {(() => {
             const controller = tenantService.getCurrentController();
             const org = tenantService.getCurrentOrganization();
+            if (navigationScope === 'global') {
+              return (
+                <span className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
+                  {(org?.name || 'AURA').toUpperCase()}
+                </span>
+              );
+            }
             const siteLabel = (controller?.name || org?.name || 'Extreme Networks').toUpperCase();
             return (
-              <span className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
+              <span className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5" style={{ letterSpacing: '0.08em', flexShrink: 0 }}>
                 {siteLabel}
               </span>
             );

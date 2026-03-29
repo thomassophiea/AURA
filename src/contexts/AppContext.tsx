@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { Organization, SiteGroup, Site, Device } from '../types/domain';
+import type { NavigationScope } from '../config/navigationScopes';
 import { tenantService } from '../services/tenantService';
 import { apiService } from '../services/api';
 
@@ -10,15 +11,25 @@ interface AppContextValue {
   site: Site | null;
   device: Device | null;
   isLoadingOrg: boolean;
+  navigationScope: NavigationScope;
   setActiveSiteGroup: (siteGroup: SiteGroup | null) => void;
   setActiveSite: (site: Site | null) => void;
   setActiveDevice: (device: Device | null) => void;
   refreshSiteGroups: () => Promise<void>;
+  enterSiteGroup: (siteGroup: SiteGroup) => void;
+  exitSiteGroup: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-export function AppContextProvider({ children }: { children: React.ReactNode }) {
+interface AppContextProviderProps {
+  children: React.ReactNode;
+  navigationScope: NavigationScope;
+  onNavigationScopeChange: (scope: NavigationScope) => void;
+  onPageChange?: (page: string) => void;
+}
+
+export function AppContextProvider({ children, navigationScope, onNavigationScopeChange, onPageChange }: AppContextProviderProps) {
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [siteGroups, setSiteGroups] = useState<SiteGroup[]>([]);
   const [activeSiteGroup, setActiveSiteGroupState] = useState<SiteGroup | null>(null);
@@ -88,6 +99,22 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setSiteGroups(groups);
   }, []);
 
+  const enterSiteGroup = useCallback((sg: SiteGroup) => {
+    setActiveSiteGroupState(sg);
+    setActiveSiteState(null);
+    setActiveDeviceState(null);
+    if (sg) {
+      apiService.setBaseUrl(`${sg.controller_url}/management`);
+    }
+    onNavigationScopeChange('site-group');
+    onPageChange?.('sle-dashboard');
+  }, [onNavigationScopeChange, onPageChange]);
+
+  const exitSiteGroup = useCallback(() => {
+    onNavigationScopeChange('global');
+    onPageChange?.('configure-site-groups');
+  }, [onNavigationScopeChange, onPageChange]);
+
   return (
     <AppContext.Provider value={{
       organization,
@@ -96,10 +123,13 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       site: activeSite,
       device: activeDevice,
       isLoadingOrg,
+      navigationScope,
       setActiveSiteGroup,
       setActiveSite,
       setActiveDevice,
       refreshSiteGroups,
+      enterSiteGroup,
+      exitSiteGroup,
     }}>
       {children}
     </AppContext.Provider>
