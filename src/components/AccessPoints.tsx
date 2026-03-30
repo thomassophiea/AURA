@@ -498,7 +498,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   useEffect(() => {
     // Load all access points on mount (compound search handles filtering client-side)
     loadAccessPoints();
-  }, []);
+  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-refresh polling
   useEffect(() => {

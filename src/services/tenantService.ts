@@ -101,6 +101,12 @@ class TenantService {
       const savedOrg = localStorage.getItem(STORAGE_KEYS.CURRENT_ORG);
       if (savedOrg) {
         this.currentOrg = JSON.parse(savedOrg);
+        // Migrate stale org name from previous default
+        if (this.currentOrg && this.currentOrg.name === 'AURA Organization') {
+          this.currentOrg.name = 'TSOPHIEA';
+          this.currentOrg.slug = 'tsophiea';
+          this.saveToStorage();
+        }
       }
     } catch (error) {
       console.error('Failed to load tenant state from storage:', error);

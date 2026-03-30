@@ -116,7 +116,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
   useEffect(() => {
     loadStations();
-  }, []);
+  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadStations = async () => {
     // Check authentication before loading

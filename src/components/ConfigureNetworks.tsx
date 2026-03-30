@@ -19,7 +19,9 @@ import { WifiQRCodeDialog } from './WifiQRCodeDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
-import { Server } from 'lucide-react';
+import { Server, ArrowUpFromLine } from 'lucide-react';
+import { globalElementsService } from '../services/globalElementsService';
+import { tenantService } from '../services/tenantService';
 
 interface BulkOperationProgress {
   total: number;
@@ -388,7 +390,7 @@ export function ConfigureNetworks() {
 
   useEffect(() => {
     loadNetworks();
-  }, []);
+  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Fetch services from a single controller and transform to NetworkConfig[] */
   const fetchAndTransformServices = async (sgTag?: { id: string; name: string }): Promise<{ configs: NetworkConfig[]; services: Service[] }> => {
@@ -842,6 +844,38 @@ export function ConfigureNetworks() {
     loadNetworks();
   };
 
+  /** Promote a live network config to an org-level Global Element template */
+  const handlePromoteToTemplate = async (network: NetworkConfig) => {
+    try {
+      const org = tenantService.getCurrentOrganization();
+      if (!org) {
+        toast.error('No organization context');
+        return;
+      }
+
+      // Strip internal/UI-only fields, keep the config payload
+      const { id, currentClients, _siteGroupId, _siteGroupName, createdAt, updatedAt, ...configPayload } = network as any;
+
+      await globalElementsService.createTemplate({
+        org_id: org.id,
+        name: `${network.ssid || network.name} (promoted)`,
+        description: `Promoted from ${(network as any)._siteGroupName || 'controller'} — ${network.ssid}`,
+        element_type: 'service',
+        config_payload: configPayload,
+        is_active: true,
+        tags: ['promoted', 'service'],
+      });
+
+      toast.success('Network promoted to template', {
+        description: `"${network.ssid}" is now available in Global Elements → Templates. Assign it to other sites/groups from there.`,
+      });
+    } catch (err) {
+      toast.error('Failed to promote', {
+        description: err instanceof Error ? err.message : 'Unknown error',
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1195,59 +1229,86 @@ export function ConfigureNetworks() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleToggleNetwork(network.id, !network.enabled)}
-                            title={network.enabled ? 'Disable Network' : 'Enable Network'}
-                          >
-                            {network.enabled ? (
-                              <EyeOff className="h-4 w-4" />
-                            ) : (
-                              <Eye className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditWlan(network)}
-                            title="Edit WLAN"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setQrCodeWlan(network);
-                              setIsQrDialogOpen(true);
-                            }}
-                            title="Generate QR Code"
-                          >
-                            <QrCode className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            title="Configure Network"
-                            onClick={() => handleToggleExpanded(network.id)}
-                          >
-                            {expandedNetworkId === network.id ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <Edit className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteWlan(network)}
-                            disabled={isDeleting}
-                            className="text-destructive hover:text-destructive"
-                            title="Delete WLAN"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          {isOrgScope ? (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePromoteToTemplate(network)}
+                                title="Promote to org-level template — assign to other sites & groups"
+                              >
+                                <ArrowUpFromLine className="h-4 w-4 mr-1" />
+                                Promote
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setQrCodeWlan(network);
+                                  setIsQrDialogOpen(true);
+                                }}
+                                title="Generate QR Code"
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleToggleNetwork(network.id, !network.enabled)}
+                                title={network.enabled ? 'Disable Network' : 'Enable Network'}
+                              >
+                                {network.enabled ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditWlan(network)}
+                                title="Edit WLAN"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setQrCodeWlan(network);
+                                  setIsQrDialogOpen(true);
+                                }}
+                                title="Generate QR Code"
+                              >
+                                <QrCode className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                title="Configure Network"
+                                onClick={() => handleToggleExpanded(network.id)}
+                              >
+                                {expandedNetworkId === network.id ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <Edit className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteWlan(network)}
+                                disabled={isDeleting}
+                                className="text-destructive hover:text-destructive"
+                                title="Delete WLAN"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

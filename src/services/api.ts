@@ -107,8 +107,14 @@ class ApiService {
    * @param url The controller URL (e.g., https://controller.example.com)
    */
   setBaseUrl(url: string | null) {
-    DYNAMIC_CONTROLLER_URL = url;
-    logger.log('[API Service] Dynamic controller URL set to:', url || 'default');
+    // In production, the X-Controller-URL header should be the controller origin
+    // (without /management) because the proxy path already includes /management.
+    if (url && isProduction) {
+      DYNAMIC_CONTROLLER_URL = url.replace(/\/management\/?$/, '');
+    } else {
+      DYNAMIC_CONTROLLER_URL = url;
+    }
+    logger.log('[API Service] Dynamic controller URL set to:', DYNAMIC_CONTROLLER_URL || 'default');
   }
 
   /**

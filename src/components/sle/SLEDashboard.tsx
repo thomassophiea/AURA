@@ -17,6 +17,7 @@ import { Slider } from '../ui/slider';
 import { RefreshCw, Building, Clock, Target, Wifi, Cable, Network, Hexagon, AlignLeft, Settings2 } from 'lucide-react';
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
+import { useAppContext } from '@/contexts/AppContext';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
 import { computeAllWirelessSLEs, setActiveThresholds } from '../../services/sleCalculationEngine';
 import { SLERadialMap } from './SLERadialMap';
@@ -160,6 +161,7 @@ const saveSiteThresholds = (siteId: string, thresholds: SLEThresholds) => {
 
 export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const { filters, updateFilter } = useGlobalFilters();
+  const { navigationScope, siteGroups } = useAppContext();
 
   const [wirelessSLEs, setWirelessSLEs] = useState<SLEMetric[]>([]);
   const [stations, setStations] = useState<any[]>([]);
@@ -259,28 +261,49 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       else setLoading(true);
 
       const siteFilter = selectedSite !== 'all' ? selectedSite : undefined;
+      const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
 
-      // Fetch stations and APs in parallel
-      const [stationsData, apsData] = await Promise.all([
-        siteFilter
-          ? apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000)
-              .then(r => r.ok ? r.json() : null)
-              .then(d => d ? (Array.isArray(d) ? d : (d.stations || d.clients || d.data || [])) : [])
-              .catch(() => apiService.getStations().then(all => {
-                // Client-side filter fallback
-                return apiService.getSiteById(siteFilter).then(site => {
-                  const name = site?.name || site?.siteName || siteFilter;
-                  return all.filter((s: any) => s.siteName === name || s.siteId === siteFilter || s.siteName === siteFilter);
-                });
-              }).catch(() => []))
-          : apiService.getStations(),
-        siteFilter
-          ? apiService.getAccessPointsBySite(siteFilter)
-          : apiService.getAccessPoints(),
-      ]);
+      let stationsArr: any[] = [];
+      let apsArr: any[] = [];
 
-      const stationsArr = Array.isArray(stationsData) ? stationsData : [];
-      const apsArr = Array.isArray(apsData) ? apsData : [];
+      if (isOrgScope) {
+        // Org scope: fetch from all controllers and aggregate
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const [sgStations, sgAps] = await Promise.all([
+              apiService.getStations(),
+              apiService.getAccessPoints(),
+            ]);
+            stationsArr.push(...(Array.isArray(sgStations) ? sgStations : []));
+            apsArr.push(...(Array.isArray(sgAps) ? sgAps : []));
+          } catch (err) {
+            console.warn(`[SLEDashboard] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        // Single controller
+        const [stationsData, apsData] = await Promise.all([
+          siteFilter
+            ? apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000)
+                .then(r => r.ok ? r.json() : null)
+                .then(d => d ? (Array.isArray(d) ? d : (d.stations || d.clients || d.data || [])) : [])
+                .catch(() => apiService.getStations().then(all => {
+                  return apiService.getSiteById(siteFilter!).then(site => {
+                    const name = site?.name || site?.siteName || siteFilter;
+                    return all.filter((s: any) => s.siteName === name || s.siteId === siteFilter || s.siteName === siteFilter);
+                  });
+                }).catch(() => []))
+            : apiService.getStations(),
+          siteFilter
+            ? apiService.getAccessPointsBySite(siteFilter)
+            : apiService.getAccessPoints(),
+        ]);
+        stationsArr = Array.isArray(stationsData) ? stationsData : [];
+        apsArr = Array.isArray(apsData) ? apsData : [];
+      }
 
       setStations(stationsArr);
       setAps(apsArr);
@@ -309,7 +332,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedSite, timeRange, siteThresholds]);
+  }, [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial load + auto-refresh
   useEffect(() => {

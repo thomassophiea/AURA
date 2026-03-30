@@ -11,6 +11,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Activity, TrendingUp, TrendingDown, Wifi, Cable, Globe, RefreshCw, Calendar, Clock, AlertCircle, CheckCircle2, XCircle, Minus, Zap, BarChart3, MapPin, FolderTree, Radio, Database, Play, Pause, Info } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
+import { useAppContext } from '@/contexts/AppContext';
 import { sleDataCollectionService, SLEDataPoint } from '../services/sleDataCollection';
 import { PageHeader } from './PageHeader';
 import { StatusBadge } from './StatusBadge';
@@ -99,6 +100,7 @@ const TIME_RANGES = [
 ];
 
 export function ServiceLevels() {
+  const { navigationScope, siteGroups: appSiteGroups } = useAppContext();
   const [scope, setScope] = useState<'wireless' | 'wired' | 'wan'>('wireless');
   const [selectedMetrics, setSelectedMetrics] = useState<string[]>(METRIC_CATALOG.wireless.map(m => m.key));
   const [rollup, setRollup] = useState('1m');
@@ -191,44 +193,51 @@ export function ServiceLevels() {
   const loadFilterOptions = async () => {
     setIsLoadingFilters(true);
     try {
-      // Load sites
-      const sitesResponse = await apiService.makeAuthenticatedRequest('/v1/sites', {
-        method: 'GET'
-      });
-      
-      if (sitesResponse.ok) {
-        const sitesData = await sitesResponse.json();
-        if (Array.isArray(sitesData)) {
-          setSites(sitesData.map((site: any) => ({
-            id: site.id || site.siteId,
-            name: site.name || site.siteName || 'Unnamed Site'
-          })));
-        }
-      }
+      const isOrgScope = navigationScope === 'global' && appSiteGroups.length > 0;
+      let allSites: Site[] = [];
+      let allNetworks: Network[] = [];
 
-      // Load networks (WLANs)
-      const networksResponse = await apiService.makeAuthenticatedRequest('/v1/networks', {
-        method: 'GET'
-      });
-      
-      if (networksResponse.ok) {
-        const networksData = await networksResponse.json();
-        if (Array.isArray(networksData)) {
-          setNetworks(networksData
-            .filter((net: any) => net.type === 'employee' || net.type === 'guest')
-            .map((net: any) => ({
-              id: net.id,
-              name: net.name,
-              ssid: net.ssid
+      const fetchFromController = async () => {
+        const sitesResponse = await apiService.makeAuthenticatedRequest('/v1/sites', { method: 'GET' });
+        if (sitesResponse.ok) {
+          const sitesData = await sitesResponse.json();
+          if (Array.isArray(sitesData)) {
+            allSites.push(...sitesData.map((site: any) => ({
+              id: site.id || site.siteId,
+              name: site.name || site.siteName || 'Unnamed Site'
             })));
+          }
         }
+        const networksResponse = await apiService.makeAuthenticatedRequest('/v1/networks', { method: 'GET' });
+        if (networksResponse.ok) {
+          const networksData = await networksResponse.json();
+          if (Array.isArray(networksData)) {
+            allNetworks.push(...networksData
+              .filter((net: any) => net.type === 'employee' || net.type === 'guest')
+              .map((net: any) => ({ id: net.id, name: net.name, ssid: net.ssid })));
+          }
+        }
+      };
+
+      if (isOrgScope) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of appSiteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            await fetchFromController();
+          } catch (err) {
+            console.warn(`[ServiceLevels] Failed to fetch filters from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        await fetchFromController();
       }
 
-      // Note: Site groups may not be available in all API versions
+      setSites(allSites);
+      setNetworks(allNetworks);
       setSiteGroups([]);
-      
     } catch (error) {
-      // Silently handle timeout errors - Extreme Platform ONE may be slow
       const errorMessage = error instanceof Error ? error.message : String(error);
       if (!errorMessage.includes('timeout') && !errorMessage.includes('timed out')) {
         console.error('Error loading filter options:', error);
