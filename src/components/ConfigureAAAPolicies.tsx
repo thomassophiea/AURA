@@ -8,12 +8,13 @@ import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { AlertCircle, Server, Database, Lock, Plus, Pencil, Trash2, Shield, CheckCircle2, XCircle } from 'lucide-react';
+import { AlertCircle, Server, Database, Lock, Plus, Pencil, Trash2, Shield, CheckCircle2, XCircle, Layers } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface RadiusServer {
   id: string;
@@ -67,6 +68,8 @@ interface AAAConfiguration {
 }
 
 export function ConfigureAAAPolicies() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
   const [isLoading, setIsLoading] = useState(true);
   const [aaaConfig, setAaaConfig] = useState<AAAConfiguration>({
     authenticationMethod: 'RADIUS',
@@ -111,23 +114,49 @@ export function ConfigureAAAPolicies() {
   const loadAAAConfiguration = async () => {
     setIsLoading(true);
     try {
-      const [policiesResponse, aaaPoliciesResponse] = await Promise.allSettled([
-        apiService.getAAAPolicies(),
-        apiService.getAaaPolicies()
-      ]);
+      const fetchPolicies = async (sgTag?: { id: string; name: string }) => {
+        const [policiesResponse, aaaPoliciesResponse] = await Promise.allSettled([
+          apiService.getAAAPolicies(),
+          apiService.getAaaPolicies()
+        ]);
 
-      // Load AAA policies from controller API
-      if (policiesResponse.status === 'fulfilled' && Array.isArray(policiesResponse.value) && policiesResponse.value.length > 0) {
-        setAaaPolicies(policiesResponse.value);
-      } else if (aaaPoliciesResponse.status === 'fulfilled' && Array.isArray(aaaPoliciesResponse.value)) {
-        setAaaPolicies(aaaPoliciesResponse.value);
+        let policies: any[] = [];
+        if (policiesResponse.status === 'fulfilled' && Array.isArray(policiesResponse.value) && policiesResponse.value.length > 0) {
+          policies = policiesResponse.value;
+        } else if (aaaPoliciesResponse.status === 'fulfilled' && Array.isArray(aaaPoliciesResponse.value)) {
+          policies = aaaPoliciesResponse.value;
+        }
+
+        if (sgTag) {
+          policies = policies.map(p => ({ ...p, _siteGroupId: sgTag.id, _siteGroupName: sgTag.name }));
+        }
+        return policies;
+      };
+
+      let allPolicies: any[] = [];
+
+      if (isOrgScope && siteGroups.length > 0) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const policies = await fetchPolicies({ id: sg.id, name: sg.name });
+            allPolicies.push(...policies);
+          } catch (err) {
+            console.warn(`[AAAPolicies] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        allPolicies = await fetchPolicies();
       }
 
-      // Extract RADIUS server information from policies if available
-      const policies = (policiesResponse.status === 'fulfilled' ? policiesResponse.value : aaaPoliciesResponse.status === 'fulfilled' ? aaaPoliciesResponse.value : []) || [];
-      if (Array.isArray(policies) && policies.length > 0) {
+      setAaaPolicies(allPolicies);
+
+      // Extract RADIUS server information from policies
+      if (allPolicies.length > 0) {
         const extractedServers: RadiusServer[] = [];
-        policies.forEach((policy: any) => {
+        allPolicies.forEach((policy: any) => {
           if (policy.radiusServerPrimary || policy.primaryServer) {
             const server = policy.radiusServerPrimary || policy.primaryServer;
             if (typeof server === 'object' && server.ipAddress) {
@@ -543,32 +572,46 @@ export function ConfigureAAAPolicies() {
                 <h3 className="font-medium">Controller AAA Policies</h3>
                 <p className="text-sm text-muted-foreground">RADIUS authentication policies from the Campus Controller</p>
               </div>
-              <Button
-                size="sm"
-                onClick={handleCreatePolicy}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Policy
-              </Button>
+              {isOrgScope ? (
+                <Button size="sm" onClick={() => navigateToTemplateCreation('aaa_policy')} className="flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  Create Template
+                </Button>
+              ) : (
+                <Button size="sm" onClick={handleCreatePolicy} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create Policy
+                </Button>
+              )}
             </div>
             <div className="p-4">
               {aaaPolicies.length === 0 ? (
                 <div className="text-center py-12">
                   <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">No AAA policies configured on the controller</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4"
-                    onClick={handleCreatePolicy}
-                  >
-                    Create First Policy
-                  </Button>
+                  {isOrgScope ? (
+                    <Button variant="outline" className="mt-4" onClick={() => navigateToTemplateCreation('aaa_policy')}>
+                      <Layers className="h-4 w-4 mr-2" />
+                      Create Template
+                    </Button>
+                  ) : (
+                    <Button variant="outline" className="mt-4" onClick={handleCreatePolicy}>
+                      Create First Policy
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      {isOrgScope && siteGroups.length > 1 && (
+                        <TableHead>
+                          <div className="flex items-center gap-1">
+                            <Server className="h-3 w-3" />
+                            <span>Site Group</span>
+                          </div>
+                        </TableHead>
+                      )}
                       <TableHead>Policy Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>RADIUS Accounting</TableHead>
@@ -578,8 +621,15 @@ export function ConfigureAAAPolicies() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {aaaPolicies.map((policy: any) => (
+                    {(orgSiteGroupFilter ? aaaPolicies.filter((p: any) => p._siteGroupId === orgSiteGroupFilter) : aaaPolicies).map((policy: any) => (
                       <TableRow key={policy.id}>
+                        {isOrgScope && siteGroups.length > 1 && (
+                          <TableCell>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                              {policy._siteGroupName || '—'}
+                            </Badge>
+                          </TableCell>
+                        )}
                         <TableCell className="font-medium">
                           {policy.name || policy.policyName || 'Unnamed'}
                         </TableCell>

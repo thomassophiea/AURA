@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 interface GuestUser {
   id: string;
@@ -49,6 +51,8 @@ interface GuestUser {
 }
 
 export function ConfigureGuest() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
   const [loading, setLoading] = useState(true);
   const [guestNetworks, setGuestNetworks] = useState<Service[]>([]);
   const [guestRoles, setGuestRoles] = useState<Role[]>([]);
@@ -93,40 +97,71 @@ export function ConfigureGuest() {
     setError('');
 
     try {
-      const [servicesData, rolesData, eGuestData, guestsData] = await Promise.allSettled([
-        apiService.getServices(),
-        apiService.getRoles(),
-        apiService.getEGuestProfiles(),
-        apiService.getGuests()
-      ]);
+      const fetchFromController = async (sgTag?: { id: string; name: string }) => {
+        const [servicesData, rolesData, eGuestData, guestsData] = await Promise.allSettled([
+          apiService.getServices(),
+          apiService.getRoles(),
+          apiService.getEGuestProfiles(),
+          apiService.getGuests()
+        ]);
 
-      if (servicesData.status === 'fulfilled') {
-        const allServices = Array.isArray(servicesData.value) ? servicesData.value : [];
-        const guestServices = allServices.filter(service =>
-          service.guestAccess === true ||
-          service.captivePortal === true ||
-          service.enableCaptivePortal === true ||
-          service.serviceName?.toLowerCase().includes('guest')
-        );
-        setGuestNetworks(guestServices);
+        const tag = <T,>(arr: T[]) => sgTag ? arr.map(item => ({ ...item, _siteGroupId: sgTag.id, _siteGroupName: sgTag.name })) : arr;
+
+        return {
+          services: servicesData.status === 'fulfilled' ? tag(Array.isArray(servicesData.value) ? servicesData.value : []) : [],
+          roles: rolesData.status === 'fulfilled' ? tag(Array.isArray(rolesData.value) ? rolesData.value : []) : [],
+          eGuest: eGuestData.status === 'fulfilled' ? tag(Array.isArray(eGuestData.value) ? eGuestData.value : []) : [],
+          guests: guestsData.status === 'fulfilled' ? tag(Array.isArray(guestsData.value) ? guestsData.value : []) : null,
+        };
+      };
+
+      let allServices: Service[] = [];
+      let allRoles: Role[] = [];
+      let allEGuest: any[] = [];
+      let allGuests: any[] | null = null;
+
+      if (isOrgScope && siteGroups.length > 0) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const result = await fetchFromController({ id: sg.id, name: sg.name });
+            allServices.push(...result.services);
+            allRoles.push(...result.roles);
+            allEGuest.push(...result.eGuest);
+            if (result.guests) allGuests = [...(allGuests || []), ...result.guests];
+          } catch (err) {
+            console.warn(`[ConfigureGuest] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        const result = await fetchFromController();
+        allServices = result.services;
+        allRoles = result.roles;
+        allEGuest = result.eGuest;
+        allGuests = result.guests;
       }
 
-      if (rolesData.status === 'fulfilled') {
-        const allRoles = Array.isArray(rolesData.value) ? rolesData.value : [];
-        const guestRolesList = allRoles.filter(role =>
-          role.name?.toLowerCase().includes('guest') ||
-          role.cpTopologyId !== null ||
-          role.cpRedirect !== ''
-        );
-        setGuestRoles(guestRolesList);
-      }
+      const guestServices = allServices.filter(service =>
+        service.guestAccess === true ||
+        service.captivePortal === true ||
+        service.enableCaptivePortal === true ||
+        service.serviceName?.toLowerCase().includes('guest')
+      );
+      setGuestNetworks(guestServices);
 
-      if (eGuestData.status === 'fulfilled') {
-        setEGuestProfiles(Array.isArray(eGuestData.value) ? eGuestData.value : []);
-      }
+      const guestRolesList = allRoles.filter(role =>
+        role.name?.toLowerCase().includes('guest') ||
+        role.cpTopologyId !== null ||
+        role.cpRedirect !== ''
+      );
+      setGuestRoles(guestRolesList);
 
-      if (guestsData.status === 'fulfilled') {
-        setGuestAccounts(Array.isArray(guestsData.value) ? guestsData.value : []);
+      setEGuestProfiles(allEGuest);
+
+      if (allGuests !== null) {
+        setGuestAccounts(allGuests);
         setGuestAccountsApiAvailable(true);
       } else {
         setGuestAccountsApiAvailable(false);
@@ -135,9 +170,7 @@ export function ConfigureGuest() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load guest configuration';
       setError(errorMessage);
-      toast.error('Failed to load guest data', {
-        description: errorMessage
-      });
+      toast.error('Failed to load guest data', { description: errorMessage });
     } finally {
       setLoading(false);
     }

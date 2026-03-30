@@ -34,7 +34,6 @@ import {
   HelpCircle,
   Target,
   Building2,
-  Server,
   Globe,
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -62,7 +61,7 @@ interface SidebarProps {
 
 // ── Org-level navigation (primary scope) ──
 const monitoringItems = [
-  { id: 'service-levels', label: 'Contextual Insights', icon: Brain, badge: 'Sandbox' },
+  { id: 'service-levels', label: 'Insights', icon: Brain, badge: 'Sandbox' },
   { id: 'sle-dashboard', label: 'Service Levels', icon: Target },
   { id: 'app-insights', label: 'App Insights', icon: AppWindow },
   { id: 'connected-clients', label: 'Connected Clients', icon: Users },
@@ -71,17 +70,13 @@ const monitoringItems = [
 ];
 
 const configureItems = [
-  { id: 'configure-site-groups', label: 'Site Groups', icon: Server },
-  { id: 'configure-sites', label: 'Sites', icon: Building2 },
+  { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
-];
-
-const templateItems = [
   { id: 'global-templates', label: 'Templates', icon: Layers },
   { id: 'global-variables', label: 'Variables', icon: Braces },
 ];
@@ -113,14 +108,12 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   // Check if any section sub-item is currently active
   const isMonitoringActive = monitoringItems.some(item => currentPage === item.id);
   const isConfigureActive = configureItems.some(item => currentPage === item.id);
-  const isTemplateActive = templateItems.some(item => currentPage === item.id);
   const isOperationsActive = operationsItems.some(item => currentPage === item.id);
   const isControllerActive = controllerItems.some(item => currentPage === item.id);
 
   // Auto-expand sections if an item is active
   const [isMonitoringExpanded, setIsMonitoringExpanded] = useState(true);
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
-  const [isTemplateExpanded, setIsTemplateExpanded] = useState(isTemplateActive);
   const [isOperationsExpanded, setIsOperationsExpanded] = useState(isOperationsActive);
 
   // Close mobile sidebar when page changes
@@ -321,16 +314,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               isActive: isConfigureActive,
               isExpanded: isConfigureExpanded,
               onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
-            })}
-
-            {/* Templates & Variables Section */}
-            {renderCollapsibleSection({
-              label: 'Templates & Variables',
-              icon: Layers,
-              items: templateItems,
-              isActive: isTemplateActive,
-              isExpanded: isTemplateExpanded,
-              onToggle: () => setIsTemplateExpanded(!isTemplateExpanded),
             })}
 
             {/* Operations Section - Desktop only */}

@@ -11,8 +11,12 @@ import { AlertTriangle, Plus, Search, Edit2, Trash2, Shield, Network, AlertCircl
 import { apiService, Role } from '../services/api';
 import { toast } from 'sonner';
 import { RoleEditDialog } from './RoleEditDialog';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 export function ConfigurePolicy() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -50,19 +54,40 @@ export function ConfigurePolicy() {
     loadRoles();
   }, []);
 
+  /** Generic multi-controller fetch helper */
+  const fetchFromAllControllers = async <T,>(
+    fetcher: () => Promise<T[]>,
+  ): Promise<T[]> => {
+    if (isOrgScope && siteGroups.length > 0) {
+      const originalBaseUrl = apiService.getBaseUrl();
+      const all: T[] = [];
+      for (const sg of siteGroups) {
+        try {
+          apiService.setBaseUrl(`${sg.controller_url}/management`);
+          const data = await fetcher();
+          const tagged = (data || []).map(item => ({
+            ...item,
+            _siteGroupId: sg.id,
+            _siteGroupName: sg.name,
+          }));
+          all.push(...tagged);
+        } catch (err) {
+          console.warn(`[ConfigurePolicy] Failed to fetch from ${sg.name}:`, err);
+        }
+      }
+      apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      return all;
+    }
+    return (await fetcher()) || [];
+  };
+
   const loadRoles = async () => {
     setLoading(true);
     try {
-      console.log('📡 Loading network roles from /v3/roles endpoint...');
-      const rolesData = await apiService.getRoles();
-      setRoles(rolesData || []);
-      console.log(`✓ Loaded ${rolesData.length} network roles:`, rolesData.map(r => r.name));
-      
-      if (rolesData.length === 0) {
-        console.warn('⚠️ No roles returned from API - check endpoint and authentication');
-      }
+      const rolesData = await fetchFromAllControllers(() => apiService.getRoles());
+      setRoles(rolesData);
     } catch (error) {
-      console.error('❌ Error loading roles:', error);
+      console.error('Error loading roles:', error);
       toast.error('Failed to load roles', {
         description: error instanceof Error ? error.message : 'There was an error loading network policy roles.'
       });
@@ -75,11 +100,10 @@ export function ConfigurePolicy() {
   const loadTopologies = async () => {
     setLoadingTopologies(true);
     try {
-      const data = await apiService.getTopologies();
-      setTopologies(data || []);
-      console.log(`✓ Loaded ${data.length} topologies/VLANs`);
+      const data = await fetchFromAllControllers(() => apiService.getTopologies());
+      setTopologies(data);
     } catch (error) {
-      console.error('❌ Error loading topologies:', error);
+      console.error('Error loading topologies:', error);
       setTopologies([]);
     } finally {
       setLoadingTopologies(false);
@@ -89,23 +113,33 @@ export function ConfigurePolicy() {
   const loadCosProfiles = async () => {
     setLoadingCos(true);
     try {
-      const data = await apiService.getClassOfService();
-      setCosProfiles(data || []);
-      console.log(`✓ Loaded ${data.length} CoS profiles`);
+      const data = await fetchFromAllControllers(() => apiService.getClassOfService());
+      setCosProfiles(data);
     } catch (error) {
-      console.error('❌ Error loading CoS profiles:', error);
+      console.error('Error loading CoS profiles:', error);
       setCosProfiles([]);
     } finally {
       setLoadingCos(false);
     }
   };
 
-  const filteredRoles = roles.filter(role => {
+  // Apply org-level site group filter
+  const sgRoles = orgSiteGroupFilter
+    ? roles.filter((r: any) => r._siteGroupId === orgSiteGroupFilter)
+    : roles;
+  const sgTopologies = orgSiteGroupFilter
+    ? topologies.filter((t: any) => t._siteGroupId === orgSiteGroupFilter)
+    : topologies;
+  const sgCosProfiles = orgSiteGroupFilter
+    ? cosProfiles.filter((c: any) => c._siteGroupId === orgSiteGroupFilter)
+    : cosProfiles;
+
+  const filteredRoles = sgRoles.filter(role => {
     const matchesSearch = role.name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
-  const filteredTopologies = topologies.filter(topology => {
+  const filteredTopologies = sgTopologies.filter(topology => {
     const name = topology.name || topology.topologyName || '';
     return name.toLowerCase().includes(topologySearchTerm.toLowerCase());
   });
@@ -261,13 +295,17 @@ export function ConfigurePolicy() {
             Manage network roles, access policies, and firewall rules
           </p>
         </div>
-        <Button
-          onClick={handleCreateRole}
-          className="flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Create Role
-        </Button>
+        {isOrgScope ? (
+          <Button onClick={() => navigateToTemplateCreation('role')} className="flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            Create Template
+          </Button>
+        ) : (
+          <Button onClick={handleCreateRole} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create Role
+          </Button>
+        )}
       </div>
 
       {/* Main Content */}
@@ -358,7 +396,14 @@ export function ConfigurePolicy() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2 flex-wrap">
                           <h3 className="font-medium">{role.name}</h3>
-                          
+
+                          {isOrgScope && siteGroups.length > 1 && (role as any)._siteGroupName && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal flex items-center gap-1">
+                              <Server className="h-2.5 w-2.5" />
+                              {(role as any)._siteGroupName}
+                            </Badge>
+                          )}
+
                           {role.predefined && (
                             <Badge variant="secondary" className="flex items-center gap-1">
                               <Lock className="h-3 w-3" />
@@ -496,16 +541,23 @@ export function ConfigurePolicy() {
                 <RefreshCw className={`h-4 w-4 ${loadingTopologies ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button
-                onClick={() => {
-                  setEditingTopology(null);
-                  setIsTopologyEditOpen(true);
-                }}
-                className="flex items-center gap-2"
-              >
-                <Plus className="h-4 w-4" />
-                Create Topology
-              </Button>
+              {isOrgScope ? (
+                <Button onClick={() => navigateToTemplateCreation('topology')} className="flex items-center gap-2">
+                  <Layers className="h-4 w-4" />
+                  Create Template
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => {
+                    setEditingTopology(null);
+                    setIsTopologyEditOpen(true);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Topology
+                </Button>
+              )}
             </div>
 
             {/* Topologies List */}

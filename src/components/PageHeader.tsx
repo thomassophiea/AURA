@@ -1,7 +1,8 @@
 import { Button } from './ui/button';
-import { RefreshCw, LucideIcon } from 'lucide-react';
+import { RefreshCw, LucideIcon, Server } from 'lucide-react';
 import { TYPOGRAPHY, LAYOUTS, BUTTON_STYLES } from '../utils/ui-constants';
 import { cn } from './ui/utils';
+import { useAppContext } from '@/contexts/AppContext';
 
 interface PageHeaderProps {
   title: string;
@@ -10,25 +11,40 @@ interface PageHeaderProps {
   onRefresh?: () => void;
   refreshing?: boolean;
   actions?: React.ReactNode;
+  /** Hide the site group source badge (default: false). */
+  hideSiteGroupBadge?: boolean;
 }
 
-export function PageHeader({ 
-  title, 
-  subtitle, 
-  icon: Icon, 
-  onRefresh, 
+export function PageHeader({
+  title,
+  subtitle,
+  icon: Icon,
+  onRefresh,
   refreshing = false,
-  actions 
+  actions,
+  hideSiteGroupBadge = false,
 }: PageHeaderProps) {
+  const { siteGroups, siteGroup, navigationScope } = useAppContext();
+  const showSgBadge = !hideSiteGroupBadge && navigationScope === 'global' && siteGroups.length > 0;
+  const sgName = siteGroup?.name || siteGroups[0]?.name;
+
   return (
     <div className={LAYOUTS.pageHeader}>
       <div className="flex items-center gap-3">
         {Icon && <Icon className="h-8 w-8 text-primary" />}
         <div>
           <h1 className={TYPOGRAPHY.pageTitle}>{title}</h1>
-          {subtitle && (
-            <p className={TYPOGRAPHY.bodyTextMuted}>{subtitle}</p>
-          )}
+          <div className="flex items-center gap-2">
+            {subtitle && (
+              <p className={TYPOGRAPHY.bodyTextMuted}>{subtitle}</p>
+            )}
+            {showSgBadge && sgName && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+                <Server className="h-2.5 w-2.5" />
+                {sgName}
+              </span>
+            )}
+          </div>
         </div>
       </div>
       <div className="flex items-center gap-2">

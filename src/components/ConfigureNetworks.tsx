@@ -10,7 +10,7 @@ import { Label } from './ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2 } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2, Layers } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
@@ -18,6 +18,8 @@ import { CreateWLANDialog } from './CreateWLANDialog';
 import { WifiQRCodeDialog } from './WifiQRCodeDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 interface BulkOperationProgress {
   total: number;
@@ -357,6 +359,8 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
 };
 
 export function ConfigureNetworks() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
   const [networks, setNetworks] = useState<NetworkConfig[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -386,122 +390,122 @@ export function ConfigureNetworks() {
     loadNetworks();
   }, []);
 
+  /** Fetch services from a single controller and transform to NetworkConfig[] */
+  const fetchAndTransformServices = async (sgTag?: { id: string; name: string }): Promise<{ configs: NetworkConfig[]; services: Service[] }> => {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
+    );
+
+    const [servicesResponse] = await Promise.race([
+      Promise.allSettled([apiService.getServices()]),
+      timeoutPromise
+    ]) as [PromiseSettledResult<any>];
+
+    let loadedServices: Service[] = [];
+    if (servicesResponse.status === 'fulfilled') {
+      loadedServices = servicesResponse.value;
+    } else {
+      console.warn('Failed to load services:', servicesResponse.reason);
+    }
+
+    const configs: NetworkConfig[] = [];
+    for (const service of loadedServices) {
+      try {
+        let clientCount = 0;
+        try {
+          const serviceStations = await Promise.race([
+            apiService.getServiceStations(service.id),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+          ]) as any[];
+          clientCount = Array.isArray(serviceStations) ? serviceStations.length : 0;
+        } catch (e) {
+          if (e instanceof Error && e.message.includes('Session expired')) throw e;
+        }
+
+        const networkConfig = transformServiceToNetwork(service, clientCount);
+        if (sgTag) {
+          (networkConfig as any)._siteGroupId = sgTag.id;
+          (networkConfig as any)._siteGroupName = sgTag.name;
+        }
+        configs.push(networkConfig);
+      } catch (transformError) {
+        console.warn(`Failed to transform service ${service.id}:`, transformError);
+      }
+    }
+    return { configs, services: loadedServices };
+  };
+
   const loadNetworks = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Add timeout wrapper to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
-      );
-      
-      // Load services with timeout (roles not needed for networks table)
-      const [servicesResponse] = await Promise.race([
-        Promise.allSettled([
-          apiService.getServices()
-        ]),
-        timeoutPromise
-      ]) as [PromiseSettledResult<any>];
 
-      let loadedServices: Service[] = [];
+      let allConfigs: NetworkConfig[] = [];
+      let allServices: Service[] = [];
 
-      if (servicesResponse.status === 'fulfilled') {
-        loadedServices = servicesResponse.value;
-        setServices(loadedServices);
-        console.log('🌐 LOADED SERVICES COUNT:', loadedServices.length);
+      if (isOrgScope && siteGroups.length > 0) {
+        // Org scope: fetch from all controllers
+        const originalBaseUrl = apiService.getBaseUrl();
+
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const { configs, services: svcList } = await fetchAndTransformServices({ id: sg.id, name: sg.name });
+            allConfigs.push(...configs);
+            allServices.push(...svcList);
+          } catch (err) {
+            console.warn(`[ConfigureNetworks] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
       } else {
-        console.warn('Failed to load services:', servicesResponse.reason);
+        // Site-group scope: single controller
+        const { configs, services: svcList } = await fetchAndTransformServices();
+        allConfigs = configs;
+        allServices = svcList;
       }
 
-      // Set empty roles array since roles are not used in networks configuration
+      setNetworks(allConfigs);
+      setServices(allServices);
       setRoles([]);
 
-      // Transform services to network configurations
-      const networkConfigs: NetworkConfig[] = [];
-      
-      for (const service of loadedServices) {
-        try {
-          // Get service-specific clients using the service stations endpoint
-          let clientCount = 0;
-          try {
-            const serviceStationsTimeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Service stations request timed out')), 8000)
-            );
-            
-            const serviceStations = await Promise.race([
-              apiService.getServiceStations(service.id),
-              serviceStationsTimeoutPromise
-            ]) as any[];
-            
-            clientCount = Array.isArray(serviceStations) ? serviceStations.length : 0;
-          } catch (serviceStationsError) {
-            console.warn(`Failed to get stations for service ${service.id}:`, serviceStationsError);
-            // If it's a session expiration, let it bubble up to be handled by the app
-            if (serviceStationsError instanceof Error && serviceStationsError.message.includes('Session expired')) {
-              throw serviceStationsError;
-            }
-            // For other errors, use zero client count for this service
-            clientCount = 0;
-          }
-
-          const networkConfig = transformServiceToNetwork(service, clientCount);
-          networkConfigs.push(networkConfig);
-          
-          // Log each transformed network
-          console.log(`🔄 Transformed: "${networkConfig.ssid}" → Auth: "${networkConfig.authType}"`);
-        } catch (transformError) {
-          console.warn(`Failed to transform service ${service.id}:`, transformError);
-        }
+      if (allConfigs.length === 0 && allServices.length === 0) {
+        console.log('[ConfigureNetworks] No networks found');
       }
-
-      setNetworks(networkConfigs);
-      
-      // Log summary of all networks
-      console.log('📊 ALL NETWORKS LOADED:');
-      networkConfigs.forEach(n => {
-        console.log(`  - ${n.ssid}: ${n.authType} (Enabled: ${n.enabled})`);
-      });
-
-      if (networkConfigs.length === 0 && loadedServices.length === 0) {
-        // If no data at all, show a helpful message
-        if (servicesResponse.status === 'rejected') {
-          throw new Error(servicesResponse.reason?.message || 'Failed to load network services');
-        }
-      }
-      
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load networks';
       setError(errorMessage);
-      
-      // Don't show toast for session expiration - let App.tsx handle it
       if (!errorMessage.includes('Session expired')) {
-        toast.error('Failed to load networks', {
-          description: errorMessage
-        });
+        toast.error('Failed to load networks', { description: errorMessage });
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredNetworks = networks.filter(network => {
-    const matchesSearch = 
+  // Apply org-level site group filter first
+  const sgFilteredNetworks = orgSiteGroupFilter
+    ? networks.filter((n: any) => n._siteGroupId === orgSiteGroupFilter)
+    : networks;
+
+  const filteredNetworks = sgFilteredNetworks.filter(network => {
+    const matchesSearch =
       network.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       network.ssid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       network.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesBand = filterBand === 'all' || 
-                       network.band === filterBand || 
+
+    const matchesBand = filterBand === 'all' ||
+                       network.band === filterBand ||
                        (filterBand === 'Both' && (network.band?.toLowerCase().includes('both') || network.band?.toLowerCase().includes('dual') || network.band?.toLowerCase().includes('+')));
-    
-    const matchesSecurity = filterSecurity === 'all' || 
+
+    const matchesSecurity = filterSecurity === 'all' ||
                            network.authType?.toLowerCase().includes(filterSecurity.toLowerCase());
-    
-    const matchesStatus = filterStatus === 'all' || 
+
+    const matchesStatus = filterStatus === 'all' ||
                          (filterStatus === 'enabled' && network.enabled) ||
                          (filterStatus === 'disabled' && !network.enabled);
-    
+
     return matchesSearch && matchesBand && matchesSecurity && matchesStatus;
   });
 
@@ -915,10 +919,17 @@ export function ConfigureNetworks() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create WLAN
-              </Button>
+              {isOrgScope ? (
+                <Button onClick={() => navigateToTemplateCreation('service')}>
+                  <Layers className="h-4 w-4 mr-2" />
+                  Create Template
+                </Button>
+              ) : (
+                <Button onClick={() => setShowCreateDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create WLAN
+                </Button>
+              )}
             </div>
 
             {/* Create WLAN Dialog */}
@@ -1106,6 +1117,14 @@ export function ConfigureNetworks() {
                       aria-label="Select all networks"
                     />
                   </TableHead>
+                  {isOrgScope && siteGroups.length > 1 && (
+                    <TableHead>
+                      <div className="flex items-center gap-1">
+                        <Server className="h-3 w-3" />
+                        <span>Site Group</span>
+                      </div>
+                    </TableHead>
+                  )}
                   <TableHead>SSID</TableHead>
                   <TableHead>Auth Type</TableHead>
                   <TableHead>Clients</TableHead>
@@ -1125,6 +1144,13 @@ export function ConfigureNetworks() {
                           aria-label={`Select ${network.name}`}
                         />
                       </TableCell>
+                      {isOrgScope && siteGroups.length > 1 && (
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            {(network as any)._siteGroupName || '—'}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <span className="font-mono text-sm">{network.ssid}</span>

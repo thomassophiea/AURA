@@ -25,12 +25,15 @@ import { useCompoundSearch } from '../hooks/useCompoundSearch';
 import { useTableCustomization } from '../hooks/useTableCustomization';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
 }
 
 export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsProps) {
+  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -127,9 +130,35 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     setError('');
 
     try {
-      // Use the new correlation method to get stations with proper site information
-      const stationsData = await apiService.getStationsWithSiteCorrelation();
-      const stationsArray = Array.isArray(stationsData) ? stationsData : [];
+      let stationsArray: Station[] = [];
+
+      if (navigationScope === 'global' && siteGroups.length > 0) {
+        // Org scope: fetch from all controllers, tag with site group info
+        const originalBaseUrl = apiService.getBaseUrl();
+
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const sgStations = await apiService.getStationsWithSiteCorrelation();
+            const tagged = (Array.isArray(sgStations) ? sgStations : []).map(s => ({
+              ...s,
+              _siteGroupId: sg.id,
+              _siteGroupName: sg.name,
+            }));
+            stationsArray.push(...tagged);
+          } catch (err) {
+            console.warn(`[ConnectedClients] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+
+        // Restore original base URL
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        // Site-group scope: single controller fetch
+        const stationsData = await apiService.getStationsWithSiteCorrelation();
+        stationsArray = Array.isArray(stationsData) ? stationsData : [];
+      }
+
       setStations(stationsArray);
       setTotalItems(stationsArray.length);
 
@@ -337,8 +366,13 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
-  // Filter stations by site, compound search, and time range
-  const filteredStations = filterBySearch(stations);
+  // Filter stations by site group (org scope), compound search, and time range
+  const siteGroupFiltered = orgSiteGroupFilter
+    ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter)
+    : stations;
+  // Use site-group-filtered stations for all stat calculations
+  const effectiveStations = siteGroupFiltered;
+  const filteredStations = filterBySearch(siteGroupFiltered);
 
   // Sort filtered stations
   const sortedStations = [...filteredStations].sort((a, b) => {
@@ -403,39 +437,38 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   }, [searchQuery]);
 
   const getUniqueStatuses = () => {
-    const statuses = new Set(stations.map(station => station.status).filter(Boolean));
+    const statuses = new Set(effectiveStations.map(station => station.status).filter(Boolean));
     return Array.from(statuses);
   };
 
   const getUniqueAPs = () => {
-    const aps = new Set(stations.map(station => station.apName || station.apSerial).filter(Boolean));
+    const aps = new Set(effectiveStations.map(station => station.apName || station.apSerial).filter(Boolean));
     return Array.from(aps);
   };
 
   const getUniqueSites = () => {
-    const sites = new Set(stations.map(station => station.siteName).filter(Boolean));
+    const sites = new Set(effectiveStations.map(station => station.siteName).filter(Boolean));
     return Array.from(sites);
   };
 
   const getUniqueDeviceTypes = () => {
-    const deviceTypes = new Set(stations.map(station => station.deviceType).filter(Boolean));
+    const deviceTypes = new Set(effectiveStations.map(station => station.deviceType).filter(Boolean));
     return Array.from(deviceTypes);
   };
 
   const getUniqueNetworks = () => {
-    const networks = new Set(stations.map(station => station.network).filter(Boolean));
+    const networks = new Set(effectiveStations.map(station => station.network).filter(Boolean));
     return Array.from(networks);
   };
 
   const getTotalTraffic = () => {
-    return stations.reduce((total, station) => {
+    return effectiveStations.reduce((total, station) => {
       const trafficData = stationTrafficData.get(station.macAddress);
       if (trafficData) {
         const inBytes = trafficData.inBytes || 0;
         const outBytes = trafficData.outBytes || 0;
         return total + inBytes + outBytes;
       }
-      // Fallback to station data if traffic data not available
       const rx = station.rxBytes || station.clientBandwidthBytes || 0;
       const tx = station.txBytes || station.outBytes || 0;
       return total + rx + tx;
@@ -443,15 +476,15 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   };
 
   const getActiveClientsCount = () => {
-    return stations.filter(station => 
-      station.status?.toLowerCase() === 'connected' || 
+    return effectiveStations.filter(station =>
+      station.status?.toLowerCase() === 'connected' ||
       station.status?.toLowerCase() === 'associated' ||
       station.status?.toLowerCase() === 'active'
     ).length;
   };
 
   const getDisconnectedClientsCount = () => {
-    return stations.filter(station => 
+    return effectiveStations.filter(station =>
       station.status?.toLowerCase() === 'disconnected' ||
       station.status?.toLowerCase() === 'inactive'
     ).length;
@@ -466,11 +499,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   };
 
   const getRandomizedMacCount = () => {
-    return stations.filter(station => isRandomizedMac(station.macAddress)).length;
+    return effectiveStations.filter(station => isRandomizedMac(station.macAddress)).length;
   };
 
   const getPermanentMacCount = () => {
-    return stations.filter(station => !isRandomizedMac(station.macAddress)).length;
+    return effectiveStations.filter(station => !isRandomizedMac(station.macAddress)).length;
   };
 
   const handleStationSelect = (macAddress: string, checked: boolean) => {
@@ -665,6 +698,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           <ExportButton
             data={sortedStations}
             columns={[
+              ...(navigationScope === 'global' && siteGroups.length > 1
+                ? [{ key: '_siteGroupName', label: 'Site Group' }]
+                : []),
               { key: 'hostName', label: 'Hostname' },
               { key: 'macAddress', label: 'MAC Address' },
               { key: 'ipAddress', label: 'IP Address' },
@@ -693,7 +729,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         <Alert>
           <Shuffle className="h-4 w-4" />
           <AlertDescription>
-            <strong>{getRandomizedMacCount()} of {stations.length} clients</strong> are using randomized MAC addresses for privacy. 
+            <strong>{getRandomizedMacCount()} of {effectiveStations.length} clients</strong> are using randomized MAC addresses for privacy. 
             These addresses change periodically to prevent device tracking across networks.
           </AlertDescription>
         </Alert>
@@ -708,7 +744,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{stations.length}</div>
+            <div className="text-2xl font-bold text-foreground">{effectiveStations.length}</div>
             <p className="text-xs text-muted-foreground">
               Connected devices
             </p>
@@ -881,7 +917,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             onSearchChange={setSearchQuery}
             showTimeRange={false}
             resultCount={filteredStations.length}
-            totalCount={stations.length}
+            totalCount={effectiveStations.length}
           />
         </CardHeader>
         <CardContent>
@@ -908,6 +944,15 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         className="h-3 w-3 border-muted-foreground/50"
                       />
                     </TableHead>
+                    {/* Site Group column — only at org scope */}
+                    {navigationScope === 'global' && siteGroups.length > 1 && (
+                      <TableHead className="p-2 text-[10px]">
+                        <div className="flex items-center gap-1">
+                          <Server className="h-3 w-3" />
+                          <span>Site Group</span>
+                        </div>
+                      </TableHead>
+                    )}
                     {/* Dynamic columns from customization */}
                     {columnCustomization.visibleColumnConfigs.map((column) => (
                       <TableHead
@@ -1003,6 +1048,14 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                             onClick={(e) => e.stopPropagation()}
                           />
                         </TableCell>
+                        {/* Site Group cell — only at org scope */}
+                        {navigationScope === 'global' && siteGroups.length > 1 && (
+                          <TableCell className="p-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                              {(station as any)._siteGroupName || '—'}
+                            </Badge>
+                          </TableCell>
+                        )}
                         {/* Dynamic cells from visible columns */}
                         {columnCustomization.visibleColumnConfigs.map((column) => (
                           <TableCell key={column.key} className="p-1">

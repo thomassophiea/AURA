@@ -23,6 +23,8 @@ import { SaveToWorkspace } from './SaveToWorkspace';
 import { useTableCustomization } from '@/hooks/useTableCustomization';
 import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -411,6 +413,7 @@ interface AccessPointsProps {
 }
 
 export function AccessPoints({ onShowDetail }: AccessPointsProps) {
+  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<Record<string, { cpuUsage?: number; memoryUsage?: number }>>({});
@@ -567,10 +570,34 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     setError('');
 
     try {
-      // Always fetch all APs — compound search handles filtering client-side
-      const apsData = await apiService.getAccessPoints();
+      let accessPointsArray: AccessPoint[] = [];
 
-      const accessPointsArray = Array.isArray(apsData) ? apsData : [];
+      if (navigationScope === 'global' && siteGroups.length > 0) {
+        // Org scope: fetch from all controllers, tag with site group info
+        const originalBaseUrl = apiService.getBaseUrl();
+
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const apsData = await apiService.getAccessPoints();
+            const tagged = (Array.isArray(apsData) ? apsData : []).map(ap => ({
+              ...ap,
+              _siteGroupId: sg.id,
+              _siteGroupName: sg.name,
+            }));
+            accessPointsArray.push(...tagged);
+          } catch (err) {
+            console.warn(`[AccessPoints] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+
+        // Restore original base URL
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        // Site-group scope: single controller fetch
+        const apsData = await apiService.getAccessPoints();
+        accessPointsArray = Array.isArray(apsData) ? apsData : [];
+      }
 
       // Map sysUptime to uptime field and format it
       const enrichedAPs = accessPointsArray.map(ap => ({
@@ -599,7 +626,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       if (!errorMessage.includes('timeout') && !errorMessage.includes('timed out')) {
         setError(errorMessage);
       } else {
-        // For timeout errors, show a user-friendly message
         setError('Loading access points is taking longer than expected. The controller may be slow to respond.');
       }
     } finally {
@@ -839,7 +865,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  const filteredAccessPoints = filterBySearch(accessPoints);
+  // Apply org-level site group filter first, then search
+  const siteGroupFilteredAPs = orgSiteGroupFilter
+    ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
+    : accessPoints;
+  const filteredAccessPoints = filterBySearch(siteGroupFilteredAPs);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
   const isAfcAnchor = (ap: AccessPoint): boolean => {
@@ -2015,6 +2045,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    {navigationScope === 'global' && siteGroups.length > 1 && (
+                      <TableHead className="text-[10px]">
+                        <div className="flex items-center gap-1">
+                          <Server className="h-3 w-3" />
+                          <span>Site Group</span>
+                        </div>
+                      </TableHead>
+                    )}
                     {visibleColumns.map(columnKey => {
                       const column = AP_TABLE_COLUMNS.find(c => c.key === columnKey);
                       return (
@@ -2043,6 +2081,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                         }
                       }}
                     >
+                      {navigationScope === 'global' && siteGroups.length > 1 && (
+                        <TableCell>
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            {(ap as any)._siteGroupName || '—'}
+                          </Badge>
+                        </TableCell>
+                      )}
                       {visibleColumns.map(columnKey => (
                         <TableCell key={columnKey}>
                           {renderColumnContent(columnKey, ap)}

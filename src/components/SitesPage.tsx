@@ -80,12 +80,16 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
     try {
       const rawSites = await apiService.getSites();
 
+      // Default site group for sites without an explicit site_group_id
+      const defaultSg = siteGroups.find(sg => sg.is_default)
+        || (siteGroups.length === 1 ? siteGroups[0] : undefined);
+
       // Map raw api.Site → domain.Site with enrichment
       const mapped: Site[] = (rawSites as any[]).map(s => {
-        const sgId = s.site_group_id || s.siteGroupId || '';
+        const sgId = s.site_group_id || s.siteGroupId || defaultSg?.id || '';
         const sgName = s.site_group_name || s.siteGroupName ||
           siteGroups.find(sg => sg.id === sgId)?.name ||
-          '';
+          defaultSg?.name || '';
 
         return {
           id: s.id,
