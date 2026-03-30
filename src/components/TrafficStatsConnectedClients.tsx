@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns } from 'lucide-react';
+import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns, Building } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -37,6 +37,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [selectedSite, setSelectedSite] = useState<string>('all');
 
   const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
     storageKey: 'client-search',
@@ -366,13 +367,26 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
-  // Filter stations by site group (org scope), compound search, and time range
+  // Derive unique site names from loaded stations
+  const availableSites = useMemo(() => {
+    const siteSet = new Map<string, string>();
+    stations.forEach(s => {
+      const name = s.siteName;
+      if (name) siteSet.set(name, name);
+    });
+    return Array.from(siteSet.values()).sort();
+  }, [stations]);
+
+  // Filter stations by site group (org scope), site, compound search, and time range
   const siteGroupFiltered = orgSiteGroupFilter
     ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter)
     : stations;
-  // Use site-group-filtered stations for all stat calculations
-  const effectiveStations = siteGroupFiltered;
-  const filteredStations = filterBySearch(siteGroupFiltered);
+  const siteFiltered = selectedSite !== 'all'
+    ? siteGroupFiltered.filter(s => s.siteName === selectedSite)
+    : siteGroupFiltered;
+  // Use site-filtered stations for all stat calculations
+  const effectiveStations = siteFiltered;
+  const filteredStations = filterBySearch(siteFiltered);
 
   // Sort filtered stations
   const sortedStations = [...filteredStations].sort((a, b) => {
@@ -674,6 +688,20 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </p>
         </div>
         <div className="flex items-center space-x-2">
+          <Select value={selectedSite} onValueChange={setSelectedSite}>
+            <SelectTrigger className="w-[145px] h-8 text-xs">
+              <Building className="h-3.5 w-3.5 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {availableSites.map(site => (
+                <SelectItem key={site} value={site}>
+                  {site}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh Clients

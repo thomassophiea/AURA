@@ -24,7 +24,7 @@ import { useTableCustomization } from '@/hooks/useTableCustomization';
 import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
-import { Server } from 'lucide-react';
+import { Server, Building } from 'lucide-react';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -408,6 +408,22 @@ function getWifiGeneration(model?: string): WifiGen {
   return 'Unknown';
 }
 
+// Helper function to get site/location name for an AP (pure — no component state)
+function getAPSite(ap: AccessPoint): string {
+  const locationFields = [
+    'hostSite', 'location', 'locationName', 'apLocation', 'ap_location',
+    'site', 'siteName', 'site_name', 'campus', 'building',
+    'siteId', 'site_id', 'place', 'area', 'zone'
+  ];
+  for (const field of locationFields) {
+    const value = (ap as any)[field];
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return '';
+}
+
 interface AccessPointsProps {
   onShowDetail?: (serialNumber: string, displayName?: string) => void;
 }
@@ -424,6 +440,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isLoadingMeshRoles, setIsLoadingMeshRoles] = useState(false);
   const [apStates, setApStates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
+  const [selectedSite, setSelectedSite] = useState<string>('all');
 
   // Compound tokenized AND search (replaces old single-term search + site filter)
   const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<AccessPoint>({
@@ -865,11 +882,24 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  // Apply org-level site group filter first, then search
+  // Derive unique site names from loaded APs
+  const availableSites = useMemo(() => {
+    const siteSet = new Set<string>();
+    accessPoints.forEach(ap => {
+      const site = getAPSite(ap);
+      if (site) siteSet.add(site);
+    });
+    return Array.from(siteSet).sort();
+  }, [accessPoints]);
+
+  // Apply org-level site group filter, then site filter, then search
   const siteGroupFilteredAPs = orgSiteGroupFilter
     ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
     : accessPoints;
-  const filteredAccessPoints = filterBySearch(siteGroupFilteredAPs);
+  const siteFilteredAPs = selectedSite !== 'all'
+    ? siteGroupFilteredAPs.filter(ap => getAPSite(ap) === selectedSite)
+    : siteGroupFilteredAPs;
+  const filteredAccessPoints = filterBySearch(siteFilteredAPs);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
   const isAfcAnchor = (ap: AccessPoint): boolean => {
@@ -1035,31 +1065,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     
     // Fallback to serial number if no name fields are available
     return ap.serialNumber || '';
-  };
-
-  // Helper function to get site/location name for an AP
-  const getAPSite = (ap: AccessPoint) => {
-    // Define all possible location/site-related field names to check
-    // Prioritize hostSite first as it contains the actual location like "LAB Remote Site"
-    const locationFields = [
-      'hostSite', 'location', 'locationName', 'apLocation', 'ap_location',
-      'site', 'siteName', 'site_name', 'campus', 'building',
-      'siteId', 'site_id', 'place', 'area', 'zone'
-    ];
-    
-    // First try to find the actual location/site information from the AP data
-    for (const field of locationFields) {
-      const value = ap[field];
-      if (typeof value === 'string' && value.trim().length > 0) {
-        const trimmedValue = value.trim();
-        
-        // Return the actual location/site value directly from the AP
-        // This will show values like "LAB Remote Site" exactly as they appear in the AP data
-        return trimmedValue;
-      }
-    }
-    
-    return '';
   };
 
   // Helper function to determine if AP is online
@@ -1734,6 +1739,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           )}
         </div>
         <div className="flex items-center space-x-2">
+          <Select value={selectedSite} onValueChange={setSelectedSite}>
+            <SelectTrigger className="w-[145px] h-8 text-xs">
+              <Building className="h-3.5 w-3.5 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sites</SelectItem>
+              {availableSites.map(site => (
+                <SelectItem key={site} value={site}>
+                  {site}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button onClick={() => {
             // Refresh columns metadata and access points
             loadData();
