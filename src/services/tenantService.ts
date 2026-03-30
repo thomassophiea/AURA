@@ -395,6 +395,8 @@ class TenantService {
         id: controller.org_id || 'default-org',
         name: 'TSOPHIEA',
         slug: 'tsophiea',
+        name: 'AURA Organization',
+        slug: 'aura-org',
       };
     }
 
