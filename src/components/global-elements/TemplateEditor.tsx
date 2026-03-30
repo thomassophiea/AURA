@@ -34,17 +34,19 @@ interface Props {
   template: GlobalElementTemplate | null;
   definitions: PersistedVariableDefinition[];
   orgId: string;
+  /** Pre-select element type when creating a new template */
+  initialElementType?: GlobalElementType;
   onSave: (template: Omit<GlobalElementTemplate, 'id' | 'created_at' | 'updated_at' | 'version'>) => Promise<unknown>;
   onUpdate: (id: string, updates: Partial<GlobalElementTemplate>) => Promise<unknown>;
   onBack: () => void;
 }
 
-export function TemplateEditor({ template, definitions, orgId, onSave, onUpdate, onBack }: Props) {
+export function TemplateEditor({ template, definitions, orgId, initialElementType, onSave, onUpdate, onBack }: Props) {
   const isEditing = !!template;
 
   const [name, setName] = useState(template?.name ?? '');
   const [description, setDescription] = useState(template?.description ?? '');
-  const [elementType, setElementType] = useState<GlobalElementType>(template?.element_type ?? 'service');
+  const [elementType, setElementType] = useState<GlobalElementType>(template?.element_type ?? initialElementType ?? 'service');
   const [isActive, setIsActive] = useState(template?.is_active ?? true);
   const [tags, setTags] = useState(template?.tags?.join(', ') ?? '');
 

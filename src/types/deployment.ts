@@ -71,6 +71,45 @@ export interface PipelineProgress {
   results: DeploymentResult[];
 }
 
+// ---------------------------------------------------------------------------
+// Drift detection
+// ---------------------------------------------------------------------------
+
+export type DriftStatus = 'in_sync' | 'drifted' | 'missing' | 'unknown' | 'error';
+
+export interface FieldDiff {
+  path: string;
+  expected: unknown;
+  actual: unknown;
+}
+
+export interface DriftCheckResult {
+  template_id: string;
+  template_name: string;
+  element_type: GlobalElementType;
+  scope_id: string;
+  scope_name: string;
+  controller_url: string;
+  status: DriftStatus;
+  diffs: FieldDiff[];
+  checked_at: string;
+  error_message?: string;
+}
+
+export interface DriftSummary {
+  total: number;
+  in_sync: number;
+  drifted: number;
+  missing: number;
+  errors: number;
+  results: DriftCheckResult[];
+  checked_at: string;
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline types
+// ---------------------------------------------------------------------------
+
 export interface PipelineResult {
   pipeline_id: string;
   template_id: string;

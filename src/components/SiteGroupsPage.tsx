@@ -82,8 +82,13 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
       try {
         const rawSites = await apiService.getSites();
         const countMap = new Map<string, number>();
+        // The default site group for sites that don't carry an explicit site_group_id.
+        // Since each controller maps to exactly one site group, untagged sites belong
+        // to the current (or sole) site group.
+        const defaultSgId = contextSiteGroups.find(sg => sg.is_default)?.id
+          || (contextSiteGroups.length === 1 ? contextSiteGroups[0].id : undefined);
         rawSites.forEach((s: any) => {
-          const sgId = s.site_group_id || s.siteGroupId || 'default';
+          const sgId = s.site_group_id || s.siteGroupId || defaultSgId || 'default';
           countMap.set(sgId, (countMap.get(sgId) || 0) + 1);
         });
         const enriched = contextSiteGroups.map(sg => ({

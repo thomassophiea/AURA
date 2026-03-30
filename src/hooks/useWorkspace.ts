@@ -1154,7 +1154,7 @@ export const TOPIC_METADATA: Record<WorkspaceTopic, { label: string; description
     },
   },
   ContextualInsights: {
-    label: 'Contextual Insights',
+    label: 'Insights',
     description: 'Anomalies and insights tied to time and scope',
     color: {
       bg: 'bg-cyan-500/10',

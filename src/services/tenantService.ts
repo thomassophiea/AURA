@@ -387,11 +387,22 @@ class TenantService {
   // Current controller management
   setCurrentController(controller: Controller | null) {
     this.currentController = controller;
+
+    // Ensure a default organization exists so org-scoped features
+    // (Global Elements, etc.) work immediately after login.
+    if (controller && !this.currentOrg) {
+      this.currentOrg = {
+        id: controller.org_id || 'default-org',
+        name: 'AURA Organization',
+        slug: 'aura-org',
+      };
+    }
+
     this.saveToStorage();
-    
+
     // Dispatch event for other components to react
-    window.dispatchEvent(new CustomEvent('controllerChanged', { 
-      detail: controller 
+    window.dispatchEvent(new CustomEvent('controllerChanged', {
+      detail: controller
     }));
   }
 

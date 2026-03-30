@@ -21,8 +21,7 @@ export const ORG_PAGES = new Set([
   'report-widgets',
   'performance-analytics',
   // Configure
-  'configure-site-groups',
-  'configure-sites',
+  'configure-sites-groups',
   'configure-networks',
   'configure-policy',
   'configure-aaa-policies',

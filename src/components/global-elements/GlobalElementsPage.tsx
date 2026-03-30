@@ -3,8 +3,8 @@
  * Templates, Variables, Assignments, Preview, and Deployments.
  */
 
-import { useState } from 'react';
-import { Layers, Braces, Eye, Link2, Rocket } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Layers, Braces, Eye, Link2, Rocket, AlertTriangle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { TemplateList } from './TemplateList';
 import { TemplateEditor } from './TemplateEditor';
@@ -12,18 +12,23 @@ import { VariableManagement } from './VariableManagement';
 import { ResolutionPreview } from './ResolutionPreview';
 import { AssignmentManager } from './AssignmentManager';
 import { DeploymentHistory } from './DeploymentHistory';
-import { useTemplates, useVariableDefinitions, useVariableValues } from '../../hooks/useGlobalElements';
+import { DriftDetection } from './DriftDetection';
+import { useTemplates, useVariableDefinitions, useVariableValues, useTemplateAssignments } from '../../hooks/useGlobalElements';
 import { useAppContext } from '../../contexts/AppContext';
-import type { GlobalElementTemplate } from '../../types/globalElements';
+import type { GlobalElementTemplate, GlobalElementType } from '../../types/globalElements';
 
-type TabId = 'templates' | 'variables' | 'assignments' | 'preview' | 'deployments';
+type TabId = 'templates' | 'variables' | 'assignments' | 'preview' | 'deployments' | 'drift';
 
 interface Props {
   initialTab?: TabId;
+  /** When set, auto-opens the template editor with this element type pre-selected */
+  initialElementType?: GlobalElementType;
+  /** Called after consuming initialElementType so App.tsx can clear pendingTemplateType */
+  onConsumeElementType?: () => void;
 }
 
-export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
-  const { organization } = useAppContext();
+export function GlobalElementsPage({ initialTab = 'templates', initialElementType, onConsumeElementType }: Props) {
+  const { organization, siteGroups } = useAppContext();
   const orgId = organization?.id;
 
   const {
@@ -31,9 +36,22 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
   } = useTemplates(orgId);
   const { definitions } = useVariableDefinitions(orgId);
   const { values } = useVariableValues(orgId);
+  const { assignments } = useTemplateAssignments(orgId);
 
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
-  const [editingTemplate, setEditingTemplate] = useState<GlobalElementTemplate | null | 'new'>(null);
+  const [editingTemplate, setEditingTemplate] = useState<GlobalElementTemplate | null | 'new'>(
+    initialElementType ? 'new' : null
+  );
+  const [autoElementType, setAutoElementType] = useState<GlobalElementType | undefined>(initialElementType);
+
+  // Consume the initialElementType so it doesn't re-trigger on re-renders
+  useEffect(() => {
+    if (initialElementType) {
+      setEditingTemplate('new');
+      setAutoElementType(initialElementType);
+      onConsumeElementType?.();
+    }
+  }, [initialElementType]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!orgId) {
     return (
@@ -57,9 +75,10 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
           template={editingTemplate === 'new' ? null : editingTemplate}
           definitions={definitions}
           orgId={orgId}
+          initialElementType={autoElementType}
           onSave={createTemplate}
           onUpdate={updateTemplate}
-          onBack={() => setEditingTemplate(null)}
+          onBack={() => { setEditingTemplate(null); setAutoElementType(undefined); }}
         />
       </div>
     );
@@ -98,6 +117,10 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
             <Rocket className="h-4 w-4 mr-2" />
             Deployments
           </TabsTrigger>
+          <TabsTrigger value="drift">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Drift
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="templates" className="mt-6">
@@ -131,6 +154,16 @@ export function GlobalElementsPage({ initialTab = 'templates' }: Props) {
             templates={templates}
             definitions={definitions}
             values={values}
+          />
+        </TabsContent>
+
+        <TabsContent value="drift" className="mt-6">
+          <DriftDetection
+            templates={templates}
+            definitions={definitions}
+            values={values}
+            assignments={assignments}
+            siteGroups={siteGroups}
           />
         </TabsContent>
       </Tabs>

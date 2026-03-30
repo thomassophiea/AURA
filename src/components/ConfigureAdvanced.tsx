@@ -17,9 +17,45 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
+
+/** Shared multi-controller fetch helper for all Advanced tabs */
+function useMultiControllerFetch() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
+
+  const fetchAll = async <T,>(fetcher: () => Promise<T[]>): Promise<T[]> => {
+    if (isOrgScope && siteGroups.length > 0) {
+      const originalBaseUrl = apiService.getBaseUrl();
+      const all: T[] = [];
+      for (const sg of siteGroups) {
+        try {
+          apiService.setBaseUrl(`${sg.controller_url}/management`);
+          const data = await fetcher();
+          const tagged = (data || []).map(item => ({ ...item, _siteGroupId: sg.id, _siteGroupName: sg.name }));
+          all.push(...tagged);
+        } catch (err) {
+          console.warn(`[ConfigureAdvanced] Failed to fetch from ${sg.name}:`, err);
+        }
+      }
+      apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      return all;
+    }
+    return (await fetcher()) || [];
+  };
+
+  const filterBySg = <T,>(items: T[]): T[] => {
+    if (!orgSiteGroupFilter) return items;
+    return items.filter((item: any) => item._siteGroupId === orgSiteGroupFilter);
+  };
+
+  return { isOrgScope, siteGroups, fetchAll, filterBySg, navigateToTemplateCreation };
+}
 
 // ==================== TOPOLOGIES TAB ====================
 function TopologiesTab() {
+  const { fetchAll, filterBySg, isOrgScope, siteGroups, navigateToTemplateCreation } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -39,7 +75,7 @@ function TopologiesTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getTopologies();
+      const data = await fetchAll(() => apiService.getTopologies());
       setItems(Array.isArray(data) ? data : []);
     } catch { setItems([]); }
     setLoading(false);
@@ -103,12 +139,19 @@ function TopologiesTab() {
         <p className="text-sm text-muted-foreground">VLAN/Topology definitions ({items.length})</p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('topology')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
         </div>
       </div>
       <Table>
         <TableHeader>
           <TableRow>
+            {isOrgScope && siteGroups.length > 1 && (
+              <TableHead><div className="flex items-center gap-1"><Server className="h-3 w-3" /><span>Site Group</span></div></TableHead>
+            )}
             <TableHead>Name</TableHead>
             <TableHead>VLAN ID</TableHead>
             <TableHead>Mode</TableHead>
@@ -119,8 +162,11 @@ function TopologiesTab() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {items.map(item => (
+          {filterBySg(items).map(item => (
             <TableRow key={item.id}>
+              {isOrgScope && siteGroups.length > 1 && (
+                <TableCell><Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">{item._siteGroupName || '—'}</Badge></TableCell>
+              )}
               <TableCell className="font-medium">{item.name}</TableCell>
               <TableCell>{item.vlanid}</TableCell>
               <TableCell><Badge variant="outline">{item.mode}</Badge></TableCell>
@@ -213,6 +259,7 @@ function TopologiesTab() {
 
 // ==================== CoS TAB ====================
 function CoSTab() {
+  const { fetchAll, filterBySg, isOrgScope, siteGroups, navigateToTemplateCreation } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -231,8 +278,8 @@ function CoSTab() {
     setLoading(true);
     try {
       const [cosData, rlData] = await Promise.allSettled([
-        apiService.getCoSProfiles(),
-        apiService.getRateLimiters()
+        fetchAll(() => apiService.getCoSProfiles()),
+        fetchAll(() => apiService.getRateLimiters())
       ]);
       setItems(cosData.status === 'fulfilled' && Array.isArray(cosData.value) ? cosData.value : []);
       setRateLimiters(rlData.status === 'fulfilled' && Array.isArray(rlData.value) ? rlData.value : []);
@@ -298,7 +345,11 @@ function CoSTab() {
         <p className="text-sm text-muted-foreground">Class of Service profiles ({items.length})</p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('cos_profile')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
         </div>
       </div>
       <Table>
@@ -389,6 +440,7 @@ function CoSTab() {
 
 // ==================== RATE LIMITERS TAB ====================
 function RateLimitersTab() {
+  const { fetchAll, isOrgScope, navigateToTemplateCreation } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -401,7 +453,7 @@ function RateLimitersTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getRateLimiters();
+      const data = await fetchAll(() => apiService.getRateLimiters());
       setItems(Array.isArray(data) ? data : []);
     } catch { setItems([]); }
     setLoading(false);
@@ -445,7 +497,11 @@ function RateLimitersTab() {
         <p className="text-sm text-muted-foreground">Rate limiters ({items.length}). Max 8 ingress + 8 egress per station.</p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('rate_limiter')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
         </div>
       </div>
       <Table>
@@ -497,6 +553,7 @@ function RateLimitersTab() {
 
 // ==================== AP PROFILES TAB ====================
 function ProfilesTab() {
+  const { fetchAll, isOrgScope, navigateToTemplateCreation } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -515,7 +572,7 @@ function ProfilesTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getProfiles();
+      const data = await fetchAll(() => apiService.getProfiles());
       setItems(Array.isArray(data) ? data : []);
     } catch { setItems([]); }
     setLoading(false);
@@ -580,7 +637,11 @@ function ProfilesTab() {
         <p className="text-sm text-muted-foreground">AP profiles ({items.length})</p>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('ap_profile')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
         </div>
       </div>
       <Table>
@@ -698,6 +759,7 @@ function ProfilesTab() {
 
 // ==================== IoT PROFILES TAB ====================
 function IoTTab() {
+  const { fetchAll } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -714,7 +776,7 @@ function IoTTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getIoTProfiles();
+      const data = await fetchAll(() => apiService.getIoTProfiles());
       setItems(Array.isArray(data) ? data : []);
     } catch { setItems([]); }
     setLoading(false);
@@ -867,6 +929,7 @@ function IoTTab() {
 
 // ==================== MESHPOINTS TAB ====================
 function MeshpointsTab() {
+  const { fetchAll } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -881,7 +944,7 @@ function MeshpointsTab() {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getMeshPoints();
+      const data = await fetchAll(() => apiService.getMeshPoints());
       setItems(Array.isArray(data) ? data : []);
     } catch { setItems([]); }
     setLoading(false);
@@ -1127,6 +1190,7 @@ function AccessControlTab() {
 
 // ==================== LOCATION SERVICES TAB ====================
 function LocationServicesTab() {
+  const { fetchAll } = useMultiControllerFetch();
   const [xlocProfiles, setXlocProfiles] = useState<any[]>([]);
   const [rtlsProfiles, setRtlsProfiles] = useState<any[]>([]);
   const [posProfiles, setPosProfiles] = useState<any[]>([]);
@@ -1144,8 +1208,8 @@ function LocationServicesTab() {
     setLoading(true);
     try {
       const [xloc, rtls, pos, an] = await Promise.allSettled([
-        apiService.getXLocationProfiles(), apiService.getRTLSProfiles(),
-        apiService.getPositioningProfiles(), apiService.getAnalyticsProfiles()
+        fetchAll(() => apiService.getXLocationProfiles()), fetchAll(() => apiService.getRTLSProfiles()),
+        fetchAll(() => apiService.getPositioningProfiles()), fetchAll(() => apiService.getAnalyticsProfiles())
       ]);
       setXlocProfiles(xloc.status === 'fulfilled' && Array.isArray(xloc.value) ? xloc.value : []);
       setRtlsProfiles(rtls.status === 'fulfilled' && Array.isArray(rtls.value) ? rtls.value : []);

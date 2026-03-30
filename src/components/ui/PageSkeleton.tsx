@@ -107,7 +107,7 @@ export function getSkeletonVariant(page: string): SkeletonVariant {
     case 'guest-management':
       return 'table';
     case 'configure-networks':
-    case 'configure-sites':
+    case 'configure-sites-groups':
     case 'configure-policy':
     case 'configure-aaa-policies':
     case 'configure-adoption-rules':

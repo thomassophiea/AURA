@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { useAppContext } from '@/contexts/AppContext';
+import { Server } from 'lucide-react';
 
 interface AdoptionRule {
   id: string;
@@ -90,6 +92,8 @@ const ACTION_TYPES = [
 ];
 
 export function ConfigureAdoptionRules() {
+  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
+  const isOrgScope = navigationScope === 'global';
   const [rules, setRules] = useState<AdoptionRule[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [loading, setLoading] = useState(true);
@@ -112,10 +116,30 @@ export function ConfigureAdoptionRules() {
     loadSites();
   }, []);
 
+  const fetchFromAllControllers = async <T,>(fetcher: () => Promise<T[]>): Promise<T[]> => {
+    if (isOrgScope && siteGroups.length > 0) {
+      const originalBaseUrl = apiService.getBaseUrl();
+      const all: T[] = [];
+      for (const sg of siteGroups) {
+        try {
+          apiService.setBaseUrl(`${sg.controller_url}/management`);
+          const data = await fetcher();
+          const tagged = (data || []).map(item => ({ ...item, _siteGroupId: sg.id, _siteGroupName: sg.name }));
+          all.push(...tagged);
+        } catch (err) {
+          console.warn(`[AdoptionRules] Failed to fetch from ${sg.name}:`, err);
+        }
+      }
+      apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      return all;
+    }
+    return (await fetcher()) || [];
+  };
+
   const loadRules = async () => {
     setLoading(true);
     try {
-      const data = await apiService.getAdoptionRules();
+      const data = await fetchFromAllControllers(() => apiService.getAdoptionRules());
 
       // If no rules from API, use mock data for demonstration
       if (!data || data.length === 0) {
@@ -378,10 +402,15 @@ export function ConfigureAdoptionRules() {
   };
 
   // Filter rules
-  const filteredRules = rules.filter(rule => {
+  // Apply org-level site group filter
+  const sgRules = orgSiteGroupFilter
+    ? rules.filter((r: any) => r._siteGroupId === orgSiteGroupFilter)
+    : rules;
+
+  const filteredRules = sgRules.filter(rule => {
     const matchesSearch = rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          rule.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEnabled = filterEnabled === 'all' || 
+    const matchesEnabled = filterEnabled === 'all' ||
                           (filterEnabled === 'enabled' && rule.enabled) ||
                           (filterEnabled === 'disabled' && !rule.enabled);
     return matchesSearch && matchesEnabled;
@@ -456,6 +485,9 @@ export function ConfigureAdoptionRules() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {isOrgScope && siteGroups.length > 1 && (
+                    <TableHead><div className="flex items-center gap-1"><Server className="h-3 w-3" /><span>Site Group</span></div></TableHead>
+                  )}
                   <TableHead className="w-12">Priority</TableHead>
                   <TableHead className="w-12">Status</TableHead>
                   <TableHead>Rule Name</TableHead>
@@ -468,6 +500,13 @@ export function ConfigureAdoptionRules() {
               <TableBody>
                 {filteredRules.map((rule, index) => (
                   <TableRow key={rule.id}>
+                    {isOrgScope && siteGroups.length > 1 && (
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                          {(rule as any)._siteGroupName || '—'}
+                        </Badge>
+                      </TableCell>
+                    )}
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <Button

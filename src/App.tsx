@@ -26,8 +26,7 @@ const SLEDashboard = lazy(() => import('./components/sle/SLEDashboard').then(m =
 const AlertsEventsEnhanced = lazy(() => import('./components/AlertsEventsEnhanced').then(m => ({ default: m.AlertsEventsEnhanced })));
 const ReportWidgets = lazy(() => import('./components/ReportWidgets').then(m => ({ default: m.ReportWidgets })));
 const ConfigureNetworks = lazy(() => import('./components/ConfigureNetworks').then(m => ({ default: m.ConfigureNetworks })));
-const SiteGroupsPage = lazy(() => import('./components/SiteGroupsPage').then(m => ({ default: m.SiteGroupsPage })));
-const SitesPage = lazy(() => import('./components/SitesPage').then(m => ({ default: m.SitesPage })));
+const SitesAndGroupsPage = lazy(() => import('./components/SitesAndGroupsPage').then(m => ({ default: m.SitesAndGroupsPage })));
 const ConfigurePolicy = lazy(() => import('./components/ConfigurePolicy').then(m => ({ default: m.ConfigurePolicy })));
 const ConfigureAAAPolicies = lazy(() => import('./components/ConfigureAAAPolicies').then(m => ({ default: m.ConfigureAAAPolicies })));
 const ConfigureAdoptionRules = lazy(() => import('./components/ConfigureAdoptionRules').then(m => ({ default: m.ConfigureAdoptionRules })));
@@ -59,6 +58,7 @@ import { apiService, ApiCallLog } from './services/api';
 import { AppContextProvider } from './contexts/AppContext';
 import type { NavigationScope } from './config/navigationScopes';
 import { ORG_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
+import type { GlobalElementType } from './types/globalElements';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
@@ -69,6 +69,7 @@ import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { tenantService } from './services/tenantService';
 import { DevModePanel } from './components/DevModePanel';
+import { SiteGroupFilterDropdown } from './components/SiteGroupFilterDropdown';
 import { VersionDisplay } from './components/VersionDisplay';
 import { toast } from 'sonner';
 import { applyTheme as applyThemeColors } from './lib/themes';
@@ -76,7 +77,7 @@ import { useDeviceDetection } from './hooks/useDeviceDetection';
 
 const pageInfo = {
   'workspace': { title: 'Workspace', description: 'Create custom widgets for Devices, Clients, Licensing, and Alerts' },
-  'service-levels': { title: 'Contextual Insights', description: 'Context-aware network monitoring and analytics' },
+  'service-levels': { title: 'Insights', description: 'Context-aware network monitoring and analytics' },
   'sle-dashboard': { title: 'Service Levels', description: 'SLE metrics with drill-down classifier analysis' },
   'app-insights': { title: 'App Insights', description: 'Application visibility and traffic analytics' },
   'connected-clients': { title: 'Connected Clients', description: 'View and manage connected devices' },
@@ -100,8 +101,7 @@ const pageInfo = {
   'administration': { title: 'Administration', description: 'System administration, users, applications, and licensing' },
   'api-test': { title: 'API Test Tool', description: 'Test and explore API endpoints' },
   'api-documentation': { title: 'API Documentation', description: 'AURA Mobility Core REST API reference' },
-  'configure-site-groups': { title: 'Site Groups', description: 'Manage controller pairs and site group assignments' },
-  'configure-sites': { title: 'Sites', description: 'Manage network sites and their assignments' },
+  'configure-sites-groups': { title: 'Sites & Groups', description: 'Manage site groups, controller pairs, and network sites' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
   'global-templates': { title: 'Global Templates', description: 'Manage configuration templates with variable substitution' },
@@ -138,14 +138,9 @@ export default function App() {
   const [apiLogs, setApiLogs] = useState<ApiCallLog[]>([]);
   const [devPanelHeight, setDevPanelHeight] = useState(0);
   const [siteName, setSiteName] = useState<string>('');
+  const [pendingTemplateType, setPendingTemplateType] = useState<GlobalElementType | null>(null);
 
-  // Cross-page filter for Sites page (set when navigating from Site Groups → Sites)
-  const [siteGroupFilter, setSiteGroupFilter] = useState<{ id: string; name: string } | null>(() => {
-    try {
-      const saved = sessionStorage.getItem('sites-group-filter');
-      return saved ? JSON.parse(saved) : null;
-    } catch { return null; }
-  });
+  // Legacy cross-page filter removed — now handled inside SitesAndGroupsPage tabs
 
   // Global filters for site context
   const { filters, updateFilter } = useGlobalFilters();
@@ -734,6 +729,11 @@ export default function App() {
     setDetailPanel({ isOpen: false, type: null, data: null });
   };
 
+  const handleTemplateCreation = (elementType: GlobalElementType) => {
+    setPendingTemplateType(elementType);
+    handlePageChange('global-templates');
+  };
+
   const handleShowAccessPointDetail = (serialNumber: string, displayName?: string) => {
     setDetailPanel({
       isOpen: true,
@@ -758,18 +758,7 @@ export default function App() {
     });
   };
 
-  const handleNavigateToSites = (siteGroupId: string, siteGroupName: string) => {
-    const filter = { id: siteGroupId, name: siteGroupName };
-    try { sessionStorage.setItem('sites-group-filter', JSON.stringify(filter)); } catch { /* noop */ }
-    setSiteGroupFilter(filter);
-    setCurrentPage('configure-sites');
-    setDetailPanel({ isOpen: false, type: null, data: null });
-  };
-
-  const handleClearSiteGroupFilter = () => {
-    try { sessionStorage.removeItem('sites-group-filter'); } catch { /* noop */ }
-    setSiteGroupFilter(null);
-  };
+  // Navigation between site groups and sites is now handled within SitesAndGroupsPage tabs
 
   // Toggle Network Assistant preference
   const handleToggleNetworkAssistant = (enabled: boolean) => {
@@ -922,24 +911,15 @@ export default function App() {
       case 'configure-advanced':
         return <ConfigureAdvanced />;
       case 'global-templates':
-        return <GlobalElementsPage initialTab="templates" />;
+        return <GlobalElementsPage initialTab="templates" initialElementType={pendingTemplateType ?? undefined} onConsumeElementType={() => setPendingTemplateType(null)} />;
       case 'global-variables':
         return <GlobalElementsPage initialTab="variables" />;
       case 'site-group-settings':
         return <SiteGroupSettingsPage />;
-      case 'configure-site-groups':
+      case 'configure-sites-groups':
         return (
-          <SiteGroupsPage
-            onNavigateToSites={handleNavigateToSites}
-          />
-        );
-      // Note: SiteGroupsPage uses useAppContext().enterSiteGroup for entering site groups
-      case 'configure-sites':
-        return (
-          <SitesPage
-            siteGroupFilter={siteGroupFilter}
-            onClearFilter={handleClearSiteGroupFilter}
-            onShowDetail={handleShowSiteDetail}
+          <SitesAndGroupsPage
+            onShowSiteDetail={handleShowSiteDetail}
           />
         );
       case 'tools':
@@ -1053,7 +1033,7 @@ export default function App() {
   }
 
   return (
-    <AppContextProvider navigationScope={navigationScope} onNavigationScopeChange={setNavigationScope} onPageChange={handlePageChange}>
+    <AppContextProvider navigationScope={navigationScope} onNavigationScopeChange={setNavigationScope} onPageChange={handlePageChange} onTemplateCreation={handleTemplateCreation}>
     <>
       {/* Unified floating-card layout — all themes */}
       <div
@@ -1079,6 +1059,7 @@ export default function App() {
             <span className="text-muted-foreground" style={{ fontWeight: 400 }}>Platform ONE™ | Networking</span>
           </span>
           <div style={{ flex: 1 }} />
+          {navigationScope === 'global' && <SiteGroupFilterDropdown />}
           {(() => {
             const controller = tenantService.getCurrentController();
             const org = tenantService.getCurrentOrganization();
