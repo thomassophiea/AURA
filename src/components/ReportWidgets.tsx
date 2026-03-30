@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { apiService } from '../services/api';
+import { useAppContext } from '@/contexts/AppContext';
 import { toast } from 'sonner';
 
 interface ReportWidget {
@@ -45,6 +46,7 @@ interface WidgetData {
 }
 
 export function ReportWidgets() {
+  const { navigationScope, siteGroups } = useAppContext();
   const [widgets, setWidgets] = useState<ReportWidget[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -399,12 +401,53 @@ export function ReportWidgets() {
   const loadWidgets = async () => {
     try {
       setLoading(true);
-      
-      // Fetch data for all widgets concurrently
-      const widgetPromises = widgetDefinitions.map(widget => fetchWidgetData(widget));
-      const loadedWidgets = await Promise.all(widgetPromises);
-      
-      setWidgets(loadedWidgets);
+
+      const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
+
+      if (isOrgScope) {
+        // Org scope: fetch from all controllers and aggregate
+        const originalBaseUrl = apiService.getBaseUrl();
+        const allResults: ReportWidget[][] = [];
+
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const results = await Promise.all(widgetDefinitions.map(w => fetchWidgetData(w)));
+            allResults.push(results);
+          } catch (err) {
+            console.warn(`[ReportWidgets] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+
+        // Merge: sum numeric values, pick worst status
+        const merged = widgetDefinitions.map((def, idx) => {
+          let totalValue = 0;
+          let worstStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+          const statusPriority = { healthy: 0, warning: 1, critical: 2 };
+
+          for (const controllerWidgets of allResults) {
+            const w = controllerWidgets[idx];
+            if (w && typeof w.value === 'number') totalValue += w.value;
+            if (w && statusPriority[w.status] > statusPriority[worstStatus]) worstStatus = w.status;
+          }
+
+          // For percentage-based widgets (ap-health, signal-quality), average instead of sum
+          if ((def.id === 'ap-health' || def.id === 'signal-quality') && allResults.length > 0) {
+            totalValue = Math.round(totalValue / allResults.length);
+          }
+
+          return { ...def, value: totalValue, status: worstStatus, lastUpdated: new Date() } as ReportWidget;
+        });
+
+        setWidgets(merged);
+      } else {
+        // Single controller
+        const widgetPromises = widgetDefinitions.map(widget => fetchWidgetData(widget));
+        const loadedWidgets = await Promise.all(widgetPromises);
+        setWidgets(loadedWidgets);
+      }
     } catch (error) {
       console.log('SUPPRESSED_ANALYTICS_ERROR: Error loading report widgets:', error);
       toast.error('Failed to load some widgets', {
@@ -424,11 +467,11 @@ export function ReportWidgets() {
 
   useEffect(() => {
     loadWidgets();
-    
+
     // Set up auto-refresh every 30 seconds
     const interval = setInterval(loadWidgets, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filter widgets based on search and filters
   const filteredWidgets = widgets.filter(widget => {

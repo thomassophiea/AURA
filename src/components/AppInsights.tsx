@@ -53,9 +53,10 @@ import {
   ChevronUp,
   ChevronDown
 } from 'lucide-react';
-import { Site } from '../services/api';
+import { Site, apiService } from '../services/api';
 import { PageHeader } from './PageHeader';
 import { SaveToWorkspace } from './SaveToWorkspace';
+import { useAppContext } from '@/contexts/AppContext';
 import {
   PieChart as RechartsPieChart,
   Pie,
@@ -193,6 +194,7 @@ interface AppInsightsProps {
 }
 
 export function AppInsights({ api }: AppInsightsProps) {
+  const { navigationScope, siteGroups } = useAppContext();
   const [data, setData] = useState<AppInsightsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -215,21 +217,67 @@ export function AppInsights({ api }: AppInsightsProps) {
     }
   };
 
+  // Merge two AppInsightsData by summing distributionStats values per id
+  const mergeInsights = (a: AppInsightsData, b: AppInsightsData): AppInsightsData => {
+    const mergeReports = (ra: AppGroupReport[], rb: AppGroupReport[]): AppGroupReport[] => {
+      if (!ra?.length) return rb || [];
+      if (!rb?.length) return ra;
+      const base = { ...ra[0] };
+      const map = new Map<string, AppGroupStat>();
+      for (const s of base.distributionStats) map.set(s.id, { ...s });
+      for (const s of (rb[0]?.distributionStats || [])) {
+        const existing = map.get(s.id);
+        if (existing) existing.value += s.value;
+        else map.set(s.id, { ...s });
+      }
+      base.distributionStats = Array.from(map.values()).sort((x, y) => y.value - x.value);
+      return [base];
+    };
+    return {
+      topAppGroupsByUsage: mergeReports(a.topAppGroupsByUsage, b.topAppGroupsByUsage),
+      topAppGroupsByClientCountReport: mergeReports(a.topAppGroupsByClientCountReport, b.topAppGroupsByClientCountReport),
+      topAppGroupsByThroughputReport: mergeReports(a.topAppGroupsByThroughputReport, b.topAppGroupsByThroughputReport),
+      worstAppGroupsByUsage: mergeReports(a.worstAppGroupsByUsage, b.worstAppGroupsByUsage),
+      worstAppGroupsByClientCountReport: mergeReports(a.worstAppGroupsByClientCountReport, b.worstAppGroupsByClientCountReport),
+      worstAppGroupsByThroughputReport: mergeReports(a.worstAppGroupsByThroughputReport, b.worstAppGroupsByThroughputReport),
+    };
+  };
+
   // Fetch data
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const siteId = selectedSite !== 'all' ? selectedSite : undefined;
-      const response = await api.getAppInsights(duration, siteId);
-      setData(response);
+      const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
+
+      if (isOrgScope) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        let merged: AppInsightsData | null = null;
+
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const response = await api.getAppInsights(duration, siteId);
+            merged = merged ? mergeInsights(merged, response) : response;
+          } catch (err) {
+            console.warn(`[AppInsights] Failed to fetch from ${sg.name}:`, err);
+          }
+        }
+
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+        if (merged) setData(merged);
+      } else {
+        const response = await api.getAppInsights(duration, siteId);
+        setData(response);
+      }
       setLastRefresh(new Date());
     } catch (err) {
       setError('Failed to load application insights data');
     } finally {
       setLoading(false);
     }
-  }, [api, duration, selectedSite]);
+  }, [api, duration, selectedSite, navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { loadSites(); }, []);
   useEffect(() => { fetchData(); }, [fetchData]);
