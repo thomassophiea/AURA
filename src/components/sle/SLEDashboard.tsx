@@ -411,35 +411,32 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       </div>
 
       {/* Summary Bar */}
-      <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex items-center gap-2 pb-2">
-          {/* Overall score */}
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50 flex-shrink-0">
-            <Target className="h-4 w-4 text-purple-400" />
-            <span className="text-xs font-medium">Overall</span>
-            <span className="text-sm font-bold" style={{ color: SLE_STATUS_COLORS[overallScore >= 95 ? 'good' : overallScore >= 80 ? 'warn' : 'poor'].hex }}>
-              {overallScore.toFixed(1)}%
-            </span>
-          </div>
-
-          {/* Per-SLE pills - clickable to edit thresholds */}
-          {wirelessSLEs.map(sle => (
-            <button
-              key={sle.id}
-              onClick={() => handleSLEClick(sle.id)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/50 hover:bg-muted/40 cursor-pointer transition-all flex-shrink-0 group"
-              title={`Click to adjust ${sle.name} threshold`}
-            >
-              <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{sle.name}</span>
-              <span className="text-xs font-bold" style={{ color: SLE_STATUS_COLORS[sle.status].hex }}>
-                {sle.successRate.toFixed(1)}%
-              </span>
-              <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
-            </button>
-          ))}
+      <div className="flex items-center gap-2 flex-wrap">
+        {/* Overall score */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
+          <Target className="h-4 w-4 text-purple-400" />
+          <span className="text-xs font-medium">Overall</span>
+          <span className="text-sm font-bold" style={{ color: SLE_STATUS_COLORS[overallScore >= 95 ? 'good' : overallScore >= 80 ? 'warn' : 'poor'].hex }}>
+            {overallScore.toFixed(1)}%
+          </span>
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+
+        {/* Per-SLE pills - clickable to edit thresholds */}
+        {wirelessSLEs.map(sle => (
+          <button
+            key={sle.id}
+            onClick={() => handleSLEClick(sle.id)}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-muted/20 border border-border/30 hover:border-primary/50 hover:bg-muted/40 cursor-pointer transition-all group"
+            title={`Click to adjust ${sle.name} threshold`}
+          >
+            <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{sle.name}</span>
+            <span className="text-xs font-bold" style={{ color: SLE_STATUS_COLORS[sle.status].hex }}>
+              {sle.successRate.toFixed(1)}%
+            </span>
+            <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
+          </button>
+        ))}
+      </div>
 
       {/* Tabs: Wireless / Wired */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
