@@ -8,7 +8,10 @@ import {
   ExternalLink,
   ChevronRight,
   LogOut,
-  Building2
+  Building2,
+  Moon,
+  Sun,
+  Braces,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -143,6 +146,16 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
     },
     {
       type: 'item',
+      label: `Theme: ${theme === 'ep1' ? 'Dark' : theme === 'dev' ? 'Dev' : 'Light'}`,
+      icon: theme === 'ep1' ? Moon : theme === 'dev' ? Braces : Sun,
+      action: onThemeToggle,
+      keepOpen: true,
+    },
+    {
+      type: 'separator'
+    },
+    {
+      type: 'item',
       label: 'Sign Out',
       icon: LogOut,
       action: onLogout,
@@ -154,7 +167,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
     if (item.action) {
       item.action();
     }
-    if (!item.hasSubmenu) {
+    if (!item.hasSubmenu && !item.keepOpen) {
       setIsOpen(false);
     }
   };

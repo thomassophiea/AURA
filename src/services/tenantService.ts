@@ -393,8 +393,8 @@ class TenantService {
     if (controller && !this.currentOrg) {
       this.currentOrg = {
         id: controller.org_id || 'default-org',
-        name: 'AURA Organization',
-        slug: 'aura-org',
+        name: 'TSOPHIEA',
+        slug: 'tsophiea',
       };
     }
 

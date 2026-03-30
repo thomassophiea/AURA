@@ -406,21 +406,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           </>
         )}
 
-        {/* Help - always visible */}
-        <Button
-          variant={currentPage === 'help' ? "default" : "ghost"}
-          className={cn(
-            "w-full justify-start h-10",
-            isCollapsed ? "px-2" : "px-3",
-            currentPage === 'help'
-              ? "bg-sidebar-primary text-sidebar-primary-foreground"
-              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )}
-          onClick={() => handlePageChange('help')}
-        >
-          <HelpCircle className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-          {!isCollapsed && <span>Help</span>}
-        </Button>
       </nav>
 
       <Separator className="bg-sidebar-border" />
@@ -436,41 +421,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           </div>
         )}
         
-        {/* Theme Toggle - Desktop only (mobile has it in user menu) */}
-        {onThemeToggle && !device.isMobile && (
-          <Button
-            variant="ghost"
-            onClick={onThemeToggle}
-            className={cn(
-              "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent",
-              isCollapsed ? "px-2" : "px-3"
-            )}
-            title={`Switch theme (current: ${theme})`}
-          >
-            {theme === 'ep1' ? (
-              <Moon className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : theme === 'dev' ? (
-              <Braces className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            ) : (
-              <Sun className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-            )}
-            {!isCollapsed && (
-              <span>{theme === 'ep1' ? 'Dark' : theme === 'dev' ? 'Dev' : 'Light'}</span>
-            )}
-          </Button>
-        )}
-        
-        <Button
-          variant="ghost"
-          onClick={onLogout}
-          className={cn(
-            "w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent",
-            isCollapsed ? "px-2" : "px-3"
-          )}
-        >
-          <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-          {!isCollapsed && <span>Logout</span>}
-        </Button>
       </div>
     </div>
     </>
