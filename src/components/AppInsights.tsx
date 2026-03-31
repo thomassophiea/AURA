@@ -204,12 +204,39 @@ export function AppInsights({ api }: AppInsightsProps) {
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [isLoadingSites, setIsLoadingSites] = useState(false);
 
-  // Load sites
+  // Load sites from all controllers at org scope
   const loadSites = async () => {
     setIsLoadingSites(true);
     try {
-      const sitesData = await api.getSites();
-      setSites(Array.isArray(sitesData) ? sitesData : []);
+      let allSites: Site[] = [];
+      if (navigationScope === 'global' && siteGroups.length > 0) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const sgSites = await apiService.getSites();
+            allSites.push(...(Array.isArray(sgSites) ? sgSites : []));
+          } catch (err) {
+            console.warn(`[AppInsights] Failed to fetch sites from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        const sitesData = await api.getSites();
+        allSites = Array.isArray(sitesData) ? sitesData : [];
+      }
+      // Normalize name and deduplicate by id
+      const seen = new Set<string>();
+      const normalized = allSites
+        .map(s => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
+        .filter(s => {
+          const key = s.id || s.name;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setSites(normalized);
     } catch (err) {
       setSites([]);
     } finally {
@@ -279,7 +306,7 @@ export function AppInsights({ api }: AppInsightsProps) {
     }
   }, [api, duration, selectedSite, navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadSites(); }, []);
+  useEffect(() => { loadSites(); }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // Prepare chart data

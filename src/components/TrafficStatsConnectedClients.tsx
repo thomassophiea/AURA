@@ -12,7 +12,7 @@ import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download,
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, Station } from '../services/api';
+import { apiService, Station, Site } from '../services/api';
 import { trafficService } from '../services/traffic';
 import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
 import { isRandomizedMac, getMacAddressInfo } from '../services/macAddressUtils';
@@ -38,6 +38,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [selectedSite, setSelectedSite] = useState<string>('all');
+  const [sites, setSites] = useState<Site[]>([]);
 
   const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
     storageKey: 'client-search',
@@ -115,8 +116,44 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     }
   };
 
+  const loadSites = async () => {
+    try {
+      let allSites: Site[] = [];
+      if (navigationScope === 'global' && siteGroups.length > 0) {
+        const originalBaseUrl = apiService.getBaseUrl();
+        for (const sg of siteGroups) {
+          try {
+            apiService.setBaseUrl(`${sg.controller_url}/management`);
+            const sgSites = await apiService.getSites();
+            allSites.push(...(Array.isArray(sgSites) ? sgSites : []));
+          } catch (err) {
+            console.warn(`[ConnectedClients] Failed to fetch sites from ${sg.name}:`, err);
+          }
+        }
+        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+      } else {
+        const sitesData = await apiService.getSites();
+        allSites = Array.isArray(sitesData) ? sitesData : [];
+      }
+      // Normalize name and deduplicate
+      const seen = new Set<string>();
+      const normalized = allSites
+        .map(s => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
+        .filter(s => {
+          if (seen.has(s.name)) return false;
+          seen.add(s.name);
+          return true;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setSites(normalized);
+    } catch (err) {
+      console.warn('[ConnectedClients] Failed to load sites:', err);
+    }
+  };
+
   useEffect(() => {
     loadStations();
+    loadSites();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadStations = async () => {
@@ -366,16 +403,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       };
     }
   };
-
-  // Derive unique site names from loaded stations
-  const availableSites = useMemo(() => {
-    const siteSet = new Map<string, string>();
-    stations.forEach(s => {
-      const name = s.siteName;
-      if (name) siteSet.set(name, name);
-    });
-    return Array.from(siteSet.values()).sort();
-  }, [stations]);
 
   // Filter stations by site group (org scope), site, compound search, and time range
   const siteGroupFiltered = orgSiteGroupFilter
@@ -695,9 +722,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sites</SelectItem>
-              {availableSites.map(site => (
-                <SelectItem key={site} value={site}>
-                  {site}
+              {sites.map(site => (
+                <SelectItem key={site.id || site.name} value={site.name}>
+                  {site.name}
                 </SelectItem>
               ))}
             </SelectContent>

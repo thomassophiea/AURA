@@ -144,6 +144,11 @@ export function ServiceLevels() {
     };
   }, []);
 
+  // Re-fetch filter options when navigation scope or site groups change
+  useEffect(() => {
+    loadFilterOptions();
+  }, [navigationScope, appSiteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // When scope changes, update selected metrics to ALL metrics in the new scope
   useEffect(() => {
     const allMetrics = METRIC_CATALOG[scope].map(m => m.key);
