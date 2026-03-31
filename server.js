@@ -2,6 +2,8 @@
 import express from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
+import helmet from 'helmet';
+import expressRateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -12,27 +14,60 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Default Campus Controller URL (fallback if no dynamic controller specified)
-const DEFAULT_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL || 'https://tsophiea.ddns.net';
+const DEFAULT_CONTROLLER_URL = process.env.CAMPUS_CONTROLLER_URL; // Required env var, validated on startup
 
 // Map to track active controller URLs per session (could be enhanced with Redis for production)
 const controllerSessions = new Map();
 
 console.log('[Proxy Server] Starting...');
-console.log('[Proxy Server] Default Target:', DEFAULT_CONTROLLER_URL);
 console.log('[Proxy Server] Port:', PORT);
 console.log('[Proxy Server] Multi-controller support: ENABLED');
 
 // Runtime environment validation
 console.log('[Proxy Server] --- Runtime Environment ---');
+
+// Require CAMPUS_CONTROLLER_URL (no fallback to hardcoded domain)
 if (!process.env.CAMPUS_CONTROLLER_URL) {
-  console.warn('[Proxy Server] ⚠  CAMPUS_CONTROLLER_URL not set — using hardcoded default (tsophiea.ddns.net)');
+  console.error('[Proxy Server] ❌ CRITICAL: CAMPUS_CONTROLLER_URL environment variable is required');
+  process.exit(1);
 }
+console.log('[Proxy Server] ✓ CAMPUS_CONTROLLER_URL configured');
+
+// Warn if ALLOWED_ORIGINS not configured in production
 if (!process.env.ALLOWED_ORIGINS) {
-  console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set — CORS will allow all origins (set this in production!)');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[Proxy Server] ❌ CRITICAL: CORS_ORIGINS must be set in production');
+    process.exit(1);
+  }
+  console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set — CORS will allow all origins (DEV ONLY)');
 } else {
   console.log('[Proxy Server] ✓ ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS);
 }
+
+// Warn about permissive security settings in production
+if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0') {
+    console.warn('[Proxy Server] ⚠  NODE_TLS_REJECT_UNAUTHORIZED=0 in production — this disables certificate verification');
+  }
+  if (process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS.includes('*')) {
+    console.warn('[Proxy Server] ⚠  WARNING: CORS_ORIGINS contains wildcard in production — this is a security risk');
+  }
+}
+
 console.log('[Proxy Server] --------------------------');
+
+// Security headers using helmet middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+}));
 
 // Enable CORS for all routes
 // ALLOWED_ORIGINS: comma-separated list of permitted origins (e.g. https://aura.example.com)
@@ -83,6 +118,19 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
   // X-XSS-Protection is deprecated in modern browsers; setting to 0 disables
+
+// Rate limiting for API endpoints
+const apiLimiter = expressRateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // Default: 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10), // Default: 100 requests
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all /api/* routes
+app.use('/api/', apiLimiter);
+
   // the legacy XSS auditor which can itself introduce vulnerabilities.
   res.setHeader('X-XSS-Protection', '0');
   next();
