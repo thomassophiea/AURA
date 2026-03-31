@@ -36,10 +36,10 @@ console.log('[Proxy Server] ✓ CAMPUS_CONTROLLER_URL configured');
 // Warn if ALLOWED_ORIGINS not configured in production
 if (!process.env.ALLOWED_ORIGINS) {
   if (process.env.NODE_ENV === 'production') {
-    console.error('[Proxy Server] ❌ CRITICAL: CORS_ORIGINS must be set in production');
-    process.exit(1);
+    console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set in production — CORS will allow all origins. Set ALLOWED_ORIGINS for tighter security.');
+  } else {
+    console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set — CORS will allow all origins (DEV ONLY)');
   }
-  console.warn('[Proxy Server] ⚠  ALLOWED_ORIGINS not set — CORS will allow all origins (DEV ONLY)');
 } else {
   console.log('[Proxy Server] ✓ ALLOWED_ORIGINS:', process.env.ALLOWED_ORIGINS);
 }
