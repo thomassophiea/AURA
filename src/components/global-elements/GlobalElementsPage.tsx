@@ -64,10 +64,10 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
   // Template editor view
   if (editingTemplate !== null) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div>
-          <h1 className="text-2xl mb-1">Global Elements</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-xl font-semibold mb-0.5">Global Elements</h1>
+          <p className="text-xs text-muted-foreground">
             Configuration templates with variable substitution
           </p>
         </div>
@@ -85,45 +85,51 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl mb-1">Global Elements</h1>
-        <p className="text-sm text-muted-foreground">
-          Define reusable configuration templates with hierarchical variable substitution
+        <h1 className="text-xl font-semibold mb-0.5">Global Elements</h1>
+        <p className="text-xs text-muted-foreground">
+          Configuration templates with variable substitution
         </p>
       </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
-        <TabsList>
-          <TabsTrigger value="templates">
-            <Layers className="h-4 w-4 mr-2" />
-            Templates
-          </TabsTrigger>
-          <TabsTrigger value="variables">
-            <Braces className="h-4 w-4 mr-2" />
-            Variables
-          </TabsTrigger>
-          <TabsTrigger value="assignments">
-            <Link2 className="h-4 w-4 mr-2" />
-            Assignments
-          </TabsTrigger>
-          <TabsTrigger value="preview">
-            <Eye className="h-4 w-4 mr-2" />
-            Preview
-          </TabsTrigger>
-          <TabsTrigger value="deployments">
-            <Rocket className="h-4 w-4 mr-2" />
-            Deployments
-          </TabsTrigger>
-          <TabsTrigger value="drift">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Drift
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="inline-flex w-auto min-w-full sm:min-w-0">
+            <TabsTrigger value="templates" className="text-xs gap-1.5 px-2.5">
+              <Layers className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Templates</span>
+              <span className="xs:hidden">Tpl</span>
+            </TabsTrigger>
+            <TabsTrigger value="variables" className="text-xs gap-1.5 px-2.5">
+              <Braces className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Variables</span>
+              <span className="xs:hidden">Vars</span>
+            </TabsTrigger>
+            <TabsTrigger value="assignments" className="text-xs gap-1.5 px-2.5">
+              <Link2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Assignments</span>
+              <span className="sm:hidden">Assign</span>
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="text-xs gap-1.5 px-2.5">
+              <Eye className="h-3.5 w-3.5" />
+              Preview
+            </TabsTrigger>
+            <TabsTrigger value="deployments" className="text-xs gap-1.5 px-2.5">
+              <Rocket className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Deployments</span>
+              <span className="sm:hidden">Deploy</span>
+            </TabsTrigger>
+            <TabsTrigger value="drift" className="text-xs gap-1.5 px-2.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Drift
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-        <TabsContent value="templates" className="mt-6">
+        <TabsContent value="templates" className="mt-4">
           <TemplateList
             templates={templates}
             onEdit={t => setEditingTemplate(t)}
@@ -133,15 +139,15 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
           />
         </TabsContent>
 
-        <TabsContent value="variables" className="mt-6">
+        <TabsContent value="variables" className="mt-4">
           <VariableManagement />
         </TabsContent>
 
-        <TabsContent value="assignments" className="mt-6">
+        <TabsContent value="assignments" className="mt-4">
           <AssignmentManager />
         </TabsContent>
 
-        <TabsContent value="preview" className="mt-6">
+        <TabsContent value="preview" className="mt-4">
           <ResolutionPreview
             templates={templates}
             definitions={definitions}
@@ -149,7 +155,7 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
           />
         </TabsContent>
 
-        <TabsContent value="deployments" className="mt-6">
+        <TabsContent value="deployments" className="mt-4">
           <DeploymentHistory
             templates={templates}
             definitions={definitions}
@@ -157,7 +163,7 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
           />
         </TabsContent>
 
-        <TabsContent value="drift" className="mt-6">
+        <TabsContent value="drift" className="mt-4">
           <DriftDetection
             templates={templates}
             definitions={definitions}

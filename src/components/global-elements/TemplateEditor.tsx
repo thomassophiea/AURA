@@ -168,159 +168,168 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex flex-col lg:flex-row gap-4">
         {/* Left: Metadata */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Template Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="tpl-name">Name</Label>
-              <Input
-                id="tpl-name"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="e.g., Corporate WLAN"
-                required
-              />
-            </div>
+        <div className="w-full lg:w-80 lg:min-w-[280px] lg:max-w-xs shrink-0">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium">Template Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="tpl-name" className="text-xs">Name</Label>
+                <Input
+                  id="tpl-name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="e.g., Corporate WLAN"
+                  className="h-8 text-sm"
+                  required
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tpl-type">Element Type</Label>
-              <Select
-                value={elementType}
-                onValueChange={v => setElementType(v as GlobalElementType)}
-                disabled={isEditing}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tpl-type" className="text-xs">Element Type</Label>
+                <Select
+                  value={elementType}
+                  onValueChange={v => setElementType(v as GlobalElementType)}
+                  disabled={isEditing}
+                >
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tpl-desc">Description</Label>
-              <Input
-                id="tpl-desc"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="Optional description"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tpl-desc" className="text-xs">Description</Label>
+                <Input
+                  id="tpl-desc"
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                  placeholder="Optional description"
+                  className="h-8 text-sm"
+                />
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="tpl-tags">Tags</Label>
-              <Input
-                id="tpl-tags"
-                value={tags}
-                onChange={e => setTags(e.target.value)}
-                placeholder="Comma-separated tags"
-              />
-            </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="tpl-tags" className="text-xs">Tags</Label>
+                <Input
+                  id="tpl-tags"
+                  value={tags}
+                  onChange={e => setTags(e.target.value)}
+                  placeholder="Comma-separated tags"
+                  className="h-8 text-sm"
+                />
+              </div>
 
-            <div className="flex items-center justify-between">
-              <Label htmlFor="tpl-active">Active</Label>
-              <Switch
-                id="tpl-active"
-                checked={isActive}
-                onCheckedChange={setIsActive}
-              />
-            </div>
+              <div className="flex items-center justify-between pt-1">
+                <Label htmlFor="tpl-active" className="text-xs">Active</Label>
+                <Switch
+                  id="tpl-active"
+                  checked={isActive}
+                  onCheckedChange={setIsActive}
+                />
+              </div>
 
-            {/* Used variables summary */}
-            {usedTokens.length > 0 && (
-              <div className="space-y-2 pt-4 border-t">
-                <Label className="text-xs text-muted-foreground">Variables Used</Label>
-                <div className="flex flex-wrap gap-1">
-                  {usedTokens.map(token => (
-                    <Badge
-                      key={token}
-                      variant={undefinedTokens.includes(token) ? 'destructive' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {`{{${token}}}`}
-                    </Badge>
-                  ))}
+              {/* Used variables summary */}
+              {usedTokens.length > 0 && (
+                <div className="space-y-2 pt-3 border-t">
+                  <Label className="text-xs text-muted-foreground">Variables Used</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {usedTokens.map(token => (
+                      <Badge
+                        key={token}
+                        variant={undefinedTokens.includes(token) ? 'destructive' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {`{{${token}}}`}
+                      </Badge>
+                    ))}
+                  </div>
+                  {undefinedTokens.length > 0 && (
+                    <p className="text-xs text-destructive">
+                      {undefinedTokens.length} undefined variable{undefinedTokens.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
                 </div>
-                {undefinedTokens.length > 0 && (
-                  <p className="text-xs text-destructive">
-                    {undefinedTokens.length} undefined variable{undefinedTokens.length !== 1 ? 's' : ''}
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* Right: Config Payload Editor (spans 2 columns) */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Configuration Payload</CardTitle>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={viewMode === 'json' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('json')}
-                >
-                  <Braces className="h-4 w-4 mr-1" />
-                  JSON
-                </Button>
-                <Button
-                  variant={viewMode === 'form' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setViewMode('form')}
-                >
-                  <FormInput className="h-4 w-4 mr-1" />
-                  Form
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
-                  <Plus className="h-4 w-4 mr-1" />
-                  Variable
-                </Button>
+        {/* Right: Config Payload Editor */}
+        <div className="flex-1 min-w-0">
+          <Card className="h-full flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <CardTitle className="text-sm font-medium">Configuration Payload</CardTitle>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant={viewMode === 'json' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => setViewMode('json')}
+                  >
+                    <Braces className="h-3.5 w-3.5 mr-1" />
+                    JSON
+                  </Button>
+                  <Button
+                    variant={viewMode === 'form' ? 'default' : 'outline'}
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => setViewMode('form')}
+                  >
+                    <FormInput className="h-3.5 w-3.5 mr-1" />
+                    Form
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => setPickerOpen(true)}>
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Variable
+                  </Button>
+                </div>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {viewMode === 'json' ? (
-              <div className="space-y-2">
-                <Textarea
-                  ref={textareaRef}
-                  value={jsonText}
-                  onChange={e => handleJsonChange(e.target.value)}
-                  className="font-mono text-sm min-h-[400px] resize-y"
-                  placeholder='{"serviceName": "{{site_name}}-Corporate", "vlanId": "{{employee_vlan}}"}'
-                />
-                {jsonError && (
-                  <p className="text-xs text-destructive">{jsonError}</p>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Form view provides structured editing for common fields.
-                  Switch to JSON view for full control.
-                </p>
-                <FormView
-                  jsonText={jsonText}
-                  elementType={elementType}
-                  onJsonChange={handleJsonChange}
-                  definitions={definitions}
-                />
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent className="flex-1">
+              {viewMode === 'json' ? (
+                <div className="space-y-2 h-full">
+                  <Textarea
+                    ref={textareaRef}
+                    value={jsonText}
+                    onChange={e => handleJsonChange(e.target.value)}
+                    className="font-mono text-sm min-h-[300px] lg:min-h-[400px] resize-y w-full"
+                    placeholder='{"serviceName": "{{site_name}}-Corporate", "vlanId": "{{employee_vlan}}"}'
+                  />
+                  {jsonError && (
+                    <p className="text-xs text-destructive">{jsonError}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Form view provides structured editing for common fields.
+                    Switch to JSON view for full control.
+                  </p>
+                  <FormView
+                    jsonText={jsonText}
+                    elementType={elementType}
+                    onJsonChange={handleJsonChange}
+                    definitions={definitions}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Save bar */}
-      <div className="flex items-center justify-end gap-3 pt-4 border-t">
+      <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-2 sm:gap-3 pt-4 border-t">
         <Button variant="outline" onClick={onBack} disabled={saving}>
           Cancel
         </Button>

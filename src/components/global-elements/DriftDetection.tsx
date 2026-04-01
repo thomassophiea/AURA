@@ -68,7 +68,7 @@ export function DriftDetection({ templates, definitions, values, assignments, si
         </CardHeader>
         {summary && (
           <CardContent>
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <StatCard label="In Sync" count={summary.in_sync} variant="success" />
               <StatCard label="Drifted" count={summary.drifted} variant="warning" />
               <StatCard label="Missing" count={summary.missing} variant="error" />
@@ -205,10 +205,10 @@ function DriftResultRow({ result, onRedeploy }: { result: DriftCheckResult; onRe
           <TableCell colSpan={6} className="p-0">
             <div className="bg-muted/20 p-3 space-y-1">
               {result.diffs.map((diff, i) => (
-                <div key={i} className="font-mono text-xs grid grid-cols-3 gap-2 py-1 border-b border-border/50 last:border-0">
-                  <span className="text-muted-foreground">{diff.path}</span>
-                  <span className="text-emerald-400">expected: {formatValue(diff.expected)}</span>
-                  <span className="text-red-400">actual: {formatValue(diff.actual)}</span>
+                <div key={i} className="font-mono text-xs flex flex-col sm:grid sm:grid-cols-3 gap-0.5 sm:gap-2 py-1.5 border-b border-border/50 last:border-0">
+                  <span className="text-muted-foreground font-semibold sm:font-normal truncate">{diff.path}</span>
+                  <span className="text-emerald-400 truncate">expected: {formatValue(diff.expected)}</span>
+                  <span className="text-red-400 truncate">actual: {formatValue(diff.actual)}</span>
                 </div>
               ))}
             </div>

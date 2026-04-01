@@ -106,7 +106,7 @@ export function VariableManagement() {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="flex flex-col lg:flex-row gap-4">
       {/* Left Panel: Variable Definitions */}
       <Card>
         <CardHeader>

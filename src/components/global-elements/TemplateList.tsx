@@ -53,127 +53,128 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 w-full sm:w-auto">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search templates..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="pl-9 h-9"
-            />
-          </div>
-          <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as GlobalElementType | 'all')}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All types</SelectItem>
-              {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative flex-1 min-w-[180px] max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search templates..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9 h-8 text-sm"
+          />
         </div>
-        <Button size="sm" onClick={onCreate}>
-          <Plus className="h-4 w-4 mr-2" />
+        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as GlobalElementType | 'all')}>
+          <SelectTrigger className="w-[150px] h-8 text-sm">
+            <SelectValue placeholder="All types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
+              <SelectItem key={value} value={value}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex-1 min-w-0" />
+        <Button size="sm" className="h-8 text-sm shrink-0" onClick={onCreate}>
+          <Plus className="h-4 w-4 mr-1.5" />
           New Template
         </Button>
       </div>
 
       {/* Table */}
       {filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <FileCode2 className="h-8 w-8 mx-auto mb-3 opacity-50" />
-          <p className="text-sm">
+        <div className="text-center py-16 text-muted-foreground">
+          <FileCode2 className="h-10 w-10 mx-auto mb-4 opacity-40" />
+          <p className="text-sm font-medium">
             {templates.length === 0
               ? 'No templates created yet'
               : 'No templates match your filter'}
           </p>
           {templates.length === 0 && (
-            <p className="text-xs mt-1">Templates let you define reusable configuration with variables</p>
+            <p className="text-xs mt-1.5 text-muted-foreground/70">Templates let you define reusable configuration with variables</p>
           )}
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Variables</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[100px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filtered.map(t => {
-              const tokenCount = templateResolver.extractTokens(t.config_payload).length;
-              return (
-                <TableRow
-                  key={t.id}
-                  className="cursor-pointer"
-                  onClick={() => onEdit(t)}
-                >
-                  <TableCell>
-                    <div>
-                      <span className="font-medium">{t.name}</span>
-                      {t.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+        <div className="rounded-md border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Name</TableHead>
+                <TableHead className="text-xs">Type</TableHead>
+                <TableHead className="text-xs hidden sm:table-cell">Variables</TableHead>
+                <TableHead className="text-xs hidden md:table-cell">Version</TableHead>
+                <TableHead className="text-xs">Status</TableHead>
+                <TableHead className="w-[90px] text-xs" />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filtered.map(t => {
+                const tokenCount = templateResolver.extractTokens(t.config_payload).length;
+                return (
+                  <TableRow
+                    key={t.id}
+                    className="cursor-pointer"
+                    onClick={() => onEdit(t)}
+                  >
+                    <TableCell>
+                      <div className="min-w-[120px]">
+                        <span className="font-medium text-sm">{t.name}</span>
+                        {t.description && (
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs whitespace-nowrap">
+                        {GLOBAL_ELEMENT_TYPE_LABELS[t.element_type]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {tokenCount > 0 ? (
+                        <span className="text-xs">{tokenCount} var{tokenCount !== 1 ? 's' : ''}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">None</span>
                       )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {GLOBAL_ELEMENT_TYPE_LABELS[t.element_type]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {tokenCount > 0 ? (
-                      <span className="text-sm">{tokenCount} variable{tokenCount !== 1 ? 's' : ''}</span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">None</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-sm text-muted-foreground">v{t.version}</span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={t.is_active ? 'success' : 'secondary'}>
-                      {t.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0"
-                        onClick={(e) => handleDuplicate(e, t)}
-                        title="Duplicate"
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0"
-                        onClick={(e) => { e.stopPropagation(); onEdit(t); }}
-                        title="Edit"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button
-                        variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
-                        onClick={(e) => handleDelete(e, t.id)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <span className="text-xs text-muted-foreground">v{t.version}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={t.is_active ? 'success' : 'secondary'} className="text-xs">
+                        {t.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-0.5">
+                        <Button
+                          variant="ghost" size="sm" className="h-7 w-7 p-0"
+                          onClick={(e) => handleDuplicate(e, t)}
+                          title="Duplicate"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm" className="h-7 w-7 p-0"
+                          onClick={(e) => { e.stopPropagation(); onEdit(t); }}
+                          title="Edit"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
+                          onClick={(e) => handleDelete(e, t.id)}
+                          title="Delete"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       )}
     </div>
   );
