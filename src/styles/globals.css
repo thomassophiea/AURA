@@ -475,6 +475,21 @@ html.light, html.light body, body.light, html.light #root {
   color: rgba(0, 0, 0, 0.87) !important;
 }
 
+/* Light: Checkboxes */
+.light [data-slot="checkbox"] {
+  border-color: rgba(0, 0, 0, 0.45) !important;
+  background-color: rgba(0, 0, 0, 0.04) !important;
+}
+.light [data-slot="checkbox"]:hover {
+  border-color: #6200EE !important;
+  background-color: rgba(98, 0, 238, 0.08) !important;
+}
+.light [data-slot="checkbox"][data-state="checked"] {
+  background-color: #6200EE !important;
+  border-color: #6200EE !important;
+  color: #ffffff !important;
+}
+
 /* Light: Select trigger */
 .light [data-slot="select-trigger"],
 .light button[role="combobox"] {
@@ -845,8 +860,12 @@ html.light, html.light body, body.light, html.light #root {
 
 /* Dark: Checkboxes */
 .dark:not(.ep1):not(.dev) [data-slot="checkbox"] {
-  border-color: rgba(187, 134, 252, 0.6) !important;
-  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.dark:not(.ep1):not(.dev) [data-slot="checkbox"]:hover {
+  border-color: rgba(187, 134, 252, 0.8) !important;
+  background-color: rgba(187, 134, 252, 0.12) !important;
 }
 .dark:not(.ep1):not(.dev) [data-slot="checkbox"][data-state="checked"] {
   background-color: #BB86FC !important;
@@ -2781,6 +2800,22 @@ html.dark.synthwave body {
   outline: none !important;
 }
 
+/* --- Neon Checkboxes --- */
+.synthwave [data-slot="checkbox"] {
+  border-color: rgba(255, 45, 155, 0.5) !important;
+  background-color: rgba(255, 45, 155, 0.08) !important;
+}
+.synthwave [data-slot="checkbox"]:hover {
+  border-color: #ff2d9b !important;
+  background-color: rgba(255, 45, 155, 0.18) !important;
+}
+.synthwave [data-slot="checkbox"][data-state="checked"] {
+  background-color: #ff2d9b !important;
+  border-color: #ff2d9b !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px rgba(255, 45, 155, 0.4) !important;
+}
+
 /* --- Neon Scrollbar --- */
 .synthwave ::-webkit-scrollbar {
   width: 5px;
@@ -3885,8 +3920,12 @@ button.sle-node-bubble.sle-node-poor,
 
 /* --- Checkboxes: explicit border visibility in EP1 dark surface --- */
 .ep1 [data-slot="checkbox"] {
+  border-color: rgba(171, 163, 251, 0.6) !important;
+  background-color: rgba(171, 163, 251, 0.1) !important;
+}
+.ep1 [data-slot="checkbox"]:hover {
   border-color: #aba3fb !important;
-  background-color: transparent !important;
+  background-color: rgba(171, 163, 251, 0.18) !important;
 }
 .ep1 [data-slot="checkbox"][data-state="checked"] {
   background-color: #8981e5 !important;
@@ -4353,8 +4392,12 @@ html.dev #root {
 
 /* Dev: Checkboxes */
 .dev [data-slot="checkbox"] {
-  border-color: rgba(187, 134, 252, 0.7) !important;
-  background-color: transparent !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+.dev [data-slot="checkbox"]:hover {
+  border-color: rgba(187, 134, 252, 0.8) !important;
+  background-color: rgba(187, 134, 252, 0.12) !important;
 }
 .dev [data-slot="checkbox"][data-state="checked"] {
   background-color: #BB86FC !important;

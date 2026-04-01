@@ -4464,30 +4464,27 @@ html {
 
 /* ── Checkbox Visibility ──────────────────────────────────────────────── */
 .aura-checkbox {
-  border-color: var(--muted-foreground, #ffffff99) !important;
-  opacity: 0.7;
-  background: color-mix(in srgb, var(--muted-foreground, #888) 8%, transparent);
+  border-color: #ffffff80 !important;
+  background: #ffffff12 !important;
 }
 .aura-checkbox:hover {
   border-color: var(--primary, #bb86fc) !important;
-  opacity: 1;
-  background: color-mix(in srgb, var(--primary, #bb86fc) 12%, transparent);
+  background: color-mix(in srgb, var(--primary, #bb86fc) 15%, transparent) !important;
 }
 .aura-checkbox[data-state="checked"] {
-  opacity: 1;
   border-color: var(--primary, #bb86fc) !important;
   background: var(--primary, #bb86fc) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #bb86fc) 30%, transparent);
 }
 html.light .aura-checkbox,
 html[data-theme="light"] .aura-checkbox {
-  border-color: var(--muted-foreground, #00000066) !important;
-  background: color-mix(in srgb, var(--muted-foreground, #666) 10%, transparent);
+  border-color: #00000050 !important;
+  background: #00000008 !important;
 }
 html.light .aura-checkbox:hover,
 html[data-theme="light"] .aura-checkbox:hover {
   border-color: var(--primary, #6200ee) !important;
-  background: color-mix(in srgb, var(--primary, #6200ee) 10%, transparent);
+  background: color-mix(in srgb, var(--primary, #6200ee) 10%, transparent) !important;
 }
 
 @media (prefers-contrast: high) {
