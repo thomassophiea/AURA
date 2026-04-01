@@ -947,14 +947,14 @@ export function AFCRadioHeightCalculator() {
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           {hasFloors ? (
                             <span className="flex items-center gap-1">
-                              <Layers className="h-3 w-3" />{b.floors} floor{b.floors !== 1 ? 's' : ''}
+                              <Layers className="h-3.5 w-3.5" />{b.floors} floor{b.floors !== 1 ? 's' : ''}
                             </span>
                           ) : (
                             <span className="italic">No floors (outdoor)</span>
                           )}
                           {avgM && (
                             <span className="flex items-center gap-1">
-                              <Building2 className="h-3 w-3" />~{avgM} m ceiling
+                              <Building2 className="h-3.5 w-3.5" />~{avgM} m ceiling
                             </span>
                           )}
                         </div>
@@ -1189,7 +1189,7 @@ export function AFCRadioHeightCalculator() {
                                       className="h-6 w-20 text-xs" />
                                     <span className="text-xs text-muted-foreground">m</span>
                                     {siteElev !== undefined && (
-                                      <button onClick={() => updateSiteElevation(site, '')} className="text-muted-foreground hover:text-foreground"><X className="h-3 w-3" /></button>
+                                      <button onClick={() => updateSiteElevation(site, '')} className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
                                     )}
                                   </div>
                                 </div>
@@ -1232,7 +1232,7 @@ export function AFCRadioHeightCalculator() {
                                           <TableCell />
                                           <TableCell colSpan={10}>
                                             <div className="flex items-center gap-2 pl-8 text-xs text-muted-foreground">
-                                              <Layers className="h-3 w-3" />
+                                              <Layers className="h-3.5 w-3.5" />
                                               <span className="font-medium text-foreground">Floor {floor}</span>
                                               <span>·</span><span>{floorAps.length} AP{floorAps.length !== 1 ? 's' : ''}</span>
                                               <span>·</span>
@@ -1332,7 +1332,7 @@ export function AFCRadioHeightCalculator() {
                                                 <div className="flex flex-col items-center gap-1">
                                                   <StatusBadge status={status} />
                                                   <label className="flex items-center gap-1 text-xs text-muted-foreground cursor-pointer" title="Override floor heights for this AP">
-                                                    <Checkbox checked={ap.floorSettingsOverride} className="h-3 w-3"
+                                                    <Checkbox checked={ap.floorSettingsOverride} className="h-3.5 w-3.5"
                                                       onCheckedChange={v => updateAP(ap.serialNumber, {
                                                         floorSettingsOverride: !!v,
                                                         floorHeightOverride: v ? ap.floorHeightAboveGround : null,
@@ -1455,7 +1455,7 @@ export function AFCRadioHeightCalculator() {
                                     <div className="relative">
                                       <Button variant="outline" size="sm" className="h-6 text-xs px-2 gap-1"
                                         onClick={() => setCopySource(copySource === bKey ? null : bKey)}>
-                                        <Copy className="h-3 w-3" />Copy to…
+                                        <Copy className="h-3.5 w-3.5" />Copy to…
                                       </Button>
                                       {copySource === bKey && (
                                         <div className="absolute right-0 top-8 z-10 bg-popover border rounded-md shadow-md p-2 min-w-48 space-y-1">

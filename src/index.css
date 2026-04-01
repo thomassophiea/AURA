@@ -4462,6 +4462,34 @@ html {
   background: linear-gradient(135deg, #03dac5 0%, #018786 100%);
 }
 
+/* ── Checkbox Visibility ──────────────────────────────────────────────── */
+.aura-checkbox {
+  border-color: var(--muted-foreground, #ffffff99) !important;
+  opacity: 0.7;
+  background: color-mix(in srgb, var(--muted-foreground, #888) 8%, transparent);
+}
+.aura-checkbox:hover {
+  border-color: var(--primary, #bb86fc) !important;
+  opacity: 1;
+  background: color-mix(in srgb, var(--primary, #bb86fc) 12%, transparent);
+}
+.aura-checkbox[data-state="checked"] {
+  opacity: 1;
+  border-color: var(--primary, #bb86fc) !important;
+  background: var(--primary, #bb86fc) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #bb86fc) 30%, transparent);
+}
+html.light .aura-checkbox,
+html[data-theme="light"] .aura-checkbox {
+  border-color: var(--muted-foreground, #00000066) !important;
+  background: color-mix(in srgb, var(--muted-foreground, #666) 10%, transparent);
+}
+html.light .aura-checkbox:hover,
+html[data-theme="light"] .aura-checkbox:hover {
+  border-color: var(--primary, #6200ee) !important;
+  background: color-mix(in srgb, var(--primary, #6200ee) 10%, transparent);
+}
+
 @media (prefers-contrast: high) {
   :root {
     --foreground: #fff;

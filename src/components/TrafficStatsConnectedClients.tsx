@@ -996,7 +996,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                       <Checkbox
                         checked={selectedStations.size === paginatedStations.length && paginatedStations.length > 0}
                         onCheckedChange={handleSelectAll}
-                        className="h-3 w-3 border-muted-foreground/50"
+                        className="h-3.5 w-3.5"
                       />
                     </TableHead>
                     {/* Site Group column — only at org scope */}
@@ -1099,7 +1099,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                           <Checkbox
                             checked={selectedStations.has(station.macAddress)}
                             onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
-                            className="h-3 w-3 border-muted-foreground/50"
+                            className="h-3.5 w-3.5"
                             onClick={(e) => e.stopPropagation()}
                           />
                         </TableCell>
