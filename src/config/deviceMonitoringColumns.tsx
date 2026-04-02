@@ -88,10 +88,10 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
   if (radioId === 20) {
     return {
       icon: Cable,
-      color: 'text-[color:var(--status-info)]',
+      color: 'text-blue-500',
       label: 'Wired',
       quality: 'Ethernet',
-      bgVar: '--status-info-bg'
+      bgColor: 'bg-blue-500/10'
     };
   }
 
@@ -102,21 +102,21 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
       color: 'text-muted-foreground',
       label: 'No Signal',
       quality: 'No Data',
-      bgVar: null as string | null
+      bgColor: 'bg-muted/10'
     };
   }
 
   // RSSI is typically negative, closer to 0 is better (wireless only)
   if (rss >= -30) {
-    return { icon: Signal, color: 'text-[color:var(--status-success)]', label: `${rss} dBm`, quality: 'Excellent', bgVar: '--status-success-bg' };
+    return { icon: Signal, color: 'text-green-500', label: `${rss} dBm`, quality: 'Excellent', bgColor: 'bg-green-500/10' };
   } else if (rss >= -50) {
-    return { icon: SignalHigh, color: 'text-[color:var(--status-success)]', label: `${rss} dBm`, quality: 'Very Good', bgVar: '--status-success-bg' };
+    return { icon: SignalHigh, color: 'text-green-400', label: `${rss} dBm`, quality: 'Very Good', bgColor: 'bg-green-400/10' };
   } else if (rss >= -60) {
-    return { icon: SignalMedium, color: 'text-[color:var(--status-warning)]', label: `${rss} dBm`, quality: 'Good', bgVar: '--status-warning-bg' };
+    return { icon: SignalMedium, color: 'text-yellow-400', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-yellow-400/10' };
   } else if (rss >= -70) {
-    return { icon: SignalLow, color: 'text-[color:var(--status-error)]', label: `${rss} dBm`, quality: 'Fair', bgVar: '--status-error-bg' };
+    return { icon: SignalLow, color: 'text-orange-400', label: `${rss} dBm`, quality: 'Fair', bgColor: 'bg-orange-400/10' };
   } else {
-    return { icon: SignalZero, color: 'text-[color:var(--status-error)]', label: `${rss} dBm`, quality: 'Poor', bgVar: '--status-error-bg' };
+    return { icon: SignalZero, color: 'text-red-500', label: `${rss} dBm`, quality: 'Poor', bgColor: 'bg-red-500/10' };
   }
 }
 
@@ -547,12 +547,9 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <div
-              className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:scale-105`}
-              style={signalInfo.bgVar ? { backgroundColor: `var(${signalInfo.bgVar})` } : undefined}
-            >
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-md transition-all duration-200 hover:scale-105 ${signalInfo.bgColor}`}>
               <SignalIcon className={`h-3 w-3 ${signalInfo.color}`} />
-              <span className="text-[10px] font-semibold text-foreground">
+              <span className={`text-[10px] font-medium ${signalInfo.color}`}>
                 {radioId === 20 ? signalInfo.label : (rssValue !== undefined ? `${rssValue}` : '-')}
               </span>
             </div>
