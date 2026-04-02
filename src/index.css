@@ -4464,8 +4464,8 @@ html {
 
 /* ── Checkbox Visibility ──────────────────────────────────────────────── */
 .aura-checkbox {
-  border-color: #ffffff80 !important;
-  background: #ffffff12 !important;
+  border-color: #ffffffb3 !important;
+  background: #ffffff1a !important;
 }
 .aura-checkbox:hover {
   border-color: var(--primary, #bb86fc) !important;
@@ -4478,8 +4478,8 @@ html {
 }
 html.light .aura-checkbox,
 html[data-theme="light"] .aura-checkbox {
-  border-color: #00000050 !important;
-  background: #00000008 !important;
+  border-color: #00000066 !important;
+  background: #0000000a !important;
 }
 html.light .aura-checkbox:hover,
 html[data-theme="light"] .aura-checkbox:hover {
