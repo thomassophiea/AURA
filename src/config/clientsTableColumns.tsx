@@ -39,12 +39,12 @@ function formatBytes(bytes: number): string {
  * Get signal strength indicator
  */
 function getSignalIndicator(rssi?: number) {
-  if (!rssi) return <SignalLow className="h-4 w-4 text-gray-400" />;
+  if (!rssi) return <SignalLow className="h-4 w-4 text-muted-foreground" />;
 
-  if (rssi >= -50) return <SignalHigh className="h-4 w-4 text-green-500" />;
-  if (rssi >= -60) return <SignalHigh className="h-4 w-4 text-amber-500" />;
-  if (rssi >= -70) return <SignalMedium className="h-4 w-4 text-orange-500" />;
-  return <SignalLow className="h-4 w-4 text-red-500" />;
+  if (rssi >= -50) return <SignalHigh className="h-4 w-4 text-[color:var(--status-success)]" />;
+  if (rssi >= -60) return <SignalHigh className="h-4 w-4 text-[color:var(--status-warning)]" />;
+  if (rssi >= -70) return <SignalMedium className="h-4 w-4 text-[color:var(--status-error)]" />;
+  return <SignalLow className="h-4 w-4 text-[color:var(--status-error)]" />;
 }
 
 /**

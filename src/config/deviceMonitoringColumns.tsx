@@ -108,15 +108,15 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
 
   // RSSI is typically negative, closer to 0 is better (wireless only)
   if (rss >= -30) {
-    return { icon: Signal, color: 'text-green-500', label: `${rss} dBm`, quality: 'Excellent', bgColor: 'bg-green-500/10' };
+    return { icon: Signal, color: 'text-[color:var(--status-success)]', label: `${rss} dBm`, quality: 'Excellent', bgColor: 'bg-[color:var(--status-success-bg)]' };
   } else if (rss >= -50) {
-    return { icon: SignalHigh, color: 'text-green-400', label: `${rss} dBm`, quality: 'Very Good', bgColor: 'bg-green-400/10' };
+    return { icon: SignalHigh, color: 'text-[color:var(--status-success)]', label: `${rss} dBm`, quality: 'Very Good', bgColor: 'bg-[color:var(--status-success-bg)]' };
   } else if (rss >= -60) {
-    return { icon: SignalMedium, color: 'text-amber-500', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-amber-500/10' };
+    return { icon: SignalMedium, color: 'text-[color:var(--status-warning)]', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-[color:var(--status-warning-bg)]' };
   } else if (rss >= -70) {
-    return { icon: SignalLow, color: 'text-orange-500', label: `${rss} dBm`, quality: 'Fair', bgColor: 'bg-orange-500/10' };
+    return { icon: SignalLow, color: 'text-[color:var(--status-error)]', label: `${rss} dBm`, quality: 'Fair', bgColor: 'bg-[color:var(--status-error-bg)]' };
   } else {
-    return { icon: SignalZero, color: 'text-red-500', label: `${rss} dBm`, quality: 'Poor', bgColor: 'bg-red-500/10' };
+    return { icon: SignalZero, color: 'text-[color:var(--status-error)]', label: `${rss} dBm`, quality: 'Poor', bgColor: 'bg-[color:var(--status-error-bg)]' };
   }
 }
 
