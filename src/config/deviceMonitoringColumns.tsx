@@ -112,7 +112,7 @@ function getSignalStrengthIndicator(rss: number | undefined, radioId: number | u
   } else if (rss >= -50) {
     return { icon: SignalHigh, color: 'text-green-500', label: `${rss} dBm`, quality: 'Very Good', bgColor: 'bg-green-500/10' };
   } else if (rss >= -60) {
-    return { icon: SignalMedium, color: 'text-cyan-500', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-cyan-500/10' };
+    return { icon: SignalMedium, color: 'text-blue-500', label: `${rss} dBm`, quality: 'Good', bgColor: 'bg-blue-500/10' };
   } else if (rss >= -70) {
     return { icon: SignalLow, color: 'text-orange-500', label: `${rss} dBm`, quality: 'Fair', bgColor: 'bg-orange-500/10' };
   } else {
