@@ -4463,28 +4463,36 @@ html {
 }
 
 /* ── Checkbox Visibility ──────────────────────────────────────────────── */
-.aura-checkbox {
-  border-color: #ffffffb3 !important;
+/* Dark themes (ep1, dev, default dark) — bright white border for unchecked */
+.aura-checkbox[data-state="unchecked"] {
+  border-color: #ffffffcc !important;
   background: #ffffff1a !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
-.aura-checkbox:hover {
+.aura-checkbox[data-state="unchecked"]:hover {
   border-color: var(--primary, #bb86fc) !important;
   background: color-mix(in srgb, var(--primary, #bb86fc) 15%, transparent) !important;
+  box-shadow: none;
 }
 .aura-checkbox[data-state="checked"] {
   border-color: var(--primary, #bb86fc) !important;
   background: var(--primary, #bb86fc) !important;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #bb86fc) 30%, transparent);
 }
-html.light .aura-checkbox,
-html[data-theme="light"] .aura-checkbox {
+/* Light theme — dark border for unchecked */
+.theme-light .aura-checkbox[data-state="unchecked"],
+html.light .aura-checkbox[data-state="unchecked"],
+html[data-theme="light"] .aura-checkbox[data-state="unchecked"] {
   border-color: #00000066 !important;
   background: #0000000a !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
-html.light .aura-checkbox:hover,
-html[data-theme="light"] .aura-checkbox:hover {
+.theme-light .aura-checkbox[data-state="unchecked"]:hover,
+html.light .aura-checkbox[data-state="unchecked"]:hover,
+html[data-theme="light"] .aura-checkbox[data-state="unchecked"]:hover {
   border-color: var(--primary, #6200ee) !important;
   background: color-mix(in srgb, var(--primary, #6200ee) 10%, transparent) !important;
+  box-shadow: none;
 }
 
 @media (prefers-contrast: high) {
