@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useMemo, startTransition } from 'react';
+import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import type { AssistantContext } from './components/NetworkChatbot';
 import { LoginForm } from './components/LoginForm';
@@ -70,6 +70,9 @@ import { NotificationsMenu } from './components/NotificationsMenu';
 import { tenantService } from './services/tenantService';
 import { DevModePanel } from './components/DevModePanel';
 import { SiteGroupFilterDropdown } from './components/SiteGroupFilterDropdown';
+import { PersonaProvider, readStoredPersona, PERSONA_STORAGE_KEY } from './contexts/PersonaContext';
+import { PersonaSelector } from './components/PersonaSelector';
+import { PERSONA_MAP, type PersonaId } from './config/personaDefinitions';
 import { VersionDisplay } from './components/VersionDisplay';
 import { toast } from 'sonner';
 import { applyTheme as applyThemeColors } from './lib/themes';
@@ -135,6 +138,20 @@ export default function App() {
     return localStorage.getItem('networkAssistantEnabled') === 'true';
   });
   const [isDevModeOpen, setIsDevModeOpen] = useState(false);
+  const [activePersona, setActivePersonaRaw] = useState<PersonaId>(readStoredPersona);
+  const setActivePersona = useCallback((id: PersonaId) => {
+    setActivePersonaRaw(id);
+    localStorage.setItem(PERSONA_STORAGE_KEY, id);
+  }, []);
+  const personaAllowedPages = useMemo(() => {
+    if (theme !== 'dev' || activePersona === 'super-user') return null;
+    const def = PERSONA_MAP.get(activePersona);
+    return def ? new Set(def.allowedPages) : null;
+  }, [theme, activePersona]);
+  const isPageAllowedByPersona = useCallback((pageId: string): boolean => {
+    if (!personaAllowedPages) return true;
+    return personaAllowedPages.has(pageId);
+  }, [personaAllowedPages]);
   const [apiLogs, setApiLogs] = useState<ApiCallLog[]>([]);
   const [devPanelHeight, setDevPanelHeight] = useState(0);
   const [siteName, setSiteName] = useState<string>('');
@@ -710,6 +727,9 @@ export default function App() {
   };
 
   const handlePageChange = (page: string) => {
+    // Persona gating: block navigation to pages outside the active persona
+    if (!isPageAllowedByPersona(page)) return;
+
     // Cancel any pending API requests when switching pages
     console.log(`Switching to page: ${page}, canceling pending requests`);
     apiService.cancelAllRequests();
@@ -837,6 +857,11 @@ export default function App() {
   }
 
   const renderPage = () => {
+    // Persona gating: redirect to workspace if current page is not allowed
+    if (!isPageAllowedByPersona(currentPage)) {
+      startTransition(() => setCurrentPage('workspace'));
+      return null;
+    }
     switch (currentPage) {
       case 'workspace':
         return <Workspace api={apiService} />;
@@ -1034,6 +1059,7 @@ export default function App() {
 
   return (
     <AppContextProvider navigationScope={navigationScope} onNavigationScopeChange={setNavigationScope} onPageChange={handlePageChange} onTemplateCreation={handleTemplateCreation}>
+    <PersonaProvider theme={theme} activePersona={activePersona} setActivePersona={setActivePersona}>
     <>
       {/* Unified floating-card layout — all themes */}
       <div
@@ -1082,6 +1108,7 @@ export default function App() {
           <div className="flex items-center gap-1 ml-auto">
             {!device.isMobile && theme === 'dev' && (
               <>
+                <PersonaSelector />
                 <Button variant={isDevModeOpen ? 'default' : 'ghost'} size="sm" onClick={handleToggleDevMode} title="Developer Mode - API Monitor">
                   <Braces className="h-4 w-4" />
                 </Button>
@@ -1163,6 +1190,7 @@ export default function App() {
       {/* Version Display - Fixed to bottom-left */}
       <VersionDisplay position="bottom-left" />
     </>
+    </PersonaProvider>
     </AppContextProvider>
   );
 }

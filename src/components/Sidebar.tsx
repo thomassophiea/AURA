@@ -49,6 +49,7 @@ import { useEffect } from 'react';
 import { prefetchComponent } from '@/lib/prefetch';
 import { tenantService } from '../services/tenantService';
 import { useAppContext } from '@/contexts/AppContext';
+import { usePersonaContext } from '@/contexts/PersonaContext';
 
 interface SidebarProps {
   onLogout: () => void;
@@ -104,12 +105,19 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
   const device = useDeviceDetection();
   const org = tenantService.getCurrentOrganization();
   const { navigationScope, siteGroup, exitSiteGroup } = useAppContext();
+  const { filterItems, isPageAllowed } = usePersonaContext();
+
+  // Filter nav items by active persona
+  const filteredMonitoringItems = filterItems(monitoringItems);
+  const filteredConfigureItems = filterItems(configureItems);
+  const filteredOperationsItems = filterItems(operationsItems);
+  const filteredControllerItems = filterItems(controllerItems);
 
   // Check if any section sub-item is currently active
-  const isMonitoringActive = monitoringItems.some(item => currentPage === item.id);
-  const isConfigureActive = configureItems.some(item => currentPage === item.id);
-  const isOperationsActive = operationsItems.some(item => currentPage === item.id);
-  const isControllerActive = controllerItems.some(item => currentPage === item.id);
+  const isMonitoringActive = filteredMonitoringItems.some(item => currentPage === item.id);
+  const isConfigureActive = filteredConfigureItems.some(item => currentPage === item.id);
+  const isOperationsActive = filteredOperationsItems.some(item => currentPage === item.id);
+  const isControllerActive = filteredControllerItems.some(item => currentPage === item.id);
 
   // Auto-expand sections if an item is active
   const [isMonitoringExpanded, setIsMonitoringExpanded] = useState(true);
@@ -297,30 +305,30 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             </Button>
 
             {/* Monitoring Section */}
-            {renderCollapsibleSection({
+            {filteredMonitoringItems.length > 0 && renderCollapsibleSection({
               label: 'Monitoring',
               icon: BarChart3,
-              items: monitoringItems,
+              items: filteredMonitoringItems,
               isActive: isMonitoringActive,
               isExpanded: isMonitoringExpanded,
               onToggle: () => setIsMonitoringExpanded(!isMonitoringExpanded),
             })}
 
             {/* Configure Section */}
-            {renderCollapsibleSection({
+            {filteredConfigureItems.length > 0 && renderCollapsibleSection({
               label: 'Configure',
               icon: Cog,
-              items: configureItems,
+              items: filteredConfigureItems,
               isActive: isConfigureActive,
               isExpanded: isConfigureExpanded,
               onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
             })}
 
             {/* Operations Section - Desktop only */}
-            {!device.isMobile && renderCollapsibleSection({
+            {!device.isMobile && filteredOperationsItems.length > 0 && renderCollapsibleSection({
               label: 'Operations',
               icon: Bell,
-              items: operationsItems,
+              items: filteredOperationsItems,
               isActive: isOperationsActive,
               isExpanded: isOperationsExpanded,
               onToggle: () => setIsOperationsExpanded(!isOperationsExpanded),
@@ -329,34 +337,38 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             {/* Desktop-only: Tools and Administration */}
             {!device.isMobile && (
               <>
-                <Button
-                  variant={currentPage === 'tools' ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-10",
-                    isCollapsed ? "px-2" : "px-3",
-                    currentPage === 'tools'
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                  onClick={() => handlePageChange('tools')}
-                >
-                  <Wrench className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                  {!isCollapsed && <span>Tools</span>}
-                </Button>
-                <Button
-                  variant={currentPage === 'administration' ? "default" : "ghost"}
-                  className={cn(
-                    "w-full justify-start h-10",
-                    isCollapsed ? "px-2" : "px-3",
-                    currentPage === 'administration'
-                      ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                  )}
-                  onClick={() => handlePageChange('administration')}
-                >
-                  <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
-                  {!isCollapsed && <span>Administration</span>}
-                </Button>
+                {isPageAllowed('tools') && (
+                  <Button
+                    variant={currentPage === 'tools' ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start h-10",
+                      isCollapsed ? "px-2" : "px-3",
+                      currentPage === 'tools'
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    onClick={() => handlePageChange('tools')}
+                  >
+                    <Wrench className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                    {!isCollapsed && <span>Tools</span>}
+                  </Button>
+                )}
+                {isPageAllowed('administration') && (
+                  <Button
+                    variant={currentPage === 'administration' ? "default" : "ghost"}
+                    className={cn(
+                      "w-full justify-start h-10",
+                      isCollapsed ? "px-2" : "px-3",
+                      currentPage === 'administration'
+                        ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    )}
+                    onClick={() => handlePageChange('administration')}
+                  >
+                    <Settings className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                    {!isCollapsed && <span>Administration</span>}
+                  </Button>
+                )}
               </>
             )}
           </>
@@ -395,10 +407,10 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
             )}
 
             {/* Controller Management items */}
-            {renderCollapsibleSection({
+            {filteredControllerItems.length > 0 && renderCollapsibleSection({
               label: 'Controller Management',
               icon: HardDrive,
-              items: controllerItems,
+              items: filteredControllerItems,
               isActive: isControllerActive,
               isExpanded: true,
               onToggle: () => {},
