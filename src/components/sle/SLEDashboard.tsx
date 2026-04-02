@@ -171,7 +171,8 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [timeRange, setTimeRange] = useState('24h');
-  const [selectedSite, setSelectedSite] = useState(filters.site || 'all');
+  const selectedSite = filters.site || 'all';
+  const setSelectedSite = (value: string) => updateFilter('site', value);
   const [activeTab, setActiveTab] = useState('wireless');
   const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall'>('radial');
   
@@ -246,13 +247,6 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   useEffect(() => {
     apiService.getSites().then(setSites).catch(() => {});
   }, []);
-
-  // Sync site filter to global filters
-  useEffect(() => {
-    if (selectedSite !== filters.site) {
-      updateFilter('site', selectedSite);
-    }
-  }, [selectedSite]);
 
   // Load data
   const loadData = useCallback(async (isRefresh = false) => {
