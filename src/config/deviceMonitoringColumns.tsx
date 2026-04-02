@@ -552,7 +552,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               style={signalInfo.bgVar ? { backgroundColor: `var(${signalInfo.bgVar})` } : undefined}
             >
               <SignalIcon className={`h-3 w-3 ${signalInfo.color}`} />
-              <span className={`text-[10px] font-medium ${signalInfo.color}`}>
+              <span className="text-[10px] font-semibold text-foreground">
                 {radioId === 20 ? signalInfo.label : (rssValue !== undefined ? `${rssValue}` : '-')}
               </span>
             </div>
