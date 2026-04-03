@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransit
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import type { AssistantContext } from './components/NetworkChatbot';
 import { LoginForm } from './components/LoginForm';
+import { SharedReportViewer } from './components/SharedReportViewer';
 import { Sidebar } from './components/Sidebar';
 import { MobileApp } from './components/mobile/MobileApp';
 import { DetailSlideOut } from './components/DetailSlideOut';
@@ -161,27 +162,7 @@ export default function App() {
 
   // Legacy cross-page filter removed — now handled inside SitesAndGroupsPage tabs
 
-  // Check for shared report link in URL hash on mount
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#/report/')) {
-      const payload = hash.slice('#/report/'.length);
-      try {
-        const config = parseSharePayload(payload);
-        if (config) {
-          const store = loadReportConfigs();
-          config.id = 'shared-' + Date.now();
-          store.configs.push(config);
-          store.activeConfigId = config.id;
-          saveReportConfigs(store);
-          setCurrentPage('workspace');
-          window.history.replaceState(null, '', window.location.pathname);
-        }
-      } catch (e) {
-        console.error('[App] Failed to parse shared report URL:', e);
-      }
-    }
-  }, []);
+  // Shared report link detection — handled below, before auth gate
 
   // Global filters for site context
   const { filters, updateFilter } = useGlobalFilters();
@@ -870,10 +851,19 @@ export default function App() {
     toast.success('API logs cleared');
   };
 
+  // ── Shared Report Viewer: renders outside the main app shell ──
+  // When a #/report/ hash is present, show the standalone report viewer
+  // with its own login flow — no sidebar, no nav, just the report.
+  const reportHash = window.location.hash;
+  if (reportHash.startsWith('#/report/')) {
+    const payload = reportHash.slice('#/report/'.length);
+    return <SharedReportViewer payload={payload} />;
+  }
+
   if (!isAuthenticated) {
     return (
-      <LoginForm 
-        onLoginSuccess={handleLoginSuccess} 
+      <LoginForm
+        onLoginSuccess={handleLoginSuccess}
         theme={theme}
         onThemeToggle={toggleTheme}
       />
