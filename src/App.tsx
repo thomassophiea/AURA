@@ -52,6 +52,7 @@ const SecurityDashboard = lazy(() => import('./components/SecurityDashboard').th
 const GuestManagement = lazy(() => import('./components/GuestManagement').then(m => ({ default: m.GuestManagement })));
 const ApiDocumentation = lazy(() => import('./components/ApiDocumentation').then(m => ({ default: m.ApiDocumentation })));
 const Workspace = lazy(() => import('./components/Workspace').then(m => ({ default: m.Workspace })));
+const ReportCenter = lazy(() => import('./components/ReportCenter').then(m => ({ default: m.ReportCenter })));
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
 const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytics').then(m => ({ default: m.PerformanceAnalytics })));
 import { apiService, ApiCallLog } from './services/api';
@@ -864,7 +865,7 @@ export default function App() {
     }
     switch (currentPage) {
       case 'workspace':
-        return <Workspace api={apiService} />;
+        return <ReportCenter />;
       case 'service-levels':
         return <DashboardEnhanced />;
       case 'sle-dashboard':
