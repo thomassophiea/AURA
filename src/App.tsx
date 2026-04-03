@@ -57,7 +57,7 @@ const ReportCenter = lazy(() => import('./components/ReportCenter').then(m => ({
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
 const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytics').then(m => ({ default: m.PerformanceAnalytics })));
 import { apiService, ApiCallLog } from './services/api';
-import { parseSharePayload, loadReportConfigs, saveReportConfigs } from './services/reportConfigPersistence';
+// reportConfigPersistence imported by SharedReportViewer directly
 import { AppContextProvider } from './contexts/AppContext';
 import type { NavigationScope } from './config/navigationScopes';
 import { ORG_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
@@ -162,7 +162,7 @@ export default function App() {
 
   // Legacy cross-page filter removed — now handled inside SitesAndGroupsPage tabs
 
-  // Shared report link detection — handled below, before auth gate
+  // Shared report links handled before auth gate via SharedReportViewer
 
   // Global filters for site context
   const { filters, updateFilter } = useGlobalFilters();

@@ -77,20 +77,59 @@ export function importConfigFromJSON(json: string): ReportConfig | null {
   }
 }
 
-export function generateSharePayload(config: ReportConfig): string {
-  const minimal = {
-    ...config,
-    id: 'shared-' + Date.now(),
-    isDefault: false,
-  };
+export interface ShareSnapshot {
+  metrics: any;
+  widgetData: Record<string, any>;
+  generatedAt: string;
+}
+
+export interface SharePayloadV2 {
+  v: 2;
+  config: ReportConfig;
+  snapshot: ShareSnapshot;
+}
+
+/** Generate a share payload with embedded data snapshot (no login needed to view) */
+export function generateSharePayload(config: ReportConfig, snapshot?: ShareSnapshot): string {
+  if (snapshot) {
+    const payload: SharePayloadV2 = {
+      v: 2,
+      config: { ...config, id: 'shared-' + Date.now(), isDefault: false },
+      snapshot,
+    };
+    return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  }
+  // Legacy v1: config only (requires login for data)
+  const minimal = { ...config, id: 'shared-' + Date.now(), isDefault: false };
   return btoa(JSON.stringify(minimal));
 }
 
-export function parseSharePayload(payload: string): ReportConfig | null {
+export interface ParsedSharePayload {
+  config: ReportConfig;
+  snapshot: ShareSnapshot | null;
+}
+
+export function parseSharePayload(payload: string): ParsedSharePayload | null {
   try {
-    const config = JSON.parse(atob(payload)) as ReportConfig;
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(escape(atob(payload)));
+    } catch {
+      decoded = atob(payload);
+    }
+    const parsed = JSON.parse(decoded);
+
+    // V2 format: { v: 2, config, snapshot }
+    if (parsed.v === 2 && parsed.config && parsed.snapshot) {
+      const config = parsed.config as ReportConfig;
+      if (!config.name || !Array.isArray(config.pages)) return null;
+      return { config, snapshot: parsed.snapshot };
+    }
+
+    // V1 format: just the config (legacy)
+    const config = parsed as ReportConfig;
     if (!config.name || !Array.isArray(config.pages)) return null;
-    return config;
+    return { config, snapshot: null };
   } catch {
     return null;
   }

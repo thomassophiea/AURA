@@ -14,7 +14,7 @@ import {
   exportConfigAsJSON,
   importConfigFromJSON,
   generateSharePayload,
-  parseSharePayload,
+  type ShareSnapshot,
 } from '../services/reportConfigPersistence';
 
 export function useReportConfig() {
@@ -236,18 +236,10 @@ export function useReportConfig() {
     return config;
   }, [store, persist]);
 
-  const getShareURL = useCallback((): string => {
-    const payload = generateSharePayload(activeConfig);
+  const getShareURL = useCallback((snapshot?: ShareSnapshot): string => {
+    const payload = generateSharePayload(activeConfig, snapshot);
     return `${window.location.origin}${window.location.pathname}#/report/${payload}`;
   }, [activeConfig]);
-
-  const loadFromSharePayload = useCallback((payload: string): boolean => {
-    const config = parseSharePayload(payload);
-    if (!config) return false;
-    config.id = 'shared-' + Date.now();
-    persist({ ...store, configs: [...store.configs, config], activeConfigId: config.id });
-    return true;
-  }, [store, persist]);
 
   return {
     // State
@@ -280,6 +272,5 @@ export function useReportConfig() {
     exportActiveConfig,
     importConfig,
     getShareURL,
-    loadFromSharePayload,
   };
 }

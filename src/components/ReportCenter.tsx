@@ -434,7 +434,11 @@ export function ReportCenter() {
       <ReportShareDialog
         open={isShareOpen}
         onOpenChange={setIsShareOpen}
-        shareURL={rc.getShareURL()}
+        shareURL={rc.getShareURL({
+          metrics,
+          widgetData,
+          generatedAt: new Date().toISOString(),
+        })}
         configJSON={rc.exportActiveConfig()}
         configName={rc.activeConfig.name}
         onImport={handleImport}
