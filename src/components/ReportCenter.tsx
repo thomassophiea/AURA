@@ -1,19 +1,28 @@
 /**
  * Report Center — Hamina-Style Customizable Reporting
  *
- * Orchestrator component that wires together:
- * - useReportConfig for config state (pages, widgets, persistence)
- * - ReportSidebar for page navigation with drag-to-reorder
- * - ReportHeader for config selection, duration, actions
- * - ReportWidgetRenderer for rendering widgets from config
- * - ReportEditorDialog for editing pages and widgets
- * - ReportShareDialog for sharing/import/export
+ * Uses horizontal page tabs (not a left sidebar) to avoid doubling up
+ * with the main app sidebar. Pages are navigated via a scrollable tab strip.
  */
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { ScrollArea } from './ui/scroll-area';
+import {
+  FileText, Wifi, Users, Activity, BarChart3, Radio, AppWindow, MapPin,
+  Shield, RefreshCw, Download, Printer, Share2, Pencil, Check, Plus,
+  Copy, Trash2, RotateCcw, Clock, ChevronLeft, ChevronRight, Settings,
+} from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 import { cn } from './ui/utils';
 import { apiService } from '../services/api';
 import { fetchWidgetData } from '../services/widgetService';
@@ -21,12 +30,21 @@ import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useReportConfig } from '../hooks/useReportConfig';
 import { getWidgetKeysForConfig } from '../config/defaultReportConfig';
 import { ReportWidgetRenderer, type ReportMetrics } from './report/ReportWidgetRenderer';
-import { ReportSidebar } from './report/ReportSidebar';
-import { ReportHeader } from './report/ReportHeader';
 import { ReportEditorDialog } from './report/ReportEditorDialog';
 import { ReportShareDialog } from './report/ReportShareDialog';
 import { toast } from 'sonner';
 import { formatBitsPerSecond, formatBytes } from '../lib/units';
+
+const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
+  FileText, Wifi, Users, Activity, BarChart3, Radio, AppWindow, MapPin, Shield, Settings,
+};
+
+const DURATION_OPTIONS = [
+  { value: '3H', label: '3H' },
+  { value: '24H', label: '24H' },
+  { value: '7D', label: '7D' },
+  { value: '30D', label: '30D' },
+];
 
 export function ReportCenter() {
   const { filters } = useGlobalFilters();
@@ -36,7 +54,6 @@ export function ReportCenter() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -50,8 +67,6 @@ export function ReportCenter() {
   const [bestPractices, setBestPractices] = useState<any[]>([]);
 
   const siteId = filters.site !== 'all' ? filters.site : undefined;
-
-  // Derive needed widget keys from active config
   const widgetKeysNeeded = useMemo(() => getWidgetKeysForConfig(rc.activeConfig), [rc.activeConfig]);
 
   // ── Data Loading ──
@@ -210,10 +225,7 @@ export function ReportCenter() {
   if (loading) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-7 w-7 rounded" />
-          <Skeleton className="h-6 w-48" />
-        </div>
+        <Skeleton className="h-8 w-full rounded" />
         <div className="grid grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}><CardContent className="pt-4"><Skeleton className="h-16 w-full" /></CardContent></Card>
@@ -228,105 +240,182 @@ export function ReportCenter() {
   }
 
   const currentPage = rc.activePage;
+  const visiblePages = rc.activeConfig.pages.filter(p => p.visible !== false);
 
   return (
-    <div className="flex gap-0 -m-4 sm:-m-6 h-[calc(100vh-120px)]">
-      {/* Sidebar */}
-      <ReportSidebar
-        pages={rc.activeConfig.pages}
-        activePageId={currentPage?.id || null}
-        onSelectPage={rc.setActivePage}
-        onAddPage={() => rc.addPage('New Page', 'Custom report page')}
-        onRemovePage={rc.removePage}
-        onReorderPages={rc.reorderPages}
-        onToggleVisibility={(pageId) => {
-          const page = rc.activeConfig.pages.find(p => p.id === pageId);
-          if (page) rc.updatePage(pageId, { visible: page.visible === false ? true : false } as any);
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        isEditing={isEditing}
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <ReportHeader
-          configs={rc.configs}
-          activeConfig={rc.activeConfig}
-          activePage={currentPage}
-          duration={duration}
-          lastUpdated={lastUpdated}
-          refreshing={refreshing}
-          isEditing={isEditing}
-          siteLabel={siteId || 'All Sites'}
-          onSelectConfig={rc.setActiveConfig}
-          onDurationChange={setDuration}
-          onRefresh={() => loadAllData(true)}
-          onExport={handleExport}
-          onPrint={() => window.print()}
-          onShare={() => setIsShareOpen(true)}
-          onToggleEdit={() => {
-            if (isEditing) {
-              setIsEditing(false);
-              setIsEditorOpen(false);
-            } else {
-              setIsEditing(true);
-              setIsEditorOpen(true);
-            }
-          }}
-          onDuplicate={() => rc.duplicateConfig(rc.activeConfig.id)}
-          onDelete={() => rc.deleteConfig(rc.activeConfig.id)}
-          onReset={rc.resetToDefault}
-          onCreateNew={() => rc.createConfig('New Report')}
-        />
-
-        {/* Page Content */}
-        <ScrollArea className="flex-1">
-          <div className="p-4 sm:p-6">
-            {currentPage ? (
-              <div className="space-y-4">
-                {/* Render widgets in a responsive grid based on gridSpan */}
-                <div className="grid grid-cols-4 gap-4">
-                  {currentPage.widgets.map(widget => (
-                    <div
-                      key={widget.id}
-                      className={cn('col-span-4', {
-                        'col-span-4 md:col-span-1': (widget.gridSpan || 1) === 1,
-                        'col-span-4 md:col-span-2': widget.gridSpan === 2,
-                        'col-span-4 md:col-span-3': widget.gridSpan === 3,
-                        'col-span-4': widget.gridSpan === 4,
-                      })}
-                    >
-                      <ReportWidgetRenderer
-                        widget={widget}
-                        widgetData={widgetData}
-                        metrics={metrics}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {currentPage.widgets.length === 0 && (
-                  <div className="text-center py-16 text-muted-foreground">
-                    <p className="text-sm">This page has no widgets.</p>
-                    <p className="text-xs mt-1">Click Edit to add widgets from the catalog.</p>
+    <div className="space-y-0">
+      {/* ── Toolbar Row: Config selector + actions ── */}
+      <div className="flex items-center justify-between gap-2 mb-3 print:hidden">
+        <div className="flex items-center gap-2">
+          <Select value={rc.activeConfig.id} onValueChange={rc.setActiveConfig}>
+            <SelectTrigger size="sm" className="w-[180px] text-xs bg-transparent border-border/50">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {rc.configs.map(c => (
+                <SelectItem key={c.id} value={c.id}>
+                  <div className="flex items-center gap-2">
+                    <span>{c.name}</span>
+                    {c.isDefault && <Badge variant="secondary" className="text-[9px]">Default</Badge>}
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                <p className="text-sm">No pages in this report.</p>
-                <p className="text-xs mt-1">Click Edit to add pages.</p>
-              </div>
-            )}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            {/* Report Footer */}
-            <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground print:mt-12">
-              <span>AURA Network Report &middot; {rc.activeConfig.name} &middot; {currentPage?.title || ''} &middot; {new Date().toLocaleDateString()}</span>
-              <span>Extreme Networks &middot; Powered by Platform ONE</span>
-            </div>
+          {lastUpdated && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {/* Edit toggle */}
+          <Button
+            variant={isEditing ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => {
+              if (isEditing) { setIsEditing(false); setIsEditorOpen(false); }
+              else { setIsEditing(true); setIsEditorOpen(true); }
+            }}
+            className="text-xs h-7"
+          >
+            {isEditing ? <><Check className="h-3 w-3 mr-1" />Done</> : <><Pencil className="h-3 w-3 mr-1" />Edit</>}
+          </Button>
+
+          {isEditing && (
+            <>
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => rc.createConfig('New Report')}>
+                <Plus className="h-3 w-3 mr-1" />New
+              </Button>
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => rc.duplicateConfig(rc.activeConfig.id)}>
+                <Copy className="h-3 w-3 mr-1" />Duplicate
+              </Button>
+              {!rc.activeConfig.isDefault && (
+                <Button variant="ghost" size="sm" className="text-xs h-7 text-red-400" onClick={() => rc.deleteConfig(rc.activeConfig.id)}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
+            </>
+          )}
+
+          {!isEditing && (
+            <>
+              {/* Duration */}
+              <div className="flex items-center border border-border/50 rounded-md overflow-hidden h-7">
+                {DURATION_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setDuration(opt.value)}
+                    className={cn(
+                      'px-2 py-0.5 text-[10px] font-medium transition-colors',
+                      duration === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => loadAllData(true)} disabled={refreshing}>
+                <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setIsShareOpen(true)}>
+                <Share2 className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleExport}>
+                <Download className="h-3.5 w-3.5" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => window.print()}>
+                <Printer className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Page Tab Strip ── */}
+      <div className="flex items-center gap-1 border-b border-border/50 mb-4 overflow-x-auto scrollbar-none print:hidden">
+        {visiblePages.map(page => {
+          const IconComp = ICON_MAP[page.icon || ''] || FileText;
+          const isActive = currentPage?.id === page.id;
+          return (
+            <button
+              key={page.id}
+              onClick={() => rc.setActivePage(page.id)}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
+                isActive
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-card-foreground hover:border-border'
+              )}
+            >
+              <IconComp className="h-3.5 w-3.5" />
+              {page.title}
+            </button>
+          );
+        })}
+
+        {isEditing && (
+          <button
+            onClick={() => rc.addPage('New Page', 'Custom report page')}
+            className="flex items-center gap-1 px-3 py-2 text-xs text-muted-foreground hover:text-card-foreground border-b-2 border-transparent whitespace-nowrap flex-shrink-0"
+          >
+            <Plus className="h-3 w-3" />
+            Add Page
+          </button>
+        )}
+      </div>
+
+      {/* ── Page Content ── */}
+      {currentPage ? (
+        <div className="space-y-4">
+          {/* Page description */}
+          {currentPage.description && (
+            <p className="text-xs text-muted-foreground">{currentPage.description}</p>
+          )}
+
+          {/* Widget grid */}
+          <div className="grid grid-cols-4 gap-4">
+            {currentPage.widgets.map(widget => (
+              <div
+                key={widget.id}
+                className={cn('col-span-4', {
+                  'col-span-4 md:col-span-1': (widget.gridSpan || 1) === 1,
+                  'col-span-4 md:col-span-2': widget.gridSpan === 2,
+                  'col-span-4 md:col-span-3': widget.gridSpan === 3,
+                  'col-span-4': widget.gridSpan === 4,
+                })}
+              >
+                <ReportWidgetRenderer
+                  widget={widget}
+                  widgetData={widgetData}
+                  metrics={metrics}
+                />
+              </div>
+            ))}
           </div>
-        </ScrollArea>
+
+          {currentPage.widgets.length === 0 && (
+            <div className="text-center py-16 text-muted-foreground">
+              <p className="text-sm">This page has no widgets.</p>
+              <p className="text-xs mt-1">Click Edit to add widgets from the catalog.</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-16 text-muted-foreground">
+          <p className="text-sm">No pages in this report.</p>
+          <p className="text-xs mt-1">Click Edit to add pages.</p>
+        </div>
+      )}
+
+      {/* Report Footer */}
+      <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground print:mt-12">
+        <span>AURA Network Report &middot; {rc.activeConfig.name} &middot; {currentPage?.title || ''} &middot; {new Date().toLocaleDateString()}</span>
+        <span>Extreme Networks &middot; Powered by Platform ONE</span>
       </div>
 
       {/* Editor Dialog */}
