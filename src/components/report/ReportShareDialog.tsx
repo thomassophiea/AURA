@@ -72,10 +72,10 @@ export function ReportShareDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="h-5 w-5 text-primary" />
-            Share Report
+            Share Interactive Report
           </DialogTitle>
           <DialogDescription>
-            Share this report configuration with others or export for backup
+            Create an Extreme Interactive Report — a live, shareable dashboard accessible from any browser
           </DialogDescription>
         </DialogHeader>
 
@@ -84,10 +84,10 @@ export function ReportShareDialog({
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Interactive Report Link</span>
+              <span className="text-sm font-medium">Extreme Interactive Report</span>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Anyone with this link and API access can view this report with live data.
+              Anyone with this link can view this report — no login required.
             </p>
             <div className="flex gap-2">
               <input
@@ -101,8 +101,8 @@ export function ReportShareDialog({
               </Button>
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-              <Badge variant="outline" className="text-[9px]">Live Data</Badge>
-              Report always shows the latest data when opened
+              <Badge variant="outline" className="text-[9px]">No Login Required</Badge>
+              Data snapshot embedded — viewable by anyone with the link
             </div>
           </div>
 

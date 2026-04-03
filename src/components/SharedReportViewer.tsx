@@ -45,8 +45,8 @@ export function SharedReportViewer({ payload }: SharedReportViewerProps) {
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
         <div className="text-center space-y-3">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-          <h1 className="text-lg font-semibold">Invalid Report Link</h1>
-          <p className="text-sm text-muted-foreground">This report link is malformed or expired.</p>
+          <h1 className="text-lg font-semibold">Invalid Interactive Report</h1>
+          <p className="text-sm text-muted-foreground">This Extreme Interactive Report link is malformed or expired.</p>
         </div>
       </div>
     );
@@ -87,7 +87,7 @@ export function SharedReportViewer({ payload }: SharedReportViewerProps) {
           </div>
           <div>
             <h1 className="text-sm font-semibold">{config.name}</h1>
-            <p className="text-[10px] text-muted-foreground">Extreme Networks &middot; Platform ONE</p>
+            <p className="text-[10px] text-muted-foreground">Extreme Interactive Report &middot; Platform ONE</p>
           </div>
         </div>
 
@@ -160,8 +160,8 @@ export function SharedReportViewer({ payload }: SharedReportViewerProps) {
 
         {/* Footer */}
         <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>AURA Network Report &middot; {config.name} &middot; {currentPage?.title || ''} &middot; Snapshot from {generatedAt}</span>
-          <span>Extreme Networks &middot; Powered by Platform ONE &middot; Read-Only View</span>
+          <span>Extreme Interactive Report &middot; {config.name} &middot; {currentPage?.title || ''} &middot; {generatedAt}</span>
+          <span>Extreme Report Studio &middot; Powered by Platform ONE</span>
         </div>
       </div>
     </div>

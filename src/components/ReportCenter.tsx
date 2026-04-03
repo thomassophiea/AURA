@@ -1,5 +1,5 @@
 /**
- * Report Center — Hamina-Style Customizable Reporting
+ * Extreme Report Studio
  *
  * Uses horizontal page tabs (not a left sidebar) to avoid doubling up
  * with the main app sidebar. Pages are navigated via a scrollable tab strip.
@@ -414,7 +414,7 @@ export function ReportCenter() {
 
       {/* Report Footer */}
       <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground print:mt-12">
-        <span>AURA Network Report &middot; {rc.activeConfig.name} &middot; {currentPage?.title || ''} &middot; {new Date().toLocaleDateString()}</span>
+        <span>Extreme Report Studio &middot; {rc.activeConfig.name} &middot; {currentPage?.title || ''} &middot; {new Date().toLocaleDateString()}</span>
         <span>Extreme Networks &middot; Powered by Platform ONE</span>
       </div>
 

@@ -174,7 +174,7 @@ const sitesPage: ReportPageConfig = {
 export const DEFAULT_REPORT_CONFIG: ReportConfig = {
   id: 'default',
   name: 'Network Report',
-  description: 'Comprehensive network overview with all key metrics',
+  description: 'Comprehensive network overview — Extreme Report Studio',
   createdAt: 0,
   updatedAt: 0,
   duration: '24H',

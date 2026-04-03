@@ -280,7 +280,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navigationScope === 'global' && (
           <>
-            {/* Reports — top-level item */}
+            {/* Report Studio — top-level item */}
             <Button
               variant={currentPage === 'workspace' ? "default" : "ghost"}
               className={cn(
@@ -296,7 +296,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               <LayoutDashboard className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
               {!isCollapsed && (
                 <span className="flex items-center gap-2">
-                  Reports
+                  Report Studio
                 </span>
               )}
             </Button>
