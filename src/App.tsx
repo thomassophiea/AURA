@@ -56,6 +56,7 @@ const ReportCenter = lazy(() => import('./components/ReportCenter').then(m => ({
 const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
 const PerformanceAnalytics = lazy(() => import('./components/PerformanceAnalytics').then(m => ({ default: m.PerformanceAnalytics })));
 import { apiService, ApiCallLog } from './services/api';
+import { parseSharePayload, loadReportConfigs, saveReportConfigs } from './services/reportConfigPersistence';
 import { AppContextProvider } from './contexts/AppContext';
 import type { NavigationScope } from './config/navigationScopes';
 import { ORG_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
@@ -159,6 +160,28 @@ export default function App() {
   const [pendingTemplateType, setPendingTemplateType] = useState<GlobalElementType | null>(null);
 
   // Legacy cross-page filter removed — now handled inside SitesAndGroupsPage tabs
+
+  // Check for shared report link in URL hash on mount
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#/report/')) {
+      const payload = hash.slice('#/report/'.length);
+      try {
+        const config = parseSharePayload(payload);
+        if (config) {
+          const store = loadReportConfigs();
+          config.id = 'shared-' + Date.now();
+          store.configs.push(config);
+          store.activeConfigId = config.id;
+          saveReportConfigs(store);
+          setCurrentPage('workspace');
+          window.history.replaceState(null, '', window.location.pathname);
+        }
+      } catch (e) {
+        console.error('[App] Failed to parse shared report URL:', e);
+      }
+    }
+  }, []);
 
   // Global filters for site context
   const { filters, updateFilter } = useGlobalFilters();
