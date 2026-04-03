@@ -68,7 +68,7 @@ import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { tenantService } from './services/tenantService';
-import { DevModePanel } from './components/DevModePanel';
+import { DevToolsPanel } from './components/DevToolsPanel';
 import { SiteGroupFilterDropdown } from './components/SiteGroupFilterDropdown';
 import { PersonaProvider, readStoredPersona, PERSONA_STORAGE_KEY } from './contexts/PersonaContext';
 import { PersonaSelector } from './components/PersonaSelector';
@@ -1177,9 +1177,9 @@ export default function App() {
         />
       )}
 
-      {/* Developer Mode Panel - Desktop only */}
+      {/* Developer Tools Panel - Desktop only */}
       {!device.isMobile && (
-        <DevModePanel
+        <DevToolsPanel
           isOpen={isDevModeOpen}
           onClose={() => setIsDevModeOpen(false)}
           apiLogs={apiLogs}

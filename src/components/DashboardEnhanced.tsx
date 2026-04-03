@@ -69,6 +69,8 @@ import { OSOneWidget } from './OSOneWidget';
 import { AccessPointDetail } from './AccessPointDetail';
 import { ClientDetail } from './ClientDetail';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
+import { usePersonaContext } from '../contexts/PersonaContext';
+import { isSectionVisible, PERSONA_DASHBOARD_CONFIG, type DashboardSection } from '../config/personaDashboardConfig';
 
 interface AccessPoint {
   serialNumber: string;
@@ -166,6 +168,11 @@ interface Notification {
 function DashboardEnhancedComponent() {
   // Global filters for site/time filtering
   const { filters, updateFilter } = useGlobalFilters();
+
+  // Persona-aware section visibility (dev mode)
+  const { activePersona } = usePersonaContext();
+  const personaConfig = PERSONA_DASHBOARD_CONFIG[activePersona];
+  const showSection = useCallback((section: DashboardSection) => isSectionVisible(activePersona, section), [activePersona]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1526,6 +1533,11 @@ function DashboardEnhancedComponent() {
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-purple-500" />
             <h2 className="text-xl font-semibold">AI-Powered Network Insights</h2>
+            {activePersona !== 'super-user' && personaConfig && (
+              <Badge className={`text-xs border ${personaConfig.accentClass}`}>
+                {personaConfig.dashboardLabel}
+              </Badge>
+            )}
           </div>
           {lastUpdate && (
             <span className="text-sm text-muted-foreground">
@@ -2820,6 +2832,7 @@ function DashboardEnhancedComponent() {
         (selectorTab === 'switch' && !selectedEntityId)) && (
       <>
       {/* SECTION 1: OPERATIONAL CONTEXT SUMMARY */}
+      {showSection('operational-context') && (
       <div className="space-y-4">
         <div className="border-b pb-2">
           <h3 className="text-lg font-semibold">
@@ -2835,10 +2848,12 @@ function DashboardEnhancedComponent() {
         </div>
         <OperationalContextSummary />
       </div>
+      )}
 
       {/* ========================================
           SECTION 2: CORE OPERATIONAL ACTIVITY
           ======================================== */}
+      {showSection('core-activity') && (
       <div className="space-y-4">
         <div className="border-b pb-2">
           <h3 className="text-lg font-semibold">Core Operational Activity</h3>
@@ -3043,10 +3058,12 @@ function DashboardEnhancedComponent() {
 
         </div>
       </div>
+      )}
 
       {/* ========================================
           SECTION 3: PERFORMANCE AND QUALITY
           ======================================== */}
+      {showSection('performance') && (
       <div className="space-y-4">
         <div className="border-b pb-2">
           <h3 className="text-lg font-semibold">Performance and Quality</h3>
@@ -3343,9 +3360,12 @@ function DashboardEnhancedComponent() {
         </div>
       </div>
 
+      )}
+
       {/* ========================================
           SECTION 4: BEST PRACTICE EVALUATION
           ======================================== */}
+      {showSection('best-practices') && (
       <div className="space-y-4">
         <div className="border-b pb-2">
           <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
@@ -3353,9 +3373,10 @@ function DashboardEnhancedComponent() {
         </div>
         <BestPracticesWidget />
       </div>
+      )}
 
       {/* Top Clients */}
-      {topClients.length > 0 && (
+      {showSection('top-clients') && topClients.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -3519,7 +3540,7 @@ function DashboardEnhancedComponent() {
       )}
 
       {/* Poor Services Alert */}
-      {poorServices.length > 0 && (
+      {showSection('services-health') && poorServices.length > 0 && (
         <Card className="border-[color:var(--status-warning)]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -3554,7 +3575,7 @@ function DashboardEnhancedComponent() {
       )}
 
       {/* Recent Alerts Preview */}
-      {notifications.length > 0 && (
+      {showSection('alerts') && notifications.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -3606,7 +3627,7 @@ function DashboardEnhancedComponent() {
       )}
 
       {/* Phase 1 Widgets: Venue Statistics */}
-      {filters.site && filters.site !== 'all' && (
+      {showSection('venue-stats') && filters.site && filters.site !== 'all' && (
         <VenueStatisticsWidget
           siteId={filters.site}
           duration={filters.timeRange === '15m' ? '15M' :
@@ -3617,16 +3638,15 @@ function DashboardEnhancedComponent() {
       )}
 
       {/* Phase 5+ Widgets: Configuration Profiles and Audit Logs */}
+      {(showSection('config-profiles') || showSection('audit-logs')) && (
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Configuration Profiles Widget */}
-        <ConfigurationProfilesWidget />
-
-        {/* Audit Logs Widget */}
-        <AuditLogsWidget />
+        {showSection('config-profiles') && <ConfigurationProfilesWidget />}
+        {showSection('audit-logs') && <AuditLogsWidget />}
       </div>
+      )}
 
       {/* OS ONE Control - System Information */}
-      <OSOneWidget compact={true} />
+      {showSection('os-one') && <OSOneWidget compact={true} />}
       </>
       )}
 

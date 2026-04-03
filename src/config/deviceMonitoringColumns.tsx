@@ -239,11 +239,12 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Device hostname or identifier',
     renderCell: (station) => {
       const identity = resolveClientIdentity(station);
+      const isDerived = identity.identitySource === 'derived_label';
       return (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 min-w-0">
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="font-medium text-[11px] leading-none cursor-help truncate max-w-[100px]">
+              <span className={`text-[11px] leading-none cursor-help truncate max-w-[200px] ${isDerived ? 'text-muted-foreground italic' : 'font-medium'}`}>
                 {identity.displayName}
               </span>
             </TooltipTrigger>
@@ -252,6 +253,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
                 <p className="font-medium">{identity.displayName}</p>
                 {identity.deviceType && <p>{identity.deviceType}</p>}
                 {identity.manufacturer && <p className="text-muted-foreground">{identity.manufacturer}</p>}
+                {isDerived && <p className="text-xs text-muted-foreground italic">Derived from OUI vendor lookup</p>}
               </div>
             </TooltipContent>
           </Tooltip>

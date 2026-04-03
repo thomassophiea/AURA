@@ -278,14 +278,112 @@ export function inferDeviceType(data: RawClientData): { type: string | null; cat
 }
 
 /**
- * Create a derived device label when no explicit identity exists
+ * Shorten a verbose legal manufacturer name into a concise display label.
+ * E.g. "Amazon Technologies Inc." → "Amazon"
+ *      "CLOUD NETWORK TECHNOLOGY SINGAPORE PTE. LTD." → "Cloud Network Tech"
+ *      "Qolsys Inc." → "Qolsys"
+ *      "Wistron Neweb Corporation" → "Wistron Neweb"
+ */
+export function shortenManufacturer(name: string): string {
+  // Exact overrides for well-known verbose names
+  const OVERRIDES: Record<string, string> = {
+    'Amazon Technologies Inc.': 'Amazon',
+    'Apple, Inc.': 'Apple',
+    'Samsung Electronics Co.,Ltd': 'Samsung',
+    'Hewlett Packard': 'HP',
+    'Hewlett Packard Enterprise': 'HPE',
+    'Cisco Systems, Inc': 'Cisco',
+    'Cisco Systems, Inc.': 'Cisco',
+    'Intel Corporate': 'Intel',
+    'Microsoft Corporation': 'Microsoft',
+    'Google, Inc.': 'Google',
+    'Google LLC': 'Google',
+    'TP-Link Corporation Limited': 'TP-Link',
+    'TP-LINK TECHNOLOGIES CO.,LTD.': 'TP-Link',
+    'Ubiquiti Networks Inc.': 'Ubiquiti',
+    'Ubiquiti Inc': 'Ubiquiti',
+    'Raspberry Pi Trading Ltd': 'Raspberry Pi',
+    'Raspberry Pi (Trading) Ltd': 'Raspberry Pi',
+    'Espressif Inc.': 'Espressif',
+    'NETGEAR': 'Netgear',
+    'Dell Inc.': 'Dell',
+    'Dell Technologies': 'Dell',
+    'Lenovo Group Limited': 'Lenovo',
+    'Sony Interactive Entertainment Inc.': 'Sony',
+    'Extreme Networks, Inc.': 'Extreme',
+    'Extreme Networks Headquarters': 'Extreme',
+    'Aruba, a Hewlett Packard Enterprise Company': 'Aruba',
+    'Aruba Networks': 'Aruba',
+    'Huawei Technologies Co.,Ltd': 'Huawei',
+    'HUAWEI TECHNOLOGIES CO.,LTD': 'Huawei',
+    'ASUSTek COMPUTER INC.': 'ASUS',
+    'Hon Hai Precision Ind. Co.,Ltd.': 'Foxconn',
+    'Murata Manufacturing Co., Ltd.': 'Murata',
+    'Texas Instruments': 'TI',
+    'Wistron Neweb Corporation': 'Wistron Neweb',
+    'CLOUD NETWORK TECHNOLOGY SINGAPORE PTE. LTD.': 'Cloud Network Tech',
+    'Liteon Technology Corporation': 'Liteon',
+    'AzureWave Technology Inc.': 'AzureWave',
+    'Realtek Semiconductor Corp.': 'Realtek',
+    'Qualcomm Inc.': 'Qualcomm',
+    'MediaTek Inc.': 'MediaTek',
+    'ecobee inc': 'ecobee',
+  };
+
+  // Case-insensitive lookup
+  const exact = OVERRIDES[name];
+  if (exact) return exact;
+
+  // Try case-insensitive match
+  const lower = name.toLowerCase();
+  for (const [key, val] of Object.entries(OVERRIDES)) {
+    if (key.toLowerCase() === lower) return val;
+  }
+
+  // Strip common legal suffixes and clean up
+  let short = name
+    .replace(/\bPTE\.?\s*LTD\.?\b/gi, '')
+    .replace(/\bLTD\.?\b/gi, '')
+    .replace(/\bINC\.?\b/gi, '')
+    .replace(/\bCO\.?,?\s*LTD\.?\b/gi, '')
+    .replace(/\bCORP(?:ORATION)?\.?\b/gi, '')
+    .replace(/\bTECHNOLOG(?:Y|IES)\b/gi, '')
+    .replace(/\bCOMPANY\b/gi, '')
+    .replace(/\bENTERPRISE\b/gi, '')
+    .replace(/\bGROUP\b/gi, '')
+    .replace(/\bHOLDINGS?\b/gi, '')
+    .replace(/\bINTERNATIONAL\b/gi, '')
+    .replace(/\bELECTRONICS?\b/gi, '')
+    .replace(/\bSEMICONDUCTOR\b/gi, '')
+    .replace(/\bCO\.\b/gi, '')
+    .replace(/[,()]/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  // If we cleaned it down to nothing, use original first word
+  if (!short || short.length < 2) {
+    short = name.split(/[\s,]/)[0];
+  }
+
+  // Cap at ~25 chars for display
+  if (short.length > 25) {
+    short = short.slice(0, 22).trim() + '...';
+  }
+
+  return short;
+}
+
+/**
+ * Create a derived device label when no explicit identity exists.
+ * Uses shortened manufacturer name for display.
  */
 export function createDerivedLabel(manufacturer: string | null, category: string | null): string {
-  if (manufacturer && category) {
-    return `${manufacturer} ${category}`;
+  const short = manufacturer ? shortenManufacturer(manufacturer) : null;
+  if (short && category) {
+    return `${short} ${category}`;
   }
-  if (manufacturer) {
-    return `${manufacturer} Device`;
+  if (short) {
+    return `${short} Device`;
   }
   if (category) {
     return category;
@@ -339,11 +437,11 @@ export function resolveClientIdentity(data: RawClientData): ClientIdentity {
   let identitySource: IdentitySource;
 
   if (deviceName && deviceName.trim() && !isMacLike(deviceName)) {
-    displayName = deviceName.trim();
+    displayName = isVendorDerivedHostname(deviceName) ? shortenVendorHostname(deviceName) : deviceName.trim();
     identitySource = 'device_name';
   } else if (hostname && hostname.trim() && !isMacLike(hostname)) {
-    displayName = hostname.trim();
-    identitySource = 'hostname';
+    displayName = isVendorDerivedHostname(hostname) ? shortenVendorHostname(hostname) : hostname.trim();
+    identitySource = isVendorDerivedHostname(hostname) ? 'derived_label' : 'hostname';
   } else if (userName && userName.trim()) {
     displayName = userName.trim();
     identitySource = 'user_name';
@@ -384,6 +482,33 @@ export function resolveClientIdentity(data: RawClientData): ClientIdentity {
     identitySource,
     isResolved: identitySource !== 'mac_fallback',
   };
+}
+
+/**
+ * Detect hostnames that are actually vendor-derived labels from the controller,
+ * e.g. "Amazon Technologies Inc. Mobile", "CLOUD NETWORK TECHNOLOGY SINGAPORE PTE. LTD. Device"
+ * These end with a generic device-type suffix and contain legal entity markers.
+ */
+const VENDOR_HOSTNAME_PATTERN = /\b(?:Inc\.?|Ltd\.?|LTD\.?|Corp\.?|Co\.?,?\s*Ltd\.?|LLC|PTE|GmbH|S\.?A\.?|AG)\b.*\s(?:Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i;
+
+function isVendorDerivedHostname(value: string): boolean {
+  return VENDOR_HOSTNAME_PATTERN.test(value.trim());
+}
+
+/**
+ * Shorten a vendor-derived hostname.
+ * "Amazon Technologies Inc. Mobile" → "Amazon Mobile"
+ * "CLOUD NETWORK TECHNOLOGY SINGAPORE PTE. LTD. Device" → "Cloud Network Tech Device"
+ */
+function shortenVendorHostname(value: string): string {
+  const trimmed = value.trim();
+  // Extract the suffix (Device, Mobile, Server, etc.)
+  const suffixMatch = trimmed.match(/\s(Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i);
+  const suffix = suffixMatch ? suffixMatch[1] : 'Device';
+  // Strip the suffix to get the vendor part, then shorten
+  const vendorPart = suffixMatch ? trimmed.slice(0, suffixMatch.index!).trim() : trimmed;
+  const shortVendor = shortenManufacturer(vendorPart);
+  return `${shortVendor} ${suffix}`;
 }
 
 /**
