@@ -124,7 +124,7 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('workspace');
+  const [currentPage, setCurrentPage] = useState('service-levels');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [justLoggedIn, setJustLoggedIn] = useState(false);

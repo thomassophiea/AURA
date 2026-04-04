@@ -96,34 +96,30 @@ export function GlobalElementsPage({ initialTab = 'templates', initialElementTyp
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
-        <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="inline-flex w-auto min-w-full sm:min-w-0">
-            <TabsTrigger value="templates" className="text-xs gap-1.5 px-2.5">
-              <Layers className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Templates</span>
-              <span className="xs:hidden">Tpl</span>
+        <div className="overflow-x-auto">
+          <TabsList className="inline-flex w-auto">
+            <TabsTrigger value="templates" className="text-sm gap-2 px-3">
+              <Layers className="h-4 w-4" />
+              Templates
             </TabsTrigger>
-            <TabsTrigger value="variables" className="text-xs gap-1.5 px-2.5">
-              <Braces className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Variables</span>
-              <span className="xs:hidden">Vars</span>
+            <TabsTrigger value="variables" className="text-sm gap-2 px-3">
+              <Braces className="h-4 w-4" />
+              Variables
             </TabsTrigger>
-            <TabsTrigger value="assignments" className="text-xs gap-1.5 px-2.5">
-              <Link2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Assignments</span>
-              <span className="sm:hidden">Assign</span>
+            <TabsTrigger value="assignments" className="text-sm gap-2 px-3">
+              <Link2 className="h-4 w-4" />
+              Assignments
             </TabsTrigger>
-            <TabsTrigger value="preview" className="text-xs gap-1.5 px-2.5">
-              <Eye className="h-3.5 w-3.5" />
+            <TabsTrigger value="preview" className="text-sm gap-2 px-3">
+              <Eye className="h-4 w-4" />
               Preview
             </TabsTrigger>
-            <TabsTrigger value="deployments" className="text-xs gap-1.5 px-2.5">
-              <Rocket className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Deployments</span>
-              <span className="sm:hidden">Deploy</span>
+            <TabsTrigger value="deployments" className="text-sm gap-2 px-3">
+              <Rocket className="h-4 w-4" />
+              Deployments
             </TabsTrigger>
-            <TabsTrigger value="drift" className="text-xs gap-1.5 px-2.5">
-              <AlertTriangle className="h-3.5 w-3.5" />
+            <TabsTrigger value="drift" className="text-sm gap-2 px-3">
+              <AlertTriangle className="h-4 w-4" />
               Drift
             </TabsTrigger>
           </TabsList>

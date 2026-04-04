@@ -30,6 +30,12 @@ const STORAGE_KEYS = {
 // ---------------------------------------------------------------------------
 
 class GlobalElementsService {
+  /** Check if Supabase is actually configured (not using placeholder). */
+  private _isSupabaseConfigured(): boolean {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    return !!url && !url.includes('placeholder');
+  }
+
   // -----------------------------------------------------------------------
   // Templates
   // -----------------------------------------------------------------------
@@ -38,6 +44,9 @@ class GlobalElementsService {
     orgId: string,
     elementType?: GlobalElementType
   ): Promise<GlobalElementTemplate[]> {
+    if (!this._isSupabaseConfigured()) {
+      return this._getCachedTemplates(orgId, elementType);
+    }
     try {
       let query = supabase
         .from('global_element_templates')
@@ -62,6 +71,20 @@ class GlobalElementsService {
   }
 
   async getTemplate(templateId: string): Promise<GlobalElementTemplate | null> {
+    if (!this._isSupabaseConfigured()) {
+      // Search all cached orgs for the template
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
+          try {
+            const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const found = all.find(t => t.id === templateId);
+            if (found) return found;
+          } catch { /* ignore */ }
+        }
+      }
+      return null;
+    }
     const { data, error } = await supabase
       .from('global_element_templates')
       .select('*')
@@ -78,6 +101,24 @@ class GlobalElementsService {
   async createTemplate(
     template: Omit<GlobalElementTemplate, 'id' | 'created_at' | 'updated_at' | 'version'>
   ): Promise<GlobalElementTemplate> {
+    const now = new Date().toISOString();
+    const newTemplate: GlobalElementTemplate = {
+      ...template,
+      id: crypto.randomUUID(),
+      version: 1,
+      created_at: now,
+      updated_at: now,
+    } as GlobalElementTemplate;
+
+    if (!this._isSupabaseConfigured()) {
+      // localStorage-only mode
+      const orgId = template.org_id;
+      const cached = this._getCachedTemplates(orgId);
+      cached.push(newTemplate);
+      this._cacheTemplates(orgId, cached);
+      return newTemplate;
+    }
+
     const { data, error } = await supabase
       .from('global_element_templates')
       .insert({ ...template, version: 1 })
@@ -92,6 +133,25 @@ class GlobalElementsService {
     templateId: string,
     updates: Partial<GlobalElementTemplate>
   ): Promise<GlobalElementTemplate> {
+    if (!this._isSupabaseConfigured()) {
+      // localStorage-only mode — find and update in cache
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
+          try {
+            const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const idx = all.findIndex(t => t.id === templateId);
+            if (idx >= 0) {
+              all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
+              localStorage.setItem(key, JSON.stringify(all));
+              return all[idx];
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      throw new Error('Template not found in local storage');
+    }
+
     const { data, error } = await supabase
       .from('global_element_templates')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -104,6 +164,23 @@ class GlobalElementsService {
   }
 
   async deleteTemplate(templateId: string): Promise<void> {
+    if (!this._isSupabaseConfigured()) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
+          try {
+            const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const filtered = all.filter(t => t.id !== templateId);
+            if (filtered.length !== all.length) {
+              localStorage.setItem(key, JSON.stringify(filtered));
+              return;
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      return;
+    }
+
     const { error } = await supabase
       .from('global_element_templates')
       .delete()
@@ -138,6 +215,9 @@ class GlobalElementsService {
   async getVariableDefinitions(
     orgId: string
   ): Promise<PersistedVariableDefinition[]> {
+    if (!this._isSupabaseConfigured()) {
+      return this._getCachedVariableDefs(orgId);
+    }
     try {
       const { data, error } = await supabase
         .from('variable_definitions')
@@ -159,6 +239,16 @@ class GlobalElementsService {
   async createVariableDefinition(
     def: Omit<PersistedVariableDefinition, 'id' | 'created_at' | 'updated_at'>
   ): Promise<PersistedVariableDefinition> {
+    const now = new Date().toISOString();
+    const newDef = { ...def, id: crypto.randomUUID(), created_at: now, updated_at: now } as PersistedVariableDefinition;
+
+    if (!this._isSupabaseConfigured()) {
+      const cached = this._getCachedVariableDefs(def.org_id);
+      cached.push(newDef);
+      this._cacheVariableDefs(def.org_id, cached);
+      return newDef;
+    }
+
     const { data, error } = await supabase
       .from('variable_definitions')
       .insert(def)
@@ -173,6 +263,24 @@ class GlobalElementsService {
     defId: string,
     updates: Partial<PersistedVariableDefinition>
   ): Promise<PersistedVariableDefinition> {
+    if (!this._isSupabaseConfigured()) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`${STORAGE_KEYS.VARIABLE_DEFS}:`)) {
+          try {
+            const all: PersistedVariableDefinition[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const idx = all.findIndex(d => d.id === defId);
+            if (idx >= 0) {
+              all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
+              localStorage.setItem(key, JSON.stringify(all));
+              return all[idx];
+            }
+          } catch { /* ignore */ }
+        }
+      }
+      throw new Error('Variable definition not found');
+    }
+
     const { data, error } = await supabase
       .from('variable_definitions')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -185,6 +293,20 @@ class GlobalElementsService {
   }
 
   async deleteVariableDefinition(defId: string): Promise<void> {
+    if (!this._isSupabaseConfigured()) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith(`${STORAGE_KEYS.VARIABLE_DEFS}:`)) {
+          try {
+            const all: PersistedVariableDefinition[] = JSON.parse(localStorage.getItem(key) || '[]');
+            const filtered = all.filter(d => d.id !== defId);
+            if (filtered.length !== all.length) { localStorage.setItem(key, JSON.stringify(filtered)); return; }
+          } catch { /* ignore */ }
+        }
+      }
+      return;
+    }
+
     const { error } = await supabase
       .from('variable_definitions')
       .delete()
