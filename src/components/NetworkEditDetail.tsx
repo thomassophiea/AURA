@@ -967,11 +967,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     </div>
   );
 
-  /** Toggle field — label left, switch right, with breathing room */
+  /** Toggle field — label left, switch + status right, with breathing room */
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
     <div className="flex items-center justify-between py-2.5 border-b border-border/20 last:border-0">
       <span className="text-sm">{label}</span>
-      <Switch checked={checked} onCheckedChange={onChange} />
+      <div className="flex items-center gap-2.5">
+        <span className={`text-[11px] font-medium ${checked ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+          {checked ? 'ON' : 'OFF'}
+        </span>
+        <Switch checked={checked} onCheckedChange={onChange} />
+      </div>
     </div>
   );
 
@@ -1207,7 +1212,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── SSID Scheduling (toggle) ── */}
         <div className="rounded-lg border border-border/50 bg-card">
-          <button onClick={() => setShowSchedulingCard(!showSchedulingCard)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+          <button onClick={() => setShowSchedulingCard(!showSchedulingCard)} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">SSID Scheduling</h3>
@@ -1262,15 +1267,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Advanced (toggle) ── spans full width */}
         <div className="rounded-lg border border-border/50 bg-card lg:col-span-2">
-          <button onClick={() => setShowAdvancedCard(!showAdvancedCard)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+          <button onClick={() => setShowAdvancedCard(!showAdvancedCard)} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Advanced</h3>
             </div>
             {showAdvancedCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
-          {showAdvancedCard && <div className="border-t border-border/40 p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-0">
+          {showAdvancedCard && <div className="border-t border-border/40 p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-0">
             <Toggle label="MultiBand Operation" checked={formData.bandSteering} onChange={(v) => handleInputChange('bandSteering', v)} />
             <Toggle label="RADIUS Accounting" checked={formData.accountingEnabled} onChange={(v) => { handleInputChange('accountingEnabled', v); handleInputChange('radiusAccounting', v); }} />
             <Toggle label="Hide SSID" checked={formData.hidden} onChange={(v) => { handleInputChange('hidden', v); handleInputChange('broadcastSSID', !v); }} />
