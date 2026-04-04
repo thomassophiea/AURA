@@ -1163,8 +1163,8 @@ export function ConfigureNetworks() {
           </div>
 
           {/* Networks Table */}
-          <div className="border rounded-lg">
-            <Table>
+          <div className="border rounded-lg overflow-hidden">
+            <Table className="[&_th]:py-3 [&_td]:py-3.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted-foreground">
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-12">
@@ -1324,7 +1324,7 @@ export function ConfigureNetworks() {
                     {expandedNetworkId === network.id && (
                       <TableRow>
                         <TableCell colSpan={99} className="p-0">
-                          <div className="border-t bg-muted/30">
+                          <div className="border-t border-b bg-card shadow-inner">
                             <NetworkEditDetail 
                               serviceId={network.id} 
                               onSave={handleNetworkSaved}

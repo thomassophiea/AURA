@@ -946,37 +946,37 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   const show6eBadge = ['owe', 'wpa3-personal', 'wpa3-enterprise', 'wpa3-compatibility', 'wpa23-enterprise'].includes(formData.securityType);
 
   return (
-    <div className={isInline ? 'p-0' : 'p-6'}>
+    <div className={isInline ? 'px-6 py-5 bg-card' : 'p-8'}>
       {error && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
       {/* ========== TOP BAR ========== */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b">
+      <div className="flex items-center justify-between mb-8 pb-4 border-b">
         <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Wifi className="h-5 w-5" />
+          <Wifi className="h-5 w-5 text-primary" />
           Edit WLAN
         </h2>
-        <div className="flex items-center gap-2">
-          <Button variant="destructive" size="sm" disabled={saving}>
-            <Trash2 className="h-4 w-4 mr-1" />
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="default" disabled={saving} className="text-destructive border-destructive/30 hover:bg-destructive/10">
+            <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </Button>
-          <Button onClick={handleSave} disabled={saving} size="sm">
-            {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+          <Button onClick={handleSave} disabled={saving} size="default">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </div>
 
       {/* ========== MAIN FORM (single scrollable column, label-left input-right) ========== */}
-      <div className="space-y-5 max-w-3xl">
+      <div className="space-y-6 max-w-3xl mx-auto">
 
         {/* Network Name */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label htmlFor="network-name" className="text-sm font-medium text-right">Network Name</Label>
           <Input
             id="network-name"
@@ -987,7 +987,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </div>
 
         {/* SSID */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label htmlFor="ssid" className="text-sm font-medium text-right">SSID</Label>
           <Input
             id="ssid"
@@ -998,7 +998,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </div>
 
         {/* Status */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Status</Label>
           <Select
             value={formData.enabled ? 'enabled' : 'disabled'}
@@ -1015,7 +1015,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </div>
 
         {/* Hotspot */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Hotspot</Label>
           <Select
             value={formData.hotspot ? 'enabled' : 'disabled'}
@@ -1035,7 +1035,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </div>
 
         {/* Auth Type + Edit Privacy button + 6E badge */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Auth Type</Label>
           <div className="flex items-center gap-2">
             <Select
@@ -1162,7 +1162,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </div>
 
         {/* Enable Captive Portal */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Enable Captive Portal</Label>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -1179,7 +1179,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         {/* Captive Portal Type (only when captive portal enabled) */}
         {formData.captivePortal && (
           <>
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">Portal Type</Label>
               <Select
                 value={formData.captivePortalType || 'none'}
@@ -1196,7 +1196,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               </Select>
             </div>
             {formData.captivePortalType === 'eGuest' && eGuestProfiles.length > 0 && (
-              <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+              <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
                 <Label className="text-sm font-medium text-right">eGuest Profile</Label>
                 <Select
                   value={formData.eGuestPortalId || 'none'}
@@ -1218,7 +1218,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         )}
 
         {/* MAC-based Authentication (MBA) */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">MAC-based Auth (MBA)</Label>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -1240,7 +1240,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Enterprise AAA Configuration</h3>
 
             {/* AAA Policy */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">AAA Policy</Label>
               <Select
                 value={formData.aaaPolicyId || 'none'}
@@ -1259,7 +1259,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
 
             {/* Authentication Method */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">Authentication Method</Label>
               <Select
                 value={formData.authMethod || 'radius'}
@@ -1277,13 +1277,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
 
             {/* Default AAA Auth Method */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">Default AAA Auth Method</Label>
               <Input value="RADIUS" disabled className="w-64 bg-muted" />
             </div>
 
             {/* Encryption (Enterprise) */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">Encryption</Label>
               <Select
                 value={formData.encryption || 'aes'}
@@ -1301,7 +1301,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
 
             {/* PMF (Enterprise) */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">PMF Mode</Label>
               <Select
                 value={formData.pmfMode || 'disabled'}
@@ -1319,7 +1319,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
 
             {/* Fast Transition */}
-            <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
               <Label className="text-sm font-medium text-right">Fast Transition (802.11r)</Label>
               <div className="flex items-center gap-2">
                 <Switch
@@ -1335,7 +1335,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         )}
 
         {/* ========== DEFAULT AUTH ROLE & VLAN (always shown) ========== */}
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Default Auth Role</Label>
           <Select
             value={formData.authenticatedUserDefaultRoleID || 'none'}
@@ -1353,7 +1353,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </Select>
         </div>
 
-        <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
           <Label className="text-sm font-medium text-right">Default VLAN / Topology</Label>
           <Select
             value={formData.defaultTopology || 'none'}
@@ -1375,17 +1375,17 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       {/* ========== BOTTOM SECTION TABS: ADVANCED | SCHEDULING ========== */}
       <Separator className="my-6" />
 
-      <Tabs value={bottomTab} onValueChange={setBottomTab} className="w-full max-w-3xl">
+      <Tabs value={bottomTab} onValueChange={setBottomTab} className="w-full max-w-3xl mx-auto">
         <TabsList>
           <TabsTrigger value="advanced">ADVANCED</TabsTrigger>
           <TabsTrigger value="scheduling">SCHEDULING</TabsTrigger>
         </TabsList>
 
         {/* ===== ADVANCED TAB ===== */}
-        <TabsContent value="advanced" className="pt-4 space-y-4">
+        <TabsContent value="advanced" className="pt-4 space-y-1 divide-y divide-border/50 [&>div]:pt-3 [&>div]:pb-3">
 
           {/* MultiBand Operation */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">MultiBand Operation</Label>
             <Switch
               checked={formData.bandSteering}
@@ -1394,7 +1394,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* RADIUS Accounting */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">RADIUS Accounting</Label>
             <Switch
               checked={formData.accountingEnabled}
@@ -1406,7 +1406,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Hide SSID */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Hide SSID</Label>
             <Switch
               checked={formData.hidden}
@@ -1418,7 +1418,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Include Hostname */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Include Hostname</Label>
             <Switch
               checked={formData.includeHostname}
@@ -1427,7 +1427,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* FTM (11mc) responder support */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">FTM (11mc) Responder Support</Label>
             <Switch
               checked={formData.enable11mcSupport}
@@ -1436,7 +1436,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Radio Management (11k) support */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Radio Management (11k) Support</Label>
             <Switch
               checked={formData.enabled11kSupport}
@@ -1445,7 +1445,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* U-APSD (WMM-PS) */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">U-APSD (WMM-PS)</Label>
             <Switch
               checked={formData.uapsdEnabled}
@@ -1454,28 +1454,28 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Admission Control toggles */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Admission Control - Voice (VO)</Label>
             <Switch
               checked={formData.admissionControlVoice}
               onCheckedChange={(v) => handleInputChange('admissionControlVoice', v)}
             />
           </div>
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Admission Control - Video (VI)</Label>
             <Switch
               checked={formData.admissionControlVideo}
               onCheckedChange={(v) => handleInputChange('admissionControlVideo', v)}
             />
           </div>
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Admission Control - Best Effort (BE)</Label>
             <Switch
               checked={formData.admissionControlBestEffort}
               onCheckedChange={(v) => handleInputChange('admissionControlBestEffort', v)}
             />
           </div>
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Admission Control - Background (BK)</Label>
             <Switch
               checked={formData.admissionControlBackgroundTraffic}
@@ -1484,7 +1484,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Client To Client Communication */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Client-to-Client Communication</Label>
             <Switch
               checked={formData.clientToClientCommunication}
@@ -1496,7 +1496,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Clear Session on Disconnect */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Clear Session on Disconnect</Label>
             <Switch
               checked={formData.purgeOnDisconnect}
@@ -1505,7 +1505,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* Beacon Protection */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Beacon Protection</Label>
             <Switch
               checked={formData.beaconProtection}
@@ -1516,7 +1516,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           <Separator className="my-2" />
 
           {/* Timeout inputs */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Pre-Auth Idle Timeout (sec)</Label>
             <Input
               type="number"
@@ -1525,7 +1525,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               onChange={(e) => handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)}
             />
           </div>
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Post-Auth Idle Timeout (sec)</Label>
             <Input
               type="number"
@@ -1534,7 +1534,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               onChange={(e) => handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)}
             />
           </div>
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">Max Session Duration (sec)</Label>
             <Input
               type="number"
@@ -1545,7 +1545,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </div>
 
           {/* QOS/DSCP button */}
-          <div className="grid grid-cols-[200px_1fr] items-center gap-4">
+          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
             <Label className="text-sm font-medium text-right">QoS / DSCP</Label>
             <Select
               value={formData.defaultCoS || 'none'}
@@ -1581,7 +1581,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               const isDisabled = startH === 0 && startM === 0 && stopH === 0 && stopM === 0;
 
               return (
-                <div key={day} className="grid grid-cols-[200px_1fr] items-center gap-4">
+                <div key={day} className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
                   <Label className="text-sm font-medium text-right capitalize">{day}</Label>
                   <div className="flex items-center gap-2">
                     <Input
