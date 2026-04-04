@@ -144,6 +144,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Advanced options state
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showNetworkOptions, setShowNetworkOptions] = useState(false);
 
   // Interface assignment dialog state (for granular radio/port selection)
   const [interfaceAssignmentOpen, setInterfaceAssignmentOpen] = useState(false);
@@ -1062,6 +1063,16 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                   </div>
                 )}
 
+                {/* Network Options - collapsed by default for simple setups */}
+                <div
+                  className="flex items-center justify-between cursor-pointer py-2 border-t mt-2"
+                  onClick={() => setShowNetworkOptions(!showNetworkOptions)}
+                >
+                  <span className="text-xs font-medium text-muted-foreground">Network Options (VLAN, Topology, Role, CoS)</span>
+                  {showNetworkOptions ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                </div>
+                {showNetworkOptions && (<>
+
                 {/* VLAN */}
                 <div className="space-y-2">
                   <Label htmlFor="vlan">VLAN ID (Default: 1)</Label>
@@ -1138,6 +1149,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </SelectContent>
                   </Select>
                 </div>
+                </>)}
               </div>
               </CardContent>
             </Card>

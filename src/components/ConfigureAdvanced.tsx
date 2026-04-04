@@ -9,12 +9,13 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 import { Alert, AlertDescription } from './ui/alert';
 import {
   Settings, RefreshCw, Plus, Edit, Trash2, AlertCircle,
   Network, Gauge, Layers, Cpu, Bluetooth, Globe, Shield, Cable, Loader2,
-  Radio, ShieldCheck
+  Radio, ShieldCheck, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -62,6 +63,7 @@ function TopologiesTab() {
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [form, setForm] = useState({
     name: '', vlanid: 1, mode: 'BridgedAtAp', tagged: false,
     mtu: 1500, enableMgmtTraffic: false,
@@ -215,6 +217,7 @@ function TopologiesTab() {
             <SheetDescription>VLAN/Topology configuration</SheetDescription>
           </SheetHeader>
           <div className="space-y-4">
+            {/* Essential Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="VLAN name" /></div>
               <div><Label>VLAN ID (1-4094)</Label><Input type="number" value={form.vlanid} onChange={e => setForm({...form, vlanid: parseInt(e.target.value) || 1})} min={1} max={4094} /></div>
@@ -234,10 +237,23 @@ function TopologiesTab() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center justify-between pt-6"><Label>Tagged</Label><Switch checked={form.tagged} onCheckedChange={v => setForm({...form, tagged: v})} /></div>
+            </div>
+
+            {/* Advanced Settings - collapsed by default */}
+            <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                  Advanced Settings
+                  {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-2">
+
+            <div className="grid grid-cols-2 gap-4">
               <div><Label>MTU</Label><Input type="number" value={form.mtu} onChange={e => setForm({...form, mtu: parseInt(e.target.value) || 1500})} /></div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="flex items-center justify-between"><Label>Tagged</Label><Switch checked={form.tagged} onCheckedChange={v => setForm({...form, tagged: v})} /></div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="flex items-center justify-between"><Label>Mgmt Traffic</Label><Switch checked={form.enableMgmtTraffic} onCheckedChange={v => setForm({...form, enableMgmtTraffic: v})} /></div>
               <div className="flex items-center justify-between"><Label>Multicast Bridge</Label><Switch checked={form.multicastBridging} onCheckedChange={v => setForm({...form, multicastBridging: v})} /></div>
             </div>
@@ -312,6 +328,9 @@ function TopologiesTab() {
                 <div><Label>CA Certificate ID</Label><Input type="number" value={form.certCa} onChange={e => setForm({...form, certCa: parseInt(e.target.value) || 0})} placeholder="0 = none" /></div>
               </div>
             </div>
+              </CollapsibleContent>
+            </Collapsible>
+
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
               <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
@@ -1462,6 +1481,7 @@ function RFManagementTab() {
   const [showDialog, setShowDialog] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [showAdvanced, setShowAdvancedRF] = useState(false);
   const [form, setForm] = useState<any>({
     name: '', type: 'SMARTRF',
     // SmartRF settings
@@ -1625,8 +1645,19 @@ function RFManagementTab() {
             {form.type === 'SMARTRF' && (
               <>
                 <div className="border rounded-lg p-4 space-y-3">
-                  <Label className="text-sm font-medium">SmartRF Scanning</Label>
                   <div className="flex items-center justify-between"><Label>SmartRF Enabled</Label><Switch checked={form.smartRfEnabled} onCheckedChange={v => setForm({...form, smartRfEnabled: v})} /></div>
+                </div>
+
+                <div
+                  className="flex items-center justify-between cursor-pointer py-2 border-t"
+                  onClick={() => setShowAdvancedRF(!showAdvanced)}
+                >
+                  <span className="text-xs font-medium text-muted-foreground">Advanced RF Settings</span>
+                  {showAdvanced ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+                </div>
+                {showAdvanced && (<>
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">SmartRF Scanning</Label>
                   <div className="flex items-center justify-between"><Label>Smart Monitoring</Label><Switch checked={form.smartMonitoring} onCheckedChange={v => setForm({...form, smartMonitoring: v})} /></div>
                   <div className="flex items-center justify-between"><Label>OCS Monitoring Awareness</Label><Switch checked={form.ocsMonitoringAwareness} onCheckedChange={v => setForm({...form, ocsMonitoringAwareness: v})} /></div>
                   {form.ocsMonitoringAwareness && (
@@ -1675,6 +1706,7 @@ function RFManagementTab() {
                     </div>
                   )}
                 </div>
+                </>)}
               </>
             )}
 
