@@ -952,24 +952,24 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   /** Settings card — rounded, bordered, fills grid cell */
   const SettingsCard = ({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) => (
     <div className={`rounded-lg border border-border/50 bg-card ${className}`}>
-      <div className="px-4 py-3 border-b border-border/40">
+      <div className="px-5 py-3.5 border-b border-border/40">
         <h3 className="text-sm font-semibold">{title}</h3>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-5">{children}</div>
     </div>
   );
 
   /** Labeled field — label above input, Mist style */
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
       <label className="text-xs font-medium text-muted-foreground">{label}</label>
       <div>{children}</div>
     </div>
   );
 
-  /** Toggle field — label left, switch right, compact */
+  /** Toggle field — label left, switch right, with breathing room */
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
-    <div className="flex items-center justify-between py-1.5">
+    <div className="flex items-center justify-between py-2.5 border-b border-border/20 last:border-0">
       <span className="text-sm">{label}</span>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
@@ -1008,14 +1008,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── SSID ── */}
         <SettingsCard title="SSID">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Field label="Network Name">
               <Input value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="e.g. Corporate WiFi" className="h-9 text-sm" />
             </Field>
             <Field label="SSID">
               <Input value={formData.ssid} onChange={(e) => handleInputChange('ssid', e.target.value)} placeholder="Broadcast name" className="h-9 text-sm" />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-4">
               <Field label="WLAN Status">
                 <Select value={formData.enabled ? 'enabled' : 'disabled'} onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
@@ -1040,7 +1040,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Security ── */}
         <SettingsCard title="Security">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Field label="Auth Type">
               <div className="flex items-center gap-2">
                 <Select value={formData.securityType} onValueChange={(v) => handleInputChange('securityType', v)}>
@@ -1079,7 +1079,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                             </button>
                           </div>
                         </Field>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-4">
                           <Field label="Encryption">
                             <Select value={formData.encryption} onValueChange={(v) => handleInputChange('encryption', v)}>
                               <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
@@ -1116,7 +1116,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Role & VLAN ── */}
         <SettingsCard title="Role & VLAN">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Field label="Default Auth Role">
               <Select value={formData.authenticatedUserDefaultRoleID || 'none'} onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
@@ -1140,7 +1140,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Captive Portal ── */}
         <SettingsCard title="Captive Portal">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Toggle label="Enable Captive Portal" checked={formData.captivePortal} onChange={(v) => handleInputChange('captivePortal', v)} />
             {formData.captivePortal && (
               <>
@@ -1173,7 +1173,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         {/* ── Enterprise AAA (conditional) ── */}
         {isEnterprise && (
           <SettingsCard title="Enterprise AAA" className="lg:col-span-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Field label="AAA Policy">
                 <Select value={formData.aaaPolicyId || 'none'} onValueChange={(v) => handleInputChange('aaaPolicyId', v)}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
@@ -1215,14 +1215,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             {showSchedulingCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
           {showSchedulingCard && <div className="border-t border-border/40 p-4">
-          <div className="space-y-1">
+          <div>
             {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
               const schedule = formData.enabledSchedule || {};
               const ds = schedule[day] || { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } };
               const sH = ds.start?.hour ?? 0, sM = ds.start?.minute ?? 0, eH = ds.stop?.hour ?? 0, eM = ds.stop?.minute ?? 0;
               const isOff = sH === 0 && sM === 0 && eH === 0 && eM === 0;
               return (
-                <div key={day} className="flex items-center justify-between py-1">
+                <div key={day} className="flex items-center justify-between py-2 border-b border-border/20 last:border-0">
                   <span className="text-xs font-medium capitalize w-20">{day}</span>
                   <div className="flex items-center gap-1.5">
                     <Input type="time" value={`${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`} onChange={(e) => { const [h,m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...ds, start: { hour: h, minute: m } } } as any); }} className="w-24 h-7 text-xs" />
@@ -1239,14 +1239,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── QoS Priority ── */}
         <SettingsCard title="QoS Priority">
-          <div className="space-y-3">
+          <div className="space-y-4">
             <Field label="Class of Service">
               <Select value={formData.defaultCoS || 'none'} onValueChange={(v) => handleInputChange('defaultCoS', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select CoS" /></SelectTrigger>
                 <SelectContent><SelectItem value="none">None</SelectItem>{cosOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-4">
               <Field label="Pre-Auth Timeout">
                 <Input type="number" value={formData.preAuthenticatedIdleTimeout} onChange={(e) => handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)} className="h-9 text-sm" />
               </Field>
