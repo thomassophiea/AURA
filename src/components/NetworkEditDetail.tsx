@@ -952,27 +952,27 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   /** Settings card — rounded, bordered, fills grid cell */
   const SettingsCard = ({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) => (
     <div className={`rounded-lg border border-border/50 bg-card ${className}`}>
-      <div className="px-5 py-3.5 border-b border-border/40">
-        <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="px-5 py-3 border-b border-border/40">
+        <h3 className="text-[13px] font-semibold">{title}</h3>
       </div>
-      <div className="p-5">{children}</div>
+      <div className="px-5 py-5">{children}</div>
     </div>
   );
 
-  /** Labeled field — label above input, Mist style */
+  /** Labeled field — label above input with clear gap */
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div className="space-y-2">
-      <label className="text-xs font-medium text-muted-foreground">{label}</label>
-      <div>{children}</div>
+    <div>
+      <label className="block text-xs font-medium text-muted-foreground mb-2">{label}</label>
+      {children}
     </div>
   );
 
-  /** Toggle field — label left, switch + status right, with breathing room */
+  /** Toggle field — label left, switch + status right, generous row height */
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
-    <div className="flex items-center justify-between py-2.5 border-b border-border/20 last:border-0">
-      <span className="text-sm">{label}</span>
+    <div className="flex items-center justify-between h-11">
+      <span className="text-[13px]">{label}</span>
       <div className="flex items-center gap-2.5">
-        <span className={`text-[11px] font-medium ${checked ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+        <span className={`text-[11px] font-medium min-w-[22px] text-right ${checked ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60'}`}>
           {checked ? 'ON' : 'OFF'}
         </span>
         <Switch checked={checked} onCheckedChange={onChange} />
@@ -1013,7 +1013,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── SSID ── */}
         <SettingsCard title="SSID">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Field label="Network Name">
               <Input value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="e.g. Corporate WiFi" className="h-9 text-sm" />
             </Field>
@@ -1045,7 +1045,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Security ── */}
         <SettingsCard title="Security">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Field label="Auth Type">
               <div className="flex items-center gap-2">
                 <Select value={formData.securityType} onValueChange={(v) => handleInputChange('securityType', v)}>
@@ -1121,7 +1121,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Role & VLAN ── */}
         <SettingsCard title="Role & VLAN">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Field label="Default Auth Role">
               <Select value={formData.authenticatedUserDefaultRoleID || 'none'} onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
@@ -1145,7 +1145,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Captive Portal ── */}
         <SettingsCard title="Captive Portal">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Toggle label="Enable Captive Portal" checked={formData.captivePortal} onChange={(v) => handleInputChange('captivePortal', v)} />
             {formData.captivePortal && (
               <>
@@ -1219,7 +1219,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
             {showSchedulingCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
-          {showSchedulingCard && <div className="border-t border-border/40 p-4">
+          {showSchedulingCard && <div className="border-t border-border/40 px-5 py-4">
           <div>
             {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
               const schedule = formData.enabledSchedule || {};
@@ -1227,7 +1227,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               const sH = ds.start?.hour ?? 0, sM = ds.start?.minute ?? 0, eH = ds.stop?.hour ?? 0, eM = ds.stop?.minute ?? 0;
               const isOff = sH === 0 && sM === 0 && eH === 0 && eM === 0;
               return (
-                <div key={day} className="flex items-center justify-between py-2 border-b border-border/20 last:border-0">
+                <div key={day} className="flex items-center justify-between h-10 border-b border-border/20 last:border-0">
                   <span className="text-xs font-medium capitalize w-20">{day}</span>
                   <div className="flex items-center gap-1.5">
                     <Input type="time" value={`${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`} onChange={(e) => { const [h,m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...ds, start: { hour: h, minute: m } } } as any); }} className="w-24 h-7 text-xs" />
@@ -1244,7 +1244,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── QoS Priority ── */}
         <SettingsCard title="QoS Priority">
-          <div className="space-y-4">
+          <div className="space-y-5">
             <Field label="Class of Service">
               <Select value={formData.defaultCoS || 'none'} onValueChange={(v) => handleInputChange('defaultCoS', v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select CoS" /></SelectTrigger>
@@ -1274,8 +1274,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
             {showAdvancedCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
-          {showAdvancedCard && <div className="border-t border-border/40 p-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-0">
+          {showAdvancedCard && <div className="border-t border-border/40 px-5 py-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12">
             <Toggle label="MultiBand Operation" checked={formData.bandSteering} onChange={(v) => handleInputChange('bandSteering', v)} />
             <Toggle label="RADIUS Accounting" checked={formData.accountingEnabled} onChange={(v) => { handleInputChange('accountingEnabled', v); handleInputChange('radiusAccounting', v); }} />
             <Toggle label="Hide SSID" checked={formData.hidden} onChange={(v) => { handleInputChange('hidden', v); handleInputChange('broadcastSSID', !v); }} />
