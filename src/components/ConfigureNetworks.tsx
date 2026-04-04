@@ -1182,13 +1182,12 @@ export function ConfigureNetworks() {
                       </div>
                     </TableHead>
                   )}
+                  <TableHead>Name</TableHead>
                   <TableHead>SSID</TableHead>
-                  <TableHead>Auth Type</TableHead>
-                  <TableHead>Sites</TableHead>
-                  <TableHead>APs</TableHead>
-                  <TableHead>Clients</TableHead>
-                  <TableHead>Captive Portal</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Default Role</TableHead>
+                  <TableHead>Privacy Type</TableHead>
+                  <TableHead>Default VLAN</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -1210,57 +1209,27 @@ export function ConfigureNetworks() {
                           </Badge>
                         </TableCell>
                       )}
+                      <TableCell className="font-medium">{network.name}</TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono text-sm">{network.ssid}</span>
-                          {network.hidden && (
-                            <EyeOff className="h-3 w-3 text-muted-foreground" title="Hidden SSID" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          <Shield className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-xs">{network.authType}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {deploymentInfo[network.id]?.sites ?? '—'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs tabular-nums text-muted-foreground">
-                          {deploymentInfo[network.id]?.aps ?? '—'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center">
-                          <Users className="h-3.5 w-3.5 text-primary" />
-                          <span className="text-sm font-semibold text-foreground tabular-nums">
-                            {network.currentClients || 0}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-1">
-                          {(network.captivePortal || network.enableCaptivePortal) ? (
-                            <>
-                              <Globe className="h-3 w-3 text-[color:var(--status-info)]" />
-                              <span className="text-xs text-[color:var(--status-info)]">Enabled</span>
-                            </>
-                          ) : (
-                            <>
-                              <Globe className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-xs text-muted-foreground">Disabled</span>
-                            </>
-                          )}
-                        </div>
+                        <span className="font-mono text-sm">{network.ssid}</span>
                       </TableCell>
                       <TableCell>
                         <Badge variant={network.enabled ? 'default' : 'secondary'}>
                           {network.enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {(network as any).authenticatedUserDefaultRoleName || (network as any).defaultRoleName || '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm">{network.authType}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-sm text-muted-foreground">
+                          {(network as any).defaultTopologyName || (network as any).vlanId || '—'}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end space-x-1">
