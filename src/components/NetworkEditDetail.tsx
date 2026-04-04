@@ -967,12 +967,12 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     </div>
   );
 
-  /** Toggle field — label left, switch + status right, generous row height */
+  /** Toggle field — label left, switch + status right */
   const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
-    <div className="flex items-center justify-between h-11">
-      <span className="text-[13px]">{label}</span>
-      <div className="flex items-center gap-2.5">
-        <span className={`text-[11px] font-medium min-w-[22px] text-right ${checked ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground/60'}`}>
+    <div className="flex items-center justify-between py-3 px-1">
+      <span className="text-[13px] mr-4">{label}</span>
+      <div className="flex items-center gap-3 shrink-0">
+        <span className={`text-[11px] font-semibold tracking-wide ${checked ? 'text-emerald-500' : 'text-muted-foreground/50'}`}>
           {checked ? 'ON' : 'OFF'}
         </span>
         <Switch checked={checked} onCheckedChange={onChange} />
@@ -1274,8 +1274,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </div>
             {showAdvancedCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </button>
-          {showAdvancedCard && <div className="border-t border-border/40 px-5 py-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-12">
+          {showAdvancedCard && <div className="border-t border-border/40 px-5 py-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
             <Toggle label="MultiBand Operation" checked={formData.bandSteering} onChange={(v) => handleInputChange('bandSteering', v)} />
             <Toggle label="RADIUS Accounting" checked={formData.accountingEnabled} onChange={(v) => { handleInputChange('accountingEnabled', v); handleInputChange('radiusAccounting', v); }} />
             <Toggle label="Hide SSID" checked={formData.hidden} onChange={(v) => { handleInputChange('hidden', v); handleInputChange('broadcastSSID', !v); }} />
