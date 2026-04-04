@@ -311,21 +311,18 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const loadRoles = async () => {
     setLoadingRoles(true);
     try {
-      const data = await apiService.getRoles();
+      const nameMap = await apiService.getRoleNameToIdMap();
+      const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setRoles(data);
 
       // Auto-select "bridged" role if it exists
-      const bridgedRole = data.find(r =>
-        r.name?.toLowerCase() === 'bridged'
-      );
-
-      if (bridgedRole) {
-        setFormData(prev => ({ ...prev, authenticatedUserDefaultRoleID: bridgedRole.id }));
-        console.log('[CreateWLAN] Auto-selected "bridged" role:', bridgedRole.id);
+      const bridgedId = nameMap['bridged'] || nameMap['Bridged'];
+      if (bridgedId) {
+        setFormData(prev => ({ ...prev, authenticatedUserDefaultRoleID: bridgedId }));
+        console.log('[CreateWLAN] Auto-selected "bridged" role:', bridgedId);
       }
     } catch (error) {
       console.error('Failed to load roles:', error);
-      // Don't show error toast - roles are optional
     } finally {
       setLoadingRoles(false);
     }
@@ -334,7 +331,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const loadAaaPolicies = async () => {
     setLoadingAaaPolicies(true);
     try {
-      const data = await apiService.getAAAPolicies();
+      const nameMap = await apiService.getAaaPolicyNameToIdMap();
+      const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setAaaPolicies(data);
       console.log(`[CreateWLAN] Loaded ${data.length} AAA policies`);
     } catch (error) {
@@ -347,7 +345,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const loadTopologies = async () => {
     setLoadingTopologies(true);
     try {
-      const data = await apiService.getTopologies();
+      const nameMap = await apiService.getTopologyNameToIdMap();
+      const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setTopologies(data);
       console.log(`[CreateWLAN] Loaded ${data.length} topologies`);
     } catch (error) {
@@ -360,7 +359,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   const loadCosProfiles = async () => {
     setLoadingCos(true);
     try {
-      const data = await apiService.getClassOfService();
+      const nameMap = await apiService.getCoSNameToIdMap();
+      const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setCosProfiles(data);
       console.log(`[CreateWLAN] Loaded ${data.length} CoS profiles`);
     } catch (error) {
@@ -1090,7 +1090,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <SelectItem value="none">Default Topology</SelectItem>
                       {topologies.map((topology) => (
                         <SelectItem key={topology.id} value={topology.id}>
-                          {topology.name || topology.topologyName || topology.id}
+                          {topology.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1111,7 +1111,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <SelectItem value="none">Default CoS</SelectItem>
                       {cosProfiles.map((cos) => (
                         <SelectItem key={cos.id} value={cos.id}>
-                          {cos.name || cos.cosName || cos.id}
+                          {cos.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

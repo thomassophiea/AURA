@@ -388,6 +388,24 @@ export function ConfigureNetworks() {
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
 
+  // Deployment info: site count and AP count per WLAN
+  const [deploymentInfo, setDeploymentInfo] = useState<Record<string, { sites: number; aps: number }>>({});
+
+  // Load deployment info (sites + APs) for each WLAN in background
+  const loadDeploymentInfo = async (networkIds: string[]) => {
+    const info: Record<string, { sites: number; aps: number }> = {};
+    await Promise.allSettled(
+      networkIds.map(async (id) => {
+        const [siteIds, deviceIds] = await Promise.all([
+          apiService.getServiceSiteIds(id),
+          apiService.getServiceDeviceIds(id),
+        ]);
+        info[id] = { sites: siteIds.length, aps: deviceIds.length };
+      })
+    );
+    setDeploymentInfo(prev => ({ ...prev, ...info }));
+  };
+
   useEffect(() => {
     loadNetworks();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -471,6 +489,11 @@ export function ConfigureNetworks() {
       setNetworks(allConfigs);
       setServices(allServices);
       setRoles([]);
+
+      // Load deployment info (sites/APs) in background
+      if (allConfigs.length > 0) {
+        loadDeploymentInfo(allConfigs.map(c => c.id));
+      }
 
       if (allConfigs.length === 0 && allServices.length === 0) {
         console.log('[ConfigureNetworks] No networks found');
@@ -1161,6 +1184,8 @@ export function ConfigureNetworks() {
                   )}
                   <TableHead>SSID</TableHead>
                   <TableHead>Auth Type</TableHead>
+                  <TableHead>Sites</TableHead>
+                  <TableHead>APs</TableHead>
                   <TableHead>Clients</TableHead>
                   <TableHead>Captive Portal</TableHead>
                   <TableHead>Status</TableHead>
@@ -1198,6 +1223,16 @@ export function ConfigureNetworks() {
                           <Shield className="h-3 w-3 text-muted-foreground" />
                           <span className="text-xs">{network.authType}</span>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {deploymentInfo[network.id]?.sites ?? '—'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs tabular-nums text-muted-foreground">
+                          {deploymentInfo[network.id]?.aps ?? '—'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center">

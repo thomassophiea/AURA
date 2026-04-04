@@ -293,14 +293,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       setLoading(true);
       setError(null);
 
-      // Load all data sources in parallel
+      // Load all data sources in parallel — use nametoidmap for dropdown-only data
       const [serviceResponse, rolesResponse, topologiesResponse, aaaPoliciesResponse, cosResponse, eGuestResponse] = await Promise.allSettled([
         apiService.getServiceById(serviceId),
-        apiService.getRoles(),
-        apiService.getTopologies(),
-        apiService.getAaaPolicies(),
-        apiService.getClassOfService(),
-        apiService.getEGuestProfiles()
+        apiService.getRoleNameToIdMap(),
+        apiService.getTopologyNameToIdMap(),
+        apiService.getAaaPolicyNameToIdMap(),
+        apiService.getCoSNameToIdMap(),
+        apiService.getEGuestNameToIdMap()
       ]);
 
       if (serviceResponse.status === 'fulfilled') {
@@ -454,33 +454,37 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         throw new Error('Failed to load service details');
       }
 
-      // Set all optional data sources
+      // Convert name-to-id maps into {id, name} arrays for dropdown rendering
+      const mapToArray = (map: Record<string, string>) =>
+        Object.entries(map).map(([name, id]) => ({ id, name }));
+
       if (rolesResponse.status === 'fulfilled') {
-        setRoles(rolesResponse.value);
+        setRoles(mapToArray(rolesResponse.value));
       } else {
         setRoles([]);
       }
 
       if (topologiesResponse.status === 'fulfilled') {
-        setTopologies(topologiesResponse.value);
+        setTopologies(mapToArray(topologiesResponse.value));
       } else {
         setTopologies([]);
       }
 
       if (aaaPoliciesResponse.status === 'fulfilled') {
-        setAaaPolicies(aaaPoliciesResponse.value);
+        setAaaPolicies(mapToArray(aaaPoliciesResponse.value));
       } else {
         setAaaPolicies([]);
       }
 
       if (cosResponse.status === 'fulfilled') {
-        setCosOptions(cosResponse.value);
+        setCosOptions(mapToArray(cosResponse.value));
       } else {
         setCosOptions([]);
       }
 
       if (eGuestResponse.status === 'fulfilled') {
-        setEGuestProfiles(Array.isArray(eGuestResponse.value) ? eGuestResponse.value : []);
+        const val = eGuestResponse.value;
+        setEGuestProfiles(typeof val === 'object' && !Array.isArray(val) ? mapToArray(val) : []);
       } else {
         setEGuestProfiles([]);
       }
@@ -1186,7 +1190,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                       <SelectItem value="none">None</SelectItem>
                       {aaaPolicies.map(policy => (
                         <SelectItem key={policy.id} value={policy.id}>
-                          {policy.name || policy.policyName}
+                          {policy.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

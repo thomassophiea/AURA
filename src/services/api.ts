@@ -9553,10 +9553,863 @@ class ApiService {
     }
   }
 
-  // NOTE: Comprehensive API coverage achieved!
-  // Total methods implemented: 200+ covering all Extreme Platform ONE endpoints
-  // Including Platform Manager, Application Manager, Packet Capture, AFC Planning, and all advanced features
-  // Categories: APs, Stations, Sites, Switches, Profiles, Reports, Admin, Config, Packet Capture, AFC, etc.
+  // ==================== Name-to-ID Map Endpoints ====================
+  // Efficient dropdown population — returns { name: id } maps
+
+  async getServiceNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/services/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service name map:', error);
+      return {};
+    }
+  }
+
+  async getTopologyNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/topologies/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching topology name map:', error);
+      return {};
+    }
+  }
+
+  async getProfileNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/profiles/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching profile name map:', error);
+      return {};
+    }
+  }
+
+  async getAaaPolicyNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aaapolicy/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching AAA policy name map:', error);
+      return {};
+    }
+  }
+
+  async getRfMgmtNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/rfmgmt/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching RF management name map:', error);
+      return {};
+    }
+  }
+
+  async getIoTProfileNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/iotprofile/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching IoT profile name map:', error);
+      return {};
+    }
+  }
+
+  async getAdspNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v4/adsp/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching ADSP name map:', error);
+      return {};
+    }
+  }
+
+  async getAnalyticsNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/analytics/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching analytics name map:', error);
+      return {};
+    }
+  }
+
+  async getPositioningNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/positioning/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching positioning name map:', error);
+      return {};
+    }
+  }
+
+  async getMeshpointNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/meshpoints/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching meshpoint name map:', error);
+      return {};
+    }
+  }
+
+  async getCoSNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/cos/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching CoS name map:', error);
+      return {};
+    }
+  }
+
+  async getRateLimiterNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/ratelimiters/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching rate limiter name map:', error);
+      return {};
+    }
+  }
+
+  async getSiteNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/sites/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching site name map:', error);
+      return {};
+    }
+  }
+
+  async getEGuestNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/eguest/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching eGuest name map:', error);
+      return {};
+    }
+  }
+
+  async getXLocationNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/xlocation/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching XLocation name map:', error);
+      return {};
+    }
+  }
+
+  async getSwitchPortProfileNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/switchportprofile/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching switch port profile name map:', error);
+      return {};
+    }
+  }
+
+  async getRtlsProfileNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/rtlsprofile/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching RTLS profile name map:', error);
+      return {};
+    }
+  }
+
+  async getReportTemplateNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/reports/templates/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching report template name map:', error);
+      return {};
+    }
+  }
+
+  async getScheduledReportNameToIdMap(): Promise<Record<string, string>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/reports/scheduled/nametoidmap', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching scheduled report name map:', error);
+      return {};
+    }
+  }
+
+  // ==================== Default Configuration Endpoints ====================
+  // Smart form pre-population with controller defaults
+
+  async getServiceDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/services/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service defaults:', error);
+      return {};
+    }
+  }
+
+  async getTopologyDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/topologies/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching topology defaults:', error);
+      return {};
+    }
+  }
+
+  async getRoleDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/roles/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching role defaults:', error);
+      return {};
+    }
+  }
+
+  async getAaaPolicyDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aaapolicy/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching AAA policy defaults:', error);
+      return {};
+    }
+  }
+
+  async getRfMgmtDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/rfmgmt/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching RF management defaults:', error);
+      return {};
+    }
+  }
+
+  async getIoTProfileDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/iotprofile/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching IoT profile defaults:', error);
+      return {};
+    }
+  }
+
+  async getAdspDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v4/adsp/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching ADSP defaults:', error);
+      return {};
+    }
+  }
+
+  async getAnalyticsDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/analytics/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching analytics defaults:', error);
+      return {};
+    }
+  }
+
+  async getPositioningDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/positioning/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching positioning defaults:', error);
+      return {};
+    }
+  }
+
+  async getMeshpointDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/meshpoints/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching meshpoint defaults:', error);
+      return {};
+    }
+  }
+
+  async getMeshpointProfileDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/meshpoints/profile/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching meshpoint profile defaults:', error);
+      return {};
+    }
+  }
+
+  async getCoSDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/cos/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching CoS defaults:', error);
+      return {};
+    }
+  }
+
+  async getRateLimiterDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/ratelimiters/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching rate limiter defaults:', error);
+      return {};
+    }
+  }
+
+  async getSiteDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/sites/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching site defaults:', error);
+      return {};
+    }
+  }
+
+  async getEGuestDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/eguest/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching eGuest defaults:', error);
+      return {};
+    }
+  }
+
+  async getXLocationDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/xlocation/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching XLocation defaults:', error);
+      return {};
+    }
+  }
+
+  async getSwitchPortProfileDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v3/switchportprofile/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching switch port profile defaults:', error);
+      return {};
+    }
+  }
+
+  async getRtlsProfileDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/rtlsprofile/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching RTLS profile defaults:', error);
+      return {};
+    }
+  }
+
+  async getApDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching AP defaults:', error);
+      return {};
+    }
+  }
+
+  async getSnmpDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/snmp/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching SNMP defaults:', error);
+      return {};
+    }
+  }
+
+  async getReportTemplateDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/reports/templates/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching report template defaults:', error);
+      return {};
+    }
+  }
+
+  async getScheduledReportDefaults(): Promise<Record<string, unknown>> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/reports/scheduled/default', {}, 8000);
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching scheduled report defaults:', error);
+      return {};
+    }
+  }
+
+  // ==================== WLAN/Service Info Endpoints ====================
+
+  async getServiceSiteIds(serviceId: string): Promise<string[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/services/${encodeURIComponent(serviceId)}/siteids`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service site IDs:', error);
+      return [];
+    }
+  }
+
+  async getServiceDeviceIds(serviceId: string): Promise<string[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/services/${encodeURIComponent(serviceId)}/deviceids`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service device IDs:', error);
+      return [];
+    }
+  }
+
+  async getServiceStations(serviceId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/services/${encodeURIComponent(serviceId)}/stations`, {}, 10000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service stations:', error);
+      return [];
+    }
+  }
+
+  async getServiceBssid0(serviceId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/services/${encodeURIComponent(serviceId)}/bssid0`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching service BSSID0:', error);
+      return [];
+    }
+  }
+
+  // ==================== Profile Info Endpoints ====================
+
+  async getProfileBssid0(profileId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v3/profiles/${encodeURIComponent(profileId)}/bssid0`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching profile BSSID0:', error);
+      return [];
+    }
+  }
+
+  async getProfileChannels(profileId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v3/profiles/${encodeURIComponent(profileId)}/channels`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching profile channels:', error);
+      return [];
+    }
+  }
+
+  // ==================== Site Utility Endpoints ====================
+
+  async getSiteBulkIds(siteIds: string[]): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/sites/siteids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(siteIds),
+      }, 10000);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching bulk site IDs:', error);
+      return [];
+    }
+  }
+
+  async getSiteAPs(siteId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/sites/${encodeURIComponent(siteId)}/aps`, {}, 10000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching site APs:', error);
+      return [];
+    }
+  }
+
+  async getSiteServices(siteId: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/sites/${encodeURIComponent(siteId)}/services`, {}, 8000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching site services:', error);
+      return [];
+    }
+  }
+
+  async getSiteApCount(siteId: string): Promise<number> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/sites/${encodeURIComponent(siteId)}/apcount`, {}, 8000
+      );
+      if (!response.ok) return 0;
+      const data = await response.json();
+      return typeof data === 'number' ? data : data?.count ?? 0;
+    } catch (error) {
+      logger.error('Error fetching site AP count:', error);
+      return 0;
+    }
+  }
+
+  // ==================== AP Bulk Operations ====================
+
+  async apBulkReboot(serialNumbers: string[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/reboot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP bulk reboot failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error rebooting APs:', error);
+      throw error;
+    }
+  }
+
+  async apBulkAssign(assignments: { serialNumber: string; profileId: string; siteId?: string }[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/assign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assignments),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP bulk assign failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error assigning APs:', error);
+      throw error;
+    }
+  }
+
+  async apMultiConfig(configs: { serialNumber: string; config: Record<string, unknown> }[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/multiconfig', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(configs),
+      }, 60000);
+      if (!response.ok) throw new Error(`AP multi-config failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error applying AP multi-config:', error);
+      throw error;
+    }
+  }
+
+  async apFirmwareUpgrade(serialNumbers: string[], firmwareVersion?: string): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/swupgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers, firmwareVersion }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP firmware upgrade failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error upgrading AP firmware:', error);
+      throw error;
+    }
+  }
+
+  async apBalance(siteId?: string): Promise<unknown> {
+    try {
+      const endpoint = siteId
+        ? `/v1/aps/apbalance?siteId=${encodeURIComponent(siteId)}`
+        : '/v1/aps/apbalance';
+      const response = await this.makeAuthenticatedRequest(endpoint, {
+        method: 'POST',
+      }, 30000);
+      if (!response.ok) throw new Error(`AP balance failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error balancing APs:', error);
+      throw error;
+    }
+  }
+
+  async apReleaseToCloud(serialNumbers: string[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/releasetocloud', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP release to cloud failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error releasing APs to cloud:', error);
+      throw error;
+    }
+  }
+
+  async apSetRuState(serialNumber: string, ruState: string): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/setRuState`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ruState }),
+        }, 15000
+      );
+      if (!response.ok) throw new Error(`Set RU state failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error setting AP RU state:', error);
+      throw error;
+    }
+  }
+
+  async apLocate(serialNumber: string, enabled: boolean): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/locate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled }),
+        }, 10000
+      );
+      if (!response.ok) throw new Error(`AP locate failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error toggling AP locate:', error);
+      throw error;
+    }
+  }
+
+  async apGetLogs(serialNumber: string): Promise<string> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/logs`, {}, 30000
+      );
+      if (!response.ok) throw new Error(`Get AP logs failed: ${response.status}`);
+      return await response.text();
+    } catch (error) {
+      logger.error('Error fetching AP logs:', error);
+      throw error;
+    }
+  }
+
+  async apCopyToDefault(serialNumber: string): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/copytodefault`, {
+          method: 'POST',
+        }, 15000
+      );
+      if (!response.ok) throw new Error(`AP copy to default failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error copying AP config to default:', error);
+      throw error;
+    }
+  }
+
+  async apRegistration(serialNumbers: string[], action: 'register' | 'unregister'): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers, action }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP registration failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error with AP registration:', error);
+      throw error;
+    }
+  }
+
+  // AP Certificate Management
+  async apCertApply(serialNumbers: string[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/cert/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP cert apply failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error applying AP certificates:', error);
+      throw error;
+    }
+  }
+
+  async apCertReset(serialNumbers: string[]): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest('/v1/aps/cert/reset', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serialNumbers }),
+      }, 30000);
+      if (!response.ok) throw new Error(`AP cert reset failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error resetting AP certificates:', error);
+      throw error;
+    }
+  }
+
+  async apCertSignRequest(serialNumber: string): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/aps/${encodeURIComponent(serialNumber)}/cert/signrequest`, {
+          method: 'POST',
+        }, 15000
+      );
+      if (!response.ok) throw new Error(`AP cert sign request failed: ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      logger.error('Error requesting AP cert signing:', error);
+      throw error;
+    }
+  }
+
+  // ==================== Role Rule Stats ====================
+
+  async getRoleRuleStats(roleId: string): Promise<unknown> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v3/roles/${encodeURIComponent(roleId)}/rulestats`, {}, 10000
+      );
+      if (!response.ok) return {};
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching role rule stats:', error);
+      return {};
+    }
+  }
+
+  // ==================== Best Practices ====================
+
+  async acceptBestPracticeRecommendation(recommendationId: string): Promise<void> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/bestpractices/${encodeURIComponent(recommendationId)}/accept`, {
+          method: 'PUT',
+        }, 10000
+      );
+      if (!response.ok) throw new Error(`Accept recommendation failed: ${response.status}`);
+    } catch (error) {
+      logger.error('Error accepting best practice recommendation:', error);
+      throw error;
+    }
+  }
+
+  // ==================== Station Events ====================
+
+  async getStationEvents(macAddress: string): Promise<unknown[]> {
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v1/stations/events/${encodeURIComponent(macAddress)}`, {}, 10000
+      );
+      if (!response.ok) return [];
+      return await response.json();
+    } catch (error) {
+      logger.error('Error fetching station events:', error);
+      return [];
+    }
+  }
 }
 
 export const apiService = new ApiService();

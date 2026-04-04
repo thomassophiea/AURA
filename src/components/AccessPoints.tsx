@@ -10,7 +10,8 @@ import { useCompoundSearch } from '../hooks/useCompoundSearch';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Wifi, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable } from 'lucide-react';
+import { AlertCircle, Wifi, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable, Loader2 } from 'lucide-react';
+import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -456,6 +457,72 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       ap => (ap as any).firmwareVersion || (ap as any).fwVersion || (ap as any).softwareVersion,
     ],
   });
+
+  // Bulk selection state
+  const [selectedSerials, setSelectedSerials] = useState<Set<string>>(new Set());
+  const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
+
+  const toggleSelectAP = (serial: string) => {
+    setSelectedSerials(prev => {
+      const next = new Set(prev);
+      if (next.has(serial)) next.delete(serial);
+      else next.add(serial);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedSerials(new Set(sortedAccessPoints.map(ap => ap.serialNumber)));
+    } else {
+      setSelectedSerials(new Set());
+    }
+  };
+
+  const handleBulkReboot = async () => {
+    if (selectedSerials.size === 0) return;
+    if (!confirm(`Reboot ${selectedSerials.size} access point(s)?`)) return;
+    setIsBulkActionRunning(true);
+    try {
+      await apiService.apBulkReboot([...selectedSerials]);
+      toast.success(`Reboot initiated for ${selectedSerials.size} AP(s)`);
+      setSelectedSerials(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bulk reboot failed');
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkFirmwareUpgrade = async () => {
+    if (selectedSerials.size === 0) return;
+    if (!confirm(`Upgrade firmware on ${selectedSerials.size} access point(s)?`)) return;
+    setIsBulkActionRunning(true);
+    try {
+      await apiService.apFirmwareUpgrade([...selectedSerials]);
+      toast.success(`Firmware upgrade initiated for ${selectedSerials.size} AP(s)`);
+      setSelectedSerials(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bulk firmware upgrade failed');
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
+
+  const handleBulkReleaseToCloud = async () => {
+    if (selectedSerials.size === 0) return;
+    if (!confirm(`Release ${selectedSerials.size} AP(s) to cloud management?`)) return;
+    setIsBulkActionRunning(true);
+    try {
+      await apiService.apReleaseToCloud([...selectedSerials]);
+      toast.success(`Released ${selectedSerials.size} AP(s) to cloud`);
+      setSelectedSerials(new Set());
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bulk release to cloud failed');
+    } finally {
+      setIsBulkActionRunning(false);
+    }
+  };
 
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
   const [apStations, setApStations] = useState<APStation[]>([]);
@@ -2060,10 +2127,39 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               </p>
             </div>
           ) : (
+            <>
+            {/* Bulk action toolbar */}
+            {selectedSerials.size > 0 && (
+              <div className="flex items-center gap-3 mb-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <span className="text-sm font-medium">{selectedSerials.size} AP(s) selected</span>
+                <Button size="sm" variant="outline" onClick={handleBulkReboot} disabled={isBulkActionRunning}>
+                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Power className="mr-1 h-3 w-3" />}
+                  Reboot
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleBulkFirmwareUpgrade} disabled={isBulkActionRunning}>
+                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
+                  Firmware Upgrade
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleBulkReleaseToCloud} disabled={isBulkActionRunning}>
+                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Cloud className="mr-1 h-3 w-3" />}
+                  Release to Cloud
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSelectedSerials(new Set())} className="ml-auto">
+                  Clear selection
+                </Button>
+              </div>
+            )}
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedSerials.size === sortedAccessPoints.length && sortedAccessPoints.length > 0}
+                        onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                        aria-label="Select all APs"
+                      />
+                    </TableHead>
                     {navigationScope === 'global' && siteGroups.length > 1 && (
                       <TableHead className="text-[10px]">
                         <div className="flex items-center gap-1">
@@ -2100,6 +2196,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                         }
                       }}
                     >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedSerials.has(ap.serialNumber)}
+                          onCheckedChange={() => toggleSelectAP(ap.serialNumber)}
+                          aria-label={`Select ${getAPName(ap)}`}
+                        />
+                      </TableCell>
                       {navigationScope === 'global' && siteGroups.length > 1 && (
                         <TableCell>
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
@@ -2278,6 +2381,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
