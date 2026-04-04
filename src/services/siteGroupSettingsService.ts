@@ -11,7 +11,15 @@ import { DEFAULT_SITE_GROUP_SETTINGS } from '../types/siteGroupSettings';
 const STORAGE_PREFIX = 'sg_settings:';
 
 class SiteGroupSettingsService {
+  private _isSupabaseConfigured(): boolean {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    return !!url && !url.includes('placeholder');
+  }
+
   async getSettings(siteGroupId: string): Promise<SiteGroupSettings> {
+    if (!this._isSupabaseConfigured()) {
+      return this._getCached(siteGroupId);
+    }
     try {
       const { data, error } = await supabase
         .from('controllers')
@@ -37,31 +45,31 @@ class SiteGroupSettingsService {
     siteGroupId: string,
     updates: Partial<SiteGroupSettings>
   ): Promise<SiteGroupSettings> {
-    // Read current full settings from the controller row
-    const { data: currentData } = await supabase
-      .from('controllers')
-      .select('settings')
-      .eq('id', siteGroupId)
-      .single();
+    // Get current settings (from Supabase or cache)
+    const current = await this.getSettings(siteGroupId);
 
-    const currentRaw = (currentData?.settings as Record<string, unknown>) ?? {};
-    const currentSgSettings = (currentRaw.site_group_settings ?? {}) as Partial<SiteGroupSettings>;
-
-    // Deep merge updates
     const merged: SiteGroupSettings = {
-      connection: { ...DEFAULT_SITE_GROUP_SETTINGS.connection, ...currentSgSettings.connection, ...updates.connection },
-      deployment: { ...DEFAULT_SITE_GROUP_SETTINGS.deployment, ...currentSgSettings.deployment, ...updates.deployment },
-      custom: { ...currentSgSettings.custom, ...updates.custom },
+      connection: { ...DEFAULT_SITE_GROUP_SETTINGS.connection, ...current.connection, ...updates.connection },
+      deployment: { ...DEFAULT_SITE_GROUP_SETTINGS.deployment, ...current.deployment, ...updates.deployment },
+      custom: { ...current.custom, ...updates.custom },
     };
 
-    // Write back
-    const newRaw = { ...currentRaw, site_group_settings: merged };
-    const { error } = await supabase
-      .from('controllers')
-      .update({ settings: newRaw })
-      .eq('id', siteGroupId);
+    if (this._isSupabaseConfigured()) {
+      const { data: currentData } = await supabase
+        .from('controllers')
+        .select('settings')
+        .eq('id', siteGroupId)
+        .single();
 
-    if (error) throw new Error(error.message);
+      const currentRaw = (currentData?.settings as Record<string, unknown>) ?? {};
+      const newRaw = { ...currentRaw, site_group_settings: merged };
+      const { error } = await supabase
+        .from('controllers')
+        .update({ settings: newRaw })
+        .eq('id', siteGroupId);
+
+      if (error) throw new Error(error.message);
+    }
 
     this._cache(siteGroupId, merged);
     return merged;

@@ -86,6 +86,12 @@ class TenantService {
   private currentController: Controller | null = null;
   private currentOrg: Organization | null = null;
 
+  /** Check if Supabase is actually configured (not using placeholder). */
+  private _isSupabaseConfigured(): boolean {
+    const url = import.meta.env.VITE_SUPABASE_URL;
+    return !!url && !url.includes('placeholder');
+  }
+
   constructor() {
     this.loadFromStorage();
   }
@@ -223,30 +229,32 @@ class TenantService {
       return localControllers;
     }
     
-    // No local controllers - try Supabase with short timeout
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) => 
-        setTimeout(() => reject(new Error('timeout')), 2000)
-      );
-      
-      let query = supabase.from('controllers').select('*');
-      if (orgId) {
-        query = query.eq('org_id', orgId);
-      }
-      
-      const result = await Promise.race([
-        query.order('name'),
-        timeoutPromise
-      ]);
+    // No local controllers - try Supabase with short timeout (only if configured)
+    if (this._isSupabaseConfigured()) {
+      try {
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('timeout')), 2000)
+        );
 
-      const { data, error } = result as { data: Controller[] | null; error: any };
-      if (!error && data && data.length > 0) {
-        // Save to local storage for next time
-        data.forEach(c => this.saveControllerLocally(c));
-        return data;
+        let query = supabase.from('controllers').select('*');
+        if (orgId) {
+          query = query.eq('org_id', orgId);
+        }
+
+        const result = await Promise.race([
+          query.order('name'),
+          timeoutPromise
+        ]);
+
+        const { data, error } = result as { data: Controller[] | null; error: any };
+        if (!error && data && data.length > 0) {
+          // Save to local storage for next time
+          data.forEach(c => this.saveControllerLocally(c));
+          return data;
+        }
+      } catch (error) {
+        console.warn('Supabase not available or timed out, using defaults');
       }
-    } catch (error) {
-      console.warn('Supabase not available or timed out, using defaults');
     }
 
     // No controllers found — return empty so the UI can show an appropriate empty state
@@ -255,12 +263,13 @@ class TenantService {
   
   // Background sync without blocking UI
   private async syncControllersFromSupabase(orgId?: string): Promise<void> {
+    if (!this._isSupabaseConfigured()) return;
     try {
       let query = supabase.from('controllers').select('*');
       if (orgId) {
         query = query.eq('org_id', orgId);
       }
-      
+
       const { data, error } = await query.order('name');
       if (!error && data) {
         data.forEach(c => this.saveControllerLocally(c));
@@ -271,6 +280,10 @@ class TenantService {
   }
 
   async getController(controllerId: string): Promise<Controller | null> {
+    if (!this._isSupabaseConfigured()) {
+      const controllers = this.getLocalControllers();
+      return controllers.find(c => c.id === controllerId) || null;
+    }
     const { data, error } = await supabase
       .from('controllers')
       .select('*')
@@ -278,7 +291,6 @@ class TenantService {
       .single();
 
     if (error) {
-      // Fallback to local storage
       const controllers = this.getLocalControllers();
       return controllers.find(c => c.id === controllerId) || null;
     }
@@ -287,55 +299,53 @@ class TenantService {
   }
 
   async createController(controller: Omit<Controller, 'id' | 'created_at' | 'connection_status'>): Promise<Controller> {
-    // Generate a local ID for fallback
     const localId = crypto.randomUUID();
+    const localController: Controller = {
+      ...controller,
+      id: localId,
+      connection_status: 'unknown',
+      created_at: new Date().toISOString()
+    };
+
+    if (!this._isSupabaseConfigured()) {
+      this.saveControllerLocally(localController);
+      return localController;
+    }
 
     try {
       const { data, error } = await supabase
         .from('controllers')
-        .insert({
-          ...controller,
-          connection_status: 'unknown'
-        })
+        .insert({ ...controller, connection_status: 'unknown' })
         .select()
         .single();
 
       if (error) throw error;
-      
-      // Also save locally
       this.saveControllerLocally(data);
-      
       return data;
-    } catch (error) {
-      // Fallback: save locally only
-      const localController: Controller = {
-        ...controller,
-        id: localId,
-        connection_status: 'unknown',
-        created_at: new Date().toISOString()
-      };
-      
+    } catch {
       this.saveControllerLocally(localController);
       return localController;
     }
   }
 
   async updateController(controllerId: string, updates: Partial<Controller>): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('controllers')
-        .update(updates)
-        .eq('id', controllerId);
-
-      if (error) throw error;
-    } catch (error) {
-      // Update locally
-      const controllers = this.getLocalControllers();
-      const index = controllers.findIndex(c => c.id === controllerId);
-      if (index >= 0) {
-        controllers[index] = { ...controllers[index], ...updates };
-        localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(controllers));
+    if (this._isSupabaseConfigured()) {
+      try {
+        const { error } = await supabase
+          .from('controllers')
+          .update(updates)
+          .eq('id', controllerId);
+        if (error) throw error;
+      } catch {
+        // Fall through to local update
       }
+    }
+    // Always update locally
+    const controllers = this.getLocalControllers();
+    const index = controllers.findIndex(c => c.id === controllerId);
+    if (index >= 0) {
+      controllers[index] = { ...controllers[index], ...updates };
+      localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(controllers));
     }
 
     // Update current controller if it's the one being updated
@@ -346,15 +356,12 @@ class TenantService {
   }
 
   async deleteController(controllerId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('controllers')
-        .delete()
-        .eq('id', controllerId);
-
-      if (error) throw error;
-    } catch (error) {
-      console.warn('Failed to delete from Supabase, removing locally');
+    if (this._isSupabaseConfigured()) {
+      try {
+        await supabase.from('controllers').delete().eq('id', controllerId);
+      } catch {
+        // Fall through to local delete
+      }
     }
 
     // Always remove locally
