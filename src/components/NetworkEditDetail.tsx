@@ -945,8 +945,24 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   // Helper: show 6E WPA Compliance badge?
   const show6eBadge = ['owe', 'wpa3-personal', 'wpa3-enterprise', 'wpa3-compatibility', 'wpa23-enterprise'].includes(formData.securityType);
 
+  // Reusable form row component for consistent layout
+  const FormRow = ({ label, children, className = '' }: { label: string; children: React.ReactNode; className?: string }) => (
+    <div className={`grid grid-cols-[180px_1fr] items-center gap-x-8 min-h-[44px] ${className}`}>
+      <Label className="text-sm text-muted-foreground text-right whitespace-nowrap">{label}</Label>
+      <div>{children}</div>
+    </div>
+  );
+
+  // Section header component
+  const SectionHeader = ({ title, icon: Icon }: { title: string; icon?: any }) => (
+    <div className="flex items-center gap-2 pb-3 mb-1 border-b">
+      {Icon && <Icon className="h-4 w-4 text-primary" />}
+      <h3 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{title}</h3>
+    </div>
+  );
+
   return (
-    <div className={isInline ? 'px-6 py-5 bg-card' : 'p-8'}>
+    <div className={isInline ? 'px-8 py-6 bg-card/50' : 'p-8'}>
       {error && (
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
@@ -955,666 +971,323 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       )}
 
       {/* ========== TOP BAR ========== */}
-      <div className="flex items-center justify-between mb-8 pb-4 border-b">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <Wifi className="h-5 w-5 text-primary" />
-          Edit WLAN
-        </h2>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="default" disabled={saving} className="text-destructive border-destructive/30 hover:bg-destructive/10">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h2 className="text-lg font-semibold">{formData.name || 'Edit WLAN'}</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">SSID: {formData.ssid || '—'}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" disabled={saving} className="text-muted-foreground hover:text-destructive">
+            <Trash2 className="h-4 w-4" />
           </Button>
-          <Button onClick={handleSave} disabled={saving} size="default">
+          <Button onClick={handleSave} disabled={saving} size="sm" className="px-6">
             {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </div>
       </div>
 
-      {/* ========== MAIN FORM (single scrollable column, label-left input-right) ========== */}
-      <div className="space-y-6 max-w-3xl mx-auto">
+      <div className="max-w-3xl space-y-8">
 
-        {/* Network Name */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label htmlFor="network-name" className="text-sm font-medium text-right">Network Name</Label>
-          <Input
-            id="network-name"
-            value={formData.name}
-            onChange={(e) => handleInputChange('name', e.target.value)}
-            placeholder="Enter network name"
-          />
-        </div>
-
-        {/* SSID */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label htmlFor="ssid" className="text-sm font-medium text-right">SSID</Label>
-          <Input
-            id="ssid"
-            value={formData.ssid}
-            onChange={(e) => handleInputChange('ssid', e.target.value)}
-            placeholder="Enter SSID"
-          />
-        </div>
-
-        {/* Status */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Status</Label>
-          <Select
-            value={formData.enabled ? 'enabled' : 'disabled'}
-            onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="enabled">Enabled</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Hotspot */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Hotspot</Label>
-          <Select
-            value={formData.hotspot ? 'enabled' : 'disabled'}
-            onValueChange={(v) => {
-              handleInputChange('hotspot', v === 'enabled');
-              handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled');
-            }}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="disabled">Disabled</SelectItem>
-              <SelectItem value="enabled">Enabled</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Auth Type + Edit Privacy button + 6E badge */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Auth Type</Label>
-          <div className="flex items-center gap-2">
-            <Select
-              value={formData.securityType}
-              onValueChange={(v) => handleInputChange('securityType', v)}
-            >
-              <SelectTrigger className="w-64">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="owe">OWE (Enhanced Open)</SelectItem>
-                <SelectItem value="wep">WEP</SelectItem>
-                <SelectItem value="wpa-personal">WPA-Personal</SelectItem>
-                <SelectItem value="wpa2-personal">WPA2-Personal</SelectItem>
-                <SelectItem value="wpa3-personal">WPA3-Personal</SelectItem>
-                <SelectItem value="wpa3-compatibility">WPA3-Compatibility</SelectItem>
-                <SelectItem value="wpa2-enterprise">WPA2-Enterprise</SelectItem>
-                <SelectItem value="wpa3-enterprise">WPA3-Enterprise</SelectItem>
-                <SelectItem value="wpa23-enterprise">WPA2/3-Enterprise</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {/* Edit Privacy button (for PSK types) */}
-            {isPsk && (
-              <Dialog open={privacyDialogOpen} onOpenChange={setPrivacyDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
-                    <Lock className="h-3.5 w-3.5 mr-1" />
-                    Edit Privacy
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Privacy Settings</DialogTitle>
-                    <DialogDescription>Configure passphrase and encryption for this WLAN.</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    {/* Passphrase */}
-                    <div className="space-y-2">
-                      <Label htmlFor="passphrase">Passphrase</Label>
-                      <div className="relative">
-                        <Input
-                          id="passphrase"
-                          type={showPassphrase ? 'text' : 'password'}
-                          value={formData.passphrase}
-                          onChange={(e) => handleInputChange('passphrase', e.target.value)}
-                          placeholder="Enter passphrase"
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          onClick={() => setShowPassphrase(!showPassphrase)}
-                        >
-                          {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {formData.securityType === 'wep' ? '10 or 26 hex characters' : '8-63 characters'}
-                      </p>
-                    </div>
-
-                    {/* Encryption */}
-                    <div className="space-y-2">
-                      <Label>Encryption</Label>
-                      <Select
-                        value={formData.encryption}
-                        onValueChange={(v) => handleInputChange('encryption', v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {formData.securityType === 'wep' ? (
-                            <SelectItem value="wep">WEP</SelectItem>
-                          ) : (
-                            <>
-                              <SelectItem value="aes">AES (CCMP)</SelectItem>
-                              <SelectItem value="tkip">TKIP</SelectItem>
-                              <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
-                            </>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* PMF Mode */}
-                    <div className="space-y-2">
-                      <Label>Protected Management Frames (PMF)</Label>
-                      <Select
-                        value={formData.pmfMode}
-                        onValueChange={(v) => handleInputChange('pmfMode', v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="disabled">Disabled</SelectItem>
-                          <SelectItem value="capable">Capable (Optional)</SelectItem>
-                          <SelectItem value="required">Required</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <DialogClose asChild>
-                      <Button variant="outline">Cancel</Button>
-                    </DialogClose>
-                    <DialogClose asChild>
-                      <Button>Apply</Button>
-                    </DialogClose>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* 6E WPA Compliance badge */}
-            {show6eBadge && (
-              <Badge variant="outline" className="border-green-500 text-green-600 bg-green-50 dark:bg-green-950/30">
-                6E WPA Compliance
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Enable Captive Portal */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Enable Captive Portal</Label>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="captive-portal"
-              checked={formData.captivePortal}
-              onCheckedChange={(v) => handleInputChange('captivePortal', !!v)}
-            />
-            <Label htmlFor="captive-portal" className="text-sm cursor-pointer">
-              {formData.captivePortal ? 'Enabled' : 'Disabled'}
-            </Label>
-          </div>
-        </div>
-
-        {/* Captive Portal Type (only when captive portal enabled) */}
-        {formData.captivePortal && (
-          <>
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">Portal Type</Label>
-              <Select
-                value={formData.captivePortalType || 'none'}
-                onValueChange={(v) => handleInputChange('captivePortalType', v)}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
+        {/* ========== GENERAL ========== */}
+        <section>
+          <SectionHeader title="General" icon={Wifi} />
+          <div className="space-y-0 divide-y divide-border/40">
+            <FormRow label="Network Name">
+              <Input value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="Enter network name" className="max-w-sm" />
+            </FormRow>
+            <FormRow label="SSID">
+              <Input value={formData.ssid} onChange={(e) => handleInputChange('ssid', e.target.value)} placeholder="Enter SSID" className="max-w-sm" />
+            </FormRow>
+            <FormRow label="Status">
+              <Select value={formData.enabled ? 'enabled' : 'disabled'} onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}>
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  <SelectItem value="eGuest">eGuest</SelectItem>
-                  <SelectItem value="external">External</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            {formData.captivePortalType === 'eGuest' && eGuestProfiles.length > 0 && (
-              <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-                <Label className="text-sm font-medium text-right">eGuest Profile</Label>
-                <Select
-                  value={formData.eGuestPortalId || 'none'}
-                  onValueChange={(v) => handleInputChange('eGuestPortalId', v)}
-                >
-                  <SelectTrigger className="w-64">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {eGuestProfiles.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* MAC-based Authentication (MBA) */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">MAC-based Auth (MBA)</Label>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="mac-auth"
-              checked={formData.macBasedAuth}
-              onCheckedChange={(v) => handleInputChange('macBasedAuth', !!v)}
-            />
-            <Label htmlFor="mac-auth" className="text-sm cursor-pointer">
-              {formData.macBasedAuth ? 'Enabled' : 'Disabled'}
-            </Label>
-          </div>
-        </div>
-
-        <Separator className="my-4" />
-
-        {/* ========== ENTERPRISE-ONLY SECTION ========== */}
-        {isEnterprise && (
-          <div className="space-y-5">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Enterprise AAA Configuration</h3>
-
-            {/* AAA Policy */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">AAA Policy</Label>
-              <Select
-                value={formData.aaaPolicyId || 'none'}
-                onValueChange={(v) => handleInputChange('aaaPolicyId', v)}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {aaaPolicies.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Authentication Method */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">Authentication Method</Label>
-              <Select
-                value={formData.authMethod || 'radius'}
-                onValueChange={(v) => handleInputChange('authMethod', v)}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="radius">RADIUS</SelectItem>
-                  <SelectItem value="ldap">LDAP</SelectItem>
-                  <SelectItem value="local">Local</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Default AAA Auth Method */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">Default AAA Auth Method</Label>
-              <Input value="RADIUS" disabled className="w-64 bg-muted" />
-            </div>
-
-            {/* Encryption (Enterprise) */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">Encryption</Label>
-              <Select
-                value={formData.encryption || 'aes'}
-                onValueChange={(v) => handleInputChange('encryption', v)}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aes">AES (CCMP)</SelectItem>
-                  <SelectItem value="tkip">TKIP</SelectItem>
-                  <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* PMF (Enterprise) */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">PMF Mode</Label>
-              <Select
-                value={formData.pmfMode || 'disabled'}
-                onValueChange={(v) => handleInputChange('pmfMode', v)}
-              >
-                <SelectTrigger className="w-64">
-                  <SelectValue />
-                </SelectTrigger>
+            </FormRow>
+            <FormRow label="Hotspot">
+              <Select value={formData.hotspot ? 'enabled' : 'disabled'} onValueChange={(v) => { handleInputChange('hotspot', v === 'enabled'); handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled'); }}>
+                <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="disabled">Disabled</SelectItem>
-                  <SelectItem value="capable">Capable (Optional)</SelectItem>
-                  <SelectItem value="required">Required</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Fast Transition */}
-            <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-              <Label className="text-sm font-medium text-right">Fast Transition (802.11r)</Label>
-              <div className="flex items-center gap-2">
-                <Switch
-                  checked={formData.fastTransitionEnabled}
-                  onCheckedChange={(v) => handleInputChange('fastTransitionEnabled', v)}
-                />
-                <span className="text-sm text-muted-foreground">{formData.fastTransitionEnabled ? 'Enabled' : 'Disabled'}</span>
-              </div>
-            </div>
-
-            <Separator className="my-2" />
+            </FormRow>
           </div>
+        </section>
+
+        {/* ========== SECURITY ========== */}
+        <section>
+          <SectionHeader title="Security" icon={Lock} />
+          <div className="space-y-0 divide-y divide-border/40">
+            <FormRow label="Auth Type">
+              <div className="flex items-center gap-3">
+                <Select value={formData.securityType} onValueChange={(v) => handleInputChange('securityType', v)}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="owe">OWE (Enhanced Open)</SelectItem>
+                    <SelectItem value="wep">WEP</SelectItem>
+                    <SelectItem value="wpa2-personal">WPA2-Personal (PSK)</SelectItem>
+                    <SelectItem value="wpa3-personal">WPA3-Personal</SelectItem>
+                    <SelectItem value="wpa3-compatibility">WPA3-Compatibility</SelectItem>
+                    <SelectItem value="wpa2-enterprise">WPA2-Enterprise (802.1X)</SelectItem>
+                    <SelectItem value="wpa3-enterprise">WPA3-Enterprise</SelectItem>
+                    <SelectItem value="wpa23-enterprise">WPA2/3-Enterprise</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isPsk && (
+                  <Dialog open={privacyDialogOpen} onOpenChange={setPrivacyDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="secondary" size="sm" className="shrink-0">
+                        <Lock className="h-3.5 w-3.5 mr-1.5" />
+                        Edit Privacy
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Privacy Settings</DialogTitle>
+                        <DialogDescription>Configure passphrase and encryption.</DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-5 py-4">
+                        <div className="space-y-2">
+                          <Label>Passphrase</Label>
+                          <div className="relative">
+                            <Input
+                              type={showPassphrase ? 'text' : 'password'}
+                              value={formData.passphrase}
+                              onChange={(e) => handleInputChange('passphrase', e.target.value)}
+                              placeholder={formData.securityType === 'wep' ? '10 or 26 hex characters' : '8-63 characters'}
+                            />
+                            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" onClick={() => setShowPassphrase(!showPassphrase)}>
+                              {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Encryption</Label>
+                          <Select value={formData.encryption} onValueChange={(v) => handleInputChange('encryption', v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {formData.securityType === 'wep' ? <SelectItem value="wep">WEP</SelectItem> : (<>
+                                <SelectItem value="aes">AES (CCMP)</SelectItem>
+                                <SelectItem value="tkip">TKIP</SelectItem>
+                                <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
+                              </>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Protected Management Frames</Label>
+                          <Select value={formData.pmfMode} onValueChange={(v) => handleInputChange('pmfMode', v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="disabled">Disabled</SelectItem>
+                              <SelectItem value="capable">Capable</SelectItem>
+                              <SelectItem value="required">Required</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild><Button variant="outline">Cancel</Button></DialogClose>
+                        <DialogClose asChild><Button>Apply</Button></DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+                {show6eBadge && <Badge variant="outline" className="border-emerald-500/50 text-emerald-600 dark:text-emerald-400 text-[10px] font-medium">6E WPA Compliance</Badge>}
+              </div>
+            </FormRow>
+            <FormRow label="Captive Portal">
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.captivePortal} onCheckedChange={(v) => handleInputChange('captivePortal', !!v)} />
+                <span className="text-sm text-muted-foreground">{formData.captivePortal ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </FormRow>
+            {formData.captivePortal && (
+              <>
+                <FormRow label="Portal Type">
+                  <Select value={formData.captivePortalType || 'none'} onValueChange={(v) => handleInputChange('captivePortalType', v)}>
+                    <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="eGuest">eGuest</SelectItem>
+                      <SelectItem value="external">External</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormRow>
+                {formData.captivePortalType === 'eGuest' && eGuestProfiles.length > 0 && (
+                  <FormRow label="eGuest Profile">
+                    <Select value={formData.eGuestPortalId || 'none'} onValueChange={(v) => handleInputChange('eGuestPortalId', v)}>
+                      <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">None</SelectItem>
+                        {eGuestProfiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </FormRow>
+                )}
+              </>
+            )}
+            <FormRow label="MAC-based Auth (MBA)">
+              <div className="flex items-center gap-3">
+                <Switch checked={formData.macBasedAuth} onCheckedChange={(v) => handleInputChange('macBasedAuth', !!v)} />
+                <span className="text-sm text-muted-foreground">{formData.macBasedAuth ? 'Enabled' : 'Disabled'}</span>
+              </div>
+            </FormRow>
+          </div>
+        </section>
+
+        {/* ========== ENTERPRISE AAA (conditional) ========== */}
+        {isEnterprise && (
+          <section>
+            <SectionHeader title="Enterprise AAA" icon={Shield} />
+            <div className="space-y-0 divide-y divide-border/40">
+              <FormRow label="AAA Policy">
+                <Select value={formData.aaaPolicyId || 'none'} onValueChange={(v) => handleInputChange('aaaPolicyId', v)}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {aaaPolicies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormRow>
+              <FormRow label="Auth Method">
+                <Select value={formData.authMethod || 'radius'} onValueChange={(v) => handleInputChange('authMethod', v)}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="radius">RADIUS</SelectItem>
+                    <SelectItem value="ldap">LDAP</SelectItem>
+                    <SelectItem value="local">Local</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormRow>
+              <FormRow label="Encryption">
+                <Select value={formData.encryption || 'aes'} onValueChange={(v) => handleInputChange('encryption', v)}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aes">AES (CCMP)</SelectItem>
+                    <SelectItem value="tkip">TKIP</SelectItem>
+                    <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormRow>
+              <FormRow label="PMF Mode">
+                <Select value={formData.pmfMode || 'disabled'} onValueChange={(v) => handleInputChange('pmfMode', v)}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="disabled">Disabled</SelectItem>
+                    <SelectItem value="capable">Capable</SelectItem>
+                    <SelectItem value="required">Required</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormRow>
+              <FormRow label="Fast Transition (802.11r)">
+                <div className="flex items-center gap-3">
+                  <Switch checked={formData.fastTransitionEnabled} onCheckedChange={(v) => handleInputChange('fastTransitionEnabled', v)} />
+                  <span className="text-sm text-muted-foreground">{formData.fastTransitionEnabled ? 'Enabled' : 'Disabled'}</span>
+                </div>
+              </FormRow>
+            </div>
+          </section>
         )}
 
-        {/* ========== DEFAULT AUTH ROLE & VLAN (always shown) ========== */}
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Default Auth Role</Label>
-          <Select
-            value={formData.authenticatedUserDefaultRoleID || 'none'}
-            onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}
-          >
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {roles.map((r) => (
-                <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* ========== ROLE & VLAN ========== */}
+        <section>
+          <SectionHeader title="Role & VLAN" icon={Network} />
+          <div className="space-y-0 divide-y divide-border/40">
+            <FormRow label="Default Auth Role">
+              <Select value={formData.authenticatedUserDefaultRoleID || 'none'} onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}>
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormRow>
+            <FormRow label="Default VLAN / Topology">
+              <Select value={formData.defaultTopology || 'none'} onValueChange={(v) => handleInputChange('defaultTopology', v)}>
+                <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {topologies.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormRow>
+          </div>
+        </section>
 
-        <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-          <Label className="text-sm font-medium text-right">Default VLAN / Topology</Label>
-          <Select
-            value={formData.defaultTopology || 'none'}
-            onValueChange={(v) => handleInputChange('defaultTopology', v)}
-          >
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {topologies.map((t) => (
-                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* ========== ADVANCED | SCHEDULING ========== */}
+        <section>
+          <Tabs value={bottomTab} onValueChange={setBottomTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="advanced" className="text-xs uppercase tracking-wider px-4">Advanced</TabsTrigger>
+              <TabsTrigger value="scheduling" className="text-xs uppercase tracking-wider px-4">Scheduling</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="advanced">
+              <div className="space-y-0 divide-y divide-border/40">
+                <FormRow label="MultiBand Operation"><Switch checked={formData.bandSteering} onCheckedChange={(v) => handleInputChange('bandSteering', v)} /></FormRow>
+                <FormRow label="RADIUS Accounting"><Switch checked={formData.accountingEnabled} onCheckedChange={(v) => { handleInputChange('accountingEnabled', v); handleInputChange('radiusAccounting', v); }} /></FormRow>
+                <FormRow label="Hide SSID"><Switch checked={formData.hidden} onCheckedChange={(v) => { handleInputChange('hidden', v); handleInputChange('broadcastSSID', !v); }} /></FormRow>
+                <FormRow label="Include Hostname"><Switch checked={formData.includeHostname} onCheckedChange={(v) => handleInputChange('includeHostname', v)} /></FormRow>
+                <FormRow label="FTM (11mc) Responder"><Switch checked={formData.enable11mcSupport} onCheckedChange={(v) => handleInputChange('enable11mcSupport', v)} /></FormRow>
+                <FormRow label="Radio Mgmt (11k)"><Switch checked={formData.enabled11kSupport} onCheckedChange={(v) => handleInputChange('enabled11kSupport', v)} /></FormRow>
+                <FormRow label="U-APSD (WMM-PS)"><Switch checked={formData.uapsdEnabled} onCheckedChange={(v) => handleInputChange('uapsdEnabled', v)} /></FormRow>
+                <FormRow label="Admission Ctrl — Voice"><Switch checked={formData.admissionControlVoice} onCheckedChange={(v) => handleInputChange('admissionControlVoice', v)} /></FormRow>
+                <FormRow label="Admission Ctrl — Video"><Switch checked={formData.admissionControlVideo} onCheckedChange={(v) => handleInputChange('admissionControlVideo', v)} /></FormRow>
+                <FormRow label="Admission Ctrl — BE"><Switch checked={formData.admissionControlBestEffort} onCheckedChange={(v) => handleInputChange('admissionControlBestEffort', v)} /></FormRow>
+                <FormRow label="Admission Ctrl — BK"><Switch checked={formData.admissionControlBackgroundTraffic} onCheckedChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)} /></FormRow>
+                <FormRow label="Client-to-Client"><Switch checked={formData.clientToClientCommunication} onCheckedChange={(v) => { handleInputChange('clientToClientCommunication', v); handleInputChange('isolateClients', !v); }} /></FormRow>
+                <FormRow label="Clear on Disconnect"><Switch checked={formData.purgeOnDisconnect} onCheckedChange={(v) => handleInputChange('purgeOnDisconnect', v)} /></FormRow>
+                <FormRow label="Beacon Protection"><Switch checked={formData.beaconProtection} onCheckedChange={(v) => handleInputChange('beaconProtection', v)} /></FormRow>
+                <FormRow label="Pre-Auth Timeout (s)"><Input type="number" className="w-32" value={formData.preAuthenticatedIdleTimeout} onChange={(e) => handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)} /></FormRow>
+                <FormRow label="Post-Auth Timeout (s)"><Input type="number" className="w-32" value={formData.postAuthenticatedIdleTimeout} onChange={(e) => handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)} /></FormRow>
+                <FormRow label="Max Session (s)"><Input type="number" className="w-32" value={formData.sessionTimeout} onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)} /></FormRow>
+                <FormRow label="QoS / DSCP">
+                  <Select value={formData.defaultCoS || 'none'} onValueChange={(v) => handleInputChange('defaultCoS', v)}>
+                    <SelectTrigger className="w-56"><SelectValue placeholder="Select Class of Service" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      {cosOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </FormRow>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="scheduling">
+              <div className="space-y-0 divide-y divide-border/40">
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
+                  const schedule = formData.enabledSchedule || {};
+                  const daySchedule = schedule[day] || { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } };
+                  const startH = daySchedule.start?.hour ?? 0;
+                  const startM = daySchedule.start?.minute ?? 0;
+                  const stopH = daySchedule.stop?.hour ?? 0;
+                  const stopM = daySchedule.stop?.minute ?? 0;
+                  const isOff = startH === 0 && startM === 0 && stopH === 0 && stopM === 0;
+                  return (
+                    <FormRow key={day} label={day.charAt(0).toUpperCase() + day.slice(1)}>
+                      <div className="flex items-center gap-3">
+                        <Input type="time" value={`${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`} onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...daySchedule, start: { hour: h, minute: m } } } as any); }} className="w-28" />
+                        <span className="text-xs text-muted-foreground">to</span>
+                        <Input type="time" value={`${String(stopH).padStart(2, '0')}:${String(stopM).padStart(2, '0')}`} onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...daySchedule, stop: { hour: h, minute: m } } } as any); }} className="w-28" />
+                        <Badge variant={isOff ? 'secondary' : 'default'} className="text-[10px] w-12 justify-center">{isOff ? 'Off' : 'On'}</Badge>
+                      </div>
+                    </FormRow>
+                  );
+                })}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </section>
+
       </div>
-
-      {/* ========== BOTTOM SECTION TABS: ADVANCED | SCHEDULING ========== */}
-      <Separator className="my-6" />
-
-      <Tabs value={bottomTab} onValueChange={setBottomTab} className="w-full max-w-3xl mx-auto">
-        <TabsList>
-          <TabsTrigger value="advanced">ADVANCED</TabsTrigger>
-          <TabsTrigger value="scheduling">SCHEDULING</TabsTrigger>
-        </TabsList>
-
-        {/* ===== ADVANCED TAB ===== */}
-        <TabsContent value="advanced" className="pt-4 space-y-1 divide-y divide-border/50 [&>div]:pt-3 [&>div]:pb-3">
-
-          {/* MultiBand Operation */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">MultiBand Operation</Label>
-            <Switch
-              checked={formData.bandSteering}
-              onCheckedChange={(v) => handleInputChange('bandSteering', v)}
-            />
-          </div>
-
-          {/* RADIUS Accounting */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">RADIUS Accounting</Label>
-            <Switch
-              checked={formData.accountingEnabled}
-              onCheckedChange={(v) => {
-                handleInputChange('accountingEnabled', v);
-                handleInputChange('radiusAccounting', v);
-              }}
-            />
-          </div>
-
-          {/* Hide SSID */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Hide SSID</Label>
-            <Switch
-              checked={formData.hidden}
-              onCheckedChange={(v) => {
-                handleInputChange('hidden', v);
-                handleInputChange('broadcastSSID', !v);
-              }}
-            />
-          </div>
-
-          {/* Include Hostname */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Include Hostname</Label>
-            <Switch
-              checked={formData.includeHostname}
-              onCheckedChange={(v) => handleInputChange('includeHostname', v)}
-            />
-          </div>
-
-          {/* FTM (11mc) responder support */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">FTM (11mc) Responder Support</Label>
-            <Switch
-              checked={formData.enable11mcSupport}
-              onCheckedChange={(v) => handleInputChange('enable11mcSupport', v)}
-            />
-          </div>
-
-          {/* Radio Management (11k) support */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Radio Management (11k) Support</Label>
-            <Switch
-              checked={formData.enabled11kSupport}
-              onCheckedChange={(v) => handleInputChange('enabled11kSupport', v)}
-            />
-          </div>
-
-          {/* U-APSD (WMM-PS) */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">U-APSD (WMM-PS)</Label>
-            <Switch
-              checked={formData.uapsdEnabled}
-              onCheckedChange={(v) => handleInputChange('uapsdEnabled', v)}
-            />
-          </div>
-
-          {/* Admission Control toggles */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Admission Control - Voice (VO)</Label>
-            <Switch
-              checked={formData.admissionControlVoice}
-              onCheckedChange={(v) => handleInputChange('admissionControlVoice', v)}
-            />
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Admission Control - Video (VI)</Label>
-            <Switch
-              checked={formData.admissionControlVideo}
-              onCheckedChange={(v) => handleInputChange('admissionControlVideo', v)}
-            />
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Admission Control - Best Effort (BE)</Label>
-            <Switch
-              checked={formData.admissionControlBestEffort}
-              onCheckedChange={(v) => handleInputChange('admissionControlBestEffort', v)}
-            />
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Admission Control - Background (BK)</Label>
-            <Switch
-              checked={formData.admissionControlBackgroundTraffic}
-              onCheckedChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)}
-            />
-          </div>
-
-          {/* Client To Client Communication */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Client-to-Client Communication</Label>
-            <Switch
-              checked={formData.clientToClientCommunication}
-              onCheckedChange={(v) => {
-                handleInputChange('clientToClientCommunication', v);
-                handleInputChange('isolateClients', !v);
-              }}
-            />
-          </div>
-
-          {/* Clear Session on Disconnect */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Clear Session on Disconnect</Label>
-            <Switch
-              checked={formData.purgeOnDisconnect}
-              onCheckedChange={(v) => handleInputChange('purgeOnDisconnect', v)}
-            />
-          </div>
-
-          {/* Beacon Protection */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Beacon Protection</Label>
-            <Switch
-              checked={formData.beaconProtection}
-              onCheckedChange={(v) => handleInputChange('beaconProtection', v)}
-            />
-          </div>
-
-          <Separator className="my-2" />
-
-          {/* Timeout inputs */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Pre-Auth Idle Timeout (sec)</Label>
-            <Input
-              type="number"
-              className="w-48"
-              value={formData.preAuthenticatedIdleTimeout}
-              onChange={(e) => handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)}
-            />
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Post-Auth Idle Timeout (sec)</Label>
-            <Input
-              type="number"
-              className="w-48"
-              value={formData.postAuthenticatedIdleTimeout}
-              onChange={(e) => handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)}
-            />
-          </div>
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">Max Session Duration (sec)</Label>
-            <Input
-              type="number"
-              className="w-48"
-              value={formData.sessionTimeout}
-              onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)}
-            />
-          </div>
-
-          {/* QOS/DSCP button */}
-          <div className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-            <Label className="text-sm font-medium text-right">QoS / DSCP</Label>
-            <Select
-              value={formData.defaultCoS || 'none'}
-              onValueChange={(v) => handleInputChange('defaultCoS', v)}
-            >
-              <SelectTrigger className="w-64">
-                <SelectValue placeholder="Select Class of Service" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {cosOptions.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-        </TabsContent>
-
-        {/* ===== SCHEDULING TAB ===== */}
-        <TabsContent value="scheduling" className="pt-4">
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Configure weekly schedule for this WLAN. Set both start and stop to 00:00 to disable a day.
-            </p>
-            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-              const schedule = formData.enabledSchedule || {};
-              const daySchedule = schedule[day] || { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } };
-              const startH = daySchedule.start?.hour ?? 0;
-              const startM = daySchedule.start?.minute ?? 0;
-              const stopH = daySchedule.stop?.hour ?? 0;
-              const stopM = daySchedule.stop?.minute ?? 0;
-              const isDisabled = startH === 0 && startM === 0 && stopH === 0 && stopM === 0;
-
-              return (
-                <div key={day} className="grid grid-cols-[180px_1fr] items-center gap-x-6 gap-y-1">
-                  <Label className="text-sm font-medium text-right capitalize">{day}</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      value={`${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`}
-                      onChange={(e) => {
-                        const [h, m] = e.target.value.split(':').map(Number);
-                        const updated = { ...formData.enabledSchedule, [day]: { ...daySchedule, start: { hour: h, minute: m } } };
-                        handleInputChange('enabledSchedule' as any, updated as any);
-                      }}
-                      className="h-8 w-32 text-xs"
-                    />
-                    <span className="text-xs text-muted-foreground">to</span>
-                    <Input
-                      type="time"
-                      value={`${String(stopH).padStart(2, '0')}:${String(stopM).padStart(2, '0')}`}
-                      onChange={(e) => {
-                        const [h, m] = e.target.value.split(':').map(Number);
-                        const updated = { ...formData.enabledSchedule, [day]: { ...daySchedule, stop: { hour: h, minute: m } } };
-                        handleInputChange('enabledSchedule' as any, updated as any);
-                      }}
-                      className="h-8 w-32 text-xs"
-                    />
-                    <Badge variant={isDisabled ? 'secondary' : 'default'} className="text-xs w-14 justify-center">
-                      {isDisabled ? 'Off' : 'Active'}
-                    </Badge>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
