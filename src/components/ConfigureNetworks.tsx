@@ -1194,8 +1194,11 @@ export function ConfigureNetworks() {
               <TableBody>
                 {filteredNetworks.map((network) => (
                   <React.Fragment key={network.id}>
-                    <TableRow>
-                      <TableCell>
+                    <TableRow
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => handleToggleExpanded(network.id)}
+                    >
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={selectedNetworks.includes(network.id)}
                           onCheckedChange={(checked) => handleSelectNetwork(network.id, !!checked)}
@@ -1231,7 +1234,7 @@ export function ConfigureNetworks() {
                           {(network as any).defaultTopologyName || (network as any).vlanId || '—'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end space-x-1">
                           {isOrgScope ? (
                             <>
@@ -1273,10 +1276,14 @@ export function ConfigureNetworks() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleEditWlan(network)}
+                                onClick={() => handleToggleExpanded(network.id)}
                                 title="Edit WLAN"
                               >
-                                <Edit2 className="h-4 w-4" />
+                                {expandedNetworkId === network.id ? (
+                                  <ChevronUp className="h-4 w-4" />
+                                ) : (
+                                  <Edit2 className="h-4 w-4" />
+                                )}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1288,18 +1295,6 @@ export function ConfigureNetworks() {
                                 title="Generate QR Code"
                               >
                                 <QrCode className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                title="Configure Network"
-                                onClick={() => handleToggleExpanded(network.id)}
-                              >
-                                {expandedNetworkId === network.id ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <Edit className="h-4 w-4" />
-                                )}
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1328,7 +1323,7 @@ export function ConfigureNetworks() {
                     {/* Expanded Configuration Panel */}
                     {expandedNetworkId === network.id && (
                       <TableRow>
-                        <TableCell colSpan={7} className="p-0">
+                        <TableCell colSpan={99} className="p-0">
                           <div className="border-t bg-muted/30">
                             <NetworkEditDetail 
                               serviceId={network.id} 
