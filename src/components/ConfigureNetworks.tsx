@@ -1335,6 +1335,14 @@ export function ConfigureNetworks() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handlePromoteToTemplate(network)}
+                                title="Promote to Global Template"
+                              >
+                                <ArrowUpFromLine className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleDeleteWlan(network)}
                                 disabled={isDeleting}
                                 className="text-destructive hover:text-destructive"
