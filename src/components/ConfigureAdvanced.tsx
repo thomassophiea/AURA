@@ -13,7 +13,8 @@ import { Switch } from './ui/switch';
 import { Alert, AlertDescription } from './ui/alert';
 import {
   Settings, RefreshCw, Plus, Edit, Trash2, AlertCircle,
-  Network, Gauge, Layers, Cpu, Bluetooth, Globe, Shield, Cable, Loader2
+  Network, Gauge, Layers, Cpu, Bluetooth, Globe, Shield, Cable, Loader2,
+  Radio, ShieldCheck
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -67,6 +68,12 @@ function TopologiesTab() {
     dhcpMode: 'DHCPNone', l3Presence: false,
     ipAddress: '', cidr: 24, gateway: '',
     dhcpStartIpRange: '', dhcpEndIpRange: '', dhcpDnsServers: '',
+    dhcpDomain: '', dhcpDefaultLease: 86400, dhcpMaxLease: 86400,
+    dhcpServers: '', dhcpExclusions: '' as string,
+    wins: '', fqdn: '', foreignIpAddress: '',
+    apRegistration: false, isid: 0,
+    vni: 0, remoteVtepIp: '',
+    cert: 0, certCa: 0,
     multicastBridging: false
   });
 
@@ -83,7 +90,7 @@ function TopologiesTab() {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', vlanid: 1, mode: 'BridgedAtAp', tagged: false, mtu: 1500, enableMgmtTraffic: false, dhcpMode: 'DHCPNone', l3Presence: false, ipAddress: '', cidr: 24, gateway: '', dhcpStartIpRange: '', dhcpEndIpRange: '', dhcpDnsServers: '', multicastBridging: false });
+    setForm({ name: '', vlanid: 1, mode: 'BridgedAtAp', tagged: false, mtu: 1500, enableMgmtTraffic: false, dhcpMode: 'DHCPNone', l3Presence: false, ipAddress: '', cidr: 24, gateway: '', dhcpStartIpRange: '', dhcpEndIpRange: '', dhcpDnsServers: '', dhcpDomain: '', dhcpDefaultLease: 86400, dhcpMaxLease: 86400, dhcpServers: '', dhcpExclusions: '', wins: '', fqdn: '', foreignIpAddress: '', apRegistration: false, isid: 0, vni: 0, remoteVtepIp: '', cert: 0, certCa: 0, multicastBridging: false });
     setShowDialog(true);
   };
 
@@ -95,7 +102,15 @@ function TopologiesTab() {
       dhcpMode: item.dhcpMode || 'DHCPNone', l3Presence: item.l3Presence || false,
       ipAddress: item.ipAddress || '', cidr: item.cidr || 24, gateway: item.gateway || '',
       dhcpStartIpRange: item.dhcpStartIpRange || '', dhcpEndIpRange: item.dhcpEndIpRange || '',
-      dhcpDnsServers: item.dhcpDnsServers || '', multicastBridging: item.multicastBridging || false
+      dhcpDnsServers: item.dhcpDnsServers || '', dhcpDomain: item.dhcpDomain || '',
+      dhcpDefaultLease: item.dhcpDefaultLease || 86400, dhcpMaxLease: item.dhcpMaxLease || 86400,
+      dhcpServers: item.dhcpServers || '',
+      dhcpExclusions: Array.isArray(item.dhcpExclusions) ? item.dhcpExclusions.map((e: any) => `${e.startIp}-${e.endIp}`).join(', ') : '',
+      wins: item.wins || '', fqdn: item.fqdn || '', foreignIpAddress: item.foreignIpAddress || '',
+      apRegistration: item.apRegistration || false, isid: item.isid || 0,
+      vni: item.vni || 0, remoteVtepIp: item.remoteVtepIp || '',
+      cert: item.cert || 0, certCa: item.certCa || 0,
+      multicastBridging: item.multicastBridging || false
     });
     setShowDialog(true);
   };
@@ -105,7 +120,15 @@ function TopologiesTab() {
     if (form.vlanid < 1 || form.vlanid > 4094) { toast.error('VLAN ID must be 1-4094'); return; }
     setSaving(true);
     try {
-      const payload = { ...form, name: form.name.trim() };
+      // Convert DHCP exclusions string to array format
+      const dhcpExclusionsArray = form.dhcpExclusions
+        ? form.dhcpExclusions.split(',').map(s => s.trim()).filter(Boolean).map(range => {
+            const [startIp, endIp] = range.split('-').map(s => s.trim());
+            return { startIp, endIp: endIp || startIp };
+          })
+        : [];
+      const { dhcpExclusions: _excStr, ...rest } = form;
+      const payload = { ...rest, name: form.name.trim(), dhcpExclusions: dhcpExclusionsArray };
       if (editing) {
         await apiService.updateTopology(editing.id, { ...editing, ...payload });
         toast.success('Topology updated');
@@ -238,13 +261,56 @@ function TopologiesTab() {
                   <SelectItem value="DHCPLocal">Local Server</SelectItem>
                 </SelectContent>
               </Select>
+              {form.dhcpMode === 'DHCPRelay' && (
+                <div><Label>DHCP Relay Servers</Label><Input value={form.dhcpServers} onChange={e => setForm({...form, dhcpServers: e.target.value})} placeholder="10.0.0.1" /></div>
+              )}
               {form.dhcpMode === 'DHCPLocal' && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div><Label>Start IP</Label><Input value={form.dhcpStartIpRange} onChange={e => setForm({...form, dhcpStartIpRange: e.target.value})} placeholder="172.16.0.100" /></div>
-                  <div><Label>End IP</Label><Input value={form.dhcpEndIpRange} onChange={e => setForm({...form, dhcpEndIpRange: e.target.value})} placeholder="172.16.0.200" /></div>
-                  <div className="col-span-2"><Label>DNS Servers</Label><Input value={form.dhcpDnsServers} onChange={e => setForm({...form, dhcpDnsServers: e.target.value})} placeholder="8.8.8.8,8.8.4.4" /></div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Start IP</Label><Input value={form.dhcpStartIpRange} onChange={e => setForm({...form, dhcpStartIpRange: e.target.value})} placeholder="172.16.0.100" /></div>
+                    <div><Label>End IP</Label><Input value={form.dhcpEndIpRange} onChange={e => setForm({...form, dhcpEndIpRange: e.target.value})} placeholder="172.16.0.200" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>DNS Servers</Label><Input value={form.dhcpDnsServers} onChange={e => setForm({...form, dhcpDnsServers: e.target.value})} placeholder="8.8.8.8,8.8.4.4" /></div>
+                    <div><Label>WINS Server</Label><Input value={form.wins} onChange={e => setForm({...form, wins: e.target.value})} placeholder="10.0.0.5" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Domain</Label><Input value={form.dhcpDomain} onChange={e => setForm({...form, dhcpDomain: e.target.value})} placeholder="corp.local" /></div>
+                    <div><Label>FQDN</Label><Input value={form.fqdn} onChange={e => setForm({...form, fqdn: e.target.value})} placeholder="vlan100.corp.local" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Default Lease (sec)</Label><Input type="number" value={form.dhcpDefaultLease} onChange={e => setForm({...form, dhcpDefaultLease: parseInt(e.target.value) || 86400})} /></div>
+                    <div><Label>Max Lease (sec)</Label><Input type="number" value={form.dhcpMaxLease} onChange={e => setForm({...form, dhcpMaxLease: parseInt(e.target.value) || 86400})} /></div>
+                  </div>
+                  <div><Label>DHCP Exclusions (start-end, comma-separated)</Label><Input value={form.dhcpExclusions} onChange={e => setForm({...form, dhcpExclusions: e.target.value})} placeholder="172.16.0.1-172.16.0.10, 172.16.0.250-172.16.0.254" /></div>
                 </div>
               )}
+            </div>
+            {form.mode === 'Vxlan' && (
+              <div className="border rounded-lg p-4 space-y-3">
+                <Label className="text-sm font-medium">VXLAN Settings</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><Label>VNI (1-16777215)</Label><Input type="number" value={form.vni} onChange={e => setForm({...form, vni: parseInt(e.target.value) || 0})} min={1} max={16777215} /></div>
+                  <div><Label>Remote VTEP IP</Label><Input value={form.remoteVtepIp} onChange={e => setForm({...form, remoteVtepIp: e.target.value})} placeholder="10.0.0.1" /></div>
+                </div>
+              </div>
+            )}
+            {form.mode === 'FabricAttach' && (
+              <div className="border rounded-lg p-4 space-y-3">
+                <Label className="text-sm font-medium">Fabric Attach / SPB</Label>
+                <div><Label>I-SID</Label><Input type="number" value={form.isid} onChange={e => setForm({...form, isid: parseInt(e.target.value) || 0})} /></div>
+              </div>
+            )}
+            <div className="border rounded-lg p-4 space-y-3">
+              <Label className="text-sm font-medium">Advanced</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Foreign IP Address</Label><Input value={form.foreignIpAddress} onChange={e => setForm({...form, foreignIpAddress: e.target.value})} placeholder="Optional" /></div>
+                <div className="flex items-center justify-between"><Label>AP Registration VLAN</Label><Switch checked={form.apRegistration} onCheckedChange={v => setForm({...form, apRegistration: v})} /></div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div><Label>Certificate ID</Label><Input type="number" value={form.cert} onChange={e => setForm({...form, cert: parseInt(e.target.value) || 0})} placeholder="0 = none" /></div>
+                <div><Label>CA Certificate ID</Label><Input type="number" value={form.certCa} onChange={e => setForm({...form, certCa: parseInt(e.target.value) || 0})} placeholder="0 = none" /></div>
+              </div>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
@@ -1388,6 +1454,352 @@ function LocationServicesTab() {
   );
 }
 
+// ==================== RF MANAGEMENT TAB ====================
+function RFManagementTab() {
+  const { fetchAll, filterBySg, isOrgScope, siteGroups, navigateToTemplateCreation } = useMultiControllerFetch();
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<any>({
+    name: '', type: 'SMARTRF',
+    // SmartRF settings
+    smartRfEnabled: true,
+    smartMonitoring: true,
+    ocsMonitoringAwareness: false,
+    ocsMonitoringAwarenessThreshold: 50,
+    // Per-band settings (2.4GHz)
+    radio1Power: 'auto', radio1Channel: 'auto',
+    radio1CoverageInterval: 60, radio1RecoveryInterval: 60,
+    radio1PowerThreshold: -70,
+    // Per-band settings (5GHz)
+    radio2Power: 'auto', radio2Channel: 'auto',
+    radio2CoverageInterval: 60, radio2RecoveryInterval: 60,
+    radio2PowerThreshold: -70,
+    // Neighbor recovery
+    dynamicSample: true, sampleRetries: 3, sampleThreshold: -80,
+    // Interference recovery
+    selectShutdown: false, selectShutdownHighTh: 70, selectShutdownLowTh: 30,
+  });
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchAll(() => apiService.getRFManagementProfiles());
+      setItems(Array.isArray(data) ? data : []);
+    } catch { setItems([]); }
+    setLoading(false);
+  };
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm({ name: '', type: 'SMARTRF', smartRfEnabled: true, smartMonitoring: true, ocsMonitoringAwareness: false, ocsMonitoringAwarenessThreshold: 50, radio1Power: 'auto', radio1Channel: 'auto', radio1CoverageInterval: 60, radio1RecoveryInterval: 60, radio1PowerThreshold: -70, radio2Power: 'auto', radio2Channel: 'auto', radio2CoverageInterval: 60, radio2RecoveryInterval: 60, radio2PowerThreshold: -70, dynamicSample: true, sampleRetries: 3, sampleThreshold: -80, selectShutdown: false, selectShutdownHighTh: 70, selectShutdownLowTh: 30 });
+    setShowDialog(true);
+  };
+
+  const openEdit = (item: any) => {
+    setEditing(item);
+    const smartRf = item.smartRf || {};
+    const scanning = smartRf.scanning || {};
+    const neighbor = smartRf.neighborRecovery || {};
+    const interference = smartRf.interferenceRecovery || {};
+    setForm({
+      name: item.name || '', type: item.type || 'SMARTRF',
+      smartRfEnabled: smartRf.enabled !== false,
+      smartMonitoring: scanning.smartMonitoring !== false,
+      ocsMonitoringAwareness: scanning.ocsMonitoringAwareness || false,
+      ocsMonitoringAwarenessThreshold: scanning.ocsMonitoringAwarenessThreshold || 50,
+      radio1Power: smartRf.radio1?.power || 'auto',
+      radio1Channel: smartRf.radio1?.channel || 'auto',
+      radio1CoverageInterval: smartRf.radio1?.coverageInterval || 60,
+      radio1RecoveryInterval: smartRf.radio1?.recoveryInterval || 60,
+      radio1PowerThreshold: neighbor.radio1?.powerThreshold || -70,
+      radio2Power: smartRf.radio2?.power || 'auto',
+      radio2Channel: smartRf.radio2?.channel || 'auto',
+      radio2CoverageInterval: smartRf.radio2?.coverageInterval || 60,
+      radio2RecoveryInterval: smartRf.radio2?.recoveryInterval || 60,
+      radio2PowerThreshold: neighbor.radio2?.powerThreshold || -70,
+      dynamicSample: neighbor.dynamicSample !== false,
+      sampleRetries: neighbor.sampleRetries || 3,
+      sampleThreshold: neighbor.sampleThreshold || -80,
+      selectShutdown: interference.selectShutdown || false,
+      selectShutdownHighTh: interference.selectShutdownHighTh || 70,
+      selectShutdownLowTh: interference.selectShutdownLowTh || 30,
+    });
+    setShowDialog(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Name is required'); return; }
+    setSaving(true);
+    try {
+      const payload = { name: form.name.trim(), type: form.type, smartRf: {
+        enabled: form.smartRfEnabled,
+        scanning: { smartMonitoring: form.smartMonitoring, ocsMonitoringAwareness: form.ocsMonitoringAwareness, ocsMonitoringAwarenessThreshold: form.ocsMonitoringAwarenessThreshold },
+        radio1: { power: form.radio1Power, channel: form.radio1Channel, coverageInterval: form.radio1CoverageInterval, recoveryInterval: form.radio1RecoveryInterval },
+        radio2: { power: form.radio2Power, channel: form.radio2Channel, coverageInterval: form.radio2CoverageInterval, recoveryInterval: form.radio2RecoveryInterval },
+        neighborRecovery: { dynamicSample: form.dynamicSample, sampleRetries: form.sampleRetries, sampleThreshold: form.sampleThreshold, radio1: { powerThreshold: form.radio1PowerThreshold }, radio2: { powerThreshold: form.radio2PowerThreshold } },
+        interferenceRecovery: { selectShutdown: form.selectShutdown, selectShutdownHighTh: form.selectShutdownHighTh, selectShutdownLowTh: form.selectShutdownLowTh },
+      }};
+      if (editing) {
+        await apiService.updateRFManagementProfile(editing.id, { ...editing, ...payload });
+        toast.success('RF policy updated');
+      } else {
+        await apiService.createRFManagementProfile(payload);
+        toast.success('RF policy created');
+      }
+      setShowDialog(false); load();
+    } catch (err: any) { toast.error('Failed to save RF policy', { description: err.message }); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Delete RF policy "${item.name}"?`)) return;
+    try { await apiService.deleteRFManagementProfile(item.id); toast.success('Deleted'); load(); }
+    catch (err: any) { toast.error('Failed to delete', { description: err.message }); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">RF Management policies ({items.length})</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('rfmgmt')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
+        </div>
+      </div>
+      <Table>
+        <TableHeader><TableRow>
+          {isOrgScope && siteGroups.length > 1 && <TableHead><div className="flex items-center gap-1"><Server className="h-3 w-3" /><span>Site Group</span></div></TableHead>}
+          <TableHead>Name</TableHead><TableHead>Type</TableHead><TableHead>SmartRF</TableHead><TableHead className="text-right">Actions</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {filterBySg(items).map(item => (
+            <TableRow key={item.id}>
+              {isOrgScope && siteGroups.length > 1 && <TableCell><Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">{item._siteGroupName || '—'}</Badge></TableCell>}
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell><Badge variant="outline">{item.type || 'SMARTRF'}</Badge></TableCell>
+              <TableCell>{item.smartRf?.enabled !== false ? 'Enabled' : 'Disabled'}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Edit className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(item)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {items.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No RF management policies found</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>{editing ? 'Edit' : 'Create'} RF Management Policy</SheetTitle>
+            <SheetDescription>SmartRF and ACS configuration</SheetDescription>
+          </SheetHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Policy name" /></div>
+              <div>
+                <Label>Type</Label>
+                <Select value={form.type} onValueChange={v => setForm({...form, type: v})}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SMARTRF">SmartRF</SelectItem>
+                    <SelectItem value="ACS">ACS (Manual)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {form.type === 'SMARTRF' && (
+              <>
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">SmartRF Scanning</Label>
+                  <div className="flex items-center justify-between"><Label>SmartRF Enabled</Label><Switch checked={form.smartRfEnabled} onCheckedChange={v => setForm({...form, smartRfEnabled: v})} /></div>
+                  <div className="flex items-center justify-between"><Label>Smart Monitoring</Label><Switch checked={form.smartMonitoring} onCheckedChange={v => setForm({...form, smartMonitoring: v})} /></div>
+                  <div className="flex items-center justify-between"><Label>OCS Monitoring Awareness</Label><Switch checked={form.ocsMonitoringAwareness} onCheckedChange={v => setForm({...form, ocsMonitoringAwareness: v})} /></div>
+                  {form.ocsMonitoringAwareness && (
+                    <div><Label>OCS Threshold (%)</Label><Input type="number" value={form.ocsMonitoringAwarenessThreshold} onChange={e => setForm({...form, ocsMonitoringAwarenessThreshold: parseInt(e.target.value) || 50})} min={0} max={100} /></div>
+                  )}
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">Radio 1 (2.4 GHz)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Power</Label><Input value={form.radio1Power} onChange={e => setForm({...form, radio1Power: e.target.value})} placeholder="auto or dBm value" /></div>
+                    <div><Label>Channel</Label><Input value={form.radio1Channel} onChange={e => setForm({...form, radio1Channel: e.target.value})} placeholder="auto or channel #" /></div>
+                    <div><Label>Coverage Interval (s)</Label><Input type="number" value={form.radio1CoverageInterval} onChange={e => setForm({...form, radio1CoverageInterval: parseInt(e.target.value) || 60})} /></div>
+                    <div><Label>Recovery Interval (s)</Label><Input type="number" value={form.radio1RecoveryInterval} onChange={e => setForm({...form, radio1RecoveryInterval: parseInt(e.target.value) || 60})} /></div>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">Radio 2 (5 GHz)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Power</Label><Input value={form.radio2Power} onChange={e => setForm({...form, radio2Power: e.target.value})} placeholder="auto or dBm value" /></div>
+                    <div><Label>Channel</Label><Input value={form.radio2Channel} onChange={e => setForm({...form, radio2Channel: e.target.value})} placeholder="auto or channel #" /></div>
+                    <div><Label>Coverage Interval (s)</Label><Input type="number" value={form.radio2CoverageInterval} onChange={e => setForm({...form, radio2CoverageInterval: parseInt(e.target.value) || 60})} /></div>
+                    <div><Label>Recovery Interval (s)</Label><Input type="number" value={form.radio2RecoveryInterval} onChange={e => setForm({...form, radio2RecoveryInterval: parseInt(e.target.value) || 60})} /></div>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">Neighbor Recovery</Label>
+                  <div className="flex items-center justify-between"><Label>Dynamic Sample</Label><Switch checked={form.dynamicSample} onCheckedChange={v => setForm({...form, dynamicSample: v})} /></div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><Label>Sample Retries</Label><Input type="number" value={form.sampleRetries} onChange={e => setForm({...form, sampleRetries: parseInt(e.target.value) || 3})} /></div>
+                    <div><Label>Sample Threshold (dBm)</Label><Input type="number" value={form.sampleThreshold} onChange={e => setForm({...form, sampleThreshold: parseInt(e.target.value) || -80})} /></div>
+                    <div><Label>R1 Power Threshold (dBm)</Label><Input type="number" value={form.radio1PowerThreshold} onChange={e => setForm({...form, radio1PowerThreshold: parseInt(e.target.value) || -70})} /></div>
+                    <div><Label>R2 Power Threshold (dBm)</Label><Input type="number" value={form.radio2PowerThreshold} onChange={e => setForm({...form, radio2PowerThreshold: parseInt(e.target.value) || -70})} /></div>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4 space-y-3">
+                  <Label className="text-sm font-medium">Interference Recovery</Label>
+                  <div className="flex items-center justify-between"><Label>Selective Shutdown</Label><Switch checked={form.selectShutdown} onCheckedChange={v => setForm({...form, selectShutdown: v})} /></div>
+                  {form.selectShutdown && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label>High Threshold (%)</Label><Input type="number" value={form.selectShutdownHighTh} onChange={e => setForm({...form, selectShutdownHighTh: parseInt(e.target.value) || 70})} /></div>
+                      <div><Label>Low Threshold (%)</Label><Input type="number" value={form.selectShutdownLowTh} onChange={e => setForm({...form, selectShutdownLowTh: parseInt(e.target.value) || 30})} /></div>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
+// ==================== ADSP (AIR DEFENSE) TAB ====================
+function ADSPTab() {
+  const { fetchAll, filterBySg, isOrgScope, siteGroups, navigateToTemplateCreation } = useMultiControllerFetch();
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showDialog, setShowDialog] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: '', servers: [{ address: '', port: 443 }] as { address: string; port: number }[] });
+
+  useEffect(() => { load(); }, []);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchAll(() => apiService.getADSPProfiles());
+      setItems(Array.isArray(data) ? data : []);
+    } catch { setItems([]); }
+    setLoading(false);
+  };
+
+  const openCreate = () => { setEditing(null); setForm({ name: '', servers: [{ address: '', port: 443 }] }); setShowDialog(true); };
+  const openEdit = (item: any) => {
+    setEditing(item);
+    setForm({ name: item.name || '', servers: item.servers || [{ address: item.svrAddr?.[0] || '', port: 443 }] });
+    setShowDialog(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Name is required'); return; }
+    setSaving(true);
+    try {
+      const payload = { name: form.name.trim(), servers: form.servers.filter(s => s.address.trim()) };
+      if (editing) { await apiService.updateADSPProfile(editing.id, { ...editing, ...payload }); toast.success('ADSP profile updated'); }
+      else { await apiService.createADSPProfile(payload); toast.success('ADSP profile created'); }
+      setShowDialog(false); load();
+    } catch (err: any) { toast.error('Failed to save ADSP profile', { description: err.message }); }
+    setSaving(false);
+  };
+
+  const handleDelete = async (item: any) => {
+    if (!confirm(`Delete ADSP profile "${item.name}"?`)) return;
+    try { await apiService.deleteADSPProfile(item.id); toast.success('Deleted'); load(); }
+    catch (err: any) { toast.error('Failed', { description: err.message }); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-64"><div className="flex items-center gap-3 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /><span>Loading...</span></div></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">Air Defense (ADSP) profiles ({items.length})</p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+          {isOrgScope ? (
+            <Button size="sm" onClick={() => navigateToTemplateCreation('adsp')}><Layers className="h-4 w-4 mr-1" />Create Template</Button>
+          ) : (
+            <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
+          )}
+        </div>
+      </div>
+      <Table>
+        <TableHeader><TableRow>
+          {isOrgScope && siteGroups.length > 1 && <TableHead><div className="flex items-center gap-1"><Server className="h-3 w-3" /><span>Site Group</span></div></TableHead>}
+          <TableHead>Name</TableHead><TableHead>Servers</TableHead><TableHead className="text-right">Actions</TableHead>
+        </TableRow></TableHeader>
+        <TableBody>
+          {filterBySg(items).map(item => (
+            <TableRow key={item.id}>
+              {isOrgScope && siteGroups.length > 1 && <TableCell><Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">{item._siteGroupName || '—'}</Badge></TableCell>}
+              <TableCell className="font-medium">{item.name}</TableCell>
+              <TableCell>{item.servers?.length || item.svrAddr?.length || 0}</TableCell>
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(item)}><Edit className="h-4 w-4" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDelete(item)}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {items.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No ADSP profiles found</TableCell></TableRow>}
+        </TableBody>
+      </Table>
+
+      <Sheet open={showDialog} onOpenChange={setShowDialog}>
+        <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
+          <SheetHeader><SheetTitle>{editing ? 'Edit' : 'Create'} ADSP Profile</SheetTitle></SheetHeader>
+          <div className="space-y-4">
+            <div><Label>Name</Label><Input value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
+            <div className="space-y-2">
+              <Label>Servers</Label>
+              {form.servers.map((server, i) => (
+                <div key={i} className="grid grid-cols-[1fr_80px_auto] gap-2">
+                  <Input value={server.address} onChange={e => { const s = [...form.servers]; s[i] = {...s[i], address: e.target.value}; setForm({...form, servers: s}); }} placeholder="IP address" />
+                  <Input type="number" value={server.port} onChange={e => { const s = [...form.servers]; s[i] = {...s[i], port: parseInt(e.target.value) || 443}; setForm({...form, servers: s}); }} />
+                  <Button variant="ghost" size="sm" onClick={() => setForm({...form, servers: form.servers.filter((_, idx) => idx !== i)})}><Trash2 className="h-4 w-4" /></Button>
+                </div>
+              ))}
+              <Button variant="outline" size="sm" onClick={() => setForm({...form, servers: [...form.servers, { address: '', port: 443 }]})}><Plus className="h-4 w-4 mr-1" />Add Server</Button>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : editing ? 'Update' : 'Create'}</Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+}
+
 // ==================== MAIN COMPONENT ====================
 export function ConfigureAdvanced() {
   const [activeTab, setActiveTab] = useState('topologies');
@@ -1486,6 +1898,14 @@ export function ConfigureAdvanced() {
             <Shield className="mr-2 h-4 w-4" />
             Access Control
           </TabsTrigger>
+          <TabsTrigger value="rfmgmt">
+            <Radio className="mr-2 h-4 w-4" />
+            RF Management
+          </TabsTrigger>
+          <TabsTrigger value="adsp">
+            <ShieldCheck className="mr-2 h-4 w-4" />
+            Air Defense
+          </TabsTrigger>
           <TabsTrigger value="location">
             <Globe className="mr-2 h-4 w-4" />
             Location
@@ -1499,6 +1919,8 @@ export function ConfigureAdvanced() {
         <TabsContent value="iot"><IoTTab /></TabsContent>
         <TabsContent value="meshpoints"><MeshpointsTab /></TabsContent>
         <TabsContent value="accesscontrol"><AccessControlTab /></TabsContent>
+        <TabsContent value="rfmgmt"><RFManagementTab /></TabsContent>
+        <TabsContent value="adsp"><ADSPTab /></TabsContent>
         <TabsContent value="location"><LocationServicesTab /></TabsContent>
       </Tabs>
     </div>

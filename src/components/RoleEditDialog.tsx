@@ -768,6 +768,31 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                     Common ports: 80 (HTTP), 443 (HTTPS)
                   </p>
                 </div>
+
+                <div className="space-y-3 pt-2 border-t">
+                  <Label className="text-sm font-medium">Social Login (OAuth)</Label>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                    <Label>Google Login</Label>
+                    <Switch
+                      checked={role?.cpOauthUseGoogle || false}
+                      disabled={!role}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                    <Label>Facebook Login</Label>
+                    <Switch
+                      checked={role?.cpOauthUseFacebook || false}
+                      disabled={!role}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-border">
+                    <Label>Microsoft Login</Label>
+                    <Switch
+                      checked={role?.cpOauthUseMicrosoft || false}
+                      disabled={!role}
+                    />
+                  </div>
+                </div>
               </div>
             </TabsContent>
 

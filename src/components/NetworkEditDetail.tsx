@@ -275,6 +275,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     // Mesh
     shutdownOnMeshpointLoss: false,
 
+    // Schedule
+    enabledSchedule: null as any,
+
     // Advanced Settings (Legacy)
     defaultAuthRole: 'none',
     isolateClients: false,
@@ -438,6 +441,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
           // Mesh
           shutdownOnMeshpointLoss: serviceData.shutdownOnMeshpointLoss || false,
+          enabledSchedule: serviceData.enabledSchedule || null,
 
           // Advanced Settings (Legacy fields for backward compatibility)
           defaultAuthRole: serviceData.defaultAuthRole || 'none',
@@ -834,6 +838,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         // === MESH SETTINGS ===
         shutdownOnMeshpointLoss: formData.shutdownOnMeshpointLoss,
+        enabledSchedule: formData.enabledSchedule,
       };
 
       // Remove undefined values to avoid API issues
@@ -2501,6 +2506,74 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   onCheckedChange={(checked) => handleInputChange('shutdownOnMeshpointLoss', checked)}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Service Schedule */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Service Schedule</CardTitle>
+              <CardDescription>Define when this WLAN is enabled (leave empty for always-on)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label>Enable Schedule</Label>
+                <Switch
+                  checked={formData.enabledSchedule !== null}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      const defaultDay = { start: { hour: 8, minute: 0 }, stop: { hour: 18, minute: 0 } };
+                      handleInputChange('enabledSchedule', {
+                        monday: defaultDay, tuesday: defaultDay, wednesday: defaultDay,
+                        thursday: defaultDay, friday: defaultDay,
+                        saturday: { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } },
+                        sunday: { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } },
+                      });
+                    } else {
+                      handleInputChange('enabledSchedule', null);
+                    }
+                  }}
+                />
+              </div>
+              {formData.enabledSchedule && (
+                <div className="space-y-2">
+                  {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map(day => {
+                    const daySchedule = formData.enabledSchedule?.[day];
+                    const startH = daySchedule?.start?.hour ?? 0;
+                    const startM = daySchedule?.start?.minute ?? 0;
+                    const stopH = daySchedule?.stop?.hour ?? 0;
+                    const stopM = daySchedule?.stop?.minute ?? 0;
+                    const isDisabled = startH === 0 && startM === 0 && stopH === 0 && stopM === 0;
+                    return (
+                      <div key={day} className="grid grid-cols-[100px_1fr_1fr_auto] gap-2 items-center">
+                        <Label className="capitalize text-xs">{day}</Label>
+                        <Input
+                          type="time"
+                          value={`${String(startH).padStart(2, '0')}:${String(startM).padStart(2, '0')}`}
+                          onChange={e => {
+                            const [h, m] = e.target.value.split(':').map(Number);
+                            const updated = { ...formData.enabledSchedule, [day]: { ...daySchedule, start: { hour: h, minute: m } } };
+                            handleInputChange('enabledSchedule', updated);
+                          }}
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          type="time"
+                          value={`${String(stopH).padStart(2, '0')}:${String(stopM).padStart(2, '0')}`}
+                          onChange={e => {
+                            const [h, m] = e.target.value.split(':').map(Number);
+                            const updated = { ...formData.enabledSchedule, [day]: { ...daySchedule, stop: { hour: h, minute: m } } };
+                            handleInputChange('enabledSchedule', updated);
+                          }}
+                          className="h-8 text-xs"
+                        />
+                        <span className="text-xs text-muted-foreground w-16">{isDisabled ? 'Off' : 'Active'}</span>
+                      </div>
+                    );
+                  })}
+                  <p className="text-xs text-muted-foreground">Set start and stop to 00:00 to disable a day</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
