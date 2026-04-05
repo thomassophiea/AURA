@@ -1,0 +1,30 @@
+#!/bin/sh
+# AURA Pre-commit Hook
+# Runs type-check, lint, and format on staged files
+
+echo "Running pre-commit checks..."
+
+# Type check
+echo "Type checking..."
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "Type check failed. Fix errors before committing."
+  exit 1
+fi
+
+# Lint staged files
+echo "Linting..."
+npx eslint --fix $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' | tr '\n' ' ')
+if [ $? -ne 0 ]; then
+  echo "Lint failed. Fix errors before committing."
+  exit 1
+fi
+
+# Format staged files
+echo "Formatting..."
+npx prettier --write $(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx|css|json)$' | tr '\n' ' ')
+
+# Re-add formatted files
+git diff --cached --name-only --diff-filter=ACM | xargs git add
+
+echo "Pre-commit checks passed!"

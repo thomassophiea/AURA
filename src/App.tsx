@@ -667,7 +667,7 @@ export default function App() {
     root.setAttribute('data-theme', newTheme);
   };
 
-  const applyThemeForMode = (mode: 'light' | 'ep1') => {
+  const applyThemeForMode = (mode: 'light' | 'ep1' | 'dev') => {
     applyTheme(mode);
   };
 

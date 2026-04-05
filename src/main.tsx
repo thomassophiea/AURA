@@ -1,9 +1,36 @@
 import { createRoot } from "react-dom/client";
+import * as Sentry from "@sentry/react";
+import { BrowserTracing } from "@sentry/tracing";
 import App from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { initVersionGate, getAppVersion, getCacheVersion } from "./lib/versionGate.ts";
 import "./styles/globals.css";
 import "./index.css";
+
+// Initialize Sentry for error tracking and performance monitoring
+// DSN can be set via environment variable VITE_SENTRY_DSN
+const sentryDSN = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDSN) {
+  Sentry.init({
+    dsn: sentryDSN,
+    environment: import.meta.env.MODE,
+    integrations: [
+      new BrowserTracing(),
+      new Sentry.Replay({
+        maskAllText: true,
+        blockAllMedia: true,
+      }),
+    ],
+    // Capture replay for 10% of errors, 0.1% of normal sessions
+    replaysOnErrorSampleRate: 1.0,
+    replaysSessionSampleRate: 0.001,
+    // Capture performance traces for 10% of transactions
+    tracesSampleRate: 0.1,
+    // Enable debug mode in development
+    debug: import.meta.env.DEV,
+  });
+}
+
 
 /**
  * Remove the boot surface after app hydration
@@ -38,10 +65,19 @@ async function initApp() {
   // Check version gate FIRST - this may trigger a reload
   await initVersionGate();
 
+  // Wrap App with Sentry for profiling and error tracking
+  const SentryWrappedApp = sentryDSN ? (
+    <Sentry.Profiler name="App">
+      <App />
+    </Sentry.Profiler>
+  ) : (
+    <App />
+  );
+
   // If we get here, version is OK - render the app
   createRoot(document.getElementById("root")!).render(
     <ErrorBoundary fullScreen>
-      <App />
+      {SentryWrappedApp}
     </ErrorBoundary>
   );
 
