@@ -875,10 +875,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </CardDescription>
               </CardHeader>
               <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
-                <div className="space-y-2">
-                  <Label htmlFor="serviceName">
+                <div className="space-y-3">
+                  <Label htmlFor="serviceName" className="text-sm font-medium">
                     Network Name {!formData.serviceName?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
                   </Label>
                   <Input
@@ -902,7 +902,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* SSID - can be different from Network Name */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="ssid">
                     SSID {!formData.ssid?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
                   </Label>
@@ -922,7 +922,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* Security Type */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="security">
                     Auth Type
                   </Label>
@@ -948,7 +948,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* Band */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="band">
                     Band
                   </Label>
@@ -981,7 +981,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                 {/* Passphrase - for PSK/Personal modes */}
                 {['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.security) && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label htmlFor="passphrase">
                       {formData.security === 'wpa3-personal' ? 'WPA3 Key' : 'WPA2 Key'}
                       {!formData.passphrase?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
@@ -1002,7 +1002,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                 {/* PMF Mode - for WPA2/WPA3 */}
                 {['wpa2-psk', 'wpa2-enterprise', 'wpa3-compatibility'].includes(formData.security) && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label htmlFor="pmfMode">Protected Management Frames</Label>
                     <Select
                       value={formData.securityConfig?.pmfMode || 'disabled'}
@@ -1025,7 +1025,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                 {/* WPA3 SAE Method - only for WPA3-Personal */}
                 {formData.security === 'wpa3-personal' && (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label htmlFor="saeMethod">SAE Method</Label>
                     <Select
                       value={formData.securityConfig?.saeMethod || 'both'}
@@ -1074,7 +1074,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 {showNetworkOptions && (<>
 
                 {/* VLAN */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="vlan">VLAN ID (Default: 1)</Label>
                   <Input
                     id="vlan"
@@ -1088,7 +1088,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* Topology */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="topology">Topology</Label>
                   <Select
                     value={formData.topologyId || 'none'}
@@ -1109,7 +1109,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* Class of Service */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="cos">Class of Service</Label>
                   <Select
                     value={formData.cosId || 'none'}
@@ -1130,7 +1130,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
 
                 {/* Role */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="role">User Role (Default: bridged)</Label>
                   <Select
                     value={formData.authenticatedUserDefaultRoleID || 'none'}
@@ -1164,7 +1164,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Enable MBA */}
                     <div className="flex items-center justify-between py-2 md:col-span-2">
                       <Label htmlFor="mbaEnabled" className="cursor-pointer">MAC-Based Authentication (MBA)</Label>
@@ -1181,7 +1181,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* AAA Policy Selection */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="aaaPolicyId">AAA Policy</Label>
                       <Select
                         value={formData.securityConfig?.aaaPolicyId || 'none'}
@@ -1205,7 +1205,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Authentication Method */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="wlanAuthMethod">Authentication Method</Label>
                       <Select
                         value={formData.securityConfig?.wlanAuthMethod || 'RADIUS'}
@@ -1227,7 +1227,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Primary RADIUS Server */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="primaryRadius">Primary RADIUS Server</Label>
                       <Input
                         id="primaryRadius"
@@ -1241,7 +1241,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Backup RADIUS Server */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="backupRadius">Backup RADIUS Server</Label>
                       <Input
                         id="backupRadius"
@@ -1270,7 +1270,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Default Auth Role */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="defaultAuthRole">Default Auth Role</Label>
                       <Select
                         value={formData.securityConfig?.defaultAuthRoleId || 'none'}
@@ -1294,7 +1294,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Default VLAN */}
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <Label htmlFor="defaultVlan">Default VLAN</Label>
                       <Input
                         id="defaultVlan"
@@ -1328,7 +1328,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                   {/* Toggle Options - Grid Layout */}
                   <div className="space-y-3">
                     {/* MultiBand Operation */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="mbo" className="cursor-pointer">MultiBand Operation</Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
@@ -1343,7 +1343,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* RADIUS Accounting */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="accountingEnabled" className="cursor-pointer">RADIUS Accounting</Label>
                       <input
                         id="accountingEnabled"
@@ -1355,7 +1355,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Hide SSID */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="hideSSID" className="cursor-pointer">Hide SSID</Label>
                       <input
                         id="hideSSID"
@@ -1367,7 +1367,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Include Hostname */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="includeHostname" className="cursor-pointer">Include Hostname</Label>
                       <input
                         id="includeHostname"
@@ -1379,7 +1379,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* FTM (11mc) responder support */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="enable11mcSupport" className="cursor-pointer">FTM (11mc) responder support</Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
@@ -1394,7 +1394,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Radio Management (11k) support */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="enabled11kSupport" className="cursor-pointer">Radio Management (11k) support</Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
@@ -1409,7 +1409,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* U-APSD (WMM-PS) */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="uapsdEnabled" className="cursor-pointer">U-APSD (WMM-PS)</Label>
                       <input
                         id="uapsdEnabled"
@@ -1421,7 +1421,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Admission Control for Voice */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="admissionControlVoice" className="cursor-pointer">Use Admission Control for Voice (VO)</Label>
                       <input
                         id="admissionControlVoice"
@@ -1433,7 +1433,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Admission Control for Video */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="admissionControlVideo" className="cursor-pointer">Use Admission Control for Video (VI)</Label>
                       <input
                         id="admissionControlVideo"
@@ -1445,7 +1445,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Admission Control for Best Effort */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="admissionControlBestEffort" className="cursor-pointer">Use Admission Control for Best Effort (BE)</Label>
                       <input
                         id="admissionControlBestEffort"
@@ -1457,7 +1457,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Admission Control for Background */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="admissionControlBackgroundTraffic" className="cursor-pointer">Use Global Admission Control for Background (BK)</Label>
                       <input
                         id="admissionControlBackgroundTraffic"
@@ -1469,7 +1469,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Client To Client Communication */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="clientToClientCommunication" className="cursor-pointer">Client To Client Communication</Label>
                       <input
                         id="clientToClientCommunication"
@@ -1481,7 +1481,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Clear Session on Disconnect */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <Label htmlFor="purgeOnDisconnect" className="cursor-pointer">Clear Session on Disconnect</Label>
                       <input
                         id="purgeOnDisconnect"
@@ -1493,7 +1493,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     </div>
 
                     {/* Beacon Protection */}
-                    <div className="flex items-center justify-between py-1">
+                    <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
                         <Label htmlFor="beaconProtection" className="cursor-pointer">Beacon Protection</Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
