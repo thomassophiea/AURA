@@ -1065,7 +1065,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                 {/* Network Options - collapsed by default for simple setups */}
                 <div
-                  className="flex items-center justify-between cursor-pointer py-2 border-t mt-2"
+                  className="flex items-center justify-between cursor-pointer py-2 border-t mt-2 md:col-span-2"
                   onClick={() => setShowNetworkOptions(!showNetworkOptions)}
                 >
                   <span className="text-xs font-medium text-muted-foreground">Network Options (VLAN, Topology, Role, CoS)</span>
