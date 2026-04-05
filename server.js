@@ -119,15 +119,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Controller-URL']
 }));
 
-// Security headers — applied to every response before routes run
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
-  // X-XSS-Protection is deprecated in modern browsers; setting to 0 disables
-
-// Rate limiting for API endpoints
+// Rate limiting for API endpoints (created once at startup)
 const apiLimiter = expressRateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // Default: 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10), // Default: 100 requests
@@ -139,7 +131,13 @@ const apiLimiter = expressRateLimit({
 // Apply rate limiting to all /api/* routes
 app.use('/api/', apiLimiter);
 
-  // the legacy XSS auditor which can itself introduce vulnerabilities.
+// Security headers — applied to every response before routes run
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'geolocation=(), camera=(), microphone=()');
+  // X-XSS-Protection is deprecated in modern browsers; setting to 0 disables the legacy XSS auditor which can itself introduce vulnerabilities.
   res.setHeader('X-XSS-Protection', '0');
   next();
 });
