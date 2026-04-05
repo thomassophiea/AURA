@@ -841,14 +841,14 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           ref={dialogRef}
-          className="max-w-7xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
+          className="max-w-2xl w-[95vw] h-[90vh] p-0 flex flex-col overflow-hidden pointer-events-auto resize"
           style={{
             position: 'fixed',
             left: '50%',
             top: '50%',
             transform: `translate(calc(-50% + ${position.x}px), calc(-50% + ${position.y}px))`,
             cursor: isDragging ? 'grabbing' : 'auto',
-            minWidth: 'min(95vw, 800px)',
+            minWidth: 'min(95vw, 600px)',
             minHeight: '500px',
             maxHeight: '90vh'
           }}
@@ -875,7 +875,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </CardDescription>
               </CardHeader>
               <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
                 <div className="space-y-3">
                   <Label htmlFor="serviceName" className="text-sm font-medium">
