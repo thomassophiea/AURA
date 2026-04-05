@@ -26,12 +26,17 @@ console.log('[Proxy Server] Multi-controller support: ENABLED');
 // Runtime environment validation
 console.log('[Proxy Server] --- Runtime Environment ---');
 
-// Require CAMPUS_CONTROLLER_URL (no fallback to hardcoded domain)
+// Require CAMPUS_CONTROLLER_URL in production, optional in development
 if (!process.env.CAMPUS_CONTROLLER_URL) {
-  console.error('[Proxy Server] ❌ CRITICAL: CAMPUS_CONTROLLER_URL environment variable is required');
-  process.exit(1);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[Proxy Server] ❌ CRITICAL: CAMPUS_CONTROLLER_URL environment variable is required in production');
+    process.exit(1);
+  } else {
+    console.warn('[Proxy Server] ⚠  CAMPUS_CONTROLLER_URL not set (dev mode - API proxy disabled, static assets only)');
+  }
+} else {
+  console.log('[Proxy Server] ✓ CAMPUS_CONTROLLER_URL configured');
 }
-console.log('[Proxy Server] ✓ CAMPUS_CONTROLLER_URL configured');
 
 // Warn if ALLOWED_ORIGINS not configured in production
 if (!process.env.ALLOWED_ORIGINS) {
