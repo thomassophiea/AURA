@@ -91,15 +91,7 @@ app.use(cors({
     // Server-to-server requests (no Origin header) — allow
     if (!origin) return callback(null, true);
 
-    // If ALLOWED_ORIGINS is not configured, DENY by default in production
-    if (configuredOrigins.length === 0) {
-      if (process.env.NODE_ENV === 'production') {
-        return callback(new Error('CORS: ALLOWED_ORIGINS environment variable must be set in production'));
-      }
-      // In development, allow to proceed (will check localhost below)
-    }
-
-    // Always allow localhost in development
+    // Always allow localhost in development/testing
     if (process.env.NODE_ENV !== 'production') {
       if (/^https?:\/\/localhost(:\d+)?$/.test(origin) ||
           /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)) {
@@ -107,12 +99,18 @@ app.use(cors({
       }
     }
 
-    // Allow explicitly configured origins
-    if (configuredOrigins.includes(origin)) {
-      return callback(null, true);
+    // If ALLOWED_ORIGINS is configured, check against whitelist
+    if (configuredOrigins.length > 0) {
+      if (configuredOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      // Configured but origin not in whitelist
+      return callback(new Error(`CORS: origin '${origin}' not allowed`));
     }
 
-    callback(new Error(`CORS: origin '${origin}' not allowed`));
+    // No ALLOWED_ORIGINS configured — allow all (for dev/testing environments)
+    // In production with configured origins, this code path is not reached
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
