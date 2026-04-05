@@ -10038,18 +10038,7 @@ class ApiService {
     }
   }
 
-  async getServiceStations(serviceId: string): Promise<unknown[]> {
-    try {
-      const response = await this.makeAuthenticatedRequest(
-        `/v1/services/${encodeURIComponent(serviceId)}/stations`, {}, 10000
-      );
-      if (!response.ok) return [];
-      return await response.json();
-    } catch (error) {
-      logger.error('Error fetching service stations:', error);
-      return [];
-    }
-  }
+
 
   async getServiceBssid0(serviceId: string): Promise<unknown[]> {
     try {

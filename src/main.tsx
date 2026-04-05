@@ -16,13 +16,9 @@ if (sentryDSN) {
     environment: import.meta.env.MODE,
     integrations: [
       new BrowserTracing(),
-      new Sentry.Replay({
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
     ],
-    // Capture replay for 10% of errors, 0.1% of normal sessions
-    replaysOnErrorSampleRate: 1.0,
+    // Performance tracing sample rate
+    tracesSampleRate: 0.1,
     replaysSessionSampleRate: 0.001,
     // Capture performance traces for 10% of transactions
     tracesSampleRate: 0.1,

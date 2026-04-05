@@ -226,7 +226,6 @@ export const TERMINOLOGY = {
   bandwidth: 'Bandwidth',
   latency: 'Latency',
   uptime: 'Uptime',
-  clients: 'Clients',
 } as const;
 
 // ==================== Date/Time Formatting ====================
