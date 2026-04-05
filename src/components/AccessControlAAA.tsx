@@ -10,6 +10,7 @@ import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Shield, Plus, Edit, Trash2, Server, Users, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiService from '@/services/api';
 
 interface AAAProfile {
   id: string;

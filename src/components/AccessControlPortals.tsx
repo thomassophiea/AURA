@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Globe, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiService from '@/services/api';
 
 interface Portal {
   id: string;

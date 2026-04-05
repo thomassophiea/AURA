@@ -321,7 +321,7 @@ export default function App() {
 
     // Enhanced error handling for API calls throughout the app
     // Global error handler for script errors and reference errors
-    const handleGlobalError = (event: ErrorEvent) => {
+    const handleGlobalError = (event: ErrorEvent): boolean | void => {
       const errorMessage = event.message || '';
       
       // Suppress browser/development environment errors
@@ -396,6 +396,7 @@ export default function App() {
       if (!errorMessage.toLowerCase().includes('timeout')) {
         console.log('Global error caught:', errorMessage);
       }
+      return undefined;
     };
     
     window.addEventListener('error', handleGlobalError);
@@ -864,7 +865,7 @@ export default function App() {
     return (
       <LoginForm
         onLoginSuccess={handleLoginSuccess}
-        theme={theme}
+        theme={(theme === 'dev' ? 'light' : theme) as 'light' | 'ep1'}
         onThemeToggle={toggleTheme}
       />
     );

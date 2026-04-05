@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { Users, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import apiService from '@/services/api';
 
 interface AccessGroup {
   id: string;
