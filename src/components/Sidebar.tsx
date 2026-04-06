@@ -33,6 +33,8 @@ import {
   LayoutDashboard,
   HelpCircle,
   Target,
+  TrendingUp,
+  CircuitBoard,
   Building2,
   Globe,
 } from 'lucide-react';
@@ -63,11 +65,9 @@ interface SidebarProps {
 // ── Org-level navigation (primary scope) ──
 const monitoringItems = [
   { id: 'service-levels', label: 'Insights', icon: Brain, badge: 'Sandbox' },
-  { id: 'sle-dashboard', label: 'Service Levels', icon: Target },
-  { id: 'app-insights', label: 'App Insights', icon: AppWindow },
-  { id: 'connected-clients', label: 'Connected Clients', icon: Users },
+  { id: 'app-insights', label: 'App Analytics', icon: AppWindow },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
-  { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
+  { id: 'connected-clients', label: 'Clients', icon: Users },
 ];
 
 const configureItems = [
@@ -85,6 +85,7 @@ const configureItems = [
 const operationsItems = [
   { id: 'event-alarm-dashboard', label: 'Events & Alarms', icon: Bell },
   { id: 'security-dashboard', label: 'Security', icon: Shield },
+  { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
   { id: 'pci-report', label: 'PCI DSS Report', icon: FileCheck },
 ];
 
@@ -247,24 +248,8 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
         ]
       )}>
       {/* Header */}
-      <div className="p-4 border-b border-sidebar-border">
+      <div className="p-4">
         <div className="flex items-center justify-between">
-          {!isCollapsed && (
-            <div className="flex items-center space-x-2">
-              <div className="text-foreground">
-                <span className="font-semibold text-sm tracking-widest">{branding.fullName}</span>
-                {org?.name ? (
-                  <p className="text-[10px] text-muted-foreground/70 tracking-wide leading-tight mt-0.5 truncate max-w-[160px]">
-                    {org.name}
-                  </p>
-                ) : branding.tagline ? (
-                  <p className="text-[10px] text-muted-foreground/60 tracking-wide leading-tight mt-0.5">
-                    {branding.tagline}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          )}
           <Button
             variant="ghost"
             size="sm"
@@ -280,6 +265,45 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
       <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
         {navigationScope === 'global' && (
           <>
+            {/* Service Levels — top-level item */}
+            {isPageAllowed('sle-dashboard') && (
+              <Button
+                variant={currentPage === 'sle-dashboard' ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-10",
+                  isCollapsed ? "px-2" : "px-3",
+                  currentPage === 'sle-dashboard'
+                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+                onClick={() => handlePageChange('sle-dashboard')}
+                onMouseEnter={() => prefetchComponent('sle-dashboard')}
+              >
+                <TrendingUp className={cn("h-4 w-4", !isCollapsed && "mr-2")} />
+                {!isCollapsed && <span>Service Levels</span>}
+              </Button>
+            )}
+
+            {/* Monitoring Section */}
+            {filteredMonitoringItems.length > 0 && renderCollapsibleSection({
+              label: 'Monitoring',
+              icon: Activity,
+              items: filteredMonitoringItems,
+              isActive: isMonitoringActive,
+              isExpanded: isMonitoringExpanded,
+              onToggle: () => setIsMonitoringExpanded(!isMonitoringExpanded),
+            })}
+
+            {/* Configure Section */}
+            {filteredConfigureItems.length > 0 && renderCollapsibleSection({
+              label: 'Configure',
+              icon: CircuitBoard,
+              items: filteredConfigureItems,
+              isActive: isConfigureActive,
+              isExpanded: isConfigureExpanded,
+              onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
+            })}
+
             {/* Report Studio — top-level item */}
             <Button
               variant={currentPage === 'workspace' ? "default" : "ghost"}
@@ -303,26 +327,6 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
                 </span>
               )}
             </Button>
-
-            {/* Monitoring Section */}
-            {filteredMonitoringItems.length > 0 && renderCollapsibleSection({
-              label: 'Monitoring',
-              icon: BarChart3,
-              items: filteredMonitoringItems,
-              isActive: isMonitoringActive,
-              isExpanded: isMonitoringExpanded,
-              onToggle: () => setIsMonitoringExpanded(!isMonitoringExpanded),
-            })}
-
-            {/* Configure Section */}
-            {filteredConfigureItems.length > 0 && renderCollapsibleSection({
-              label: 'Configure',
-              icon: Cog,
-              items: filteredConfigureItems,
-              isActive: isConfigureActive,
-              isExpanded: isConfigureExpanded,
-              onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
-            })}
 
             {/* Operations Section - Desktop only */}
             {!device.isMobile && filteredOperationsItems.length > 0 && renderCollapsibleSection({
@@ -424,7 +428,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
 
       {/* User Info & Theme Toggle & Logout */}
       <div className="p-4 space-y-2">
-        {!isCollapsed && adminRole && (
+        {!isCollapsed && adminRole && import.meta.env.DEV && (
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-sidebar-foreground/70">
               Role: {adminRole}
