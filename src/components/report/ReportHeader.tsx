@@ -63,7 +63,7 @@ export function ReportHeader({
           {/* Config selector */}
           <Select value={activeConfig.id} onValueChange={onSelectConfig}>
             <SelectTrigger size="sm" className="w-[200px] text-xs bg-transparent border-border/50">
-              <SelectValue />
+              <span className="truncate">{activeConfig.name}</span>
             </SelectTrigger>
             <SelectContent>
               {configs.map(c => (

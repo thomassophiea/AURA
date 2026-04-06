@@ -24,7 +24,7 @@ export function Administration({ networkAssistantEnabled = false, onToggleNetwor
             </TabsTrigger>
             <TabsTrigger value="administrators" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
-              Administrators
+              Local Admins
             </TabsTrigger>
             <TabsTrigger value="applications" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
