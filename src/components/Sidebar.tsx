@@ -297,6 +297,9 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
               {!isCollapsed && (
                 <span className="flex items-center gap-2">
                   Report Studio
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                    Sandbox
+                  </span>
                 </span>
               )}
             </Button>

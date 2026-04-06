@@ -15,29 +15,29 @@ export interface BrandConfig {
 
 export const branding: Record<ThemeMode, BrandConfig> = {
   dev: {
-    name: 'AURA',
-    fullName: 'AURA Mobility Core',
+    name: 'API',
+    fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   default: {
-    name: 'AURA',
-    fullName: 'AURA Mobility Core',
+    name: 'API',
+    fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   dark: {
-    name: 'AURA',
-    fullName: 'AURA Mobility Core',
+    name: 'API',
+    fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
     icon: '/favicon.ico'
   },
   ep1: {
-    name: 'AURA',
-    fullName: 'AURA Mobility Core',
+    name: 'API',
+    fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     // NOTE: No EP1 logo asset exists yet.
     // To add EP1-specific branding, add assets at:
