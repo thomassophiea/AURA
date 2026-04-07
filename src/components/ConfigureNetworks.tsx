@@ -10,11 +10,12 @@ import { Label } from './ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2, Layers } from 'lucide-react';
+import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2, Layers, Zap } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
 import { CreateWLANDialog } from './CreateWLANDialog';
+import { QuickWLANDialog } from './QuickWLANDialog';
 import { WifiQRCodeDialog } from './WifiQRCodeDialog';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
@@ -375,6 +376,10 @@ export function ConfigureNetworks() {
   const [filterSecurity, setFilterSecurity] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showQuickWLANDialog, setShowQuickWLANDialog] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(
+    () => sessionStorage.getItem('quick_wlan_banner_dismissed') === '1'
+  );
   const [expandedNetworkId, setExpandedNetworkId] = useState<string | null>(null);
   const [editingWlan, setEditingWlan] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -1061,7 +1066,49 @@ export function ConfigureNetworks() {
             </Dialog>
           </div>
         </CardHeader>
-        
+
+        {/* Quick WLAN banner — session-scoped, dismissible */}
+        {!isOrgScope && !bannerDismissed && (
+          <div className="mx-6 mb-0 mt-2 flex items-center justify-between rounded-lg border border-green-900/50 bg-green-950/30 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <Zap className="h-4 w-4 text-green-400 shrink-0" />
+              <div>
+                <span className="text-sm font-semibold text-green-400">Quick WLAN</span>
+                <span className="ml-2 text-sm text-muted-foreground">
+                  Get a network live in seconds — name, auth, VLAN, deploy.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="text-sm font-medium text-green-400 hover:underline"
+                onClick={() => setShowQuickWLANDialog(true)}
+              >
+                Get Started →
+              </button>
+              <button
+                type="button"
+                aria-label="Dismiss Quick WLAN banner"
+                className="ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  sessionStorage.setItem('quick_wlan_banner_dismissed', '1');
+                  setBannerDismissed(true);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Quick WLAN dialog */}
+        <QuickWLANDialog
+          open={showQuickWLANDialog}
+          onOpenChange={setShowQuickWLANDialog}
+          onSuccess={loadNetworks}
+        />
+
         <CardContent>
           {/* Filters and Search */}
           <div className="flex flex-col space-y-4 mb-6">

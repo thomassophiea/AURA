@@ -11,8 +11,7 @@ import { apiService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
 import { AssignmentSection } from './AssignmentSection';
 import { useAppContext } from '@/contexts/AppContext';
-import type { WLANAssignmentMode } from '../types/network';
-import type { Site } from '../types/network';
+import type { WLANAssignmentMode, SecurityType, Site } from '../types/network';
 
 interface QuickWLANDialogProps {
   open: boolean;
@@ -77,7 +76,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
     const serviceData = {
       serviceName: ssid.trim(),
       ssid: ssid.trim(),
-      security: security as string,
+      security: security as SecurityType,
       passphrase: requiresPassphrase ? passphrase : undefined,
       vlan: vlan ? parseInt(vlan, 10) : 1,
       band: 'dual' as const,
