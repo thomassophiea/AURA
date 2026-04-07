@@ -48,8 +48,8 @@ export function ControllerSelector({
 
   // Add/Edit form state
   const [formData, setFormData] = useState({
-    name: 'Thomas-PVT',
-    url: 'tsophiea.ddns.net',
+    name: '',
+    url: '',
     description: ''
   });
 
