@@ -1581,8 +1581,8 @@ export function RoamingTrail({ events, apEvents = [], rrmEvents = [], macAddress
               </div>
               <Badge
                 className={'channel' in selectedCorrelationEvent
-                  ? 'bg-purple-500 text-white'
-                  : 'bg-blue-500 text-white'
+                  ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                  : 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30'
                 }
               >
                 {selectedCorrelationEvent.eventType || 'Event'}

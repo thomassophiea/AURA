@@ -1097,7 +1097,7 @@ export default function App() {
           <span className="text-sm font-semibold text-foreground" style={{ flexShrink: 0, letterSpacing: '-0.01em' }}>
             <span style={{ fontWeight: 700 }}>Extreme</span>
             {' '}
-            <span className="text-muted-foreground" style={{ fontWeight: 400 }}>Platform ONE™ | Networking</span>
+            <span className="text-muted-foreground" style={{ fontWeight: 400 }}>Platform ONE™ | Integration</span>
           </span>
           <div style={{ flex: 1 }} />
           {navigationScope === 'global' && <SiteGroupFilterDropdown />}

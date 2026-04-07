@@ -112,7 +112,7 @@ export function AccessControlAAA() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingProfile(null); setFormData({ name: '', authMethod: 'radius', enabled: true }); }}>
+            <Button onClick={() => { setEditingProfile(null); setFormData({ name: '', authMethod: 'radius', enabled: true }); }} className="bg-primary hover:bg-primary/90 text-primary-foreground">
               <Plus className="h-4 w-4 mr-2" />
               Create Profile
             </Button>

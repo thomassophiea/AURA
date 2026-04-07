@@ -14,8 +14,10 @@ export function MobileShell({ children }: MobileShellProps) {
     <div
       className="min-h-screen bg-background overflow-x-hidden"
       style={{
-        paddingTop: 'env(safe-area-inset-top)',
-        paddingBottom: 'env(safe-area-inset-bottom)',
+        // Top/side safe areas are applied at the shell level.
+        // Bottom safe area is intentionally omitted here — the fixed
+        // MobileBottomNav handles its own env(safe-area-inset-bottom) padding
+        // so the shell does not add a redundant gap.
         paddingLeft: 'env(safe-area-inset-left)',
         paddingRight: 'env(safe-area-inset-right)',
       }}

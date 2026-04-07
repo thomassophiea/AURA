@@ -83,22 +83,26 @@ export function ReportEditorDialog({
 
         <div className="space-y-6 mt-6">
           {/* Page Details */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Page Title</label>
-            <input
-              type="text"
-              value={page.title}
-              onChange={e => onUpdatePage(page.id, { title: e.target.value })}
-              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
-            />
-            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
-            <input
-              type="text"
-              value={page.description || ''}
-              onChange={e => onUpdatePage(page.id, { description: e.target.value })}
-              className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Optional page description"
-            />
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Page Title</label>
+              <input
+                type="text"
+                value={page.title}
+                onChange={e => onUpdatePage(page.id, { title: e.target.value })}
+                className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
+              <input
+                type="text"
+                value={page.description || ''}
+                onChange={e => onUpdatePage(page.id, { description: e.target.value })}
+                className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
+                placeholder="Optional page description"
+              />
+            </div>
           </div>
 
           {/* Current Widgets */}

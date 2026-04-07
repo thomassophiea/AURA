@@ -299,6 +299,13 @@ export function EventAlarmDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {alarms.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <AlertTriangle className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">No alarms recorded</p>
+                  <p className="text-xs text-muted-foreground mt-1">Alarm history will appear here when the controller reports events.</p>
+                </div>
+              ) : (
               <div className="space-y-2">
                 {alarms.map((alarm) => (
                   <div
@@ -327,6 +334,7 @@ export function EventAlarmDashboard() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -340,6 +348,13 @@ export function EventAlarmDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {events.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <Info className="h-10 w-10 text-muted-foreground/40 mb-3" />
+                  <p className="text-sm font-medium text-muted-foreground">No recent events</p>
+                  <p className="text-xs text-muted-foreground mt-1">System events will appear here as controller activity is logged.</p>
+                </div>
+              ) : (
               <div className="space-y-2">
                 {events.map((event, idx) => (
                   <div
@@ -363,6 +378,7 @@ export function EventAlarmDashboard() {
                   </div>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

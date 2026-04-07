@@ -1185,7 +1185,7 @@ export function ConfigureNetworks() {
                   <TableHead>Name</TableHead>
                   <TableHead>SSID</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Default Role</TableHead>
+                  <TableHead>Clients</TableHead>
                   <TableHead>Privacy Type</TableHead>
                   <TableHead>Default VLAN</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -1222,9 +1222,7 @@ export function ConfigureNetworks() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {(network as any).authenticatedUserDefaultRoleName || (network as any).defaultRoleName || '—'}
-                        </span>
+                        <span className="text-sm font-medium">{network.currentClients ?? 0}</span>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm">{network.authType}</span>
@@ -1339,14 +1337,24 @@ export function ConfigureNetworks() {
                 
                 {filteredNetworks.length === 0 && !loading && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      <div className="flex flex-col items-center space-y-2 text-muted-foreground">
-                        <Network className="h-8 w-8" />
-                        <span>No networks found</span>
-                        {searchTerm && (
-                          <span className="text-sm">
-                            Try adjusting your search or filters
-                          </span>
+                    <TableCell colSpan={7} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
+                        <Network className="h-10 w-10" />
+                        <span className="text-sm font-medium text-muted-foreground">
+                          {searchTerm ? 'No networks match your search' : 'No wireless networks configured'}
+                        </span>
+                        <span className="text-xs">
+                          {searchTerm
+                            ? `No results for "${searchTerm}". Try clearing the search or adjusting filters.`
+                            : 'Create a WLAN to start providing wireless connectivity.'}
+                        </span>
+                        {!searchTerm && !isOrgScope && (
+                          <button
+                            onClick={() => setShowCreateDialog(true)}
+                            className="mt-2 px-4 py-2 rounded-md text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                          >
+                            Create WLAN
+                          </button>
                         )}
                       </div>
                     </TableCell>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -264,13 +264,19 @@ export function ConfigurePolicy() {
     }
   };
 
-  const renderEmptyState = (title: string, description: string) => (
-    <div className="flex flex-col items-center justify-center py-12 px-4">
-      <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="text-lg mb-2">{title}</h3>
-      <p className="text-sm text-muted-foreground text-center max-w-md">
-        {description}
-      </p>
+  const renderEmptyState = (
+    title: string,
+    description: string,
+    icon?: React.ReactNode,
+    action?: React.ReactNode,
+  ) => (
+    <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+      <div className="mb-4 text-muted-foreground/50">
+        {icon ?? <AlertCircle className="h-12 w-12" />}
+      </div>
+      <h3 className="text-base font-medium mb-1 text-foreground">{title}</h3>
+      <p className="text-sm text-muted-foreground max-w-md">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
     </div>
   );
 
@@ -375,10 +381,17 @@ export function ConfigurePolicy() {
               </div>
             ) : filteredRoles.length === 0 ? (
               renderEmptyState(
-                searchTerm ? 'No roles found' : 'No roles configured',
-                searchTerm 
-                  ? 'Try adjusting your search criteria'
-                  : 'Network roles define access policies and security rules'
+                searchTerm ? 'No matching roles' : 'No roles configured',
+                searchTerm
+                  ? `No roles match "${searchTerm}". Try clearing the search or use a different keyword.`
+                  : 'Network roles define access control policies and firewall rules for wireless clients.',
+                <Shield className="h-12 w-12" />,
+                !searchTerm && !isOrgScope ? (
+                  <Button onClick={handleCreateRole} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Role
+                  </Button>
+                ) : undefined,
               )
             ) : (
               <div className="space-y-3">
@@ -567,8 +580,11 @@ export function ConfigurePolicy() {
               </div>
             ) : filteredTopologies.length === 0 ? (
               renderEmptyState(
-                'No Topologies Found',
-                topologySearchTerm ? 'No topologies match your search criteria.' : 'No VLAN topologies are configured on this controller.'
+                topologySearchTerm ? 'No matching topologies' : 'No VLAN topologies configured',
+                topologySearchTerm
+                  ? `No topologies match "${topologySearchTerm}". Try clearing the search.`
+                  : 'VLAN topologies define network segmentation. Configure them on the Campus Controller and they will appear here.',
+                <Layers className="h-12 w-12" />,
               )
             ) : (
               <div className="grid gap-3">
@@ -634,8 +650,9 @@ export function ConfigurePolicy() {
               </div>
             ) : cosProfiles.length === 0 ? (
               renderEmptyState(
-                'No Class of Service Profiles Found',
-                'No CoS profiles are configured on this controller.'
+                'No CoS profiles configured',
+                'Class of Service profiles prioritize network traffic for different application types. Create them on the Campus Controller.',
+                <Gauge className="h-12 w-12" />,
               )
             ) : (
               <div className="grid gap-3">
@@ -643,8 +660,8 @@ export function ConfigurePolicy() {
                   <Card key={cos.id} className="p-4 transition-all">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-purple-500/10">
-                          <Gauge className="h-4 w-4 text-purple-500" />
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <Gauge className="h-4 w-4 text-primary" />
                         </div>
                         <div>
                           <div className="font-medium">{cos.name || cos.cosName || 'Unnamed'}</div>
@@ -678,8 +695,9 @@ export function ConfigurePolicy() {
           {/* Firewall Rules Tab - Coming Soon */}
           <TabsContent value="firewall" className="p-6">
             {renderEmptyState(
-              'Firewall Rules Management',
-              'Advanced firewall rule configuration will be available in a future update. Use the Network Roles tab to view roles with firewall filters.'
+              'Firewall Rules — Coming Soon',
+              'Advanced per-role firewall rule configuration is under development. In the meantime, use the Network Roles tab to view and manage roles that include firewall filter assignments.',
+              <Network className="h-12 w-12" />,
             )}
           </TabsContent>
         </Tabs>
@@ -1043,7 +1061,7 @@ export function ConfigurePolicy() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsTopologyEditOpen(false)}>Cancel</Button>
-            <Button>Save</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

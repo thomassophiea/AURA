@@ -2041,7 +2041,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Phone className="h-4 w-4 text-[color:var(--status-error)]" />
               <span className="font-medium text-sm">E911 BSSID</span>
               <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">Beta</span>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-slate-900 text-[color:var(--status-success)] text-xs font-semibold border border-[color:var(--status-success)]/30">
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] text-xs font-semibold border border-[color:var(--status-success)]/30">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>

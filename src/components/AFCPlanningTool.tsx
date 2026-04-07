@@ -415,7 +415,7 @@ export function AFCPlanningTool() {
                 </div>
               </div>
 
-              <Button onClick={handleCreatePlan} className="w-full">
+              <Button onClick={handleCreatePlan} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
                 Create AFC Plan
               </Button>
             </CardContent>
@@ -744,7 +744,7 @@ export function AFCPlanningTool() {
                 )}
 
                 <div className="flex gap-2">
-                  <Button onClick={() => handleApplyPlan(selectedPlan)} className="flex-1">
+                  <Button onClick={() => handleApplyPlan(selectedPlan)} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Apply Recommendations
                   </Button>

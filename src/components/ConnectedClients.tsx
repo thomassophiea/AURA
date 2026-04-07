@@ -131,9 +131,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         return 'bg-red-500/15 text-red-500 border-red-500/30';
       case 'idle':
       case 'low':
-        return 'bg-gray-500/15 text-gray-400 border-gray-500/30';
+        return 'bg-muted text-muted-foreground border-border';
       default:
-        return 'bg-gray-500/15 text-gray-400 border-gray-500/30';
+        return 'bg-muted text-muted-foreground border-border';
     }
   };
 

@@ -61,7 +61,7 @@ export function TimelineControls({
                 variant="default"
                 size="sm"
                 onClick={onToggleLock}
-                className="gap-2 bg-violet-600 hover:bg-violet-700 text-white shadow-md font-semibold"
+                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md font-semibold"
                 title="Click to unlock (or click on any chart)"
               >
                 <Lock className="h-4 w-4" />

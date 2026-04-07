@@ -38,11 +38,11 @@ export function VersionBadge() {
     } catch (error) {
       console.error('[VersionBadge] Failed to fetch version:', error);
       setVersion({
-        version: 'unknown',
-        commit: 'unknown',
+        version: 'dev',
+        commit: '',
         commitFull: '',
         buildDate: new Date().toISOString(),
-        message: 'Failed to fetch version',
+        message: 'Version endpoint unavailable',
         error: 'Network error'
       });
     } finally {
@@ -58,7 +58,10 @@ export function VersionBadge() {
     return null;
   }
 
-  const displayVersion = version.commit || version.version || 'dev';
+  // Prefer a short commit hash; fall back to semver version; then 'dev' for local builds
+  const displayVersion = (version.commit && version.commit !== 'unknown' && version.commit !== '')
+    ? version.commit
+    : (version.version && version.version !== 'unknown' ? version.version : 'dev');
   const buildDate = version.buildDate ? new Date(version.buildDate).toLocaleString() : 'Unknown';
 
   return (

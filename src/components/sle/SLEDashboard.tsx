@@ -475,10 +475,29 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         </div>
 
         <TabsContent value="wireless" className="mt-4">
-          {viewMode === 'radial' && <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
-          {viewMode === 'octopus' && <SLEOctopus sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
-          {viewMode === 'honeycomb' && <SLEHoneycomb sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
-          {viewMode === 'waterfall' && <SLEWaterfall sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+          {wirelessSLEs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Wifi className="h-12 w-12 text-muted-foreground/40 mb-4" />
+              <h3 className="text-base font-medium text-foreground mb-1">No SLE data available</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">
+                SLE metrics require connected clients and access points. Try selecting a different site or time range, or wait for data to be collected.
+              </p>
+              <button
+                onClick={() => loadData(true)}
+                className="mt-4 flex items-center gap-2 text-sm text-primary hover:underline"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh data
+              </button>
+            </div>
+          ) : (
+            <>
+              {viewMode === 'radial' && <SLERadialMap sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+              {viewMode === 'octopus' && <SLEOctopus sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+              {viewMode === 'honeycomb' && <SLEHoneycomb sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+              {viewMode === 'waterfall' && <SLEWaterfall sles={wirelessSLEs} stations={stations} aps={aps} onClientClick={onClientClick} />}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="wired" className="mt-4">

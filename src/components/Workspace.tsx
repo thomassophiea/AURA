@@ -133,11 +133,14 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
         {/* Centered content */}
         <div className="flex-1 flex flex-col items-center justify-center max-w-3xl mx-auto px-4">
           {/* Title */}
-          <h1 className="text-2xl font-semibold text-foreground text-center mb-2">
-            Workspace
-          </h1>
-          <p className="text-base text-muted-foreground text-center mb-8">
-            Create your first widget by selecting a topic below.
+          <div className="p-3 rounded-full bg-primary/10 mb-4">
+            <LayoutGrid className="h-6 w-6 text-primary" />
+          </div>
+          <h2 className="text-xl font-semibold text-foreground text-center mb-2">
+            Start building your workspace
+          </h2>
+          <p className="text-sm text-muted-foreground text-center mb-8 max-w-sm">
+            Choose a topic to explore available widgets, then add them to your canvas.
           </p>
 
           {/* Centered Topic Selector */}

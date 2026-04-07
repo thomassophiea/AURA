@@ -54,7 +54,7 @@ export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: S
                     {rootCause.affectedDevices.slice(0, 20).map((dev, i) => (
                       <TableRow
                         key={i}
-                        className={`h-7 ${onClientClick && dev.mac ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                        className={`h-7 ${onClientClick && dev.mac ? 'cursor-pointer hover:bg-muted/50' : ''}`}
                         onClick={() => onClientClick && dev.mac && onClientClick(dev.mac)}
                       >
                         <TableCell className="py-1">

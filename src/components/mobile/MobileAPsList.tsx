@@ -293,8 +293,8 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 py-2">
+      {/* List — pb accounts for fixed bottom nav clearance */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 pb-20">
         <MobileStatusList loading={loading} emptyMessage="No access points found">
           {filteredAPs.map((ap: any) => {
             const online = isAPOnline(ap);
