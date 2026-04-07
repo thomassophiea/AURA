@@ -987,15 +987,14 @@ export function ConfigureNetworks() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              {isOrgScope ? (
-                <Button onClick={() => navigateToTemplateCreation('service')}>
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create WLAN
+              </Button>
+              {isOrgScope && (
+                <Button variant="outline" onClick={() => navigateToTemplateCreation('service')}>
                   <Layers className="h-4 w-4 mr-2" />
                   Create Template
-                </Button>
-              ) : (
-                <Button onClick={() => setShowCreateDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create WLAN
                 </Button>
               )}
             </div>
@@ -1069,20 +1068,14 @@ export function ConfigureNetworks() {
 
         {/* Quick WLAN banner — session-scoped, dismissible */}
         {!bannerDismissed && (
-          <div className="mx-6 mb-0 mt-2 flex items-center justify-between rounded-lg border border-green-900/50 bg-green-950/30 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <Zap className="h-4 w-4 text-green-400 shrink-0" />
-              <div>
-                <span className="text-sm font-semibold text-green-400">Quick WLAN</span>
-                <span className="ml-2 text-sm text-muted-foreground">
-                  Get a network live in seconds — name, auth, VLAN, deploy.
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
+          <div className="mx-6 mb-0 mt-2 flex justify-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-green-900/60 bg-green-950/40 pl-3 pr-2 py-1.5">
+              <Zap className="h-3.5 w-3.5 text-green-400 shrink-0" />
+              <span className="text-xs font-semibold text-green-400">Quick WLAN</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">— live in seconds</span>
               <button
                 type="button"
-                className="text-sm font-medium text-green-400 hover:underline"
+                className="text-xs font-medium text-green-400 hover:text-green-300 transition-colors px-1"
                 onClick={() => setShowQuickWLANDialog(true)}
               >
                 Get Started →
@@ -1090,13 +1083,13 @@ export function ConfigureNetworks() {
               <button
                 type="button"
                 aria-label="Dismiss Quick WLAN banner"
-                className="ml-2 text-muted-foreground hover:text-foreground"
+                className="text-muted-foreground hover:text-foreground transition-colors p-0.5"
                 onClick={() => {
                   sessionStorage.setItem('quick_wlan_banner_dismissed', '1');
                   setBannerDismissed(true);
                 }}
               >
-                <X className="h-4 w-4" />
+                <X className="h-3 w-3" />
               </button>
             </div>
           </div>
