@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { X, Folder } from 'lucide-react';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
@@ -39,6 +39,7 @@ export function AssignmentSection({
 }: AssignmentSectionProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const filteredResults = useMemo(() => {
     if (!searchQuery.trim()) return { sites: [], siteGroups: [] };
@@ -71,6 +72,44 @@ export function AssignmentSection({
     return parts.join(', ');
   }, [selectedSiteIds, selectedSiteGroupIds]);
 
+  // Keyboard navigation: focus first button in dropdown on ArrowDown, close on Escape
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Escape') {
+      setShowDropdown(false);
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      const firstBtn = dropdownRef.current?.querySelector<HTMLButtonElement>('button');
+      firstBtn?.focus();
+    }
+  }, []);
+
+  // Keyboard navigation within dropdown: ArrowUp/Down moves between items, Escape closes
+  const handleDropdownKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
+      if (e.key === 'Escape') {
+        setShowDropdown(false);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const btns = dropdownRef.current?.querySelectorAll<HTMLButtonElement>('button');
+        btns?.[index + 1]?.focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (index === 0) {
+          // Move focus back to the search input
+          (
+            dropdownRef.current
+              ?.closest('.relative')
+              ?.querySelector('input') as HTMLInputElement | null
+          )?.focus();
+        } else {
+          const btns = dropdownRef.current?.querySelectorAll<HTMLButtonElement>('button');
+          btns?.[index - 1]?.focus();
+        }
+      }
+    },
+    []
+  );
+
   function removeSite(id: string) {
     onSitesChange(selectedSiteIds.filter(s => s !== id));
   }
@@ -91,8 +130,16 @@ export function AssignmentSection({
     setShowDropdown(false);
   }
 
+  // Build flat list of dropdown items to compute stable global indices for keyboard nav
+  const dropdownItems = useMemo(() => {
+    const items: Array<{ type: 'group'; item: SiteGroup } | { type: 'site'; item: Site }> = [];
+    filteredResults.siteGroups.forEach(sg => items.push({ type: 'group', item: sg }));
+    filteredResults.sites.forEach(s => items.push({ type: 'site', item: s }));
+    return items;
+  }, [filteredResults]);
+
   return (
-    <div className="space-y-2">
+    <div role="radiogroup" aria-label="Deployment assignment" className="space-y-2">
       {MODES.map(mode => (
         <div
           key={mode.value}
@@ -154,7 +201,7 @@ export function AssignmentSection({
                   <p className="text-xs text-muted-foreground">{summaryText} selected</p>
                 )}
 
-                {/* Search input */}
+                {/* Search input + dropdown */}
                 <div className="relative">
                   <Input
                     placeholder="Search sites or groups..."
@@ -165,21 +212,26 @@ export function AssignmentSection({
                     }}
                     onFocus={() => setShowDropdown(true)}
                     onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+                    onKeyDown={handleSearchKeyDown}
                     className="h-8 text-xs"
                   />
                   {showDropdown && hasDropdownResults && (
-                    <div className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto">
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-50 top-full mt-1 w-full rounded-md border bg-popover shadow-md max-h-48 overflow-y-auto"
+                    >
                       {filteredResults.siteGroups.length > 0 && (
                         <>
                           <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                             Site Groups
                           </p>
-                          {filteredResults.siteGroups.map(sg => (
+                          {filteredResults.siteGroups.map((sg, i) => (
                             <button
                               key={sg.id}
                               type="button"
                               className="flex items-center gap-2 w-full px-2 py-1.5 text-xs hover:bg-accent text-left"
                               onMouseDown={() => selectSiteGroup(sg)}
+                              onKeyDown={e => handleDropdownKeyDown(e, i)}
                             >
                               <Folder className="h-3 w-3 text-muted-foreground" />
                               {sg.name}
@@ -192,12 +244,18 @@ export function AssignmentSection({
                           <p className="px-2 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                             Sites
                           </p>
-                          {filteredResults.sites.map(s => (
+                          {filteredResults.sites.map((s, i) => (
                             <button
                               key={s.id}
                               type="button"
                               className="w-full px-2 py-1.5 text-xs hover:bg-accent text-left pl-6"
                               onMouseDown={() => selectSite(s)}
+                              onKeyDown={e =>
+                                handleDropdownKeyDown(
+                                  e,
+                                  filteredResults.siteGroups.length + i
+                                )
+                              }
                             >
                               {s.name ?? s.id}
                             </button>
