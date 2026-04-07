@@ -10,7 +10,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { apiService, Role, ClassOfService, Topology } from '../services/api';
-import { buildDefaultL2Filter, buildDefaultL3SrcDestFilter } from '../utils/roleFilterValidation';
+import { buildDefaultL2Filter, buildDefaultL3SrcDestFilter, type L2Filter, type L3SrcDestFilter } from '../utils/roleFilterValidation';
 import { Settings, Shield, Network, Globe, Layers, Plus, Trash2, Lock, Unlock, RefreshCw, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,11 +33,6 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🔧 RoleEditDialog render - isOpen:', isOpen, 'isEditing:', isEditing);
-  }, [isOpen, isEditing]);
 
   // Reference data
   const [cosOptions, setCosOptions] = useState<ClassOfService[]>([]);
@@ -62,10 +57,10 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   const [profiles, setProfiles] = useState<string[]>([]);
 
   // L3 Filters
-  const [l3Filters, setL3Filters] = useState<any[]>([]);
-  const [l7Filters, setL7Filters] = useState<any[]>([]);
-  const [l2Filters, setL2Filters] = useState<any[]>([]);
-  const [l3SrcDestFilters, setL3SrcDestFilters] = useState<any[]>([]);
+  const [l3Filters, setL3Filters] = useState<any[]>([]); // TODO: type these when L3/L7 filter shapes are defined in types/
+  const [l7Filters, setL7Filters] = useState<any[]>([]); // TODO: type these when L3/L7 filter shapes are defined in types/
+  const [l2Filters, setL2Filters] = useState<L2Filter[]>([]);
+  const [l3SrcDestFilters, setL3SrcDestFilters] = useState<L3SrcDestFilter[]>([]);
   const [bandwidthLimitEnabled, setBandwidthLimitEnabled] = useState(false);
   const [bandwidthLimitKbps, setBandwidthLimitKbps] = useState('');
 
