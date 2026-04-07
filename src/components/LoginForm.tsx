@@ -558,11 +558,11 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
             <div className="flex justify-center mb-5">
               <ImageWithFallback
                 src={extremeNetworksLogo}
-                alt="AURA"
+                alt="API"
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-widest">AURA</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-widest">API</CardTitle>
             <div className="text-[11px] text-muted-foreground text-center mt-1">
               Autonomous Unified Radio Agent
             </div>
@@ -881,7 +881,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                 </Button>
 
                 <p className="text-[11px] text-muted-foreground text-center pt-1">
-                  Connects AURA to your ExtremeCloud organization for future migration.
+                  Connects API to your ExtremeCloud organization for future migration.
                   You can connect later from Site Group settings.
                 </p>
               </div>
