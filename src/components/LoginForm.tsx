@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
@@ -160,14 +160,6 @@ function FloatingSelect({
   );
 }
 
-// ─── Demo defaults (pre-filled for demo/dev environment) ────────────────────
-const DEMO_CONTROLLER_NAME = 'tsophiea';
-const DEMO_CONTROLLER_URL  = 'https://tsophiea.ddns.net';
-const DEMO_USERNAME        = 'admin';
-const DEMO_PASSWORD        = 'Bronco3.0!';
-const DEMO_XIQ_EMAIL       = 'tsophiea+ep1@extremenetworks.com';
-const DEMO_XIQ_REGION: XIQRegion = 'ca';
-// ────────────────────────────────────────────────────────────────────────────
 
 /* ---------- Main LoginForm ---------- */
 export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle: _onThemeToggle }: LoginFormProps) {
@@ -191,70 +183,25 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // XIQ state — pre-filled with demo defaults
-  const [xiqEmail, setXiqEmail] = useState(DEMO_XIQ_EMAIL);
+  // XIQ state
+  const [xiqEmail, setXiqEmail] = useState('');
   const [xiqPassword, setXiqPassword] = useState('');
-  const [xiqRegion, setXiqRegion] = useState<XIQRegion>(DEMO_XIQ_REGION);
+  const [xiqRegion, setXiqRegion] = useState<XIQRegion>('global');
   const [xiqLoading, setXiqLoading] = useState(false);
   const [xiqError, setXiqError] = useState('');
-
-  // Prevents auto-login from firing more than once
-  const autoLoginDone = useRef(false);
 
   // Load controllers on mount
   useEffect(() => {
     loadControllers();
   }, []);
 
-  // Auto-login to controller once XIQ is done and credentials are pre-filled
-  useEffect(() => {
-    if (loadingControllers || autoLoginDone.current) return;
-    if (step !== 'credentials') return;
-    if (!selectedController || !userId || !password) return;
-    autoLoginDone.current = true;
-
-    setIsLoading(true);
-    tenantService.setCurrentController(selectedController);
-    const ctrlUrl = tenantService.getControllerUrl();
-    if (ctrlUrl) apiService.setBaseUrl(ctrlUrl);
-
-    apiService.login(userId, password)
-      .then(() => {
-        tenantService.saveSiteGroupLogin(selectedController.id, userId.trim(), password);
-        tenantService.updateController(selectedController.id, {
-          connection_status: 'connected',
-          last_connected_at: new Date().toISOString()
-        });
-        onLoginSuccess();
-      })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : 'Login failed';
-        setError(
-          msg.includes('401') || msg.includes('Invalid credentials')
-            ? 'Invalid username or password.'
-            : msg
-        );
-        setStep('credentials');
-      })
-      .finally(() => setIsLoading(false));
-  // onLoginSuccess is a stable prop — intentionally omitted from deps
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingControllers, step, selectedController, userId, password]);
-
   const loadControllers = async () => {
     setLoadingControllers(true);
     try {
       const raw = await tenantService.getControllers();
 
-      // Seed demo controller on first run (no stored controllers)
-      let data = raw;
-      if (raw.length === 0) {
-        const demo = tenantService.addQuickController(DEMO_CONTROLLER_NAME, DEMO_CONTROLLER_URL);
-        tenantService.saveSiteGroupLogin(demo.id, DEMO_USERNAME, DEMO_PASSWORD);
-        data = [demo];
-      }
-
-      setControllers(data);
+      setControllers(raw);
+      const data = raw;
 
       // Auto-select: prefer saved controller, then default controller
       const saved = tenantService.getCurrentController();
@@ -288,13 +235,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
         const controllerUrl = tenantService.getControllerUrl();
         if (controllerUrl) {
           apiService.setBaseUrl(controllerUrl);
-        }
-
-        // Pre-fill saved controller credentials
-        const savedLogin = tenantService.getSiteGroupLogin(selectedCtrl.id);
-        if (savedLogin) {
-          setUserId(savedLogin.username);
-          setPassword(savedLogin.password);
         }
 
         // Pre-fill saved ExtremeCloud credentials for this site group
@@ -419,16 +359,8 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
 
   const handleSelectController = (controller: Controller) => {
     setSelectedController(controller);
-    // Pre-fill saved credentials when the user selects a controller
-    const saved = tenantService.getSiteGroupLogin(controller.id);
-    if (saved) {
-      setUserId(saved.username);
-      setPassword(saved.password);
-    } else {
-      // Clear any leftover credentials from a previous controller
-      setUserId('');
-      setPassword('');
-    }
+    setUserId('');
+    setPassword('');
   };
 
   const handleProceedToLogin = () => {
@@ -745,9 +677,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                       <Server className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
                         <span className="text-sm font-medium truncate block">{selectedController.name}</span>
-                        {tenantService.getSiteGroupLogin(selectedController.id) && (
-                          <span className="text-[11px] text-muted-foreground">Saved credentials loaded</span>
-                        )}
                       </div>
                     </div>
                     <Button
