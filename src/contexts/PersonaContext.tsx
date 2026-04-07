@@ -6,6 +6,8 @@ export interface PersonaContextValue {
   setActivePersona: (id: PersonaId) => void;
   isPageAllowed: (pageId: string) => boolean;
   filterItems: <T extends { id: string }>(items: T[]) => T[];
+  /** True when the "dev" theme is active (enables NVO badges in production) */
+  isDevTheme: boolean;
 }
 
 export const PERSONA_STORAGE_KEY = 'aura-dev-persona';
@@ -52,7 +54,8 @@ export function PersonaProvider({ theme, activePersona, setActivePersona, childr
     setActivePersona,
     isPageAllowed,
     filterItems,
-  }), [activePersona, setActivePersona, isPageAllowed, filterItems]);
+    isDevTheme: theme === 'dev',
+  }), [activePersona, setActivePersona, isPageAllowed, filterItems, theme]);
 
   return (
     <PersonaContext.Provider value={value}>
@@ -65,4 +68,9 @@ export function usePersonaContext(): PersonaContextValue {
   const ctx = useContext(PersonaContext);
   if (!ctx) throw new Error('usePersonaContext must be used within PersonaProvider');
   return ctx;
+}
+
+/** Safe hook — returns false when used outside PersonaProvider (e.g. in tests). */
+export function useIsDevTheme(): boolean {
+  return useContext(PersonaContext)?.isDevTheme ?? false;
 }

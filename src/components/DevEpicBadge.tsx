@@ -1,10 +1,11 @@
 import { ExternalLink } from 'lucide-react';
+import { useIsDevTheme } from '@/contexts/PersonaContext';
 
 interface DevEpicBadgeProps {
   epicKey: string;
   epicTitle: string;
   jiraUrl: string;
-  /** Defaults to import.meta.env.DEV — pass explicitly in tests */
+  /** Defaults to true in dev build or when the "dev" theme is active — pass explicitly in tests */
   show?: boolean;
 }
 
@@ -12,9 +13,11 @@ export function DevEpicBadge({
   epicKey,
   epicTitle,
   jiraUrl,
-  show = import.meta.env.DEV,
+  show,
 }: DevEpicBadgeProps) {
-  if (!show) return null;
+  const isDevTheme = useIsDevTheme();
+  const visible = show ?? (import.meta.env.DEV || isDevTheme);
+  if (!visible) return null;
   return (
     <a
       href={jiraUrl}
