@@ -256,7 +256,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
   const personaDashConfig = PERSONA_DASHBOARD_CONFIG[activePersona];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-primary/20 bg-background/95 backdrop-blur-xl shadow-2xl shadow-primary/5">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-primary/20 bg-background shadow-2xl shadow-primary/5">
       <Resizable
         size={{ width: '100%', height: panelHeight }}
         minHeight={200}
@@ -274,7 +274,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
       >
         <div className="h-full flex flex-col border-t border-primary/10">
           {/* ── Header Bar ── */}
-          <div className="flex items-center justify-between px-4 py-1.5 border-b border-border/50 bg-card/80 flex-shrink-0">
+          <div className="flex items-center justify-between px-4 py-1.5 border-b border-border/50 bg-card flex-shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -304,7 +304,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
 
           {/* ── Tab Navigation ── */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
-            <div className="border-b border-border/30 bg-card/40 px-4 flex-shrink-0">
+            <div className="border-b border-border/30 bg-card px-4 flex-shrink-0">
               <TabsList className="bg-transparent h-8 gap-0 p-0">
                 <TabsTrigger value="api" className="text-xs data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-none border-b-2 border-transparent data-[state=active]:border-primary h-8 px-3">
                   <Activity className="h-3 w-3 mr-1.5" />
@@ -335,7 +335,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
                 ═══════════════════════════════════════ */}
             <TabsContent value="api" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
               {/* Filter bar */}
-              <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border/30 bg-card/20 flex-shrink-0">
+              <div className="flex items-center gap-2 px-4 py-1.5 border-b border-border/30 bg-card flex-shrink-0">
                 <Search className="h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   type="text"
@@ -389,7 +389,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
               </div>
 
               {/* Log entries */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto bg-card/60 font-mono text-xs">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto bg-card font-mono text-xs">
                 {filteredLogs.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <div className="text-center">
@@ -423,7 +423,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
                         </div>
 
                         {expandedLog === log.id && (
-                          <div className="px-4 pb-3 space-y-2 bg-background/60">
+                          <div className="px-4 pb-3 space-y-2 bg-background">
                             {log.requestBody && (
                               <div>
                                 <div className="flex items-center justify-between mb-1">
@@ -708,9 +708,9 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
                     <button
                       key={qa.label}
                       onClick={qa.action}
-                      className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border/30 bg-card/30 hover:bg-primary/10 hover:border-primary/30 transition-all duration-200 group"
+                      className="flex flex-col items-center gap-2 p-4 rounded-lg border border-border/30 bg-card hover:bg-primary/10 hover:border-primary/30 transition-all duration-200 group"
                     >
-                      <div className={cn('p-2 rounded-lg bg-background/50 group-hover:scale-110 transition-transform', qa.color)}>
+                      <div className={cn('p-2 rounded-lg bg-background group-hover:scale-110 transition-transform', qa.color)}>
                         <qa.icon className="h-5 w-5" />
                       </div>
                       <span className="text-[11px] text-muted-foreground group-hover:text-card-foreground text-center transition-colors">{qa.label}</span>
@@ -725,19 +725,19 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
                     Useful Information
                   </h4>
                   <div className="grid grid-cols-2 gap-2 text-[10px]">
-                    <div className="flex items-center justify-between p-1.5 rounded bg-background/30">
+                    <div className="flex items-center justify-between p-1.5 rounded bg-muted">
                       <span className="text-muted-foreground">API Base URL</span>
                       <code className="text-primary font-mono">{apiService.getBaseUrl()}</code>
                     </div>
-                    <div className="flex items-center justify-between p-1.5 rounded bg-background/30">
+                    <div className="flex items-center justify-between p-1.5 rounded bg-muted">
                       <span className="text-muted-foreground">User Email</span>
                       <code className="text-primary font-mono">{localStorage.getItem('user_email') || 'N/A'}</code>
                     </div>
-                    <div className="flex items-center justify-between p-1.5 rounded bg-background/30">
+                    <div className="flex items-center justify-between p-1.5 rounded bg-muted">
                       <span className="text-muted-foreground">Admin Role</span>
                       <code className="text-primary font-mono">{localStorage.getItem('admin_role') || 'N/A'}</code>
                     </div>
-                    <div className="flex items-center justify-between p-1.5 rounded bg-background/30">
+                    <div className="flex items-center justify-between p-1.5 rounded bg-muted">
                       <span className="text-muted-foreground">Theme</span>
                       <code className="text-primary font-mono">{localStorage.getItem('theme') || 'ep1'}</code>
                     </div>
