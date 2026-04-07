@@ -317,8 +317,6 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     setL7Filters(updated);
   };
 
-  console.log('🔧 RoleEditDialog rendering - isOpen:', isOpen, 'role:', role?.name || 'NEW');
-
   // Render content (shared between dialog and inline modes)
   const renderContent = () => (
     <div className={isInline ? "space-y-4" : "flex-1 overflow-y-auto hide-scrollbar px-6 py-6"}>
