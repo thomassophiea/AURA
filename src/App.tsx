@@ -36,6 +36,9 @@ const ConfigureAdvanced = lazy(() => import('./components/ConfigureAdvanced').th
 const ConfigureProfiles = lazy(() =>
   import('./components/ConfigureProfiles').then(m => ({ default: m.ConfigureProfiles }))
 );
+const ConfigureRRM = lazy(() =>
+  import('./components/ConfigureRRM').then(m => ({ default: m.ConfigureRRM }))
+);
 const GlobalElementsPage = lazy(() => import('./components/global-elements/GlobalElementsPage').then(m => ({ default: m.GlobalElementsPage })));
 const SiteGroupSettingsPage = lazy(() => import('./components/SiteGroupSettingsPage').then(m => ({ default: m.SiteGroupSettingsPage })));
 const Administration = lazy(() => import('./components/Administration').then(m => ({ default: m.Administration })));
@@ -113,6 +116,7 @@ const pageInfo = {
   'configure-sites-groups': { title: 'Sites & Groups', description: 'Manage site groups, controller pairs, and network sites' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
   'configure-profiles': { title: 'Device Profiles', description: 'Configure AP device profiles and assignment hierarchy' },
+  'configure-rrm': { title: 'RF Management', description: 'Configure RF Management (RRM) profiles and assignment' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
   'global-templates': { title: 'Global Templates', description: 'Manage configuration templates with variable substitution' },
   'global-variables': { title: 'Global Variables', description: 'Define and manage variables for template resolution' },
@@ -954,6 +958,8 @@ export default function App() {
         return <ConfigureGuest />;
       case 'configure-profiles':
         return <ConfigureProfiles />;
+      case 'configure-rrm':
+        return <ConfigureRRM />;
       case 'configure-advanced':
         return <ConfigureAdvanced />;
       case 'global-templates':
