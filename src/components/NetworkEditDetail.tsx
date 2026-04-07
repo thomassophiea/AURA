@@ -27,6 +27,7 @@ interface LegacyLegacySiteGroup {
   color?: string;
 }
 import { generateDefaultService, generatePrivacyConfig, validateServiceData } from '../utils/serviceDefaults';
+import { validateEnterpriseAuthRequirements, isEnterpriseAuth } from '../utils/wlanAuthValidation';
 import { toast } from 'sonner';
 
 interface NetworkEditDetailProps {
@@ -677,6 +678,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         throw new Error('SSID is required');
       }
 
+      // Validate enterprise AAA requirements
+      const effectiveAaaPolicyId = formData.aaaPolicyId === 'none' ? '' : (formData.aaaPolicyId || '');
+      const authError = validateEnterpriseAuthRequirements(formData.securityType, effectiveAaaPolicyId);
+      if (authError) {
+        toast.error('Authentication Configuration Error', { description: authError });
+        setActiveTab('basic');
+        setSaving(false);
+        return;
+      }
+
       console.log('=== SERVICE UPDATE DEBUG INFO ===');
       console.log('Service ID:', serviceId);
       console.log('Form data to save:', formData);
@@ -941,7 +952,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   }
 
   // Helper: is this an enterprise auth type?
-  const isEnterprise = ['wpa2-enterprise', 'wpa3-enterprise', 'wpa23-enterprise'].includes(formData.securityType);
+  const isEnterprise = isEnterpriseAuth(formData.securityType || '');
   // Helper: is this a PSK auth type that needs passphrase config?
   const isPsk = ['wep', 'wpa-personal', 'wpa2-personal', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.securityType);
   // Helper: show 6E WPA Compliance badge?
@@ -1019,6 +1030,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             </Field>
             <Field label="SSID">
               <Input value={formData.ssid} onChange={(e) => handleInputChange('ssid', e.target.value)} placeholder="Broadcast name" className="h-9 text-sm" />
+              <p className="text-xs text-muted-foreground mt-1">
+                Supports variable substitution, e.g. <code className="font-mono bg-muted px-1 rounded">{'{{site_name}}'}</code>
+              </p>
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="WLAN Status">
@@ -1184,6 +1198,12 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent><SelectItem value="none">None</SelectItem>{aaaPolicies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
+                {isEnterpriseAuth(formData.securityType) && (!formData.aaaPolicyId || formData.aaaPolicyId === 'none') && (
+                  <p role="alert" className="text-xs text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                    AAA policy required for enterprise authentication
+                  </p>
+                )}
               </Field>
               <Field label="Auth Method">
                 <Select value={formData.authMethod || 'radius'} onValueChange={(v) => handleInputChange('authMethod', v)}>

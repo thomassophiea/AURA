@@ -37,6 +37,8 @@ import {
   CircuitBoard,
   Building2,
   Globe,
+  Cpu,
+  Radio,
 } from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
@@ -73,6 +75,8 @@ const monitoringItems = [
 const configureItems = [
   { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
+  { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
+  { id: 'configure-rrm', label: 'RF Management', icon: Radio },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },

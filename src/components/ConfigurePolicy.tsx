@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { RoleEditDialog } from './RoleEditDialog';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server } from 'lucide-react';
+import { DevEpicBadge } from './DevEpicBadge';
 
 export function ConfigurePolicy() {
   const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
@@ -296,7 +297,14 @@ export function ConfigurePolicy() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl mb-1">Policy Configuration</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl mb-1">Policy Configuration</h1>
+            <DevEpicBadge
+              epicKey="NVO-9962"
+              epicTitle="Wireless Role Configuration"
+              jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-9962"
+            />
+          </div>
           <p className="text-sm text-muted-foreground">
             Manage network roles, access policies, and firewall rules
           </p>

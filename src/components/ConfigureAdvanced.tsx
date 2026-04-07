@@ -18,6 +18,7 @@ import {
   Radio, ShieldCheck, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import { DevEpicBadge } from './DevEpicBadge';
 import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server } from 'lucide-react';
@@ -1627,7 +1628,14 @@ function RFManagementTab() {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">RF Management policies ({items.length})</p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">RF Management policies ({items.length})</p>
+          <DevEpicBadge
+            epicKey="NVO-7299"
+            epicTitle="Wireless RRM Configuration"
+            jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-7299"
+          />
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
           {isOrgScope ? (

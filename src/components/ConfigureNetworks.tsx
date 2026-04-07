@@ -22,6 +22,7 @@ import { useAppContext } from '@/contexts/AppContext';
 import { Server, ArrowUpFromLine } from 'lucide-react';
 import { globalElementsService } from '../services/globalElementsService';
 import { tenantService } from '../services/tenantService';
+import { DevEpicBadge } from './DevEpicBadge';
 
 interface BulkOperationProgress {
   total: number;
@@ -966,6 +967,11 @@ export function ConfigureNetworks() {
               <CardTitle className="flex items-center space-x-2 text-headline-6 text-high-emphasis">
                 <Network className="h-5 w-5" />
                 <span>Network Configurations</span>
+                <DevEpicBadge
+                  epicKey="NVO-7242"
+                  epicTitle="WLAN Configuration"
+                  jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-7242"
+                />
               </CardTitle>
               <CardDescription>
                 Manage and configure wireless networks, SSIDs, and security policies

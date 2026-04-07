@@ -10,6 +10,7 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { apiService, Role, ClassOfService, Topology } from '../services/api';
+import { buildDefaultL2Filter, buildDefaultL3SrcDestFilter, type L2Filter, type L3SrcDestFilter } from '../utils/roleFilterValidation';
 import { Settings, Shield, Network, Globe, Layers, Plus, Trash2, Lock, Unlock, RefreshCw, GripVertical } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -32,11 +33,6 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const dialogRef = useRef<HTMLDivElement>(null);
-
-  // Debug logging
-  useEffect(() => {
-    console.log('🔧 RoleEditDialog render - isOpen:', isOpen, 'isEditing:', isEditing);
-  }, [isOpen, isEditing]);
 
   // Reference data
   const [cosOptions, setCosOptions] = useState<ClassOfService[]>([]);
@@ -61,8 +57,12 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
   const [profiles, setProfiles] = useState<string[]>([]);
 
   // L3 Filters
-  const [l3Filters, setL3Filters] = useState<any[]>([]);
-  const [l7Filters, setL7Filters] = useState<any[]>([]);
+  const [l3Filters, setL3Filters] = useState<any[]>([]); // TODO: type these when L3/L7 filter shapes are defined in types/
+  const [l7Filters, setL7Filters] = useState<any[]>([]); // TODO: type these when L3/L7 filter shapes are defined in types/
+  const [l2Filters, setL2Filters] = useState<L2Filter[]>([]);
+  const [l3SrcDestFilters, setL3SrcDestFilters] = useState<L3SrcDestFilter[]>([]);
+  const [bandwidthLimitEnabled, setBandwidthLimitEnabled] = useState(false);
+  const [bandwidthLimitKbps, setBandwidthLimitKbps] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +90,10 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
         setProfiles(role.profiles || []);
         setL3Filters(role.l3Filters || []);
         setL7Filters(role.l7Filters || []);
+        setL2Filters(role.l2Filters || []);
+        setL3SrcDestFilters(role.l3SrcDestFilters || []);
+        setBandwidthLimitEnabled(!!role.bandwidthLimitEnabled);
+        setBandwidthLimitKbps(String(role.bandwidthLimitKbps || ''));
       } else {
         // Reset form for new role
         resetForm();
@@ -144,6 +148,10 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     setProfiles([]);
     setL3Filters([]);
     setL7Filters([]);
+    setL2Filters([]);
+    setL3SrcDestFilters([]);
+    setBandwidthLimitEnabled(false);
+    setBandwidthLimitKbps('');
     setActiveTab('basic');
   };
 
@@ -154,6 +162,14 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
         description: 'Role name is required'
       });
       return;
+    }
+
+    if (bandwidthLimitEnabled) {
+      const kbps = parseInt(bandwidthLimitKbps);
+      if (isNaN(kbps) || kbps <= 0) {
+        toast.error('Bandwidth limit must be a positive number');
+        return;
+      }
     }
 
     // Build role data object
@@ -172,9 +188,10 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
       profiles,
       l3Filters,
       l7Filters,
-      // Standard fields for new roles
-      l2Filters: role?.l2Filters || [],
-      l3SrcDestFilters: role?.l3SrcDestFilters || [],
+      l2Filters,
+      l3SrcDestFilters,
+      bandwidthLimitEnabled,
+      bandwidthLimitKbps: bandwidthLimitEnabled ? parseInt(bandwidthLimitKbps) || 0 : undefined,
       cpTopologyId: role?.cpTopologyId || null,
       cpDefaultRedirectUrl: role?.cpDefaultRedirectUrl || '',
       cpRedirectUrlSelect: role?.cpRedirectUrlSelect || 'URLTARGET',
@@ -308,7 +325,13 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     setL7Filters(updated);
   };
 
-  console.log('🔧 RoleEditDialog rendering - isOpen:', isOpen, 'role:', role?.name || 'NEW');
+  const updateL2Filter = (index: number, field: keyof L2Filter, value: string) => {
+    setL2Filters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  };
+
+  const updateL3SrcDestFilter = (index: number, field: keyof L3SrcDestFilter, value: string | null) => {
+    setL3SrcDestFilters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  };
 
   // Render content (shared between dialog and inline modes)
   const renderContent = () => (
@@ -474,209 +497,465 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                       : 'Enter CoS ID directly or leave blank for default (no CoS)'}
                   </p>
                 </div>
+
+                <div className="space-y-2 border rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Bandwidth Limit</Label>
+                    <Switch checked={bandwidthLimitEnabled} onCheckedChange={setBandwidthLimitEnabled} />
+                  </div>
+                  {bandwidthLimitEnabled && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        value={bandwidthLimitKbps}
+                        onChange={e => setBandwidthLimitKbps(e.target.value)}
+                        placeholder="e.g. 10000"
+                        className="max-w-[160px]"
+                      />
+                      <span className="text-sm text-muted-foreground">Kbps</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 
             {/* Firewall Rules Tab */}
-            <TabsContent value="firewall" className="space-y-6 mt-6">
-              {/* L3 Filters Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Layer 3 IP Filters</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Define IP-based firewall rules for specific ports and protocols
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addL3Filter}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add L3 Filter
-                  </Button>
-                </div>
+            <TabsContent value="firewall" className="space-y-4 mt-6">
+              <Tabs defaultValue="l3" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="l2">L2 (MAC)</TabsTrigger>
+                  <TabsTrigger value="l3">L3/L4</TabsTrigger>
+                  <TabsTrigger value="l3srcdst">L3/L4 Src/Dst</TabsTrigger>
+                  <TabsTrigger value="l7">L7 (App)</TabsTrigger>
+                </TabsList>
 
-                {l3Filters.length === 0 ? (
-                  <Card className="p-6 text-center text-muted-foreground">
-                    No Layer 3 filters configured. Click "Add L3 Filter" to create one.
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {l3Filters.map((filter, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm">Filter #{index + 1}</Label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeL3Filter(index)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-2">
-                              <Label className="text-xs">Rule Name</Label>
-                              <Input
-                                value={filter.name}
-                                onChange={(e) => updateL3Filter(index, 'name', e.target.value)}
-                                placeholder="e.g., Allow DNS"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Action</Label>
-                              <Select 
-                                value={filter.action} 
-                                onValueChange={(value) => updateL3Filter(index, 'action', value)}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
-                                  <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Protocol</Label>
-                              <Select 
-                                value={filter.protocol} 
-                                onValueChange={(value) => updateL3Filter(index, 'protocol', value)}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="any">Any</SelectItem>
-                                  <SelectItem value="tcp">TCP</SelectItem>
-                                  <SelectItem value="udp">UDP</SelectItem>
-                                  <SelectItem value="icmp">ICMP</SelectItem>
-                                  <SelectItem value="gre">GRE</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">Port</Label>
-                              <Input
-                                value={filter.port}
-                                onChange={(e) => updateL3Filter(index, 'port', e.target.value)}
-                                placeholder="e.g., dns, http, 80"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">IP Address Range</Label>
-                              <Input
-                                value={filter.ipAddressRange}
-                                onChange={(e) => updateL3Filter(index, 'ipAddressRange', e.target.value)}
-                                placeholder="0.0.0.0/0"
-                                className="mt-1"
-                              />
-                            </div>
-                          </div>
-                        </div>
+                {/* L2 MAC Filters Sub-tab */}
+                <TabsContent value="l2" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">Layer 2 MAC Filters</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Define MAC address-based firewall rules
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setL2Filters([...l2Filters, buildDefaultL2Filter()])}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add L2 Filter
+                      </Button>
+                    </div>
+
+                    {l2Filters.length === 0 ? (
+                      <Card className="p-6 text-center text-muted-foreground">
+                        No Layer 2 filters configured. Click "Add L2 Filter" to create one.
                       </Card>
-                    ))}
+                    ) : (
+                      <div className="space-y-3">
+                        {l2Filters.map((filter, index) => (
+                          <Card key={index} className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm">MAC Filter #{index + 1}</Label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setL2Filters(l2Filters.filter((_, i) => i !== index))}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                  <Label className="text-xs">Rule Name</Label>
+                                  <Input
+                                    value={filter.name}
+                                    onChange={(e) => updateL2Filter(index, 'name', e.target.value)}
+                                    placeholder="e.g., Block Device"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Action</Label>
+                                  <Select
+                                    value={filter.action}
+                                    onValueChange={(value) => updateL2Filter(index, 'action', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
+                                      <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">MAC Address</Label>
+                                  <Input
+                                    value={filter.macAddress}
+                                    onChange={(e) => updateL2Filter(index, 'macAddress', e.target.value)}
+                                    placeholder="e.g., 00:1A:2B:3C:4D:5E"
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </TabsContent>
 
-              {/* L7 Filters Section */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium">Layer 7 Application Filters</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Control access to specific applications and application groups
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addL7Filter}
-                    className="flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Add L7 Filter
-                  </Button>
-                </div>
+                {/* L3/L4 Filters Sub-tab (existing content) */}
+                <TabsContent value="l3" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">Layer 3 IP Filters</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Define IP-based firewall rules for specific ports and protocols
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addL3Filter}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add L3 Filter
+                      </Button>
+                    </div>
 
-                {l7Filters.length === 0 ? (
-                  <Card className="p-6 text-center text-muted-foreground">
-                    No Layer 7 filters configured. Click "Add L7 Filter" to create one.
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {l7Filters.map((filter, index) => (
-                      <Card key={index} className="p-4">
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm">Application Filter #{index + 1}</Label>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeL7Filter(index)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="col-span-2">
-                              <Label className="text-xs">Rule Name</Label>
-                              <Input
-                                value={filter.name}
-                                onChange={(e) => updateL7Filter(index, 'name', e.target.value)}
-                                placeholder="e.g., Deny Peer to Peer"
-                                className="mt-1"
-                              />
-                            </div>
-                            <div>
-                              <Label className="text-xs">Action</Label>
-                              <Select 
-                                value={filter.action} 
-                                onValueChange={(value) => updateL7Filter(index, 'action', value)}
-                              >
-                                <SelectTrigger className="mt-1">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
-                                  <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div>
-                              <Label className="text-xs">App Group ID</Label>
-                              <Input
-                                type="number"
-                                value={filter.appGroupId}
-                                onChange={(e) => updateL7Filter(index, 'appGroupId', parseInt(e.target.value) || 0)}
-                                placeholder="e.g., 7, 12, 22"
-                                className="mt-1"
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                7=P2P, 12=VPN, 22=Restricted
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+                    {l3Filters.length === 0 ? (
+                      <Card className="p-6 text-center text-muted-foreground">
+                        No Layer 3 filters configured. Click "Add L3 Filter" to create one.
                       </Card>
-                    ))}
+                    ) : (
+                      <div className="space-y-3">
+                        {l3Filters.map((filter, index) => (
+                          <Card key={index} className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm">Filter #{index + 1}</Label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeL3Filter(index)}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                  <Label className="text-xs">Rule Name</Label>
+                                  <Input
+                                    value={filter.name}
+                                    onChange={(e) => updateL3Filter(index, 'name', e.target.value)}
+                                    placeholder="e.g., Allow DNS"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Action</Label>
+                                  <Select
+                                    value={filter.action}
+                                    onValueChange={(value) => updateL3Filter(index, 'action', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
+                                      <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Protocol</Label>
+                                  <Select
+                                    value={filter.protocol}
+                                    onValueChange={(value) => updateL3Filter(index, 'protocol', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="any">Any</SelectItem>
+                                      <SelectItem value="tcp">TCP</SelectItem>
+                                      <SelectItem value="udp">UDP</SelectItem>
+                                      <SelectItem value="icmp">ICMP</SelectItem>
+                                      <SelectItem value="gre">GRE</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Port</Label>
+                                  <Input
+                                    value={filter.port}
+                                    onChange={(e) => updateL3Filter(index, 'port', e.target.value)}
+                                    placeholder="e.g., dns, http, 80"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">IP Address Range</Label>
+                                  <Input
+                                    value={filter.ipAddressRange}
+                                    onChange={(e) => updateL3Filter(index, 'ipAddressRange', e.target.value)}
+                                    placeholder="0.0.0.0/0"
+                                    className="mt-1"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
+                </TabsContent>
+
+                {/* L3/L4 Src/Dst Filters Sub-tab */}
+                <TabsContent value="l3srcdst" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">L3/L4 Source/Destination Filters</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Define rules based on source and destination IP addresses and ports
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setL3SrcDestFilters([...l3SrcDestFilters, buildDefaultL3SrcDestFilter()])}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add Src/Dst Filter
+                      </Button>
+                    </div>
+
+                    {l3SrcDestFilters.length === 0 ? (
+                      <Card className="p-6 text-center text-muted-foreground">
+                        No source/destination filters configured. Click "Add Src/Dst Filter" to create one.
+                      </Card>
+                    ) : (
+                      <div className="space-y-3">
+                        {l3SrcDestFilters.map((filter, index) => (
+                          <Card key={index} className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm">Src/Dst Filter #{index + 1}</Label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setL3SrcDestFilters(l3SrcDestFilters.filter((_, i) => i !== index))}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                  <Label className="text-xs">Rule Name</Label>
+                                  <Input
+                                    value={filter.name}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'name', e.target.value)}
+                                    placeholder="e.g., Block External"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Action</Label>
+                                  <Select
+                                    value={filter.action}
+                                    onValueChange={(value) => updateL3SrcDestFilter(index, 'action', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
+                                      <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Protocol</Label>
+                                  <Select
+                                    value={filter.protocol}
+                                    onValueChange={(value) => updateL3SrcDestFilter(index, 'protocol', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="any">Any</SelectItem>
+                                      <SelectItem value="tcp">TCP</SelectItem>
+                                      <SelectItem value="udp">UDP</SelectItem>
+                                      <SelectItem value="icmp">ICMP</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Source IP</Label>
+                                  <Input
+                                    value={filter.srcIp}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'srcIp', e.target.value)}
+                                    placeholder="e.g., 192.168.1.0/24"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Source Port</Label>
+                                  <Input
+                                    value={filter.srcPort}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'srcPort', e.target.value)}
+                                    placeholder="any"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Destination IP</Label>
+                                  <Input
+                                    value={filter.dstIp}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'dstIp', e.target.value)}
+                                    placeholder="e.g., 10.0.0.0/8"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Destination Port</Label>
+                                  <Input
+                                    value={filter.dstPort}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'dstPort', e.target.value)}
+                                    placeholder="any"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">CoS ID (optional)</Label>
+                                  <Input
+                                    value={filter.cosId ?? ''}
+                                    onChange={e => updateL3SrcDestFilter(index, 'cosId', e.target.value || null)}
+                                    placeholder="CoS policy ID"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* L7 App Filters Sub-tab (existing content) */}
+                <TabsContent value="l7" className="space-y-4 mt-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium">Layer 7 Application Filters</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Control access to specific applications and application groups
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addL7Filter}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add L7 Filter
+                      </Button>
+                    </div>
+
+                    {l7Filters.length === 0 ? (
+                      <Card className="p-6 text-center text-muted-foreground">
+                        No Layer 7 filters configured. Click "Add L7 Filter" to create one.
+                      </Card>
+                    ) : (
+                      <div className="space-y-3">
+                        {l7Filters.map((filter, index) => (
+                          <Card key={index} className="p-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm">Application Filter #{index + 1}</Label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeL7Filter(index)}
+                                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                  <Label className="text-xs">Rule Name</Label>
+                                  <Input
+                                    value={filter.name}
+                                    onChange={(e) => updateL7Filter(index, 'name', e.target.value)}
+                                    placeholder="e.g., Deny Peer to Peer"
+                                    className="mt-1"
+                                  />
+                                </div>
+                                <div>
+                                  <Label className="text-xs">Action</Label>
+                                  <Select
+                                    value={filter.action}
+                                    onValueChange={(value) => updateL7Filter(index, 'action', value)}
+                                  >
+                                    <SelectTrigger className="mt-1">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="FILTERACTION_ALLOW">Allow</SelectItem>
+                                      <SelectItem value="FILTERACTION_DENY">Deny</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label className="text-xs">App Group ID</Label>
+                                  <Input
+                                    type="number"
+                                    value={filter.appGroupId}
+                                    onChange={(e) => updateL7Filter(index, 'appGroupId', parseInt(e.target.value) || 0)}
+                                    placeholder="e.g., 7, 12, 22"
+                                    className="mt-1"
+                                  />
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    7=P2P, 12=VPN, 22=Restricted
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
             </TabsContent>
 
             {/* Captive Portal Tab */}
