@@ -600,6 +600,7 @@ export interface Service {
   securityMode?: string;
   securityType?: string;
   mode?: string; // Security mode that may exist at top level
+
   [key: string]: any;
 }
 

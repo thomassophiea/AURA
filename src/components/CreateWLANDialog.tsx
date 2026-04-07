@@ -14,6 +14,8 @@ import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
 import { effectiveSetCalculator } from '../services/effectiveSetCalculator';
+import { AssignmentSection } from './AssignmentSection';
+import { useAppContext } from '@/contexts/AppContext';
 import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
 import { ProfilePickerDialog } from './wlans/ProfilePickerDialog';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
@@ -35,6 +37,7 @@ import type {
   Profile,
   AutoAssignmentResponse,
   WLANFormData,
+  WLANAssignmentMode,
   DeploymentMode,
   EffectiveProfileSet,
   SecurityType,
@@ -89,8 +92,18 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     beaconProtection: false,
     preAuthenticatedIdleTimeout: 300,
     postAuthenticatedIdleTimeout: 1800,
-    sessionTimeout: 0
+    sessionTimeout: 0,
+    // Assignment scope fields (required by WLANFormData)
+    assignmentMode: 'all_sites' as WLANAssignmentMode,
+    assignedSiteIds: [],
+    assignedSiteGroupIds: [],
   });
+
+  // Assignment scope state (mirrors formData fields but drives UI branching)
+  const { siteGroups: domainSiteGroups } = useAppContext();
+  const [assignmentMode, setAssignmentMode] = useState<WLANAssignmentMode>('all_sites');
+  const [assignedSiteIds, setAssignedSiteIds] = useState<string[]>([]);
+  const [assignedSiteGroupIds, setAssignedSiteGroupIds] = useState<string[]>([]);
 
   // Sites data
   const [sites, setSites] = useState<Site[]>([]);
@@ -560,9 +573,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     const pskModes: SecurityType[] = ['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'];
     if (pskModes.includes(formData.security) && !formData.passphrase?.trim()) return false;
     
-    // At least one site or site group must be selected
-    const expandedSites = getExpandedSiteIds();
-    if (expandedSites.length === 0) return false;
+    // selected_targets requires at least one chip selected
+    if (
+      assignmentMode === 'selected_targets' &&
+      assignedSiteIds.length === 0 &&
+      assignedSiteGroupIds.length === 0
+    )
+      return false;
     return true;
   };
 
@@ -599,9 +616,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       errors.push('Passphrase is required for WPA Personal networks');
     }
 
-    const expandedSites = getExpandedSiteIds();
-    if (expandedSites.length === 0) {
-      errors.push('At least one site or site group must be selected');
+    if (
+      assignmentMode === 'selected_targets' &&
+      assignedSiteIds.length === 0 &&
+      assignedSiteGroupIds.length === 0
+    ) {
+      errors.push('Select at least one site or site group target');
     }
 
     // If there are validation errors, show them all
@@ -613,141 +633,143 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       return;
     }
 
-    console.log('6. Validation passed, site configs count:', siteConfigs.size);
+    // For selected_targets, validate that profile discovery completed and configs are valid
+    if (assignmentMode === 'selected_targets') {
+      console.log('6. Validation passed, site configs count:', siteConfigs.size);
 
-    // Ensure site configs exist for all selected sites
-    if (siteConfigs.size === 0) {
-      toast.error('No site configurations found', {
-        description: 'Please wait for profile discovery to complete before creating the WLAN'
-      });
-      return;
-    }
-
-    // Validate site configurations
-    for (const config of siteConfigs.values()) {
-      console.log('7. Validating config for site:', config.siteName, config);
-
-      // Check if profiles were discovered
-      if (!config.profiles || config.profiles.length === 0) {
-        toast.error(`No profiles found at site "${config.siteName}"`, {
-          description: 'Cannot deploy WLAN to a site with no profiles. Please check if this site has device groups with profiles configured.'
+      if (siteConfigs.size === 0) {
+        toast.error('No site configurations found', {
+          description: 'Please wait for profile discovery to complete before creating the WLAN',
         });
         return;
       }
 
-      const validation = effectiveSetCalculator.validateSiteAssignment(config);
-      console.log('8. Validation result:', validation);
-      if (!validation.valid) {
-        toast.error(`Invalid configuration for ${config.siteName}`, {
-          description: validation.errors.join(', ')
-        });
-        return;
+      for (const config of siteConfigs.values()) {
+        console.log('7. Validating config for site:', config.siteName, config);
+        if (!config.profiles || config.profiles.length === 0) {
+          toast.error(`No profiles found at site "${config.siteName}"`, {
+            description:
+              'Cannot deploy WLAN to a site with no profiles. Please check if this site has device groups with profiles configured.',
+          });
+          return;
+        }
+        const validation = effectiveSetCalculator.validateSiteAssignment(config);
+        console.log('8. Validation result:', validation);
+        if (!validation.valid) {
+          toast.error(`Invalid configuration for ${config.siteName}`, {
+            description: validation.errors.join(', '),
+          });
+          return;
+        }
       }
     }
 
     setSubmitting(true);
     try {
       const assignmentService = new WLANAssignmentService();
-      const expandedSites = getExpandedSiteIds();
 
-      // Prepare site assignments
-      const siteAssignments = Array.from(siteConfigs.values()).map(config => ({
-        siteId: config.siteId,
-        siteName: config.siteName,
-        deploymentMode: config.deploymentMode,
-        includedProfiles: config.includedProfiles,
-        excludedProfiles: config.excludedProfiles
-      }));
+      const serviceData = {
+        name: formData.serviceName,
+        serviceName: formData.serviceName,
+        ssid: formData.ssid,
+        security: formData.security,
+        passphrase: formData.passphrase || undefined,
+        vlan: formData.vlan || undefined,
+        band: formData.band,
+        enabled: formData.enabled,
+        sites: [] as string[],
+        authenticatedUserDefaultRoleID: formData.authenticatedUserDefaultRoleID || undefined,
+        securityConfig: formData.securityConfig,
+        hidden: formData.hidden,
+        maxClients: formData.maxClients,
+        description: formData.description || undefined,
+        mbo: formData.mbo,
+        accountingEnabled: formData.accountingEnabled,
+        includeHostname: formData.includeHostname,
+        enable11mcSupport: formData.enable11mcSupport,
+        enabled11kSupport: formData.enabled11kSupport,
+        uapsdEnabled: formData.uapsdEnabled,
+        admissionControlVoice: formData.admissionControlVoice,
+        admissionControlVideo: formData.admissionControlVideo,
+        admissionControlBestEffort: formData.admissionControlBestEffort,
+        admissionControlBackgroundTraffic: formData.admissionControlBackgroundTraffic,
+        clientToClientCommunication: formData.clientToClientCommunication,
+        purgeOnDisconnect: formData.purgeOnDisconnect,
+        beaconProtection: formData.beaconProtection,
+        preAuthenticatedIdleTimeout: formData.preAuthenticatedIdleTimeout,
+        postAuthenticatedIdleTimeout: formData.postAuthenticatedIdleTimeout,
+        sessionTimeout: formData.sessionTimeout,
+        topologyId: formData.topologyId,
+        cosId: formData.cosId,
+      };
 
-      console.log('9. Site Assignments Prepared:', siteAssignments);
-      console.log('10. Expanded Sites (from groups + individual):', expandedSites);
-      console.log('11. Calling createWLANWithSiteCentricDeployment...');
+      let result: AutoAssignmentResponse;
 
-      // Use new site-centric deployment method
-      const result = await assignmentService.createWLANWithSiteCentricDeployment(
-        {
-          name: formData.serviceName,
-          serviceName: formData.serviceName,
-          ssid: formData.ssid,
-          security: formData.security,
-          passphrase: formData.passphrase || undefined,
-          vlan: formData.vlan || undefined,
-          band: formData.band,
-          enabled: formData.enabled,
-          sites: expandedSites, // Use expanded site IDs (includes both individual sites and sites from groups)
-          authenticatedUserDefaultRoleID: formData.authenticatedUserDefaultRoleID || undefined,
-          // Security-specific configuration (enterprise auth, PMF, etc.)
-          securityConfig: formData.securityConfig,
-          // Basic options
-          hidden: formData.hidden,
-          maxClients: formData.maxClients,
-          description: formData.description || undefined,
-          // Advanced options (from controller form)
-          mbo: formData.mbo,
-          accountingEnabled: formData.accountingEnabled,
-          includeHostname: formData.includeHostname,
-          enable11mcSupport: formData.enable11mcSupport,
-          enabled11kSupport: formData.enabled11kSupport,
-          uapsdEnabled: formData.uapsdEnabled,
-          admissionControlVoice: formData.admissionControlVoice,
-          admissionControlVideo: formData.admissionControlVideo,
-          admissionControlBestEffort: formData.admissionControlBestEffort,
-          admissionControlBackgroundTraffic: formData.admissionControlBackgroundTraffic,
-          clientToClientCommunication: formData.clientToClientCommunication,
-          purgeOnDisconnect: formData.purgeOnDisconnect,
-          beaconProtection: formData.beaconProtection,
-          preAuthenticatedIdleTimeout: formData.preAuthenticatedIdleTimeout,
-          postAuthenticatedIdleTimeout: formData.postAuthenticatedIdleTimeout,
-          sessionTimeout: formData.sessionTimeout,
-          topologyId: formData.topologyId,
-          cosId: formData.cosId
-        },
-        siteAssignments
-      );
-
-      console.log('11. WLAN Creation Result:', result);
-      console.log('=== WLAN CREATION DEBUG END ===');
-
-      // Calculate success/failure counts
-      const successfulAssignments = result.assignments?.filter(a => a.success) || [];
-      const failedAssignments = result.assignments?.filter(a => !a.success) || [];
-
-      if (failedAssignments.length === 0) {
-        // Complete success
+      if (assignmentMode === 'unassigned') {
+        result = await assignmentService.createWLANUnassigned(serviceData);
+        if (!result.success) throw new Error(result.errors?.[0] ?? 'Creation failed');
+        toast.success('WLAN Created', {
+          description: `${formData.ssid} saved globally (not deployed to any site)`,
+        });
+      } else if (assignmentMode === 'all_sites') {
+        result = await assignmentService.createWLANWithAutoAssignment(serviceData);
+        if (!result.success) throw new Error(result.errors?.[0] ?? 'Creation failed');
         toast.success('WLAN Created Successfully', {
-          description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`
+          description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`,
         });
-      } else if (successfulAssignments.length > 0) {
-        // Partial success - some profiles succeeded, some failed
-        toast.warning('WLAN Created with Partial Deployment', {
-          description: `✓ ${successfulAssignments.length} profile(s) succeeded, ✗ ${failedAssignments.length} failed. Check console for details.`,
-          duration: 8000
-        });
-        console.warn('[WLAN Deployment] Failed profiles:', failedAssignments.map(a => ({
-          profile: a.profileName,
-          error: a.error
-        })));
       } else {
-        // All assignments failed
-        toast.error('WLAN Created but Deployment Failed', {
-          description: `WLAN was created but could not be assigned to any profiles. Check console for details.`,
-          duration: 8000
-        });
-        console.error('[WLAN Deployment] All profile assignments failed:', failedAssignments);
+        // selected_targets — use per-site deployment config
+        const expandedSites = getExpandedSiteIds();
+        const siteAssignments = Array.from(siteConfigs.values()).map(config => ({
+          siteId: config.siteId,
+          siteName: config.siteName,
+          deploymentMode: config.deploymentMode,
+          includedProfiles: config.includedProfiles,
+          excludedProfiles: config.excludedProfiles,
+        }));
+
+        console.log('9. Site Assignments Prepared:', siteAssignments);
+        console.log('10. Expanded Sites:', expandedSites);
+
+        result = await assignmentService.createWLANWithSiteCentricDeployment(
+          { ...serviceData, sites: expandedSites },
+          siteAssignments
+        );
+
+        console.log('11. WLAN Creation Result:', result);
+        console.log('=== WLAN CREATION DEBUG END ===');
+
+        const successfulAssignments = result.assignments?.filter(a => a.success) || [];
+        const failedAssignments = result.assignments?.filter(a => !a.success) || [];
+
+        if (failedAssignments.length === 0) {
+          toast.success('WLAN Created Successfully', {
+            description: `Assigned to ${result.profilesAssigned} profile(s) across ${result.sitesProcessed} site(s)`,
+          });
+        } else if (successfulAssignments.length > 0) {
+          toast.warning('WLAN Created with Partial Deployment', {
+            description: `✓ ${successfulAssignments.length} profile(s) succeeded, ✗ ${failedAssignments.length} failed. Check console for details.`,
+            duration: 8000,
+          });
+          console.warn(
+            '[WLAN Deployment] Failed profiles:',
+            failedAssignments.map(a => ({ profile: a.profileName, error: a.error }))
+          );
+        } else {
+          toast.error('WLAN Created but Deployment Failed', {
+            description: `WLAN was created but could not be assigned to any profiles. Check console for details.`,
+            duration: 8000,
+          });
+          console.error('[WLAN Deployment] All profile assignments failed:', failedAssignments);
+        }
       }
 
       onSuccess(result);
       onOpenChange(false);
-
     } catch (error) {
       console.error('!!! WLAN Creation Failed:', error);
-      console.error('Error details:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        error
-      });
       toast.error('Failed to create WLAN', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setSubmitting(false);
@@ -866,7 +888,38 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           </DialogHeader>
 
           <div className="flex-1 overflow-y-auto hide-scrollbar px-6 py-6 space-y-6">
-            {/* WLAN Configuration Section */}
+            {/* ── 1. Deployment Scope ───────────────────────── */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium">Deployment Scope</CardTitle>
+                <CardDescription className="text-xs">
+                  Choose where this WLAN will be deployed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AssignmentSection
+                  value={assignmentMode}
+                  onChange={mode => {
+                    setAssignmentMode(mode);
+                    setFormData(prev => ({ ...prev, assignmentMode: mode }));
+                  }}
+                  selectedSiteIds={assignedSiteIds}
+                  selectedSiteGroupIds={assignedSiteGroupIds}
+                  onSitesChange={ids => {
+                    setAssignedSiteIds(ids);
+                    setFormData(prev => ({ ...prev, assignedSiteIds: ids, selectedSites: ids }));
+                  }}
+                  onSiteGroupsChange={ids => {
+                    setAssignedSiteGroupIds(ids);
+                    setFormData(prev => ({ ...prev, assignedSiteGroupIds: ids }));
+                  }}
+                  sites={sites}
+                  siteGroups={domainSiteGroups}
+                />
+              </CardContent>
+            </Card>
+
+            {/* ── 2. WLAN Configuration ─────────────────────── */}
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Network Configuration</CardTitle>
@@ -1731,8 +1784,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               </CardContent>
             </Card>
 
-            {/* Deployment Mode Selectors */}
-            {formData.selectedSites.length > 0 && !discoveringProfiles && (
+            {/* Deployment Mode Selectors — only shown when selected_targets is active */}
+            {assignmentMode === 'selected_targets' && formData.selectedSites.length > 0 && !discoveringProfiles && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Deployment Configuration</CardTitle>
