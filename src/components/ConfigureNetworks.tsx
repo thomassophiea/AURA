@@ -1068,7 +1068,7 @@ export function ConfigureNetworks() {
         </CardHeader>
 
         {/* Quick WLAN banner — session-scoped, dismissible */}
-        {!isOrgScope && !bannerDismissed && (
+        {!bannerDismissed && (
           <div className="mx-6 mb-0 mt-2 flex items-center justify-between rounded-lg border border-green-900/50 bg-green-950/30 px-4 py-3">
             <div className="flex items-center gap-3">
               <Zap className="h-4 w-4 text-green-400 shrink-0" />
