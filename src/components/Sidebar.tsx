@@ -162,30 +162,21 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
     onToggle: () => void;
   }) => (
     <div className="space-y-1">
-      {/* Collapsed: show section header as a non-interactive separator label, then individual item icons */}
+      {/* Collapsed: show only the section icon, no sub-items */}
       {isCollapsed ? (
-        <>
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Button
-                key={item.id}
-                variant={currentPage === item.id ? "default" : "ghost"}
-                className={cn(
-                  "w-full justify-center h-10 px-0",
-                  currentPage === item.id
-                    ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-                onClick={() => handlePageChange(item.id)}
-                onMouseEnter={() => prefetchComponent(item.id)}
-                title={item.label}
-              >
-                <Icon className="h-4 w-4" />
-              </Button>
-            );
-          })}
-        </>
+        <Button
+          variant={isActive ? "default" : "ghost"}
+          className={cn(
+            "w-full justify-center h-10 px-0",
+            isActive
+              ? "bg-sidebar-primary text-sidebar-primary-foreground"
+              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )}
+          onClick={onToggle}
+          title={label}
+        >
+          <SectionIcon className="h-4 w-4" />
+        </Button>
       ) : (
         <>
           <Button
@@ -271,7 +262,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
         ]
       )}>
       {/* Header */}
-      <div className={cn("flex items-center border-b border-sidebar-border", isCollapsed ? "justify-center p-2" : "px-4 py-3 justify-between")}>
+      <div className={cn("flex items-center", isCollapsed ? "justify-center p-2" : "px-4 py-3 justify-between")}>
         <Button
           variant="ghost"
           size="sm"
@@ -279,7 +270,7 @@ export function Sidebar({ onLogout, adminRole, currentPage, onPageChange, theme 
           className="text-sidebar-foreground hover:bg-sidebar-accent"
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          <Menu className="h-4 w-4" />
         </Button>
       </div>
 
