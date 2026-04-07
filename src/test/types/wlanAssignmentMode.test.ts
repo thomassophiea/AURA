@@ -1,14 +1,14 @@
 import { describe, it, expectTypeOf } from 'vitest';
-import type { WlanAssignmentMode, WLANFormData } from '../../types/network';
+import type { WLANAssignmentMode, WLANFormData } from '../../types/network';
 
-describe('WlanAssignmentMode', () => {
+describe('WLANAssignmentMode', () => {
   it('is a union of three string literals', () => {
-    expectTypeOf<WlanAssignmentMode>().toEqualTypeOf<
+    expectTypeOf<WLANAssignmentMode>().toEqualTypeOf<
       'unassigned' | 'all_sites' | 'selected_targets'
     >();
   });
   it('WLANFormData includes assignmentMode', () => {
-    expectTypeOf<WLANFormData['assignmentMode']>().toEqualTypeOf<WlanAssignmentMode>();
+    expectTypeOf<WLANFormData['assignmentMode']>().toEqualTypeOf<WLANAssignmentMode>();
   });
   it('WLANFormData includes assignedSiteIds and assignedSiteGroupIds', () => {
     expectTypeOf<WLANFormData['assignedSiteIds']>().toEqualTypeOf<string[]>();

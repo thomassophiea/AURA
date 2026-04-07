@@ -2,8 +2,6 @@
 // These were extracted from src/services/api.ts for maintainability.
 // src/services/api.ts re-exports everything from here to preserve backward compatibility.
 
-import type { WlanAssignmentMode } from './network';
-
 export interface LoginCredentials {
   grantType: string;
   userId: string;
@@ -603,11 +601,6 @@ export interface Service {
   securityType?: string;
   mode?: string; // Security mode that may exist at top level
 
-  // Assignment scope fields
-  assignmentMode?: WlanAssignmentMode;
-  assignedSiteIds?: string[];
-  assignedSiteGroupIds?: string[];
-  templateId?: string;
   [key: string]: any;
 }
 
