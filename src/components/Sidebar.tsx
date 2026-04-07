@@ -74,10 +74,10 @@ const monitoringItems = [
 const configureItems = [
   { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
+  { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
-  { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
   { id: 'global-templates', label: 'Templates', icon: Layers },

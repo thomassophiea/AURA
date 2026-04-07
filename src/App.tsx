@@ -33,7 +33,9 @@ const ConfigureAAAPolicies = lazy(() => import('./components/ConfigureAAAPolicie
 const ConfigureAdoptionRules = lazy(() => import('./components/ConfigureAdoptionRules').then(m => ({ default: m.ConfigureAdoptionRules })));
 const ConfigureGuest = lazy(() => import('./components/ConfigureGuest').then(m => ({ default: m.ConfigureGuest })));
 const ConfigureAdvanced = lazy(() => import('./components/ConfigureAdvanced').then(m => ({ default: m.ConfigureAdvanced })));
-const ConfigureProfiles = lazy(() => import('./components/ConfigureProfiles'));
+const ConfigureProfiles = lazy(() =>
+  import('./components/ConfigureProfiles').then(m => ({ default: m.ConfigureProfiles }))
+);
 const GlobalElementsPage = lazy(() => import('./components/global-elements/GlobalElementsPage').then(m => ({ default: m.GlobalElementsPage })));
 const SiteGroupSettingsPage = lazy(() => import('./components/SiteGroupSettingsPage').then(m => ({ default: m.SiteGroupSettingsPage })));
 const Administration = lazy(() => import('./components/Administration').then(m => ({ default: m.Administration })));
@@ -110,7 +112,7 @@ const pageInfo = {
   'api-documentation': { title: 'API Documentation', description: 'AURA Mobility Core REST API reference' },
   'configure-sites-groups': { title: 'Sites & Groups', description: 'Manage site groups, controller pairs, and network sites' },
   'configure-networks': { title: 'Configure Networks', description: 'Set up and manage network configurations' },
-  'configure-profiles': { title: 'Device Profiles', description: 'Manage wireless device profile configurations' },
+  'configure-profiles': { title: 'Device Profiles', description: 'Configure AP device profiles and assignment hierarchy' },
   'configure-advanced': { title: 'Advanced Configuration', description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services' },
   'global-templates': { title: 'Global Templates', description: 'Manage configuration templates with variable substitution' },
   'global-variables': { title: 'Global Variables', description: 'Define and manage variables for template resolution' },

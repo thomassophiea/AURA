@@ -1,7 +1,7 @@
 import React from 'react';
 import { DevEpicBadge } from './DevEpicBadge';
 
-export default function ConfigureProfiles() {
+export function ConfigureProfiles() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-6">
