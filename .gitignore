@@ -37,3 +37,7 @@ build
 .superpowers/
 Prototype Template for Extreme Platform ONE/
 public/version.json
+
+# macOS resource fork files
+._*
+.DS_Store
