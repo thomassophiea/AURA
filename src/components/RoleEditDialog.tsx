@@ -164,6 +164,14 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
       return;
     }
 
+    if (bandwidthLimitEnabled) {
+      const kbps = parseInt(bandwidthLimitKbps);
+      if (isNaN(kbps) || kbps <= 0) {
+        toast.error('Bandwidth limit must be a positive number');
+        return;
+      }
+    }
+
     // Build role data object
     const roleData: Partial<Role> = {
       name: name.trim(),
@@ -315,6 +323,14 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
     const updated = [...l7Filters];
     updated[index] = { ...updated[index], [field]: value };
     setL7Filters(updated);
+  };
+
+  const updateL2Filter = (index: number, field: keyof L2Filter, value: string) => {
+    setL2Filters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
+  };
+
+  const updateL3SrcDestFilter = (index: number, field: keyof L3SrcDestFilter, value: string | null) => {
+    setL3SrcDestFilters(prev => prev.map((f, i) => i === index ? { ...f, [field]: value } : f));
   };
 
   // Render content (shared between dialog and inline modes)
@@ -561,11 +577,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Rule Name</Label>
                                   <Input
                                     value={filter.name}
-                                    onChange={(e) => {
-                                      const updated = [...l2Filters];
-                                      updated[index] = { ...updated[index], name: e.target.value };
-                                      setL2Filters(updated);
-                                    }}
+                                    onChange={(e) => updateL2Filter(index, 'name', e.target.value)}
                                     placeholder="e.g., Block Device"
                                     className="mt-1"
                                   />
@@ -574,11 +586,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Action</Label>
                                   <Select
                                     value={filter.action}
-                                    onValueChange={(value) => {
-                                      const updated = [...l2Filters];
-                                      updated[index] = { ...updated[index], action: value };
-                                      setL2Filters(updated);
-                                    }}
+                                    onValueChange={(value) => updateL2Filter(index, 'action', value)}
                                   >
                                     <SelectTrigger className="mt-1">
                                       <SelectValue />
@@ -593,11 +601,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">MAC Address</Label>
                                   <Input
                                     value={filter.macAddress}
-                                    onChange={(e) => {
-                                      const updated = [...l2Filters];
-                                      updated[index] = { ...updated[index], macAddress: e.target.value };
-                                      setL2Filters(updated);
-                                    }}
+                                    onChange={(e) => updateL2Filter(index, 'macAddress', e.target.value)}
                                     placeholder="e.g., 00:1A:2B:3C:4D:5E"
                                     className="mt-1"
                                   />
@@ -772,11 +776,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Rule Name</Label>
                                   <Input
                                     value={filter.name}
-                                    onChange={(e) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], name: e.target.value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'name', e.target.value)}
                                     placeholder="e.g., Block External"
                                     className="mt-1"
                                   />
@@ -785,11 +785,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Action</Label>
                                   <Select
                                     value={filter.action}
-                                    onValueChange={(value) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], action: value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onValueChange={(value) => updateL3SrcDestFilter(index, 'action', value)}
                                   >
                                     <SelectTrigger className="mt-1">
                                       <SelectValue />
@@ -804,11 +800,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Protocol</Label>
                                   <Select
                                     value={filter.protocol}
-                                    onValueChange={(value) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], protocol: value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onValueChange={(value) => updateL3SrcDestFilter(index, 'protocol', value)}
                                   >
                                     <SelectTrigger className="mt-1">
                                       <SelectValue />
@@ -825,11 +817,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Source IP</Label>
                                   <Input
                                     value={filter.srcIp}
-                                    onChange={(e) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], srcIp: e.target.value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'srcIp', e.target.value)}
                                     placeholder="e.g., 192.168.1.0/24"
                                     className="mt-1"
                                   />
@@ -838,11 +826,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Source Port</Label>
                                   <Input
                                     value={filter.srcPort}
-                                    onChange={(e) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], srcPort: e.target.value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'srcPort', e.target.value)}
                                     placeholder="any"
                                     className="mt-1"
                                   />
@@ -851,11 +835,7 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Destination IP</Label>
                                   <Input
                                     value={filter.dstIp}
-                                    onChange={(e) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], dstIp: e.target.value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'dstIp', e.target.value)}
                                     placeholder="e.g., 10.0.0.0/8"
                                     className="mt-1"
                                   />
@@ -864,13 +844,17 @@ export function RoleEditDialog({ role, isOpen, onClose, onSave, isInline = false
                                   <Label className="text-xs">Destination Port</Label>
                                   <Input
                                     value={filter.dstPort}
-                                    onChange={(e) => {
-                                      const updated = [...l3SrcDestFilters];
-                                      updated[index] = { ...updated[index], dstPort: e.target.value };
-                                      setL3SrcDestFilters(updated);
-                                    }}
+                                    onChange={(e) => updateL3SrcDestFilter(index, 'dstPort', e.target.value)}
                                     placeholder="any"
                                     className="mt-1"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs">CoS ID (optional)</Label>
+                                  <Input
+                                    value={filter.cosId ?? ''}
+                                    onChange={e => updateL3SrcDestFilter(index, 'cosId', e.target.value || null)}
+                                    placeholder="CoS policy ID"
                                   />
                                 </div>
                               </div>

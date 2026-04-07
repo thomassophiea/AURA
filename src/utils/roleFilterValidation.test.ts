@@ -18,6 +18,7 @@ describe('buildDefaultL3SrcDestFilter', () => {
     expect(f).toMatchObject({
       name: '',
       action: 'FILTERACTION_ALLOW',
+      cosId: null,
       srcIp: '',
       srcPort: 'any',
       dstIp: '',
