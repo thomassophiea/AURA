@@ -12,7 +12,7 @@ import { ProfileEditSheet } from './ProfileEditSheet';
 import type { DeviceProfile } from './ProfileEditSheet';
 
 export function ConfigureProfiles() {
-  const [profiles, setProfiles] = useState<any[]>([]);
+  const [profiles, setProfiles] = useState<DeviceProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingProfile, setEditingProfile] = useState<DeviceProfile | null>(null);
@@ -22,7 +22,7 @@ export function ConfigureProfiles() {
     setLoading(true);
     try {
       const data = await apiService.getProfiles();
-      setProfiles(Array.isArray(data) ? data : []);
+      setProfiles(Array.isArray(data) ? (data as DeviceProfile[]) : []);
     } catch {
       toast.error('Failed to load device profiles');
       setProfiles([]);

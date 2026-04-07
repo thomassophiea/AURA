@@ -16,6 +16,7 @@ export interface DeviceProfile {
   description?: string;
   type?: 'DEFAULT' | 'DEVICE';
   apPlatform?: string;
+  deviceType?: string;
   radio1?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
   radio2?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
   radio3?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
@@ -35,6 +36,14 @@ interface ProfileEditSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
+}
+
+interface RadioDescriptor {
+  label: string;
+  adminKey: keyof typeof DEFAULT_FORM;
+  rfKey: keyof typeof DEFAULT_FORM;
+  chanKey: keyof typeof DEFAULT_FORM;
+  powerKey: keyof typeof DEFAULT_FORM;
 }
 
 const DEFAULT_FORM = {
@@ -89,7 +98,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
     }
   }, [open, profile]);
 
-  const setField = (field: string, value: any) => setForm(f => ({ ...f, [field]: value }));
+  const setField = (field: keyof typeof DEFAULT_FORM, value: unknown) => setForm(f => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error('Profile name is required'); return; }
@@ -143,14 +152,6 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
       setSaving(false);
     }
   };
-
-  interface RadioDescriptor {
-    label: string;
-    adminKey: keyof typeof DEFAULT_FORM;
-    rfKey: keyof typeof DEFAULT_FORM;
-    chanKey: keyof typeof DEFAULT_FORM;
-    powerKey: keyof typeof DEFAULT_FORM;
-  }
 
   const radios: RadioDescriptor[] = [
     {
