@@ -9,8 +9,29 @@ import { Switch } from './ui/switch';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 
+export interface DeviceProfile {
+  id: string;
+  name: string;
+  hostname?: string;
+  description?: string;
+  type?: 'DEFAULT' | 'DEVICE';
+  apPlatform?: string;
+  radio1?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
+  radio2?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
+  radio3?: { adminMode?: boolean; rfControl?: string; fixedChannel?: string; maxTxPower?: string };
+  mgmtVlanId?: string;
+  staticMtu?: string;
+  enableSsh?: boolean;
+  ledStatus?: boolean;
+  adoptionPreference?: string;
+  usbPower?: boolean;
+  peapUsername?: string;
+  peapPassword?: string;
+  enforceManufacturingCert?: boolean;
+}
+
 interface ProfileEditSheetProps {
-  profile: any | null;
+  profile: DeviceProfile | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
@@ -123,7 +144,15 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
     }
   };
 
-  const radios = [
+  interface RadioDescriptor {
+    label: string;
+    adminKey: keyof typeof DEFAULT_FORM;
+    rfKey: keyof typeof DEFAULT_FORM;
+    chanKey: keyof typeof DEFAULT_FORM;
+    powerKey: keyof typeof DEFAULT_FORM;
+  }
+
+  const radios: RadioDescriptor[] = [
     {
       label: '2.4 GHz (Radio 1)',
       adminKey: 'radio1AdminMode',
@@ -230,17 +259,17 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Admin Mode</span>
                       <Switch
-                        checked={(form as any)[radio.adminKey]}
+                        checked={form[radio.adminKey] as boolean}
                         onCheckedChange={v => setField(radio.adminKey, v)}
                       />
                     </div>
                   </div>
-                  {(form as any)[radio.adminKey] && (
+                  {form[radio.adminKey] && (
                     <>
                       <div className="space-y-2">
                         <Label className="text-sm">RF Control Mode</Label>
                         <Select
-                          value={(form as any)[radio.rfKey]}
+                          value={form[radio.rfKey] as string}
                           onValueChange={v => setField(radio.rfKey, v)}
                         >
                           <SelectTrigger>
@@ -252,12 +281,12 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                           </SelectContent>
                         </Select>
                       </div>
-                      {(form as any)[radio.rfKey] === 'FIXED' && (
+                      {form[radio.rfKey] === 'FIXED' && (
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-2">
                             <Label className="text-sm">Fixed Channel</Label>
                             <Input
-                              value={(form as any)[radio.chanKey]}
+                              value={form[radio.chanKey] as string}
                               onChange={e => setField(radio.chanKey, e.target.value)}
                               placeholder="e.g. 36"
                             />
@@ -265,14 +294,14 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                           <div className="space-y-2">
                             <Label className="text-sm">Max Tx Power (dBm)</Label>
                             <Input
-                              value={(form as any)[radio.powerKey]}
+                              value={form[radio.powerKey] as string}
                               onChange={e => setField(radio.powerKey, e.target.value)}
                               placeholder="e.g. 20"
                             />
                           </div>
                         </div>
                       )}
-                      {(form as any)[radio.rfKey] === 'RRM' && (
+                      {form[radio.rfKey] === 'RRM' && (
                         <p className="text-xs text-muted-foreground">
                           Channel and Tx Power controlled by RF Management Policy (RRM)
                         </p>
@@ -304,18 +333,17 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 </div>
               </div>
               <div className="space-y-3">
-                {[
-                  { label: 'Enable SSH', key: 'enableSsh' },
-                  { label: 'LED Status', key: 'ledStatus' },
-                  { label: 'USB Power', key: 'usbPower' },
-                  { label: 'Enforce Manufacturing Certificate', key: 'enforceManufacturingCert' },
-                ].map(({ label, key }) => (
+                {(
+                  [
+                    { label: 'Enable SSH', key: 'enableSsh' },
+                    { label: 'LED Status', key: 'ledStatus' },
+                    { label: 'USB Power', key: 'usbPower' },
+                    { label: 'Enforce Manufacturing Certificate', key: 'enforceManufacturingCert' },
+                  ] as { label: string; key: keyof typeof DEFAULT_FORM }[]
+                ).map(({ label, key }) => (
                   <div key={key} className="flex items-center justify-between">
                     <Label>{label}</Label>
-                    <Switch
-                      checked={(form as any)[key]}
-                      onCheckedChange={v => setField(key, v)}
-                    />
+                    <Switch checked={form[key] as boolean} onCheckedChange={v => setField(key, v)} />
                   </div>
                 ))}
               </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -9,17 +9,16 @@ import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { DevEpicBadge } from './DevEpicBadge';
 import { ProfileEditSheet } from './ProfileEditSheet';
+import type { DeviceProfile } from './ProfileEditSheet';
 
 export function ConfigureProfiles() {
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingProfile, setEditingProfile] = useState<any | null>(null);
+  const [editingProfile, setEditingProfile] = useState<DeviceProfile | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  useEffect(() => { loadProfiles(); }, []);
-
-  const loadProfiles = async () => {
+  const loadProfiles = useCallback(async () => {
     setLoading(true);
     try {
       const data = await apiService.getProfiles();
@@ -30,7 +29,9 @@ export function ConfigureProfiles() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => { loadProfiles(); }, [loadProfiles]);
 
   const handleDelete = async (profileId: string, profileName: string) => {
     if (!confirm(`Delete profile "${profileName}"?`)) return;
@@ -44,7 +45,7 @@ export function ConfigureProfiles() {
   };
 
   const openCreate = () => { setEditingProfile(null); setSheetOpen(true); };
-  const openEdit = (profile: any) => { setEditingProfile(profile); setSheetOpen(true); };
+  const openEdit = (profile: DeviceProfile) => { setEditingProfile(profile); setSheetOpen(true); };
   const handleSaved = () => { setSheetOpen(false); loadProfiles(); };
 
   const filtered = profiles.filter(p =>
