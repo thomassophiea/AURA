@@ -727,6 +727,38 @@ export class WLANAssignmentService {
       throw error;
     }
   }
+
+  /**
+   * Creates a WLAN at global scope with no site assignment.
+   * No profile discovery or sync is triggered.
+   */
+  async createWLANUnassigned(
+    serviceData: CreateServiceRequest
+  ): Promise<AutoAssignmentResponse> {
+    try {
+      const servicePayload = buildServicePayload(serviceData);
+      const service = await apiService.createService(servicePayload);
+      return {
+        serviceId: service.id,
+        sitesProcessed: 0,
+        deviceGroupsFound: 0,
+        profilesAssigned: 0,
+        assignments: [],
+        success: true,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return {
+        serviceId: '',
+        sitesProcessed: 0,
+        deviceGroupsFound: 0,
+        profilesAssigned: 0,
+        assignments: [],
+        success: false,
+        errors: [message],
+      };
+    }
+  }
 }
 
 // Export singleton instance
