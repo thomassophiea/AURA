@@ -389,7 +389,7 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
               </div>
 
               {/* Log entries */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto bg-card/30 font-mono text-xs">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto bg-card/60 font-mono text-xs">
                 {filteredLogs.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <div className="text-center">
@@ -406,14 +406,14 @@ export function DevToolsPanel({ isOpen, onClose, apiLogs, onClearLogs, onHeightC
                           onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                         >
                           <div className="flex-shrink-0">{getStatusIcon(log)}</div>
-                          <span className="flex-shrink-0 text-muted-foreground/70 w-[85px] text-[10px]">{formatTimestamp(log.timestamp)}</span>
+                          <span className="flex-shrink-0 text-muted-foreground w-[85px] text-[10px]">{formatTimestamp(log.timestamp)}</span>
                           <Badge variant="outline" className={cn('flex-shrink-0 w-14 justify-center border text-[10px] py-0', getMethodColor(log.method))}>
                             {log.method}
                           </Badge>
-                          <span className="flex-1 text-card-foreground truncate text-[11px]">{log.endpoint}</span>
-                          {log.status && <span className={cn('flex-shrink-0 w-8 text-right text-[10px]', getStatusColor(log.status))}>{log.status}</span>}
+                          <span className="flex-1 text-foreground truncate text-xs">{log.endpoint}</span>
+                          {log.status && <span className={cn('flex-shrink-0 w-8 text-right text-xs', getStatusColor(log.status))}>{log.status}</span>}
                           {log.duration !== undefined && (
-                            <span className={cn('flex-shrink-0 w-14 text-right text-[10px]', log.duration > 2000 ? 'text-red-400' : log.duration > 500 ? 'text-amber-400' : 'text-muted-foreground')}>
+                            <span className={cn('flex-shrink-0 w-14 text-right text-xs', log.duration > 2000 ? 'text-red-400' : log.duration > 500 ? 'text-amber-400' : 'text-muted-foreground')}>
                               {log.duration}ms
                             </span>
                           )}
