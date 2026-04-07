@@ -363,6 +363,12 @@ export interface WLANFormData {
   enabled: boolean;
   selectedSites: string[];
   selectedSiteGroups: string[]; // Site groups selected for deployment
+
+  // Assignment scope — chosen at creation time
+  assignmentMode: WlanAssignmentMode;
+  assignedSiteIds: string[];
+  assignedSiteGroupIds: string[];
+  templateId?: string;
   authenticatedUserDefaultRoleID?: string | null;
   topologyId?: string;
   cosId?: string;
@@ -404,6 +410,8 @@ export interface WLANFormData {
  * - INCLUDE_ONLY: Assign only to specifically selected profiles
  * - EXCLUDE_SOME: Assign to all profiles except specifically excluded ones
  */
+export type WlanAssignmentMode = 'unassigned' | 'all_sites' | 'selected_targets';
+
 export type DeploymentMode = 'ALL_PROFILES_AT_SITE' | 'INCLUDE_ONLY' | 'EXCLUDE_SOME';
 
 /**
