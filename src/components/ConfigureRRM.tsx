@@ -460,7 +460,7 @@ export function ConfigureRRM() {
         toast.success(`Created "${form.name}"`);
       }
       setSheetOpen(false);
-      loadProfiles();
+      await loadProfiles();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error(`Failed to save: ${msg}`);
@@ -476,7 +476,7 @@ export function ConfigureRRM() {
     try {
       await apiService.deleteRFManagementProfile(profileId);
       toast.success(`Deleted "${profileName}"`);
-      loadProfiles();
+      await loadProfiles();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       toast.error(`Failed to delete: ${msg}`);
