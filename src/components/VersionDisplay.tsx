@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { GitBranch, GitCommit, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from './ui/utils';
+import { APP_VERSION } from '@/lib/versionGate';
 
 interface VersionDisplayProps {
   className?: string;
@@ -15,14 +16,15 @@ export function VersionDisplay({
 }: VersionDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Read from Vite environment variables (injected at build time)
-  const version = import.meta.env.VITE_APP_VERSION || 'v0.0.0';
-  const commitHash = import.meta.env.VITE_APP_COMMIT_HASH || 'unknown';
-  const commitCount = import.meta.env.VITE_APP_COMMIT_COUNT || '0';
-  const branch = import.meta.env.VITE_APP_BRANCH || 'unknown';
+  // APP_VERSION is injected at build time via __APP_VERSION__ define in vite.config.ts.
+  // VITE_APP_* vars are not set by the build; fall back gracefully.
+  const version = APP_VERSION !== '0.0.0' ? APP_VERSION : (import.meta.env.DEV ? 'dev' : APP_VERSION);
+  const commitHash = import.meta.env.VITE_APP_COMMIT_HASH || (import.meta.env.DEV ? 'local' : '—');
+  const commitCount = import.meta.env.VITE_APP_COMMIT_COUNT || '—';
+  const branch = import.meta.env.VITE_APP_BRANCH || (import.meta.env.DEV ? 'dev' : '—');
   const buildDate = import.meta.env.VITE_APP_BUILD_DATE
     ? new Date(import.meta.env.VITE_APP_BUILD_DATE).toLocaleString()
-    : 'Unknown';
+    : (import.meta.env.DEV ? 'Local build' : 'Unknown');
 
   const positionClasses = {
     'bottom-left': 'bottom-4 left-4',

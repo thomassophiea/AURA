@@ -500,8 +500,8 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
         </p>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 pb-2">
+      {/* List — pb accounts for fixed bottom nav clearance */}
+      <div className="flex-1 overflow-y-auto px-3 pb-20">
         <MobileStatusList loading={loading} emptyMessage="No clients found">
           {filteredClients.map((client: any) => (
             <ClientRow

@@ -43,11 +43,15 @@ export function useKeyboardShortcuts(shortcuts: ShortcutHandler[], enabled: bool
 }
 
 export const defaultShortcuts = {
-  goToDashboard: { key: 'd', metaKey: true },
+  // Navigation — cmd/ctrl + key (avoid browser-reserved combos)
+  goToServiceLevels: { key: 's', metaKey: true },  // SLE dashboard (top-level)
+  goToReportStudio: { key: 'd', metaKey: true },   // Report Studio / workspace
   goToClients: { key: 'c', metaKey: true },
   goToAccessPoints: { key: 'a', metaKey: true },
   goToNetworks: { key: 'n', metaKey: true },
+  goToTools: { key: 't', metaKey: true },
+  // Utility
   search: { key: 'k', metaKey: true },
   refresh: { key: 'r', metaKey: true },
-  help: { key: '/', shiftKey: true }
+  help: { key: '/', shiftKey: true },
 };

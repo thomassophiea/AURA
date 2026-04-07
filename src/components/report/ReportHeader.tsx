@@ -15,10 +15,10 @@ import { cn } from '../ui/utils';
 import type { ReportConfig, ReportPageConfig } from '../../types/reportConfig';
 
 const DURATION_OPTIONS = [
-  { value: '3H', label: '3 Hours' },
-  { value: '24H', label: '24 Hours' },
-  { value: '7D', label: '7 Days' },
-  { value: '30D', label: '30 Days' },
+  { value: '3H', label: '3H' },
+  { value: '24H', label: '24H' },
+  { value: '7D', label: '7D' },
+  { value: '30D', label: '30D' },
 ];
 
 interface ReportHeaderProps {
@@ -68,9 +68,16 @@ export function ReportHeader({
             <SelectContent>
               {configs.map(c => (
                 <SelectItem key={c.id} value={c.id}>
-                  <div className="flex items-center gap-2">
-                    <span>{c.name}</span>
-                    {c.isDefault && <Badge variant="secondary" className="text-[9px]">Default</Badge>}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate">{c.name}</span>
+                    {c.isDefault && (
+                      <Badge
+                        variant="secondary"
+                        className="flex-shrink-0 text-[9px] px-1 py-0 leading-none bg-primary/10 text-primary border-primary/20"
+                      >
+                        Default
+                      </Badge>
+                    )}
                   </div>
                 </SelectItem>
               ))}
@@ -92,9 +99,12 @@ export function ReportHeader({
             variant={isEditing ? 'default' : 'outline'}
             size="sm"
             onClick={onToggleEdit}
-            className="text-xs"
+            className={cn('text-xs', isEditing && 'bg-primary text-primary-foreground hover:bg-primary/90')}
           >
-            {isEditing ? <><Check className="h-3.5 w-3.5 mr-1" />Done</> : <><Pencil className="h-3.5 w-3.5 mr-1" />Edit</>}
+            {isEditing
+              ? <><Check className="h-3.5 w-3.5 mr-1" />Done</>
+              : <><Pencil className="h-3.5 w-3.5 mr-1" />Edit</>
+            }
           </Button>
 
           {isEditing ? (
@@ -117,14 +127,17 @@ export function ReportHeader({
           ) : (
             <>
               {/* Duration selector */}
-              <div className="flex items-center border border-border/50 rounded-md overflow-hidden">
+              <div className="flex items-center border border-border/50 rounded-md overflow-hidden" role="group" aria-label="Time range">
                 {DURATION_OPTIONS.map(opt => (
                   <button
                     key={opt.value}
                     onClick={() => onDurationChange(opt.value)}
+                    title={opt.value === '3H' ? '3 Hours' : opt.value === '24H' ? '24 Hours' : opt.value === '7D' ? '7 Days' : '30 Days'}
                     className={cn(
-                      'px-2 py-1 text-[11px] font-medium transition-colors',
-                      duration === opt.value ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+                      'px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      duration === opt.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                     )}
                   >
                     {opt.label}

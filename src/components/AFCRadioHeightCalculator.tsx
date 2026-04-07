@@ -1060,7 +1060,7 @@ export function AFCRadioHeightCalculator() {
           </TabsTrigger>
           <TabsTrigger value="floors" className="flex items-center gap-1.5">
             <Building2 className="h-3.5 w-3.5" />Floor Heights
-            {unsetFloors.length > 0 && <Badge className="ml-1 text-xs bg-[color:var(--status-warning)] text-white">{unsetFloors.length} unset</Badge>}
+            {unsetFloors.length > 0 && <Badge className="ml-1 text-xs bg-[color:color-mix(in_oklab,var(--warning)_15%,transparent)] text-warning border-[color:var(--warning)]/30">{unsetFloors.length} unset</Badge>}
           </TabsTrigger>
           <TabsTrigger value="power-ref" className="flex items-center gap-1.5">
             <Zap className="h-3.5 w-3.5" />Power Reference

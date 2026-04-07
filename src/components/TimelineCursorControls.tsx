@@ -138,7 +138,7 @@ export function TimelineCursorControls({
               size="sm"
               className={cn(
                 "h-7 gap-1",
-                ctx.cursorLocked && "bg-purple-600 hover:bg-purple-700"
+                ctx.cursorLocked && "bg-primary hover:bg-primary/90"
               )}
               onClick={toggleCursorLock}
             >

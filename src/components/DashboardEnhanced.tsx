@@ -1754,12 +1754,12 @@ function DashboardEnhancedComponent() {
                     <span className="text-sm font-medium">OS ONE Control</span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/20">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">CPU</span>
-                        <span className="text-lg font-bold text-purple-400">5.5%</span>
+                        <span className="text-lg font-bold text-primary">5.5%</span>
                       </div>
-                      <Progress value={5.5} className="h-1.5 bg-purple-950/50" />
+                      <Progress value={5.5} className="h-1.5" />
                     </div>
                     <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
                       <div className="flex items-center justify-between mb-2">
@@ -2041,7 +2041,7 @@ function DashboardEnhancedComponent() {
               {/* Middle Row: Band Distribution & SNR Quality */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Band Distribution */}
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50">
+                <div className="p-4 rounded-xl bg-muted/50 border border-border">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Radio className="h-4 w-4 text-[color:var(--status-info)]" />
@@ -2059,7 +2059,7 @@ function DashboardEnhancedComponent() {
                               <span className="text-foreground font-medium">{band.band}</span>
                               <span className="tabular-nums" style={{ color: band.color }}>{band.count} ({Math.round(percentage)}%)</span>
                             </div>
-                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{ width: `${percentage}%`, backgroundColor: band.color }}
@@ -2077,7 +2077,7 @@ function DashboardEnhancedComponent() {
                 </div>
 
                 {/* SNR Quality Distribution */}
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50">
+                <div className="p-4 rounded-xl bg-muted/50 border border-border">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
@@ -2098,7 +2098,7 @@ function DashboardEnhancedComponent() {
                               <span className="text-foreground font-medium">{snr.category}</span>
                               <span className="tabular-nums" style={{ color: snr.color }}>{snr.count} ({Math.round(percentage)}%)</span>
                             </div>
-                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{ width: `${percentage}%`, backgroundColor: snr.color }}
@@ -2197,7 +2197,7 @@ function DashboardEnhancedComponent() {
                 {!selectedNetworkEvent ? (
                   <div className="space-y-4">
                     {/* AI Assistant Panel - Flashy Design */}
-                    <div className="relative overflow-hidden rounded-xl border border-purple-500/20 bg-gradient-to-br from-slate-900 via-purple-950/50 to-slate-900">
+                    <div className="relative overflow-hidden rounded-xl border border-purple-500/30 bg-card dark:bg-gradient-to-br dark:from-slate-900 dark:via-purple-950/50 dark:to-slate-900">
                       {/* Animated background effects */}
                       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-purple-600/10 via-transparent to-transparent" />
                       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-600/10 via-transparent to-transparent" />
@@ -2213,17 +2213,17 @@ function DashboardEnhancedComponent() {
                             </div>
                           </div>
                           <div>
-                            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                               AI Network Analysis
                               <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                               </span>
                             </h3>
-                            <p className="text-xs text-purple-300/70">Real-time insights powered by AI</p>
+                            <p className="text-xs text-muted-foreground">Real-time insights powered by AI</p>
                           </div>
                         </div>
-                        <div className="text-xs text-purple-300/50 font-mono">
+                        <div className="text-xs text-muted-foreground font-mono">
                           {lastUpdate?.toLocaleTimeString() || 'Analyzing...'}
                         </div>
                       </div>
@@ -2245,7 +2245,7 @@ function DashboardEnhancedComponent() {
                                       <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">CRITICAL</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">Reduced wireless coverage in affected areas</p>
-                                    <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
+                                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Check PoE power and network cables
                                     </p>
                                   </div>
@@ -2264,7 +2264,7 @@ function DashboardEnhancedComponent() {
                                       <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">ACTION NEEDED</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">Potential service degradation detected</p>
-                                    <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
+                                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Review alert details and remediate
                                     </p>
                                   </div>
@@ -2283,7 +2283,7 @@ function DashboardEnhancedComponent() {
                                       <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">INFO</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mt-1">Clients waiting for authentication</p>
-                                    <p className="text-xs text-purple-300/50 mt-1.5 flex items-center gap-1">
+                                    <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Verify RADIUS/auth server status
                                     </p>
                                   </div>
@@ -2344,7 +2344,7 @@ function DashboardEnhancedComponent() {
                                   <span>Auth Rate</span>
                                   <AnimatedValue value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`} pulseColor="bg-[color:var(--status-info-bg)]" />
                                 </div>
-                                <div className="h-2 bg-blue-950/50 rounded-full overflow-hidden">
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
                                     style={{ width: `${clientStats.total > 0 ? (clientStats.authenticated / clientStats.total) * 100 : 0}%` }}
@@ -2354,15 +2354,15 @@ function DashboardEnhancedComponent() {
                             </div>
 
                             {/* Throughput Card - Full Width */}
-                            <div className="col-span-2 bg-gradient-to-br from-purple-500/10 to-cyan-500/5 border border-purple-500/20 rounded-lg p-3 backdrop-blur-sm">
+                            <div className="col-span-2 bg-muted/50 border border-border rounded-lg p-3">
                               <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="bg-purple-500/20 p-1.5 rounded-md">
-                                    <Activity className="w-4 h-4 text-purple-400" />
+                                  <div className="bg-primary/10 p-1.5 rounded-md">
+                                    <Activity className="w-4 h-4 text-primary" />
                                   </div>
-                                  <span className="text-xs text-purple-200/80 font-medium">Network Throughput</span>
+                                  <span className="text-xs text-foreground font-medium">Network Throughput</span>
                                 </div>
-                                <span className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-cyan-300">
+                                <span className="text-sm font-bold text-foreground">
                                   {formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}
                                 </span>
                               </div>
@@ -2386,7 +2386,7 @@ function DashboardEnhancedComponent() {
                                       <span className="text-muted-foreground">Download</span>
                                       <span className="text-[color:var(--status-info)] font-medium">{formatBps(clientStats.throughputDownload)}</span>
                                     </div>
-                                    <div className="h-1 bg-cyan-950/50 rounded-full overflow-hidden">
+                                    <div className="h-1 bg-muted rounded-full overflow-hidden">
                                       <div className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full w-2/5" />
                                     </div>
                                   </div>
@@ -2395,15 +2395,15 @@ function DashboardEnhancedComponent() {
                             </div>
 
                             {/* Models Deployed */}
-                            <div className="col-span-2 flex items-center justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                            <div className="col-span-2 flex items-center justify-between bg-muted/50 border border-border rounded-lg px-3 py-2">
                               <div className="flex items-center gap-2">
-                                <div className="bg-white/10 p-1 rounded">
-                                  <Radio className="w-3 h-3 text-purple-300" />
+                                <div className="bg-muted p-1 rounded">
+                                  <Radio className="w-3 h-3 text-muted-foreground" />
                                 </div>
-                                <span className="text-xs text-purple-200/70">{Object.keys(apStats.models).length} AP model types deployed</span>
+                                <span className="text-xs text-muted-foreground">{Object.keys(apStats.models).length} AP model types deployed</span>
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] text-purple-300/50">
-                                <span className="px-1.5 py-0.5 bg-purple-500/20 rounded text-purple-300">
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary">
                                   ~{apStats.online > 0 ? Math.round(clientStats.total / apStats.online) : 0} clients/AP
                                 </span>
                               </div>

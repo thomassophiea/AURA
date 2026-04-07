@@ -171,6 +171,7 @@ function TopologiesTab() {
           )}
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -206,9 +207,20 @@ function TopologiesTab() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No topologies found</TableCell></TableRow>}
+          {items.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} className="py-16 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
+                  <Layers className="h-10 w-10" />
+                  <span className="text-sm font-medium text-muted-foreground">No topologies configured</span>
+                  <span className="text-xs">VLAN topologies defined on the controller will appear here.</span>
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
@@ -437,6 +449,7 @@ function CoSTab() {
           )}
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -467,6 +480,7 @@ function CoSTab() {
           {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No CoS profiles found</TableCell></TableRow>}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
@@ -589,6 +603,7 @@ function RateLimitersTab() {
           )}
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -615,6 +630,7 @@ function RateLimitersTab() {
           {items.length === 0 && <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No rate limiters found</TableCell></TableRow>}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-md w-full overflow-y-auto">
@@ -729,6 +745,7 @@ function ProfilesTab() {
           )}
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -756,9 +773,20 @@ function ProfilesTab() {
               </TableCell>
             </TableRow>
           ))}
-          {items.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No profiles found</TableCell></TableRow>}
+          {items.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} className="py-16 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
+                  <Settings className="h-10 w-10" />
+                  <span className="text-sm font-medium text-muted-foreground">No AP profiles configured</span>
+                  <span className="text-xs">Create a profile to define radio and security settings for access points.</span>
+                </div>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
@@ -933,6 +961,7 @@ function IoTTab() {
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -957,6 +986,7 @@ function IoTTab() {
           {items.length === 0 && <TableRow><TableCell colSpan={3} className="text-center py-8 text-muted-foreground">No IoT profiles found</TableCell></TableRow>}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
@@ -1096,6 +1126,7 @@ function MeshpointsTab() {
           <Button size="sm" onClick={openCreate}><Plus className="h-4 w-4 mr-1" />Create</Button>
         </div>
       </div>
+      <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -1124,6 +1155,7 @@ function MeshpointsTab() {
           {items.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">No meshpoints found</TableCell></TableRow>}
         </TableBody>
       </Table>
+      </div>
 
       <Sheet open={showDialog} onOpenChange={setShowDialog}>
         <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
@@ -1244,6 +1276,7 @@ function AccessControlTab() {
           </div>
 
           {macList.length > 0 ? (
+            <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -1262,6 +1295,7 @@ function AccessControlTab() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               No MAC addresses in the {macMode === 1 ? 'whitelist' : 'blacklist'}
@@ -1365,8 +1399,13 @@ function LocationServicesTab() {
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">No profiles configured</p>
+          <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground/60">
+            <Globe className="h-8 w-8" />
+            <p className="text-sm font-medium text-muted-foreground">No profiles configured</p>
+            <p className="text-xs">Use the Create button above to add a {title.toLowerCase()} profile.</p>
+          </div>
         ) : (
+          <div className="rounded-md border">
           <Table>
             <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Details</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
             <TableBody>
@@ -1389,6 +1428,7 @@ function LocationServicesTab() {
               ))}
             </TableBody>
           </Table>
+          </div>
         )}
       </CardContent>
     </Card>
