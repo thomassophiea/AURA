@@ -1136,10 +1136,10 @@ export default function App() {
             {!device.isMobile && theme === 'dev' && (
               <>
                 <PersonaSelector />
-                <Button variant={isDevModeOpen ? 'default' : 'ghost'} size="sm" onClick={handleToggleDevMode} title="Developer Mode - API Monitor">
+                <Button variant="ghost" size="sm" onClick={handleToggleDevMode} title="Developer Mode - API Monitor" className={isDevModeOpen ? 'text-primary ring-1 ring-primary/50 bg-primary/10' : ''}>
                   <Braces className="h-4 w-4" />
                 </Button>
-                <Button variant={currentPage === 'api-test' ? 'default' : 'ghost'} size="sm" onClick={() => setCurrentPage('api-test')} title="API Test Tool">
+                <Button variant="ghost" size="sm" onClick={() => setCurrentPage('api-test')} title="API Test Tool" className={currentPage === 'api-test' ? 'text-primary ring-1 ring-primary/50 bg-primary/10' : ''}>
                   <FlaskConical className="h-4 w-4" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => window.open('https://github.com/thomassophiea/EDGE', '_blank', 'noopener,noreferrer')} title="GitHub">
