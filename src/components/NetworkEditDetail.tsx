@@ -683,6 +683,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       const authError = validateEnterpriseAuthRequirements(formData.securityType, effectiveAaaPolicyId);
       if (authError) {
         toast.error('Authentication Configuration Error', { description: authError });
+        setActiveTab('basic');
         setSaving(false);
         return;
       }
@@ -951,7 +952,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   }
 
   // Helper: is this an enterprise auth type?
-  const isEnterprise = ['wpa2-enterprise', 'wpa3-enterprise', 'wpa23-enterprise'].includes(formData.securityType);
+  const isEnterprise = isEnterpriseAuth(formData.securityType || '');
   // Helper: is this a PSK auth type that needs passphrase config?
   const isPsk = ['wep', 'wpa-personal', 'wpa2-personal', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.securityType);
   // Helper: show 6E WPA Compliance badge?
@@ -1198,8 +1199,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   <SelectContent><SelectItem value="none">None</SelectItem>{aaaPolicies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                 </Select>
                 {isEnterpriseAuth(formData.securityType) && (!formData.aaaPolicyId || formData.aaaPolicyId === 'none') && (
-                  <p className="text-xs text-destructive flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" />
+                  <p role="alert" className="text-xs text-destructive flex items-center gap-1 mt-1">
+                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
                     AAA policy required for enterprise authentication
                   </p>
                 )}

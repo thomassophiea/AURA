@@ -8,6 +8,7 @@ describe('isEnterpriseAuth', () => {
   it('returns true for wpa3Enterprise', () => expect(isEnterpriseAuth('wpa3Enterprise')).toBe(true));
   it('returns true for dot1x', () => expect(isEnterpriseAuth('dot1x')).toBe(true));
   it('returns true for ENTERPRISE (API value)', () => expect(isEnterpriseAuth('ENTERPRISE')).toBe(true));
+  it('returns true for wpa2-enterprise (UI hyphenated value)', () => expect(isEnterpriseAuth('wpa2-enterprise')).toBe(true));
 });
 
 describe('validateEnterpriseAuthRequirements', () => {
