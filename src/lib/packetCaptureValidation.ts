@@ -24,7 +24,10 @@ export function validateMacAddress(mac: string): { valid: boolean; error?: strin
 
   // Check if all characters are valid hex
   if (!/^[0-9A-F]{12}$/.test(normalized)) {
-    return { valid: false, error: 'MAC address must contain only hexadecimal characters (0-9, A-F)' };
+    return {
+      valid: false,
+      error: 'MAC address must contain only hexadecimal characters (0-9, A-F)',
+    };
   }
 
   return { valid: true };
@@ -58,7 +61,7 @@ export function validateIPv4Address(ip: string): { valid: boolean; error?: strin
 
   // Check each octet is 0-255
   const octets = [match[1], match[2], match[3], match[4]].map(Number);
-  const invalidOctet = octets.find(octet => octet < 0 || octet > 255);
+  const invalidOctet = octets.find((octet) => octet < 0 || octet > 255);
 
   if (invalidOctet !== undefined) {
     return { valid: false, error: 'Each IPv4 octet must be between 0 and 255' };
@@ -149,7 +152,10 @@ export function validateTruncationSize(size: number): { valid: boolean; error?: 
 
   // Warning for small truncation sizes
   if (size > 0 && size < 64) {
-    return { valid: true, error: 'Warning: Truncation size below 64 bytes may lose important packet data' };
+    return {
+      valid: true,
+      error: 'Warning: Truncation size below 64 bytes may lose important packet data',
+    };
   }
 
   return { valid: true };
@@ -208,7 +214,7 @@ export function validateCaptureConfig(config: {
     password: string;
     path?: string;
   };
-  filters: Array<{ type: 'mac' | 'ip'; value: string }>;
+  filters: Array<{ type: 'mac' | 'ip' | 'protocol'; value: string }>;
 }): { valid: boolean; error?: string } {
   // Validate duration
   const durationResult = validateCaptureDuration(config.duration);

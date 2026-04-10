@@ -29,6 +29,8 @@ const NAME_FIELDS: Record<GlobalElementType, string> = {
   rate_limiter: 'name',
   ap_profile: 'name',
   rf_policy: 'name',
+  rfmgmt: 'name',
+  adsp: 'name',
 };
 
 // Fetch methods per element type
@@ -41,12 +43,22 @@ const FETCH_METHODS: Record<GlobalElementType, (() => Promise<unknown[]>) | null
   rate_limiter: async () => [],
   ap_profile: () => apiService.getProfiles(),
   rf_policy: () => apiService.getRFManagementProfiles(),
+  rfmgmt: null,
+  adsp: null,
 };
 
 // Fields to ignore when comparing (controller-generated, not template-defined)
 const IGNORE_FIELDS = new Set([
-  'id', 'createdAt', 'updatedAt', 'created_at', 'updated_at',
-  'lastModified', 'version', '_etag', 'href', 'links',
+  'id',
+  'createdAt',
+  'updatedAt',
+  'created_at',
+  'updated_at',
+  'lastModified',
+  'version',
+  '_etag',
+  'href',
+  'links',
 ]);
 
 class DriftDetectionServiceClass {
@@ -61,18 +73,16 @@ class DriftDetectionServiceClass {
     siteGroups: SiteGroup[]
   ): Promise<DriftCheckResult[]> {
     const templateAssignments = assignments.filter(
-      a => a.template_id === template.id && a.is_active
+      (a) => a.template_id === template.id && a.is_active
     );
 
     const results: DriftCheckResult[] = [];
 
     for (const assignment of templateAssignments) {
-      const sg = siteGroups.find(g => g.id === assignment.scope_id);
+      const sg = siteGroups.find((g) => g.id === assignment.scope_id);
       if (!sg) continue;
 
-      const result = await this._checkSingleScope(
-        template, definitions, values, sg, assignment
-      );
+      const result = await this._checkSingleScope(template, definitions, values, sg, assignment);
       results.push(result);
     }
 
@@ -91,19 +101,23 @@ class DriftDetectionServiceClass {
   ): Promise<DriftSummary> {
     const results: DriftCheckResult[] = [];
 
-    for (const template of templates.filter(t => t.is_active)) {
+    for (const template of templates.filter((t) => t.is_active)) {
       const templateResults = await this.checkTemplate(
-        template, definitions, values, assignments, siteGroups
+        template,
+        definitions,
+        values,
+        assignments,
+        siteGroups
       );
       results.push(...templateResults);
     }
 
     return {
       total: results.length,
-      in_sync: results.filter(r => r.status === 'in_sync').length,
-      drifted: results.filter(r => r.status === 'drifted').length,
-      missing: results.filter(r => r.status === 'missing').length,
-      errors: results.filter(r => r.status === 'error').length,
+      in_sync: results.filter((r) => r.status === 'in_sync').length,
+      drifted: results.filter((r) => r.status === 'drifted').length,
+      missing: results.filter((r) => r.status === 'missing').length,
+      errors: results.filter((r) => r.status === 'error').length,
       results,
       checked_at: new Date().toISOString(),
     };
@@ -150,9 +164,7 @@ class DriftDetectionServiceClass {
 
       // 2. Fetch live state from controller
       apiService.setBaseUrl(`${siteGroup.controller_url}/management`);
-      const liveResource = await this._findLiveResource(
-        template.element_type, expectedPayload
-      );
+      const liveResource = await this._findLiveResource(template.element_type, expectedPayload);
 
       if (!liveResource) {
         return {
@@ -219,9 +231,11 @@ class DriftDetectionServiceClass {
 
     try {
       const resources = await fetchFn();
-      return (resources as Record<string, unknown>[]).find(
-        r => r[nameField] === expectedName || r.name === expectedName
-      ) ?? null;
+      return (
+        (resources as Record<string, unknown>[]).find(
+          (r) => r[nameField] === expectedName || r.name === expectedName
+        ) ?? null
+      );
     } catch {
       return null;
     }
@@ -257,9 +271,12 @@ class DriftDetectionServiceClass {
     }
 
     if (
-      expected !== null && actual !== null &&
-      typeof expected === 'object' && typeof actual === 'object' &&
-      !Array.isArray(expected) && !Array.isArray(actual)
+      expected !== null &&
+      actual !== null &&
+      typeof expected === 'object' &&
+      typeof actual === 'object' &&
+      !Array.isArray(expected) &&
+      !Array.isArray(actual)
     ) {
       // Compare object fields (only fields defined in expected)
       const expectedObj = expected as Record<string, unknown>;

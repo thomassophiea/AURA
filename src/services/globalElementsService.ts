@@ -78,9 +78,11 @@ class GlobalElementsService {
         if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
           try {
             const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
-            const found = all.find(t => t.id === templateId);
+            const found = all.find((t) => t.id === templateId);
             if (found) return found;
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
       return null;
@@ -140,13 +142,15 @@ class GlobalElementsService {
         if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
           try {
             const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
-            const idx = all.findIndex(t => t.id === templateId);
+            const idx = all.findIndex((t) => t.id === templateId);
             if (idx >= 0) {
               all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
               localStorage.setItem(key, JSON.stringify(all));
               return all[idx];
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
       throw new Error('Template not found in local storage');
@@ -170,29 +174,25 @@ class GlobalElementsService {
         if (key?.startsWith(`${STORAGE_KEYS.TEMPLATES}:`)) {
           try {
             const all: GlobalElementTemplate[] = JSON.parse(localStorage.getItem(key) || '[]');
-            const filtered = all.filter(t => t.id !== templateId);
+            const filtered = all.filter((t) => t.id !== templateId);
             if (filtered.length !== all.length) {
               localStorage.setItem(key, JSON.stringify(filtered));
               return;
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
       return;
     }
 
-    const { error } = await supabase
-      .from('global_element_templates')
-      .delete()
-      .eq('id', templateId);
+    const { error } = await supabase.from('global_element_templates').delete().eq('id', templateId);
 
     if (error) throw new Error(error.message);
   }
 
-  async duplicateTemplate(
-    templateId: string,
-    newName: string
-  ): Promise<GlobalElementTemplate> {
+  async duplicateTemplate(templateId: string, newName: string): Promise<GlobalElementTemplate> {
     const original = await this.getTemplate(templateId);
     if (!original) throw new Error('Template not found');
 
@@ -212,9 +212,7 @@ class GlobalElementsService {
   // Variable Definitions
   // -----------------------------------------------------------------------
 
-  async getVariableDefinitions(
-    orgId: string
-  ): Promise<PersistedVariableDefinition[]> {
+  async getVariableDefinitions(orgId: string): Promise<PersistedVariableDefinition[]> {
     if (!this._isSupabaseConfigured()) {
       return this._getCachedVariableDefs(orgId);
     }
@@ -240,7 +238,12 @@ class GlobalElementsService {
     def: Omit<PersistedVariableDefinition, 'id' | 'created_at' | 'updated_at'>
   ): Promise<PersistedVariableDefinition> {
     const now = new Date().toISOString();
-    const newDef = { ...def, id: crypto.randomUUID(), created_at: now, updated_at: now } as PersistedVariableDefinition;
+    const newDef = {
+      ...def,
+      id: crypto.randomUUID(),
+      created_at: now,
+      updated_at: now,
+    } as PersistedVariableDefinition;
 
     if (!this._isSupabaseConfigured()) {
       const cached = this._getCachedVariableDefs(def.org_id);
@@ -268,14 +271,18 @@ class GlobalElementsService {
         const key = localStorage.key(i);
         if (key?.startsWith(`${STORAGE_KEYS.VARIABLE_DEFS}:`)) {
           try {
-            const all: PersistedVariableDefinition[] = JSON.parse(localStorage.getItem(key) || '[]');
-            const idx = all.findIndex(d => d.id === defId);
+            const all: PersistedVariableDefinition[] = JSON.parse(
+              localStorage.getItem(key) || '[]'
+            );
+            const idx = all.findIndex((d) => d.id === defId);
             if (idx >= 0) {
               all[idx] = { ...all[idx], ...updates, updated_at: new Date().toISOString() };
               localStorage.setItem(key, JSON.stringify(all));
               return all[idx];
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         }
       }
       throw new Error('Variable definition not found');
@@ -298,19 +305,23 @@ class GlobalElementsService {
         const key = localStorage.key(i);
         if (key?.startsWith(`${STORAGE_KEYS.VARIABLE_DEFS}:`)) {
           try {
-            const all: PersistedVariableDefinition[] = JSON.parse(localStorage.getItem(key) || '[]');
-            const filtered = all.filter(d => d.id !== defId);
-            if (filtered.length !== all.length) { localStorage.setItem(key, JSON.stringify(filtered)); return; }
-          } catch { /* ignore */ }
+            const all: PersistedVariableDefinition[] = JSON.parse(
+              localStorage.getItem(key) || '[]'
+            );
+            const filtered = all.filter((d) => d.id !== defId);
+            if (filtered.length !== all.length) {
+              localStorage.setItem(key, JSON.stringify(filtered));
+              return;
+            }
+          } catch {
+            /* ignore */
+          }
         }
       }
       return;
     }
 
-    const { error } = await supabase
-      .from('variable_definitions')
-      .delete()
-      .eq('id', defId);
+    const { error } = await supabase.from('variable_definitions').delete().eq('id', defId);
 
     if (error) throw new Error(error.message);
   }
@@ -325,10 +336,7 @@ class GlobalElementsService {
     scopeId?: string
   ): Promise<VariableValue[]> {
     try {
-      let query = supabase
-        .from('variable_values')
-        .select('*')
-        .eq('org_id', orgId);
+      let query = supabase.from('variable_values').select('*').eq('org_id', orgId);
 
       if (scopeType) query = query.eq('scope_type', scopeType);
       if (scopeId) query = query.eq('scope_id', scopeId);
@@ -345,9 +353,7 @@ class GlobalElementsService {
     }
   }
 
-  async setVariableValue(
-    value: Omit<VariableValue, 'id' | 'updated_at'>
-  ): Promise<VariableValue> {
+  async setVariableValue(value: Omit<VariableValue, 'id' | 'updated_at'>): Promise<VariableValue> {
     // Upsert by (variable_id, scope_type, scope_id)
     const { data, error } = await supabase
       .from('variable_values')
@@ -360,17 +366,12 @@ class GlobalElementsService {
   }
 
   async deleteVariableValue(valueId: string): Promise<void> {
-    const { error } = await supabase
-      .from('variable_values')
-      .delete()
-      .eq('id', valueId);
+    const { error } = await supabase.from('variable_values').delete().eq('id', valueId);
 
     if (error) throw new Error(error.message);
   }
 
-  async bulkSetVariableValues(
-    values: Omit<VariableValue, 'id' | 'updated_at'>[]
-  ): Promise<void> {
+  async bulkSetVariableValues(values: Omit<VariableValue, 'id' | 'updated_at'>[]): Promise<void> {
     if (values.length === 0) return;
     const { error } = await supabase
       .from('variable_values')
@@ -383,7 +384,9 @@ class GlobalElementsService {
   // Template Assignments
   // -----------------------------------------------------------------------
 
-  async getAssignmentsByOrg(orgId: string): Promise<(TemplateAssignment & { template_name?: string; element_type?: string })[]> {
+  async getAssignmentsByOrg(
+    orgId: string
+  ): Promise<(TemplateAssignment & { template_name?: string; element_type?: string })[]> {
     const { data, error } = await supabase
       .from('template_assignments')
       .select('*, global_element_templates!inner(name, element_type, org_id)')
@@ -400,7 +403,7 @@ class GlobalElementsService {
         template_name: tpl?.name as string | undefined,
         element_type: tpl?.element_type as string | undefined,
         global_element_templates: undefined,
-      } as TemplateAssignment & { template_name?: string; element_type?: string };
+      } as unknown as TemplateAssignment & { template_name?: string; element_type?: string };
     });
   }
 
@@ -431,10 +434,7 @@ class GlobalElementsService {
   }
 
   async unassignTemplate(assignmentId: string): Promise<void> {
-    const { error } = await supabase
-      .from('template_assignments')
-      .delete()
-      .eq('id', assignmentId);
+    const { error } = await supabase.from('template_assignments').delete().eq('id', assignmentId);
 
     if (error) throw new Error(error.message);
   }
@@ -447,11 +447,8 @@ class GlobalElementsService {
    * Export variable values as CSV.
    * Format: Variable,Token,Value
    */
-  exportVariablesCsv(
-    definitions: PersistedVariableDefinition[],
-    values: VariableValue[]
-  ): string {
-    const defMap = new Map(definitions.map(d => [d.id, d]));
+  exportVariablesCsv(definitions: PersistedVariableDefinition[], values: VariableValue[]): string {
+    const defMap = new Map(definitions.map((d) => [d.id, d]));
     const lines = ['Variable,Token,Value'];
 
     for (const val of values) {
@@ -475,8 +472,11 @@ class GlobalElementsService {
     scopeType: VariableScope,
     scopeId: string
   ): { values: Omit<VariableValue, 'id' | 'updated_at'>[]; errors: string[] } {
-    const defByToken = new Map(definitions.map(d => [d.token, d]));
-    const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+    const defByToken = new Map(definitions.map((d) => [d.token, d]));
+    const lines = csv
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
     const errors: string[] = [];
     const values: Omit<VariableValue, 'id' | 'updated_at'>[] = [];
 
@@ -534,11 +534,10 @@ class GlobalElementsService {
 
   private _cacheTemplates(orgId: string, templates: GlobalElementTemplate[]) {
     try {
-      localStorage.setItem(
-        `${STORAGE_KEYS.TEMPLATES}:${orgId}`,
-        JSON.stringify(templates)
-      );
-    } catch { /* quota exceeded — ignore */ }
+      localStorage.setItem(`${STORAGE_KEYS.TEMPLATES}:${orgId}`, JSON.stringify(templates));
+    } catch {
+      /* quota exceeded — ignore */
+    }
   }
 
   private _getCachedTemplates(
@@ -549,7 +548,7 @@ class GlobalElementsService {
       const raw = localStorage.getItem(`${STORAGE_KEYS.TEMPLATES}:${orgId}`);
       if (!raw) return [];
       const all: GlobalElementTemplate[] = JSON.parse(raw);
-      return elementType ? all.filter(t => t.element_type === elementType) : all;
+      return elementType ? all.filter((t) => t.element_type === elementType) : all;
     } catch {
       return [];
     }
@@ -557,11 +556,10 @@ class GlobalElementsService {
 
   private _cacheVariableDefs(orgId: string, defs: PersistedVariableDefinition[]) {
     try {
-      localStorage.setItem(
-        `${STORAGE_KEYS.VARIABLE_DEFS}:${orgId}`,
-        JSON.stringify(defs)
-      );
-    } catch { /* quota exceeded — ignore */ }
+      localStorage.setItem(`${STORAGE_KEYS.VARIABLE_DEFS}:${orgId}`, JSON.stringify(defs));
+    } catch {
+      /* quota exceeded — ignore */
+    }
   }
 
   private _getCachedVariableDefs(orgId: string): PersistedVariableDefinition[] {
@@ -575,11 +573,10 @@ class GlobalElementsService {
 
   private _cacheVariableVals(orgId: string, vals: VariableValue[]) {
     try {
-      localStorage.setItem(
-        `${STORAGE_KEYS.VARIABLE_VALS}:${orgId}`,
-        JSON.stringify(vals)
-      );
-    } catch { /* quota exceeded — ignore */ }
+      localStorage.setItem(`${STORAGE_KEYS.VARIABLE_VALS}:${orgId}`, JSON.stringify(vals));
+    } catch {
+      /* quota exceeded — ignore */
+    }
   }
 
   private _getCachedVariableVals(orgId: string): VariableValue[] {

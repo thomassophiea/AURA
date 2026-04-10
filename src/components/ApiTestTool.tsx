@@ -34,20 +34,40 @@ const endpointCategories = {
     { method: 'POST', endpoint: '/v1/oauth2/token', description: 'Get OAuth2 access token' },
     { method: 'POST', endpoint: '/v1/oauth2/refreshToken', description: 'Refresh OAuth2 token' },
     { method: 'DELETE', endpoint: '/v1/oauth2/token/{token}', description: 'Revoke OAuth2 token' },
-    { method: 'POST', endpoint: '/v1/oauth2/introspecttoken', description: 'Introspect OAuth2 token' },
+    {
+      method: 'POST',
+      endpoint: '/v1/oauth2/introspecttoken',
+      description: 'Introspect OAuth2 token',
+    },
     { method: 'GET', endpoint: '/v1/administrators', description: 'Get administrators' },
     { method: 'POST', endpoint: '/v1/administrators', description: 'Create administrator' },
-    { method: 'PUT', endpoint: '/v1/administrators/adminpassword', description: 'Update admin password' },
-    { method: 'GET', endpoint: '/v1/administrators/{userId}', description: 'Get administrator by ID' },
+    {
+      method: 'PUT',
+      endpoint: '/v1/administrators/adminpassword',
+      description: 'Update admin password',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/administrators/{userId}',
+      description: 'Get administrator by ID',
+    },
     { method: 'PUT', endpoint: '/v1/administrators/{userId}', description: 'Update administrator' },
-    { method: 'DELETE', endpoint: '/v1/administrators/{userId}', description: 'Delete administrator' },
-    { method: 'PUT', endpoint: '/v1/administratorsTimeout/{userId}', description: 'Set administrator timeout' },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/administrators/{userId}',
+      description: 'Delete administrator',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/administratorsTimeout/{userId}',
+      description: 'Set administrator timeout',
+    },
     { method: 'GET', endpoint: '/v1/appkeys', description: 'Get application keys' },
     { method: 'POST', endpoint: '/v1/appkeys', description: 'Create application key' },
     { method: 'GET', endpoint: '/v1/appkeys/{appKey}', description: 'Get application key' },
     { method: 'DELETE', endpoint: '/v1/appkeys/{appKey}', description: 'Delete application key' },
   ],
-  
+
   'Access Control': [
     { method: 'GET', endpoint: '/v1/accesscontrol', description: 'Get access control lists' },
     { method: 'PUT', endpoint: '/v1/accesscontrol', description: 'Update access control list' },
@@ -58,7 +78,11 @@ const endpointCategories = {
   'Access Points': [
     { method: 'GET', endpoint: '/v1/aps', description: 'Get access points' },
     { method: 'GET', endpoint: '/v1/aps/query', description: 'Query access points' },
-    { method: 'GET', endpoint: '/v1/aps/query/visualize', description: 'Visualize AP query results' },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/query/visualize',
+      description: 'Visualize AP query results',
+    },
     { method: 'GET', endpoint: '/v1/aps/query/columns', description: 'Get AP query columns' },
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/bssid0', description: 'Get AP BSSID0' },
     { method: 'GET', endpoint: '/v1/aps/adoptionrules', description: 'Get AP adoption rules' },
@@ -88,29 +112,81 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}', description: 'Get specific AP' },
     { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}', description: 'Update specific AP' },
     { method: 'DELETE', endpoint: '/v1/aps/{apSerialNumber}', description: 'Delete specific AP' },
-    { method: 'GET', endpoint: '/v1/aps/antenna/{apSerialNumber}', description: 'Get AP antenna info' },
-    { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/copytodefault', description: 'Copy AP to default' },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/antenna/{apSerialNumber}',
+      description: 'Get AP antenna info',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/aps/{apSerialNumber}/copytodefault',
+      description: 'Copy AP to default',
+    },
     { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/logs', description: 'Get AP logs' },
-    { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/realcapture', description: 'Real capture on AP' },
-    { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/reboot', description: 'Reboot specific AP' },
+    {
+      method: 'PUT',
+      endpoint: '/v1/aps/{apSerialNumber}/realcapture',
+      description: 'Real capture on AP',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/aps/{apSerialNumber}/reboot',
+      description: 'Reboot specific AP',
+    },
     { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/locate', description: 'Locate AP' },
     { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/reset', description: 'Reset AP' },
-    { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/setRuState', description: 'Set AP RU state' },
-    { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/traceurls', description: 'Get AP trace URLs' },
-    { method: 'PUT', endpoint: '/v1/aps/{apSerialNumber}/upgrade', description: 'Upgrade specific AP' },
-    { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/stations', description: 'Get AP stations' },
-    { method: 'GET', endpoint: '/v1/ap/environment/{apSerialNumber}', description: 'Get AP environment' },
-    { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/location', description: 'Get AP location' },
+    {
+      method: 'PUT',
+      endpoint: '/v1/aps/{apSerialNumber}/setRuState',
+      description: 'Set AP RU state',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/{apSerialNumber}/traceurls',
+      description: 'Get AP trace URLs',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/aps/{apSerialNumber}/upgrade',
+      description: 'Upgrade specific AP',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/{apSerialNumber}/stations',
+      description: 'Get AP stations',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/ap/environment/{apSerialNumber}',
+      description: 'Get AP environment',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/{apSerialNumber}/location',
+      description: 'Get AP location',
+    },
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/lldp', description: 'Get AP LLDP info' },
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/alarms', description: 'Get AP alarms' },
-    { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/smartrf', description: 'Get AP Smart RF info' },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/{apSerialNumber}/smartrf',
+      description: 'Get AP Smart RF info',
+    },
     { method: 'PUT', endpoint: '/v1/aps/aploglevel', description: 'Set AP log level' },
-    { method: 'GET', endpoint: '/v1/aps/ifstats/{apSerialNumber}', description: 'Get AP interface stats' },
+    {
+      method: 'GET',
+      endpoint: '/v1/aps/ifstats/{apSerialNumber}',
+      description: 'Get AP interface stats',
+    },
     { method: 'GET', endpoint: '/v1/aps/ifstats', description: 'Get all AP interface stats' },
   ],
 
   'Certificate Management': [
-    { method: 'POST', endpoint: '/v1/aps/cert/signrequest', description: 'Sign AP certificate request' },
+    {
+      method: 'POST',
+      endpoint: '/v1/aps/cert/signrequest',
+      description: 'Sign AP certificate request',
+    },
     { method: 'POST', endpoint: '/v1/aps/cert/apply', description: 'Apply AP certificate' },
     { method: 'PUT', endpoint: '/v1/aps/cert/reset', description: 'Reset AP certificate' },
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/cert', description: 'Get AP certificate' },
@@ -128,7 +204,11 @@ const endpointCategories = {
     { method: 'POST', endpoint: '/v3/sites/clone/{siteId}', description: 'Clone site' },
     { method: 'GET', endpoint: '/v3/sites/{siteid}/stations', description: 'Get site stations' },
     { method: 'GET', endpoint: '/v3/sites/{siteId}/smartrf', description: 'Get site Smart RF' },
-    { method: 'GET', endpoint: '/v1/sites/{siteId}/aps/report', description: 'Get site APs report' },
+    {
+      method: 'GET',
+      endpoint: '/v1/sites/{siteId}/aps/report',
+      description: 'Get site APs report',
+    },
   ],
 
   'Stations & Clients': [
@@ -137,12 +217,36 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v1/stations/{macaddress}', description: 'Get specific station' },
     { method: 'GET', endpoint: '/v1/stations/query', description: 'Query stations (v1)' },
     { method: 'GET', endpoint: '/v2/stations/query', description: 'Query stations (v2)' },
-    { method: 'GET', endpoint: '/v1/stations/query/visualize', description: 'Visualize station query (v1)' },
-    { method: 'GET', endpoint: '/v2/stations/query/visualize', description: 'Visualize station query (v2)' },
-    { method: 'GET', endpoint: '/v1/stations/query/columns', description: 'Get station query columns (v1)' },
-    { method: 'GET', endpoint: '/v2/stations/query/columns', description: 'Get station query columns (v2)' },
-    { method: 'GET', endpoint: '/v1/stations/{stationId}/location', description: 'Get station location' },
-    { method: 'GET', endpoint: '/v1/stations/events/{macaddress}', description: 'Get station events' },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/query/visualize',
+      description: 'Visualize station query (v1)',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v2/stations/query/visualize',
+      description: 'Visualize station query (v2)',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/query/columns',
+      description: 'Get station query columns (v1)',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v2/stations/query/columns',
+      description: 'Get station query columns (v2)',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/{stationId}/location',
+      description: 'Get station location',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/events/{macaddress}',
+      description: 'Get station events',
+    },
   ],
 
   'Network Profiles & Policies': [
@@ -150,19 +254,55 @@ const endpointCategories = {
     { method: 'POST', endpoint: '/v3/profiles', description: 'Create network profile' },
     { method: 'POST', endpoint: '/v4/profiles/', description: 'Create network profile (v4)' },
     { method: 'POST', endpoint: '/v3/profiles/{profileId}/clone', description: 'Clone profile' },
-    { method: 'GET', endpoint: '/v3/profiles/nametoidmap', description: 'Get profile name to ID map' },
+    {
+      method: 'GET',
+      endpoint: '/v3/profiles/nametoidmap',
+      description: 'Get profile name to ID map',
+    },
     { method: 'GET', endpoint: '/v3/profiles/{profileId}', description: 'Get specific profile' },
     { method: 'PUT', endpoint: '/v3/profiles/{profileId}', description: 'Update profile' },
     { method: 'DELETE', endpoint: '/v3/profiles/{profileId}', description: 'Delete profile' },
-    { method: 'GET', endpoint: '/v3/profiles/{profileId}/channels', description: 'Get profile channels' },
-    { method: 'GET', endpoint: '/v3/profiles/{profileId}/bssid0', description: 'Get profile BSSID0' },
+    {
+      method: 'GET',
+      endpoint: '/v3/profiles/{profileId}/channels',
+      description: 'Get profile channels',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v3/profiles/{profileId}/bssid0',
+      description: 'Get profile BSSID0',
+    },
     { method: 'GET', endpoint: '/v3/switchportprofile', description: 'Get switch port profiles' },
-    { method: 'POST', endpoint: '/v3/switchportprofile', description: 'Create switch port profile' },
-    { method: 'GET', endpoint: '/v3/switchportprofile/default', description: 'Get default switch port profile' },
-    { method: 'GET', endpoint: '/v3/switchportprofile/nametoidmap', description: 'Get switch port profile name map' },
-    { method: 'GET', endpoint: '/v3/switchportprofile/{profileId}', description: 'Get switch port profile' },
-    { method: 'PUT', endpoint: '/v3/switchportprofile/{profileId}', description: 'Update switch port profile' },
-    { method: 'DELETE', endpoint: '/v3/switchportprofile/{profileId}', description: 'Delete switch port profile' },
+    {
+      method: 'POST',
+      endpoint: '/v3/switchportprofile',
+      description: 'Create switch port profile',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v3/switchportprofile/default',
+      description: 'Get default switch port profile',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v3/switchportprofile/nametoidmap',
+      description: 'Get switch port profile name map',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v3/switchportprofile/{profileId}',
+      description: 'Get switch port profile',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v3/switchportprofile/{profileId}',
+      description: 'Update switch port profile',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v3/switchportprofile/{profileId}',
+      description: 'Delete switch port profile',
+    },
   ],
 
   'RF Management & Radio': [
@@ -172,10 +312,22 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v3/rfmgmt', description: 'Get RF management profiles' },
     { method: 'POST', endpoint: '/v3/rfmgmt', description: 'Create RF management profile' },
     { method: 'GET', endpoint: '/v3/rfmgmt/default', description: 'Get default RF management' },
-    { method: 'GET', endpoint: '/v3/rfmgmt/nametoidmap', description: 'Get RF management name map' },
+    {
+      method: 'GET',
+      endpoint: '/v3/rfmgmt/nametoidmap',
+      description: 'Get RF management name map',
+    },
     { method: 'GET', endpoint: '/v3/rfmgmt/{rfmgmtId}', description: 'Get RF management profile' },
-    { method: 'PUT', endpoint: '/v3/rfmgmt/{rfmgmtId}', description: 'Update RF management profile' },
-    { method: 'DELETE', endpoint: '/v3/rfmgmt/{rfmgmtId}', description: 'Delete RF management profile' },
+    {
+      method: 'PUT',
+      endpoint: '/v3/rfmgmt/{rfmgmtId}',
+      description: 'Update RF management profile',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v3/rfmgmt/{rfmgmtId}',
+      description: 'Delete RF management profile',
+    },
   ],
 
   'Services & Roles': [
@@ -186,10 +338,26 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v1/services/{serviceId}', description: 'Get specific service' },
     { method: 'PUT', endpoint: '/v1/services/{serviceId}', description: 'Update service' },
     { method: 'DELETE', endpoint: '/v1/services/{serviceId}', description: 'Delete service' },
-    { method: 'GET', endpoint: '/v1/services/{serviceId}/deviceids', description: 'Get service device IDs' },
-    { method: 'GET', endpoint: '/v1/services/{serviceId}/siteids', description: 'Get service site IDs' },
-    { method: 'GET', endpoint: '/v1/services/{serviceId}/stations', description: 'Get service stations' },
-    { method: 'GET', endpoint: '/v1/services/{serviceid}/bssid0', description: 'Get service BSSID0' },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/{serviceId}/deviceids',
+      description: 'Get service device IDs',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/{serviceId}/siteids',
+      description: 'Get service site IDs',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/{serviceId}/stations',
+      description: 'Get service stations',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/{serviceid}/bssid0',
+      description: 'Get service BSSID0',
+    },
     { method: 'GET', endpoint: '/v3/roles', description: 'Get roles' },
     { method: 'POST', endpoint: '/v3/roles', description: 'Create role' },
     { method: 'GET', endpoint: '/v3/roles/default', description: 'Get default role' },
@@ -204,7 +372,11 @@ const endpointCategories = {
 
   'Switching & Ports': [
     { method: 'GET', endpoint: '/v1/switches', description: 'Get switches' },
-    { method: 'GET', endpoint: '/v1/switches/displaynames', description: 'Get switch display names' },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/displaynames',
+      description: 'Get switch display names',
+    },
     { method: 'DELETE', endpoint: '/v1/switches/list', description: 'Delete switch list' },
     { method: 'PUT', endpoint: '/v1/switches/reboot', description: 'Reboot switches' },
     { method: 'PUT', endpoint: '/v1/switches/assign', description: 'Assign switches' },
@@ -212,41 +384,137 @@ const endpointCategories = {
     { method: 'PUT', endpoint: '/v1/switches/{serialNumber}', description: 'Update switch' },
     { method: 'DELETE', endpoint: '/v1/switches/{serialNumber}', description: 'Delete switch' },
     { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/logs', description: 'Get switch logs' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/reboot', description: 'Reboot specific switch' },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/reboot',
+      description: 'Reboot specific switch',
+    },
     { method: 'POST', endpoint: '/v1/switches/clone', description: 'Clone switch configuration' },
     { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/reset', description: 'Reset switch' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/console/{consoleAction}', description: 'Switch console action' },
-    { method: 'GET', endpoint: '/v1/switches/{serialNumber}/traceurls', description: 'Get switch trace URLs' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/upgrade', description: 'Upgrade switch' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/ports/{portNumber}', description: 'Update switch port' },
-    { method: 'GET', endpoint: '/v1/switches/{serialNumber}/slots/{slotNumber}/ports/{portNumber}', description: 'Get switch port' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/slots/{slotNumber}/ports/{portNumber}', description: 'Update switch slot port' },
-    { method: 'GET', endpoint: '/v1/switches/{serialNumber}/clibackups', description: 'Get CLI backups' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/configurationmode/{configurationMode}', description: 'Set configuration mode' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/cliconfigs/backup', description: 'Backup CLI config' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/cliconfigs/restore/{name}', description: 'Restore CLI config' },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/console/{consoleAction}',
+      description: 'Switch console action',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/{serialNumber}/traceurls',
+      description: 'Get switch trace URLs',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/upgrade',
+      description: 'Upgrade switch',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/ports/{portNumber}',
+      description: 'Update switch port',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/{serialNumber}/slots/{slotNumber}/ports/{portNumber}',
+      description: 'Get switch port',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/slots/{slotNumber}/ports/{portNumber}',
+      description: 'Update switch slot port',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/{serialNumber}/clibackups',
+      description: 'Get CLI backups',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/configurationmode/{configurationMode}',
+      description: 'Set configuration mode',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/cliconfigs/backup',
+      description: 'Backup CLI config',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/cliconfigs/restore/{name}',
+      description: 'Restore CLI config',
+    },
     { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/login', description: 'Switch login' },
   ],
 
   'Reports & Analytics': [
     { method: 'GET', endpoint: '/v1/reports/templates', description: 'Get report templates' },
     { method: 'POST', endpoint: '/v1/reports/templates', description: 'Create report template' },
-    { method: 'GET', endpoint: '/v1/reports/templates/{templateId}', description: 'Get report template' },
-    { method: 'PUT', endpoint: '/v1/reports/templates/{templateId}', description: 'Update report template' },
-    { method: 'DELETE', endpoint: '/v1/reports/templates/{templateId}', description: 'Delete report template' },
-    { method: 'GET', endpoint: '/v1/reports/templates/default', description: 'Get default report template' },
-    { method: 'GET', endpoint: '/v1/reports/templates/nametoidmap', description: 'Get report template name map' },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/templates/{templateId}',
+      description: 'Get report template',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/reports/templates/{templateId}',
+      description: 'Update report template',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/reports/templates/{templateId}',
+      description: 'Delete report template',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/templates/default',
+      description: 'Get default report template',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/templates/nametoidmap',
+      description: 'Get report template name map',
+    },
     { method: 'GET', endpoint: '/v1/reports/scheduled', description: 'Get scheduled reports' },
     { method: 'POST', endpoint: '/v1/reports/scheduled', description: 'Create scheduled report' },
-    { method: 'GET', endpoint: '/v1/reports/scheduled/{reportId}', description: 'Get scheduled report' },
-    { method: 'PUT', endpoint: '/v1/reports/scheduled/{reportId}', description: 'Update scheduled report' },
-    { method: 'DELETE', endpoint: '/v1/reports/scheduled/{reportId}', description: 'Delete scheduled report' },
-    { method: 'GET', endpoint: '/v1/reports/scheduled/default', description: 'Get default scheduled report' },
-    { method: 'GET', endpoint: '/v1/reports/scheduled/nametoidmap', description: 'Get scheduled report name map' },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/scheduled/{reportId}',
+      description: 'Get scheduled report',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/reports/scheduled/{reportId}',
+      description: 'Update scheduled report',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/reports/scheduled/{reportId}',
+      description: 'Delete scheduled report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/scheduled/default',
+      description: 'Get default scheduled report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/scheduled/nametoidmap',
+      description: 'Get scheduled report name map',
+    },
     { method: 'GET', endpoint: '/v1/reports/generated', description: 'Get generated reports' },
-    { method: 'GET', endpoint: '/v1/reports/generated/{filename}', description: 'Get generated report file' },
-    { method: 'DELETE', endpoint: '/v1/reports/generated/{filename}', description: 'Delete generated report' },
-    { method: 'PUT', endpoint: '/v1/reports/generated/filelist', description: 'Update report file list' },
+    {
+      method: 'GET',
+      endpoint: '/v1/reports/generated/{filename}',
+      description: 'Get generated report file',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/reports/generated/{filename}',
+      description: 'Delete generated report',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/reports/generated/filelist',
+      description: 'Update report file list',
+    },
     { method: 'GET', endpoint: '/v1/reports/widgets', description: 'Get report widgets' },
     { method: 'GET', endpoint: '/v1/aps/report', description: 'Get APs report' },
     { method: 'GET', endpoint: '/v1/aps/report/widgets', description: 'Get AP report widgets' },
@@ -254,45 +522,141 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v1/aps/{apSerialNumber}/report', description: 'Get AP report' },
     { method: 'GET', endpoint: '/v1/report/sites', description: 'Get sites report' },
     { method: 'GET', endpoint: '/v1/report/aps/{apSerialNumber}', description: 'Get AP report' },
-    { method: 'GET', endpoint: '/v1/report/aps/{apSerialNumber}/smartrf', description: 'Get AP SmartRF report' },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/aps/{apSerialNumber}/smartrf',
+      description: 'Get AP SmartRF report',
+    },
     { method: 'GET', endpoint: '/v1/report/flex/{duration}', description: 'Get flex report' },
     { method: 'GET', endpoint: '/v1/report/ports/{portId}', description: 'Get port report' },
     { method: 'GET', endpoint: '/v1/report/roles/{roleId}', description: 'Get role report' },
-    { method: 'GET', endpoint: '/v1/report/services/{serviceId}', description: 'Get service report' },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/services/{serviceId}',
+      description: 'Get service report',
+    },
     { method: 'GET', endpoint: '/v1/report/sites/{siteId}', description: 'Get site report' },
-    { method: 'GET', endpoint: '/v1/report/stations/{stationId}', description: 'Get station report' },
-    { method: 'GET', endpoint: '/v1/report/switches/{switchSerialNumber}', description: 'Get switch report' },
-    { method: 'GET', endpoint: '/v1/report/location/aps/{apSerialNumber}', description: 'Get AP location report' },
-    { method: 'GET', endpoint: '/v1/report/location/floor/{floorId}', description: 'Get floor location report' },
-    { method: 'GET', endpoint: '/v1/report/location/stations/{stationId}', description: 'Get station location report' },
-    { method: 'GET', endpoint: '/v2/report/upgrade/devices', description: 'Get device upgrade report' },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/stations/{stationId}',
+      description: 'Get station report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/switches/{switchSerialNumber}',
+      description: 'Get switch report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/location/aps/{apSerialNumber}',
+      description: 'Get AP location report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/location/floor/{floorId}',
+      description: 'Get floor location report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/report/location/stations/{stationId}',
+      description: 'Get station location report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v2/report/upgrade/devices',
+      description: 'Get device upgrade report',
+    },
     { method: 'GET', endpoint: '/v3/sites/report/widgets', description: 'Get site report widgets' },
     { method: 'PUT', endpoint: '/v3/sites/report', description: 'Update sites report' },
     { method: 'GET', endpoint: '/v3/sites/report', description: 'Get sites report' },
     { method: 'GET', endpoint: '/v3/sites/report/venue', description: 'Get venue report' },
-    { method: 'GET', endpoint: '/v1/sites/report/widgets', description: 'Get site report widgets (v1)' },
+    {
+      method: 'GET',
+      endpoint: '/v1/sites/report/widgets',
+      description: 'Get site report widgets (v1)',
+    },
     { method: 'PUT', endpoint: '/v1/sites/{siteId}/report', description: 'Update site report' },
     { method: 'GET', endpoint: '/v1/sites/{siteId}/report', description: 'Get site report' },
-    { method: 'GET', endpoint: '/v3/sites/{siteId}/report/venue', description: 'Get site venue report' },
+    {
+      method: 'GET',
+      endpoint: '/v3/sites/{siteId}/report/venue',
+      description: 'Get site venue report',
+    },
     { method: 'GET', endpoint: '/v3/sites/report/impact', description: 'Get sites impact report' },
-    { method: 'GET', endpoint: '/v3/sites/{siteId}/report/impact', description: 'Get site impact report' },
+    {
+      method: 'GET',
+      endpoint: '/v3/sites/{siteId}/report/impact',
+      description: 'Get site impact report',
+    },
     { method: 'GET', endpoint: '/v3/sites/report/flex', description: 'Get sites flex report' },
-    { method: 'GET', endpoint: '/v3/sites/report/location/floor/{floorId}', description: 'Get floor location report' },
-    { method: 'GET', endpoint: '/v1/stations/report/widgets', description: 'Get station report widgets' },
-    { method: 'PUT', endpoint: '/v1/stations/{stationId}/report', description: 'Update station report' },
-    { method: 'GET', endpoint: '/v1/stations/{stationId}/report', description: 'Get station report' },
+    {
+      method: 'GET',
+      endpoint: '/v3/sites/report/location/floor/{floorId}',
+      description: 'Get floor location report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/report/widgets',
+      description: 'Get station report widgets',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/stations/{stationId}/report',
+      description: 'Update station report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/stations/{stationId}/report',
+      description: 'Get station report',
+    },
     { method: 'GET', endpoint: '/v1/roles/report/widgets', description: 'Get role report widgets' },
     { method: 'PUT', endpoint: '/v1/roles/{roleId}/report', description: 'Update role report' },
     { method: 'GET', endpoint: '/v1/roles/{roleId}/report', description: 'Get role report' },
-    { method: 'GET', endpoint: '/v1/services/report/widgets', description: 'Get service report widgets' },
-    { method: 'PUT', endpoint: '/v1/services/{serviceId}/report', description: 'Update service report' },
-    { method: 'GET', endpoint: '/v1/services/{serviceId}/report', description: 'Get service report' },
-    { method: 'GET', endpoint: '/v1/switches/ports/report/widgets', description: 'Get switch port report widgets' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/ports/{portId}/report', description: 'Update switch port report' },
-    { method: 'GET', endpoint: '/v1/switches/{serialNumber}/ports/{portId}/report', description: 'Get switch port report' },
-    { method: 'GET', endpoint: '/v1/switches/report/widgets', description: 'Get switch report widgets' },
-    { method: 'PUT', endpoint: '/v1/switches/{serialNumber}/report', description: 'Update switch report' },
-    { method: 'GET', endpoint: '/v1/switches/{serialNumber}/report', description: 'Get switch report' },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/report/widgets',
+      description: 'Get service report widgets',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/services/{serviceId}/report',
+      description: 'Update service report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/services/{serviceId}/report',
+      description: 'Get service report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/ports/report/widgets',
+      description: 'Get switch port report widgets',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/ports/{portId}/report',
+      description: 'Update switch port report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/{serialNumber}/ports/{portId}/report',
+      description: 'Get switch port report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/report/widgets',
+      description: 'Get switch report widgets',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/switches/{serialNumber}/report',
+      description: 'Update switch report',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/switches/{serialNumber}/report',
+      description: 'Get switch report',
+    },
   ],
 
   'System Configuration': [
@@ -304,22 +668,50 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v1/snmp/default', description: 'Get default SNMP settings' },
     { method: 'GET', endpoint: '/v1/auditlogs', description: 'Get audit logs' },
     { method: 'GET', endpoint: '/v1/notifications', description: 'Get notifications' },
-    { method: 'GET', endpoint: '/v1/notifications/regional', description: 'Get regional notifications' },
+    {
+      method: 'GET',
+      endpoint: '/v1/notifications/regional',
+      description: 'Get regional notifications',
+    },
     { method: 'GET', endpoint: '/v1/workflow', description: 'Get workflow' },
-    { method: 'GET', endpoint: '/v1/devices/adoptionrules', description: 'Get device adoption rules' },
-    { method: 'PUT', endpoint: '/v1/devices/adoptionrules', description: 'Update device adoption rules' },
-    { method: 'GET', endpoint: '/v1/bestpractices/evaluate', description: 'Evaluate best practices' },
-    { method: 'PUT', endpoint: '/v1/bestpractices/{id}/accept', description: 'Accept best practice' },
+    {
+      method: 'GET',
+      endpoint: '/v1/devices/adoptionrules',
+      description: 'Get device adoption rules',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/devices/adoptionrules',
+      description: 'Update device adoption rules',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/bestpractices/evaluate',
+      description: 'Evaluate best practices',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v1/bestpractices/{id}/accept',
+      description: 'Accept best practice',
+    },
   ],
 
   'System State & Monitoring': [
     { method: 'GET', endpoint: '/v1/state/aps', description: 'Get APs state' },
-    { method: 'GET', endpoint: '/v1/state/entityDistribution', description: 'Get entity distribution' },
+    {
+      method: 'GET',
+      endpoint: '/v1/state/entityDistribution',
+      description: 'Get entity distribution',
+    },
     { method: 'GET', endpoint: '/v1/state/sites', description: 'Get sites state' },
     { method: 'GET', endpoint: '/v1/state/switches', description: 'Get switches state' },
     { method: 'GET', endpoint: '/v1/state/aps/{apSerialNumber}', description: 'Get AP state' },
     { method: 'GET', endpoint: '/v1/state/sites/{siteId}', description: 'Get site state' },
-    { method: 'GET', endpoint: '/v1/state/switches/{switchSerialNumber}', description: 'Get switch state' },
+    {
+      method: 'GET',
+      endpoint: '/v1/state/switches/{switchSerialNumber}',
+      description: 'Get switch state',
+    },
     { method: 'GET', endpoint: '/v1/state/sites/{siteId}/aps', description: 'Get site APs state' },
   ],
 
@@ -341,59 +733,155 @@ const endpointCategories = {
     { method: 'GET', endpoint: '/v4/airdefense', description: 'Get air defense profiles' },
     { method: 'POST', endpoint: '/v4/airdefense', description: 'Create air defense profile' },
     { method: 'GET', endpoint: '/v4/airdefense/default', description: 'Get default air defense' },
-    { method: 'GET', endpoint: '/v4/airdefense/nametoidmap', description: 'Get air defense name map' },
+    {
+      method: 'GET',
+      endpoint: '/v4/airdefense/nametoidmap',
+      description: 'Get air defense name map',
+    },
     { method: 'GET', endpoint: '/v4/airdefense/{adspId}', description: 'Get air defense profile' },
-    { method: 'PUT', endpoint: '/v4/airdefense/{adspId}', description: 'Update air defense profile' },
-    { method: 'DELETE', endpoint: '/v4/airdefense/{adspId}', description: 'Delete air defense profile' },
+    {
+      method: 'PUT',
+      endpoint: '/v4/airdefense/{adspId}',
+      description: 'Update air defense profile',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v4/airdefense/{adspId}',
+      description: 'Delete air defense profile',
+    },
     { method: 'GET', endpoint: '/v3/analytics', description: 'Get analytics profiles' },
     { method: 'POST', endpoint: '/v3/analytics', description: 'Create analytics profile' },
     { method: 'GET', endpoint: '/v3/analytics/default', description: 'Get default analytics' },
     { method: 'GET', endpoint: '/v3/analytics/nametoidmap', description: 'Get analytics name map' },
-    { method: 'GET', endpoint: '/v3/analytics/{analyticsProfileId}', description: 'Get analytics profile' },
-    { method: 'PUT', endpoint: '/v3/analytics/{analyticsProfileId}', description: 'Update analytics profile' },
-    { method: 'DELETE', endpoint: '/v3/analytics/{analyticsProfileId}', description: 'Delete analytics profile' },
+    {
+      method: 'GET',
+      endpoint: '/v3/analytics/{analyticsProfileId}',
+      description: 'Get analytics profile',
+    },
+    {
+      method: 'PUT',
+      endpoint: '/v3/analytics/{analyticsProfileId}',
+      description: 'Update analytics profile',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v3/analytics/{analyticsProfileId}',
+      description: 'Delete analytics profile',
+    },
   ],
 
   'Platform Manager - Backup & Configuration': [
-    { method: 'GET', endpoint: '/platformmanager/v1/configuration/backups', description: 'Get configuration backups' },
-    { method: 'POST', endpoint: '/platformmanager/v1/configuration/backup', description: 'Create configuration backup' },
-    { method: 'POST', endpoint: '/platformmanager/v1/configuration/restore', description: 'Restore configuration' },
-    { method: 'GET', endpoint: '/platformmanager/v1/configuration/download/{filename}', description: 'Download backup file' },
+    {
+      method: 'GET',
+      endpoint: '/platformmanager/v1/configuration/backups',
+      description: 'Get configuration backups',
+    },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/configuration/backup',
+      description: 'Create configuration backup',
+    },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/configuration/restore',
+      description: 'Restore configuration',
+    },
+    {
+      method: 'GET',
+      endpoint: '/platformmanager/v1/configuration/download/{filename}',
+      description: 'Download backup file',
+    },
   ],
 
   'Platform Manager - License Management': [
-    { method: 'GET', endpoint: '/platformmanager/v1/license/info', description: 'Get license information' },
-    { method: 'GET', endpoint: '/platformmanager/v1/license/usage', description: 'Get license usage' },
-    { method: 'POST', endpoint: '/platformmanager/v1/license/install', description: 'Install license' },
+    {
+      method: 'GET',
+      endpoint: '/platformmanager/v1/license/info',
+      description: 'Get license information',
+    },
+    {
+      method: 'GET',
+      endpoint: '/platformmanager/v1/license/usage',
+      description: 'Get license usage',
+    },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/license/install',
+      description: 'Install license',
+    },
   ],
 
   'Platform Manager - Flash Memory': [
     { method: 'GET', endpoint: '/platformmanager/v1/flash/files', description: 'Get flash files' },
     { method: 'GET', endpoint: '/platformmanager/v1/flash/usage', description: 'Get flash usage' },
-    { method: 'DELETE', endpoint: '/platformmanager/v1/flash/files/{filename}', description: 'Delete flash file' },
+    {
+      method: 'DELETE',
+      endpoint: '/platformmanager/v1/flash/files/{filename}',
+      description: 'Delete flash file',
+    },
   ],
 
   'Platform Manager - Network Diagnostics': [
-    { method: 'POST', endpoint: '/platformmanager/v1/network/ping', description: 'Execute ping test' },
-    { method: 'POST', endpoint: '/platformmanager/v1/network/traceroute', description: 'Execute traceroute' },
-    { method: 'POST', endpoint: '/platformmanager/v1/network/dns', description: 'Execute DNS lookup' },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/network/ping',
+      description: 'Execute ping test',
+    },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/network/traceroute',
+      description: 'Execute traceroute',
+    },
+    {
+      method: 'POST',
+      endpoint: '/platformmanager/v1/network/dns',
+      description: 'Execute DNS lookup',
+    },
   ],
 
   'AP Firmware Management': [
-    { method: 'POST', endpoint: '/v1/accesspoints/software/upgrade', description: 'Upgrade AP software' },
-    { method: 'GET', endpoint: '/v1/accesspoints/software/schedule', description: 'Get upgrade schedules' },
-    { method: 'POST', endpoint: '/v1/accesspoints/software/schedule', description: 'Create upgrade schedule' },
-    { method: 'DELETE', endpoint: '/v1/accesspoints/software/schedule/{id}', description: 'Delete upgrade schedule' },
+    {
+      method: 'POST',
+      endpoint: '/v1/accesspoints/software/upgrade',
+      description: 'Upgrade AP software',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/accesspoints/software/schedule',
+      description: 'Get upgrade schedules',
+    },
+    {
+      method: 'POST',
+      endpoint: '/v1/accesspoints/software/schedule',
+      description: 'Create upgrade schedule',
+    },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/accesspoints/software/schedule/{id}',
+      description: 'Delete upgrade schedule',
+    },
     { method: 'POST', endpoint: '/v1/devices/adoption/force', description: 'Force adopt device' },
-    { method: 'DELETE', endpoint: '/v1/devices/{serialNumber}/unadopt', description: 'Unadopt device' },
+    {
+      method: 'DELETE',
+      endpoint: '/v1/devices/{serialNumber}/unadopt',
+      description: 'Unadopt device',
+    },
   ],
 
   'Client Management (Enhanced)': [
-    { method: 'POST', endpoint: '/v1/stations/{mac}/deauth', description: 'Deauthenticate station' },
+    {
+      method: 'POST',
+      endpoint: '/v1/stations/{mac}/deauth',
+      description: 'Deauthenticate station',
+    },
     { method: 'POST', endpoint: '/v1/stations/{mac}/block', description: 'Block station' },
     { method: 'DELETE', endpoint: '/v1/stations/{mac}/block', description: 'Unblock station' },
     { method: 'GET', endpoint: '/v1/stations/{mac}/history', description: 'Get station history' },
-    { method: 'POST', endpoint: '/v1/stations/{mac}/bandwidth/limit', description: 'Set bandwidth limit' },
+    {
+      method: 'POST',
+      endpoint: '/v1/stations/{mac}/bandwidth/limit',
+      description: 'Set bandwidth limit',
+    },
     { method: 'GET', endpoint: '/v1/stations/blocked', description: 'Get blocked stations' },
   ],
 
@@ -406,15 +894,31 @@ const endpointCategories = {
   ],
 
   'RF Analytics': [
-    { method: 'GET', endpoint: '/v1/analytics/wireless/interference', description: 'Get wireless interference' },
-    { method: 'GET', endpoint: '/v1/analytics/wireless/coverage', description: 'Get wireless coverage' },
-    { method: 'GET', endpoint: '/v1/analytics/clients/roaming', description: 'Get client roaming analytics' },
+    {
+      method: 'GET',
+      endpoint: '/v1/analytics/wireless/interference',
+      description: 'Get wireless interference',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/analytics/wireless/coverage',
+      description: 'Get wireless coverage',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/analytics/clients/roaming',
+      description: 'Get client roaming analytics',
+    },
   ],
 
   'Security & Rogue AP Detection': [
     { method: 'POST', endpoint: '/v1/security/rogue-ap/detect', description: 'Detect rogue APs' },
     { method: 'GET', endpoint: '/v1/security/rogue-ap/list', description: 'Get rogue AP list' },
-    { method: 'POST', endpoint: '/v1/security/rogue-ap/{mac}/classify', description: 'Classify rogue AP' },
+    {
+      method: 'POST',
+      endpoint: '/v1/security/rogue-ap/{mac}/classify',
+      description: 'Classify rogue AP',
+    },
     { method: 'GET', endpoint: '/v1/security/threats', description: 'Get security threats' },
     { method: 'POST', endpoint: '/v1/security/wids/enable', description: 'Enable WIDS' },
   ],
@@ -425,7 +929,11 @@ const endpointCategories = {
     { method: 'DELETE', endpoint: '/v1/guests/{id}', description: 'Delete guest account' },
     { method: 'POST', endpoint: '/v1/guests/{id}/voucher', description: 'Generate guest voucher' },
     { method: 'GET', endpoint: '/v1/guests/portal/config', description: 'Get guest portal config' },
-    { method: 'POST', endpoint: '/v1/guests/portal/customize', description: 'Customize guest portal' },
+    {
+      method: 'POST',
+      endpoint: '/v1/guests/portal/customize',
+      description: 'Customize guest portal',
+    },
   ],
 
   'QoS Management': [
@@ -437,9 +945,17 @@ const endpointCategories = {
 
   'Application Manager': [
     { method: 'GET', endpoint: '/appsmanager/v1/applications', description: 'Get applications' },
-    { method: 'POST', endpoint: '/appsmanager/v1/applications/install', description: 'Install application' },
+    {
+      method: 'POST',
+      endpoint: '/appsmanager/v1/applications/install',
+      description: 'Install application',
+    },
     { method: 'GET', endpoint: '/appsmanager/v1/containers', description: 'Get containers' },
-    { method: 'POST', endpoint: '/appsmanager/v1/containers/create', description: 'Create container' },
+    {
+      method: 'POST',
+      endpoint: '/appsmanager/v1/containers/create',
+      description: 'Create container',
+    },
     { method: 'GET', endpoint: '/appsmanager/v1/storage', description: 'Get storage info' },
     { method: 'GET', endpoint: '/appsmanager/v1/images', description: 'Get application images' },
   ],
@@ -447,9 +963,21 @@ const endpointCategories = {
   'Location Analytics': [
     { method: 'POST', endpoint: '/v1/location/zone/create', description: 'Create location zone' },
     { method: 'GET', endpoint: '/v1/location/zone/list', description: 'Get location zones' },
-    { method: 'POST', endpoint: '/v1/location/presence/notify', description: 'Get presence analytics' },
-    { method: 'GET', endpoint: '/v1/location/analytics/dwell', description: 'Get dwell time analytics' },
-    { method: 'GET', endpoint: '/v1/location/analytics/traffic', description: 'Get traffic flow analytics' },
+    {
+      method: 'POST',
+      endpoint: '/v1/location/presence/notify',
+      description: 'Get presence analytics',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/location/analytics/dwell',
+      description: 'Get dwell time analytics',
+    },
+    {
+      method: 'GET',
+      endpoint: '/v1/location/analytics/traffic',
+      description: 'Get traffic flow analytics',
+    },
   ],
 };
 
@@ -477,9 +1005,9 @@ export function ApiTestTool() {
     setIsLoading(true);
 
     const startTime = Date.now();
-    
+
     try {
-      let parsedBody = undefined;
+      let parsedBody: Record<string, unknown> | undefined = undefined;
       if ((method === 'POST' || method === 'PUT') && requestBody.trim()) {
         try {
           parsedBody = JSON.parse(requestBody);
@@ -490,7 +1018,7 @@ export function ApiTestTool() {
 
       const apiResponse = await apiService.makeAuthenticatedRequest(endpoint, {
         method,
-        ...(parsedBody && { body: JSON.stringify(parsedBody) }),
+        ...(parsedBody ? { body: JSON.stringify(parsedBody) } : {}),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -538,8 +1066,7 @@ export function ApiTestTool() {
         body: requestBody || undefined,
         timestamp: new Date(),
       };
-      setHistory(prev => [newRequest, ...prev.slice(0, 49)]); // Keep last 50 requests
-
+      setHistory((prev) => [newRequest, ...prev.slice(0, 49)]); // Keep last 50 requests
     } catch (error) {
       const duration = Date.now() - startTime;
       setResponse({
@@ -571,14 +1098,14 @@ export function ApiTestTool() {
   };
 
   // Filter categories based on selected filter
-  const filteredCategories = categoryFilter === 'all' 
-    ? endpointCategories 
-    : { [categoryFilter]: endpointCategories[categoryFilter as keyof typeof endpointCategories] };
+  const filteredCategories =
+    categoryFilter === 'all'
+      ? endpointCategories
+      : { [categoryFilter]: endpointCategories[categoryFilter as keyof typeof endpointCategories] };
 
   return (
     <div className="space-y-6">
       <div>
-
         <p className="text-muted-foreground">Test and explore AURA endpoints</p>
       </div>
 
@@ -601,7 +1128,7 @@ export function ApiTestTool() {
                 <CardDescription>
                   Click any endpoint to automatically load it for testing
                 </CardDescription>
-                
+
                 {/* Category Filter */}
                 <div className="flex items-center space-x-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
@@ -635,21 +1162,27 @@ export function ApiTestTool() {
                             >
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2">
-                                  <Badge 
-                                    variant="outline" 
+                                  <Badge
+                                    variant="outline"
                                     className={
-                                      item.method === 'GET' ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]' :
-                                      item.method === 'POST' ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]' :
-                                      item.method === 'PUT' ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]' :
-                                      item.method === 'DELETE' ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]' :
-                                      ''
+                                      item.method === 'GET'
+                                        ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]'
+                                        : item.method === 'POST'
+                                          ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]'
+                                          : item.method === 'PUT'
+                                            ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]'
+                                            : item.method === 'DELETE'
+                                              ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]'
+                                              : ''
                                     }
                                   >
                                     {item.method}
                                   </Badge>
                                   <code className="text-sm font-mono">{item.endpoint}</code>
                                 </div>
-                                <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  {item.description}
+                                </p>
                               </div>
                             </div>
                           ))}
@@ -666,9 +1199,7 @@ export function ApiTestTool() {
               <Card>
                 <CardHeader>
                   <CardTitle>API Request</CardTitle>
-                  <CardDescription>
-                    Make authenticated requests to the AURA
-                  </CardDescription>
+                  <CardDescription>Make authenticated requests to the AURA</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -726,7 +1257,13 @@ export function ApiTestTool() {
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center space-x-2">
                         <span>Response</span>
-                        <Badge variant={response.status >= 200 && response.status < 300 ? "default" : "destructive"}>
+                        <Badge
+                          variant={
+                            response.status >= 200 && response.status < 300
+                              ? 'default'
+                              : 'destructive'
+                          }
+                        >
                           {response.status} {response.statusText}
                         </Badge>
                         <Badge variant="outline">{response.duration}ms</Badge>
@@ -753,9 +1290,7 @@ export function ApiTestTool() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Request History</CardTitle>
-                  <CardDescription>
-                    Your recent API requests (last 50)
-                  </CardDescription>
+                  <CardDescription>Your recent API requests (last 50)</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={clearHistory}>
                   <Trash2 className="mr-2 h-4 w-4" />
@@ -777,14 +1312,18 @@ export function ApiTestTool() {
                       >
                         <div className="flex-1">
                           <div className="flex items-center space-x-2">
-                            <Badge 
+                            <Badge
                               variant="outline"
                               className={
-                                request.method === 'GET' ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]' :
-                                request.method === 'POST' ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]' :
-                                request.method === 'PUT' ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]' :
-                                request.method === 'DELETE' ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]' :
-                                ''
+                                request.method === 'GET'
+                                  ? 'border-[color:var(--status-success)]/30 text-[color:var(--status-success)]'
+                                  : request.method === 'POST'
+                                    ? 'border-[color:var(--status-info)]/30 text-[color:var(--status-info)]'
+                                    : request.method === 'PUT'
+                                      ? 'border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]'
+                                      : request.method === 'DELETE'
+                                        ? 'border-[color:var(--status-error)]/30 text-[color:var(--status-error)]'
+                                        : ''
                               }
                             >
                               {request.method}

@@ -44,14 +44,41 @@ import {
   Eye,
   X,
   Send,
-  CheckCircle2
+  CheckCircle2,
 } from 'lucide-react';
 import { apiService, type StationEvent } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { toast } from 'sonner';
 import { getVendor, getVendorIcon, getShortVendor } from '../services/oui-lookup';
-import { formatBitsPerSecond, formatBytes as formatBytesUnit, formatThroughput, formatDataVolume, TOOLTIPS } from '../lib/units';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import {
+  formatBitsPerSecond,
+  formatBytes as formatBytesUnit,
+  formatThroughput,
+  formatDataVolume,
+  TOOLTIPS,
+} from '../lib/units';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from 'recharts';
 import { OperationalContextSummary } from './OperationalContextSummary';
 import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
@@ -71,7 +98,11 @@ import { PeerBenchmarking } from './PeerBenchmarking';
 import { ClientDetail } from './ClientDetail';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { usePersonaContext } from '../contexts/PersonaContext';
-import { isSectionVisible, PERSONA_DASHBOARD_CONFIG, type DashboardSection } from '../config/personaDashboardConfig';
+import {
+  isSectionVisible,
+  PERSONA_DASHBOARD_CONFIG,
+  type DashboardSection,
+} from '../config/personaDashboardConfig';
 
 interface AccessPoint {
   serialNumber: string;
@@ -94,6 +125,7 @@ interface AccessPoint {
   macAddress?: string;
   uptime?: number;
   lastSeen?: number;
+  [key: string]: any;
 }
 
 interface Station {
@@ -111,13 +143,14 @@ interface Station {
   rxRate?: number;
   txBytes?: number;
   rxBytes?: number;
-  inBytes?: number;  // API field for download bytes
+  inBytes?: number; // API field for download bytes
   outBytes?: number; // API field for upload bytes
   transmittedRate?: number; // API field for upload rate
-  receivedRate?: number;    // API field for download rate
+  receivedRate?: number; // API field for download rate
   uptime?: number;
-  authenticated?: boolean;
+  authenticated?: boolean | number;
   connectionTime?: number;
+  [key: string]: any;
 }
 
 interface Service {
@@ -125,6 +158,7 @@ interface Service {
   name: string;
   type?: string;
   ssid?: string;
+  serviceName?: string;
   enabled?: boolean;
   vlan?: number;
   bandSteering?: boolean;
@@ -132,6 +166,7 @@ interface Service {
   throughput?: number;
   reliability?: number;
   uptime?: number;
+  [key: string]: any;
 }
 
 interface ServiceReport {
@@ -173,7 +208,10 @@ function DashboardEnhancedComponent() {
   // Persona-aware section visibility (dev mode)
   const { activePersona } = usePersonaContext();
   const personaConfig = PERSONA_DASHBOARD_CONFIG[activePersona];
-  const showSection = useCallback((section: DashboardSection) => isSectionVisible(activePersona, section), [activePersona]);
+  const showSection = useCallback(
+    (section: DashboardSection) => isSectionVisible(activePersona, section),
+    [activePersona]
+  );
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -193,34 +231,44 @@ function DashboardEnhancedComponent() {
     standby: 0,
     lowPower: 0,
     normalPower: 0,
-    models: {} as Record<string, number>
+    models: {} as Record<string, number>,
+    avgChannelUtil: 0,
   });
-  
+
   // Client/Station Data
   const [stations, setStations] = useState<Station[]>([]);
   const [clientStats, setClientStats] = useState({
     total: 0,
     authenticated: 0,
     throughputUpload: 0,
-    throughputDownload: 0
+    throughputDownload: 0,
+    avgRfqi: 0,
   });
-  const [throughputTrend, setThroughputTrend] = useState<Array<{ time: string; upload: number; download: number; total: number }>>([]);
-  const [topClients, setTopClients] = useState<Array<{ 
-    name: string; 
-    mac: string; 
-    throughput: number;
-    upload: number;
-    download: number;
-    network: string;
-    ap: string;
-    rssi: number;
-    band: string;
-    ipAddress: string;
-    vendor?: string;
-    vendorIcon?: string;
-  }>>([]);
-  const [clientDistribution, setClientDistribution] = useState<Array<{ service: string; count: number; percentage: number }>>([]);
-  const [networkThroughput, setNetworkThroughput] = useState<Array<{ network: string; upload: number; download: number; total: number }>>([]);
+  const [throughputTrend, setThroughputTrend] = useState<
+    Array<{ time: string; upload: number; download: number; total: number }>
+  >([]);
+  const [topClients, setTopClients] = useState<
+    Array<{
+      name: string;
+      mac: string;
+      throughput: number;
+      upload: number;
+      download: number;
+      network: string;
+      ap: string;
+      rssi: number;
+      band: string;
+      ipAddress: string;
+      vendor?: string;
+      vendorIcon?: string;
+    }>
+  >([]);
+  const [clientDistribution, setClientDistribution] = useState<
+    Array<{ service: string; count: number; percentage: number }>
+  >([]);
+  const [networkThroughput, setNetworkThroughput] = useState<
+    Array<{ network: string; upload: number; download: number; total: number }>
+  >([]);
   const [vendorLookupsInProgress, setVendorLookupsInProgress] = useState(false);
   const [serviceIdToNameMap, setServiceIdToNameMap] = useState<Map<string, string>>(new Map());
 
@@ -228,13 +276,13 @@ function DashboardEnhancedComponent() {
   const [services, setServices] = useState<Service[]>([]);
   const [serviceReports, setServiceReports] = useState<Map<string, ServiceReport>>(new Map());
   const [poorServices, setPoorServices] = useState<Service[]>([]);
-  
+
   // Notifications/Alerts
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [alertCounts, setAlertCounts] = useState({
     critical: 0,
     warning: 0,
-    info: 0
+    info: 0,
   });
 
   // Client Detail Dialog
@@ -265,19 +313,27 @@ function DashboardEnhancedComponent() {
   // AI Insights - Client Health Tracking (inspired by Sunil Jose Kodiyan's design)
   const [healthViewMode, setHealthViewMode] = useState<'sites' | 'devices' | 'clients'>('sites');
   const [aiInsightsDetailPanel, setAiInsightsDetailPanel] = useState(true);
-  const [aiActiveHealthTab, setAiActiveHealthTab] = useState<'needsAttention' | 'healthy'>('healthy');
+  const [aiActiveHealthTab, setAiActiveHealthTab] = useState<'needsAttention' | 'healthy'>(
+    'healthy'
+  );
 
   // RFQI (RF Quality Index) Data for health visualization from controller
-  const [rfqiData, setRfqiData] = useState<Array<{
-    timestamp: number;
-    healthy: number;
-    needsAttention: number;
-    rfqi: number;
-  }>>([]);
+  const [rfqiData, setRfqiData] = useState<
+    Array<{
+      timestamp: number;
+      healthy: number;
+      needsAttention: number;
+      rfqi: number;
+    }>
+  >([]);
 
   // RF Metrics for Device Health Overview
-  const [bandDistribution, setBandDistribution] = useState<{ band: string; count: number; color: string }[]>([]);
-  const [snrDistribution, setSnrDistribution] = useState<{ category: string; count: number; color: string }[]>([]);
+  const [bandDistribution, setBandDistribution] = useState<
+    { band: string; count: number; color: string }[]
+  >([]);
+  const [snrDistribution, setSnrDistribution] = useState<
+    { category: string; count: number; color: string }[]
+  >([]);
   const [avgSnr, setAvgSnr] = useState<number>(0);
   const [avgRssi, setAvgRssi] = useState<number>(0);
 
@@ -331,7 +387,7 @@ function DashboardEnhancedComponent() {
         rfqi: latestRfqi?.rfqi ?? 0,
         clientCount: clientStats.total,
         apOnlineCount: apStats.online,
-        siteId: filters.site !== 'all' ? filters.site : undefined
+        siteId: filters.site !== 'all' ? filters.site : undefined,
       });
     }
   }, [apStats.online, clientStats.total, rfqiData, filters.site]);
@@ -367,12 +423,12 @@ function DashboardEnhancedComponent() {
     if (eventTypeFilter === 'all') {
       return stationEvents;
     }
-    return stationEvents.filter(event => event.eventType === eventTypeFilter);
+    return stationEvents.filter((event) => event.eventType === eventTypeFilter);
   }, [stationEvents, eventTypeFilter]);
 
   // Get unique event types for filter
   const eventTypes = useMemo(() => {
-    const types = new Set(stationEvents.map(event => event.eventType));
+    const types = new Set(stationEvents.map((event) => event.eventType));
     return Array.from(types).sort();
   }, [stationEvents]);
 
@@ -391,7 +447,7 @@ function DashboardEnhancedComponent() {
       const [apsResult, stationsResult, servicesResult] = await Promise.allSettled([
         fetchAccessPoints(),
         fetchStations(),
-        fetchServices()
+        fetchServices(),
       ]);
 
       // Get services first to create a lookup map
@@ -400,45 +456,55 @@ function DashboardEnhancedComponent() {
         servicesData = servicesResult.value;
         await processServices(servicesData);
       } else {
-        console.log('[Dashboard] Failed to load services:', servicesResult.status === 'rejected' ? servicesResult.reason : 'No data');
+        console.log(
+          '[Dashboard] Failed to load services:',
+          servicesResult.status === 'rejected' ? servicesResult.reason : 'No data'
+        );
       }
 
       // Process Access Points
       if (apsResult.status === 'fulfilled' && apsResult.value) {
         processAccessPoints(apsResult.value);
       } else {
-        console.log('[Dashboard] Failed to load APs:', apsResult.status === 'rejected' ? apsResult.reason : 'No data');
+        console.log(
+          '[Dashboard] Failed to load APs:',
+          apsResult.status === 'rejected' ? apsResult.reason : 'No data'
+        );
       }
 
       // Process Stations with services data for enrichment
       if (stationsResult.status === 'fulfilled' && stationsResult.value) {
         processStations(stationsResult.value, servicesData);
       } else {
-        console.log('[Dashboard] Failed to load stations:', stationsResult.status === 'rejected' ? stationsResult.reason : 'No data');
+        console.log(
+          '[Dashboard] Failed to load stations:',
+          stationsResult.status === 'rejected' ? stationsResult.reason : 'No data'
+        );
       }
 
       setLastUpdate(new Date());
 
       // Load notifications asynchronously after main data (non-blocking)
       if (!isRefresh) {
-        fetchNotifications().then(notifications => {
-          if (notifications) {
-            processNotifications(notifications);
-          }
-        }).catch(err => {
-          console.log('[Dashboard] Failed to load notifications:', err);
-        });
+        fetchNotifications()
+          .then((notifications) => {
+            if (notifications) {
+              processNotifications(notifications);
+            }
+          })
+          .catch((err) => {
+            console.log('[Dashboard] Failed to load notifications:', err);
+          });
       }
 
       // Load RFQI data for health visualization (non-blocking)
-      fetchRFQIData().catch(err => {
+      fetchRFQIData().catch((err) => {
         console.log('[Dashboard] Failed to load RFQI data:', err);
       });
 
       if (isRefresh) {
         toast.success('Dashboard refreshed');
       }
-
     } catch (error) {
       console.error('[Dashboard] Error loading dashboard:', error);
       toast.error('Failed to load dashboard data');
@@ -450,13 +516,19 @@ function DashboardEnhancedComponent() {
 
   const fetchAccessPoints = async (): Promise<AccessPoint[]> => {
     const siteFilter = filters.site !== 'all' ? filters.site : undefined;
-    console.log('[Dashboard] Fetching access points' + (siteFilter ? ` for site: ${siteFilter}` : ''));
+    console.log(
+      '[Dashboard] Fetching access points' + (siteFilter ? ` for site: ${siteFilter}` : '')
+    );
 
     try {
       // Use site-specific API if site is selected
       const aps = await apiService.getAccessPointsBySite(siteFilter);
 
-      console.log('[Dashboard] Fetched', aps.length, 'access points' + (siteFilter ? ' (filtered by site)' : ''));
+      console.log(
+        '[Dashboard] Fetched',
+        aps.length,
+        'access points' + (siteFilter ? ' (filtered by site)' : '')
+      );
       return aps;
     } catch (error) {
       console.error('[Dashboard] Error fetching APs:', error);
@@ -473,39 +545,66 @@ function DashboardEnhancedComponent() {
       if (siteFilter) {
         // Try site-scoped API first
         try {
-          const response = await apiService.makeAuthenticatedRequest(`/v3/sites/${siteFilter}/stations`, { method: 'GET' }, 15000);
+          const response = await apiService.makeAuthenticatedRequest(
+            `/v3/sites/${siteFilter}/stations`,
+            { method: 'GET' },
+            15000
+          );
           if (response.ok) {
             const data = await response.json();
             const safe = data ?? {};
-            const stations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
+            const stations = Array.isArray(data)
+              ? data
+              : safe.stations || safe.clients || safe.data || [];
             console.log('[Dashboard] Fetched', stations.length, 'stations for site (API-scoped)');
             return stations;
           }
-        } catch { /* fall through to client-side filter */ }
+        } catch {
+          /* fall through to client-side filter */
+        }
 
         // STRICT: Client-side fallback - filter all stations by site name/ID
         try {
           const site = await apiService.getSiteById(siteFilter);
           const siteName = site?.name || site?.siteName || siteFilter;
 
-          const response = await apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000);
+          const response = await apiService.makeAuthenticatedRequest(
+            '/v1/stations',
+            { method: 'GET' },
+            15000
+          );
           if (response.ok) {
             const data = await response.json();
             const safe = data ?? {};
-            const allStations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
-            const filtered = allStations.filter((s: any) =>
-              s.siteName === siteName || s.siteId === siteFilter || s.siteName === siteFilter
+            const allStations = Array.isArray(data)
+              ? data
+              : safe.stations || safe.clients || safe.data || [];
+            const filtered = allStations.filter(
+              (s: any) =>
+                s.siteName === siteName || s.siteId === siteFilter || s.siteName === siteFilter
             );
-            console.log('[Dashboard] Filtered', filtered.length, '/', allStations.length, 'stations for site (client-side)');
+            console.log(
+              '[Dashboard] Filtered',
+              filtered.length,
+              '/',
+              allStations.length,
+              'stations for site (client-side)'
+            );
             return filtered;
           }
-        } catch { /* fall through */ }
+        } catch {
+          /* fall through */
+        }
 
         console.warn('[Dashboard] Station fetch failed for site, returning empty (strict mode)');
         return []; // STRICT: empty on failure when site-scoped
       } else {
         // Get all stations
-        const response = await apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000);
+        const response = await apiService.makeAuthenticatedRequest(
+          '/v1/stations',
+          { method: 'GET' },
+          15000
+        );
 
         if (!response.ok) {
           throw new Error(`API returned ${response.status}`);
@@ -513,7 +612,9 @@ function DashboardEnhancedComponent() {
 
         const data = await response.json();
         const safe = data ?? {};
-        const stations = Array.isArray(data) ? data : (safe.stations || safe.clients || safe.data || []);
+        const stations = Array.isArray(data)
+          ? data
+          : safe.stations || safe.clients || safe.data || [];
 
         console.log('[Dashboard] Fetched', stations.length, 'stations');
         return stations;
@@ -543,18 +644,23 @@ function DashboardEnhancedComponent() {
 
         // STRICT: Client-side filter as last resort, but NEVER return unfiltered global data
         try {
-          const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+          const response = await apiService.makeAuthenticatedRequest(
+            '/v1/services',
+            { method: 'GET' },
+            15000
+          );
           if (response.ok) {
             const data = await response.json();
             const safe = data ?? {};
-            const allServices = Array.isArray(data) ? data : (safe.services || safe.data || []);
+            const allServices = Array.isArray(data) ? data : safe.services || safe.data || [];
             const site = await apiService.getSiteById(siteFilter);
             const siteName = site?.name || site?.siteName || siteFilter;
-            const filtered = allServices.filter((s: any) =>
-              s.siteName === siteName ||
-              s.site === siteFilter ||
-              s.site === siteName ||
-              s.location === siteName
+            const filtered = allServices.filter(
+              (s: any) =>
+                s.siteName === siteName ||
+                s.site === siteFilter ||
+                s.site === siteName ||
+                s.location === siteName
             );
             console.log('[Dashboard] Filtered', filtered.length, 'services for site (client-side)');
             return filtered; // STRICT: return filtered even if empty
@@ -568,13 +674,17 @@ function DashboardEnhancedComponent() {
       }
 
       // No site filter: return all services
-      const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/services',
+        { method: 'GET' },
+        15000
+      );
       if (!response.ok) {
         throw new Error(`API returned ${response.status}`);
       }
       const data = await response.json();
       const safe = data ?? {};
-      const services = Array.isArray(data) ? data : (safe.services || safe.data || []);
+      const services = Array.isArray(data) ? data : safe.services || safe.data || [];
       console.log('[Dashboard] Fetched', services.length, 'services');
       return services;
     } catch (error) {
@@ -585,18 +695,28 @@ function DashboardEnhancedComponent() {
 
   const fetchNotifications = async (): Promise<Notification[]> => {
     const siteFilter = filters.site !== 'all' ? filters.site : undefined;
-    console.log('[Dashboard] Fetching notifications' + (siteFilter ? ` for site: ${siteFilter}` : ''));
+    console.log(
+      '[Dashboard] Fetching notifications' + (siteFilter ? ` for site: ${siteFilter}` : '')
+    );
 
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/notifications',
+        { method: 'GET' },
+        10000
+      );
 
       if (!response.ok) {
         // Try alternative endpoint
-        const altResponse = await apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000);
+        const altResponse = await apiService.makeAuthenticatedRequest(
+          '/v1/alerts',
+          { method: 'GET' },
+          10000
+        );
         if (altResponse.ok) {
           const altData = await altResponse.json();
           const altSafe = altData ?? {};
-          const allNotifs = Array.isArray(altData) ? altData : (altSafe.alerts || altSafe.data || []);
+          const allNotifs = Array.isArray(altData) ? altData : altSafe.alerts || altSafe.data || [];
           return siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
         }
         throw new Error(`API returned ${response.status}`);
@@ -604,11 +724,19 @@ function DashboardEnhancedComponent() {
 
       const data = await response.json();
       const notifSafe = data ?? {};
-      const allNotifs = Array.isArray(data) ? data : (notifSafe.notifications || notifSafe.data || []);
+      const allNotifs = Array.isArray(data)
+        ? data
+        : notifSafe.notifications || notifSafe.data || [];
 
       // STRICT: filter by site device correlation when site-scoped
-      const notifications = siteFilter ? await filterNotificationsBySite(allNotifs, siteFilter) : allNotifs;
-      console.log('[Dashboard] Fetched', notifications.length, 'notifications' + (siteFilter ? ' (site-scoped)' : ''));
+      const notifications = siteFilter
+        ? await filterNotificationsBySite(allNotifs, siteFilter)
+        : allNotifs;
+      console.log(
+        '[Dashboard] Fetched',
+        notifications.length,
+        'notifications' + (siteFilter ? ' (site-scoped)' : '')
+      );
       return notifications;
     } catch (error) {
       console.log('[Dashboard] Notifications not available:', error);
@@ -617,18 +745,21 @@ function DashboardEnhancedComponent() {
   };
 
   // STRICT: Filter notifications by AP-site device correlation
-  const filterNotificationsBySite = async (notifications: Notification[], siteId: string): Promise<Notification[]> => {
+  const filterNotificationsBySite = async (
+    notifications: Notification[],
+    siteId: string
+  ): Promise<Notification[]> => {
     try {
       const siteAPs = await apiService.getAccessPointsBySite(siteId);
       const deviceIds = new Set<string>();
-      siteAPs.forEach(ap => {
+      siteAPs.forEach((ap) => {
         if (ap.name) deviceIds.add(ap.name.toLowerCase());
         if (ap.serialNumber) deviceIds.add(ap.serialNumber.toLowerCase());
         if ((ap as any).hostname) deviceIds.add((ap as any).hostname.toLowerCase());
         if ((ap as any).macAddress) deviceIds.add((ap as any).macAddress.toLowerCase());
       });
       if (deviceIds.size === 0) return []; // STRICT: no devices = no notifications
-      return notifications.filter(n => {
+      return notifications.filter((n) => {
         const source = ((n as any).source || '').toLowerCase();
         const device = ((n as any).deviceName || (n as any).device || '').toLowerCase();
         return deviceIds.has(source) || deviceIds.has(device);
@@ -643,14 +774,16 @@ function DashboardEnhancedComponent() {
   //   score = rfqi_component(40%) + utilization_component(25%) + interference_component(20%) + cochannel_component(15%)
   // Each component is normalized 0-100 before weighting.
   // Result clamped to [0, 100].
-  const computeCompositeRFQI = (radios: Array<{
-    rfqi?: number;
-    chUtil?: number;
-    interference?: number;
-    cochannel?: number;
-    noise?: number;
-    clientCount?: number;
-  }>): number => {
+  const computeCompositeRFQI = (
+    radios: Array<{
+      rfqi?: number;
+      chUtil?: number;
+      interference?: number;
+      cochannel?: number;
+      noise?: number;
+      clientCount?: number;
+    }>
+  ): number => {
     if (!radios.length) return 0;
     let totalScore = 0;
     let count = 0;
@@ -664,7 +797,7 @@ function DashboardEnhancedComponent() {
       const intfNorm = Math.min(100, Math.max(0, 100 - (r.interference ?? 0)));
       // cochannel: 0-100% → inverted
       const cochNorm = Math.min(100, Math.max(0, 100 - (r.cochannel ?? 0)));
-      const radioScore = rfqiNorm * 0.40 + chUtilNorm * 0.25 + intfNorm * 0.20 + cochNorm * 0.15;
+      const radioScore = rfqiNorm * 0.4 + chUtilNorm * 0.25 + intfNorm * 0.2 + cochNorm * 0.15;
       totalScore += radioScore;
       count++;
     }
@@ -674,7 +807,9 @@ function DashboardEnhancedComponent() {
   // Fetch RFQI (RF Quality Index) data from controller for health visualization
   const fetchRFQIData = async () => {
     const siteId = filters.site !== 'all' ? filters.site : undefined;
-    console.log('[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites'));
+    console.log(
+      '[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites')
+    );
 
     try {
       // --- Path 1: Site report time-series (site selected) ---
@@ -684,9 +819,10 @@ function DashboardEnhancedComponent() {
         if (rfData && Array.isArray(rfData)) {
           const processedData = rfData.flatMap((report: any) => {
             if (report.statistics && Array.isArray(report.statistics)) {
-              const rfqiStat = report.statistics.find((s: any) =>
-                s.statName?.toLowerCase().includes('rfqi') ||
-                s.statName?.toLowerCase().includes('quality')
+              const rfqiStat = report.statistics.find(
+                (s: any) =>
+                  s.statName?.toLowerCase().includes('rfqi') ||
+                  s.statName?.toLowerCase().includes('quality')
               );
               if (rfqiStat?.values) {
                 return rfqiStat.values.map((v: any) => {
@@ -697,7 +833,7 @@ function DashboardEnhancedComponent() {
                     timestamp: v.timestamp,
                     rfqi,
                     healthy: healthyPct,
-                    needsAttention: 100 - healthyPct
+                    needsAttention: 100 - healthyPct,
                   };
                 });
               }
@@ -710,7 +846,11 @@ function DashboardEnhancedComponent() {
               .sort((a: any, b: any) => a.timestamp - b.timestamp)
               .slice(-24);
             setRfqiData(sortedData);
-            console.log('[Dashboard] RFQI: loaded', sortedData.length, 'time-series points from site report');
+            console.log(
+              '[Dashboard] RFQI: loaded',
+              sortedData.length,
+              'time-series points from site report'
+            );
             return;
           }
         }
@@ -723,8 +863,12 @@ function DashboardEnhancedComponent() {
       if (ifstats && ifstats.length > 0) {
         // Collect all radio objects, optionally scoped to the selected site
         const allRadios: Array<{
-          rfqi?: number; chUtil?: number; interference?: number;
-          cochannel?: number; noise?: number; clientCount?: number;
+          rfqi?: number;
+          chUtil?: number;
+          interference?: number;
+          cochannel?: number;
+          noise?: number;
+          clientCount?: number;
         }> = [];
 
         for (const ap of ifstats) {
@@ -742,7 +886,7 @@ function DashboardEnhancedComponent() {
               interference: ap.interference,
               cochannel: ap.cochannel,
               noise: ap.noise,
-              clientCount: ap.clientCount
+              clientCount: ap.clientCount,
             });
           }
         }
@@ -755,10 +899,16 @@ function DashboardEnhancedComponent() {
             timestamp: now,
             rfqi: compositeScore / 20, // back to 1-5 scale for display
             healthy: compositeScore,
-            needsAttention: 100 - compositeScore
+            needsAttention: 100 - compositeScore,
           };
           setRfqiData([point]);
-          console.log('[Dashboard] RFQI composite score:', compositeScore, 'from', allRadios.length, 'radios');
+          console.log(
+            '[Dashboard] RFQI composite score:',
+            compositeScore,
+            'from',
+            allRadios.length,
+            'radios'
+          );
           return;
         }
       }
@@ -766,7 +916,6 @@ function DashboardEnhancedComponent() {
       // No real RFQI data available — show empty state
       console.log('[Dashboard] No RFQI data available from controller; showing empty state');
       setRfqiData([]);
-
     } catch (error) {
       console.error('[Dashboard] Error fetching RFQI data:', error);
       setRfqiData([]);
@@ -776,7 +925,7 @@ function DashboardEnhancedComponent() {
   const processAccessPoints = (aps: AccessPoint[]) => {
     setAccessPoints(aps);
 
-    let stats = {
+    const stats = {
       total: aps.length,
       online: 0,
       offline: 0,
@@ -785,12 +934,19 @@ function DashboardEnhancedComponent() {
       standby: 0,
       lowPower: 0,
       normalPower: 0,
-      models: {} as Record<string, number>
+      models: {} as Record<string, number>,
+      avgChannelUtil: 0,
     };
 
-    aps.forEach(ap => {
+    aps.forEach((ap) => {
       // Determine online status - check multiple possible fields and values
-      const status = (ap.status || ap.connectionState || ap.operationalState || (ap as any).state || '').toLowerCase();
+      const status = (
+        ap.status ||
+        ap.connectionState ||
+        ap.operationalState ||
+        (ap as any).state ||
+        ''
+      ).toLowerCase();
       const isUp = (ap as any).isUp;
       const isOnline = (ap as any).online;
 
@@ -804,7 +960,14 @@ function DashboardEnhancedComponent() {
         isUp: isUp,
         online: isOnline,
         computedStatus: status,
-        allKeys: Object.keys(ap).filter(k => k.toLowerCase().includes('status') || k.toLowerCase().includes('state') || k.toLowerCase().includes('connect') || k === 'online' || k === 'isUp')
+        allKeys: Object.keys(ap).filter(
+          (k) =>
+            k.toLowerCase().includes('status') ||
+            k.toLowerCase().includes('state') ||
+            k.toLowerCase().includes('connect') ||
+            k === 'online' ||
+            k === 'isUp'
+        ),
       });
 
       // Consider an AP online if:
@@ -812,15 +975,14 @@ function DashboardEnhancedComponent() {
       // 2. Status contains 'up', 'online', 'connected'
       // 3. isUp or online boolean is true
       // 4. No status field but AP exists in list (default to online)
-      const apIsOnline = (
+      const apIsOnline =
         status === 'inservice' ||
         status.includes('up') ||
         status.includes('online') ||
         status.includes('connected') ||
         isUp === true ||
         isOnline === true ||
-        (!status && isUp !== false && isOnline !== false)
-      );
+        (!status && isUp !== false && isOnline !== false);
 
       if (apIsOnline) {
         stats.online++;
@@ -849,19 +1011,22 @@ function DashboardEnhancedComponent() {
       }
 
       // Track AP models - check multiple possible field names
-      const model = (ap as any).hardwareType ||
-                    (ap as any).platformName ||
-                    (ap as any).hwType ||
-                    ap.model ||
-                    (ap as any).apModel ||
-                    (ap as any).deviceModel ||
-                    'Unknown Model';
+      const model =
+        (ap as any).hardwareType ||
+        (ap as any).platformName ||
+        (ap as any).hwType ||
+        ap.model ||
+        (ap as any).apModel ||
+        (ap as any).deviceModel ||
+        'Unknown Model';
       stats.models[model] = (stats.models[model] || 0) + 1;
     });
 
     setApStats(stats);
     console.log('[Dashboard] AP Stats:', stats);
-    console.log(`[Dashboard] AP Uptime: ${stats.online}/${stats.total} = ${stats.total > 0 ? ((stats.online / stats.total) * 100).toFixed(1) : 0}%`);
+    console.log(
+      `[Dashboard] AP Uptime: ${stats.online}/${stats.total} = ${stats.total > 0 ? ((stats.online / stats.total) * 100).toFixed(1) : 0}%`
+    );
   };
 
   const storeThroughputSnapshot = async (
@@ -876,21 +1041,26 @@ function DashboardEnhancedComponent() {
       const totalTraffic = totalUpload + totalDownload;
       const avgPerClient = clientCount > 0 ? totalTraffic / clientCount : 0;
 
-      const networkBreakdown = Array.from(serviceThroughputMap.entries()).map(([network, throughput]) => {
-        // Count clients per network
-        const clientsInNetwork = stationsData.filter(s => {
-          const serviceName = s.ssid || s.serviceName || (s.serviceId && servicesData.find(svc => svc.id === s.serviceId)?.ssid);
-          return serviceName === network;
-        }).length;
+      const networkBreakdown = Array.from(serviceThroughputMap.entries()).map(
+        ([network, throughput]) => {
+          // Count clients per network
+          const clientsInNetwork = stationsData.filter((s) => {
+            const serviceName =
+              s.ssid ||
+              s.serviceName ||
+              (s.serviceId && servicesData.find((svc) => svc.id === s.serviceId)?.ssid);
+            return serviceName === network;
+          }).length;
 
-        return {
-          network,
-          upload: throughput.upload,
-          download: throughput.download,
-          total: throughput.upload + throughput.download,
-          clients: clientsInNetwork
-        };
-      });
+          return {
+            network,
+            upload: throughput.upload,
+            download: throughput.download,
+            total: throughput.upload + throughput.download,
+            clients: clientsInNetwork,
+          };
+        }
+      );
 
       const snapshot: ThroughputSnapshot = {
         timestamp: Date.now(),
@@ -899,7 +1069,7 @@ function DashboardEnhancedComponent() {
         totalTraffic,
         clientCount,
         avgPerClient,
-        networkBreakdown
+        networkBreakdown,
       };
 
       await throughputService.storeSnapshot(snapshot);
@@ -909,7 +1079,7 @@ function DashboardEnhancedComponent() {
         upload: formatBytes(snapshot.totalUpload),
         download: formatBytes(snapshot.totalDownload),
         clients: snapshot.clientCount,
-        networks: snapshot.networkBreakdown.length
+        networks: snapshot.networkBreakdown.length,
       });
     } catch (error) {
       console.error('[Dashboard] Failed to store throughput snapshot:', error);
@@ -920,36 +1090,42 @@ function DashboardEnhancedComponent() {
   const loadHistoricalThroughput = async () => {
     try {
       console.log('[Dashboard] Loading historical throughput data...');
-      
+
       // Load last 60 minutes of data for the chart
       const snapshots = await throughputService.getSnapshotsForLastMinutes(60);
-      
+
       if (snapshots.length > 0) {
         // Convert bytes to bits per second (if needed) and format for chart
-        const trend = snapshots.map(snapshot => {
+        const trend = snapshots.map((snapshot) => {
           const date = new Date(snapshot.timestamp);
-          const timeStr = date.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
+          const timeStr = date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
             minute: '2-digit',
-            hour12: false 
+            hour12: false,
           });
-          
+
           return {
             time: timeStr,
             upload: Math.round(snapshot.totalUpload),
             download: Math.round(snapshot.totalDownload),
-            total: Math.round(snapshot.totalTraffic)
+            total: Math.round(snapshot.totalTraffic),
           };
         });
-        
+
         setThroughputTrend(trend);
         console.log('[Dashboard] ✓ Loaded historical throughput data:', {
           snapshots: trend.length,
-          timeRange: trend.length > 0 ? `${trend[0].time} - ${trend[trend.length - 1].time}` : 'N/A',
-          avgTotal: trend.length > 0 ? formatBytes(trend.reduce((sum, t) => sum + t.total, 0) / trend.length) : '0 B'
+          timeRange:
+            trend.length > 0 ? `${trend[0].time} - ${trend[trend.length - 1].time}` : 'N/A',
+          avgTotal:
+            trend.length > 0
+              ? formatBytes(trend.reduce((sum, t) => sum + t.total, 0) / trend.length)
+              : '0 B',
         });
       } else {
-        console.log('[Dashboard] ⚠ No historical throughput data available yet. Data will accumulate over time.');
+        console.log(
+          '[Dashboard] ⚠ No historical throughput data available yet. Data will accumulate over time.'
+        );
         // Set empty array if no data yet - chart will show "No data available"
         setThroughputTrend([]);
       }
@@ -960,38 +1136,40 @@ function DashboardEnhancedComponent() {
     }
   };
 
-  const performVendorLookups = async (clients: Array<{ 
-    name: string; 
-    mac: string; 
-    throughput: number;
-    upload: number;
-    download: number;
-    network: string;
-    ap: string;
-    rssi: number;
-    band: string;
-    ipAddress: string;
-  }>) => {
+  const performVendorLookups = async (
+    clients: Array<{
+      name: string;
+      mac: string;
+      throughput: number;
+      upload: number;
+      download: number;
+      network: string;
+      ap: string;
+      rssi: number;
+      band: string;
+      ipAddress: string;
+    }>
+  ) => {
     // Perform vendor lookups in the background
     if (clients.length === 0) return;
-    
+
     try {
       setVendorLookupsInProgress(true);
       console.log('[Dashboard] Starting vendor lookups for', clients.length, 'clients');
-      
+
       const enrichedClients = await Promise.all(
         clients.map(async (client) => {
           const vendor = await getVendor(client.mac);
           const vendorIcon = getVendorIcon(vendor);
-          
+
           return {
             ...client,
             vendor,
-            vendorIcon
+            vendorIcon,
           };
         })
       );
-      
+
       setTopClients(enrichedClients);
       console.log('[Dashboard] ✓ Vendor lookups complete');
     } catch (error) {
@@ -1007,7 +1185,7 @@ function DashboardEnhancedComponent() {
 
     // Create a lookup map from servicesData for quick service name resolution
     const serviceIdToNameMapLocal = new Map<string, string>();
-    servicesData.forEach(service => {
+    servicesData.forEach((service) => {
       if (service.id) {
         // Prefer SSID over name, then serviceName, then name, as SSID is most recognizable
         const displayName = service.ssid || service.serviceName || service.name || service.id;
@@ -1017,7 +1195,7 @@ function DashboardEnhancedComponent() {
 
     // Store in state for use in other functions
     setServiceIdToNameMap(serviceIdToNameMapLocal);
-    
+
     // Calculate statistics
     let totalUpload = 0;
     let totalDownload = 0;
@@ -1025,13 +1203,28 @@ function DashboardEnhancedComponent() {
 
     const serviceMap = new Map<string, number>();
     const serviceThroughputMap = new Map<string, { upload: number; download: number }>();
-    const clientThroughput: Array<{ name: string; mac: string; throughput: number }> = [];
+    const clientThroughput: Array<{
+      name: string;
+      mac: string;
+      throughput: number;
+      upload: number;
+      download: number;
+      network: string;
+      ap: string;
+      rssi: number;
+      band: string;
+      ipAddress: string;
+    }> = [];
 
-    stations.forEach(station => {
+    stations.forEach((station) => {
       // Count authenticated/successful clients
       // If a client is in the connected stations list, they've successfully connected
       // Default to true unless explicitly set to false
-      const isAuthenticated = station.authenticated === undefined || station.authenticated === true || station.authenticated === 1 || station.authenticated === null;
+      const isAuthenticated =
+        station.authenticated === undefined ||
+        station.authenticated === true ||
+        station.authenticated === 1 ||
+        station.authenticated === null;
       if (isAuthenticated) {
         authenticated++;
       }
@@ -1044,10 +1237,17 @@ function DashboardEnhancedComponent() {
       // API may return bps or Mbps depending on controller version
       // Real data analysis: Extreme Platform ONE returns bps (values like 149610, 28375512)
       // Threshold: > 1000 = bps, ≤ 1000 = Mbps
-      if (station.transmittedRate !== undefined && station.transmittedRate !== null && station.transmittedRate > 0) {
+      if (
+        station.transmittedRate !== undefined &&
+        station.transmittedRate !== null &&
+        station.transmittedRate > 0
+      ) {
         // If value > 1000, assume it's already in bps (e.g., 612612 bps)
         // If value ≤ 1000, assume it's in Mbps and convert (e.g., 28.4 Mbps)
-        tx = station.transmittedRate > 1000 ? station.transmittedRate : station.transmittedRate * 1000000;
+        tx =
+          station.transmittedRate > 1000
+            ? station.transmittedRate
+            : station.transmittedRate * 1000000;
       } else if (station.txRate !== undefined && station.txRate !== null && station.txRate > 0) {
         tx = station.txRate > 1000 ? station.txRate : station.txRate * 1000000;
       } else {
@@ -1055,13 +1255,17 @@ function DashboardEnhancedComponent() {
         const uploadBytes = station.outBytes || station.txBytes || 0;
         if (uploadBytes > 0) {
           // Use uptime if available, otherwise estimate based on typical 1-hour session
-          const sessionSeconds = (station.uptime && station.uptime > 0) ? station.uptime : 3600;
+          const sessionSeconds = station.uptime && station.uptime > 0 ? station.uptime : 3600;
           tx = (uploadBytes * 8) / sessionSeconds;
         }
       }
 
       // Try to get download rate with smart unit detection
-      if (station.receivedRate !== undefined && station.receivedRate !== null && station.receivedRate > 0) {
+      if (
+        station.receivedRate !== undefined &&
+        station.receivedRate !== null &&
+        station.receivedRate > 0
+      ) {
         // If value > 1000, assume it's already in bps (e.g., 4521356 bps)
         // If value ≤ 1000, assume it's in Mbps and convert (e.g., 5.2 Mbps)
         rx = station.receivedRate > 1000 ? station.receivedRate : station.receivedRate * 1000000;
@@ -1072,17 +1276,23 @@ function DashboardEnhancedComponent() {
         const downloadBytes = station.inBytes || station.rxBytes || 0;
         if (downloadBytes > 0) {
           // Use uptime if available, otherwise estimate based on typical 1-hour session
-          const sessionSeconds = (station.uptime && station.uptime > 0) ? station.uptime : 3600;
+          const sessionSeconds = station.uptime && station.uptime > 0 ? station.uptime : 3600;
           rx = (downloadBytes * 8) / sessionSeconds;
         }
       }
-      
+
       totalUpload += tx;
       totalDownload += rx;
 
       // Track by service - try multiple fields to identify the service/network
       // Priority: 1) SSID, 2) essid, 3) serviceName, 4) network/networkName/profileName, 5) lookup serviceId, 6) 'Unknown'
-      let serviceName = station.ssid || station.essid || station.serviceName || station.network || station.networkName || station.profileName;
+      let serviceName =
+        station.ssid ||
+        station.essid ||
+        station.serviceName ||
+        station.network ||
+        station.networkName ||
+        station.profileName;
 
       if (!serviceName && station.serviceId) {
         // Try to resolve serviceId to a friendly name using the services lookup
@@ -1095,14 +1305,14 @@ function DashboardEnhancedComponent() {
       }
 
       serviceName = serviceName || 'Unknown';
-      
+
       serviceMap.set(serviceName, (serviceMap.get(serviceName) || 0) + 1);
-      
+
       // Track throughput by service/network
       const existing = serviceThroughputMap.get(serviceName) || { upload: 0, download: 0 };
       serviceThroughputMap.set(serviceName, {
         upload: existing.upload + tx,
-        download: existing.download + rx
+        download: existing.download + rx,
       });
 
       // Determine band based on tx/rx rate or channel info
@@ -1124,39 +1334,44 @@ function DashboardEnhancedComponent() {
         ap: station.apName || station.apSerialNumber || 'Unknown',
         rssi: station.rssi || 0,
         band: band,
-        ipAddress: station.ipAddress || 'N/A'
+        ipAddress: station.ipAddress || 'N/A',
       });
     });
 
-    setClientStats(prev => ({
+    setClientStats((prev) => ({
+      ...prev,
       total: stations.length,
       authenticated,
       throughputUpload: totalUpload,
-      throughputDownload: totalDownload
+      throughputDownload: totalDownload,
     }));
 
     // Set top clients (top 10 by throughput)
     const sorted = clientThroughput.sort((a, b) => b.throughput - a.throughput).slice(0, 10);
     setTopClients(sorted);
-    
+
     // Perform vendor lookups asynchronously for top clients
     performVendorLookups(sorted);
 
     // Set client distribution by service
-    const distribution = Array.from(serviceMap.entries()).map(([service, count]) => ({
-      service,
-      count,
-      percentage: Math.round((count / stations.length) * 100)
-    })).sort((a, b) => b.count - a.count);
+    const distribution = Array.from(serviceMap.entries())
+      .map(([service, count]) => ({
+        service,
+        count,
+        percentage: Math.round((count / stations.length) * 100),
+      }))
+      .sort((a, b) => b.count - a.count);
     setClientDistribution(distribution);
 
     // Set network throughput distribution
-    const networkThroughputData = Array.from(serviceThroughputMap.entries()).map(([network, throughput]) => ({
-      network,
-      upload: throughput.upload,
-      download: throughput.download,
-      total: throughput.upload + throughput.download
-    })).sort((a, b) => b.total - a.total);
+    const networkThroughputData = Array.from(serviceThroughputMap.entries())
+      .map(([network, throughput]) => ({
+        network,
+        upload: throughput.upload,
+        download: throughput.download,
+        total: throughput.upload + throughput.download,
+      }))
+      .sort((a, b) => b.total - a.total);
     setNetworkThroughput(networkThroughputData);
 
     // Store throughput snapshot in database
@@ -1171,13 +1386,13 @@ function DashboardEnhancedComponent() {
 
     // Calculate RF metrics for Device Health Overview
     const bandCounts: Record<string, number> = { '2.4 GHz': 0, '5 GHz': 0, '6 GHz': 0 };
-    const snrCounts: Record<string, number> = { 'Excellent': 0, 'Good': 0, 'Fair': 0, 'Poor': 0 };
+    const snrCounts: Record<string, number> = { Excellent: 0, Good: 0, Fair: 0, Poor: 0 };
     let totalSnr = 0;
     let totalRssi = 0;
     let snrCount = 0;
     let rssiCount = 0;
 
-    stations.forEach(station => {
+    stations.forEach((station) => {
       // Band distribution - detect from channel first, then fallback to rate heuristic
       const channel = (station as any).channel || '';
       const channelNum = parseInt(channel.toString().split('/')[0], 10);
@@ -1223,7 +1438,8 @@ function DashboardEnhancedComponent() {
       // SNR calculation - estimate from RSSI using typical noise floor (-95 dBm)
       // SNR = RSSI - Noise Floor
       const rssi = station.rssi || (station as any).rss || 0;
-      if (rssi < 0) { // Valid RSSI is negative
+      if (rssi < 0) {
+        // Valid RSSI is negative
         totalRssi += rssi;
         rssiCount++;
 
@@ -1245,8 +1461,8 @@ function DashboardEnhancedComponent() {
     const bandData = [
       { band: '2.4 GHz', count: bandCounts['2.4 GHz'], color: '#f59e0b' },
       { band: '5 GHz', count: bandCounts['5 GHz'], color: '#3b82f6' },
-      { band: '6 GHz', count: bandCounts['6 GHz'], color: '#8b5cf6' }
-    ].filter(b => b.count > 0);
+      { band: '6 GHz', count: bandCounts['6 GHz'], color: '#8b5cf6' },
+    ].filter((b) => b.count > 0);
     setBandDistribution(bandData);
 
     // Set SNR distribution
@@ -1254,8 +1470,8 @@ function DashboardEnhancedComponent() {
       { category: 'Excellent', count: snrCounts['Excellent'], color: '#10b981' },
       { category: 'Good', count: snrCounts['Good'], color: '#22d3ee' },
       { category: 'Fair', count: snrCounts['Fair'], color: '#f59e0b' },
-      { category: 'Poor', count: snrCounts['Poor'], color: '#ef4444' }
-    ].filter(s => s.count > 0);
+      { category: 'Poor', count: snrCounts['Poor'], color: '#ef4444' },
+    ].filter((s) => s.count > 0);
     setSnrDistribution(snrData);
 
     // Set averages
@@ -1267,7 +1483,7 @@ function DashboardEnhancedComponent() {
       authenticated,
       totalUploadBps: totalUpload,
       totalDownloadBps: totalDownload,
-      distribution: distribution
+      distribution: distribution,
     });
 
     // Log RF metrics for debugging
@@ -1277,7 +1493,7 @@ function DashboardEnhancedComponent() {
       avgSnr: snrCount > 0 ? Math.round(totalSnr / snrCount) : 0,
       avgRssi: rssiCount > 0 ? Math.round(totalRssi / rssiCount) : 0,
       clientsWithRssi: rssiCount,
-      clientsWithSnr: snrCount
+      clientsWithSnr: snrCount,
     });
 
     // Log sample station data to debug
@@ -1295,7 +1511,7 @@ function DashboardEnhancedComponent() {
         outBytes: stations[0].outBytes,
         inBytes: stations[0].inBytes,
         uptime: stations[0].uptime,
-        allFields: Object.keys(stations[0])
+        allFields: Object.keys(stations[0]),
       });
     }
 
@@ -1311,7 +1527,7 @@ function DashboardEnhancedComponent() {
 
   const processServices = async (services: Service[]) => {
     setServices(services);
-    
+
     // Fetch detailed reports for each service IN PARALLEL (not sequentially)
     const reports = new Map<string, ServiceReport>();
     const poor: Service[] = [];
@@ -1331,7 +1547,7 @@ function DashboardEnhancedComponent() {
             `/v1/services/${service.id}/stations`,
             { method: 'GET' },
             8000
-          )
+          ),
         ]);
 
         if (reportResponse.ok) {
@@ -1349,7 +1565,9 @@ function DashboardEnhancedComponent() {
 
         if (stationsResponse.ok) {
           const stationsData = await stationsResponse.json();
-          const stationList = Array.isArray(stationsData) ? stationsData : ((stationsData ?? {}).stations || []);
+          const stationList = Array.isArray(stationsData)
+            ? stationsData
+            : (stationsData ?? {}).stations || [];
 
           // Update service with client count
           service.clientCount = stationList.length;
@@ -1364,15 +1582,21 @@ function DashboardEnhancedComponent() {
 
     setServiceReports(reports);
     setPoorServices(poor);
-    
-    console.log('[Dashboard] Processed', services.length, 'services,', poor.length, 'with poor metrics');
+
+    console.log(
+      '[Dashboard] Processed',
+      services.length,
+      'services,',
+      poor.length,
+      'with poor metrics'
+    );
   };
 
   const processNotifications = (notifications: Notification[]) => {
     // Filter to recent notifications (last 24 hours)
     const oneDayAgo = Date.now() - 86400000;
-    const recent = notifications.filter(n => (n.timestamp || 0) >= oneDayAgo);
-    
+    const recent = notifications.filter((n) => (n.timestamp || 0) >= oneDayAgo);
+
     setNotifications(recent);
 
     // Count by severity
@@ -1380,11 +1604,19 @@ function DashboardEnhancedComponent() {
     let warning = 0;
     let info = 0;
 
-    recent.forEach(n => {
+    recent.forEach((n) => {
       const severity = (n.severity || n.level || '').toLowerCase();
-      if (severity.includes('critical') || severity.includes('high') || severity.includes('error')) {
+      if (
+        severity.includes('critical') ||
+        severity.includes('high') ||
+        severity.includes('error')
+      ) {
         critical++;
-      } else if (severity.includes('warning') || severity.includes('warn') || severity.includes('medium')) {
+      } else if (
+        severity.includes('warning') ||
+        severity.includes('warn') ||
+        severity.includes('medium')
+      ) {
         warning++;
       } else {
         info++;
@@ -1392,7 +1624,7 @@ function DashboardEnhancedComponent() {
     });
 
     setAlertCounts({ critical, warning, info });
-    
+
     console.log('[Dashboard] Alerts:', { critical, warning, info });
   };
 
@@ -1417,7 +1649,13 @@ function DashboardEnhancedComponent() {
 
   // Helper function to get service name for a station (must match logic in processStations)
   const getServiceNameForStation = (station: Station): string => {
-    let serviceName = station.ssid || station.essid || station.serviceName || station.network || station.networkName || station.profileName;
+    let serviceName =
+      station.ssid ||
+      station.essid ||
+      station.serviceName ||
+      station.network ||
+      station.networkName ||
+      station.profileName;
 
     if (!serviceName && station.serviceId) {
       serviceName = serviceIdToNameMap.get(station.serviceId) || undefined;
@@ -1439,7 +1677,7 @@ function DashboardEnhancedComponent() {
   // Get clients for the selected service
   const getClientsForService = () => {
     if (!selectedService) return [];
-    return stations.filter(station => {
+    return stations.filter((station) => {
       const stationService = getServiceNameForStation(station);
       return stationService === selectedService;
     });
@@ -1460,7 +1698,7 @@ function DashboardEnhancedComponent() {
       avgRssi,
       avgSnr,
       authenticatedRate,
-      apUptime
+      apUptime,
     };
   };
 
@@ -1468,23 +1706,25 @@ function DashboardEnhancedComponent() {
 
   // Prepare radar chart data for multi-dimensional performance view
   // Radar chart — only axes backed by real API data (latency/packetLoss removed; no real source)
-  const radarData = performanceMetrics ? [
-    {
-      metric: 'Reliability',
-      value: performanceMetrics.authenticatedRate || 0,
-      fullMark: 100
-    },
-    {
-      metric: 'Uptime',
-      value: performanceMetrics.apUptime || 0,
-      fullMark: 100
-    },
-    {
-      metric: 'Signal Quality',
-      value: Math.min(100, (performanceMetrics.avgSnr + 100) / 2) || 0,
-      fullMark: 100
-    }
-  ] : [];
+  const radarData = performanceMetrics
+    ? [
+        {
+          metric: 'Reliability',
+          value: performanceMetrics.authenticatedRate || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Uptime',
+          value: performanceMetrics.apUptime || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Signal Quality',
+          value: Math.min(100, (performanceMetrics.avgSnr + 100) / 2) || 0,
+          fullMark: 100,
+        },
+      ]
+    : [];
 
   if (loading) {
     return (
@@ -1514,12 +1754,20 @@ function DashboardEnhancedComponent() {
         {/* Chart area skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
-            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
-            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
           </Card>
           <Card>
-            <CardHeader><Skeleton className="h-5 w-40" /></CardHeader>
-            <CardContent><Skeleton className="h-48 w-full" /></CardContent>
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-48 w-full" />
+            </CardContent>
           </Card>
         </div>
       </div>
@@ -1547,7 +1795,12 @@ function DashboardEnhancedComponent() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button onClick={() => loadDashboardData(true)} variant="outline" size="sm" disabled={refreshing}>
+          <Button
+            onClick={() => loadDashboardData(true)}
+            variant="outline"
+            size="sm"
+            disabled={refreshing}
+          >
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -1581,8 +1834,15 @@ function DashboardEnhancedComponent() {
           <div className="grid gap-4 md:grid-cols-4">
             <Card
               className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20 hover:shadow-lg transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
-              onClick={() => { setSelectorTab('access-point'); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectorTab('access-point'); }}}
+              onClick={() => {
+                setSelectorTab('access-point');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectorTab('access-point');
+                }
+              }}
               role="button"
               tabIndex={0}
               aria-label="View Access Points details"
@@ -1592,7 +1852,9 @@ function DashboardEnhancedComponent() {
                   <div>
                     <p className="text-sm text-muted-foreground">Total Access Points</p>
                     <p className="text-2xl font-bold">{apStats.total}</p>
-                    <p className="text-xs text-[color:var(--status-success)]">{apStats.online} online</p>
+                    <p className="text-xs text-[color:var(--status-success)]">
+                      {apStats.online} online
+                    </p>
                   </div>
                   <Wifi className="h-8 w-8 text-blue-500/50" />
                 </div>
@@ -1600,8 +1862,15 @@ function DashboardEnhancedComponent() {
             </Card>
             <Card
               className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:shadow-lg transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
-              onClick={() => { setSelectorTab('client'); }}
-              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectorTab('client'); }}}
+              onClick={() => {
+                setSelectorTab('client');
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setSelectorTab('client');
+                }
+              }}
               role="button"
               tabIndex={0}
               aria-label="View Connected Clients details"
@@ -1611,7 +1880,9 @@ function DashboardEnhancedComponent() {
                   <div>
                     <p className="text-sm text-muted-foreground">Connected Clients</p>
                     <p className="text-2xl font-bold">{clientStats.total}</p>
-                    <p className="text-xs text-[color:var(--status-success)]">{clientStats.authenticated} authenticated</p>
+                    <p className="text-xs text-[color:var(--status-success)]">
+                      {clientStats.authenticated} authenticated
+                    </p>
                   </div>
                   <Users className="h-8 w-8 text-violet-500/50" />
                 </div>
@@ -1622,8 +1893,13 @@ function DashboardEnhancedComponent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Network Throughput</p>
-                    <p className="text-2xl font-bold">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</p>
-                    <p className="text-xs text-muted-foreground">↑{formatBps(clientStats.throughputUpload)} ↓{formatBps(clientStats.throughputDownload)}</p>
+                    <p className="text-2xl font-bold">
+                      {formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      ↑{formatBps(clientStats.throughputUpload)} ↓
+                      {formatBps(clientStats.throughputDownload)}
+                    </p>
                   </div>
                   <Activity className="h-8 w-8 text-[color:var(--status-success)]/50" />
                 </div>
@@ -1634,10 +1910,18 @@ function DashboardEnhancedComponent() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Active Alerts</p>
-                    <p className="text-2xl font-bold">{alertCounts.critical + alertCounts.warning}</p>
+                    <p className="text-2xl font-bold">
+                      {alertCounts.critical + alertCounts.warning}
+                    </p>
                     <p className="text-xs">
-                      <span className="text-[color:var(--status-error)]">{alertCounts.critical} critical</span>
-                      {alertCounts.warning > 0 && <span className="text-[color:var(--status-warning)] ml-2">{alertCounts.warning} warning</span>}
+                      <span className="text-[color:var(--status-error)]">
+                        {alertCounts.critical} critical
+                      </span>
+                      {alertCounts.warning > 0 && (
+                        <span className="text-[color:var(--status-warning)] ml-2">
+                          {alertCounts.warning} warning
+                        </span>
+                      )}
                     </p>
                   </div>
                   <AlertTriangle className="h-8 w-8 text-[color:var(--status-warning)]/50" />
@@ -1668,9 +1952,14 @@ function DashboardEnhancedComponent() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>AP Availability</span>
-                    <span className="font-medium">{apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%</span>
+                    <span className="font-medium">
+                      {apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%
+                    </span>
                   </div>
-                  <Progress value={apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0} className="h-2" />
+                  <Progress
+                    value={apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0}
+                    className="h-2"
+                  />
                   <p className="text-xs text-muted-foreground">Target: &gt;95% availability</p>
                 </div>
                 <div className="space-y-2">
@@ -1694,14 +1983,18 @@ function DashboardEnhancedComponent() {
                     <div className="p-3 rounded-lg bg-gradient-to-br from-green-500/10 to-green-600/5 border border-[color:var(--status-success)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">RFQI</span>
-                        <span className="text-lg font-bold text-[color:var(--status-success)]">{clientStats.avgRfqi || 85}%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-success)]">
+                          {clientStats.avgRfqi || 85}%
+                        </span>
                       </div>
                       <Progress value={clientStats.avgRfqi || 85} className="h-1.5" />
                     </div>
                     <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-[color:var(--status-warning)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">Ch. Util</span>
-                        <span className="text-lg font-bold text-[color:var(--status-warning)]">{apStats.avgChannelUtil || 23}%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-warning)]">
+                          {apStats.avgChannelUtil || 23}%
+                        </span>
                       </div>
                       <Progress value={apStats.avgChannelUtil || 23} className="h-1.5" />
                     </div>
@@ -1727,10 +2020,20 @@ function DashboardEnhancedComponent() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Avg Clients per AP</span>
-                    <span className="font-medium">{apStats.online > 0 ? Math.round(clientStats.total / apStats.online) : 0}</span>
+                    <span className="font-medium">
+                      {apStats.online > 0 ? Math.round(clientStats.total / apStats.online) : 0}
+                    </span>
                   </div>
-                  <Progress value={Math.min((apStats.online > 0 ? clientStats.total / apStats.online : 0) / 50 * 100, 100)} className="h-2" />
-                  <p className="text-xs text-muted-foreground">Recommended: &lt;50 clients per AP</p>
+                  <Progress
+                    value={Math.min(
+                      ((apStats.online > 0 ? clientStats.total / apStats.online : 0) / 50) * 100,
+                      100
+                    )}
+                    className="h-2"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Recommended: &lt;50 clients per AP
+                  </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="p-3 rounded-lg bg-muted/50">
@@ -1738,14 +2041,18 @@ function DashboardEnhancedComponent() {
                       <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
                       <span className="text-xs text-muted-foreground">Upload</span>
                     </div>
-                    <p className="text-lg font-semibold">{formatBps(clientStats.throughputUpload)}</p>
+                    <p className="text-lg font-semibold">
+                      {formatBps(clientStats.throughputUpload)}
+                    </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-2 mb-1">
                       <Download className="h-4 w-4 text-[color:var(--status-success)]" />
                       <span className="text-xs text-muted-foreground">Download</span>
                     </div>
-                    <p className="text-lg font-semibold">{formatBps(clientStats.throughputDownload)}</p>
+                    <p className="text-lg font-semibold">
+                      {formatBps(clientStats.throughputDownload)}
+                    </p>
                   </div>
                 </div>
 
@@ -1768,7 +2075,9 @@ function DashboardEnhancedComponent() {
                     <div className="p-3 rounded-lg bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-[color:var(--status-info)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">Memory</span>
-                        <span className="text-lg font-bold text-[color:var(--status-info)]">38%</span>
+                        <span className="text-lg font-bold text-[color:var(--status-info)]">
+                          38%
+                        </span>
                       </div>
                       <Progress value={38} className="h-1.5" />
                     </div>
@@ -1795,8 +2104,12 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
                     <WifiOff className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-error)]">Offline Access Points</p>
-                      <p className="text-xs text-muted-foreground">{apStats.offline} AP(s) are currently offline and require attention</p>
+                      <p className="text-sm font-medium text-[color:var(--status-error)]">
+                        Offline Access Points
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {apStats.offline} AP(s) are currently offline and require attention
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1804,8 +2117,12 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30">
                     <AlertTriangle className="h-5 w-5 text-[color:var(--status-error)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-error)]">Critical Alerts</p>
-                      <p className="text-xs text-muted-foreground">{alertCounts.critical} critical issue(s) need immediate attention</p>
+                      <p className="text-sm font-medium text-[color:var(--status-error)]">
+                        Critical Alerts
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {alertCounts.critical} critical issue(s) need immediate attention
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1813,8 +2130,12 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
                     <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-success)]">All Clear</p>
-                      <p className="text-xs text-muted-foreground">No anomalies detected - network operating normally</p>
+                      <p className="text-sm font-medium text-[color:var(--status-success)]">
+                        All Clear
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        No anomalies detected - network operating normally
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1842,8 +2163,12 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
                     <Zap className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-warning)]">Low Power APs</p>
-                      <p className="text-xs text-muted-foreground">{apStats.lowPower} AP(s) running in low power mode - check PoE budget</p>
+                      <p className="text-sm font-medium text-[color:var(--status-warning)]">
+                        Low Power APs
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {apStats.lowPower} AP(s) running in low power mode - check PoE budget
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1851,8 +2176,12 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30">
                     <Network className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-warning)]">Service Degradation</p>
-                      <p className="text-xs text-muted-foreground">{poorServices.length} service(s) showing performance issues</p>
+                      <p className="text-sm font-medium text-[color:var(--status-warning)]">
+                        Service Degradation
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {poorServices.length} service(s) showing performance issues
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1860,15 +2189,24 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-start gap-3 p-3 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
                     <CheckCircle className="h-5 w-5 text-[color:var(--status-success)] mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-[color:var(--status-success)]">Systems Healthy</p>
-                      <p className="text-xs text-muted-foreground">No maintenance issues predicted in the near term</p>
+                      <p className="text-sm font-medium text-[color:var(--status-success)]">
+                        Systems Healthy
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        No maintenance issues predicted in the near term
+                      </p>
                     </div>
                   </div>
                 )}
                 <div className="pt-2">
                   <p className="text-xs text-muted-foreground">
-                    Models tracked: {Object.entries(apStats.models).slice(0, 3).map(([m]) => m).join(', ')}
-                    {Object.keys(apStats.models).length > 3 && ` +${Object.keys(apStats.models).length - 3} more`}
+                    Models tracked:{' '}
+                    {Object.entries(apStats.models)
+                      .slice(0, 3)
+                      .map(([m]) => m)
+                      .join(', ')}
+                    {Object.keys(apStats.models).length > 3 &&
+                      ` +${Object.keys(apStats.models).length - 3} more`}
                   </p>
                 </div>
               </CardContent>
@@ -1929,7 +2267,9 @@ function DashboardEnhancedComponent() {
                       <span className="w-2 h-2 rounded-full bg-red-500" />
                       <span className="text-sm">APs Offline</span>
                     </div>
-                    <Badge variant="destructive" className="text-xs">{apStats.offline}</Badge>
+                    <Badge variant="destructive" className="text-xs">
+                      {apStats.offline}
+                    </Badge>
                   </div>
                 )}
                 {alertCounts.critical > 0 && (
@@ -1938,7 +2278,9 @@ function DashboardEnhancedComponent() {
                       <span className="w-2 h-2 rounded-full bg-red-500" />
                       <span className="text-sm">Critical Alerts</span>
                     </div>
-                    <Badge variant="destructive" className="text-xs">{alertCounts.critical}</Badge>
+                    <Badge variant="destructive" className="text-xs">
+                      {alertCounts.critical}
+                    </Badge>
                   </div>
                 )}
                 {alertCounts.warning > 0 && (
@@ -1947,22 +2289,27 @@ function DashboardEnhancedComponent() {
                       <span className="w-2 h-2 rounded-full bg-amber-500" />
                       <span className="text-sm">Warnings</span>
                     </div>
-                    <Badge className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">{alertCounts.warning}</Badge>
+                    <Badge className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">
+                      {alertCounts.warning}
+                    </Badge>
                   </div>
                 )}
-                {apStats.offline === 0 && alertCounts.critical === 0 && alertCounts.warning === 0 && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
-                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
-                    <span className="text-sm text-[color:var(--status-success)]">No issues detected - all systems operational</span>
-                  </div>
-                )}
+                {apStats.offline === 0 &&
+                  alertCounts.critical === 0 &&
+                  alertCounts.warning === 0 && (
+                    <div className="flex items-center gap-2 p-2 rounded-lg bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30">
+                      <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
+                      <span className="text-sm text-[color:var(--status-success)]">
+                        No issues detected - all systems operational
+                      </span>
+                    </div>
+                  )}
               </div>
             </CardContent>
           </Card>
 
           {/* Org/Site Health Overview - COMPREHENSIVE RF INTELLIGENCE */}
           <Card className="relative overflow-hidden border-slate-700/50 bg-gradient-to-br from-background via-background to-slate-900/50">
-            
             <CardHeader className="pb-2 relative z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -1974,15 +2321,24 @@ function DashboardEnhancedComponent() {
                     <CardTitle className="text-lg font-bold text-foreground">
                       {filters.site === 'all'
                         ? 'Org'
-                        : healthViewMode === 'sites' ? 'Site' : healthViewMode === 'devices' ? 'Device' : 'Client'} Health Overview
+                        : healthViewMode === 'sites'
+                          ? 'Site'
+                          : healthViewMode === 'devices'
+                            ? 'Device'
+                            : 'Client'}{' '}
+                      Health Overview
                     </CardTitle>
-                    <p className="text-xs text-muted-foreground">Real-time RF Quality Intelligence</p>
+                    <p className="text-xs text-muted-foreground">
+                      Real-time RF Quality Intelligence
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-cyan-400 animate-ping" />
                   <span className="text-sm font-medium text-[color:var(--status-info)]">LIVE</span>
-                  <span className="text-xs text-muted-foreground border-l border-border pl-2 ml-1">24h</span>
+                  <span className="text-xs text-muted-foreground border-l border-border pl-2 ml-1">
+                    24h
+                  </span>
                 </div>
               </div>
             </CardHeader>
@@ -1995,7 +2351,7 @@ function DashboardEnhancedComponent() {
                     <Signal className="h-4 w-4 text-purple-400" />
                     <span className="text-xs font-medium text-muted-foreground">RFQI Score</span>
                   </div>
-                  <AnimatedValue 
+                  <AnimatedValue
                     value={`${rfqiData.length > 0 ? Math.round(rfqiData.reduce((acc, d) => acc + (d.rfqi > 5 ? d.rfqi : d.rfqi * 20), 0) / rfqiData.length) : '--'}%`}
                     className="text-2xl font-bold text-purple-400 tabular-nums"
                     pulseColor="bg-purple-500/30"
@@ -2049,19 +2405,24 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Radio className="h-4 w-4 text-[color:var(--status-info)]" />
-                      <span className="text-sm font-semibold text-foreground">Client Distribution by Band</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        Client Distribution by Band
+                      </span>
                     </div>
                     <span className="text-xs text-muted-foreground">{clientStats.total} total</span>
                   </div>
                   {bandDistribution.length > 0 ? (
                     <div className="space-y-2">
                       {bandDistribution.map((band) => {
-                        const percentage = clientStats.total > 0 ? (band.count / clientStats.total) * 100 : 0;
+                        const percentage =
+                          clientStats.total > 0 ? (band.count / clientStats.total) * 100 : 0;
                         return (
                           <div key={band.band} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-foreground font-medium">{band.band}</span>
-                              <span className="tabular-nums" style={{ color: band.color }}>{band.count} ({Math.round(percentage)}%)</span>
+                              <span className="tabular-nums" style={{ color: band.color }}>
+                                {band.count} ({Math.round(percentage)}%)
+                              </span>
                             </div>
                             <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
@@ -2085,7 +2446,9 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-[color:var(--status-success)]" />
-                      <span className="text-sm font-semibold text-foreground">Signal Quality (SNR)</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        Signal Quality (SNR)
+                      </span>
                     </div>
                     <span className="text-xs text-muted-foreground">
                       {snrDistribution.reduce((acc, s) => acc + s.count, 0)} clients
@@ -2094,13 +2457,19 @@ function DashboardEnhancedComponent() {
                   {snrDistribution.length > 0 ? (
                     <div className="space-y-2">
                       {snrDistribution.map((snr) => {
-                        const totalSnrClients = snrDistribution.reduce((acc, s) => acc + s.count, 0);
-                        const percentage = totalSnrClients > 0 ? (snr.count / totalSnrClients) * 100 : 0;
+                        const totalSnrClients = snrDistribution.reduce(
+                          (acc, s) => acc + s.count,
+                          0
+                        );
+                        const percentage =
+                          totalSnrClients > 0 ? (snr.count / totalSnrClients) * 100 : 0;
                         return (
                           <div key={snr.category} className="space-y-1">
                             <div className="flex items-center justify-between text-xs">
                               <span className="text-foreground font-medium">{snr.category}</span>
-                              <span className="tabular-nums" style={{ color: snr.color }}>{snr.count} ({Math.round(percentage)}%)</span>
+                              <span className="tabular-nums" style={{ color: snr.color }}>
+                                {snr.count} ({Math.round(percentage)}%)
+                              </span>
                             </div>
                             <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
@@ -2131,7 +2500,10 @@ function DashboardEnhancedComponent() {
                   <div className="flex items-center justify-between">
                     <div className="flex gap-4">
                       <button
-                        onClick={() => { setAiActiveHealthTab('needsAttention'); setSelectedNetworkEvent(null); }}
+                        onClick={() => {
+                          setAiActiveHealthTab('needsAttention');
+                          setSelectedNetworkEvent(null);
+                        }}
                         className={`pb-2 px-3 transition-colors border-b-2 ${
                           aiActiveHealthTab === 'needsAttention' && !selectedNetworkEvent
                             ? 'text-[color:var(--status-error)] border-[color:var(--status-error)]'
@@ -2145,13 +2517,17 @@ function DashboardEnhancedComponent() {
                             <div className="text-xs opacity-75">
                               {healthViewMode === 'clients'
                                 ? Math.max(0, clientStats.total - clientStats.authenticated)
-                                : apStats.offline} {healthViewMode === 'sites' ? 'sites' : healthViewMode}
+                                : apStats.offline}{' '}
+                              {healthViewMode === 'sites' ? 'sites' : healthViewMode}
                             </div>
                           </div>
                         </div>
                       </button>
                       <button
-                        onClick={() => { setAiActiveHealthTab('healthy'); setSelectedNetworkEvent(null); }}
+                        onClick={() => {
+                          setAiActiveHealthTab('healthy');
+                          setSelectedNetworkEvent(null);
+                        }}
                         className={`pb-2 px-3 transition-colors border-b-2 ${
                           aiActiveHealthTab === 'healthy' && !selectedNetworkEvent
                             ? 'text-[color:var(--status-success)] border-[color:var(--status-success)]'
@@ -2163,7 +2539,10 @@ function DashboardEnhancedComponent() {
                           <div className="text-left">
                             <div className="text-sm font-medium">Healthy</div>
                             <div className="text-xs opacity-75">
-                              {healthViewMode === 'clients' ? clientStats.authenticated : apStats.online} {healthViewMode === 'sites' ? 'sites' : healthViewMode}
+                              {healthViewMode === 'clients'
+                                ? clientStats.authenticated
+                                : apStats.online}{' '}
+                              {healthViewMode === 'sites' ? 'sites' : healthViewMode}
                             </div>
                           </div>
                         </div>
@@ -2174,7 +2553,9 @@ function DashboardEnhancedComponent() {
                           <div className="flex items-center gap-2">
                             <AlertCircle className="w-4 h-4" />
                             <div className="text-left">
-                              <div className="text-sm font-medium truncate max-w-[200px]">{selectedNetworkEvent.description}</div>
+                              <div className="text-sm font-medium truncate max-w-[200px]">
+                                {selectedNetworkEvent.description}
+                              </div>
                               <div className="text-xs opacity-75">Event Details</div>
                             </div>
                             <button
@@ -2224,7 +2605,9 @@ function DashboardEnhancedComponent() {
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                               </span>
                             </h3>
-                            <p className="text-xs text-muted-foreground">Real-time insights powered by AI</p>
+                            <p className="text-xs text-muted-foreground">
+                              Real-time insights powered by AI
+                            </p>
                           </div>
                         </div>
                         <div className="text-xs text-muted-foreground font-mono">
@@ -2245,10 +2628,16 @@ function DashboardEnhancedComponent() {
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-[color:var(--status-error)]">{apStats.offline} AP{apStats.offline > 1 ? 's' : ''} Offline</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">CRITICAL</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-error)]">
+                                        {apStats.offline} AP{apStats.offline > 1 ? 's' : ''} Offline
+                                      </span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">
+                                        CRITICAL
+                                      </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">Reduced wireless coverage in affected areas</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Reduced wireless coverage in affected areas
+                                    </p>
                                     <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Check PoE power and network cables
                                     </p>
@@ -2264,10 +2653,17 @@ function DashboardEnhancedComponent() {
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-[color:var(--status-warning)]">{alertCounts.critical} Critical Alert{alertCounts.critical > 1 ? 's' : ''}</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">ACTION NEEDED</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-warning)]">
+                                        {alertCounts.critical} Critical Alert
+                                        {alertCounts.critical > 1 ? 's' : ''}
+                                      </span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">
+                                        ACTION NEEDED
+                                      </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">Potential service degradation detected</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Potential service degradation detected
+                                    </p>
                                     <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Review alert details and remediate
                                     </p>
@@ -2283,10 +2679,16 @@ function DashboardEnhancedComponent() {
                                   </div>
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-semibold text-[color:var(--status-info)]">{clientStats.total - clientStats.authenticated} Pending Auth</span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">INFO</span>
+                                      <span className="text-sm font-semibold text-[color:var(--status-info)]">
+                                        {clientStats.total - clientStats.authenticated} Pending Auth
+                                      </span>
+                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">
+                                        INFO
+                                      </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground mt-1">Clients waiting for authentication</p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Clients waiting for authentication
+                                    </p>
                                     <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
                                       <Zap className="w-3 h-3" /> Verify RADIUS/auth server status
                                     </p>
@@ -2294,19 +2696,25 @@ function DashboardEnhancedComponent() {
                                 </div>
                               </div>
                             )}
-                            {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
-                              <div className="bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg p-3 backdrop-blur-sm">
-                                <div className="flex items-center gap-3">
-                                  <div className="bg-[color:var(--status-success-bg)] p-2 rounded-lg">
-                                    <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
-                                  </div>
-                                  <div>
-                                    <span className="text-sm font-semibold text-[color:var(--status-success)]">All Systems Operational</span>
-                                    <p className="text-xs text-muted-foreground mt-0.5">No issues detected. Network performing optimally.</p>
+                            {apStats.offline === 0 &&
+                              alertCounts.critical === 0 &&
+                              clientStats.total === clientStats.authenticated && (
+                                <div className="bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg p-3 backdrop-blur-sm">
+                                  <div className="flex items-center gap-3">
+                                    <div className="bg-[color:var(--status-success-bg)] p-2 rounded-lg">
+                                      <CheckCircle className="w-4 h-4 text-[color:var(--status-success)]" />
+                                    </div>
+                                    <div>
+                                      <span className="text-sm font-semibold text-[color:var(--status-success)]">
+                                        All Systems Operational
+                                      </span>
+                                      <p className="text-xs text-muted-foreground mt-0.5">
+                                        No issues detected. Network performing optimally.
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
                           </div>
                         ) : (
                           /* Healthy Summary View */
@@ -2317,18 +2725,29 @@ function DashboardEnhancedComponent() {
                                 <div className="bg-[color:var(--status-success-bg)] p-2 rounded-md">
                                   <Wifi className="w-5 h-5 text-[color:var(--status-success)]" />
                                 </div>
-                                <AnimatedValue value={apStats.online} className="text-2xl font-bold text-[color:var(--status-success)]" pulseColor="bg-[color:var(--status-success-bg)]" />
+                                <AnimatedValue
+                                  value={apStats.online}
+                                  className="text-2xl font-bold text-[color:var(--status-success)]"
+                                  pulseColor="bg-[color:var(--status-success-bg)]"
+                                />
                               </div>
-                              <div className="text-sm text-[color:var(--status-success)] font-medium">Access Points Online</div>
+                              <div className="text-sm text-[color:var(--status-success)] font-medium">
+                                Access Points Online
+                              </div>
                               <div className="mt-3">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>Availability</span>
-                                  <AnimatedValue value={`${apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%`} pulseColor="bg-[color:var(--status-success-bg)]" />
+                                  <AnimatedValue
+                                    value={`${apStats.total > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%`}
+                                    pulseColor="bg-[color:var(--status-success-bg)]"
+                                  />
                                 </div>
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500"
-                                    style={{ width: `${apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0}%` }}
+                                    style={{
+                                      width: `${apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 0}%`,
+                                    }}
                                   />
                                 </div>
                               </div>
@@ -2340,18 +2759,29 @@ function DashboardEnhancedComponent() {
                                 <div className="bg-[color:var(--status-info-bg)] p-2 rounded-md">
                                   <Users className="w-5 h-5 text-[color:var(--status-info)]" />
                                 </div>
-                                <AnimatedValue value={clientStats.authenticated} className="text-2xl font-bold text-[color:var(--status-info)]" pulseColor="bg-[color:var(--status-info-bg)]" />
+                                <AnimatedValue
+                                  value={clientStats.authenticated}
+                                  className="text-2xl font-bold text-[color:var(--status-info)]"
+                                  pulseColor="bg-[color:var(--status-info-bg)]"
+                                />
                               </div>
-                              <div className="text-sm text-[color:var(--status-info)] font-medium">Clients Authenticated</div>
+                              <div className="text-sm text-[color:var(--status-info)] font-medium">
+                                Clients Authenticated
+                              </div>
                               <div className="mt-3">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                                   <span>Auth Rate</span>
-                                  <AnimatedValue value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`} pulseColor="bg-[color:var(--status-info-bg)]" />
+                                  <AnimatedValue
+                                    value={`${clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%`}
+                                    pulseColor="bg-[color:var(--status-info-bg)]"
+                                  />
                                 </div>
                                 <div className="h-2 bg-muted rounded-full overflow-hidden">
                                   <div
                                     className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all duration-500"
-                                    style={{ width: `${clientStats.total > 0 ? (clientStats.authenticated / clientStats.total) * 100 : 0}%` }}
+                                    style={{
+                                      width: `${clientStats.total > 0 ? (clientStats.authenticated / clientStats.total) * 100 : 0}%`,
+                                    }}
                                   />
                                 </div>
                               </div>
@@ -2364,10 +2794,14 @@ function DashboardEnhancedComponent() {
                                   <div className="bg-primary/10 p-1.5 rounded-md">
                                     <Activity className="w-4 h-4 text-primary" />
                                   </div>
-                                  <span className="text-xs text-foreground font-medium">Network Throughput</span>
+                                  <span className="text-xs text-foreground font-medium">
+                                    Network Throughput
+                                  </span>
                                 </div>
                                 <span className="text-sm font-bold text-foreground">
-                                  {formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}
+                                  {formatBps(
+                                    clientStats.throughputUpload + clientStats.throughputDownload
+                                  )}
                                 </span>
                               </div>
                               <div className="grid grid-cols-2 gap-3">
@@ -2376,7 +2810,9 @@ function DashboardEnhancedComponent() {
                                   <div className="flex-1">
                                     <div className="flex justify-between text-[10px] mb-1">
                                       <span className="text-muted-foreground">Upload</span>
-                                      <span className="text-[color:var(--status-success)] font-medium">{formatBps(clientStats.throughputUpload)}</span>
+                                      <span className="text-[color:var(--status-success)] font-medium">
+                                        {formatBps(clientStats.throughputUpload)}
+                                      </span>
                                     </div>
                                     <div className="h-1 bg-muted rounded-full overflow-hidden">
                                       <div className="h-full bg-gradient-to-r from-green-500 to-green-400 rounded-full w-3/5" />
@@ -2388,7 +2824,9 @@ function DashboardEnhancedComponent() {
                                   <div className="flex-1">
                                     <div className="flex justify-between text-[10px] mb-1">
                                       <span className="text-muted-foreground">Download</span>
-                                      <span className="text-[color:var(--status-info)] font-medium">{formatBps(clientStats.throughputDownload)}</span>
+                                      <span className="text-[color:var(--status-info)] font-medium">
+                                        {formatBps(clientStats.throughputDownload)}
+                                      </span>
                                     </div>
                                     <div className="h-1 bg-muted rounded-full overflow-hidden">
                                       <div className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400 rounded-full w-2/5" />
@@ -2404,11 +2842,17 @@ function DashboardEnhancedComponent() {
                                 <div className="bg-muted p-1 rounded">
                                   <Radio className="w-3 h-3 text-muted-foreground" />
                                 </div>
-                                <span className="text-xs text-muted-foreground">{Object.keys(apStats.models).length} AP model types deployed</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {Object.keys(apStats.models).length} AP model types deployed
+                                </span>
                               </div>
                               <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                 <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary">
-                                  ~{apStats.online > 0 ? Math.round(clientStats.total / apStats.online) : 0} clients/AP
+                                  ~
+                                  {apStats.online > 0
+                                    ? Math.round(clientStats.total / apStats.online)
+                                    : 0}{' '}
+                                  clients/AP
                                 </span>
                               </div>
                             </div>
@@ -2427,11 +2871,21 @@ function DashboardEnhancedComponent() {
                         <table className="w-full">
                           <thead>
                             <tr className="border-b bg-muted/30">
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Time</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Event</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Affected</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Status</th>
-                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">AI Explanation</th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                                Time
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                                Event
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                                Affected
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                                Status
+                              </th>
+                              <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">
+                                AI Explanation
+                              </th>
                               <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"></th>
                             </tr>
                           </thead>
@@ -2441,30 +2895,45 @@ function DashboardEnhancedComponent() {
                               <>
                                 {apStats.offline > 0 && (
                                   <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {new Date().toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </td>
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-red-500" />
                                         <span className="text-sm">Access Points Offline</span>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.offline} APs</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">Requires Action</span>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {apStats.offline} APs
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">AI detected {apStats.offline} access point(s) are offline. Check network connectivity, PoE power delivery, or hardware status.</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">
+                                        Requires Action
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                      AI detected {apStats.offline} access point(s) are offline.
+                                      Check network connectivity, PoE power delivery, or hardware
+                                      status.
+                                    </td>
                                     <td className="px-4 py-3">
                                       <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'ap-offline',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'infrastructure',
-                                          description: 'Access Points Offline',
-                                          affectedCount: apStats.offline,
-                                          aiExplanation: `${apStats.offline} access point(s) are currently offline. This may impact wireless coverage for clients in affected areas. Check cable connections, PoE power budget, and AP hardware status.`,
-                                          severity: 'high',
-                                          status: 'requires-action'
-                                        })}
+                                        onClick={() =>
+                                          setSelectedNetworkEvent({
+                                            id: 'ap-offline',
+                                            time: new Date().toLocaleTimeString(),
+                                            type: 'infrastructure',
+                                            description: 'Access Points Offline',
+                                            affectedCount: apStats.offline,
+                                            aiExplanation: `${apStats.offline} access point(s) are currently offline. This may impact wireless coverage for clients in affected areas. Check cable connections, PoE power budget, and AP hardware status.`,
+                                            severity: 'high',
+                                            status: 'requires-action',
+                                          })
+                                        }
                                         className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
@@ -2474,30 +2943,44 @@ function DashboardEnhancedComponent() {
                                 )}
                                 {alertCounts.critical > 0 && (
                                   <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {new Date().toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </td>
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-red-500" />
                                         <span className="text-sm">Critical Alerts Active</span>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{alertCounts.critical} alerts</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">Critical</span>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {alertCounts.critical} alerts
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Multiple critical alerts require immediate attention to prevent service degradation.</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-error)] bg-[color:var(--status-error-bg)]">
+                                        Critical
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                      Multiple critical alerts require immediate attention to
+                                      prevent service degradation.
+                                    </td>
                                     <td className="px-4 py-3">
                                       <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'critical-alerts',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'infrastructure',
-                                          description: 'Critical Alerts Active',
-                                          affectedCount: alertCounts.critical,
-                                          aiExplanation: `There are ${alertCounts.critical} critical alerts that require immediate attention. These may indicate hardware failures, configuration issues, or security concerns.`,
-                                          severity: 'high',
-                                          status: 'requires-action'
-                                        })}
+                                        onClick={() =>
+                                          setSelectedNetworkEvent({
+                                            id: 'critical-alerts',
+                                            time: new Date().toLocaleTimeString(),
+                                            type: 'infrastructure',
+                                            description: 'Critical Alerts Active',
+                                            affectedCount: alertCounts.critical,
+                                            aiExplanation: `There are ${alertCounts.critical} critical alerts that require immediate attention. These may indicate hardware failures, configuration issues, or security concerns.`,
+                                            severity: 'high',
+                                            status: 'requires-action',
+                                          })
+                                        }
                                         className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
@@ -2507,30 +2990,45 @@ function DashboardEnhancedComponent() {
                                 )}
                                 {clientStats.total > clientStats.authenticated && (
                                   <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {new Date().toLocaleTimeString([], {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}
+                                    </td>
                                     <td className="px-4 py-3">
                                       <div className="flex items-center gap-2">
                                         <span className="w-2 h-2 rounded-full bg-amber-500" />
                                         <span className="text-sm">Unauthenticated Clients</span>
                                       </div>
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.total - clientStats.authenticated} clients</td>
-                                    <td className="px-4 py-3">
-                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)]">Monitoring</span>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground">
+                                      {clientStats.total - clientStats.authenticated} clients
                                     </td>
-                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Some clients are connected but not fully authenticated. This may indicate captive portal users or authentication issues.</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)]">
+                                        Monitoring
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                      Some clients are connected but not fully authenticated. This
+                                      may indicate captive portal users or authentication issues.
+                                    </td>
                                     <td className="px-4 py-3">
                                       <button
-                                        onClick={() => setSelectedNetworkEvent({
-                                          id: 'unauth-clients',
-                                          time: new Date().toLocaleTimeString(),
-                                          type: 'group',
-                                          description: 'Unauthenticated Clients',
-                                          affectedCount: clientStats.total - clientStats.authenticated,
-                                          aiExplanation: `${clientStats.total - clientStats.authenticated} client(s) are connected but not authenticated. This could be normal for guest networks with captive portals, or may indicate authentication server issues.`,
-                                          severity: 'medium',
-                                          status: 'monitoring'
-                                        })}
+                                        onClick={() =>
+                                          setSelectedNetworkEvent({
+                                            id: 'unauth-clients',
+                                            time: new Date().toLocaleTimeString(),
+                                            type: 'group',
+                                            description: 'Unauthenticated Clients',
+                                            affectedCount:
+                                              clientStats.total - clientStats.authenticated,
+                                            aiExplanation: `${clientStats.total - clientStats.authenticated} client(s) are connected but not authenticated. This could be normal for guest networks with captive portals, or may indicate authentication server issues.`,
+                                            severity: 'medium',
+                                            status: 'monitoring',
+                                          })
+                                        }
                                         className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]"
                                       >
                                         <Eye className="w-4 h-4" />
@@ -2538,30 +3036,47 @@ function DashboardEnhancedComponent() {
                                     </td>
                                   </tr>
                                 )}
-                                {apStats.offline === 0 && alertCounts.critical === 0 && clientStats.total === clientStats.authenticated && (
-                                  <tr className="border-b">
-                                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-[color:var(--status-success)] opacity-50" />
-                                      No issues requiring attention
-                                    </td>
-                                  </tr>
-                                )}
+                                {apStats.offline === 0 &&
+                                  alertCounts.critical === 0 &&
+                                  clientStats.total === clientStats.authenticated && (
+                                    <tr className="border-b">
+                                      <td
+                                        colSpan={6}
+                                        className="px-4 py-8 text-center text-sm text-muted-foreground"
+                                      >
+                                        <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-[color:var(--status-success)] opacity-50" />
+                                        No issues requiring attention
+                                      </td>
+                                    </tr>
+                                  )}
                               </>
                             ) : (
                               <>
                                 <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {new Date().toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
                                       <span className="w-2 h-2 rounded-full bg-green-500" />
                                       <span className="text-sm">Access Points Online</span>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{apStats.online} APs</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Stable</span>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {apStats.online} APs
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All {apStats.online} access points are operational with normal performance metrics.</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">
+                                      Stable
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                    All {apStats.online} access points are operational with normal
+                                    performance metrics.
+                                  </td>
                                   <td className="px-4 py-3">
                                     <button
                                       onClick={() => setSelectorTab('access-point')}
@@ -2572,18 +3087,30 @@ function DashboardEnhancedComponent() {
                                   </td>
                                 </tr>
                                 <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {new Date().toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
                                       <span className="w-2 h-2 rounded-full bg-green-500" />
                                       <span className="text-sm">Authenticated Clients</span>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{clientStats.authenticated} clients</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Stable</span>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {clientStats.authenticated} clients
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">All authenticated clients have stable connections with good signal quality.</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">
+                                      Stable
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                    All authenticated clients have stable connections with good
+                                    signal quality.
+                                  </td>
                                   <td className="px-4 py-3">
                                     <button
                                       onClick={() => setSelectorTab('client')}
@@ -2594,18 +3121,32 @@ function DashboardEnhancedComponent() {
                                   </td>
                                 </tr>
                                 <tr className="border-b hover:bg-teal-500/5 transition-colors">
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {new Date().toLocaleTimeString([], {
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })}
+                                  </td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center gap-2">
                                       <span className="w-2 h-2 rounded-full bg-green-500" />
                                       <span className="text-sm">Network Throughput Normal</span>
                                     </div>
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</td>
-                                  <td className="px-4 py-3">
-                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">Optimal</span>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                                    {formatBps(
+                                      clientStats.throughputUpload + clientStats.throughputDownload
+                                    )}
                                   </td>
-                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">Network throughput is within normal parameters with no congestion detected.</td>
+                                  <td className="px-4 py-3">
+                                    <span className="inline-flex items-center px-2 py-1 rounded text-xs text-[color:var(--status-success)] bg-[color:var(--status-success-bg)]">
+                                      Optimal
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-muted-foreground max-w-md">
+                                    Network throughput is within normal parameters with no
+                                    congestion detected.
+                                  </td>
                                   <td className="px-4 py-3">
                                     <button className="p-2 hover:bg-[color:var(--status-info-bg)] rounded-lg transition-colors text-[color:var(--status-info)]">
                                       <Eye className="w-4 h-4" />
@@ -2626,8 +3167,12 @@ function DashboardEnhancedComponent() {
                     <div className="bg-[color:var(--status-info-bg)] border border-[color:var(--status-info)]/30 rounded-lg p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-sm font-medium text-foreground mb-1">Root Cause Analysis</h3>
-                          <p className="text-sm text-[color:var(--status-info)]">{selectedNetworkEvent.description}</p>
+                          <h3 className="text-sm font-medium text-foreground mb-1">
+                            Root Cause Analysis
+                          </h3>
+                          <p className="text-sm text-[color:var(--status-info)]">
+                            {selectedNetworkEvent.description}
+                          </p>
                         </div>
                         <div className="text-sm text-[color:var(--status-info)]">
                           Event Time: {selectedNetworkEvent.time}
@@ -2640,38 +3185,56 @@ function DashboardEnhancedComponent() {
                       <div className="flex items-start gap-3">
                         <div
                           className={`w-1 h-full rounded-full min-h-[80px] ${
-                            selectedNetworkEvent.severity === 'high' ? 'bg-red-600' :
-                            selectedNetworkEvent.severity === 'medium' ? 'bg-amber-500' :
-                            'bg-teal-600'
+                            selectedNetworkEvent.severity === 'high'
+                              ? 'bg-red-600'
+                              : selectedNetworkEvent.severity === 'medium'
+                                ? 'bg-amber-500'
+                                : 'bg-teal-600'
                           }`}
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={`text-sm px-2 py-1 text-white rounded ${
-                              selectedNetworkEvent.severity === 'high' ? 'bg-red-600' :
-                              selectedNetworkEvent.severity === 'medium' ? 'bg-amber-500' :
-                              'bg-teal-600'
-                            }`}>
-                              {selectedNetworkEvent.type === 'infrastructure' ? 'Infrastructure Issue' :
-                               selectedNetworkEvent.type === 'group' ? 'Client Group Issue' :
-                               'Single Client Issue'}
+                            <span
+                              className={`text-sm px-2 py-1 text-white rounded ${
+                                selectedNetworkEvent.severity === 'high'
+                                  ? 'bg-red-600'
+                                  : selectedNetworkEvent.severity === 'medium'
+                                    ? 'bg-amber-500'
+                                    : 'bg-teal-600'
+                              }`}
+                            >
+                              {selectedNetworkEvent.type === 'infrastructure'
+                                ? 'Infrastructure Issue'
+                                : selectedNetworkEvent.type === 'group'
+                                  ? 'Client Group Issue'
+                                  : 'Single Client Issue'}
                             </span>
-                            <span className="text-sm text-muted-foreground">{selectedNetworkEvent.time}</span>
+                            <span className="text-sm text-muted-foreground">
+                              {selectedNetworkEvent.time}
+                            </span>
                           </div>
                           <h4 className="font-medium mb-2">{selectedNetworkEvent.description}</h4>
-                          <p className="text-muted-foreground mb-4">{selectedNetworkEvent.aiExplanation}</p>
+                          <p className="text-muted-foreground mb-4">
+                            {selectedNetworkEvent.aiExplanation}
+                          </p>
                           <div className="grid grid-cols-3 gap-4">
                             <div>
                               <span className="text-sm text-muted-foreground">Affected</span>
-                              <p className="font-medium">{selectedNetworkEvent.affectedCount} {healthViewMode}</p>
+                              <p className="font-medium">
+                                {selectedNetworkEvent.affectedCount} {healthViewMode}
+                              </p>
                             </div>
                             <div>
                               <span className="text-sm text-muted-foreground">Severity</span>
-                              <p className="font-medium capitalize">{selectedNetworkEvent.severity}</p>
+                              <p className="font-medium capitalize">
+                                {selectedNetworkEvent.severity}
+                              </p>
                             </div>
                             <div>
                               <span className="text-sm text-muted-foreground">Status</span>
-                              <p className="font-medium capitalize">{selectedNetworkEvent.status.replace('-', ' ')}</p>
+                              <p className="font-medium capitalize">
+                                {selectedNetworkEvent.status.replace('-', ' ')}
+                              </p>
                             </div>
                           </div>
                           <div className="mt-4 pt-4 border-t">
@@ -2708,11 +3271,19 @@ function DashboardEnhancedComponent() {
 
                     {/* Quick Actions */}
                     <div className="flex gap-3">
-                      <Button variant="outline" size="sm" onClick={() => setSelectedNetworkEvent(null)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedNetworkEvent(null)}
+                      >
                         <ArrowRight className="w-4 h-4 mr-2 rotate-180" />
                         Back to Events
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => setSelectorTab('access-point')}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectorTab('access-point')}
+                      >
                         View Access Points
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => setSelectorTab('client')}>
@@ -2731,9 +3302,20 @@ function DashboardEnhancedComponent() {
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-4">
                   <Brain className="h-4 w-4" />
-                  <span>Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong> <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]">Beta</Badge>, or <strong>Client</strong> above to drill into specific details</span>
+                  <span>
+                    Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong>{' '}
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]"
+                    >
+                      Beta
+                    </Badge>
+                    , or <strong>Client</strong> above to drill into specific details
+                  </span>
                 </div>
-                <p className="text-xs opacity-60 mt-2">UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line</p>
+                <p className="text-xs opacity-60 mt-2">
+                  UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -2758,8 +3340,12 @@ function DashboardEnhancedComponent() {
                 Back
               </Button>
               <div>
-                <h3 className="text-lg font-semibold">{selectedEntityName || 'Access Point Details'}</h3>
-                <p className="text-sm text-muted-foreground">Detailed AP information and connected clients</p>
+                <h3 className="text-lg font-semibold">
+                  {selectedEntityName || 'Access Point Details'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Detailed AP information and connected clients
+                </p>
               </div>
             </div>
           </div>
@@ -2786,7 +3372,9 @@ function DashboardEnhancedComponent() {
               </Button>
               <div>
                 <h3 className="text-lg font-semibold">{selectedEntityName || 'Client Details'}</h3>
-                <p className="text-sm text-muted-foreground">Client connection and performance details</p>
+                <p className="text-sm text-muted-foreground">
+                  Client connection and performance details
+                </p>
               </div>
             </div>
           </div>
@@ -2813,7 +3401,9 @@ function DashboardEnhancedComponent() {
               </Button>
               <div>
                 <h3 className="text-lg font-semibold">{selectedEntityName || 'Switch Details'}</h3>
-                <p className="text-sm text-muted-foreground">Switch configuration and port status</p>
+                <p className="text-sm text-muted-foreground">
+                  Switch configuration and port status
+                </p>
               </div>
             </div>
           </div>
@@ -2830,828 +3420,962 @@ function DashboardEnhancedComponent() {
       )}
 
       {/* NETWORK DASHBOARD VIEW - Shows for Site tab or when no specific entity selected */}
-      {((selectorTab === 'site') ||
+      {(selectorTab === 'site' ||
         (selectorTab === 'access-point' && !selectedEntityId) ||
         (selectorTab === 'client' && !selectedEntityId) ||
         (selectorTab === 'switch' && !selectedEntityId)) && (
-      <>
-      {/* SECTION 1: OPERATIONAL CONTEXT SUMMARY */}
-      {showSection('operational-context') && (
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">
-            {selectedEntityId && selectorTab === 'site'
-              ? `Site Overview: ${selectedEntityName}`
-              : 'Network Overview'}
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            {selectedEntityId && selectorTab === 'site'
-              ? 'Site-specific context and performance metrics'
-              : 'Intelligent context-aware network insights'}
-          </p>
-        </div>
-        <OperationalContextSummary />
-      </div>
-      )}
+        <>
+          {/* SECTION 1: OPERATIONAL CONTEXT SUMMARY */}
+          {showSection('operational-context') && (
+            <div className="space-y-4">
+              <div className="border-b pb-2">
+                <h3 className="text-lg font-semibold">
+                  {selectedEntityId && selectorTab === 'site'
+                    ? `Site Overview: ${selectedEntityName}`
+                    : 'Network Overview'}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {selectedEntityId && selectorTab === 'site'
+                    ? 'Site-specific context and performance metrics'
+                    : 'Intelligent context-aware network insights'}
+                </p>
+              </div>
+              <OperationalContextSummary />
+            </div>
+          )}
 
-      {/* ========================================
+          {/* ========================================
           SECTION 2: CORE OPERATIONAL ACTIVITY
           ======================================== */}
-      {showSection('core-activity') && (
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Core Operational Activity</h3>
-          <p className="text-sm text-muted-foreground">Real-time network operations and status</p>
-        </div>
+          {showSection('core-activity') && (
+            <div className="space-y-4">
+              <div className="border-b pb-2">
+                <h3 className="text-lg font-semibold">Core Operational Activity</h3>
+                <p className="text-sm text-muted-foreground">
+                  Real-time network operations and status
+                </p>
+              </div>
 
-        {/* Key Metrics Grid */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {/* Total APs */}
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Access Points</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
-              <Wifi className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{apStats.total}</div>
-            <div className="flex flex-col gap-1.5 mt-2">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[color:var(--status-success)] border-[color:var(--status-success)] text-xs">
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  {apStats.online} Online
-                </Badge>
-                {apStats.offline > 0 && (
-                  <Badge variant="outline" className="text-[color:var(--status-error)] border-[color:var(--status-error)] text-xs">
-                    <WifiOff className="h-3 w-3 mr-1" />
-                    {apStats.offline} Offline
-                  </Badge>
-                )}
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Uptime</span>
-                <span className="font-medium">{apStats.online > 0 ? Math.round((apStats.online / apStats.total) * 100) : 0}%</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Status</span>
-                <span className="font-medium text-[color:var(--status-success)]">{apStats.offline === 0 ? 'Optimal' : 'Check Required'}</span>
-              </div>
-              {Object.keys(apStats.models).length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground mb-1">Models</p>
-                  <div className="space-y-0.5">
-                    {Object.entries(apStats.models)
-                      .sort(([, a], [, b]) => b - a)
-                      .map(([model, count]) => (
-                        <div key={model} className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground truncate" title={model}>{model}</span>
-                          <Badge variant="secondary" className="text-xs">{count}</Badge>
+              {/* Key Metrics Grid */}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {/* Total APs */}
+                <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                    <CardTitle className="text-sm font-semibold">Access Points</CardTitle>
+                    <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
+                      <Wifi className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    <div className="text-2xl font-bold text-foreground">{apStats.total}</div>
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <div className="flex items-center gap-2">
+                        <Badge
+                          variant="outline"
+                          className="text-[color:var(--status-success)] border-[color:var(--status-success)] text-xs"
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          {apStats.online} Online
+                        </Badge>
+                        {apStats.offline > 0 && (
+                          <Badge
+                            variant="outline"
+                            className="text-[color:var(--status-error)] border-[color:var(--status-error)] text-xs"
+                          >
+                            <WifiOff className="h-3 w-3 mr-1" />
+                            {apStats.offline} Offline
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Uptime</span>
+                        <span className="font-medium">
+                          {apStats.online > 0
+                            ? Math.round((apStats.online / apStats.total) * 100)
+                            : 0}
+                          %
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Status</span>
+                        <span className="font-medium text-[color:var(--status-success)]">
+                          {apStats.offline === 0 ? 'Optimal' : 'Check Required'}
+                        </span>
+                      </div>
+                      {Object.keys(apStats.models).length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-border">
+                          <p className="text-xs text-muted-foreground mb-1">Models</p>
+                          <div className="space-y-0.5">
+                            {Object.entries(apStats.models)
+                              .sort(([, a], [, b]) => b - a)
+                              .map(([model, count]) => (
+                                <div
+                                  key={model}
+                                  className="flex items-center justify-between text-xs"
+                                >
+                                  <span className="text-muted-foreground truncate" title={model}>
+                                    {model}
+                                  </span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {count}
+                                  </Badge>
+                                </div>
+                              ))}
+                          </div>
                         </div>
-                      ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Connected Clients */}
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Connected Clients</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
-              <Users className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{clientStats.total}</div>
-            <div className="flex flex-col gap-1.5 mt-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Authenticated</span>
-                <span className="font-medium">{clientStats.authenticated}</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground">Auth Rate</span>
-                <span className="font-medium">{clientStats.total > 0 ? Math.round((clientStats.authenticated / clientStats.total) * 100) : 0}%</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs">
-                <TrendingUp className="h-3 w-3 text-[color:var(--status-success)]" />
-                <span className="text-[color:var(--status-success)] font-medium">Active</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                {/* Connected Clients */}
+                <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                    <CardTitle className="text-sm font-semibold">Connected Clients</CardTitle>
+                    <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
+                      <Users className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    <div className="text-2xl font-bold text-foreground">{clientStats.total}</div>
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Authenticated</span>
+                        <span className="font-medium">{clientStats.authenticated}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Auth Rate</span>
+                        <span className="font-medium">
+                          {clientStats.total > 0
+                            ? Math.round((clientStats.authenticated / clientStats.total) * 100)
+                            : 0}
+                          %
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs">
+                        <TrendingUp className="h-3 w-3 text-[color:var(--status-success)]" />
+                        <span className="text-[color:var(--status-success)] font-medium">
+                          Active
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-        {/* Network Throughput */}
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm flex items-center gap-1.5 font-semibold">
-              Network Throughput
-              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" title={TOOLTIPS.REAL_TIME_THROUGHPUT} />
-            </CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
-              <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
+                {/* Network Throughput */}
+                <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                    <CardTitle className="text-sm flex items-center gap-1.5 font-semibold">
+                      Network Throughput
+                      <span title={TOOLTIPS.REAL_TIME_THROUGHPUT}>
+                        <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </span>
+                    </CardTitle>
+                    <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
+                      <Activity className="h-3.5 w-3.5 text-white animate-pulse" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Total network traffic (Mbps/Gbps)
+                    </p>
+
+                    {/* Upload/Download Stats */}
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <TrendingUp className="h-3 w-3" />
+                          <span title="Upload throughput in Mbps/Gbps">Upload</span>
+                        </div>
+                        <div className="font-medium text-[color:var(--status-info)]">
+                          {formatBps(clientStats.throughputUpload)}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1 text-muted-foreground">
+                          <TrendingDown className="h-3 w-3" />
+                          <span title="Download throughput in Mbps/Gbps">Download</span>
+                        </div>
+                        <div className="font-medium text-[color:var(--status-success)]">
+                          {formatBps(clientStats.throughputDownload)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Average per client */}
+                    {clientStats.total > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="flex items-center justify-between text-xs">
+                          <span
+                            className="text-muted-foreground cursor-help"
+                            title="Average throughput per connected client"
+                          >
+                            Avg per client
+                          </span>
+                          <span className="font-medium">
+                            {formatBps(
+                              (clientStats.throughputUpload + clientStats.throughputDownload) /
+                                clientStats.total
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Mini trend chart */}
+                    {throughputTrend.length > 0 && (
+                      <div className="mt-3 h-10">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={throughputTrend.slice(-15)}>
+                            <defs>
+                              <linearGradient id="throughputGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#BB86FC" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#BB86FC" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <Area
+                              type="monotone"
+                              dataKey="total"
+                              stroke="#BB86FC"
+                              strokeWidth={1.5}
+                              fill="url(#throughputGradient)"
+                              isAnimationActive={false}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Active Alerts */}
+                <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+                    <CardTitle className="text-sm font-semibold">Active Alerts</CardTitle>
+                    <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
+                      <AlertTriangle className="h-3.5 w-3.5 text-white" />
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    <div className="text-2xl font-bold text-foreground">
+                      {alertCounts.critical + alertCounts.warning}
+                    </div>
+                    <div className="flex flex-col gap-1.5 mt-2">
+                      <div className="flex gap-2">
+                        {alertCounts.critical > 0 && (
+                          <Badge variant="destructive" className="text-xs">
+                            {alertCounts.critical} Critical
+                          </Badge>
+                        )}
+                        {alertCounts.warning > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {alertCounts.warning} Warning
+                          </Badge>
+                        )}
+                      </div>
+                      {alertCounts.critical === 0 && alertCounts.warning === 0 ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1 text-xs">
+                            <CheckCircle className="h-3 w-3 text-[color:var(--status-success)]" />
+                            <span className="text-[color:var(--status-success)] font-medium">
+                              All systems normal
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">Status</span>
+                            <span className="font-medium text-[color:var(--status-success)]">
+                              Optimal
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Action needed</span>
+                          <span className="font-medium text-[color:var(--status-warning)]">
+                            Review alerts
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}</div>
-            <p className="text-xs text-muted-foreground">Total network traffic (Mbps/Gbps)</p>
-            
-            {/* Upload/Download Stats */}
-            <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <TrendingUp className="h-3 w-3" />
-                  <span title="Upload throughput in Mbps/Gbps">Upload</span>
-                </div>
-                <div className="font-medium text-[color:var(--status-info)]">{formatBps(clientStats.throughputUpload)}</div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <TrendingDown className="h-3 w-3" />
-                  <span title="Download throughput in Mbps/Gbps">Download</span>
-                </div>
-                <div className="font-medium text-[color:var(--status-success)]">{formatBps(clientStats.throughputDownload)}</div>
-              </div>
-            </div>
+          )}
 
-            {/* Average per client */}
-            {clientStats.total > 0 && (
-              <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground cursor-help" title="Average throughput per connected client">
-                    Avg per client
-                  </span>
-                  <span className="font-medium">
-                    {formatBps((clientStats.throughputUpload + clientStats.throughputDownload) / clientStats.total)}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Mini trend chart */}
-            {throughputTrend.length > 0 && (
-              <div className="mt-3 h-10">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={throughputTrend.slice(-15)}>
-                    <defs>
-                      <linearGradient id="throughputGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#BB86FC" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#BB86FC" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <Area 
-                      type="monotone" 
-                      dataKey="total" 
-                      stroke="#BB86FC" 
-                      strokeWidth={1.5}
-                      fill="url(#throughputGradient)" 
-                      isAnimationActive={false}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Active Alerts */}
-        <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-semibold">Active Alerts</CardTitle>
-            <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
-              <AlertTriangle className="h-3.5 w-3.5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{alertCounts.critical + alertCounts.warning}</div>
-            <div className="flex flex-col gap-1.5 mt-2">
-              <div className="flex gap-2">
-                {alertCounts.critical > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {alertCounts.critical} Critical
-                  </Badge>
-                )}
-                {alertCounts.warning > 0 && (
-                  <Badge variant="secondary" className="text-xs">
-                    {alertCounts.warning} Warning
-                  </Badge>
-                )}
-              </div>
-              {alertCounts.critical === 0 && alertCounts.warning === 0 ? (
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 text-xs">
-                    <CheckCircle className="h-3 w-3 text-[color:var(--status-success)]" />
-                    <span className="text-[color:var(--status-success)] font-medium">All systems normal</span>
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Status</span>
-                    <span className="font-medium text-[color:var(--status-success)]">Optimal</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Action needed</span>
-                  <span className="font-medium text-[color:var(--status-warning)]">Review alerts</span>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        </div>
-      </div>
-      )}
-
-      {/* ========================================
+          {/* ========================================
           SECTION 3: PERFORMANCE AND QUALITY
           ======================================== */}
-      {showSection('performance') && (
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Performance and Quality</h3>
-          <p className="text-sm text-muted-foreground">Network performance indicators and distribution analytics</p>
-        </div>
-
-        {/* Performance Metrics and Service Quality Overview */}
-        <div className="grid gap-4 md:grid-cols-2">
-        {/* Performance Metrics */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Metrics</CardTitle>
-            <CardDescription>Network quality indicators with insights</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {/* RSSI */}
-            {performanceMetrics && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Radio className="h-4 w-4 text-[color:var(--status-success)]" />
-                    <span className="text-sm font-medium">Signal Strength (RSSI)</span>
-                  </div>
-                  <span className={`text-sm font-bold ${
-                    performanceMetrics.avgRssi >= -50 ? 'text-[color:var(--status-success)]' :
-                    performanceMetrics.avgRssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                  }`}>
-                    {performanceMetrics.avgRssi.toFixed(0)} dBm
-                  </span>
-                </div>
-                <Progress
-                  value={Math.max(0, Math.min(100, (performanceMetrics.avgRssi + 100) * 1.25))}
-                  className="h-1.5"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {performanceMetrics.avgRssi >= -50 ? '✓ Excellent signal - Optimal performance' :
-                   performanceMetrics.avgRssi >= -60 ? '✓ Good signal - Reliable connectivity' :
-                   performanceMetrics.avgRssi >= -70 ? '⚠ Fair signal - Consider AP placement' :
-                   '⚠ Weak signal - Recommend additional APs'}
+          {showSection('performance') && (
+            <div className="space-y-4">
+              <div className="border-b pb-2">
+                <h3 className="text-lg font-semibold">Performance and Quality</h3>
+                <p className="text-sm text-muted-foreground">
+                  Network performance indicators and distribution analytics
                 </p>
               </div>
-            )}
 
-            {/* SNR */}
-            {performanceMetrics && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Signal className="h-4 w-4 text-[color:var(--status-info)]" />
-                    <span className="text-sm font-medium">Signal Quality (SNR)</span>
-                  </div>
-                  <span className={`text-sm font-bold ${
-                    performanceMetrics.avgSnr >= 40 ? 'text-[color:var(--status-success)]' :
-                    performanceMetrics.avgSnr >= 25 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                  }`}>
-                    {performanceMetrics.avgSnr.toFixed(0)} dB
-                  </span>
-                </div>
-                <Progress
-                  value={Math.max(0, Math.min(100, (performanceMetrics.avgSnr / 50) * 100))}
-                  className="h-1.5"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {performanceMetrics.avgSnr >= 40 ? '✓ Excellent - Minimal interference' :
-                   performanceMetrics.avgSnr >= 25 ? '✓ Good - Acceptable noise levels' :
-                   '⚠ Poor - High interference detected'}
-                </p>
-              </div>
-            )}
-
-            {/* Success Rate */}
-            {performanceMetrics && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
-                    <span className="text-sm font-medium">Success Rate</span>
-                  </div>
-                  <span className={`text-sm font-bold ${
-                    performanceMetrics.authenticatedRate >= 98 ? 'text-[color:var(--status-success)]' :
-                    performanceMetrics.authenticatedRate >= 95 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                  }`}>
-                    {performanceMetrics.authenticatedRate.toFixed(2)}%
-                  </span>
-                </div>
-                <Progress value={performanceMetrics.authenticatedRate} className="h-1.5" />
-                <p className="text-xs text-muted-foreground">
-                  {performanceMetrics.authenticatedRate >= 98 ? '✓ Optimal - Meeting SLA targets' :
-                   performanceMetrics.authenticatedRate >= 95 ? '⚠ Acceptable - Minor issues detected' :
-                   '⚠ Below target - Investigate connection issues'}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Service Quality Radar - Multi-Dimensional Performance View */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Service Quality Overview</CardTitle>
-            <CardDescription>Multi-dimensional performance view</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {radarData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
-                <RadarChart data={radarData}>
-                  <PolarGrid />
-                  <PolarAngleAxis dataKey="metric" />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    name="Performance"
-                    dataKey="value"
-                    stroke="#BB86FC"
-                    fill="#BB86FC"
-                    fillOpacity={0.6}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px',
-                      color: 'hsl(var(--foreground))'
-                    }}
-                  />
-                </RadarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[350px] flex items-center justify-center text-muted-foreground">
-                No metrics available
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-        {/* AP and Client Distribution */}
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Access Point Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Access Point Distribution</CardTitle>
-              <CardDescription>By role and power state</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* By Role */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">By Role</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-500" />
-                      <span className="text-sm">Primary</span>
-                    </div>
-                    <div className="text-sm font-medium">
-                      {apStats.primary} ({apStats.total > 0 ? Math.round((apStats.primary / apStats.total) * 100) : 0}%)
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-cyan-500" />
-                      <span className="text-sm">Backup</span>
-                    </div>
-                    <div className="text-sm font-medium">
-                      {apStats.backup} ({apStats.total > 0 ? Math.round((apStats.backup / apStats.total) * 100) : 0}%)
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-gray-500" />
-                      <span className="text-sm">Standby</span>
-                    </div>
-                    <div className="text-sm font-medium">
-                      {apStats.standby} ({apStats.total > 0 ? Math.round((apStats.standby / apStats.total) * 100) : 0}%)
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* By Power State */}
-              <div>
-                <h4 className="text-sm font-medium mb-3">By Power State</h4>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-[color:var(--status-success)]" />
-                      <span className="text-sm">Normal Power</span>
-                    </div>
-                    <div className="text-sm font-medium text-[color:var(--status-success)]">
-                      {apStats.normalPower} ({apStats.total > 0 ? Math.round((apStats.normalPower / apStats.total) * 100) : 0}%)
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-4 w-4 text-[color:var(--status-warning)]" />
-                      <span className="text-sm">Low Power</span>
-                    </div>
-                    <div className="text-sm font-medium text-[color:var(--status-warning)]">
-                      {apStats.lowPower} ({apStats.total > 0 ? Math.round((apStats.lowPower / apStats.total) * 100) : 0}%)
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Client Distribution */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Client Distribution</CardTitle>
-              <CardDescription>Across services and networks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {clientStats.total === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No clients connected</p>
-                </div>
-              ) : clientDistribution.length > 0 ? (
-                <div className="space-y-4">
-                  {/* List view */}
-                  <div className="space-y-3">
-                    {clientDistribution.slice(0, 6).map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-md p-2 -mx-2 transition-colors"
-                        onClick={() => handleServiceClick(item.service)}
-                        title={`Click to view ${item.count} client(s) on ${item.service}`}
-                      >
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: COLORS[idx % COLORS.length] }}
-                          />
-                          <span className="text-sm truncate">{item.service}</span>
+              {/* Performance Metrics and Service Quality Overview */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Performance Metrics */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Metrics</CardTitle>
+                    <CardDescription>Network quality indicators with insights</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-5">
+                    {/* RSSI */}
+                    {performanceMetrics && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Radio className="h-4 w-4 text-[color:var(--status-success)]" />
+                            <span className="text-sm font-medium">Signal Strength (RSSI)</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.avgRssi >= -50
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.avgRssi >= -70
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.avgRssi.toFixed(0)} dBm
+                          </span>
                         </div>
-                        <div className="flex items-center gap-3 ml-2">
-                          <span className="text-sm font-medium">{item.count}</span>
-                          <span className="text-xs text-muted-foreground w-10 text-right">{item.percentage}%</span>
+                        <Progress
+                          value={Math.max(
+                            0,
+                            Math.min(100, (performanceMetrics.avgRssi + 100) * 1.25)
+                          )}
+                          className="h-1.5"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {performanceMetrics.avgRssi >= -50
+                            ? '✓ Excellent signal - Optimal performance'
+                            : performanceMetrics.avgRssi >= -60
+                              ? '✓ Good signal - Reliable connectivity'
+                              : performanceMetrics.avgRssi >= -70
+                                ? '⚠ Fair signal - Consider AP placement'
+                                : '⚠ Weak signal - Recommend additional APs'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* SNR */}
+                    {performanceMetrics && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Signal className="h-4 w-4 text-[color:var(--status-info)]" />
+                            <span className="text-sm font-medium">Signal Quality (SNR)</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.avgSnr >= 40
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.avgSnr >= 25
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.avgSnr.toFixed(0)} dB
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.max(0, Math.min(100, (performanceMetrics.avgSnr / 50) * 100))}
+                          className="h-1.5"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {performanceMetrics.avgSnr >= 40
+                            ? '✓ Excellent - Minimal interference'
+                            : performanceMetrics.avgSnr >= 25
+                              ? '✓ Good - Acceptable noise levels'
+                              : '⚠ Poor - High interference detected'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Success Rate */}
+                    {performanceMetrics && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4 text-[color:var(--status-success)]" />
+                            <span className="text-sm font-medium">Success Rate</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.authenticatedRate >= 98
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.authenticatedRate >= 95
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.authenticatedRate.toFixed(2)}%
+                          </span>
+                        </div>
+                        <Progress value={performanceMetrics.authenticatedRate} className="h-1.5" />
+                        <p className="text-xs text-muted-foreground">
+                          {performanceMetrics.authenticatedRate >= 98
+                            ? '✓ Optimal - Meeting SLA targets'
+                            : performanceMetrics.authenticatedRate >= 95
+                              ? '⚠ Acceptable - Minor issues detected'
+                              : '⚠ Below target - Investigate connection issues'}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Service Quality Radar - Multi-Dimensional Performance View */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Service Quality Overview</CardTitle>
+                    <CardDescription>Multi-dimensional performance view</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {radarData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={350}>
+                        <RadarChart data={radarData}>
+                          <PolarGrid />
+                          <PolarAngleAxis dataKey="metric" />
+                          <PolarRadiusAxis
+                            angle={90}
+                            domain={[0, 100]}
+                            tick={false}
+                            axisLine={false}
+                          />
+                          <Radar
+                            name="Performance"
+                            dataKey="value"
+                            stroke="#BB86FC"
+                            fill="#BB86FC"
+                            fillOpacity={0.6}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: 'hsl(var(--background))',
+                              border: '1px solid hsl(var(--border))',
+                              borderRadius: '6px',
+                              color: 'hsl(var(--foreground))',
+                            }}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[350px] flex items-center justify-center text-muted-foreground">
+                        No metrics available
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* AP and Client Distribution */}
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Access Point Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Access Point Distribution</CardTitle>
+                    <CardDescription>By role and power state</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* By Role */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">By Role</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-purple-500" />
+                            <span className="text-sm">Primary</span>
+                          </div>
+                          <div className="text-sm font-medium">
+                            {apStats.primary} (
+                            {apStats.total > 0
+                              ? Math.round((apStats.primary / apStats.total) * 100)
+                              : 0}
+                            %)
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-cyan-500" />
+                            <span className="text-sm">Backup</span>
+                          </div>
+                          <div className="text-sm font-medium">
+                            {apStats.backup} (
+                            {apStats.total > 0
+                              ? Math.round((apStats.backup / apStats.total) * 100)
+                              : 0}
+                            %)
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-gray-500" />
+                            <span className="text-sm">Standby</span>
+                          </div>
+                          <div className="text-sm font-medium">
+                            {apStats.standby} (
+                            {apStats.total > 0
+                              ? Math.round((apStats.standby / apStats.total) * 100)
+                              : 0}
+                            %)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* By Power State */}
+                    <div>
+                      <h4 className="text-sm font-medium mb-3">By Power State</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-[color:var(--status-success)]" />
+                            <span className="text-sm">Normal Power</span>
+                          </div>
+                          <div className="text-sm font-medium text-[color:var(--status-success)]">
+                            {apStats.normalPower} (
+                            {apStats.total > 0
+                              ? Math.round((apStats.normalPower / apStats.total) * 100)
+                              : 0}
+                            %)
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-[color:var(--status-warning)]" />
+                            <span className="text-sm">Low Power</span>
+                          </div>
+                          <div className="text-sm font-medium text-[color:var(--status-warning)]">
+                            {apStats.lowPower} (
+                            {apStats.total > 0
+                              ? Math.round((apStats.lowPower / apStats.total) * 100)
+                              : 0}
+                            %)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Client Distribution */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Client Distribution</CardTitle>
+                    <CardDescription>Across services and networks</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {clientStats.total === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>No clients connected</p>
+                      </div>
+                    ) : clientDistribution.length > 0 ? (
+                      <div className="space-y-4">
+                        {/* List view */}
+                        <div className="space-y-3">
+                          {clientDistribution.slice(0, 6).map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-md p-2 -mx-2 transition-colors"
+                              onClick={() => handleServiceClick(item.service)}
+                              title={`Click to view ${item.count} client(s) on ${item.service}`}
+                            >
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <div
+                                  className="w-3 h-3 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                                />
+                                <span className="text-sm truncate">{item.service}</span>
+                              </div>
+                              <div className="flex items-center gap-3 ml-2">
+                                <span className="text-sm font-medium">{item.count}</span>
+                                <span className="text-xs text-muted-foreground w-10 text-right">
+                                  {item.percentage}%
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Mini pie chart */}
+                        {clientDistribution.length > 1 && (
+                          <div className="h-32">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <Pie
+                                  data={clientDistribution.slice(0, 6)}
+                                  dataKey="count"
+                                  nameKey="service"
+                                  cx="50%"
+                                  cy="50%"
+                                  outerRadius={50}
+                                  isAnimationActive={false}
+                                  onClick={(data) => {
+                                    if (data && (data as any).service) {
+                                      handleServiceClick((data as any).service);
+                                    }
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {clientDistribution.slice(0, 6).map((entry, index) => (
+                                    <Cell
+                                      key={`cell-${index}`}
+                                      fill={COLORS[index % COLORS.length]}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                  ))}
+                                </Pie>
+                                <Tooltip
+                                  contentStyle={{
+                                    backgroundColor: 'hsl(var(--background))',
+                                    border: '1px solid hsl(var(--border))',
+                                    borderRadius: '6px',
+                                    color: 'hsl(var(--foreground))',
+                                  }}
+                                />
+                              </PieChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="text-center text-muted-foreground py-8">
+                        <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                        <p>Unable to load client distribution</p>
+                        <p className="text-xs mt-1">Service information not available</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================
+          SECTION 4: BEST PRACTICE EVALUATION
+          ======================================== */}
+          {showSection('best-practices') && (
+            <div className="space-y-4">
+              <div className="border-b pb-2">
+                <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
+                <p className="text-sm text-muted-foreground">
+                  Network configuration and optimization recommendations
+                </p>
+              </div>
+              <BestPracticesWidget />
+            </div>
+          )}
+
+          {/* Top Clients */}
+          {showSection('top-clients') && topClients.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Top Clients by Throughput</CardTitle>
+                    <CardDescription>
+                      Real-time bandwidth usage and connection details
+                      {vendorLookupsInProgress && (
+                        <span className="ml-2 text-xs italic">• Loading device info...</span>
+                      )}
+                    </CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {vendorLookupsInProgress && (
+                      <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsTopClientsCollapsed(!isTopClientsCollapsed)}
+                    >
+                      {isTopClientsCollapsed ? (
+                        <ChevronDown className="h-4 w-4" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {!isTopClientsCollapsed && (
+                <CardContent>
+                  <div className="space-y-3">
+                    {topClients.map((client, idx) => (
+                      <div
+                        key={client.mac}
+                        onClick={async () => {
+                          try {
+                            // Fetch fresh station details from the API
+                            const stationDetails = await apiService.fetchStationDetails(client.mac);
+                            // Find the full station object from stations array
+                            const fullStation = stations.find((s) => s.macAddress === client.mac);
+                            // Merge all available data
+                            setSelectedClient({ ...fullStation, ...stationDetails, ...client });
+                            setIsClientDialogOpen(true);
+                          } catch (error) {
+                            console.error('[Dashboard] Failed to fetch client details:', error);
+                            // Fallback to existing client data
+                            const fullStation = stations.find((s) => s.macAddress === client.mac);
+                            setSelectedClient(fullStation || (client as any));
+                            setIsClientDialogOpen(true);
+                          }
+                        }}
+                        className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                      >
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-start gap-3">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
+                              #{idx + 1}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">{client.name}</span>
+                                {client.vendor && (
+                                  <Badge variant="secondary" className="text-xs">
+                                    {getShortVendor(client.vendor)}
+                                  </Badge>
+                                )}
+                                {client.rssi && (
+                                  <Badge
+                                    variant={
+                                      client.rssi > -60
+                                        ? 'default'
+                                        : client.rssi > -70
+                                          ? 'secondary'
+                                          : 'outline'
+                                    }
+                                    className="text-xs"
+                                  >
+                                    <Signal className="h-3 w-3 mr-1" />
+                                    {client.rssi} dBm
+                                  </Badge>
+                                )}
+                              </div>
+                              <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                                <span>{client.mac}</span>
+                                {client.ipAddress !== 'N/A' && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{client.ipAddress}</span>
+                                  </>
+                                )}
+                                {client.vendor && client.vendor !== 'Unknown Vendor' && (
+                                  <>
+                                    <span>•</span>
+                                    <span className="text-xs italic">{client.vendor}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-primary">
+                              {formatBps(client.throughput)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Total</div>
+                          </div>
+                        </div>
+
+                        {/* Traffic Stats Row */}
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
+                            <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
+                            <div>
+                              <div className="text-xs text-muted-foreground">Upload</div>
+                              <div className="text-sm font-medium">{formatBps(client.upload)}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
+                            <Download className="h-4 w-4 text-[color:var(--status-success)]" />
+                            <div>
+                              <div className="text-xs text-muted-foreground">Download</div>
+                              <div className="text-sm font-medium">
+                                {formatBps(client.download)}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Connection Details Row */}
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Wifi className="h-3.5 w-3.5" />
+                            <span className="truncate">{client.network}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Router className="h-3.5 w-3.5" />
+                            <span className="truncate">{client.ap}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-muted-foreground">
+                            <Activity className="h-3.5 w-3.5" />
+                            <span>{client.band}</span>
+                          </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div className="mt-3">
+                          <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                            <span>Traffic Distribution</span>
+                            <span>
+                              {Math.round((client.download / client.throughput) * 100)}% DL /{' '}
+                              {Math.round((client.upload / client.throughput) * 100)}% UL
+                            </span>
+                          </div>
+                          <div className="h-2 bg-muted rounded-full overflow-hidden flex">
+                            <div
+                              className="bg-green-500 transition-all"
+                              style={{ width: `${(client.download / client.throughput) * 100}%` }}
+                            />
+                            <div
+                              className="bg-blue-500 transition-all"
+                              style={{ width: `${(client.upload / client.throughput) * 100}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
                     ))}
                   </div>
-
-                  {/* Mini pie chart */}
-                  {clientDistribution.length > 1 && (
-                    <div className="h-32">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={clientDistribution.slice(0, 6)}
-                            dataKey="count"
-                            nameKey="service"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={50}
-                            isAnimationActive={false}
-                            onClick={(data) => {
-                              if (data && data.service) {
-                                handleServiceClick(data.service);
-                              }
-                            }}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            {clientDistribution.slice(0, 6).map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={COLORS[index % COLORS.length]}
-                                style={{ cursor: 'pointer' }}
-                              />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px',
-                      color: 'hsl(var(--foreground))'
-                    }}
-                  />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center text-muted-foreground py-8">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Unable to load client distribution</p>
-                  <p className="text-xs mt-1">Service information not available</p>
-                </div>
+                </CardContent>
               )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      )}
-
-      {/* ========================================
-          SECTION 4: BEST PRACTICE EVALUATION
-          ======================================== */}
-      {showSection('best-practices') && (
-      <div className="space-y-4">
-        <div className="border-b pb-2">
-          <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
-          <p className="text-sm text-muted-foreground">Network configuration and optimization recommendations</p>
-        </div>
-        <BestPracticesWidget />
-      </div>
-      )}
-
-      {/* Top Clients */}
-      {showSection('top-clients') && topClients.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Top Clients by Throughput</CardTitle>
-                <CardDescription>
-                  Real-time bandwidth usage and connection details
-                  {vendorLookupsInProgress && (
-                    <span className="ml-2 text-xs italic">
-                      • Loading device info...
-                    </span>
-                  )}
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                {vendorLookupsInProgress && (
-                  <RefreshCw className="h-4 w-4 text-muted-foreground animate-spin" />
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsTopClientsCollapsed(!isTopClientsCollapsed)}
-                >
-                  {isTopClientsCollapsed ? (
-                    <ChevronDown className="h-4 w-4" />
-                  ) : (
-                    <ChevronUp className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          {!isTopClientsCollapsed && (
-          <CardContent>
-            <div className="space-y-3">
-              {topClients.map((client, idx) => (
-                <div
-                  key={client.mac}
-                  onClick={async () => {
-                    try {
-                      // Fetch fresh station details from the API
-                      const stationDetails = await apiService.fetchStationDetails(client.mac);
-                      // Find the full station object from stations array
-                      const fullStation = stations.find(s => s.macAddress === client.mac);
-                      // Merge all available data
-                      setSelectedClient({ ...fullStation, ...stationDetails, ...client });
-                      setIsClientDialogOpen(true);
-                    } catch (error) {
-                      console.error('[Dashboard] Failed to fetch client details:', error);
-                      // Fallback to existing client data
-                      const fullStation = stations.find(s => s.macAddress === client.mac);
-                      setSelectedClient(fullStation || client as any);
-                      setIsClientDialogOpen(true);
-                    }
-                  }}
-                  className="border rounded-lg p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                >
-                  {/* Header Row */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm flex-shrink-0">
-                        #{idx + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-medium">{client.name}</span>
-                          {client.vendor && (
-                            <Badge variant="secondary" className="text-xs">
-                              {getShortVendor(client.vendor)}
-                            </Badge>
-                          )}
-                          {client.rssi && (
-                            <Badge variant={client.rssi > -60 ? "default" : client.rssi > -70 ? "secondary" : "outline"} className="text-xs">
-                              <Signal className="h-3 w-3 mr-1" />
-                              {client.rssi} dBm
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                          <span>{client.mac}</span>
-                          {client.ipAddress !== 'N/A' && (
-                            <>
-                              <span>•</span>
-                              <span>{client.ipAddress}</span>
-                            </>
-                          )}
-                          {client.vendor && client.vendor !== 'Unknown Vendor' && (
-                            <>
-                              <span>•</span>
-                              <span className="text-xs italic">{client.vendor}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-primary">
-                        {formatBps(client.throughput)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">Total</div>
-                    </div>
-                  </div>
-
-                  {/* Traffic Stats Row */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
-                      <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Upload</div>
-                        <div className="text-sm font-medium">{formatBps(client.upload)}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 p-2 bg-muted/30 rounded">
-                      <Download className="h-4 w-4 text-[color:var(--status-success)]" />
-                      <div>
-                        <div className="text-xs text-muted-foreground">Download</div>
-                        <div className="text-sm font-medium">{formatBps(client.download)}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Connection Details Row */}
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Wifi className="h-3.5 w-3.5" />
-                      <span className="truncate">{client.network}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Router className="h-3.5 w-3.5" />
-                      <span className="truncate">{client.ap}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                      <Activity className="h-3.5 w-3.5" />
-                      <span>{client.band}</span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="mt-3">
-                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                      <span>Traffic Distribution</span>
-                      <span>{Math.round((client.download / client.throughput) * 100)}% DL / {Math.round((client.upload / client.throughput) * 100)}% UL</span>
-                    </div>
-                    <div className="h-2 bg-muted rounded-full overflow-hidden flex">
-                      <div 
-                        className="bg-green-500 transition-all" 
-                        style={{ width: `${(client.download / client.throughput) * 100}%` }}
-                      />
-                      <div 
-                        className="bg-blue-500 transition-all" 
-                        style={{ width: `${(client.upload / client.throughput) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
+            </Card>
           )}
-        </Card>
-      )}
 
-      {/* Poor Services Alert */}
-      {showSection('services-health') && poorServices.length > 0 && (
-        <Card className="border-[color:var(--status-warning)]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
-              Services Requiring Attention
-            </CardTitle>
-            <CardDescription>Services with degraded performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {poorServices.map(service => (
-                <div key={service.id} className="flex items-center justify-between p-3 rounded-lg border border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]">
-                  <div>
-                    <div className="font-medium">{service.name}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {service.reliability && service.reliability < 95 && (
-                        <span className="mr-3">Reliability: {service.reliability}%</span>
-                      )}
-                      {service.uptime && service.uptime < 95 && (
-                        <span>Uptime: {service.uptime}%</span>
-                      )}
-                    </div>
-                  </div>
-                  <Badge variant="outline" className="border-[color:var(--status-warning)] text-[color:var(--status-warning)]">
-                    Degraded
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Alerts Preview */}
-      {showSection('alerts') && notifications.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Recent Alerts</CardTitle>
-                <CardDescription>Last 24 hours</CardDescription>
-              </div>
-              <Button variant="outline" size="sm">
-                View All
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {notifications.slice(0, 5).map(notif => {
-                const severity = (notif.severity || notif.level || '').toLowerCase();
-                const isCritical = severity.includes('critical') || severity.includes('error');
-                const isWarning = severity.includes('warning') || severity.includes('warn');
-                
-                return (
-                  <div 
-                    key={notif.id} 
-                    className={`flex items-start gap-3 p-3 rounded-lg border ${
-                      isCritical ? 'border-[color:var(--status-error)]/50 bg-[color:var(--status-error-bg)]' :
-                      isWarning ? 'border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]' :
-                      'border-border'
-                    }`}
-                  >
-                    {isCritical ? (
-                      <AlertCircle className="h-4 w-4 text-[color:var(--status-error)] mt-0.5 flex-shrink-0" />
-                    ) : isWarning ? (
-                      <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)] mt-0.5 flex-shrink-0" />
-                    ) : (
-                      <Activity className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium">{notif.message}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {new Date(notif.timestamp).toLocaleString()}
+          {/* Poor Services Alert */}
+          {showSection('services-health') && poorServices.length > 0 && (
+            <Card className="border-[color:var(--status-warning)]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
+                  Services Requiring Attention
+                </CardTitle>
+                <CardDescription>Services with degraded performance</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {poorServices.map((service) => (
+                    <div
+                      key={service.id}
+                      className="flex items-center justify-between p-3 rounded-lg border border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]"
+                    >
+                      <div>
+                        <div className="font-medium">{service.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {service.reliability && service.reliability < 95 && (
+                            <span className="mr-3">Reliability: {service.reliability}%</span>
+                          )}
+                          {service.uptime && service.uptime < 95 && (
+                            <span>Uptime: {service.uptime}%</span>
+                          )}
+                        </div>
                       </div>
+                      <Badge
+                        variant="outline"
+                        className="border-[color:var(--status-warning)] text-[color:var(--status-warning)]"
+                      >
+                        Degraded
+                      </Badge>
                     </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Alerts Preview */}
+          {showSection('alerts') && notifications.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Recent Alerts</CardTitle>
+                    <CardDescription>Last 24 hours</CardDescription>
                   </div>
-                );
-              })}
+                  <Button variant="outline" size="sm">
+                    View All
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {notifications.slice(0, 5).map((notif) => {
+                    const severity = (notif.severity || notif.level || '').toLowerCase();
+                    const isCritical = severity.includes('critical') || severity.includes('error');
+                    const isWarning = severity.includes('warning') || severity.includes('warn');
+
+                    return (
+                      <div
+                        key={notif.id}
+                        className={`flex items-start gap-3 p-3 rounded-lg border ${
+                          isCritical
+                            ? 'border-[color:var(--status-error)]/50 bg-[color:var(--status-error-bg)]'
+                            : isWarning
+                              ? 'border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]'
+                              : 'border-border'
+                        }`}
+                      >
+                        {isCritical ? (
+                          <AlertCircle className="h-4 w-4 text-[color:var(--status-error)] mt-0.5 flex-shrink-0" />
+                        ) : isWarning ? (
+                          <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)] mt-0.5 flex-shrink-0" />
+                        ) : (
+                          <Activity className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{notif.message}</div>
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {new Date(notif.timestamp).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Phase 1 Widgets: Venue Statistics */}
+          {showSection('venue-stats') && filters.site && filters.site !== 'all' && (
+            <VenueStatisticsWidget
+              siteId={filters.site}
+              duration={
+                filters.timeRange === '15m'
+                  ? '15M'
+                  : filters.timeRange === '1h'
+                    ? '1H'
+                    : filters.timeRange === '7d'
+                      ? '7D'
+                      : filters.timeRange === '30d'
+                        ? '30D'
+                        : '24H'
+              }
+            />
+          )}
+
+          {/* Phase 5+ Widgets: Configuration Profiles and Audit Logs */}
+          {(showSection('config-profiles') || showSection('audit-logs')) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {showSection('config-profiles') && <ConfigurationProfilesWidget />}
+              {showSection('audit-logs') && <AuditLogsWidget />}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
 
-      {/* Phase 1 Widgets: Venue Statistics */}
-      {showSection('venue-stats') && filters.site && filters.site !== 'all' && (
-        <VenueStatisticsWidget
-          siteId={filters.site}
-          duration={filters.timeRange === '15m' ? '15M' :
-                   filters.timeRange === '1h' ? '1H' :
-                   filters.timeRange === '7d' ? '7D' :
-                   filters.timeRange === '30d' ? '30D' : '24H'}
-        />
-      )}
-
-      {/* Phase 5+ Widgets: Configuration Profiles and Audit Logs */}
-      {(showSection('config-profiles') || showSection('audit-logs')) && (
-      <div className="grid gap-4 md:grid-cols-2">
-        {showSection('config-profiles') && <ConfigurationProfilesWidget />}
-        {showSection('audit-logs') && <AuditLogsWidget />}
-      </div>
-      )}
-
-      {/* OS ONE Control - System Information */}
-      {showSection('os-one') && <OSOneWidget compact={true} />}
-      </>
+          {/* OS ONE Control - System Information */}
+          {showSection('os-one') && <OSOneWidget compact={true} />}
+        </>
       )}
 
       {/* Client Detail Dialog */}
@@ -3690,8 +4414,8 @@ function DashboardEnhancedComponent() {
                 )}
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Authentication</p>
-                  <Badge variant={selectedClient.authenticated !== false ? "default" : "secondary"}>
-                    {selectedClient.authenticated !== false ? "Authenticated" : "Not Authenticated"}
+                  <Badge variant={selectedClient.authenticated !== false ? 'default' : 'secondary'}>
+                    {selectedClient.authenticated !== false ? 'Authenticated' : 'Not Authenticated'}
                   </Badge>
                 </div>
               </div>
@@ -3708,7 +4432,9 @@ function DashboardEnhancedComponent() {
                         <Network className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="text-xs text-muted-foreground">SSID/Service</p>
-                          <p className="text-sm">{selectedClient.ssid || selectedClient.serviceName}</p>
+                          <p className="text-sm">
+                            {selectedClient.ssid || selectedClient.serviceName}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -3717,7 +4443,9 @@ function DashboardEnhancedComponent() {
                         <Router className="h-4 w-4 text-muted-foreground" />
                         <div>
                           <p className="text-xs text-muted-foreground">Access Point</p>
-                          <p className="text-sm">{selectedClient.apName || selectedClient.apSerialNumber}</p>
+                          <p className="text-sm">
+                            {selectedClient.apName || selectedClient.apSerialNumber}
+                          </p>
                         </div>
                       </div>
                     )}
@@ -3735,12 +4463,17 @@ function DashboardEnhancedComponent() {
                     <div className="grid grid-cols-2 gap-4">
                       {selectedClient.rssi !== undefined && (
                         <div className="flex items-center gap-2">
-                          <Signal className={`h-4 w-4 ${
-                            selectedClient.rssi >= -50 ? 'text-[color:var(--status-success)]' :
-                            selectedClient.rssi >= -60 ? 'text-[color:var(--status-info)]' :
-                            selectedClient.rssi >= -70 ? 'text-[color:var(--status-warning)]' :
-                            'text-[color:var(--status-error)]'
-                          }`} />
+                          <Signal
+                            className={`h-4 w-4 ${
+                              selectedClient.rssi >= -50
+                                ? 'text-[color:var(--status-success)]'
+                                : selectedClient.rssi >= -60
+                                  ? 'text-[color:var(--status-info)]'
+                                  : selectedClient.rssi >= -70
+                                    ? 'text-[color:var(--status-warning)]'
+                                    : 'text-[color:var(--status-error)]'
+                            }`}
+                          />
                           <div>
                             <p className="text-xs text-muted-foreground">RSSI</p>
                             <p className="text-sm font-medium">{selectedClient.rssi} dBm</p>
@@ -3762,16 +4495,21 @@ function DashboardEnhancedComponent() {
               )}
 
               {/* Throughput */}
-              {(selectedClient.txRate !== undefined || selectedClient.rxRate !== undefined ||
-                selectedClient.txBytes !== undefined || selectedClient.rxBytes !== undefined ||
-                selectedClient.outBytes !== undefined || selectedClient.inBytes !== undefined) && (
+              {(selectedClient.txRate !== undefined ||
+                selectedClient.rxRate !== undefined ||
+                selectedClient.txBytes !== undefined ||
+                selectedClient.rxBytes !== undefined ||
+                selectedClient.outBytes !== undefined ||
+                selectedClient.inBytes !== undefined) && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm">Throughput</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-4">
-                      {(selectedClient.txRate !== undefined || selectedClient.txBytes !== undefined || selectedClient.outBytes !== undefined) && (
+                      {(selectedClient.txRate !== undefined ||
+                        selectedClient.txBytes !== undefined ||
+                        selectedClient.outBytes !== undefined) && (
                         <div className="flex items-center gap-2">
                           <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
                           <div>
@@ -3779,12 +4517,16 @@ function DashboardEnhancedComponent() {
                             <p className="text-sm font-medium">
                               {selectedClient.txRate !== undefined
                                 ? formatBps(selectedClient.txRate * 1000000)
-                                : formatBytes(selectedClient.outBytes || selectedClient.txBytes || 0)}
+                                : formatBytes(
+                                    selectedClient.outBytes || selectedClient.txBytes || 0
+                                  )}
                             </p>
                           </div>
                         </div>
                       )}
-                      {(selectedClient.rxRate !== undefined || selectedClient.rxBytes !== undefined || selectedClient.inBytes !== undefined) && (
+                      {(selectedClient.rxRate !== undefined ||
+                        selectedClient.rxBytes !== undefined ||
+                        selectedClient.inBytes !== undefined) && (
                         <div className="flex items-center gap-2">
                           <Download className="h-4 w-4 text-[color:var(--status-success)]" />
                           <div>
@@ -3792,7 +4534,9 @@ function DashboardEnhancedComponent() {
                             <p className="text-sm font-medium">
                               {selectedClient.rxRate !== undefined
                                 ? formatBps(selectedClient.rxRate * 1000000)
-                                : formatBytes(selectedClient.inBytes || selectedClient.rxBytes || 0)}
+                                : formatBytes(
+                                    selectedClient.inBytes || selectedClient.rxBytes || 0
+                                  )}
                             </p>
                           </div>
                         </div>
@@ -3803,7 +4547,8 @@ function DashboardEnhancedComponent() {
               )}
 
               {/* Session Info */}
-              {(selectedClient.uptime !== undefined || selectedClient.connectionTime !== undefined) && (
+              {(selectedClient.uptime !== undefined ||
+                selectedClient.connectionTime !== undefined) && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm">Session Information</CardTitle>
@@ -3816,7 +4561,8 @@ function DashboardEnhancedComponent() {
                           <div>
                             <p className="text-xs text-muted-foreground">Uptime</p>
                             <p className="text-sm font-medium">
-                              {Math.floor(selectedClient.uptime / 3600)}h {Math.floor((selectedClient.uptime % 3600) / 60)}m
+                              {Math.floor(selectedClient.uptime / 3600)}h{' '}
+                              {Math.floor((selectedClient.uptime % 3600) / 60)}m
                             </p>
                           </div>
                         </div>
@@ -3861,20 +4607,28 @@ function DashboardEnhancedComponent() {
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">Radio Band</p>
                           <p className="text-sm font-medium">
-                            {selectedClient.radioId === 1 ? '2.4 GHz' : selectedClient.radioId === 2 ? '5 GHz' : `Radio ${selectedClient.radioId}`}
+                            {selectedClient.radioId === 1
+                              ? '2.4 GHz'
+                              : selectedClient.radioId === 2
+                                ? '5 GHz'
+                                : `Radio ${selectedClient.radioId}`}
                           </p>
                         </div>
                       )}
                       {selectedClient.transmittedRate !== undefined && (
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">Tx Rate</p>
-                          <p className="text-sm font-medium">{formatTxRxRate(selectedClient.transmittedRate)}</p>
+                          <p className="text-sm font-medium">
+                            {formatTxRxRate(selectedClient.transmittedRate)}
+                          </p>
                         </div>
                       )}
                       {selectedClient.receivedRate !== undefined && (
                         <div className="space-y-1">
                           <p className="text-xs text-muted-foreground">Rx Rate</p>
-                          <p className="text-sm font-medium">{formatTxRxRate(selectedClient.receivedRate)}</p>
+                          <p className="text-sm font-medium">
+                            {formatTxRxRate(selectedClient.receivedRate)}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -3930,7 +4684,9 @@ function DashboardEnhancedComponent() {
               ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-12">
                   <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground font-medium mb-2">No station events available</p>
+                  <p className="text-muted-foreground font-medium mb-2">
+                    No station events available
+                  </p>
                   <p className="text-sm text-muted-foreground mb-2">
                     Station {selectedClient?.macAddress}
                   </p>
@@ -3948,12 +4704,15 @@ function DashboardEnhancedComponent() {
                       if (selectedClient) {
                         console.log('[Dashboard] Manually retrying station events load...');
                         setIsLoadingEvents(true);
-                        apiService.fetchStationEvents(selectedClient.macAddress).then(events => {
-                          console.log('[Dashboard] Manual retry received:', events);
-                          setStationEvents(events);
-                        }).finally(() => {
-                          setIsLoadingEvents(false);
-                        });
+                        apiService
+                          .fetchStationEvents(selectedClient.macAddress)
+                          .then((events) => {
+                            console.log('[Dashboard] Manual retry received:', events);
+                            setStationEvents(events);
+                          })
+                          .finally(() => {
+                            setIsLoadingEvents(false);
+                          });
                       }
                     }}
                   >
@@ -3979,7 +4738,7 @@ function DashboardEnhancedComponent() {
                         size="sm"
                         onClick={() => setEventTypeFilter(type)}
                       >
-                        {type} ({stationEvents.filter(e => e.eventType === type).length})
+                        {type} ({stationEvents.filter((e) => e.eventType === type).length})
                       </Button>
                     ))}
                   </div>
@@ -3990,16 +4749,22 @@ function DashboardEnhancedComponent() {
                       {filteredEvents.map((event, idx) => {
                         const eventDate = new Date(parseInt(event.timestamp));
                         const eventColor =
-                          event.eventType === 'Roam' ? 'blue' :
-                          event.eventType === 'Associate' ? 'green' :
-                          event.eventType === 'Disassociate' ? 'red' :
-                          event.eventType === 'Authenticate' ? 'purple' :
-                          'gray';
+                          event.eventType === 'Roam'
+                            ? 'blue'
+                            : event.eventType === 'Associate'
+                              ? 'green'
+                              : event.eventType === 'Disassociate'
+                                ? 'red'
+                                : event.eventType === 'Authenticate'
+                                  ? 'purple'
+                                  : 'gray';
 
                         return (
                           <Card key={event.id || idx} className="relative pl-8">
                             {/* Timeline dot */}
-                            <div className={`absolute left-3 top-6 w-2 h-2 rounded-full bg-${eventColor}-500`} />
+                            <div
+                              className={`absolute left-3 top-6 w-2 h-2 rounded-full bg-${eventColor}-500`}
+                            />
                             {idx !== filteredEvents.length - 1 && (
                               <div className="absolute left-3.5 top-8 w-0.5 h-full bg-border" />
                             )}
@@ -4010,9 +4775,12 @@ function DashboardEnhancedComponent() {
                                   <div className="flex items-center gap-2 mb-2">
                                     <Badge
                                       variant={
-                                        event.eventType === 'Associate' || event.eventType === 'Authenticate' ? 'default' :
-                                        event.eventType === 'Disassociate' ? 'destructive' :
-                                        'secondary'
+                                        event.eventType === 'Associate' ||
+                                        event.eventType === 'Authenticate'
+                                          ? 'default'
+                                          : event.eventType === 'Disassociate'
+                                            ? 'destructive'
+                                            : 'secondary'
                                       }
                                     >
                                       {event.eventType}
@@ -4042,7 +4810,9 @@ function DashboardEnhancedComponent() {
                                     {event.ipAddress && (
                                       <div>
                                         <span className="text-muted-foreground">IP: </span>
-                                        <span className="font-mono font-medium">{event.ipAddress}</span>
+                                        <span className="font-mono font-medium">
+                                          {event.ipAddress}
+                                        </span>
                                       </div>
                                     )}
                                     {event.level && (
@@ -4076,60 +4846,66 @@ function DashboardEnhancedComponent() {
         width="xl"
       >
         <div className="space-y-2">
-              {getClientsForService().length === 0 ? (
-                <div className="text-center text-muted-foreground py-8">
-                  <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No clients found for this service</p>
-                </div>
-              ) : (
-                getClientsForService().map((client, idx) => (
-                  <Card
-                    key={client.macAddress || idx}
-                    className="cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => {
-                      setSelectedClient(client);
-                      setIsServiceClientsDialogOpen(false);
-                      setIsClientDialogOpen(true);
-                    }}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {client.vendorIcon && (
-                            <div className="text-2xl">{client.vendorIcon}</div>
-                          )}
-                          <div>
-                            <p className="font-medium">{client.hostName || client.macAddress}</p>
-                            <p className="text-xs text-muted-foreground">{client.macAddress}</p>
-                            {client.ipAddress && (
-                              <p className="text-xs text-muted-foreground">{client.ipAddress}</p>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          {client.rssi !== undefined && (
-                            <div className="flex items-center gap-1">
-                              <Signal className={`h-4 w-4 ${
-                                client.rssi >= -50 ? 'text-[color:var(--status-success)]' :
-                                client.rssi >= -60 ? 'text-[color:var(--status-info)]' :
-                                client.rssi >= -70 ? 'text-[color:var(--status-warning)]' :
-                                'text-[color:var(--status-error)]'
-                              }`} />
-                              <span className="text-muted-foreground">{client.rssi} dBm</span>
-                            </div>
-                          )}
-                          {client.authenticated !== false && (
-                            <Badge variant="outline" className="text-[color:var(--status-success)] border-[color:var(--status-success)]">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Authenticated
-                            </Badge>
-                          )}
-                        </div>
+          {getClientsForService().length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No clients found for this service</p>
+            </div>
+          ) : (
+            getClientsForService().map((client, idx) => (
+              <Card
+                key={client.macAddress || idx}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => {
+                  setSelectedClient(client);
+                  setIsServiceClientsDialogOpen(false);
+                  setIsClientDialogOpen(true);
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {client.vendorIcon && <div className="text-2xl">{client.vendorIcon}</div>}
+                      <div>
+                        <p className="font-medium">{client.hostName || client.macAddress}</p>
+                        <p className="text-xs text-muted-foreground">{client.macAddress}</p>
+                        {client.ipAddress && (
+                          <p className="text-xs text-muted-foreground">{client.ipAddress}</p>
+                        )}
                       </div>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm">
+                      {client.rssi !== undefined && (
+                        <div className="flex items-center gap-1">
+                          <Signal
+                            className={`h-4 w-4 ${
+                              client.rssi >= -50
+                                ? 'text-[color:var(--status-success)]'
+                                : client.rssi >= -60
+                                  ? 'text-[color:var(--status-info)]'
+                                  : client.rssi >= -70
+                                    ? 'text-[color:var(--status-warning)]'
+                                    : 'text-[color:var(--status-error)]'
+                            }`}
+                          />
+                          <span className="text-muted-foreground">{client.rssi} dBm</span>
+                        </div>
+                      )}
+                      {client.authenticated !== false && (
+                        <Badge
+                          variant="outline"
+                          className="text-[color:var(--status-success)] border-[color:var(--status-success)]"
+                        >
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Authenticated
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
       </DetailSlideOut>
     </div>

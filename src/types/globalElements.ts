@@ -24,7 +24,9 @@ export type GlobalElementType =
   | 'cos_profile'
   | 'rate_limiter'
   | 'ap_profile'
-  | 'rf_policy';
+  | 'rf_policy'
+  | 'rfmgmt'
+  | 'adsp';
 
 export const GLOBAL_ELEMENT_TYPE_LABELS: Record<GlobalElementType, string> = {
   service: 'Service (WLAN)',
@@ -35,6 +37,8 @@ export const GLOBAL_ELEMENT_TYPE_LABELS: Record<GlobalElementType, string> = {
   rate_limiter: 'Rate Limiter',
   ap_profile: 'AP Profile',
   rf_policy: 'RF Management Policy',
+  rfmgmt: 'RF Management',
+  adsp: 'ADSP',
 };
 
 // ---------------------------------------------------------------------------

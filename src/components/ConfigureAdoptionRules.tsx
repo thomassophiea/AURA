@@ -4,18 +4,25 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { 
-  Plus, 
-  Search, 
-  Edit2, 
-  Trash2, 
-  GripVertical, 
-  CheckCircle, 
+import {
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  GripVertical,
+  CheckCircle,
   XCircle,
   MapPin,
   Network,
@@ -24,7 +31,7 @@ import {
   ArrowUp,
   ArrowDown,
   AlertCircle,
-  Settings
+  Settings,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -47,7 +54,14 @@ interface AdoptionRule {
 
 interface RuleCondition {
   id: string;
-  field: 'macAddress' | 'serialNumber' | 'model' | 'manufacturer' | 'location' | 'apName' | 'ipSubnet';
+  field:
+    | 'macAddress'
+    | 'serialNumber'
+    | 'model'
+    | 'manufacturer'
+    | 'location'
+    | 'apName'
+    | 'ipSubnet';
   operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'matches' | 'inRange';
   value: string;
 }
@@ -71,7 +85,7 @@ const CONDITION_FIELDS = [
   { value: 'manufacturer', label: 'Manufacturer' },
   { value: 'location', label: 'Location' },
   { value: 'apName', label: 'AP Name' },
-  { value: 'ipSubnet', label: 'IP Subnet' }
+  { value: 'ipSubnet', label: 'IP Subnet' },
 ];
 
 const OPERATORS = [
@@ -80,7 +94,7 @@ const OPERATORS = [
   { value: 'startsWith', label: 'Starts With' },
   { value: 'endsWith', label: 'Ends With' },
   { value: 'matches', label: 'Matches (Regex)' },
-  { value: 'inRange', label: 'In Range' }
+  { value: 'inRange', label: 'In Range' },
 ];
 
 const ACTION_TYPES = [
@@ -88,7 +102,7 @@ const ACTION_TYPES = [
   { value: 'assignProfile', label: 'Assign Profile', icon: Settings },
   { value: 'assignVlan', label: 'Assign VLAN', icon: Network },
   { value: 'assignRole', label: 'Assign Role', icon: Users },
-  { value: 'setTags', label: 'Set Tags', icon: AlertCircle }
+  { value: 'setTags', label: 'Set Tags', icon: AlertCircle },
 ];
 
 export function ConfigureAdoptionRules() {
@@ -124,7 +138,11 @@ export function ConfigureAdoptionRules() {
         try {
           apiService.setBaseUrl(`${sg.controller_url}/management`);
           const data = await fetcher();
-          const tagged = (data || []).map(item => ({ ...item, _siteGroupId: sg.id, _siteGroupName: sg.name }));
+          const tagged = (data || []).map((item) => ({
+            ...item,
+            _siteGroupId: sg.id,
+            _siteGroupName: sg.name,
+          }));
           all.push(...tagged);
         } catch (err) {
           console.warn(`[AdoptionRules] Failed to fetch from ${sg.name}:`, err);
@@ -141,66 +159,7 @@ export function ConfigureAdoptionRules() {
     try {
       const data = await fetchFromAllControllers(() => apiService.getAdoptionRules());
 
-      // If no rules from API, use mock data for demonstration
-      if (!data || data.length === 0) {
-        const mockRules: AdoptionRule[] = [
-        {
-          id: '1',
-          name: 'Building A Access Points',
-          description: 'Automatically assign all Building A APs to the correct site',
-          enabled: true,
-          priority: 1,
-          conditions: [
-            { id: 'c1', field: 'apName', operator: 'startsWith', value: 'BLDG-A-' }
-          ],
-          actions: [
-            { id: 'a1', type: 'assignSite', value: 'site-001', label: 'Building A - Main Campus' }
-          ],
-          matchCount: 24,
-          lastMatched: new Date().toISOString(),
-          createdAt: '2025-01-10T10:00:00Z',
-          modifiedAt: '2025-01-15T14:30:00Z'
-        },
-        {
-          id: '2',
-          name: 'Guest Network Devices',
-          description: 'Assign guest VLAN to devices matching guest patterns',
-          enabled: true,
-          priority: 2,
-          conditions: [
-            { id: 'c2', field: 'apName', operator: 'contains', value: 'GUEST' }
-          ],
-          actions: [
-            { id: 'a2', type: 'assignVlan', value: '100', label: 'VLAN 100 (Guest)' }
-          ],
-          matchCount: 12,
-          lastMatched: new Date().toISOString(),
-          createdAt: '2025-01-12T09:00:00Z',
-          modifiedAt: '2025-01-12T09:00:00Z'
-        },
-        {
-          id: '3',
-          name: 'Corporate APs by MAC Range',
-          description: 'Assign corporate profile based on MAC address range',
-          enabled: false,
-          priority: 3,
-          conditions: [
-            { id: 'c3', field: 'macAddress', operator: 'startsWith', value: 'AA:BB:CC' }
-          ],
-          actions: [
-            { id: 'a3', type: 'assignProfile', value: 'corp-standard', label: 'Corporate Standard Profile' },
-            { id: 'a4', type: 'setTags', value: 'corporate,managed', label: 'Tags: corporate, managed' }
-          ],
-          matchCount: 0,
-          createdAt: '2025-01-08T16:00:00Z',
-          modifiedAt: '2025-01-14T11:20:00Z'
-        }
-      ];
-
-        setRules(mockRules);
-      } else {
-        setRules(data);
-      }
+      setRules(data || []);
     } catch (error) {
       console.error('Error loading adoption rules:', error);
       toast.error('Failed to load adoption rules');
@@ -212,7 +171,7 @@ export function ConfigureAdoptionRules() {
   const loadSites = async () => {
     try {
       const response = await apiService.makeAuthenticatedRequest('/v3/sites', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (!response.ok) {
@@ -221,18 +180,15 @@ export function ConfigureAdoptionRules() {
 
       const data = await response.json();
       const sitesData = data.items || data.sites || data || [];
-      setSites(sitesData.map((site: any) => ({
-        id: site.id || site.siteId,
-        name: site.name || site.siteName || 'Unnamed Site'
-      })));
+      setSites(
+        sitesData.map((site: any) => ({
+          id: site.id || site.siteId,
+          name: site.name || site.siteName || 'Unnamed Site',
+        }))
+      );
     } catch (error) {
       console.error('Error loading sites:', error);
-      // Use mock sites if API fails
-      setSites([
-        { id: 'site-001', name: 'Building A - Main Campus' },
-        { id: 'site-002', name: 'Building B - Research Lab' },
-        { id: 'site-003', name: 'Building C - Admin' }
-      ]);
+      setSites([]);
     }
   };
 
@@ -259,7 +215,7 @@ export function ConfigureAdoptionRules() {
 
     try {
       await apiService.deleteAdoptionRule(ruleId);
-      setRules(rules.filter(r => r.id !== ruleId));
+      setRules(rules.filter((r) => r.id !== ruleId));
       toast.success('Adoption rule deleted successfully');
     } catch (error) {
       console.error('Error deleting rule:', error);
@@ -270,9 +226,7 @@ export function ConfigureAdoptionRules() {
   const handleToggleEnabled = async (ruleId: string, enabled: boolean) => {
     try {
       await apiService.toggleAdoptionRule(ruleId, enabled);
-      setRules(rules.map(r =>
-        r.id === ruleId ? { ...r, enabled } : r
-      ));
+      setRules(rules.map((r) => (r.id === ruleId ? { ...r, enabled } : r)));
       toast.success(`Rule ${enabled ? 'enabled' : 'disabled'} successfully`);
     } catch (error) {
       console.error('Error toggling rule:', error);
@@ -281,18 +235,18 @@ export function ConfigureAdoptionRules() {
   };
 
   const handleMovePriority = (ruleId: string, direction: 'up' | 'down') => {
-    const index = rules.findIndex(r => r.id === ruleId);
+    const index = rules.findIndex((r) => r.id === ruleId);
     if (index === -1) return;
-    
+
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === rules.length - 1) return;
 
     const newRules = [...rules];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    
+
     // Swap rules
     [newRules[index], newRules[targetIndex]] = [newRules[targetIndex], newRules[index]];
-    
+
     // Update priorities
     newRules.forEach((rule, idx) => {
       rule.priority = idx + 1;
@@ -338,13 +292,14 @@ export function ConfigureAdoptionRules() {
         actions: formActions,
         matchCount: isEditDialogOpen && selectedRule ? selectedRule.matchCount : 0,
         lastMatched: isEditDialogOpen && selectedRule ? selectedRule.lastMatched : undefined,
-        createdAt: isEditDialogOpen && selectedRule ? selectedRule.createdAt : new Date().toISOString(),
-        modifiedAt: new Date().toISOString()
+        createdAt:
+          isEditDialogOpen && selectedRule ? selectedRule.createdAt : new Date().toISOString(),
+        modifiedAt: new Date().toISOString(),
       };
 
       if (isEditDialogOpen && selectedRule) {
         await apiService.updateAdoptionRule(selectedRule.id, newRule);
-        setRules(rules.map(r => r.id === selectedRule.id ? newRule : r));
+        setRules(rules.map((r) => (r.id === selectedRule.id ? newRule : r)));
         toast.success('Adoption rule updated successfully');
       } else {
         const createdRule = await apiService.createAdoptionRule(newRule);
@@ -366,19 +321,17 @@ export function ConfigureAdoptionRules() {
       id: `cond-${Date.now()}`,
       field: 'macAddress',
       operator: 'equals',
-      value: ''
+      value: '',
     };
     setFormConditions([...formConditions, newCondition]);
   };
 
   const updateCondition = (id: string, updates: Partial<RuleCondition>) => {
-    setFormConditions(formConditions.map(c => 
-      c.id === id ? { ...c, ...updates } : c
-    ));
+    setFormConditions(formConditions.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   };
 
   const removeCondition = (id: string) => {
-    setFormConditions(formConditions.filter(c => c.id !== id));
+    setFormConditions(formConditions.filter((c) => c.id !== id));
   };
 
   const addAction = () => {
@@ -386,19 +339,17 @@ export function ConfigureAdoptionRules() {
       id: `action-${Date.now()}`,
       type: 'assignSite',
       value: '',
-      label: ''
+      label: '',
     };
     setFormActions([...formActions, newAction]);
   };
 
   const updateAction = (id: string, updates: Partial<RuleAction>) => {
-    setFormActions(formActions.map(a => 
-      a.id === id ? { ...a, ...updates } : a
-    ));
+    setFormActions(formActions.map((a) => (a.id === id ? { ...a, ...updates } : a)));
   };
 
   const removeAction = (id: string) => {
-    setFormActions(formActions.filter(a => a.id !== id));
+    setFormActions(formActions.filter((a) => a.id !== id));
   };
 
   // Filter rules
@@ -407,12 +358,14 @@ export function ConfigureAdoptionRules() {
     ? rules.filter((r: any) => r._siteGroupId === orgSiteGroupFilter)
     : rules;
 
-  const filteredRules = sgRules.filter(rule => {
-    const matchesSearch = rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         rule.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEnabled = filterEnabled === 'all' ||
-                          (filterEnabled === 'enabled' && rule.enabled) ||
-                          (filterEnabled === 'disabled' && !rule.enabled);
+  const filteredRules = sgRules.filter((rule) => {
+    const matchesSearch =
+      rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rule.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesEnabled =
+      filterEnabled === 'all' ||
+      (filterEnabled === 'enabled' && rule.enabled) ||
+      (filterEnabled === 'disabled' && !rule.enabled);
     return matchesSearch && matchesEnabled;
   });
 
@@ -463,15 +416,13 @@ export function ConfigureAdoptionRules() {
       <Card className="bg-card border-border">
         <div className="p-6">
           {loading ? (
-            <div className="text-center py-12 text-muted-foreground">
-              Loading adoption rules...
-            </div>
+            <div className="text-center py-12 text-muted-foreground">Loading adoption rules...</div>
           ) : filteredRules.length === 0 ? (
             <div className="text-center py-12">
               <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">
-                {searchTerm || filterEnabled !== 'all' 
-                  ? 'No rules match your filters' 
+                {searchTerm || filterEnabled !== 'all'
+                  ? 'No rules match your filters'
                   : 'No adoption rules configured yet'}
               </p>
               {!searchTerm && filterEnabled === 'all' && (
@@ -486,7 +437,12 @@ export function ConfigureAdoptionRules() {
               <TableHeader>
                 <TableRow>
                   {isOrgScope && siteGroups.length > 1 && (
-                    <TableHead><div className="flex items-center gap-1"><Server className="h-3 w-3" /><span>Site Group</span></div></TableHead>
+                    <TableHead>
+                      <div className="flex items-center gap-1">
+                        <Server className="h-3 w-3" />
+                        <span>Site Group</span>
+                      </div>
+                    </TableHead>
                   )}
                   <TableHead className="w-12">Priority</TableHead>
                   <TableHead className="w-12">Status</TableHead>
@@ -544,18 +500,20 @@ export function ConfigureAdoptionRules() {
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        {rule.conditions.map(condition => (
+                        {rule.conditions.map((condition) => (
                           <Badge key={condition.id} variant="outline" className="text-xs">
-                            {CONDITION_FIELDS.find(f => f.value === condition.field)?.label} {condition.operator} "{condition.value}"
+                            {CONDITION_FIELDS.find((f) => f.value === condition.field)?.label}{' '}
+                            {condition.operator} "{condition.value}"
                           </Badge>
                         ))}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="space-y-1">
-                        {rule.actions.map(action => (
+                        {rule.actions.map((action) => (
                           <Badge key={action.id} variant="secondary" className="text-xs">
-                            {ACTION_TYPES.find(t => t.value === action.type)?.label}: {action.label || action.value}
+                            {ACTION_TYPES.find((t) => t.value === action.type)?.label}:{' '}
+                            {action.label || action.value}
                           </Badge>
                         ))}
                       </div>
@@ -563,7 +521,9 @@ export function ConfigureAdoptionRules() {
                     <TableCell className="text-right">
                       <div className="text-sm">
                         {rule.matchCount > 0 ? (
-                          <span className="text-[color:var(--status-success)]">{rule.matchCount} devices</span>
+                          <span className="text-[color:var(--status-success)]">
+                            {rule.matchCount} devices
+                          </span>
                         ) : (
                           <span className="text-muted-foreground">0 devices</span>
                         )}
@@ -571,11 +531,7 @@ export function ConfigureAdoptionRules() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleEditRule(rule)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => handleEditRule(rule)}>
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
@@ -597,13 +553,16 @@ export function ConfigureAdoptionRules() {
       </Card>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={isCreateDialogOpen || isEditDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setIsCreateDialogOpen(false);
-          setIsEditDialogOpen(false);
-          resetForm();
-        }
-      }}>
+      <Dialog
+        open={isCreateDialogOpen || isEditDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsCreateDialogOpen(false);
+            setIsEditDialogOpen(false);
+            resetForm();
+          }
+        }}
+      >
         <DialogContent className="max-w-[95vw] sm:max-w-[90vw] lg:max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
@@ -643,11 +602,7 @@ export function ConfigureAdoptionRules() {
               </div>
 
               <div className="flex items-center space-x-2">
-                <Switch
-                  id="enabled"
-                  checked={formEnabled}
-                  onCheckedChange={setFormEnabled}
-                />
+                <Switch id="enabled" checked={formEnabled} onCheckedChange={setFormEnabled} />
                 <Label htmlFor="enabled">Enable this rule</Label>
               </div>
             </TabsContent>
@@ -678,13 +633,15 @@ export function ConfigureAdoptionRules() {
                             <Label className="text-xs">Field</Label>
                             <Select
                               value={condition.field}
-                              onValueChange={(value) => updateCondition(condition.id, { field: value as any })}
+                              onValueChange={(value) =>
+                                updateCondition(condition.id, { field: value as any })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {CONDITION_FIELDS.map(field => (
+                                {CONDITION_FIELDS.map((field) => (
                                   <SelectItem key={field.value} value={field.value}>
                                     {field.label}
                                   </SelectItem>
@@ -696,13 +653,15 @@ export function ConfigureAdoptionRules() {
                             <Label className="text-xs">Operator</Label>
                             <Select
                               value={condition.operator}
-                              onValueChange={(value) => updateCondition(condition.id, { operator: value as any })}
+                              onValueChange={(value) =>
+                                updateCondition(condition.id, { operator: value as any })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {OPERATORS.map(op => (
+                                {OPERATORS.map((op) => (
                                   <SelectItem key={op.value} value={op.value}>
                                     {op.label}
                                   </SelectItem>
@@ -714,7 +673,9 @@ export function ConfigureAdoptionRules() {
                             <Label className="text-xs">Value</Label>
                             <Input
                               value={condition.value}
-                              onChange={(e) => updateCondition(condition.id, { value: e.target.value })}
+                              onChange={(e) =>
+                                updateCondition(condition.id, { value: e.target.value })
+                              }
                               placeholder="Enter value"
                             />
                           </div>
@@ -730,7 +691,9 @@ export function ConfigureAdoptionRules() {
                       </div>
                       {index < formConditions.length - 1 && (
                         <div className="flex items-center justify-center mt-2">
-                          <Badge variant="outline" className="text-xs">AND</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            AND
+                          </Badge>
                         </div>
                       )}
                     </Card>
@@ -764,13 +727,15 @@ export function ConfigureAdoptionRules() {
                             <Label className="text-xs">Action Type</Label>
                             <Select
                               value={action.type}
-                              onValueChange={(value) => updateAction(action.id, { type: value as any })}
+                              onValueChange={(value) =>
+                                updateAction(action.id, { type: value as any })
+                              }
                             >
                               <SelectTrigger>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
-                                {ACTION_TYPES.map(type => (
+                                {ACTION_TYPES.map((type) => (
                                   <SelectItem key={type.value} value={type.value}>
                                     {type.label}
                                   </SelectItem>
@@ -780,17 +745,21 @@ export function ConfigureAdoptionRules() {
                           </div>
                           <div>
                             <Label className="text-xs">
-                              {action.type === 'assignSite' ? 'Site' :
-                               action.type === 'assignProfile' ? 'Profile' :
-                               action.type === 'assignVlan' ? 'VLAN ID' :
-                               action.type === 'assignRole' ? 'Role' :
-                               'Tags'}
+                              {action.type === 'assignSite'
+                                ? 'Site'
+                                : action.type === 'assignProfile'
+                                  ? 'Profile'
+                                  : action.type === 'assignVlan'
+                                    ? 'VLAN ID'
+                                    : action.type === 'assignRole'
+                                      ? 'Role'
+                                      : 'Tags'}
                             </Label>
                             {action.type === 'assignSite' ? (
                               <Select
                                 value={action.value}
                                 onValueChange={(value) => {
-                                  const site = sites.find(s => s.id === value);
+                                  const site = sites.find((s) => s.id === value);
                                   updateAction(action.id, { value, label: site?.name });
                                 }}
                               >
@@ -798,7 +767,7 @@ export function ConfigureAdoptionRules() {
                                   <SelectValue placeholder="Select site" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {sites.map(site => (
+                                  {sites.map((site) => (
                                     <SelectItem key={site.id} value={site.id}>
                                       {site.name}
                                     </SelectItem>
@@ -808,11 +777,18 @@ export function ConfigureAdoptionRules() {
                             ) : (
                               <Input
                                 value={action.value}
-                                onChange={(e) => updateAction(action.id, { value: e.target.value, label: e.target.value })}
+                                onChange={(e) =>
+                                  updateAction(action.id, {
+                                    value: e.target.value,
+                                    label: e.target.value,
+                                  })
+                                }
                                 placeholder={
-                                  action.type === 'assignVlan' ? 'Enter VLAN ID' :
-                                  action.type === 'setTags' ? 'Enter tags (comma-separated)' :
-                                  'Enter value'
+                                  action.type === 'assignVlan'
+                                    ? 'Enter VLAN ID'
+                                    : action.type === 'setTags'
+                                      ? 'Enter tags (comma-separated)'
+                                      : 'Enter value'
                                 }
                               />
                             )}
@@ -835,11 +811,14 @@ export function ConfigureAdoptionRules() {
           </Tabs>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsCreateDialogOpen(false);
-              setIsEditDialogOpen(false);
-              resetForm();
-            }}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCreateDialogOpen(false);
+                setIsEditDialogOpen(false);
+                resetForm();
+              }}
+            >
               Cancel
             </Button>
             <Button onClick={handleSaveRule} className="bg-primary hover:bg-primary/90">

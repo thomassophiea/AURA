@@ -1,26 +1,23 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import * as CheckboxPrimitive from "@radix-ui/react-checkbox@1.1.4";
-import { CheckIcon } from "lucide-react@0.487.0";
+import * as React from 'react';
+import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
+import { CheckIcon } from 'lucide-react';
 
-import { cn } from "./utils";
+import { cn } from './utils';
 
-function Checkbox({
-  className,
-  ...props
-}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+function Checkbox({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
       className={cn(
-        "aura-checkbox peer shrink-0 rounded-[4px] border-2 outline-none transition-all duration-150 cursor-pointer",
-        "data-[state=checked]:text-primary-foreground",
-        "focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]",
-        "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-        "disabled:cursor-not-allowed disabled:opacity-50",
-        "size-4",
-        className,
+        'aura-checkbox peer shrink-0 rounded-[4px] border-2 outline-none transition-all duration-150 cursor-pointer',
+        'data-[state=checked]:text-primary-foreground',
+        'focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]',
+        'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'size-4',
+        className
       )}
       {...props}
     >

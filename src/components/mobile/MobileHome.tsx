@@ -32,14 +32,24 @@ interface MobileHomeProps {
 
 interface NetworkStats {
   clients: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
-  aps: { total: number; online: number; offline: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
+  aps: {
+    total: number;
+    online: number;
+    offline: number;
+    trend?: { direction: 'up' | 'down' | 'neutral'; value: string };
+  };
   networks: { total: number; trend?: { direction: 'up' | 'down' | 'neutral'; value: string } };
   issues: number;
   healthScore: number;
   disabledNetworks?: any[];
 }
 
-export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdate }: MobileHomeProps) {
+export function MobileHome({
+  currentSite,
+  onSiteChange,
+  onNavigate,
+  onStatsUpdate,
+}: MobileHomeProps) {
   const haptic = useHaptic();
   const [sites, setSites] = useState<any[]>([]);
   const [stats, setStats] = useState<NetworkStats>({
@@ -73,27 +83,45 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
       apiService.getServices().catch(() => []),
     ]);
 
-    console.log('[MobileHome] Raw data - clients:', clientsData?.length, 'aps:', apsData?.length, 'networks:', networksData?.length);
+    console.log(
+      '[MobileHome] Raw data - clients:',
+      clientsData?.length,
+      'aps:',
+      apsData?.length,
+      'networks:',
+      networksData?.length
+    );
 
-    const filteredClients = currentSite === 'all'
-      ? clientsData
-      : clientsData.filter((c: any) =>
-          c.siteId === currentSite ||
-          c.site === currentSite ||
-          c.siteName === currentSite
-        );
-    const filteredAPs = currentSite === 'all'
-      ? apsData
-      : apsData.filter((ap: any) =>
-          ap.siteId === currentSite ||
-          ap.site === currentSite ||
-          ap.hostSite === currentSite
-        );
+    const filteredClients =
+      currentSite === 'all'
+        ? clientsData
+        : clientsData.filter(
+            (c: any) =>
+              c.siteId === currentSite || c.site === currentSite || c.siteName === currentSite
+          );
+    const filteredAPs =
+      currentSite === 'all'
+        ? apsData
+        : apsData.filter(
+            (ap: any) =>
+              ap.siteId === currentSite || ap.site === currentSite || ap.hostSite === currentSite
+          );
 
-    console.log('[MobileHome] Filtered - clients:', filteredClients?.length, 'aps:', filteredAPs?.length);
+    console.log(
+      '[MobileHome] Filtered - clients:',
+      filteredClients?.length,
+      'aps:',
+      filteredAPs?.length
+    );
 
     const isAPOnline = (ap: any): boolean => {
-      const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
+      const status = (
+        ap.status ||
+        ap.connectionState ||
+        ap.operationalState ||
+        ap.state ||
+        ''
+      ).toLowerCase();
       return (
         status === 'inservice' ||
         status.includes('up') ||
@@ -116,13 +144,19 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
 
     // Count enabled/disabled networks
     const enabledNetworks = networksData.filter((n: any) => n.status === 'enabled').length;
-    const disabledNetworksList = networksData.filter((n: any) => n.status && n.status !== 'enabled');
+    const disabledNetworksList = networksData.filter(
+      (n: any) => n.status && n.status !== 'enabled'
+    );
 
     const totalIssues = offlineAPsCount + disabledNetworksList.length;
 
     // Health score: AP availability (60%) + issue severity (20%) + network health (20%)
-    const issueScore = totalIssues === 0 ? 100 : Math.max(0, 100 - (totalIssues / Math.max(filteredAPs.length, 1)) * 200);
-    const networkScore = networksData.length > 0 ? (enabledNetworks / networksData.length) * 100 : 100;
+    const issueScore =
+      totalIssues === 0
+        ? 100
+        : Math.max(0, 100 - (totalIssues / Math.max(filteredAPs.length, 1)) * 200);
+    const networkScore =
+      networksData.length > 0 ? (enabledNetworks / networksData.length) * 100 : 100;
     const healthScore = Math.round(apScore * 0.6 + issueScore * 0.2 + networkScore * 0.2);
 
     return {
@@ -136,16 +170,20 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
     };
   };
 
-  const { data: cachedStats, loading: statsLoading, error: statsError, lastUpdated, isStale, refresh } = useRealtimePolling(
-    fetchStats,
-    {
-      key: `stats_${currentSite}`,
-      activeInterval: 10000,
-      idleInterval: 30000,
-      hiddenInterval: 120000,
-      enabled: !isOffline,
-    }
-  );
+  const {
+    data: cachedStats,
+    loading: statsLoading,
+    error: statsError,
+    lastUpdated,
+    isStale,
+    refresh,
+  } = useRealtimePolling(fetchStats, {
+    key: `stats_${currentSite}`,
+    activeInterval: 10000,
+    idleInterval: 30000,
+    hiddenInterval: 120000,
+    enabled: !isOffline,
+  });
 
   useEffect(() => {
     if (cachedStats) {
@@ -334,7 +372,10 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
           <Skeleton className="h-20 w-full rounded-xl" />
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="rounded-xl border-2 border-border p-4 min-h-[120px] flex flex-col gap-2">
+              <div
+                key={i}
+                className="rounded-xl border-2 border-border p-4 min-h-[120px] flex flex-col gap-2"
+              >
                 <Skeleton className="h-6 w-6 rounded" />
                 <Skeleton className="h-8 w-16" />
                 <Skeleton className="h-4 w-20 mt-auto" />
@@ -347,7 +388,10 @@ export function MobileHome({ currentSite, onSiteChange, onNavigate, onStatsUpdat
       {/* Error State */}
       {statsError && !cachedStats && (
         <div className="p-4 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg">
-          <p className="text-sm text-[color:var(--status-error)]">Failed to load stats: {statsError}</p>
+          <p className="text-sm text-[color:var(--status-error)]">
+            Failed to load stats:{' '}
+            {statsError instanceof Error ? statsError.message : String(statsError)}
+          </p>
           <Button variant="outline" size="sm" onClick={handleRefresh} className="mt-2">
             Retry
           </Button>

@@ -12,9 +12,9 @@ interface BatteryManager {
   removeEventListener: (type: string, listener: () => void) => void;
 }
 
-interface NavigatorWithBattery extends Navigator {
+type NavigatorWithBattery = Navigator & {
   getBattery?: () => Promise<BatteryManager>;
-}
+};
 
 interface RealtimePollingOptions {
   key: string;
@@ -98,36 +98,42 @@ export function useRealtimePolling<T>(
     return isIdleRef.current ? idleInterval : activeInterval;
   }, [activeInterval, idleInterval, hiddenInterval]);
 
-  const fetchData = useCallback(async (showLoading = false) => {
-    try {
-      // Only show loading on initial load (when no data exists)
-      if (showLoading && !dataRef.current) {
-        setLoading(true);
-      }
-      setError(null);
-      const result = await fetcherRef.current();
-
-      if (!shallowEqual(result, dataRef.current)) {
-        dataRef.current = result;
-        setData(result);
-        setLastUpdated(new Date());
-        setIsStale(false);
-
-        try {
-          localStorage.setItem(`realtime_${key}`, JSON.stringify({
-            data: result,
-            timestamp: Date.now(),
-          }));
-        } catch (e) {
-          console.warn('[useRealtimePolling] Failed to cache data:', e);
+  const fetchData = useCallback(
+    async (showLoading = false) => {
+      try {
+        // Only show loading on initial load (when no data exists)
+        if (showLoading && !dataRef.current) {
+          setLoading(true);
         }
+        setError(null);
+        const result = await fetcherRef.current();
+
+        if (!shallowEqual(result, dataRef.current)) {
+          dataRef.current = result;
+          setData(result);
+          setLastUpdated(new Date());
+          setIsStale(false);
+
+          try {
+            localStorage.setItem(
+              `realtime_${key}`,
+              JSON.stringify({
+                data: result,
+                timestamp: Date.now(),
+              })
+            );
+          } catch (e) {
+            console.warn('[useRealtimePolling] Failed to cache data:', e);
+          }
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e : new Error('Failed to fetch data'));
+      } finally {
+        setLoading(false);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e : new Error('Failed to fetch data'));
-    } finally {
-      setLoading(false);
-    }
-  }, [key]);
+    },
+    [key]
+  );
 
   const refresh = useCallback(async () => {
     // Don't blank the screen - just fetch in background
@@ -247,31 +253,34 @@ export function useRealtimePolling<T>(
 
     let mounted = true;
 
-    nav.getBattery().then((battery) => {
-      if (!mounted) return;
+    nav
+      .getBattery()
+      .then((battery) => {
+        if (!mounted) return;
 
-      batteryRef.current = battery;
+        batteryRef.current = battery;
 
-      const updateBatteryStatus = () => {
-        const wasLow = isLowBatteryRef.current;
-        isLowBatteryRef.current = !battery.charging && battery.level < LOW_BATTERY_THRESHOLD;
+        const updateBatteryStatus = () => {
+          const wasLow = isLowBatteryRef.current;
+          isLowBatteryRef.current = !battery.charging && battery.level < LOW_BATTERY_THRESHOLD;
 
-        if (wasLow !== isLowBatteryRef.current) {
-          setupInterval();
-        }
-      };
+          if (wasLow !== isLowBatteryRef.current) {
+            setupInterval();
+          }
+        };
 
-      updateBatteryStatus();
-      battery.addEventListener('levelchange', updateBatteryStatus);
-      battery.addEventListener('chargingchange', updateBatteryStatus);
+        updateBatteryStatus();
+        battery.addEventListener('levelchange', updateBatteryStatus);
+        battery.addEventListener('chargingchange', updateBatteryStatus);
 
-      return () => {
-        battery.removeEventListener('levelchange', updateBatteryStatus);
-        battery.removeEventListener('chargingchange', updateBatteryStatus);
-      };
-    }).catch(() => {
-      // Battery API not available
-    });
+        return () => {
+          battery.removeEventListener('levelchange', updateBatteryStatus);
+          battery.removeEventListener('chargingchange', updateBatteryStatus);
+        };
+      })
+      .catch(() => {
+        // Battery API not available
+      });
 
     return () => {
       mounted = false;

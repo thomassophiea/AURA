@@ -23,7 +23,7 @@ import {
   RefreshCw,
   CheckCircle,
   AlertCircle,
-  AlertTriangle
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
@@ -37,6 +37,13 @@ interface Application {
   status: 'installed' | 'available' | 'running' | 'stopped';
   enabled: boolean;
   icon?: string;
+  grantType?: string;
+  scopes?: string[];
+  clientId?: string;
+  clientSecret?: string;
+  requestCount?: number;
+  lastUsed?: string;
+  [key: string]: any;
 }
 
 export function ApplicationsManagement() {
@@ -53,7 +60,7 @@ export function ApplicationsManagement() {
     description: '',
     grantType: 'client_credentials' as Application['grantType'],
     scopes: [] as string[],
-    enabled: true
+    enabled: true,
   });
 
   const availableScopes = [
@@ -66,7 +73,7 @@ export function ApplicationsManagement() {
     'read:sites',
     'write:sites',
     'read:reports',
-    'admin:users'
+    'admin:users',
   ];
 
   useEffect(() => {
@@ -76,10 +83,12 @@ export function ApplicationsManagement() {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      console.log('[ApplicationsManagement] Fetching applications from /platformmanager/v1/apps...');
+      console.log(
+        '[ApplicationsManagement] Fetching applications from /platformmanager/v1/apps...'
+      );
 
       const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/apps', {
-        method: 'GET'
+        method: 'GET',
       });
 
       console.log('[ApplicationsManagement] Response status:', response.status);
@@ -88,7 +97,12 @@ export function ApplicationsManagement() {
       if (response.ok) {
         const data = await response.json();
         console.log('[ApplicationsManagement] Raw API response:', data);
-        console.log('[ApplicationsManagement] Response type:', typeof data, 'isArray:', Array.isArray(data));
+        console.log(
+          '[ApplicationsManagement] Response type:',
+          typeof data,
+          'isArray:',
+          Array.isArray(data)
+        );
 
         // Parse applications data with flexible schema detection
         let rawApps: any[] = [];
@@ -97,7 +111,15 @@ export function ApplicationsManagement() {
           rawApps = data;
         } else if (data && typeof data === 'object') {
           // Check for nested arrays in common property names
-          const possibleKeys = ['applications', 'apps', 'oauthApplications', 'clients', 'data', 'items', 'results'];
+          const possibleKeys = [
+            'applications',
+            'apps',
+            'oauthApplications',
+            'clients',
+            'data',
+            'items',
+            'results',
+          ];
           for (const key of possibleKeys) {
             if (data[key] && Array.isArray(data[key])) {
               console.log('[ApplicationsManagement] Found applications array at key:', key);
@@ -107,7 +129,10 @@ export function ApplicationsManagement() {
           }
 
           if (rawApps.length === 0) {
-            console.log('[ApplicationsManagement] No apps found. Available keys:', Object.keys(data));
+            console.log(
+              '[ApplicationsManagement] No apps found. Available keys:',
+              Object.keys(data)
+            );
           }
         }
 
@@ -135,8 +160,11 @@ export function ApplicationsManagement() {
             url: app.url || app.endpoint || app.dashboardUrl || undefined,
             version: app.version || app.appVersion || undefined,
             status: status,
-            enabled: app.enabled !== undefined ? app.enabled : app.status === 'running' || app.status === 'installed',
-            icon: app.icon || app.iconUrl || undefined
+            enabled:
+              app.enabled !== undefined
+                ? app.enabled
+                : app.status === 'running' || app.status === 'installed',
+            icon: app.icon || app.iconUrl || undefined,
           };
         });
 
@@ -162,13 +190,20 @@ export function ApplicationsManagement() {
   const generateClientId = () => {
     const bytes = new Uint8Array(8);
     crypto.getRandomValues(bytes);
-    return 'app-' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return (
+      'app-' +
+      Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+    );
   };
 
   const generateClientSecret = () => {
     const bytes = new Uint8Array(24);
     crypto.getRandomValues(bytes);
-    return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
   };
 
   const handleOpenDialog = (app?: Application) => {
@@ -178,8 +213,8 @@ export function ApplicationsManagement() {
         name: app.name,
         description: app.description,
         grantType: app.grantType,
-        scopes: app.scopes,
-        enabled: app.enabled
+        scopes: app.scopes ?? [],
+        enabled: app.enabled,
       });
     } else {
       setEditingApp(null);
@@ -188,7 +223,7 @@ export function ApplicationsManagement() {
         description: '',
         grantType: 'client_credentials',
         scopes: [],
-        enabled: true
+        enabled: true,
       });
     }
     setDialogOpen(true);
@@ -213,7 +248,7 @@ export function ApplicationsManagement() {
     try {
       if (editingApp) {
         // Update existing application
-        const updatedApps = applications.map(app =>
+        const updatedApps = applications.map((app) =>
           app.id === editingApp.id
             ? {
                 ...app,
@@ -221,7 +256,7 @@ export function ApplicationsManagement() {
                 description: formData.description,
                 grantType: formData.grantType,
                 scopes: formData.scopes,
-                enabled: formData.enabled
+                enabled: formData.enabled,
               }
             : app
         );
@@ -233,16 +268,19 @@ export function ApplicationsManagement() {
           id: Date.now().toString(),
           name: formData.name,
           description: formData.description,
+          status: formData.enabled ? 'running' : 'stopped',
           clientId: generateClientId(),
           clientSecret: generateClientSecret(),
           grantType: formData.grantType,
           scopes: formData.scopes,
           enabled: formData.enabled,
           createdAt: new Date().toISOString(),
-          requestCount: 0
+          requestCount: 0,
         };
         setApplications([...applications, newApp]);
-        toast.success('Application created successfully. Save the client secret - it will not be shown again!');
+        toast.success(
+          'Application created successfully. Save the client secret - it will not be shown again!'
+        );
       }
 
       handleCloseDialog();
@@ -258,14 +296,12 @@ export function ApplicationsManagement() {
 
     if (!confirmed) return;
 
-    setApplications(applications.filter(a => a.id !== app.id));
+    setApplications(applications.filter((a) => a.id !== app.id));
     toast.success('Application deleted successfully');
   };
 
   const handleToggleEnabled = (app: Application, enabled: boolean) => {
-    const updatedApps = applications.map(a =>
-      a.id === app.id ? { ...a, enabled } : a
-    );
+    const updatedApps = applications.map((a) => (a.id === app.id ? { ...a, enabled } : a));
     setApplications(updatedApps);
     toast.success(enabled ? 'Application enabled' : 'Application disabled');
   };
@@ -278,7 +314,7 @@ export function ApplicationsManagement() {
     if (!confirmed) return;
 
     const newSecret = generateClientSecret();
-    const updatedApps = applications.map(a =>
+    const updatedApps = applications.map((a) =>
       a.id === app.id ? { ...a, clientSecret: newSecret } : a
     );
     setApplications(updatedApps);
@@ -291,36 +327,32 @@ export function ApplicationsManagement() {
   };
 
   const toggleShowSecret = (appId: string) => {
-    setShowSecrets(prev => ({ ...prev, [appId]: !prev[appId] }));
+    setShowSecrets((prev) => ({ ...prev, [appId]: !prev[appId] }));
   };
 
   const handleToggleScope = (scope: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       scopes: prev.scopes.includes(scope)
-        ? prev.scopes.filter(s => s !== scope)
-        : [...prev.scopes, scope]
+        ? prev.scopes.filter((s) => s !== scope)
+        : [...prev.scopes, scope],
     }));
   };
 
-  const getGrantTypeBadge = (grantType: Application['grantType']) => {
-    const colors: Record<Application['grantType'], string> = {
+  const getGrantTypeBadge = (grantType: string | undefined) => {
+    const colors: Record<string, string> = {
       client_credentials: 'bg-blue-500',
       password: 'bg-amber-500',
-      authorization_code: 'bg-green-500'
+      authorization_code: 'bg-green-500',
     };
 
-    const labels: Record<Application['grantType'], string> = {
+    const labels: Record<string, string> = {
       client_credentials: 'Client Credentials',
       password: 'Password',
-      authorization_code: 'Authorization Code'
+      authorization_code: 'Authorization Code',
     };
 
-    return (
-      <Badge className={colors[grantType]}>
-        {labels[grantType]}
-      </Badge>
-    );
+    return <Badge className={colors[grantType || '']}>{labels[grantType || '']}</Badge>;
   };
 
   if (loading) {
@@ -343,17 +375,11 @@ export function ApplicationsManagement() {
               <Package className="h-5 w-5" />
               Applications Management
             </CardTitle>
-            <CardDescription>
-              Manage API applications and OAuth clients
-            </CardDescription>
+            <CardDescription>Manage API applications and OAuth clients</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-end">
-              <Button
-                variant="default"
-                size="sm"
-                disabled={true}
-              >
+              <Button variant="default" size="sm" disabled={true}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create Application
               </Button>
@@ -362,7 +388,10 @@ export function ApplicationsManagement() {
             <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
               <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
               <AlertDescription className="text-[color:var(--status-warning)]">
-                Applications API (/platformmanager/v1/apps) is not available on this controller. This is a Platform Manager endpoint not in the standard Swagger specification. Note: /v1/appkeys provides OAuth application key credentials but serves a different purpose (API auth tokens, not installed applications).
+                Applications API (/platformmanager/v1/apps) is not available on this controller.
+                This is a Platform Manager endpoint not in the standard Swagger specification. Note:
+                /v1/appkeys provides OAuth application key credentials but serves a different
+                purpose (API auth tokens, not installed applications).
               </AlertDescription>
             </Alert>
 
@@ -394,9 +423,7 @@ export function ApplicationsManagement() {
             <Package className="h-6 w-6" />
             Applications Management
           </h2>
-          <p className="text-muted-foreground">
-            Manage API applications and OAuth clients
-          </p>
+          <p className="text-muted-foreground">Manage API applications and OAuth clients</p>
         </div>
         <Button onClick={() => handleOpenDialog()} disabled={apiNotAvailable}>
           <Plus className="h-4 w-4 mr-2" />
@@ -426,21 +453,21 @@ export function ApplicationsManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {applications.map(app => (
+              {applications.map((app) => (
                 <TableRow key={app.id}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{app.name}</div>
                       <div className="text-xs text-muted-foreground">{app.description}</div>
                       <div className="flex flex-wrap gap-1 mt-1">
-                        {app.scopes.slice(0, 2).map(scope => (
+                        {(app.scopes ?? []).slice(0, 2).map((scope) => (
                           <Badge key={scope} variant="outline" className="text-xs">
                             {scope}
                           </Badge>
                         ))}
-                        {app.scopes.length > 2 && (
+                        {(app.scopes ?? []).length > 2 && (
                           <Badge variant="outline" className="text-xs">
-                            +{app.scopes.length - 2}
+                            +{(app.scopes ?? []).length - 2}
                           </Badge>
                         )}
                       </div>
@@ -449,13 +476,11 @@ export function ApplicationsManagement() {
                   <TableCell>{getGrantTypeBadge(app.grantType)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        {app.clientId}
-                      </code>
+                      <code className="text-xs bg-muted px-2 py-1 rounded">{app.clientId}</code>
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => handleCopyToClipboard(app.clientId, 'Client ID')}
+                        onClick={() => handleCopyToClipboard(app.clientId ?? '', 'Client ID')}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -466,18 +491,20 @@ export function ApplicationsManagement() {
                       <code className="text-xs bg-muted px-2 py-1 rounded">
                         {showSecrets[app.id] ? app.clientSecret : '••••••••••••'}
                       </code>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleShowSecret(app.id)}
-                      >
-                        {showSecrets[app.id] ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      <Button size="sm" variant="ghost" onClick={() => toggleShowSecret(app.id)}>
+                        {showSecrets[app.id] ? (
+                          <EyeOff className="h-3 w-3" />
+                        ) : (
+                          <Eye className="h-3 w-3" />
+                        )}
                       </Button>
                       {showSecrets[app.id] && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() => handleCopyToClipboard(app.clientSecret, 'Client Secret')}
+                          onClick={() =>
+                            handleCopyToClipboard(app.clientSecret ?? '', 'Client Secret')
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -493,9 +520,7 @@ export function ApplicationsManagement() {
                       Regenerate
                     </Button>
                   </TableCell>
-                  <TableCell className="text-sm">
-                    {formatCompactNumber(app.requestCount)}
-                  </TableCell>
+                  <TableCell className="text-sm">{formatCompactNumber(app.requestCount)}</TableCell>
                   <TableCell className="text-sm">
                     {app.lastUsed ? new Date(app.lastUsed).toLocaleString() : 'Never'}
                   </TableCell>
@@ -507,11 +532,7 @@ export function ApplicationsManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenDialog(app)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleOpenDialog(app)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
@@ -535,7 +556,9 @@ export function ApplicationsManagement() {
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         title={editingApp ? 'Edit Application' : 'Create Application'}
-        description={editingApp ? 'Update application configuration' : 'Create a new API application'}
+        description={
+          editingApp ? 'Update application configuration' : 'Create a new API application'
+        }
         width="lg"
       >
         <div className="space-y-4">
@@ -561,7 +584,9 @@ export function ApplicationsManagement() {
             <Label>Grant Type</Label>
             <Select
               value={formData.grantType}
-              onValueChange={(value: Application['grantType']) => setFormData({ ...formData, grantType: value })}
+              onValueChange={(value: Application['grantType']) =>
+                setFormData({ ...formData, grantType: value })
+              }
               disabled={!!editingApp}
             >
               <SelectTrigger>
@@ -578,7 +603,7 @@ export function ApplicationsManagement() {
           <div className="space-y-2">
             <Label>API Scopes</Label>
             <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg">
-              {availableScopes.map(scope => (
+              {availableScopes.map((scope) => (
                 <div key={scope} className="flex items-center space-x-2">
                   <input
                     type="checkbox"

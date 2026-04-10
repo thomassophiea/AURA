@@ -21,7 +21,7 @@ import {
   AlertCircle,
   CheckCircle,
   TrendingUp,
-  Zap
+  Zap,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -49,10 +49,10 @@ interface AFCPlan {
 }
 
 interface AFCPowerLimits {
-  unii5: { [key in ChannelWidth]: number };  // 5925-6425 MHz
-  unii6: { [key in ChannelWidth]: number };  // 6425-6525 MHz
-  unii7: { [key in ChannelWidth]: number };  // 6525-6875 MHz
-  unii8: { [key in ChannelWidth]: number };  // 6875-7125 MHz
+  unii5: { [key in ChannelWidth]: number }; // 5925-6425 MHz
+  unii6: { [key in ChannelWidth]: number }; // 6425-6525 MHz
+  unii7: { [key in ChannelWidth]: number }; // 6525-6875 MHz
+  unii8: { [key in ChannelWidth]: number }; // 6875-7125 MHz
 }
 
 type ChannelWidth = '20' | '40' | '80' | '160';
@@ -79,10 +79,10 @@ interface PowerAssignment {
 
 // Default AFC power limits (example values in dBm EIRP)
 const getDefaultPowerLimits = (): AFCPowerLimits => ({
-  unii5: { '20': 30, '40': 27, '80': 24, '160': 21 },  // 5925-6425 MHz
-  unii6: { '20': 24, '40': 21, '80': 18, '160': 15 },  // 6425-6525 MHz (indoor only)
-  unii7: { '20': 30, '40': 27, '80': 24, '160': 21 },  // 6525-6875 MHz
-  unii8: { '20': 30, '40': 27, '80': 24, '160': 21 },  // 6875-7125 MHz
+  unii5: { '20': 30, '40': 27, '80': 24, '160': 21 }, // 5925-6425 MHz
+  unii6: { '20': 24, '40': 21, '80': 18, '160': 15 }, // 6425-6525 MHz (indoor only)
+  unii7: { '20': 30, '40': 27, '80': 24, '160': 21 }, // 6525-6875 MHz
+  unii8: { '20': 30, '40': 27, '80': 24, '160': 21 }, // 6875-7125 MHz
 });
 
 export function AFCPlanningTool() {
@@ -109,9 +109,7 @@ export function AFCPlanningTool() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [sitesData] = await Promise.allSettled([
-        apiService.getSites()
-      ]);
+      const [sitesData] = await Promise.allSettled([apiService.getSites()]);
 
       if (sitesData.status === 'fulfilled') {
         setSites(sitesData.value);
@@ -135,7 +133,7 @@ export function AFCPlanningTool() {
     }
 
     try {
-      const site = sites.find(s => s.id === selectedSiteId);
+      const site = sites.find((s) => s.id === selectedSiteId);
 
       await apiService.createAFCPlan({
         name: newPlanName,
@@ -144,7 +142,7 @@ export function AFCPlanningTool() {
         height,
         country,
         latitude,
-        longitude
+        longitude,
       });
 
       toast.success('AFC plan created');
@@ -167,7 +165,7 @@ export function AFCPlanningTool() {
       // Call API to run AFC analysis
       const completedPlan = await apiService.runAFCAnalysis(plan.id);
 
-      setPlans(plans.map(p => p.id === plan.id ? completedPlan : p));
+      setPlans(plans.map((p) => (p.id === plan.id ? completedPlan : p)));
       setSelectedPlan(completedPlan);
       setActiveTab('results');
       toast.success('AFC analysis completed');
@@ -175,7 +173,7 @@ export function AFCPlanningTool() {
       console.error('AFC analysis failed:', error);
       toast.error('Analysis failed');
       setSelectedPlan({ ...plan, status: 'failed' });
-      setPlans(plans.map(p => p.id === plan.id ? { ...p, status: 'failed' as const } : p));
+      setPlans(plans.map((p) => (p.id === plan.id ? { ...p, status: 'failed' as const } : p)));
     } finally {
       setRunning(false);
     }
@@ -191,7 +189,7 @@ export function AFCPlanningTool() {
       toast.info('Applying channel and power recommendations...');
 
       const response = await apiService.makeAuthenticatedRequest(`/v1/afc/plans/${plan.id}/apply`, {
-        method: 'POST'
+        method: 'POST',
       });
 
       if (response.ok) {
@@ -212,7 +210,14 @@ export function AFCPlanningTool() {
       case 'analyzing':
         return <Badge variant="default">Analyzing...</Badge>;
       case 'completed':
-        return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Completed</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+          >
+            Completed
+          </Badge>
+        );
       case 'failed':
         return <Badge variant="destructive">Failed</Badge>;
       default:
@@ -238,16 +243,17 @@ export function AFCPlanningTool() {
         </h2>
         <p className="text-muted-foreground">
           Automated Frequency Coordination - Optimize channel and power settings
-
-      <Alert className="border-[color:var(--status-info)]/30 bg-[color:var(--status-info-bg)]">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Important Context:</strong> AFC (Automated Frequency Coordination) planning in 6GHz spectrum requires registration with an AFC service provider. 
-          The recommendations generated here are based on current AP deployments and RF environment analysis. 
-          Actual frequency assignments and power levels must comply with AFC service provider approvals and regulatory requirements. 
-          Always verify that planned changes align with your AFC registration and local regulations before implementation.
-        </AlertDescription>
-      </Alert>
+          <Alert className="border-[color:var(--status-info)]/30 bg-[color:var(--status-info-bg)]">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Important Context:</strong> AFC (Automated Frequency Coordination) planning in
+              6GHz spectrum requires registration with an AFC service provider. The recommendations
+              generated here are based on current AP deployments and RF environment analysis. Actual
+              frequency assignments and power levels must comply with AFC service provider approvals
+              and regulatory requirements. Always verify that planned changes align with your AFC
+              registration and local regulations before implementation.
+            </AlertDescription>
+          </Alert>
         </p>
       </div>
 
@@ -286,7 +292,7 @@ export function AFCPlanningTool() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {plans.map(plan => (
+                    {plans.map((plan) => (
                       <TableRow key={plan.id}>
                         <TableCell className="font-medium">{plan.name}</TableCell>
                         <TableCell>{plan.siteName}</TableCell>
@@ -333,7 +339,9 @@ export function AFCPlanningTool() {
           <Card>
             <CardHeader>
               <CardTitle>Create AFC Plan</CardTitle>
-              <CardDescription>Configure a new RF optimization plan with AFC parameters</CardDescription>
+              <CardDescription>
+                Configure a new RF optimization plan with AFC parameters
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -352,7 +360,7 @@ export function AFCPlanningTool() {
                     <SelectValue placeholder="Select site" />
                   </SelectTrigger>
                   <SelectContent>
-                    {sites.map(site => (
+                    {sites.map((site) => (
                       <SelectItem key={site.id} value={site.id}>
                         {site.name}
                       </SelectItem>
@@ -415,7 +423,10 @@ export function AFCPlanningTool() {
                 </div>
               </div>
 
-              <Button onClick={handleCreatePlan} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button
+                onClick={handleCreatePlan}
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
                 Create AFC Plan
               </Button>
             </CardContent>
@@ -429,7 +440,8 @@ export function AFCPlanningTool() {
               <CardHeader>
                 <CardTitle>{selectedPlan.name} - Results</CardTitle>
                 <CardDescription>
-                  Analysis completed: {selectedPlan.lastRun ? new Date(selectedPlan.lastRun).toLocaleString() : 'N/A'}
+                  Analysis completed:{' '}
+                  {selectedPlan.lastRun ? new Date(selectedPlan.lastRun).toLocaleString() : 'N/A'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -441,22 +453,31 @@ export function AFCPlanningTool() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Country</p>
-                    <p className="text-sm font-semibold">{selectedPlan.country || 'United States'}</p>
+                    <p className="text-sm font-semibold">
+                      {selectedPlan.country || 'United States'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Latitude</p>
-                    <p className="text-sm font-semibold">{selectedPlan.latitude?.toFixed(4) || 'N/A'}</p>
+                    <p className="text-sm font-semibold">
+                      {selectedPlan.latitude?.toFixed(4) || 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Longitude</p>
-                    <p className="text-sm font-semibold">{selectedPlan.longitude?.toFixed(4) || 'N/A'}</p>
+                    <p className="text-sm font-semibold">
+                      {selectedPlan.longitude?.toFixed(4) || 'N/A'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Channel Width Selector */}
                 <div className="space-y-2">
                   <Label>Channel Width</Label>
-                  <Select value={selectedChannelWidth} onValueChange={(v) => setSelectedChannelWidth(v as ChannelWidth)}>
+                  <Select
+                    value={selectedChannelWidth}
+                    onValueChange={(v) => setSelectedChannelWidth(v as ChannelWidth)}
+                  >
                     <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
@@ -494,64 +515,128 @@ export function AFCPlanningTool() {
                             <TableRow>
                               <TableCell className="font-semibold">U-NII-5</TableCell>
                               <TableCell className="text-xs">5925-6425 MHz</TableCell>
-                              <TableCell className={selectedChannelWidth === '20' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '20' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii5['20']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '40' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '40' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii5['40']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '80' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '80' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii5['80']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '160' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '160' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii5['160']} dBm
                               </TableCell>
                             </TableRow>
                             <TableRow>
                               <TableCell className="font-semibold">U-NII-6</TableCell>
                               <TableCell className="text-xs">6425-6525 MHz</TableCell>
-                              <TableCell className={selectedChannelWidth === '20' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '20' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii6['20']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '40' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '40' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii6['40']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '80' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '80' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii6['80']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '160' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '160' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii6['160']} dBm
                               </TableCell>
                             </TableRow>
                             <TableRow>
                               <TableCell className="font-semibold">U-NII-7</TableCell>
                               <TableCell className="text-xs">6525-6875 MHz</TableCell>
-                              <TableCell className={selectedChannelWidth === '20' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '20' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii7['20']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '40' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '40' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii7['40']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '80' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '80' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii7['80']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '160' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '160' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii7['160']} dBm
                               </TableCell>
                             </TableRow>
                             <TableRow>
                               <TableCell className="font-semibold">U-NII-8</TableCell>
                               <TableCell className="text-xs">6875-7125 MHz</TableCell>
-                              <TableCell className={selectedChannelWidth === '20' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '20' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii8['20']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '40' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '40' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii8['40']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '80' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '80' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii8['80']} dBm
                               </TableCell>
-                              <TableCell className={selectedChannelWidth === '160' ? 'font-bold text-primary' : ''}>
+                              <TableCell
+                                className={
+                                  selectedChannelWidth === '160' ? 'font-bold text-primary' : ''
+                                }
+                              >
                                 {limits.unii8['160']} dBm
                               </TableCell>
                             </TableRow>
@@ -561,7 +646,8 @@ export function AFCPlanningTool() {
                     </TableBody>
                   </Table>
                   <p className="text-xs text-muted-foreground mt-2">
-                    Note: Power values shown are maximum EIRP limits. Actual transmit power may be restricted by AFC service based on location and environment.
+                    Note: Power values shown are maximum EIRP limits. Actual transmit power may be
+                    restricted by AFC service based on location and environment.
                   </p>
                 </div>
 
@@ -602,37 +688,73 @@ export function AFCPlanningTool() {
                         {/* Grid Background */}
                         <defs>
                           <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.1" />
+                            <path
+                              d="M 40 0 L 0 0 0 40"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="0.5"
+                              opacity="0.1"
+                            />
                           </pattern>
                         </defs>
                         <rect width="800" height="400" fill="url(#grid)" />
 
                         {/* Location Marker */}
-                        <circle cx="400" cy="200" r="8" fill="#3b82f6" stroke="white" strokeWidth="2" />
-                        <text x="400" y="220" textAnchor="middle" fontSize="12" fill="currentColor" opacity="0.7">
+                        <circle
+                          cx="400"
+                          cy="200"
+                          r="8"
+                          fill="#3b82f6"
+                          stroke="white"
+                          strokeWidth="2"
+                        />
+                        <text
+                          x="400"
+                          y="220"
+                          textAnchor="middle"
+                          fontSize="12"
+                          fill="currentColor"
+                          opacity="0.7"
+                        >
                           Site Location
                         </text>
 
                         {/* Example AP Placements - would be dynamically generated from actual AP data */}
-                        {selectedPlan.channelPlan && selectedPlan.channelPlan.slice(0, 8).map((ap, idx) => {
-                          const angle = (idx / Math.min(selectedPlan.channelPlan!.length, 8)) * 2 * Math.PI;
-                          const radius = 80 + (idx % 3) * 40;
-                          const x = 400 + radius * Math.cos(angle);
-                          const y = 200 + radius * Math.sin(angle);
+                        {selectedPlan.channelPlan &&
+                          selectedPlan.channelPlan.slice(0, 8).map((ap, idx) => {
+                            const angle =
+                              (idx / Math.min(selectedPlan.channelPlan!.length, 8)) * 2 * Math.PI;
+                            const radius = 80 + (idx % 3) * 40;
+                            const x = 400 + radius * Math.cos(angle);
+                            const y = 200 + radius * Math.sin(angle);
 
-                          return (
-                            <g key={idx}>
-                              {/* Coverage Circle */}
-                              <circle cx={x} cy={y} r="30" fill="#22c55e" opacity="0.2" />
-                              <circle cx={x} cy={y} r="20" fill="#22c55e" opacity="0.3" />
-                              {/* AP Icon */}
-                              <circle cx={x} cy={y} r="6" fill="#22c55e" stroke="white" strokeWidth="2" />
-                              <text x={x} y={y + 25} textAnchor="middle" fontSize="10" fill="currentColor" opacity="0.8">
-                                {ap.apName.substring(0, 8)}
-                              </text>
-                            </g>
-                          );
-                        })}
+                            return (
+                              <g key={idx}>
+                                {/* Coverage Circle */}
+                                <circle cx={x} cy={y} r="30" fill="#22c55e" opacity="0.2" />
+                                <circle cx={x} cy={y} r="20" fill="#22c55e" opacity="0.3" />
+                                {/* AP Icon */}
+                                <circle
+                                  cx={x}
+                                  cy={y}
+                                  r="6"
+                                  fill="#22c55e"
+                                  stroke="white"
+                                  strokeWidth="2"
+                                />
+                                <text
+                                  x={x}
+                                  y={y + 25}
+                                  textAnchor="middle"
+                                  fontSize="10"
+                                  fill="currentColor"
+                                  opacity="0.8"
+                                >
+                                  {ap.apName.substring(0, 8)}
+                                </text>
+                              </g>
+                            );
+                          })}
                       </svg>
 
                       {/* Map Legend */}
@@ -655,12 +777,14 @@ export function AFCPlanningTool() {
                       {/* Coordinates Display */}
                       <div className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm p-2 rounded-lg border text-xs">
                         <div className="font-mono">
-                          {selectedPlan.latitude?.toFixed(4) || '0.0000'}°, {selectedPlan.longitude?.toFixed(4) || '0.0000'}°
+                          {selectedPlan.latitude?.toFixed(4) || '0.0000'}°,{' '}
+                          {selectedPlan.longitude?.toFixed(4) || '0.0000'}°
                         </div>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Geographic visualization of AP placements and coverage areas. Actual deployment should be verified with AFC service provider.
+                      Geographic visualization of AP placements and coverage areas. Actual
+                      deployment should be verified with AFC service provider.
                     </p>
                   </Card>
                 </div>
@@ -744,14 +868,17 @@ export function AFCPlanningTool() {
                 )}
 
                 <div className="flex gap-2">
-                  <Button onClick={() => handleApplyPlan(selectedPlan)} className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Button
+                    onClick={() => handleApplyPlan(selectedPlan)}
+                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Apply Recommendations
                   </Button>
                   <ExportButton
-                    data={selectedPlan.channelPlan || selectedPlan.powerPlan || []}
+                    data={(selectedPlan.channelPlan || selectedPlan.powerPlan || []) as any}
                     columns={
-                      selectedPlan.channelPlan
+                      (selectedPlan.channelPlan
                         ? [
                             { key: 'apName', label: 'AP Name' },
                             { key: 'band', label: 'Band' },
@@ -766,7 +893,7 @@ export function AFCPlanningTool() {
                             { key: 'currentPower', label: 'Current Power (dBm)' },
                             { key: 'recommendedPower', label: 'Recommended Power (dBm)' },
                             { key: 'coverage', label: 'Coverage (%)' },
-                          ]
+                          ]) as any
                     }
                     filename={`afc-report-${selectedPlan.name.replace(/\s+/g, '-').toLowerCase()}`}
                     title={`AFC Report: ${selectedPlan.name}`}

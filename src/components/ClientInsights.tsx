@@ -28,7 +28,7 @@ import {
   Legend,
   ResponsiveContainer,
   ReferenceLine,
-  ReferenceArea
+  ReferenceArea,
 } from 'recharts';
 import {
   Activity,
@@ -41,9 +41,14 @@ import {
   ArrowLeft,
   Clock,
   Wifi,
-  Gauge
+  Gauge,
 } from 'lucide-react';
-import { apiService, ClientInsightsResponse, APInsightsReport, APInsightsStatistic } from '../services/api';
+import {
+  apiService,
+  ClientInsightsResponse,
+  APInsightsReport,
+  APInsightsStatistic,
+} from '../services/api';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
 import { TimelineControls } from './timeline';
 
@@ -58,7 +63,7 @@ const DURATION_OPTIONS = [
   { value: '3H', label: 'Last 3 Hours', resolution: 15 },
   { value: '24H', label: 'Last 24 Hours', resolution: 60 },
   { value: '7D', label: 'Last 7 Days', resolution: 360 },
-  { value: '30D', label: 'Last 30 Days', resolution: 1440 }
+  { value: '30D', label: 'Last 30 Days', resolution: 1440 },
 ];
 
 // Compact tooltip styling for consistency
@@ -68,7 +73,7 @@ const COMPACT_TOOLTIP_STYLE = {
   borderRadius: '4px',
   padding: '4px 6px',
   fontSize: '9px',
-  backdropFilter: 'blur(8px)'
+  backdropFilter: 'blur(8px)',
 };
 
 // Format timestamp for chart
@@ -96,7 +101,11 @@ function formatValue(value: number, unit: string): string {
 }
 
 // Find value at a specific timestamp (for locked display)
-function getValueAtTimestamp(data: any[], timestamp: number, fields: string[]): Record<string, number | null> {
+function getValueAtTimestamp(
+  data: any[],
+  timestamp: number,
+  fields: string[]
+): Record<string, number | null> {
   if (!data || data.length === 0 || timestamp === null) {
     return fields.reduce((acc, field) => ({ ...acc, [field]: null }), {});
   }
@@ -114,10 +123,13 @@ function getValueAtTimestamp(data: any[], timestamp: number, fields: string[]): 
   }
 
   // Return values for all requested fields
-  return fields.reduce((acc, field) => ({
-    ...acc,
-    [field]: closest[field] !== undefined ? closest[field] : null
-  }), {});
+  return fields.reduce(
+    (acc, field) => ({
+      ...acc,
+      [field]: closest[field] !== undefined ? closest[field] : null,
+    }),
+    {}
+  );
 }
 
 // Transform report data for charts
@@ -146,9 +158,9 @@ function hasActualChartData(data: any[]): boolean {
   if (!data || data.length === 0) return false;
 
   // Check if any entry has values beyond just timestamp/time
-  return data.some(entry => {
-    const keys = Object.keys(entry).filter(k => k !== 'timestamp' && k !== 'time');
-    return keys.some(k => {
+  return data.some((entry) => {
+    const keys = Object.keys(entry).filter((k) => k !== 'timestamp' && k !== 'time');
+    return keys.some((k) => {
       const value = entry[k];
       return value !== null && value !== undefined && !isNaN(value) && value !== 0;
     });
@@ -166,13 +178,21 @@ const CHART_COLORS = {
   purple: '#8b5cf6',
   cyan: '#06b6d4',
   orange: '#f97316',
-  pink: '#ec4899'
+  pink: '#ec4899',
 };
 
 // Donut chart colors
 const DONUT_COLORS = [
-  '#3b82f6', '#8b5cf6', '#06b6d4', '#22c55e', '#f59e0b',
-  '#ef4444', '#f97316', '#ec4899', '#6366f1', '#14b8a6'
+  '#3b82f6',
+  '#8b5cf6',
+  '#06b6d4',
+  '#22c55e',
+  '#f59e0b',
+  '#ef4444',
+  '#f97316',
+  '#ec4899',
+  '#6366f1',
+  '#14b8a6',
 ];
 
 export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: ClientInsightsProps) {
@@ -181,7 +201,7 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
   const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
 
-  const durationOption = DURATION_OPTIONS.find(d => d.value === duration) || DURATION_OPTIONS[0];
+  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
   useEffect(() => {
     let cancelled = false;
@@ -189,8 +209,13 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const resolution = DURATION_OPTIONS.find(d => d.value === duration)?.resolution || 15;
-        const data = await apiService.getClientInsights(macAddress, duration, resolution, 'default');
+        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
+        const data = await apiService.getClientInsights(
+          macAddress,
+          duration,
+          resolution,
+          'default'
+        );
         if (!cancelled) {
           setInsights(data);
         }
@@ -217,40 +242,51 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
     const throughput = insights.throughputReport?.[0];
     const rfQuality = insights.rfQuality?.[0];
 
-    const avgThroughputValues = throughput?.statistics?.find(s => s.statName === 'Total')?.values;
-    const avgRfQualityValues = rfQuality?.statistics?.find(s => s.statName === 'rfQuality')?.values;
+    const avgThroughputValues = throughput?.statistics?.find((s) => s.statName === 'Total')?.values;
+    const avgRfQualityValues = rfQuality?.statistics?.find(
+      (s) => s.statName === 'rfQuality'
+    )?.values;
 
     // Get top app group
     const topAppGroups = insights.topAppGroupsByThroughputReport?.[0]?.statistics || [];
     const topAppGroup = topAppGroups.length > 0 ? topAppGroups[0] : null;
 
-    const avgThroughput = avgThroughputValues && avgThroughputValues.length > 0
-      ? avgThroughputValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) / avgThroughputValues.length
-      : null;
+    const avgThroughput =
+      avgThroughputValues && avgThroughputValues.length > 0
+        ? avgThroughputValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) /
+          avgThroughputValues.length
+        : null;
 
-    const avgRfQuality = avgRfQualityValues && avgRfQualityValues.length > 0
-      ? avgRfQualityValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) / avgRfQualityValues.length
-      : null;
+    const avgRfQuality =
+      avgRfQualityValues && avgRfQualityValues.length > 0
+        ? avgRfQualityValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) /
+          avgRfQualityValues.length
+        : null;
 
     const topAppGroupName = topAppGroup?.name || null;
 
     // Check if we have any valid data
-    const hasValidData = (avgThroughput !== null && !isNaN(avgThroughput) && avgThroughput > 0) ||
-                         (avgRfQuality !== null && !isNaN(avgRfQuality) && avgRfQuality > 0) ||
-                         (topAppGroupName !== null);
+    const hasValidData =
+      (avgThroughput !== null && !isNaN(avgThroughput) && avgThroughput > 0) ||
+      (avgRfQuality !== null && !isNaN(avgRfQuality) && avgRfQuality > 0) ||
+      topAppGroupName !== null;
 
     if (!hasValidData) return null;
 
     return {
       avgThroughput,
       avgRfQuality,
-      topAppGroup: topAppGroupName
+      topAppGroup: topAppGroupName,
     };
   }, [insights]);
 
   return (
     <Card
-      className={onOpenFullScreen ? "cursor-pointer border-primary/30 hover:border-primary hover:bg-accent/50 hover:shadow-md transition-all" : ""}
+      className={
+        onOpenFullScreen
+          ? 'cursor-pointer border-primary/30 hover:border-primary hover:bg-accent/50 hover:shadow-md transition-all'
+          : ''
+      }
       onClick={onOpenFullScreen}
     >
       <CardHeader className="pb-3">
@@ -272,8 +308,10 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {DURATION_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                {DURATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -300,7 +338,11 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
               }}
               className="h-7 w-7 p-0"
             >
-              {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              {expanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </CardTitle>
@@ -316,21 +358,29 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
             </div>
           ) : stats ? (
             <div className="grid grid-cols-3 gap-3">
-              {stats.avgThroughput !== null && !isNaN(stats.avgThroughput) && stats.avgThroughput > 0 && (
-                <div className="text-center">
-                  <p className="text-xl font-semibold">{formatValue(stats.avgThroughput, 'bps')}</p>
-                  <p className="text-[10px] text-muted-foreground">Avg Throughput</p>
-                </div>
-              )}
-              {stats.avgRfQuality !== null && !isNaN(stats.avgRfQuality) && stats.avgRfQuality > 0 && (
-                <div className="text-center">
-                  <p className="text-xl font-semibold">{stats.avgRfQuality.toFixed(0)}%</p>
-                  <p className="text-[10px] text-muted-foreground">RF Quality</p>
-                </div>
-              )}
+              {stats.avgThroughput !== null &&
+                !isNaN(stats.avgThroughput) &&
+                stats.avgThroughput > 0 && (
+                  <div className="text-center">
+                    <p className="text-xl font-semibold">
+                      {formatValue(stats.avgThroughput, 'bps')}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Avg Throughput</p>
+                  </div>
+                )}
+              {stats.avgRfQuality !== null &&
+                !isNaN(stats.avgRfQuality) &&
+                stats.avgRfQuality > 0 && (
+                  <div className="text-center">
+                    <p className="text-xl font-semibold">{stats.avgRfQuality.toFixed(0)}%</p>
+                    <p className="text-[10px] text-muted-foreground">RF Quality</p>
+                  </div>
+                )}
               {stats.topAppGroup && (
                 <div className="text-center">
-                  <p className="text-lg font-semibold truncate" title={stats.topAppGroup}>{stats.topAppGroup}</p>
+                  <p className="text-lg font-semibold truncate" title={stats.topAppGroup}>
+                    {stats.topAppGroup}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Top App Group</p>
                 </div>
               )}
@@ -353,15 +403,19 @@ interface ClientInsightsFullScreenProps {
   onClose: () => void;
 }
 
-export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: ClientInsightsFullScreenProps) {
+export function ClientInsightsFullScreen({
+  macAddress,
+  clientName,
+  onClose,
+}: ClientInsightsFullScreenProps) {
   const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const durationOption = DURATION_OPTIONS.find(d => d.value === duration) || DURATION_OPTIONS[0];
+  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
-  const handleRefresh = () => setRefreshKey(k => k + 1);
+  const handleRefresh = () => setRefreshKey((k) => k + 1);
 
   // Timeline navigation hook
   const timeline = useTimelineNavigation('client-insights');
@@ -381,7 +435,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        const resolution = DURATION_OPTIONS.find(d => d.value === duration)?.resolution || 15;
+        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
         const data = await apiService.getClientInsights(macAddress, duration, resolution, 'all');
         if (!cancelled) {
           setInsights(data);
@@ -423,7 +477,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     return stats.map((s, i) => ({
       name: s.name,
       value: s.value,
-      color: DONUT_COLORS[i % DONUT_COLORS.length]
+      color: DONUT_COLORS[i % DONUT_COLORS.length],
     }));
   }, [insights]);
 
@@ -480,19 +534,54 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     const bottomCharts = ['rfQuality', 'rfqi', 'wirelessRtt', 'networkRtt'];
 
     const configs = [
-      { id: 'throughput', title: 'Throughput (Band: All)', data: throughputData, hasData: hasActualChartData(throughputData) },
-      { id: 'appGroups', title: 'Top Categories by Throughput', data: appGroupsData, hasData: appGroupsData.length > 0 && appGroupsData.some(d => d.value > 0) },
-      { id: 'appGroupsDetail', title: 'App Group Detail', data: appGroupsDetailData, hasData: hasActualChartData(appGroupsDetailData) },
+      {
+        id: 'throughput',
+        title: 'Throughput (Band: All)',
+        data: throughputData,
+        hasData: hasActualChartData(throughputData),
+      },
+      {
+        id: 'appGroups',
+        title: 'Top Categories by Throughput',
+        data: appGroupsData,
+        hasData: appGroupsData.length > 0 && appGroupsData.some((d) => d.value > 0),
+      },
+      {
+        id: 'appGroupsDetail',
+        title: 'App Group Detail',
+        data: appGroupsDetailData,
+        hasData: hasActualChartData(appGroupsDetailData),
+      },
       { id: 'rss', title: 'RSS', data: rssData, hasData: hasActualChartData(rssData) },
       { id: 'rxRate', title: 'RxRate', data: rxRateData, hasData: hasActualChartData(rxRateData) },
       { id: 'txRate', title: 'TxRate', data: txRateData, hasData: hasActualChartData(txRateData) },
       { id: 'events', title: 'Events', data: eventsData, hasData: hasActualChartData(eventsData) },
-      { id: 'dlRetries', title: 'DL Retries', data: dlRetriesData, hasData: hasActualChartData(dlRetriesData) },
+      {
+        id: 'dlRetries',
+        title: 'DL Retries',
+        data: dlRetriesData,
+        hasData: hasActualChartData(dlRetriesData),
+      },
       // Charts that rarely have data - at bottom
-      { id: 'rfQuality', title: 'RF Quality (Band: All)', data: rfQualityData, hasData: hasActualChartData(rfQualityData) },
+      {
+        id: 'rfQuality',
+        title: 'RF Quality (Band: All)',
+        data: rfQualityData,
+        hasData: hasActualChartData(rfQualityData),
+      },
       { id: 'rfqi', title: 'RFQI', data: rfqiData, hasData: hasActualChartData(rfqiData) },
-      { id: 'wirelessRtt', title: 'WirelessRTT (Requires Test)', data: wirelessRttData, hasData: hasActualChartData(wirelessRttData) },
-      { id: 'networkRtt', title: 'NetworkRTT (Requires Test)', data: networkRttData, hasData: hasActualChartData(networkRttData) },
+      {
+        id: 'wirelessRtt',
+        title: 'WirelessRTT (Requires Test)',
+        data: wirelessRttData,
+        hasData: hasActualChartData(wirelessRttData),
+      },
+      {
+        id: 'networkRtt',
+        title: 'NetworkRTT (Requires Test)',
+        data: networkRttData,
+        hasData: hasActualChartData(networkRttData),
+      },
     ];
 
     // Sort: charts with data first, but bottom charts always at bottom
@@ -509,7 +598,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
       if (!a.hasData && b.hasData) return 1;
       return 0;
     });
-  }, [throughputData, rfQualityData, appGroupsData, appGroupsDetailData, rfqiData, wirelessRttData, networkRttData, rssData, rxRateData, txRateData, eventsData, dlRetriesData]);
+  }, [
+    throughputData,
+    rfQualityData,
+    appGroupsData,
+    appGroupsDetailData,
+    rfqiData,
+    wirelessRttData,
+    networkRttData,
+    rssData,
+    rxRateData,
+    txRateData,
+    eventsData,
+    dlRetriesData,
+  ]);
 
   // Render individual chart based on id
   const renderChart = (config: { id: string; title: string; data: any[]; hasData: boolean }) => {
@@ -519,10 +621,15 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
     }
 
     switch (config.id) {
-      case 'throughput':
-        const lockedThroughputValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(throughputData, timeline.currentTime, ['Total', 'Upload', 'Download'])
-          : null;
+      case 'throughput': {
+        const lockedThroughputValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(throughputData, timeline.currentTime, [
+                'Total',
+                'Upload',
+                'Download',
+              ])
+            : null;
         return (
           <Card key={config.id} className="col-span-2">
             <CardHeader className="pb-2">
@@ -532,17 +639,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   <div className="flex gap-3 text-xs">
                     {lockedThroughputValues.Total !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-blue-500 font-semibold mr-1">Total:</span> {formatValue(lockedThroughputValues.Total, 'bps')}
+                        <span className="text-blue-500 font-semibold mr-1">Total:</span>{' '}
+                        {formatValue(lockedThroughputValues.Total, 'bps')}
                       </Badge>
                     )}
                     {lockedThroughputValues.Upload !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-cyan-500 font-semibold mr-1">Up:</span> {formatValue(lockedThroughputValues.Upload, 'bps')}
+                        <span className="text-cyan-500 font-semibold mr-1">Up:</span>{' '}
+                        {formatValue(lockedThroughputValues.Upload, 'bps')}
                       </Badge>
                     )}
                     {lockedThroughputValues.Download !== null && (
                       <Badge variant="secondary" className="font-mono">
-                        <span className="text-pink-500 font-semibold mr-1">Down:</span> {formatValue(lockedThroughputValues.Download, 'bps')}
+                        <span className="text-pink-500 font-semibold mr-1">Down:</span>{' '}
+                        {formatValue(lockedThroughputValues.Download, 'bps')}
                       </Badge>
                     )}
                   </div>
@@ -580,14 +690,26 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorTotalClient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => formatValue(v, 'bps')}
+                      width={70}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => [formatValue(value, 'bps'), '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -607,20 +729,40 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="Total" stroke={CHART_COLORS.blue} fill="url(#colorTotalClient)" name="Total" />
-                    <Area type="monotone" dataKey="Upload" stroke={CHART_COLORS.cyan} fill="transparent" name="Upload" />
-                    <Area type="monotone" dataKey="Download" stroke={CHART_COLORS.pink} fill="transparent" name="Download" />
+                    <Area
+                      type="monotone"
+                      dataKey="Total"
+                      stroke={CHART_COLORS.blue}
+                      fill="url(#colorTotalClient)"
+                      name="Total"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Upload"
+                      stroke={CHART_COLORS.cyan}
+                      fill="transparent"
+                      name="Upload"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Download"
+                      stroke={CHART_COLORS.pink}
+                      fill="transparent"
+                      name="Download"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'rfQuality':
-        const lockedRfQualityValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rfQualityData, timeline.currentTime, ['rfQuality'])
-          : null;
+      case 'rfQuality': {
+        const lockedRfQualityValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(rfQualityData, timeline.currentTime, ['rfQuality'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -628,7 +770,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedRfQualityValues && lockedRfQualityValues.rfQuality !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-emerald-500 font-semibold mr-1">Quality:</span> {lockedRfQualityValues.rfQuality.toFixed(0)}%
+                    <span className="text-emerald-500 font-semibold mr-1">Quality:</span>{' '}
+                    {lockedRfQualityValues.rfQuality.toFixed(0)}%
                   </Badge>
                 )}
               </div>
@@ -664,14 +807,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorRfQuality" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} domain={[0, 100]} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)}%`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => `${v}%`}
+                      width={40}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(0)}%`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -691,13 +847,20 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="rfQuality" stroke={CHART_COLORS.success} fill="url(#colorRfQuality)" name="RF Quality" />
+                    <Area
+                      type="monotone"
+                      dataKey="rfQuality"
+                      stroke={CHART_COLORS.success}
+                      fill="url(#colorRfQuality)"
+                      name="RF Quality"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
       case 'appGroups':
         return (
@@ -722,15 +885,24 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(value: any) => [formatValue(value, 'bps'), '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
                 <div className="flex-1 space-y-1 max-h-56 overflow-auto">
                   {appGroupsData.slice(0, 8).map((entry, index) => (
                     <div key={index} className="flex items-center gap-2 text-xs">
-                      <div className="w-3 h-3 rounded-sm flex-shrink-0" style={{ backgroundColor: entry.color }} />
+                      <div
+                        className="w-3 h-3 rounded-sm flex-shrink-0"
+                        style={{ backgroundColor: entry.color }}
+                      />
                       <span className="truncate flex-1">{entry.name}</span>
-                      <span className="text-muted-foreground">{formatValue(entry.value, 'bps')}</span>
+                      <span className="text-muted-foreground">
+                        {formatValue(entry.value, 'bps')}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -739,14 +911,18 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
           </Card>
         );
 
-      case 'appGroupsDetail':
+      case 'appGroupsDetail': {
         // Get all app group keys from the data (excluding timestamp/time)
-        const appGroupKeys = appGroupsDetailData.length > 0
-          ? Object.keys(appGroupsDetailData[0]).filter(k => k !== 'timestamp' && k !== 'time').slice(0, 5)
-          : [];
-        const lockedAppGroupsDetailValues = timeline.isLocked && timeline.currentTime !== null && appGroupKeys.length > 0
-          ? getValueAtTimestamp(appGroupsDetailData, timeline.currentTime, appGroupKeys)
-          : null;
+        const appGroupKeys =
+          appGroupsDetailData.length > 0
+            ? Object.keys(appGroupsDetailData[0])
+                .filter((k) => k !== 'timestamp' && k !== 'time')
+                .slice(0, 5)
+            : [];
+        const lockedAppGroupsDetailValues =
+          timeline.isLocked && timeline.currentTime !== null && appGroupKeys.length > 0
+            ? getValueAtTimestamp(appGroupsDetailData, timeline.currentTime, appGroupKeys)
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -759,7 +935,12 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       if (value !== null && value !== undefined) {
                         return (
                           <Badge key={key} variant="secondary" className="font-mono">
-                            <span className="font-semibold mr-1" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}>{key}:</span>
+                            <span
+                              className="font-semibold mr-1"
+                              style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                            >
+                              {key}:
+                            </span>
                             {formatValue(value, 'bps')}
                           </Badge>
                         );
@@ -800,9 +981,21 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     onMouseUp={() => timeline.endTimeWindow()}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => formatValue(v, 'bps')} width={70} />
-                    <Tooltip formatter={(value: number) => [formatValue(value, 'bps'), '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => formatValue(v, 'bps')}
+                      width={70}
+                    />
+                    <Tooltip
+                      formatter={(value: any) => [formatValue(value, 'bps'), '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -823,7 +1016,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       />
                     )}
                     {Object.keys(appGroupsDetailData[0] || {})
-                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .filter((k) => k !== 'timestamp' && k !== 'time')
                       .slice(0, 5)
                       .map((key, i) => (
                         <Area
@@ -842,11 +1035,13 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
             </CardContent>
           </Card>
         );
+      }
 
-      case 'rfqi':
-        const lockedRfqiValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rfqiData, timeline.currentTime, ['Rfqi'])
-          : null;
+      case 'rfqi': {
+        const lockedRfqiValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(rfqiData, timeline.currentTime, ['Rfqi'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -854,7 +1049,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedRfqiValues && lockedRfqiValues.Rfqi !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-purple-500 font-semibold mr-1">RFQI:</span> {lockedRfqiValues.Rfqi.toFixed(1)}
+                    <span className="text-purple-500 font-semibold mr-1">RFQI:</span>{' '}
+                    {lockedRfqiValues.Rfqi.toFixed(1)}
                   </Badge>
                 )}
               </div>
@@ -890,12 +1086,16 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorRfqi" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.purple} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.purple} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.purple} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.purple} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} domain={[0, 100]} width={40} />
                     <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
@@ -917,20 +1117,42 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="Rfqi Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="Rfqi" stroke={CHART_COLORS.purple} fill="url(#colorRfqi)" name="RFQI" />
-                    <Area type="monotone" dataKey="Rfqi Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="Rfqi Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Rfqi"
+                      stroke={CHART_COLORS.purple}
+                      fill="url(#colorRfqi)"
+                      name="RFQI"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Rfqi Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'wirelessRtt':
-        const lockedWirelessRttValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(wirelessRttData, timeline.currentTime, ['WirelessRtt'])
-          : null;
+      case 'wirelessRtt': {
+        const lockedWirelessRttValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(wirelessRttData, timeline.currentTime, ['WirelessRtt'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -938,7 +1160,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedWirelessRttValues && lockedWirelessRttValues.WirelessRtt !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-amber-500 font-semibold mr-1">RTT:</span> {lockedWirelessRttValues.WirelessRtt.toFixed(1)} ms
+                    <span className="text-amber-500 font-semibold mr-1">RTT:</span>{' '}
+                    {lockedWirelessRttValues.WirelessRtt.toFixed(1)} ms
                   </Badge>
                 )}
               </div>
@@ -974,14 +1197,22 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorWirelessRtt" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.cyan} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.cyan} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(1)} ms`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1001,20 +1232,42 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="WirelessRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="WirelessRtt" stroke={CHART_COLORS.cyan} fill="url(#colorWirelessRtt)" name="Wireless RTT" />
-                    <Area type="monotone" dataKey="WirelessRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="WirelessRtt Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="WirelessRtt"
+                      stroke={CHART_COLORS.cyan}
+                      fill="url(#colorWirelessRtt)"
+                      name="Wireless RTT"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="WirelessRtt Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'networkRtt':
-        const lockedNetworkRttValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(networkRttData, timeline.currentTime, ['NetworkRtt'])
-          : null;
+      case 'networkRtt': {
+        const lockedNetworkRttValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(networkRttData, timeline.currentTime, ['NetworkRtt'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1022,7 +1275,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedNetworkRttValues && lockedNetworkRttValues.NetworkRtt !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-orange-500 font-semibold mr-1">RTT:</span> {lockedNetworkRttValues.NetworkRtt.toFixed(1)} ms
+                    <span className="text-orange-500 font-semibold mr-1">RTT:</span>{' '}
+                    {lockedNetworkRttValues.NetworkRtt.toFixed(1)} ms
                   </Badge>
                 )}
               </div>
@@ -1058,14 +1312,22 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorNetworkRtt" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.orange} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.orange} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.orange} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.orange} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} ms`} width={50} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} ms`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(1)} ms`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1085,20 +1347,42 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="NetworkRtt Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="NetworkRtt" stroke={CHART_COLORS.orange} fill="url(#colorNetworkRtt)" name="Network RTT" />
-                    <Area type="monotone" dataKey="NetworkRtt Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="NetworkRtt Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="NetworkRtt"
+                      stroke={CHART_COLORS.orange}
+                      fill="url(#colorNetworkRtt)"
+                      name="Network RTT"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="NetworkRtt Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'rss':
-        const lockedRssValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rssData, timeline.currentTime, ['Rss'])
-          : null;
+      case 'rss': {
+        const lockedRssValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(rssData, timeline.currentTime, ['Rss'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1106,7 +1390,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedRssValues && lockedRssValues.Rss !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-red-500 font-semibold mr-1">RSS:</span> {lockedRssValues.Rss.toFixed(0)} dBm
+                    <span className="text-red-500 font-semibold mr-1">RSS:</span>{' '}
+                    {lockedRssValues.Rss.toFixed(0)} dBm
                   </Badge>
                 )}
               </div>
@@ -1142,14 +1427,27 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorRssClient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.blue} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.blue} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} dBm`} width={60} domain={['auto', 'auto']} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(0)} dBm`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => `${v} dBm`}
+                      width={60}
+                      domain={['auto', 'auto']}
+                    />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(0)} dBm`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1169,20 +1467,42 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="Rss Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="Rss" stroke={CHART_COLORS.blue} fill="url(#colorRssClient)" name="RSS" />
-                    <Area type="monotone" dataKey="Rss Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="Rss Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Rss"
+                      stroke={CHART_COLORS.blue}
+                      fill="url(#colorRssClient)"
+                      name="RSS"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="Rss Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'rxRate':
-        const lockedRxRateValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(rxRateData, timeline.currentTime, ['RxRate'])
-          : null;
+      case 'rxRate': {
+        const lockedRxRateValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(rxRateData, timeline.currentTime, ['RxRate'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1190,7 +1510,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedRxRateValues && lockedRxRateValues.RxRate !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-green-500 font-semibold mr-1">RxRate:</span> {lockedRxRateValues.RxRate.toFixed(1)} Mbps
+                    <span className="text-green-500 font-semibold mr-1">RxRate:</span>{' '}
+                    {lockedRxRateValues.RxRate.toFixed(1)} Mbps
                   </Badge>
                 )}
               </div>
@@ -1226,14 +1547,22 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorRxRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.success} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.success} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(1)} Mbps`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1253,20 +1582,42 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="RxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="RxRate" stroke={CHART_COLORS.success} fill="url(#colorRxRate)" name="RX Rate" />
-                    <Area type="monotone" dataKey="RxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="RxRate Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="RxRate"
+                      stroke={CHART_COLORS.success}
+                      fill="url(#colorRxRate)"
+                      name="RX Rate"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="RxRate Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'txRate':
-        const lockedTxRateValues = timeline.isLocked && timeline.currentTime !== null
-          ? getValueAtTimestamp(txRateData, timeline.currentTime, ['TxRate'])
-          : null;
+      case 'txRate': {
+        const lockedTxRateValues =
+          timeline.isLocked && timeline.currentTime !== null
+            ? getValueAtTimestamp(txRateData, timeline.currentTime, ['TxRate'])
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1274,7 +1625,8 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
                 {lockedTxRateValues && lockedTxRateValues.TxRate !== null && (
                   <Badge variant="secondary" className="font-mono">
-                    <span className="text-blue-500 font-semibold mr-1">TxRate:</span> {lockedTxRateValues.TxRate.toFixed(1)} Mbps
+                    <span className="text-blue-500 font-semibold mr-1">TxRate:</span>{' '}
+                    {lockedTxRateValues.TxRate.toFixed(1)} Mbps
                   </Badge>
                 )}
               </div>
@@ -1310,14 +1662,22 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorTxRate" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.pink} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.pink} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.pink} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.pink} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} Mbps`} width={60} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)} Mbps`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(1)} Mbps`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1337,24 +1697,49 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                         strokeOpacity={0.3}
                       />
                     )}
-                    <Area type="monotone" dataKey="TxRate Upper" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Upper" />
-                    <Area type="monotone" dataKey="TxRate" stroke={CHART_COLORS.pink} fill="url(#colorTxRate)" name="TX Rate" />
-                    <Area type="monotone" dataKey="TxRate Lower" stroke={CHART_COLORS.secondary} fill="transparent" strokeDasharray="3 3" name="Lower" />
+                    <Area
+                      type="monotone"
+                      dataKey="TxRate Upper"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Upper"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="TxRate"
+                      stroke={CHART_COLORS.pink}
+                      fill="url(#colorTxRate)"
+                      name="TX Rate"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="TxRate Lower"
+                      stroke={CHART_COLORS.secondary}
+                      fill="transparent"
+                      strokeDasharray="3 3"
+                      name="Lower"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         );
+      }
 
-      case 'events':
+      case 'events': {
         // Get all event keys from the data (excluding timestamp/time)
-        const eventKeys = eventsData.length > 0
-          ? Object.keys(eventsData[0]).filter(k => k !== 'timestamp' && k !== 'time').slice(0, 5)
-          : [];
-        const lockedEventsValues = timeline.isLocked && timeline.currentTime !== null && eventKeys.length > 0
-          ? getValueAtTimestamp(eventsData, timeline.currentTime, eventKeys)
-          : null;
+        const eventKeys =
+          eventsData.length > 0
+            ? Object.keys(eventsData[0])
+                .filter((k) => k !== 'timestamp' && k !== 'time')
+                .slice(0, 5)
+            : [];
+        const lockedEventsValues =
+          timeline.isLocked && timeline.currentTime !== null && eventKeys.length > 0
+            ? getValueAtTimestamp(eventsData, timeline.currentTime, eventKeys)
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1367,7 +1752,12 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       if (value !== null && value !== undefined) {
                         return (
                           <Badge key={key} variant="secondary" className="font-mono">
-                            <span className="font-semibold mr-1" style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}>{key}:</span>
+                            <span
+                              className="font-semibold mr-1"
+                              style={{ color: DONUT_COLORS[i % DONUT_COLORS.length] }}
+                            >
+                              {key}:
+                            </span>
                             {value.toFixed(0)}
                           </Badge>
                         );
@@ -1408,7 +1798,11 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                     onMouseUp={() => timeline.endTimeWindow()}
                   >
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} width={40} />
                     <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
                     <Legend />
@@ -1431,7 +1825,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       />
                     )}
                     {Object.keys(eventsData[0] || {})
-                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .filter((k) => k !== 'timestamp' && k !== 'time')
                       .slice(0, 5)
                       .map((key, i) => (
                         <Bar
@@ -1447,15 +1841,18 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
             </CardContent>
           </Card>
         );
+      }
 
-      case 'dlRetries':
+      case 'dlRetries': {
         // Get all retry keys from the data (excluding timestamp/time)
-        const retryKeys = dlRetriesData.length > 0
-          ? Object.keys(dlRetriesData[0]).filter(k => k !== 'timestamp' && k !== 'time')
-          : [];
-        const lockedDlRetriesValues = timeline.isLocked && timeline.currentTime !== null && retryKeys.length > 0
-          ? getValueAtTimestamp(dlRetriesData, timeline.currentTime, retryKeys)
-          : null;
+        const retryKeys =
+          dlRetriesData.length > 0
+            ? Object.keys(dlRetriesData[0]).filter((k) => k !== 'timestamp' && k !== 'time')
+            : [];
+        const lockedDlRetriesValues =
+          timeline.isLocked && timeline.currentTime !== null && retryKeys.length > 0
+            ? getValueAtTimestamp(dlRetriesData, timeline.currentTime, retryKeys)
+            : null;
         return (
           <Card key={config.id}>
             <CardHeader className="pb-2">
@@ -1468,7 +1865,14 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       if (value !== null && value !== undefined) {
                         return (
                           <Badge key={key} variant="secondary" className="font-mono">
-                            <span className="font-semibold mr-1" style={{ color: i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary }}>{key}:</span>
+                            <span
+                              className="font-semibold mr-1"
+                              style={{
+                                color: i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary,
+                              }}
+                            >
+                              {key}:
+                            </span>
                             {value.toFixed(1)}%
                           </Badge>
                         );
@@ -1510,14 +1914,22 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                   >
                     <defs>
                       <linearGradient id="colorDlRetries" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.warning} stopOpacity={0.2}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.warning} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.warning} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={CHART_COLORS.warning} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="timestamp" tick={{ fontSize: 11 }} tickFormatter={(ts) => formatXAxisTick(ts, duration)} />
+                    <XAxis
+                      dataKey="timestamp"
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
+                    />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} width={40} />
-                    <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v.toFixed(1)}%`, '']}
+                      labelFormatter={() => ''}
+                      contentStyle={COMPACT_TOOLTIP_STYLE}
+                    />
                     <Legend />
                     {timeline.currentTime !== null && (
                       <ReferenceLine
@@ -1538,15 +1950,15 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                       />
                     )}
                     {Object.keys(dlRetriesData[0] || {})
-                      .filter(k => k !== 'timestamp' && k !== 'time')
+                      .filter((k) => k !== 'timestamp' && k !== 'time')
                       .map((key, i) => (
                         <Area
                           key={key}
                           type="monotone"
                           dataKey={key}
                           stroke={i === 0 ? CHART_COLORS.warning : CHART_COLORS.secondary}
-                          fill={i === 0 ? "url(#colorDlRetries)" : "transparent"}
-                          strokeDasharray={i === 0 ? undefined : "3 3"}
+                          fill={i === 0 ? 'url(#colorDlRetries)' : 'transparent'}
+                          strokeDasharray={i === 0 ? undefined : '3 3'}
                         />
                       ))}
                   </AreaChart>
@@ -1555,6 +1967,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
             </CardContent>
           </Card>
         );
+      }
 
       default:
         return null;
@@ -1583,8 +1996,10 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {DURATION_OPTIONS.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                {DURATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1623,7 +2038,7 @@ export function ClientInsightsFullScreen({ macAddress, clientName, onClose }: Cl
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-6">
-                {chartConfigs.map(config => renderChart(config))}
+                {chartConfigs.map((config) => renderChart(config))}
               </div>
             )}
 

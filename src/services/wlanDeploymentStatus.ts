@@ -12,7 +12,7 @@ import type {
   SiteWLANInventory,
   MismatchReason,
   Service,
-  ObservedWLAN
+  ObservedWLAN,
 } from '../types/network';
 
 class WLANDeploymentStatusService {
@@ -30,7 +30,7 @@ class WLANDeploymentStatusService {
 
       // Check if there are any failed assignments
       const failedAssignments = profileAssignments.filter(
-        pa => pa.syncStatus === 'FAILED' || pa.mismatch !== null
+        (pa) => pa.syncStatus === 'FAILED' || pa.mismatch !== null
       );
 
       if (failedAssignments.length > 0 && failedAssignments.length < profileAssignments.length) {
@@ -58,17 +58,18 @@ class WLANDeploymentStatusService {
     const profileAssignments = assignmentStorageService.getWLANProfileAssignments(wlan.id);
 
     const totalSites = siteAssignments.length;
-    const totalProfiles = profileAssignments.filter(pa => pa.expectedState === 'ASSIGNED').length;
-    const mismatchCount = profileAssignments.filter(pa => pa.mismatch !== null).length;
+    const totalProfiles = profileAssignments.filter((pa) => pa.expectedState === 'ASSIGNED').length;
+    const mismatchCount = profileAssignments.filter((pa) => pa.mismatch !== null).length;
 
     // Get last reconciliation time
-    const lastReconciled = profileAssignments.length > 0
-      ? profileAssignments
-          .map(pa => pa.lastReconciled)
-          .filter(Boolean)
-          .sort()
-          .reverse()[0]
-      : undefined;
+    const lastReconciled =
+      profileAssignments.length > 0
+        ? profileAssignments
+            .map((pa) => pa.lastReconciled)
+            .filter(Boolean)
+            .sort()
+            .reverse()[0]
+        : undefined;
 
     return {
       ...wlan,
@@ -76,7 +77,7 @@ class WLANDeploymentStatusService {
       totalSites,
       totalProfiles,
       mismatchCount,
-      lastReconciled
+      lastReconciled,
     };
   }
 
@@ -93,17 +94,17 @@ class WLANDeploymentStatusService {
   ): Promise<SiteWLANInventory> {
     console.log('[WLANDeploymentStatus] Creating site inventory for', siteName);
 
-    const intendedWLANsWithStatus = intendedWLANs.map(wlan => {
+    const intendedWLANsWithStatus = intendedWLANs.map((wlan) => {
       // Get expected profile count from assignments
       const profileAssignments = assignmentStorageService
         .getWLANProfileAssignments(wlan.id)
-        .filter(pa => pa.siteId === siteId && pa.expectedState === 'ASSIGNED');
+        .filter((pa) => pa.siteId === siteId && pa.expectedState === 'ASSIGNED');
 
       const expectedProfiles = profileAssignments.length;
 
       // Get actual profile count from API data
-      const actualProfiles = profilesAtSite.filter(
-        (p: any) => p.wlans?.some((w: any) => w.id === wlan.id)
+      const actualProfiles = profilesAtSite.filter((p: any) =>
+        p.wlans?.some((w: any) => w.id === wlan.id)
       ).length;
 
       // Determine deployment status
@@ -123,7 +124,7 @@ class WLANDeploymentStatusService {
       }
 
       // Check if it's observed but not in intended
-      const isObserved = observedWLANs.some(ow => ow.id === wlan.id || ow.ssid === wlan.ssid);
+      const isObserved = observedWLANs.some((ow) => ow.id === wlan.id || ow.ssid === wlan.ssid);
       if (!isObserved && expectedProfiles > 0) {
         mismatchReason = 'INTENDED_ONLY';
       }
@@ -133,32 +134,32 @@ class WLANDeploymentStatusService {
         expectedProfiles,
         actualProfiles,
         deploymentStatus,
-        mismatchReason
+        mismatchReason,
       };
     });
 
     // Find mismatches
     const mismatches = intendedWLANsWithStatus
-      .filter(item => item.mismatchReason !== null)
-      .map(item => ({
+      .filter((item) => item.mismatchReason !== null)
+      .map((item) => ({
         wlanId: item.wlan.id,
         wlanName: item.wlan.ssid || item.wlan.name || item.wlan.id,
         reason: item.mismatchReason!,
-        severity: this.getMismatchSeverity(item.mismatchReason!)
+        severity: this.getMismatchSeverity(item.mismatchReason!),
       }));
 
     // Check for observed-only WLANs (not in intended state)
-    observedWLANs.forEach(observed => {
+    observedWLANs.forEach((observed) => {
       const isIntended = intendedWLANs.some(
-        wlan => wlan.id === observed.id || wlan.ssid === observed.ssid
+        (wlan) => wlan.id === observed.id || wlan.ssid === observed.ssid
       );
 
       if (!isIntended) {
         mismatches.push({
           wlanId: observed.id,
           wlanName: observed.ssid,
-          reason: 'OBSERVED_ONLY',
-          severity: 'warning'
+          reason: 'OBSERVED_ONLY' as any,
+          severity: 'warning',
         });
       }
     });
@@ -169,7 +170,7 @@ class WLANDeploymentStatusService {
       intendedWLANs: intendedWLANsWithStatus,
       observedWLANs,
       mismatches,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
   }
 
@@ -238,7 +239,9 @@ class WLANDeploymentStatusService {
   /**
    * Get badge variant for mismatch reason
    */
-  getMismatchBadgeVariant(reason: MismatchReason): 'default' | 'destructive' | 'outline' | 'secondary' {
+  getMismatchBadgeVariant(
+    reason: MismatchReason
+  ): 'default' | 'destructive' | 'outline' | 'secondary' {
     const severity = this.getMismatchSeverity(reason);
     switch (severity) {
       case 'error':
@@ -275,20 +278,18 @@ class WLANDeploymentStatusService {
     const profileAssignments = assignmentStorageService.getWLANProfileAssignments(wlanId);
 
     const sites = siteAssignments.length;
-    const profiles = profileAssignments.filter(pa => pa.expectedState === 'ASSIGNED').length;
-    const mismatches = profileAssignments.filter(pa => pa.mismatch !== null).length;
+    const profiles = profileAssignments.filter((pa) => pa.expectedState === 'ASSIGNED').length;
+    const mismatches = profileAssignments.filter((pa) => pa.mismatch !== null).length;
 
     const needsAction =
-      status === 'NOT_DEPLOYED' ||
-      status === 'PARTIALLY_DEPLOYED' ||
-      mismatches > 0;
+      status === 'NOT_DEPLOYED' || status === 'PARTIALLY_DEPLOYED' || mismatches > 0;
 
     return {
       status,
       sites,
       profiles,
       mismatches,
-      needsAction
+      needsAction,
     };
   }
 }

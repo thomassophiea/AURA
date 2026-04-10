@@ -9,11 +9,57 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, Columns, Route, ArrowLeft, FileDown, UserMinus2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import {
+  AlertCircle,
+  Users,
+  RefreshCw,
+  Wifi,
+  Activity,
+  Timer,
+  Signal,
+  Download,
+  Upload,
+  Shield,
+  Router,
+  MapPin,
+  User,
+  Clock,
+  Star,
+  Trash2,
+  UserX,
+  RotateCcw,
+  UserPlus,
+  UserMinus,
+  ShieldCheck,
+  ShieldX,
+  Info,
+  Radio,
+  WifiOff,
+  SignalHigh,
+  SignalMedium,
+  SignalLow,
+  SignalZero,
+  Cable,
+  Shuffle,
+  Columns,
+  Route,
+  ArrowLeft,
+  FileDown,
+  UserMinus2,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+} from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, Station, type StationEvent, type APEvent, type RRMEvent } from '../services/api';
+import {
+  apiService,
+  Station,
+  type StationEvent,
+  type APEvent,
+  type RRMEvent,
+} from '../services/api';
 import { RoamingTrail } from './RoamingTrail';
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
@@ -34,33 +80,51 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
 
-  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    filterRows: filterBySearch,
+    hasActiveSearch,
+  } = useCompoundSearch<Station>({
     storageKey: 'client-search',
     fields: [
-      s => s.hostName,
-      s => s.macAddress,
-      s => s.ipAddress,
-      s => s.siteName,
-      s => s.apName || (s as any).apDisplayName || (s as any).apHostname,
-      s => (s as any).deviceType,
-      s => (s as any).manufacturer,
-      s => (s as any).username,
-      s => s.network || (s as any).ssid || (s as any).serviceName,
-      s => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
-      s => s.status,
-      s => (s as any).band || (s as any).frequencyBand,
+      (s) => s.hostName,
+      (s) => s.macAddress,
+      (s) => s.ipAddress,
+      (s) => s.siteName,
+      (s) => s.apName || (s as any).apDisplayName || (s as any).apHostname,
+      (s) => (s as any).deviceType,
+      (s) => (s as any).manufacturer,
+      (s) => (s as any).username,
+      (s) => s.network || (s as any).ssid || (s as any).serviceName,
+      (s) => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
+      (s) => s.status,
+      (s) => (s as any).band || (s as any).frequencyBand,
     ],
   });
 
-  const { timeRange, setPreset: setTimePreset, setCustomRange, filterByTime } = useTimeRangeFilter('client-time-range');
+  const {
+    timeRange,
+    setPreset: setTimePreset,
+    setCustomRange,
+    filterByTime,
+  } = useTimeRangeFilter('client-time-range');
 
   // Site filter — persisted to sessionStorage
   const [selectedSite, setSelectedSiteState] = useState<string>(() => {
-    try { return sessionStorage.getItem('client-site-filter') || 'all'; } catch { return 'all'; }
+    try {
+      return sessionStorage.getItem('client-site-filter') || 'all';
+    } catch {
+      return 'all';
+    }
   });
   const setSelectedSite = (site: string) => {
     setSelectedSiteState(site);
-    try { sessionStorage.setItem('client-site-filter', site); } catch {}
+    try {
+      sessionStorage.setItem('client-site-filter', site);
+    } catch {
+      /* ignore storage errors */
+    }
   };
 
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
@@ -90,7 +154,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     columns: CLIENTS_TABLE_COLUMNS,
     enableViews: true,
     enablePersistence: true,
-    userId: localStorage.getItem('user_email') || 'default-user'
+    userId: localStorage.getItem('user_email') || 'default-user',
   });
 
   useEffect(() => {
@@ -104,10 +168,10 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       setIsLoading(false);
       return;
     }
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
       // Use the new correlation method to get stations with proper site information
       const stationsData = await apiService.getStationsWithSiteCorrelation();
@@ -151,11 +215,11 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const formatDuration = (duration: string | number) => {
     if (!duration) return 'N/A';
     if (typeof duration === 'string') return duration;
-    
+
     const hours = Math.floor(duration / 3600);
     const minutes = Math.floor((duration % 3600) / 60);
     const seconds = duration % 60;
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else if (minutes > 0) {
@@ -180,9 +244,15 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     }
   };
 
-  const siteFiltered = selectedSite === 'all' ? stations : stations.filter(s => s.siteName === selectedSite || (s as any).siteId === selectedSite);
+  const siteFiltered =
+    selectedSite === 'all'
+      ? stations
+      : stations.filter((s) => s.siteName === selectedSite || (s as any).siteId === selectedSite);
   const searchFiltered = filterBySearch(siteFiltered);
-  const filteredStations = filterByTime(searchFiltered, (s) => (s as any).lastSeen || (s as any).associationTime);
+  const filteredStations = filterByTime(
+    searchFiltered,
+    (s) => (s as any).lastSeen || (s as any).associationTime
+  );
 
   // Helper function to get sortable value for a column
   const getSortValue = (station: Station, columnKey: string): string | number => {
@@ -249,7 +319,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   // Handle column header click for sorting
   const handleSort = (columnKey: string) => {
     if (sortColumn === columnKey) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortColumn(columnKey);
       setSortDirection('asc');
@@ -273,13 +343,15 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
     return sortDirection === 'asc' ? comparison : -comparison;
   });
 
-  const getUniqueSites = () => {
-    const sites = new Set(stations.map(station => station.siteName).filter(Boolean));
+  const getUniqueSites = (): string[] => {
+    const sites = new Set(
+      stations.map((station) => station.siteName).filter((s): s is string => Boolean(s))
+    );
     return Array.from(sites);
   };
 
   const getUniqueNetworks = () => {
-    const networks = new Set(stations.map(station => station.network).filter(Boolean));
+    const networks = new Set(stations.map((station) => station.network).filter(Boolean));
     return Array.from(networks);
   };
 
@@ -292,10 +364,11 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   };
 
   const getActiveClientsCount = () => {
-    return stations.filter(station => 
-      station.status?.toLowerCase() === 'connected' || 
-      station.status?.toLowerCase() === 'associated' ||
-      station.status?.toLowerCase() === 'active'
+    return stations.filter(
+      (station) =>
+        station.status?.toLowerCase() === 'connected' ||
+        station.status?.toLowerCase() === 'associated' ||
+        station.status?.toLowerCase() === 'active'
     ).length;
   };
 
@@ -319,7 +392,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allMacAddresses = new Set(sortedStations.map(station => station.macAddress));
+      const allMacAddresses = new Set(sortedStations.map((station) => station.macAddress));
       setSelectedStations(allMacAddresses);
     } else {
       setSelectedStations(new Set());
@@ -329,17 +402,23 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const loadStationEvents = async (macAddress: string) => {
     if (!macAddress) return;
 
-    console.log(`[ConnectedClients] Loading station events with correlation for client:`, macAddress);
+    console.log(
+      `[ConnectedClients] Loading station events with correlation for client:`,
+      macAddress
+    );
     setIsLoadingEvents(true);
     setEventTypeFilter('all'); // Reset filter when loading new events
     try {
       // Fetch correlated events (station + AP + RRM)
-      const correlatedEvents = await apiService.fetchStationEventsWithCorrelation(macAddress, '24H');
+      const correlatedEvents = await apiService.fetchStationEventsWithCorrelation(
+        macAddress,
+        '24H'
+      );
 
       console.log(`[ConnectedClients] Received correlated events:`, {
         station: correlatedEvents.stationEvents.length,
         ap: correlatedEvents.apEvents.length,
-        rrm: correlatedEvents.smartRfEvents.length
+        rrm: correlatedEvents.smartRfEvents.length,
       });
 
       setStationEvents(correlatedEvents.stationEvents);
@@ -372,65 +451,69 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           result = await apiService.bulkDeleteStations(macAddresses);
           toast.success(`Deleted ${result.successes}/${result.total} stations`);
           break;
-        
+
         case 'disassociate':
           result = await apiService.bulkDisassociateStations(macAddresses);
           toast.success(`Disassociated ${macAddresses.length} stations`);
           break;
-        
+
         case 'reauthenticate':
           result = await apiService.bulkReauthenticateStations(macAddresses);
           toast.success(`Reauthenticated ${result.successes}/${result.total} stations`);
           break;
-        
-        case 'addToGroup':
+
+        case 'addToGroup': {
           if (!groupId) {
             toast.error('Please specify a Group ID');
             return;
           }
           const addResults = await Promise.allSettled(
-            macAddresses.map(mac => apiService.addStationToGroup(mac, groupId))
+            macAddresses.map((mac) => apiService.addStationToGroup(mac, groupId))
           );
-          const addSuccesses = addResults.filter(r => r.status === 'fulfilled').length;
+          const addSuccesses = addResults.filter((r) => r.status === 'fulfilled').length;
           toast.success(`Added ${addSuccesses}/${macAddresses.length} stations to group`);
           break;
-        
-        case 'removeFromGroup':
+        }
+
+        case 'removeFromGroup': {
           if (!groupId) {
             toast.error('Please specify a Group ID');
             return;
           }
           const removeResults = await Promise.allSettled(
-            macAddresses.map(mac => apiService.removeStationFromGroup(mac, groupId))
+            macAddresses.map((mac) => apiService.removeStationFromGroup(mac, groupId))
           );
-          const removeSuccesses = removeResults.filter(r => r.status === 'fulfilled').length;
+          const removeSuccesses = removeResults.filter((r) => r.status === 'fulfilled').length;
           toast.success(`Removed ${removeSuccesses}/${macAddresses.length} stations from group`);
           break;
-        
-        case 'addToAllowList':
+        }
+
+        case 'addToAllowList': {
           if (!siteId) {
             toast.error('Please specify a Site ID');
             return;
           }
           const allowResults = await Promise.allSettled(
-            macAddresses.map(mac => apiService.addStationToAllowList(mac, siteId))
+            macAddresses.map((mac) => apiService.addStationToAllowList(mac, siteId))
           );
-          const allowSuccesses = allowResults.filter(r => r.status === 'fulfilled').length;
+          const allowSuccesses = allowResults.filter((r) => r.status === 'fulfilled').length;
           toast.success(`Added ${allowSuccesses}/${macAddresses.length} stations to allow list`);
           break;
-        
-        case 'addToDenyList':
+        }
+
+        case 'addToDenyList': {
           if (!siteId) {
             toast.error('Please specify a Site ID');
             return;
           }
           const denyResults = await Promise.allSettled(
-            macAddresses.map(mac => apiService.addStationToDenyList(mac, siteId))
+            macAddresses.map((mac) => apiService.addStationToDenyList(mac, siteId))
           );
-          const denySuccesses = denyResults.filter(r => r.status === 'fulfilled').length;
+          const denySuccesses = denyResults.filter((r) => r.status === 'fulfilled').length;
           toast.success(`Added ${denySuccesses}/${macAddresses.length} stations to deny list`);
           break;
-        
+        }
+
         default:
           toast.error('Unknown action');
           return;
@@ -455,7 +538,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         gdprDataExport: true,
         exportType: stationsToExport.length === 1 ? 'single_client' : 'bulk_export',
         totalClients: stationsToExport.length,
-        clients: stationsToExport.map(station => ({
+        clients: stationsToExport.map((station) => ({
           clientIdentifier: station.macAddress,
           basicInformation: {
             macAddress: station.macAddress,
@@ -507,16 +590,19 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const filename = stationsToExport.length === 1
-        ? `client-data-${stationsToExport[0].macAddress.replace(/:/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
-        : `client-data-export-${stationsToExport.length}-clients-${new Date().toISOString().split('T')[0]}.json`;
+      const filename =
+        stationsToExport.length === 1
+          ? `client-data-${stationsToExport[0].macAddress.replace(/:/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
+          : `client-data-export-${stationsToExport.length}-clients-${new Date().toISOString().split('T')[0]}.json`;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported data for ${stationsToExport.length} client${stationsToExport.length > 1 ? 's' : ''}`);
+      toast.success(
+        `Exported data for ${stationsToExport.length} client${stationsToExport.length > 1 ? 's' : ''}`
+      );
     } catch (error) {
       console.error('[ConnectedClients] Error exporting client data:', error);
       toast.error('Failed to export client data');
@@ -525,7 +611,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
 
   // GDPR: Download selected clients data
   const handleDownloadSelectedClients = () => {
-    const selectedStationsList = stations.filter(s => selectedStations.has(s.macAddress));
+    const selectedStationsList = stations.filter((s) => selectedStations.has(s.macAddress));
     if (selectedStationsList.length === 0) {
       toast.error('No clients selected');
       return;
@@ -540,7 +626,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       // Call the API to delete the station/client data
       await apiService.bulkDeleteStations(macAddresses);
 
-      toast.success(`Deleted data for ${macAddresses.length} client${macAddresses.length > 1 ? 's' : ''}`);
+      toast.success(
+        `Deleted data for ${macAddresses.length} client${macAddresses.length > 1 ? 's' : ''}`
+      );
       setIsGdprDeleteDialogOpen(false);
       setSelectedStations(new Set());
 
@@ -567,7 +655,6 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
@@ -580,7 +667,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </Card>
           ))}
         </div>
-        
+
         <Card>
           <CardHeader>
             <Skeleton className="h-6 w-32" />
@@ -620,7 +707,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             Refresh
           </Button>
           <ColumnCustomizationDialog
-            customization={customization}
+            customization={customization as any}
             triggerLabel="Customize Columns"
             showTriggerIcon={true}
           />
@@ -639,7 +726,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Clients</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Total Clients
+                </p>
                 <p className="text-xl font-bold text-foreground">{stations.length}</p>
                 <p className="text-[10px] text-muted-foreground">Connected devices</p>
               </div>
@@ -654,8 +743,12 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Active</p>
-                <p className="text-xl font-bold" style={{ color: 'var(--status-success)' }}>{getActiveClientsCount()}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Active
+                </p>
+                <p className="text-xl font-bold" style={{ color: 'var(--status-success)' }}>
+                  {getActiveClientsCount()}
+                </p>
                 <p className="text-[10px] text-muted-foreground">Currently active</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-green shadow-md">
@@ -669,7 +762,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Sites</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Sites
+                </p>
                 <p className="text-xl font-bold text-foreground">{getUniqueSiteCount()}</p>
                 <p className="text-[10px] text-muted-foreground">Active sites</p>
               </div>
@@ -684,8 +779,12 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Traffic</p>
-                <p className="text-xl font-bold text-foreground">{formatBytes(getTotalTraffic())}</p>
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Total Traffic
+                </p>
+                <p className="text-xl font-bold text-foreground">
+                  {formatBytes(getTotalTraffic())}
+                </p>
                 <p className="text-[10px] text-muted-foreground">Data transferred</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md">
@@ -734,8 +833,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3 border-t pt-3">
-            <strong>GDPR Compliance:</strong> Article 15 (Right of Access) allows data subjects to obtain a copy of their personal data.
-            Article 17 (Right to Erasure) allows data subjects to request deletion of their personal data.
+            <strong>GDPR Compliance:</strong> Article 15 (Right of Access) allows data subjects to
+            obtain a copy of their personal data. Article 17 (Right to Erasure) allows data subjects
+            to request deletion of their personal data.
           </p>
         </CardContent>
       </Card>
@@ -750,22 +850,28 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </DialogTitle>
             <DialogDescription className="pt-4 space-y-3">
               <p>
-                You are about to permanently delete all data for <strong>{selectedStations.size} client{selectedStations.size > 1 ? 's' : ''}</strong>.
+                You are about to permanently delete all data for{' '}
+                <strong>
+                  {selectedStations.size} client{selectedStations.size > 1 ? 's' : ''}
+                </strong>
+                .
               </p>
               <div className="bg-muted p-3 rounded-lg font-mono text-xs max-h-32 overflow-y-auto">
-                {Array.from(selectedStations).map(mac => {
-                  const station = stations.find(s => s.macAddress === mac);
+                {Array.from(selectedStations).map((mac) => {
+                  const station = stations.find((s) => s.macAddress === mac);
                   return (
                     <div key={mac} className="py-1 border-b last:border-0">
                       <span className="font-medium">{mac}</span>
-                      {station?.hostName && <span className="text-muted-foreground ml-2">({station.hostName})</span>}
+                      {station?.hostName && (
+                        <span className="text-muted-foreground ml-2">({station.hostName})</span>
+                      )}
                     </div>
                   );
                 })}
               </div>
               <p className="text-red-500 font-medium">
-                This action cannot be undone. All connection history, events, and statistics
-                for these devices will be permanently removed.
+                This action cannot be undone. All connection history, events, and statistics for
+                these devices will be permanently removed.
               </p>
             </DialogDescription>
           </DialogHeader>
@@ -844,12 +950,15 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                   <TableRow className="h-9">
                     <TableHead className="w-10 px-2 py-1 text-[10px]">
                       <Checkbox
-                        checked={selectedStations.size === sortedStations.length && sortedStations.length > 0}
+                        checked={
+                          selectedStations.size === sortedStations.length &&
+                          sortedStations.length > 0
+                        }
                         onCheckedChange={handleSelectAll}
                         className="h-3 w-3"
                       />
                     </TableHead>
-                    {customization.visibleColumnConfigs.map(column => (
+                    {customization.visibleColumnConfigs.map((column) => (
                       <TableHead
                         key={column.key}
                         className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide cursor-pointer select-none hover:bg-muted/50 transition-colors whitespace-nowrap"
@@ -857,13 +966,16 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       >
                         <span className="flex items-center gap-1">
                           {column.label}
-                          {column.sortable !== false && (
-                            sortColumn === column.key
-                              ? sortDirection === 'asc'
-                                ? <ChevronUp className="h-3 w-3 text-primary shrink-0" />
-                                : <ChevronDown className="h-3 w-3 text-primary shrink-0" />
-                              : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
-                          )}
+                          {column.sortable !== false &&
+                            (sortColumn === column.key ? (
+                              sortDirection === 'asc' ? (
+                                <ChevronUp className="h-3 w-3 text-primary shrink-0" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3 text-primary shrink-0" />
+                              )
+                            ) : (
+                              <ChevronsUpDown className="h-3 w-3 text-muted-foreground/40 shrink-0" />
+                            ))}
                         </span>
                       </TableHead>
                     ))}
@@ -890,20 +1002,29 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       <TableCell className="px-2 py-1" data-checkbox>
                         <Checkbox
                           checked={selectedStations.has(station.macAddress)}
-                          onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
+                          onCheckedChange={(checked) =>
+                            handleStationSelect(station.macAddress, checked as boolean)
+                          }
                           className="h-3 w-3"
                           onClick={(e) => e.stopPropagation()}
                         />
                       </TableCell>
 
-                      {customization.visibleColumnConfigs.map(column => (
+                      {customization.visibleColumnConfigs.map((column) => (
                         <TableCell key={column.key} className="px-2 py-1 max-w-[260px]">
-                          <div className="truncate" title={
-                            typeof (column.renderCell ? column.renderCell(station) : (station as any)[column.key]) === 'string'
-                              ? String((station as any)[column.fieldPath || column.key] || '')
-                              : undefined
-                          }>
-                            {column.renderCell ? column.renderCell(station) : (station as any)[column.key]}
+                          <div
+                            className="truncate"
+                            title={
+                              typeof (column.renderCell
+                                ? column.renderCell(station)
+                                : (station as any)[column.key]) === 'string'
+                                ? String((station as any)[column.fieldPath || column.key] || '')
+                                : undefined
+                            }
+                          >
+                            {column.renderCell
+                              ? column.renderCell(station)
+                              : (station as any)[column.key]}
                           </div>
                         </TableCell>
                       ))}
@@ -925,110 +1046,110 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         width="md"
       >
         <div className="space-y-4">
-            <div>
-              <h4 className="font-medium mb-2">Station Management</h4>
-              <div className="space-y-2">
-                <Button
-                  onClick={() => performBulkAction('disassociate')}
-                  disabled={isPerformingAction}
-                  variant="outline"
-                  className="w-full justify-start"
-                >
-                  <UserX className="mr-2 h-4 w-4" />
-                  Disassociate Stations
-                </Button>
-                
-                <Button
-                  onClick={() => performBulkAction('reauthenticate')}
-                  disabled={isPerformingAction}
-                  variant="outline"
-                  className="w-full justify-start"
-                >
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  Reauthenticate Stations
-                </Button>
-                
-                <Button
-                  onClick={() => performBulkAction('delete')}
-                  disabled={isPerformingAction}
-                  variant="destructive"
-                  className="w-full justify-start"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Stations
-                </Button>
-              </div>
+          <div>
+            <h4 className="font-medium mb-2">Station Management</h4>
+            <div className="space-y-2">
+              <Button
+                onClick={() => performBulkAction('disassociate')}
+                disabled={isPerformingAction}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <UserX className="mr-2 h-4 w-4" />
+                Disassociate Stations
+              </Button>
+
+              <Button
+                onClick={() => performBulkAction('reauthenticate')}
+                disabled={isPerformingAction}
+                variant="outline"
+                className="w-full justify-start"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Reauthenticate Stations
+              </Button>
+
+              <Button
+                onClick={() => performBulkAction('delete')}
+                disabled={isPerformingAction}
+                variant="destructive"
+                className="w-full justify-start"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Stations
+              </Button>
             </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">Group Management</h4>
-              <div className="space-y-2">
-                <div>
-                  <Input
-                    placeholder="Group ID"
-                    value={groupId}
-                    onChange={(e) => setGroupId(e.target.value)}
-                    className="mb-2"
-                  />
-                  <div className="space-y-2">
-                    <Button
-                      onClick={() => performBulkAction('addToGroup')}
-                      disabled={isPerformingAction || !groupId}
-                      variant="outline"
-                      className="w-full justify-start"
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Add to Group
-                    </Button>
-                    
-                    <Button
-                      onClick={() => performBulkAction('removeFromGroup')}
-                      disabled={isPerformingAction || !groupId}
-                      variant="outline"
-                      className="w-full justify-start"
-                    >
-                      <UserMinus className="mr-2 h-4 w-4" />
-                      Remove from Group
-                    </Button>
-                  </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Group Management</h4>
+            <div className="space-y-2">
+              <div>
+                <Input
+                  placeholder="Group ID"
+                  value={groupId}
+                  onChange={(e) => setGroupId(e.target.value)}
+                  className="mb-2"
+                />
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => performBulkAction('addToGroup')}
+                    disabled={isPerformingAction || !groupId}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add to Group
+                  </Button>
+
+                  <Button
+                    onClick={() => performBulkAction('removeFromGroup')}
+                    disabled={isPerformingAction || !groupId}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <UserMinus className="mr-2 h-4 w-4" />
+                    Remove from Group
+                  </Button>
                 </div>
               </div>
             </div>
-            
-            <div>
-              <h4 className="font-medium mb-2">Access Control</h4>
-              <div className="space-y-2">
-                <div>
-                  <Input
-                    placeholder="Site ID"
-                    value={siteId}
-                    onChange={(e) => setSiteId(e.target.value)}
-                    className="mb-2"
-                  />
-                  <div className="space-y-2">
-                    <Button
-                      onClick={() => performBulkAction('addToAllowList')}
-                      disabled={isPerformingAction || !siteId}
-                      variant="outline"
-                      className="w-full justify-start"
-                    >
-                      <ShieldCheck className="mr-2 h-4 w-4" />
-                      Add to Allow List
-                    </Button>
-                    
-                    <Button
-                      onClick={() => performBulkAction('addToDenyList')}
-                      disabled={isPerformingAction || !siteId}
-                      variant="outline"
-                      className="w-full justify-start"
-                    >
-                      <ShieldX className="mr-2 h-4 w-4" />
-                      Add to Deny List
-                    </Button>
-                  </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Access Control</h4>
+            <div className="space-y-2">
+              <div>
+                <Input
+                  placeholder="Site ID"
+                  value={siteId}
+                  onChange={(e) => setSiteId(e.target.value)}
+                  className="mb-2"
+                />
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => performBulkAction('addToAllowList')}
+                    disabled={isPerformingAction || !siteId}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Add to Allow List
+                  </Button>
+
+                  <Button
+                    onClick={() => performBulkAction('addToDenyList')}
+                    disabled={isPerformingAction || !siteId}
+                    variant="outline"
+                    className="w-full justify-start"
+                  >
+                    <ShieldX className="mr-2 h-4 w-4" />
+                    Add to Deny List
+                  </Button>
                 </div>
               </div>
             </div>
+          </div>
         </div>
       </DetailSlideOut>
 
@@ -1040,239 +1161,273 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
         description="Detailed information and events for this connected client"
         width="3xl"
       >
-          
-          {selectedStation && (
-            <Tabs defaultValue="details" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="details">Client Information</TabsTrigger>
-                <TabsTrigger value="events" onClick={() => loadStationEvents(selectedStation.macAddress)}>
-                  Recent Events
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Basic Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">MAC Address:</span>
-                        <span className="font-mono">{selectedStation.macAddress}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">IP Address:</span>
-                        <span className="font-mono">{selectedStation.ipAddress || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Hostname:</span>
-                        <span>{selectedStation.hostName || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Status:</span>
-                        <Badge className={getStatusBadgeClass(selectedStation.status || '')}>
-                          {selectedStation.status || 'Unknown'}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Device Type:</span>
-                        <span>{selectedStation.deviceType || 'Unknown'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Manufacturer:</span>
-                        <span>{selectedStation.manufacturer || 'Unknown'}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Network Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Site:</span>
-                        <span>{selectedStation.siteName || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Access Point:</span>
-                        <span className="font-mono text-sm">{selectedStation.apSerial || selectedStation.apName || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Network:</span>
-                        <span>{selectedStation.network || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Role:</span>
-                        <span>{selectedStation.role || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Username:</span>
-                        <span>{selectedStation.username || 'N/A'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Last Seen:</span>
-                        <span>{selectedStation.lastSeen || 'N/A'}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Traffic Statistics</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium flex items-center gap-1">
-                          <Download className="h-4 w-4 text-green-500" />
-                          Downloaded:
-                        </span>
-                        <span>{formatBytes(selectedStation.txBytes || selectedStation.outBytes || 0)}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="font-medium flex items-center gap-1">
-                          <Upload className="h-4 w-4 text-blue-600" />
-                          Uploaded:
-                        </span>
-                        <span>{formatBytes(selectedStation.rxBytes || selectedStation.inBytes || 0)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="font-medium">Total Traffic:</span>
-                        <span>{formatBytes((selectedStation.rxBytes || selectedStation.inBytes || 0) + (selectedStation.txBytes || selectedStation.outBytes || 0))}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Additional Details</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">Site Rating:</span>
-                        <div className="flex items-center gap-1">
-                          {selectedStation.siteRating !== undefined && (
-                            <>
-                              <Star className="h-4 w-4 text-amber-500" />
-                              <span>{selectedStation.siteRating}</span>
-                            </>
-                          ) || <span>N/A</span>}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+        {selectedStation && (
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details">Client Information</TabsTrigger>
+              <TabsTrigger
+                value="events"
+                onClick={() => loadStationEvents(selectedStation.macAddress)}
+              >
+                Recent Events
+              </TabsTrigger>
+            </TabsList>
 
-                </TabsContent>
-              
-              <TabsContent value="events" className="space-y-4">
-                {isLoadingEvents ? (
-                  <div className="flex items-center justify-center py-12">
-                    <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : stationEvents.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                    <p className="text-muted-foreground font-medium mb-2">No station events available</p>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Station {selectedStation?.macAddress}
-                    </p>
-                    <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
-                      <p>Station events may be unavailable if:</p>
-                      <p>• Your controller doesn't support the station events API</p>
-                      <p>• No events have been logged for this station in the last 30 days</p>
-                      <p>• Audit logging is not enabled</p>
+            <TabsContent value="details" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Basic Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">MAC Address:</span>
+                      <span className="font-mono">{selectedStation.macAddress}</span>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-4"
-                      onClick={() => {
-                        if (selectedStation) {
-                          loadStationEvents(selectedStation.macAddress);
-                        }
-                      }}
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Retry
-                    </Button>
+                    <div className="flex justify-between">
+                      <span className="font-medium">IP Address:</span>
+                      <span className="font-mono">{selectedStation.ipAddress || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Hostname:</span>
+                      <span>{selectedStation.hostName || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Status:</span>
+                      <Badge className={getStatusBadgeClass(selectedStation.status || '')}>
+                        {selectedStation.status || 'Unknown'}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Device Type:</span>
+                      <span>{selectedStation.deviceType || 'Unknown'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Manufacturer:</span>
+                      <span>{selectedStation.manufacturer || 'Unknown'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Network Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Site:</span>
+                      <span>{selectedStation.siteName || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Access Point:</span>
+                      <span className="font-mono text-sm">
+                        {selectedStation.apSerial || selectedStation.apName || 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Network:</span>
+                      <span>{selectedStation.network || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Role:</span>
+                      <span>{selectedStation.role || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Username:</span>
+                      <span>{selectedStation.username || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Last Seen:</span>
+                      <span>{selectedStation.lastSeen || 'N/A'}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Traffic Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium flex items-center gap-1">
+                        <Download className="h-4 w-4 text-green-500" />
+                        Downloaded:
+                      </span>
+                      <span>
+                        {formatBytes(selectedStation.txBytes || selectedStation.outBytes || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium flex items-center gap-1">
+                        <Upload className="h-4 w-4 text-blue-600" />
+                        Uploaded:
+                      </span>
+                      <span>
+                        {formatBytes(selectedStation.rxBytes || selectedStation.inBytes || 0)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium">Total Traffic:</span>
+                      <span>
+                        {formatBytes(
+                          (selectedStation.rxBytes || selectedStation.inBytes || 0) +
+                            (selectedStation.txBytes || selectedStation.outBytes || 0)
+                        )}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Additional Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="font-medium">Site Rating:</span>
+                      <div className="flex items-center gap-1">
+                        {(selectedStation.siteRating !== undefined && (
+                          <>
+                            <Star className="h-4 w-4 text-amber-500" />
+                            <span>{selectedStation.siteRating}</span>
+                          </>
+                        )) || <span>N/A</span>}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="events" className="space-y-4">
+              {isLoadingEvents ? (
+                <div className="flex items-center justify-center py-12">
+                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : stationEvents.length === 0 ? (
+                <div className="text-center py-12">
+                  <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground font-medium mb-2">
+                    No station events available
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Station {selectedStation?.macAddress}
+                  </p>
+                  <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
+                    <p>Station events may be unavailable if:</p>
+                    <p>• Your controller doesn't support the station events API</p>
+                    <p>• No events have been logged for this station in the last 30 days</p>
+                    <p>• Audit logging is not enabled</p>
                   </div>
-                ) : (
-                  <>
-                    {/* Event Type Filter and Roaming Trail Button */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Button
-                          variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => setEventTypeFilter('all')}
-                        >
-                          All Events ({stationEvents.length})
-                        </Button>
-                        {Array.from(new Set(stationEvents.map(e => e.eventType))).sort().map((type) => (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                    onClick={() => {
+                      if (selectedStation) {
+                        loadStationEvents(selectedStation.macAddress);
+                      }
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Event Type Filter and Roaming Trail Button */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setEventTypeFilter('all')}
+                      >
+                        All Events ({stationEvents.length})
+                      </Button>
+                      {Array.from(new Set(stationEvents.map((e) => e.eventType)))
+                        .sort()
+                        .map((type) => (
                           <Button
                             key={type}
                             variant={eventTypeFilter === type ? 'default' : 'outline'}
                             size="sm"
                             onClick={() => setEventTypeFilter(type)}
                           >
-                            {type} ({stationEvents.filter(e => e.eventType === type).length})
+                            {type} ({stationEvents.filter((e) => e.eventType === type).length})
                           </Button>
                         ))}
-                      </div>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => setShowRoamingTrail(true)}
-                        className="flex items-center gap-2"
-                      >
-                        <Route className="h-4 w-4" />
-                        View Roaming Trail
-                      </Button>
                     </div>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => setShowRoamingTrail(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Route className="h-4 w-4" />
+                      View Roaming Trail
+                    </Button>
+                  </div>
 
-                    {/* Event Timeline */}
-                    <ScrollArea className="h-[500px]">
-                      <div className="space-y-3">
-                        {stationEvents
-                          .filter(event => eventTypeFilter === 'all' || event.eventType === eventTypeFilter)
-                          .map((event, idx) => {
-                            const eventDate = new Date(parseInt(event.timestamp));
+                  {/* Event Timeline */}
+                  <ScrollArea className="h-[500px]">
+                    <div className="space-y-3">
+                      {stationEvents
+                        .filter(
+                          (event) =>
+                            eventTypeFilter === 'all' || event.eventType === eventTypeFilter
+                        )
+                        .map((event, idx) => {
+                          const eventDate = new Date(parseInt(event.timestamp));
 
-                            return (
-                              <Card key={event.id || idx} className="relative pl-8">
-                                {/* Timeline dot */}
-                                <div className={`absolute left-3 top-6 w-2 h-2 rounded-full ${
-                                  event.eventType === 'Roam' ? 'bg-blue-500' :
-                                  event.eventType === 'Associate' ? 'bg-green-500' :
-                                  event.eventType === 'Disassociate' ? 'bg-red-500' :
-                                  event.eventType === 'Authenticate' ? 'bg-purple-500' :
-                                  'bg-gray-500'
-                                }`} />
-                                {idx !== stationEvents.filter(e => eventTypeFilter === 'all' || e.eventType === eventTypeFilter).length - 1 && (
-                                  <div className="absolute left-3.5 top-8 w-0.5 h-full bg-border" />
-                                )}
+                          return (
+                            <Card key={event.id || idx} className="relative pl-8">
+                              {/* Timeline dot */}
+                              <div
+                                className={`absolute left-3 top-6 w-2 h-2 rounded-full ${
+                                  event.eventType === 'Roam'
+                                    ? 'bg-blue-500'
+                                    : event.eventType === 'Associate'
+                                      ? 'bg-green-500'
+                                      : event.eventType === 'Disassociate'
+                                        ? 'bg-red-500'
+                                        : event.eventType === 'Authenticate'
+                                          ? 'bg-purple-500'
+                                          : 'bg-gray-500'
+                                }`}
+                              />
+                              {idx !==
+                                stationEvents.filter(
+                                  (e) =>
+                                    eventTypeFilter === 'all' || e.eventType === eventTypeFilter
+                                ).length -
+                                  1 && (
+                                <div className="absolute left-3.5 top-8 w-0.5 h-full bg-border" />
+                              )}
 
-                                <CardContent className="pt-4 pb-4">
-                                  <div className="flex items-start justify-between gap-4">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-2">
-                                        <Badge
-                                          variant={
-                                            event.eventType === 'Associate' || event.eventType === 'Authenticate' ? 'default' :
-                                            event.eventType === 'Disassociate' ? 'destructive' :
-                                            'secondary'
-                                          }
-                                        >
-                                          {event.eventType}
-                                        </Badge>
-                                        <span className="text-xs text-muted-foreground">
-                                          {eventDate.toLocaleString()}
-                                        </span>
-                                      </div>
+                              <CardContent className="pt-4 pb-4">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <Badge
+                                        variant={
+                                          event.eventType === 'Associate' ||
+                                          event.eventType === 'Authenticate'
+                                            ? 'default'
+                                            : event.eventType === 'Disassociate'
+                                              ? 'destructive'
+                                              : 'secondary'
+                                        }
+                                      >
+                                        {event.eventType}
+                                      </Badge>
+                                      <span className="text-xs text-muted-foreground">
+                                        {eventDate.toLocaleString()}
+                                      </span>
+                                    </div>
 
-                                      {event.details && (() => {
+                                    {event.details &&
+                                      (() => {
                                         // Parse details field for structured information
                                         const parseDetails = (details: string) => {
                                           const parsed: Record<string, string> = {};
@@ -1285,7 +1440,8 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                                         };
 
                                         const parsedDetails = parseDetails(event.details);
-                                        const hasStructuredData = Object.keys(parsedDetails).length > 0;
+                                        const hasStructuredData =
+                                          Object.keys(parsedDetails).length > 0;
 
                                         return (
                                           <div className="mb-2">
@@ -1294,123 +1450,155 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                                               <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
                                                 {parsedDetails.Cause && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Cause: </span>
-                                                    <span className="font-medium">{parsedDetails.Cause}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Cause:{' '}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                      {parsedDetails.Cause}
+                                                    </span>
                                                   </div>
                                                 )}
                                                 {parsedDetails.Reason && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Reason: </span>
-                                                    <span className="font-medium">{parsedDetails.Reason}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Reason:{' '}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                      {parsedDetails.Reason}
+                                                    </span>
                                                   </div>
                                                 )}
                                                 {parsedDetails.Status && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Status: </span>
-                                                    <span className="font-medium">{parsedDetails.Status}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Status:{' '}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                      {parsedDetails.Status}
+                                                    </span>
                                                   </div>
                                                 )}
                                                 {parsedDetails.Code && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Code: </span>
-                                                    <span className="font-mono font-medium">{parsedDetails.Code}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Code:{' '}
+                                                    </span>
+                                                    <span className="font-mono font-medium">
+                                                      {parsedDetails.Code}
+                                                    </span>
                                                   </div>
                                                 )}
                                                 {parsedDetails.DevFamily && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Device: </span>
-                                                    <span className="font-medium">{parsedDetails.DevFamily}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Device:{' '}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                      {parsedDetails.DevFamily}
+                                                    </span>
                                                   </div>
                                                 )}
                                                 {parsedDetails.Hostname && (
                                                   <div>
-                                                    <span className="text-muted-foreground">Hostname: </span>
-                                                    <span className="font-medium">{parsedDetails.Hostname}</span>
+                                                    <span className="text-muted-foreground">
+                                                      Hostname:{' '}
+                                                    </span>
+                                                    <span className="font-medium">
+                                                      {parsedDetails.Hostname}
+                                                    </span>
                                                   </div>
                                                 )}
                                               </div>
                                             ) : (
-                                              <p className="text-sm text-foreground">{event.details}</p>
+                                              <p className="text-sm text-foreground">
+                                                {event.details}
+                                              </p>
                                             )}
                                           </div>
                                         );
                                       })()}
 
-                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                        {event.apName && (
-                                          <div>
-                                            <span className="text-muted-foreground">AP: </span>
-                                            <span className="font-medium">{event.apName}</span>
-                                          </div>
-                                        )}
-                                        {event.apSerial && (
-                                          <div>
-                                            <span className="text-muted-foreground">AP Serial: </span>
-                                            <span className="font-mono text-xs font-medium">{event.apSerial}</span>
-                                          </div>
-                                        )}
-                                        {event.ssid && (
-                                          <div>
-                                            <span className="text-muted-foreground">SSID: </span>
-                                            <span className="font-medium">{event.ssid}</span>
-                                          </div>
-                                        )}
-                                        {event.ipAddress && (
-                                          <div>
-                                            <span className="text-muted-foreground">IP: </span>
-                                            <span className="font-mono font-medium">{event.ipAddress}</span>
-                                          </div>
-                                        )}
-                                        {event.ipv6Address && (
-                                          <div className="col-span-2">
-                                            <span className="text-muted-foreground">IPv6: </span>
-                                            <span className="font-mono text-xs font-medium">{event.ipv6Address}</span>
-                                          </div>
-                                        )}
-                                        {event.type && (
-                                          <div>
-                                            <span className="text-muted-foreground">Type: </span>
-                                            <span className="font-medium">{event.type}</span>
-                                          </div>
-                                        )}
-                                        {event.level && (
-                                          <div>
-                                            <span className="text-muted-foreground">Level: </span>
-                                            <span className="font-medium">{event.level}</span>
-                                          </div>
-                                        )}
-                                        {event.category && (
-                                          <div>
-                                            <span className="text-muted-foreground">Category: </span>
-                                            <span className="font-medium">{event.category}</span>
-                                          </div>
-                                        )}
-                                        {event.context && (
-                                          <div>
-                                            <span className="text-muted-foreground">Context: </span>
-                                            <span className="font-medium">{event.context}</span>
-                                          </div>
-                                        )}
-                                        {event.id && (
-                                          <div className="col-span-2">
-                                            <span className="text-muted-foreground">Event ID: </span>
-                                            <span className="font-mono text-xs">{event.id}</span>
-                                          </div>
-                                        )}
-                                      </div>
+                                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                      {event.apName && (
+                                        <div>
+                                          <span className="text-muted-foreground">AP: </span>
+                                          <span className="font-medium">{event.apName}</span>
+                                        </div>
+                                      )}
+                                      {event.apSerial && (
+                                        <div>
+                                          <span className="text-muted-foreground">AP Serial: </span>
+                                          <span className="font-mono text-xs font-medium">
+                                            {event.apSerial}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {event.ssid && (
+                                        <div>
+                                          <span className="text-muted-foreground">SSID: </span>
+                                          <span className="font-medium">{event.ssid}</span>
+                                        </div>
+                                      )}
+                                      {event.ipAddress && (
+                                        <div>
+                                          <span className="text-muted-foreground">IP: </span>
+                                          <span className="font-mono font-medium">
+                                            {event.ipAddress}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {event.ipv6Address && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground">IPv6: </span>
+                                          <span className="font-mono text-xs font-medium">
+                                            {event.ipv6Address}
+                                          </span>
+                                        </div>
+                                      )}
+                                      {event.type && (
+                                        <div>
+                                          <span className="text-muted-foreground">Type: </span>
+                                          <span className="font-medium">{event.type}</span>
+                                        </div>
+                                      )}
+                                      {event.level && (
+                                        <div>
+                                          <span className="text-muted-foreground">Level: </span>
+                                          <span className="font-medium">{event.level}</span>
+                                        </div>
+                                      )}
+                                      {event.category && (
+                                        <div>
+                                          <span className="text-muted-foreground">Category: </span>
+                                          <span className="font-medium">{event.category}</span>
+                                        </div>
+                                      )}
+                                      {event.context && (
+                                        <div>
+                                          <span className="text-muted-foreground">Context: </span>
+                                          <span className="font-medium">{event.context}</span>
+                                        </div>
+                                      )}
+                                      {event.id && (
+                                        <div className="col-span-2">
+                                          <span className="text-muted-foreground">Event ID: </span>
+                                          <span className="font-mono text-xs">{event.id}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                      </div>
-                    </ScrollArea>
-                  </>
-                )}
-              </TabsContent>
-            </Tabs>
-          )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                    </div>
+                  </ScrollArea>
+                </>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </DetailSlideOut>
 
       {/* Roaming Trail Full Page */}

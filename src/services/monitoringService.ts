@@ -32,14 +32,11 @@ class MonitoringService {
     return [];
   }
 
-  async getLogs(
-    source?: string,
-    timeRange?: { start: number; end: number }
-  ): Promise<any[]> {
+  async getLogs(source?: string, timeRange?: { start: number; end: number }): Promise<any[]> {
     return [];
   }
 
-  async subscribeToAlarms(callback: (alarm: Alarm) => void): () => void {
+  async subscribeToAlarms(callback: (alarm: Alarm) => void): Promise<() => void> {
     // Return unsubscribe function
     return () => {};
   }

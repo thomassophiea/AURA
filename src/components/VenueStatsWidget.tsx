@@ -4,7 +4,16 @@ import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Users, TrendingUp, BarChart3, AlertTriangle } from 'lucide-react';
 import { apiService } from '../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { formatBitsPerSecond, formatDataVolume } from '../lib/units';
 
 interface VenueStatsWidgetProps {
@@ -112,13 +121,13 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
     const timeStr = timestamp.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
     });
 
     return {
       time: timeStr,
       upload: stat.transmittedRate || 0,
-      download: stat.receivedRate || 0
+      download: stat.receivedRate || 0,
     };
   });
 
@@ -187,7 +196,9 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
         {/* Throughput Trend Chart */}
         {chartData.length > 0 && (
           <div className="pt-4 border-t">
-            <h4 className="text-sm font-semibold mb-3">Throughput Trend (Last {chartData.length} samples)</h4>
+            <h4 className="text-sm font-semibold mb-3">
+              Throughput Trend (Last {chartData.length} samples)
+            </h4>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -195,7 +206,7 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
                   <XAxis dataKey="time" fontSize={12} />
                   <YAxis fontSize={12} />
                   <Tooltip
-                    formatter={(value: number) => formatBitsPerSecond(value)}
+                    formatter={(value: any) => formatBitsPerSecond(value)}
                     labelStyle={{ color: '#000' }}
                   />
                   <Legend />
@@ -229,18 +240,21 @@ export function VenueStatsWidget({ siteId, duration = '24H' }: VenueStatsWidgetP
               <div className="flex items-start gap-2 text-sm">
                 <Users className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
                 <p className="text-muted-foreground">
-                  <strong>{totalClients}</strong> unique clients served with peak concurrency of <strong>{peakClients}</strong> users.
+                  <strong>{totalClients}</strong> unique clients served with peak concurrency of{' '}
+                  <strong>{peakClients}</strong> users.
                 </p>
               </div>
             )}
-            {peakUpload > 0 || peakDownload > 0 && (
-              <div className="flex items-start gap-2 text-sm">
-                <TrendingUp className="h-4 w-4 text-[color:var(--status-success)] mt-0.5 flex-shrink-0" />
-                <p className="text-muted-foreground">
-                  Peak throughput: {formatBitsPerSecond(peakUpload * 1000000)} upload, {formatBitsPerSecond(peakDownload * 1000000)} download.
-                </p>
-              </div>
-            )}
+            {peakUpload > 0 ||
+              (peakDownload > 0 && (
+                <div className="flex items-start gap-2 text-sm">
+                  <TrendingUp className="h-4 w-4 text-[color:var(--status-success)] mt-0.5 flex-shrink-0" />
+                  <p className="text-muted-foreground">
+                    Peak throughput: {formatBitsPerSecond(peakUpload * 1000000)} upload,{' '}
+                    {formatBitsPerSecond(peakDownload * 1000000)} download.
+                  </p>
+                </div>
+              ))}
           </div>
         </div>
       </CardContent>

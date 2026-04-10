@@ -4,12 +4,15 @@
  * Automatically increases size on touch devices to meet 44x44px minimum tap target
  */
 
-import { forwardRef } from 'react';
+import { forwardRef, type ComponentProps, type ReactNode } from 'react';
 import { useIsTouchDevice } from '@/hooks/useDeviceDetection';
-import { Button, ButtonProps } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/components/ui/utils';
 
+type ButtonProps = ComponentProps<typeof Button>;
+
 export interface TouchButtonProps extends ButtonProps {
+  children?: ReactNode;
   forceTouchSize?: boolean; // Force touch size even on non-touch devices
 }
 
@@ -29,10 +32,7 @@ export const TouchButton = forwardRef<HTMLButtonElement, TouchButtonProps>(
       <Button
         ref={ref}
         size={adjustedSize}
-        className={cn(
-          shouldUseTouchSize && 'min-h-[44px] min-w-[44px]',
-          className
-        )}
+        className={cn(shouldUseTouchSize && 'min-h-[44px] min-w-[44px]', className)}
         {...props}
       />
     );

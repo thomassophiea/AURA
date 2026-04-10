@@ -34,7 +34,10 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
 
   // Load sites for selector
   useEffect(() => {
-    apiService.getSites().then(setSites).catch(() => {});
+    apiService
+      .getSites()
+      .then(setSites)
+      .catch(() => {});
   }, []);
 
   const handleSiteChange = (siteId: string) => {
@@ -42,25 +45,30 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
     onSiteChange?.(siteId);
   };
 
-  const { data: aps, loading, refresh } = useOfflineCache(
+  const {
+    data: aps,
+    loading,
+    refresh,
+  } = useOfflineCache(
     `aps_${currentSite}`,
     async () => {
       const data = await apiService.getAccessPoints();
       if (currentSite === 'all') return data;
-      
+
       // Get site name for matching against hostSite field (which contains names, not IDs)
       const sitesList = await apiService.getSites();
-      const selectedSite = sitesList.find((s: Site) => 
-        s.id === currentSite || s.siteId === currentSite
+      const selectedSite = sitesList.find(
+        (s: Site) => s.id === currentSite || s.siteId === currentSite
       );
       const siteName = selectedSite?.name || selectedSite?.siteName;
-      
+
       // Filter by site ID or site name (hostSite contains the name, not ID)
-      return data.filter((ap: any) =>
-        ap.siteId === currentSite ||
-        ap.site === currentSite ||
-        (siteName && ap.hostSite === siteName) ||
-        (siteName && ap.hostSite?.toLowerCase() === siteName.toLowerCase())
+      return data.filter(
+        (ap: any) =>
+          ap.siteId === currentSite ||
+          ap.site === currentSite ||
+          (siteName && ap.hostSite === siteName) ||
+          (siteName && ap.hostSite?.toLowerCase() === siteName.toLowerCase())
       );
     },
     30000
@@ -77,7 +85,10 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
           if (!ap.serialNumber) return { serial: '', count: 0 };
           try {
             const stations = await apiService.getAccessPointStations(ap.serialNumber);
-            return { serial: ap.serialNumber, count: Array.isArray(stations) ? stations.length : 0 };
+            return {
+              serial: ap.serialNumber,
+              count: Array.isArray(stations) ? stations.length : 0,
+            };
           } catch {
             return { serial: ap.serialNumber, count: 0 };
           }
@@ -95,7 +106,13 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
 
   // Check if AP is online
   const isAPOnline = (ap: any): boolean => {
-    const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
+    const status = (
+      ap.status ||
+      ap.connectionState ||
+      ap.operationalState ||
+      ap.state ||
+      ''
+    ).toLowerCase();
     return (
       status === 'inservice' ||
       status.includes('up') ||
@@ -109,7 +126,14 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
 
   // Get client count — prefer per-AP loaded count, fall back to fields on the AP object
   const getClientCount = (ap: any): number => {
-    return clientCounts[ap.serialNumber] ?? ap.stationCount ?? ap.clientCount ?? ap.numClients ?? ap.clients ?? 0;
+    return (
+      clientCounts[ap.serialNumber] ??
+      ap.stationCount ??
+      ap.clientCount ??
+      ap.numClients ??
+      ap.clients ??
+      0
+    );
   };
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
@@ -266,7 +290,9 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
               className="cursor-pointer text-xs h-6"
               onClick={() => {
                 haptic.light();
-                setFilterStatus(filterStatus === 'all' ? 'online' : filterStatus === 'online' ? 'offline' : 'all');
+                setFilterStatus(
+                  filterStatus === 'all' ? 'online' : filterStatus === 'online' ? 'offline' : 'all'
+                );
               }}
             >
               {filterStatus === 'all' ? 'All' : filterStatus === 'online' ? 'Online' : 'Offline'}
@@ -287,7 +313,9 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
 
         {/* Stats Summary */}
         <div className="flex items-center gap-3 text-[11px]">
-          <span className="text-muted-foreground">{filteredAPs.length} AP{filteredAPs.length !== 1 ? 's' : ''}</span>
+          <span className="text-muted-foreground">
+            {filteredAPs.length} AP{filteredAPs.length !== 1 ? 's' : ''}
+          </span>
           <span className="text-green-500">{stats.online} online</span>
           {stats.offline > 0 && <span className="text-red-500">{stats.offline} offline</span>}
         </div>
@@ -314,7 +342,13 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
             const bandText = band || (ap.model || ap.hardwareType ? 'Dual' : 'Unknown');
 
             // Get the best available name for the AP
-            const apName = ap.displayName || ap.name || ap.hostname || ap.apName || ap.serialNumber || 'Unknown AP';
+            const apName =
+              ap.displayName ||
+              ap.name ||
+              ap.hostname ||
+              ap.apName ||
+              ap.serialNumber ||
+              'Unknown AP';
             // Include model info in secondary if available
             const modelInfo = ap.model || ap.hardwareType || ap.platformName || '';
 
@@ -328,11 +362,15 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
                   variant: online ? 'success' : 'destructive',
                 }}
                 indicator={online ? 'online' : 'offline'}
-                rightContent={afcAnchor ? (
-                  <div className="flex items-center gap-2">
-                    <Anchor className="h-5 w-5 text-blue-500" title="AFC Anchor" />
-                  </div>
-                ) : undefined}
+                rightContent={
+                  afcAnchor ? (
+                    <div className="flex items-center gap-2">
+                      <span title="AFC Anchor">
+                        <Anchor className="h-5 w-5 text-blue-500" />
+                      </span>
+                    </div>
+                  ) : undefined
+                }
                 onClick={() => handleAPClick(ap)}
               />
             );
@@ -352,17 +390,23 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs text-muted-foreground">Serial</p>
-                <p className="text-sm font-medium font-mono truncate">{selectedAP.serialNumber || 'N/A'}</p>
+                <p className="text-sm font-medium font-mono truncate">
+                  {selectedAP.serialNumber || 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Status</p>
-                <p className={`text-sm font-semibold ${isAPOnline(selectedAP) ? 'text-green-500' : 'text-red-500'}`}>
+                <p
+                  className={`text-sm font-semibold ${isAPOnline(selectedAP) ? 'text-green-500' : 'text-red-500'}`}
+                >
                   {isAPOnline(selectedAP) ? 'Online' : 'Offline'}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">IP Address</p>
-                <p className="text-sm font-medium font-mono truncate">{selectedAP.ipAddress || 'N/A'}</p>
+                <p className="text-sm font-medium font-mono truncate">
+                  {selectedAP.ipAddress || 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Clients</p>
@@ -370,11 +414,15 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">MAC</p>
-                <p className="text-sm font-medium font-mono truncate">{selectedAP.macAddress || 'N/A'}</p>
+                <p className="text-sm font-medium font-mono truncate">
+                  {selectedAP.macAddress || 'N/A'}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Model</p>
-                <p className="text-sm font-medium truncate">{selectedAP.model || selectedAP.deviceType || 'N/A'}</p>
+                <p className="text-sm font-medium truncate">
+                  {selectedAP.model || selectedAP.deviceType || 'N/A'}
+                </p>
               </div>
             </div>
 
@@ -389,37 +437,44 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
             )}
 
             {/* Radios */}
-            {selectedAP.radios && Array.isArray(selectedAP.radios) && selectedAP.radios.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Radios</p>
-                <div className="space-y-2">
-                  {selectedAP.radios.map((radio: any, i: number) => (
-                    <div key={i} className="rounded-lg border border-border/60 p-2.5 bg-muted/30">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold">
-                          Radio {radio.radioIndex ?? radio.index ?? i + 1}
-                          {radio.band && <span className="ml-1 text-muted-foreground font-normal">· {radio.band}</span>}
-                        </span>
-                        <Badge variant="outline" className={`text-[9px] h-4 px-1.5 ${radio.adminState === 'disabled' ? 'text-muted-foreground' : 'text-green-600 border-green-500/30'}`}>
-                          {radio.adminState === 'disabled' ? 'Off' : 'On'}
-                        </Badge>
+            {selectedAP.radios &&
+              Array.isArray(selectedAP.radios) &&
+              selectedAP.radios.length > 0 && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Radios</p>
+                  <div className="space-y-2">
+                    {selectedAP.radios.map((radio: any, i: number) => (
+                      <div key={i} className="rounded-lg border border-border/60 p-2.5 bg-muted/30">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold">
+                            Radio {radio.radioIndex ?? radio.index ?? i + 1}
+                            {radio.band && (
+                              <span className="ml-1 text-muted-foreground font-normal">
+                                · {radio.band}
+                              </span>
+                            )}
+                          </span>
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] h-4 px-1.5 ${radio.adminState === 'disabled' ? 'text-muted-foreground' : 'text-green-600 border-green-500/30'}`}
+                          >
+                            {radio.adminState === 'disabled' ? 'Off' : 'On'}
+                          </Badge>
+                        </div>
+                        <div className="flex gap-3 text-[11px] text-muted-foreground">
+                          {(radio.channel || radio.currentChannel) && (
+                            <span>Ch {radio.channel ?? radio.currentChannel}</span>
+                          )}
+                          {radio.txPower !== undefined && <span>{radio.txPower} dBm</span>}
+                          {(radio.numClients !== undefined || radio.clientCount !== undefined) && (
+                            <span>{radio.numClients ?? radio.clientCount} clients</span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex gap-3 text-[11px] text-muted-foreground">
-                        {(radio.channel || radio.currentChannel) && (
-                          <span>Ch {radio.channel ?? radio.currentChannel}</span>
-                        )}
-                        {radio.txPower !== undefined && (
-                          <span>{radio.txPower} dBm</span>
-                        )}
-                        {(radio.numClients !== undefined || radio.clientCount !== undefined) && (
-                          <span>{radio.numClients ?? radio.clientCount} clients</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* AFC Anchor */}
             {isAfcAnchor(selectedAP) && (

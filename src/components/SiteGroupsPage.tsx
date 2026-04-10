@@ -1,5 +1,19 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Server, Globe, Wifi, WifiOff, Building2, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, ArrowUpDown, LogIn } from 'lucide-react';
+import {
+  Server,
+  Globe,
+  Wifi,
+  WifiOff,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  LogIn,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -48,13 +62,13 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
   const { query, setQuery, filterRows, hasActiveSearch } = useCompoundSearch<SiteGroup>({
     storageKey: 'site-groups-search',
     fields: [
-      sg => sg.name,
-      sg => sg.description,
-      sg => sg.primary_controller,
-      sg => sg.secondary_controller,
-      sg => sg.controller_url,
-      sg => sg.region,
-      sg => sg.connection_status,
+      (sg) => sg.name,
+      (sg) => sg.description,
+      (sg) => sg.primary_controller,
+      (sg) => sg.secondary_controller,
+      (sg) => sg.controller_url,
+      (sg) => sg.region,
+      (sg) => sg.connection_status,
     ],
   });
 
@@ -85,20 +99,21 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
         // The default site group for sites that don't carry an explicit site_group_id.
         // Since each controller maps to exactly one site group, untagged sites belong
         // to the current (or sole) site group.
-        const defaultSgId = contextSiteGroups.find(sg => sg.is_default)?.id
-          || (contextSiteGroups.length === 1 ? contextSiteGroups[0].id : undefined);
+        const defaultSgId =
+          contextSiteGroups.find((sg) => sg.is_default)?.id ||
+          (contextSiteGroups.length === 1 ? contextSiteGroups[0].id : undefined);
         rawSites.forEach((s: any) => {
           const sgId = s.site_group_id || s.siteGroupId || defaultSgId || 'default';
           countMap.set(sgId, (countMap.get(sgId) || 0) + 1);
         });
-        const enriched = contextSiteGroups.map(sg => ({
+        const enriched = contextSiteGroups.map((sg) => ({
           ...sg,
           site_count: countMap.get(sg.id) ?? sg.site_count ?? 0,
         }));
         setSiteGroups(enriched);
       } catch {
         // If sites API fails, show groups without site counts
-        setSiteGroups(contextSiteGroups.map(sg => ({ ...sg, site_count: sg.site_count ?? 0 })));
+        setSiteGroups(contextSiteGroups.map((sg) => ({ ...sg, site_count: sg.site_count ?? 0 })));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load site groups');
@@ -132,16 +147,27 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
   }, [sortedGroups, currentPage, itemsPerPage]);
 
   // Reset to page 1 when search or sort changes
-  useEffect(() => { setCurrentPage(1); }, [query, sortField, sortDirection]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, sortField, sortDirection]);
 
   // Metric card values
-  const connectedCount = useMemo(() => siteGroups.filter(sg => sg.connection_status === 'connected').length, [siteGroups]);
-  const disconnectedCount = useMemo(() => siteGroups.filter(sg => sg.connection_status !== 'connected').length, [siteGroups]);
-  const totalSites = useMemo(() => siteGroups.reduce((sum, sg) => sum + (sg.site_count ?? 0), 0), [siteGroups]);
+  const connectedCount = useMemo(
+    () => siteGroups.filter((sg) => sg.connection_status === 'connected').length,
+    [siteGroups]
+  );
+  const disconnectedCount = useMemo(
+    () => siteGroups.filter((sg) => sg.connection_status !== 'connected').length,
+    [siteGroups]
+  );
+  const totalSites = useMemo(
+    () => siteGroups.reduce((sum, sg) => sum + (sg.site_count ?? 0), 0),
+    [siteGroups]
+  );
 
   const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortDirection('asc');
@@ -160,20 +186,25 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedGroups(checked ? new Set(paginatedGroups.map(sg => sg.id)) : new Set());
+    setSelectedGroups(checked ? new Set(paginatedGroups.map((sg) => sg.id)) : new Set());
   };
 
   const handleSelectRow = (id: string, checked: boolean) => {
-    setSelectedGroups(prev => {
+    setSelectedGroups((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(id); else next.delete(id);
+      if (checked) next.add(id);
+      else next.delete(id);
       return next;
     });
   };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
   };
 
   if (loading && siteGroups.length === 0) {
@@ -181,7 +212,9 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
       <div className="flex-1 space-y-4 p-4 md:p-6">
         <Skeleton className="h-16 w-full" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-28 w-full" />)}
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
         </div>
         <Skeleton className="h-96 w-full" />
       </div>
@@ -199,10 +232,15 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
         refreshing={loading}
         actions={
           <>
-            <ColumnCustomizationDialog customization={columnCustomization} />
+            <ColumnCustomizationDialog customization={columnCustomization as any} />
             <ExportButton
               data={sortedGroups}
-              columns={columnCustomization.visibleColumnConfigs.map(c => ({ key: c?.key || '', label: c?.label || '' }))}
+              columns={
+                columnCustomization.visibleColumnConfigs.map((c) => ({
+                  key: c?.key || '',
+                  label: c?.label || '',
+                })) as any
+              }
               filename="site-groups"
             />
           </>
@@ -307,39 +345,45 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={paginatedGroups.length > 0 && paginatedGroups.every(sg => selectedGroups.has(sg.id))}
+                          checked={
+                            paginatedGroups.length > 0 &&
+                            paginatedGroups.every((sg) => selectedGroups.has(sg.id))
+                          }
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      {columnCustomization.visibleColumnConfigs.map(col => col && (
-                        <TableHead
-                          key={col.key}
-                          className={`select-none ${col.sortable ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
-                          onClick={() => col.sortable && handleSort(col.fieldPath || col.key)}
-                        >
-                          <div className="flex items-center">
-                            {col.label}
-                            {col.sortable && <SortIcon field={col.fieldPath || col.key} />}
-                          </div>
-                        </TableHead>
-                      ))}
+                      {columnCustomization.visibleColumnConfigs.map(
+                        (col) =>
+                          col && (
+                            <TableHead
+                              key={col.key}
+                              className={`select-none ${col.sortable ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                              onClick={() => col.sortable && handleSort(col.fieldPath || col.key)}
+                            >
+                              <div className="flex items-center">
+                                {col.label}
+                                {col.sortable && <SortIcon field={col.fieldPath || col.key} />}
+                              </div>
+                            </TableHead>
+                          )
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedGroups.map(sg => (
+                    {paginatedGroups.map((sg) => (
                       <TableRow
                         key={sg.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(sg)}
                         onDoubleClick={() => handleRowDoubleClick(sg)}
                       >
-                        <TableCell onClick={e => e.stopPropagation()}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedGroups.has(sg.id)}
                             onCheckedChange={(checked) => handleSelectRow(sg.id, !!checked)}
                           />
                         </TableCell>
-                        {columnCustomization.visibleColumnConfigs.map(col => {
+                        {columnCustomization.visibleColumnConfigs.map((col) => {
                           if (!col) return null;
                           // Special handling for siteCount: render as clickable link
                           if (col.key === 'siteCount') {
@@ -375,33 +419,67 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
               <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Rows per page:</span>
-                  <Select value={String(itemsPerPage)} onValueChange={v => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                  <Select
+                    value={String(itemsPerPage)}
+                    onValueChange={(v) => {
+                      setItemsPerPage(Number(v));
+                      setCurrentPage(1);
+                    }}
+                  >
                     <SelectTrigger className="h-8 w-20">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[10, 25, 50, 100].map(n => (
-                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      {[10, 25, 50, 100].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <span>
-                    {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, sortedGroups.length)} of {sortedGroups.length}
+                    {(currentPage - 1) * itemsPerPage + 1}–
+                    {Math.min(currentPage * itemsPerPage, sortedGroups.length)} of{' '}
+                    {sortedGroups.length}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -439,13 +517,17 @@ interface SiteGroupDetailContentProps {
   onClose?: () => void;
 }
 
-function SiteGroupDetailContent({ group, onNavigateToSites, onClose }: SiteGroupDetailContentProps) {
+function SiteGroupDetailContent({
+  group,
+  onNavigateToSites,
+  onClose,
+}: SiteGroupDetailContentProps) {
   const { enterSiteGroup } = useAppContext();
   const statusConfig: Record<string, { className: string; label: string }> = {
-    connected:    { className: 'text-green-500', label: 'Connected' },
-    disconnected: { className: 'text-red-500',   label: 'Disconnected' },
-    error:        { className: 'text-orange-500', label: 'Error' },
-    unknown:      { className: 'text-muted-foreground', label: 'Unknown' },
+    connected: { className: 'text-green-500', label: 'Connected' },
+    disconnected: { className: 'text-red-500', label: 'Disconnected' },
+    error: { className: 'text-orange-500', label: 'Error' },
+    unknown: { className: 'text-muted-foreground', label: 'Unknown' },
   };
   const status = statusConfig[group.connection_status] || statusConfig.unknown;
 
@@ -483,7 +565,9 @@ function SiteGroupDetailContent({ group, onNavigateToSites, onClose }: SiteGroup
       <div className="space-y-3 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Primary Controller</span>
-          <span className="font-mono text-xs">{group.primary_controller || group.controller_url || '—'}</span>
+          <span className="font-mono text-xs">
+            {group.primary_controller || group.controller_url || '—'}
+          </span>
         </div>
         {group.secondary_controller && (
           <div className="flex justify-between">
@@ -537,8 +621,10 @@ function SiteGroupDetailContent({ group, onNavigateToSites, onClose }: SiteGroup
         <div>
           <p className="text-sm text-muted-foreground mb-2">Tags</p>
           <div className="flex flex-wrap gap-1.5">
-            {group.tags.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+            {group.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
             ))}
           </div>
         </div>

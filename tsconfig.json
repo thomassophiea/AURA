@@ -29,6 +29,7 @@
     "noUncheckedIndexedAccess": false,
     "noImplicitReturns": true,
     "forceConsistentCasingInFileNames": true,
+    "types": ["@testing-library/jest-dom/vitest"],
 
     /* Path aliases */
     "baseUrl": ".",

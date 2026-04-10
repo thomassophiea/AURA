@@ -4,12 +4,19 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Globe, Plus, Edit, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import apiService from '@/services/api';
+import { apiService } from '@/services/api';
 
 interface Portal {
   id: string;
@@ -25,14 +32,20 @@ export function AccessControlPortals() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPortal, setEditingPortal] = useState<Portal | null>(null);
-  const [formData, setFormData] = useState<Partial<Portal>>({ name: '', portalUrl: '', redirectUrl: '', sessionTimeout: 3600, enabled: true });
+  const [formData, setFormData] = useState<Partial<Portal>>({
+    name: '',
+    portalUrl: '',
+    redirectUrl: '',
+    sessionTimeout: 3600,
+    enabled: true,
+  });
 
   useEffect(() => {
     const loadPortals = async () => {
       setLoading(true);
       try {
         const response = await apiService.makeAuthenticatedRequest('/v1/access-control/portals', {
-          method: 'GET'
+          method: 'GET',
         });
 
         if (response.ok) {
@@ -50,9 +63,16 @@ export function AccessControlPortals() {
   }, []);
 
   const handleSave = () => {
-    if (!formData.name?.trim()) { toast.error('Portal name required'); return; }
+    if (!formData.name?.trim()) {
+      toast.error('Portal name required');
+      return;
+    }
     if (editingPortal) {
-      setPortals(portals.map(p => p.id === editingPortal.id ? { ...editingPortal, ...formData } as Portal : p));
+      setPortals(
+        portals.map((p) =>
+          p.id === editingPortal.id ? ({ ...editingPortal, ...formData } as Portal) : p
+        )
+      );
       toast.success('Portal updated');
     } else {
       setPortals([...portals, { id: Date.now().toString(), ...formData } as Portal]);
@@ -61,14 +81,15 @@ export function AccessControlPortals() {
     setDialogOpen(false);
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-32">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading...</span>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading...</span>
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="space-y-6 p-6">
@@ -82,32 +103,59 @@ export function AccessControlPortals() {
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingPortal(null); setFormData({ name: '', enabled: true, sessionTimeout: 3600 }); }}>
-              <Plus className="h-4 w-4 mr-2" />Create Portal
+            <Button
+              onClick={() => {
+                setEditingPortal(null);
+                setFormData({ name: '', enabled: true, sessionTimeout: 3600 });
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Create Portal
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>{editingPortal ? 'Edit' : 'Create'} Portal</DialogTitle></DialogHeader>
+            <DialogHeader>
+              <DialogTitle>{editingPortal ? 'Edit' : 'Create'} Portal</DialogTitle>
+            </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Name</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Portal URL</Label>
-                <Input value={formData.portalUrl} onChange={(e) => setFormData({ ...formData, portalUrl: e.target.value })} placeholder="https://portal.example.com" />
+                <Input
+                  value={formData.portalUrl}
+                  onChange={(e) => setFormData({ ...formData, portalUrl: e.target.value })}
+                  placeholder="https://portal.example.com"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Redirect URL</Label>
-                <Input value={formData.redirectUrl} onChange={(e) => setFormData({ ...formData, redirectUrl: e.target.value })} placeholder="https://example.com/welcome" />
+                <Input
+                  value={formData.redirectUrl}
+                  onChange={(e) => setFormData({ ...formData, redirectUrl: e.target.value })}
+                  placeholder="https://example.com/welcome"
+                />
               </div>
               <div className="space-y-2">
                 <Label>Session Timeout (seconds)</Label>
-                <Input type="number" value={formData.sessionTimeout} onChange={(e) => setFormData({ ...formData, sessionTimeout: parseInt(e.target.value) })} />
+                <Input
+                  type="number"
+                  value={formData.sessionTimeout}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sessionTimeout: parseInt(e.target.value) })
+                  }
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleSave}>{editingPortal ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </DialogContent>
@@ -132,19 +180,45 @@ export function AccessControlPortals() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {portals.map(portal => (
+              {portals.map((portal) => (
                 <TableRow key={portal.id}>
                   <TableCell className="font-medium">{portal.name}</TableCell>
                   <TableCell className="text-sm">{portal.portalUrl}</TableCell>
                   <TableCell className="text-sm">{portal.redirectUrl}</TableCell>
                   <TableCell>{portal.sessionTimeout}s</TableCell>
-                  <TableCell><Switch checked={portal.enabled} onCheckedChange={(c) => setPortals(portals.map(p => p.id === portal.id ? { ...p, enabled: c } : p))} /></TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={portal.enabled}
+                      onCheckedChange={(c) =>
+                        setPortals(
+                          portals.map((p) => (p.id === portal.id ? { ...p, enabled: c } : p))
+                        )
+                      }
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setEditingPortal(portal); setFormData(portal); setDialogOpen(true); }}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingPortal(portal);
+                          setFormData(portal);
+                          setDialogOpen(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => { if (window.confirm('Delete portal?')) { setPortals(portals.filter(p => p.id !== portal.id)); toast.success('Portal deleted'); } }}>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          if (window.confirm('Delete portal?')) {
+                            setPortals(portals.filter((p) => p.id !== portal.id));
+                            toast.success('Portal deleted');
+                          }
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

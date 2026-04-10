@@ -6,26 +6,26 @@ import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { 
-  LineChart, 
-  Line, 
-  AreaChart, 
-  Area, 
-  BarChart, 
-  Bar, 
-  PieChart, 
-  Pie, 
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
   Cell,
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
 } from 'recharts';
-import { 
-  Activity, 
-  TrendingUp, 
+import {
+  Activity,
+  TrendingUp,
   TrendingDown,
   Users,
   Wifi,
@@ -37,7 +37,7 @@ import {
   AlertTriangle,
   CheckCircle,
   MapPin,
-  Filter
+  Filter,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -97,23 +97,28 @@ export function PerformanceAnalytics() {
   // Fetch available sites with fallback
   const fetchSites = async () => {
     const siteEndpoints = ['/v3/sites', '/v1/sites'];
-    
+
     for (const endpoint of siteEndpoints) {
       try {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 3000);
         if (response.ok) {
           const data = await response.json();
           const sitesData = Array.isArray(data) ? data : data.sites || [];
-          setSites(sitesData.map((site: any) => ({
-            id: site.id || site.siteId,
-            name: site.name || site.siteName || `Site ${site.id}`,
-            status: site.status
-          })));
+          setSites(
+            sitesData.map((site: any) => ({
+              id: site.id || site.siteId,
+              name: site.name || site.siteName || `Site ${site.id}`,
+              status: site.status,
+            }))
+          );
           console.log(`Sites data loaded successfully from: ${endpoint}`);
           return;
         }
       } catch (err) {
-        console.log(`Sites endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `Sites endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
     console.log('All sites endpoints failed, but continuing with empty sites array');
@@ -122,9 +127,9 @@ export function PerformanceAnalytics() {
   // Fetch site report widgets with fallback strategies
   const fetchSiteReportWidgets = async () => {
     const widgetEndpoints = [
-      '/v1/sites/report/widgets',   // Try v1 first
-      '/v3/sites/report/widgets',   // Original v3 endpoint
-      '/v1/reports/widgets'         // General widgets endpoint
+      '/v1/sites/report/widgets', // Try v1 first
+      '/v3/sites/report/widgets', // Original v3 endpoint
+      '/v1/reports/widgets', // General widgets endpoint
     ];
 
     for (const endpoint of widgetEndpoints) {
@@ -136,10 +141,13 @@ export function PerformanceAnalytics() {
           return Array.isArray(data) ? data : data.widgets || [];
         }
       } catch (err) {
-        console.log(`Widget endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `Widget endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
-    
+
     console.log('All widget endpoints failed, returning empty array');
     return [];
   };
@@ -148,9 +156,9 @@ export function PerformanceAnalytics() {
   const fetchSitesReport = async () => {
     // Try multiple endpoints for sites reports
     const sitesReportEndpoints = [
-      '/v1/sites/report',         // Try v1 first
-      '/v3/sites/report',         // Original v3 endpoint  
-      '/v1/report/sites'          // Alternative structure
+      '/v1/sites/report', // Try v1 first
+      '/v3/sites/report', // Original v3 endpoint
+      '/v1/report/sites', // Alternative structure
     ];
 
     for (const endpoint of sitesReportEndpoints) {
@@ -162,10 +170,13 @@ export function PerformanceAnalytics() {
           return data;
         }
       } catch (err) {
-        console.log(`Sites report endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `Sites report endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
-    
+
     // If all report endpoints fail, fall back to basic sites data
     try {
       console.log('Falling back to basic sites data for analytics');
@@ -176,13 +187,16 @@ export function PerformanceAnalytics() {
         return {
           sites: Array.isArray(sitesData) ? sitesData : sitesData.sites || [],
           generated: new Date().toISOString(),
-          fallback: true
+          fallback: true,
         };
       }
     } catch (err) {
-      console.log('Fallback to basic sites data also failed:', err instanceof Error ? err.message : 'Unknown error');
+      console.log(
+        'Fallback to basic sites data also failed:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
     }
-    
+
     return null;
   };
 
@@ -190,9 +204,9 @@ export function PerformanceAnalytics() {
   const fetchSiteReport = async (siteId: string) => {
     // Try multiple endpoints for site reports, starting with most likely to work
     const siteReportEndpoints = [
-      `/v1/sites/${siteId}/report`,  // Try v1 first as it's more commonly available
-      `/v3/sites/${siteId}/report`,  // Original v3 endpoint
-      `/v1/report/sites/${siteId}`   // Alternative report endpoint structure
+      `/v1/sites/${siteId}/report`, // Try v1 first as it's more commonly available
+      `/v3/sites/${siteId}/report`, // Original v3 endpoint
+      `/v1/report/sites/${siteId}`, // Alternative report endpoint structure
     ];
 
     for (const endpoint of siteReportEndpoints) {
@@ -205,10 +219,13 @@ export function PerformanceAnalytics() {
         }
       } catch (err) {
         // Log the error but continue trying other endpoints - use console.log instead of warn to reduce noise
-        console.log(`Site report endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `Site report endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
-    
+
     // All endpoints failed, return null
     console.log(`All site report endpoints failed for site ${siteId}`);
     return null;
@@ -217,9 +234,9 @@ export function PerformanceAnalytics() {
   // Fetch APs report with fallback strategies
   const fetchAPsReport = async () => {
     const apReportEndpoints = [
-      '/v1/aps/report',           // Primary reports endpoint
-      '/v1/aps',                  // Fallback to basic APs data
-      '/v1/state/aps'             // Alternative state endpoint
+      '/v1/aps/report', // Primary reports endpoint
+      '/v1/aps', // Fallback to basic APs data
+      '/v1/state/aps', // Alternative state endpoint
     ];
 
     for (const endpoint of apReportEndpoints) {
@@ -231,19 +248,22 @@ export function PerformanceAnalytics() {
           return Array.isArray(data) ? data : data.aps || [];
         }
       } catch (err) {
-        console.log(`AP endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `AP endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
-    
+
     console.log('All AP endpoints failed, returning empty array');
     return [];
   };
 
-  // Fetch AP report widgets with fallback strategies  
+  // Fetch AP report widgets with fallback strategies
   const fetchAPReportWidgets = async () => {
     const apWidgetEndpoints = [
       '/v1/aps/report/widgets',
-      '/v1/reports/widgets'       // General widgets as fallback
+      '/v1/reports/widgets', // General widgets as fallback
     ];
 
     for (const endpoint of apWidgetEndpoints) {
@@ -255,10 +275,13 @@ export function PerformanceAnalytics() {
           return Array.isArray(data) ? data : data.widgets || [];
         }
       } catch (err) {
-        console.log(`AP widget endpoint ${endpoint} failed:`, err instanceof Error ? err.message : 'Unknown error');
+        console.log(
+          `AP widget endpoint ${endpoint} failed:`,
+          err instanceof Error ? err.message : 'Unknown error'
+        );
       }
     }
-    
+
     return [];
   };
 
@@ -272,7 +295,10 @@ export function PerformanceAnalytics() {
         return Array.isArray(data) ? data : data.widgets || [];
       }
     } catch (err) {
-      console.log('General widgets endpoint failed:', err instanceof Error ? err.message : 'Unknown error');
+      console.log(
+        'General widgets endpoint failed:',
+        err instanceof Error ? err.message : 'Unknown error'
+      );
     }
     return [];
   };
@@ -289,21 +315,22 @@ export function PerformanceAnalytics() {
       if (selectedSite === 'all') {
         // Fetch all sites analytics with graceful error handling
         console.log('Fetching analytics data for all sites...');
-        const [sitesReportData, apsReportData, siteWidgets, apWidgets, generalWidgets] = await Promise.allSettled([
-          fetchSitesReport(),
-          fetchAPsReport(),
-          fetchSiteReportWidgets(),
-          fetchAPReportWidgets(),
-          fetchReportWidgets()
-        ]);
+        const [sitesReportData, apsReportData, siteWidgets, apWidgets, generalWidgets] =
+          await Promise.allSettled([
+            fetchSitesReport(),
+            fetchAPsReport(),
+            fetchSiteReportWidgets(),
+            fetchAPReportWidgets(),
+            fetchReportWidgets(),
+          ]);
 
         // Process sites report
         if (sitesReportData.status === 'fulfilled' && sitesReportData.value) {
           const sitesData = sitesReportData.value;
-          
+
           // Create site reports from the data
           const processedSiteReports: SiteReport[] = [];
-          
+
           if (sitesData.sites && Array.isArray(sitesData.sites)) {
             sitesData.sites.forEach((site: any) => {
               processedSiteReports.push({
@@ -315,12 +342,12 @@ export function PerformanceAnalytics() {
                   clientCount: site.clientCount || site.clients || 0,
                   uptime: site.uptime || 0,
                   throughput: site.throughput || 0,
-                  health: site.health || site.healthScore || 0
-                }
+                  health: site.health || site.healthScore || 0,
+                },
               });
             });
           }
-          
+
           setSiteReports(processedSiteReports);
         }
 
@@ -337,15 +364,15 @@ export function PerformanceAnalytics() {
             clientCount: ap.clientCount || ap.clients || 0,
             health: ap.health || ap.healthScore || 0,
             uptime: ap.uptime || 0,
-            throughput: ap.throughput || 0
+            throughput: ap.throughput || 0,
           }));
-          
+
           setApReports(processedAPReports);
         }
 
         // Process widgets
         const allWidgets: ReportWidget[] = [];
-        
+
         [siteWidgets, apWidgets, generalWidgets].forEach((widgetResult) => {
           if (widgetResult.status === 'fulfilled' && widgetResult.value) {
             const widgets = Array.isArray(widgetResult.value) ? widgetResult.value : [];
@@ -354,21 +381,20 @@ export function PerformanceAnalytics() {
                 id: widget.id || widget.widgetId,
                 name: widget.name || widget.title,
                 type: widget.type || 'unknown',
-                data: widget.data || widget
+                data: widget.data || widget,
               });
             });
           }
         });
-        
-        setReportWidgets(allWidgets);
 
+        setReportWidgets(allWidgets);
       } else {
         // Fetch specific site analytics
         console.log(`Fetching analytics data for site: ${selectedSite}`);
         const siteReport = await fetchSiteReport(selectedSite);
-        
+
         if (siteReport) {
-          const site = sites.find(s => s.id === selectedSite);
+          const site = sites.find((s) => s.id === selectedSite);
           const processedSiteReport: SiteReport = {
             siteId: selectedSite,
             siteName: site?.name || `Site ${selectedSite}`,
@@ -378,14 +404,14 @@ export function PerformanceAnalytics() {
               clientCount: siteReport.clientCount || siteReport.clients || 0,
               uptime: siteReport.uptime || 0,
               throughput: siteReport.throughput || 0,
-              health: siteReport.health || siteReport.healthScore || 0
-            }
+              health: siteReport.health || siteReport.healthScore || 0,
+            },
           };
-          
+
           setSiteReports([processedSiteReport]);
         } else {
           // If site report fails, create a basic site report from available data
-          const site = sites.find(s => s.id === selectedSite);
+          const site = sites.find((s) => s.id === selectedSite);
           const basicSiteReport: SiteReport = {
             siteId: selectedSite,
             siteName: site?.name || `Site ${selectedSite}`,
@@ -395,18 +421,21 @@ export function PerformanceAnalytics() {
               clientCount: 0,
               uptime: 0,
               throughput: 0,
-              health: 0
-            }
+              health: 0,
+            },
           };
           setSiteReports([basicSiteReport]);
         }
 
         // Fetch APs for this specific site
         const apsData = await fetchAPsReport();
-        const siteAPs = apsData.filter((ap: any) => 
-          (ap.siteId === selectedSite) || (ap.site === selectedSite) || (ap.siteName && sites.find(s => s.id === selectedSite)?.name === ap.siteName)
+        const siteAPs = apsData.filter(
+          (ap: any) =>
+            ap.siteId === selectedSite ||
+            ap.site === selectedSite ||
+            (ap.siteName && sites.find((s) => s.id === selectedSite)?.name === ap.siteName)
         );
-        
+
         const processedAPReports: APReport[] = siteAPs.map((ap: any) => ({
           apId: ap.id || ap.apId || ap.serial,
           name: ap.name || ap.displayName || `AP ${ap.serial}`,
@@ -417,24 +446,37 @@ export function PerformanceAnalytics() {
           clientCount: ap.clientCount || ap.clients || 0,
           health: ap.health ?? ap.healthScore ?? null,
           uptime: ap.uptime ?? null,
-          throughput: ap.throughput || 0
+          throughput: ap.throughput || 0,
         }));
-        
+
         setApReports(processedAPReports);
-        
+
         // Update site metrics based on actual AP data if site report was empty
-        if (processedAPReports.length > 0 && (!siteReport || Object.keys(siteReport).length === 0)) {
+        if (
+          processedAPReports.length > 0 &&
+          (!siteReport || Object.keys(siteReport).length === 0)
+        ) {
           const updatedSiteReport: SiteReport = {
             siteId: selectedSite,
-            siteName: sites.find(s => s.id === selectedSite)?.name || `Site ${selectedSite}`,
+            siteName: sites.find((s) => s.id === selectedSite)?.name || `Site ${selectedSite}`,
             widgets: [],
             metrics: {
               apCount: processedAPReports.length,
               clientCount: processedAPReports.reduce((sum, ap) => sum + ap.clientCount, 0),
-              uptime: (() => { const vals = processedAPReports.map(ap => ap.uptime).filter((v): v is number => v != null); return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : null; })(),
+              uptime: (() => {
+                const vals = processedAPReports
+                  .map((ap) => ap.uptime)
+                  .filter((v): v is number => v != null);
+                return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : undefined;
+              })(),
               throughput: processedAPReports.reduce((sum, ap) => sum + (ap.throughput || 0), 0),
-              health: (() => { const vals = processedAPReports.map(ap => ap.health).filter((v): v is number => v != null); return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : null; })()
-            }
+              health: (() => {
+                const vals = processedAPReports
+                  .map((ap) => ap.health)
+                  .filter((v): v is number => v != null);
+                return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : undefined;
+              })(),
+            },
           };
           setSiteReports([updatedSiteReport]);
         }
@@ -443,17 +485,18 @@ export function PerformanceAnalytics() {
       setLastUpdated(new Date());
 
       // Show info message only if we truly have very limited data and it's the first load
-      const hasMinimalData = apReports.length === 0 && siteReports.length === 0 && sites.length === 0;
+      const hasMinimalData =
+        apReports.length === 0 && siteReports.length === 0 && sites.length === 0;
       if (hasMinimalData && !lastUpdated) {
         toast.info('Limited Analytics Data', {
-          description: 'Analytics endpoints are currently unavailable. Please check the API test tool or try refreshing.',
-          duration: 5000
+          description:
+            'Analytics endpoints are currently unavailable. Please check the API test tool or try refreshing.',
+          duration: 5000,
         });
       }
-
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch analytics data';
-      
+
       // Don't show error toasts for suppressed analytics endpoints
       if (errorMessage.includes('SUPPRESSED_ANALYTICS_ERROR')) {
         console.log('Suppressed analytics error in PerformanceAnalytics component');
@@ -461,7 +504,7 @@ export function PerformanceAnalytics() {
       } else {
         setError(errorMessage);
         toast.error('Analytics Error', {
-          description: errorMessage
+          description: errorMessage,
         });
       }
     } finally {
@@ -485,9 +528,9 @@ export function PerformanceAnalytics() {
       apReports,
       reportWidgets,
       selectedSite,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     };
-    
+
     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -497,7 +540,7 @@ export function PerformanceAnalytics() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
+
     toast.success('Analytics data exported successfully');
   };
 
@@ -505,10 +548,14 @@ export function PerformanceAnalytics() {
   const getAggregateMetrics = () => {
     if (selectedSite === 'all') {
       const totalAPs = apReports.length;
-      const onlineAPs = apReports.filter(ap => ap.status === 'online' || ap.status === 'up').length;
+      const onlineAPs = apReports.filter(
+        (ap) => ap.status === 'online' || ap.status === 'up'
+      ).length;
       const totalClients = apReports.reduce((sum, ap) => sum + ap.clientCount, 0);
-      const avgHealth = totalAPs > 0 ? apReports.reduce((sum, ap) => sum + ap.health, 0) / totalAPs : 0;
-      const avgUptime = totalAPs > 0 ? apReports.reduce((sum, ap) => sum + ap.uptime, 0) / totalAPs : 0;
+      const avgHealth =
+        totalAPs > 0 ? apReports.reduce((sum, ap) => sum + ap.health, 0) / totalAPs : 0;
+      const avgUptime =
+        totalAPs > 0 ? apReports.reduce((sum, ap) => sum + ap.uptime, 0) / totalAPs : 0;
 
       return {
         totalSites: siteReports.length,
@@ -517,15 +564,17 @@ export function PerformanceAnalytics() {
         totalClients,
         avgHealth,
         avgUptime,
-        apHealthPercent: totalAPs > 0 ? (onlineAPs / totalAPs) * 100 : 0
+        apHealthPercent: totalAPs > 0 ? (onlineAPs / totalAPs) * 100 : 0,
       };
     } else {
       const siteAPs = apReports;
       const totalAPs = siteAPs.length;
-      const onlineAPs = siteAPs.filter(ap => ap.status === 'online' || ap.status === 'up').length;
+      const onlineAPs = siteAPs.filter((ap) => ap.status === 'online' || ap.status === 'up').length;
       const totalClients = siteAPs.reduce((sum, ap) => sum + ap.clientCount, 0);
-      const avgHealth = totalAPs > 0 ? siteAPs.reduce((sum, ap) => sum + ap.health, 0) / totalAPs : 0;
-      const avgUptime = totalAPs > 0 ? siteAPs.reduce((sum, ap) => sum + ap.uptime, 0) / totalAPs : 0;
+      const avgHealth =
+        totalAPs > 0 ? siteAPs.reduce((sum, ap) => sum + ap.health, 0) / totalAPs : 0;
+      const avgUptime =
+        totalAPs > 0 ? siteAPs.reduce((sum, ap) => sum + ap.uptime, 0) / totalAPs : 0;
 
       return {
         totalSites: 1,
@@ -534,7 +583,7 @@ export function PerformanceAnalytics() {
         totalClients,
         avgHealth,
         avgUptime,
-        apHealthPercent: totalAPs > 0 ? (onlineAPs / totalAPs) * 100 : 0
+        apHealthPercent: totalAPs > 0 ? (onlineAPs / totalAPs) * 100 : 0,
       };
     }
   };
@@ -542,12 +591,9 @@ export function PerformanceAnalytics() {
   if (error && siteReports.length === 0) {
     return (
       <div className="space-y-6">
-        
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {error}
-          </AlertDescription>
+          <AlertDescription>{error}</AlertDescription>
         </Alert>
 
         <Button onClick={handleRefresh} variant="outline">
@@ -569,7 +615,9 @@ export function PerformanceAnalytics() {
           <div>
             <h2 className="text-xl font-semibold">Performance Analytics</h2>
             <p className="text-sm text-muted-foreground">
-              {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString()}` : 'AP health, client distribution, and site metrics'}
+              {lastUpdated
+                ? `Updated ${lastUpdated.toLocaleTimeString()}`
+                : 'AP health, client distribution, and site metrics'}
             </p>
           </div>
         </div>
@@ -580,8 +628,10 @@ export function PerformanceAnalytics() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sites Overview</SelectItem>
-              {sites.map(site => (
-                <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+              {sites.map((site) => (
+                <SelectItem key={site.id} value={site.id}>
+                  {site.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -605,7 +655,9 @@ export function PerformanceAnalytics() {
             <MapPin className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : (
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
               <>
                 <div className="text-2xl font-bold">{metrics.totalSites}</div>
                 <p className="text-xs text-muted-foreground">
@@ -622,17 +674,19 @@ export function PerformanceAnalytics() {
             <Wifi className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : (
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
               <>
                 <div className="flex items-center space-x-2">
-                  <div className="text-2xl font-bold">{metrics.onlineAPs}/{metrics.totalAPs}</div>
+                  <div className="text-2xl font-bold">
+                    {metrics.onlineAPs}/{metrics.totalAPs}
+                  </div>
                   <Badge variant={metrics.apHealthPercent > 80 ? 'default' : 'destructive'}>
                     {Math.round(metrics.apHealthPercent)}%
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Online access points
-                </p>
+                <p className="text-xs text-muted-foreground">Online access points</p>
               </>
             )}
           </CardContent>
@@ -644,12 +698,12 @@ export function PerformanceAnalytics() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : (
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
               <>
                 <div className="text-2xl font-bold">{metrics.totalClients}</div>
-                <p className="text-xs text-muted-foreground">
-                  Active connections
-                </p>
+                <p className="text-xs text-muted-foreground">Active connections</p>
               </>
             )}
           </CardContent>
@@ -661,18 +715,19 @@ export function PerformanceAnalytics() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loading ? <Skeleton className="h-8 w-16" /> : (
+            {loading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
               <>
                 <div className="flex items-center space-x-2">
                   <div className="text-2xl font-bold">{Math.round(metrics.avgHealth)}%</div>
-                  {metrics.avgHealth > 80 ? 
-                    <TrendingUp className="h-4 w-4 text-green-500" /> : 
+                  {metrics.avgHealth > 80 ? (
+                    <TrendingUp className="h-4 w-4 text-green-500" />
+                  ) : (
                     <TrendingDown className="h-4 w-4 text-red-500" />
-                  }
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Network health score
-                </p>
+                <p className="text-xs text-muted-foreground">Network health score</p>
               </>
             )}
           </CardContent>
@@ -685,11 +740,9 @@ export function PerformanceAnalytics() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="sites">Sites</TabsTrigger>
           <TabsTrigger value="access-points">Access Points</TabsTrigger>
-          {reportWidgets.length > 0 && (
-            <TabsTrigger value="widgets">Report Widgets</TabsTrigger>
-          )}
+          {reportWidgets.length > 0 && <TabsTrigger value="widgets">Report Widgets</TabsTrigger>}
         </TabsList>
-        
+
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Health Distribution Chart */}
@@ -706,21 +759,39 @@ export function PerformanceAnalytics() {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Excellent (90-100%)', value: apReports.filter(ap => ap.health >= 90).length, fill: CHART_COLORS[0] },
-                          { name: 'Good (80-89%)', value: apReports.filter(ap => ap.health >= 80 && ap.health < 90).length, fill: CHART_COLORS[1] },
-                          { name: 'Fair (70-79%)', value: apReports.filter(ap => ap.health >= 70 && ap.health < 80).length, fill: CHART_COLORS[2] },
-                          { name: 'Poor (<70%)', value: apReports.filter(ap => ap.health < 70).length, fill: CHART_COLORS[3] }
+                          {
+                            name: 'Excellent (90-100%)',
+                            value: apReports.filter((ap) => ap.health >= 90).length,
+                            fill: CHART_COLORS[0],
+                          },
+                          {
+                            name: 'Good (80-89%)',
+                            value: apReports.filter((ap) => ap.health >= 80 && ap.health < 90)
+                              .length,
+                            fill: CHART_COLORS[1],
+                          },
+                          {
+                            name: 'Fair (70-79%)',
+                            value: apReports.filter((ap) => ap.health >= 70 && ap.health < 80)
+                              .length,
+                            fill: CHART_COLORS[2],
+                          },
+                          {
+                            name: 'Poor (<70%)',
+                            value: apReports.filter((ap) => ap.health < 70).length,
+                            fill: CHART_COLORS[3],
+                          },
                         ]}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
                         outerRadius={80}
                         dataKey="value"
-                        label={({ cx, cy, midAngle, outerRadius, name, percent }) => {
+                        label={({ cx, cy, midAngle, outerRadius, name, percent }: any) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius * 1.2;
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          const x = cx + radius * Math.cos(-(midAngle ?? 0) * RADIAN);
+                          const y = cy + radius * Math.sin(-(midAngle ?? 0) * RADIAN);
                           return (
                             <text
                               x={x}
@@ -729,18 +800,17 @@ export function PerformanceAnalytics() {
                               textAnchor={x > cx ? 'start' : 'end'}
                               dominantBaseline="central"
                             >
-                              {name}: {(percent * 100).toFixed(0)}%
+                              {name}: {((percent ?? 0) * 100).toFixed(0)}%
                             </text>
                           );
                         }}
-                      >
-                      </Pie>
+                      ></Pie>
                       <Tooltip
                         contentStyle={{
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                     </PieChart>
@@ -769,7 +839,7 @@ export function PerformanceAnalytics() {
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Bar dataKey="clientCount" fill={CHART_COLORS[1]} name="Clients" />
@@ -780,7 +850,7 @@ export function PerformanceAnalytics() {
             </Card>
           </div>
         </TabsContent>
-        
+
         <TabsContent value="sites" className="space-y-4">
           <Card>
             <CardHeader>
@@ -790,20 +860,27 @@ export function PerformanceAnalytics() {
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
-                  {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-4">
                   {siteReports.map((site, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center space-x-4">
                         <MapPin className="h-5 w-5 text-muted-foreground" />
                         <div>
                           <span className="font-medium">{site.siteName}</span>
-                          <div className="text-sm text-muted-foreground">Site ID: {site.siteId}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Site ID: {site.siteId}
+                          </div>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-6 text-sm">
                         <div className="text-center">
                           <div className="font-medium">{site.metrics.apCount || 0}</div>
@@ -824,7 +901,7 @@ export function PerformanceAnalytics() {
                       </div>
                     </div>
                   ))}
-                  
+
                   {siteReports.length === 0 && (
                     <div className="text-center py-8">
                       <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
@@ -836,7 +913,7 @@ export function PerformanceAnalytics() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="access-points" className="space-y-4">
           <Card>
             <CardHeader>
@@ -846,12 +923,17 @@ export function PerformanceAnalytics() {
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
-                  {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
                 </div>
               ) : (
                 <div className="space-y-4">
                   {apReports.map((ap, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center space-x-4">
                         <Wifi className="h-5 w-5 text-muted-foreground" />
                         <div>
@@ -864,7 +946,7 @@ export function PerformanceAnalytics() {
                           {ap.status}
                         </Badge>
                       </div>
-                      
+
                       <div className="flex items-center space-x-6 text-sm">
                         <div className="text-center">
                           <div className="font-medium">{ap.clientCount}</div>
@@ -880,17 +962,16 @@ export function PerformanceAnalytics() {
                         </div>
                         <div className="text-center">
                           <div className="font-medium">
-                            {ap.throughput >= 1000
-                              ? `${(ap.throughput / 1000).toFixed(2)} GB/s`
-                              : `${Math.round(ap.throughput)} MB/s`
-                            }
+                            {(ap.throughput ?? 0) >= 1000
+                              ? `${((ap.throughput ?? 0) / 1000).toFixed(2)} GB/s`
+                              : `${Math.round(ap.throughput ?? 0)} MB/s`}
                           </div>
                           <div className="text-muted-foreground">Throughput</div>
                         </div>
                       </div>
                     </div>
                   ))}
-                  
+
                   {apReports.length === 0 && (
                     <div className="text-center py-8">
                       <Wifi className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
@@ -902,7 +983,7 @@ export function PerformanceAnalytics() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="widgets" className="space-y-4">
           <Card>
             <CardHeader>
@@ -912,7 +993,9 @@ export function PerformanceAnalytics() {
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
-                  {[1,2,3,4,5].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -925,13 +1008,11 @@ export function PerformanceAnalytics() {
                         </Badge>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-xs text-muted-foreground">
-                          Widget ID: {widget.id}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Widget ID: {widget.id}</p>
                       </CardContent>
                     </Card>
                   ))}
-                  
+
                   {reportWidgets.length === 0 && (
                     <div className="col-span-full text-center py-8">
                       <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />

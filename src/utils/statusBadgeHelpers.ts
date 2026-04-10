@@ -6,7 +6,10 @@
  * use these centralized helpers for consistency.
  */
 
-import { type BadgeProps } from '@/components/ui/badge';
+import { type ComponentProps } from 'react';
+import { type Badge } from '@/components/ui/badge';
+
+type BadgeProps = ComponentProps<typeof Badge>;
 
 // ==================== Type Definitions ====================
 
@@ -28,67 +31,67 @@ export interface StatusBadgeConfig {
  */
 const STATUS_MAP: Record<string, SemanticStatus> = {
   // Success/Online states
-  'online': 'success',
-  'connected': 'success',
-  'up': 'success',
-  'active': 'success',
+  online: 'success',
+  connected: 'success',
+  up: 'success',
+  active: 'success',
   'in-service': 'success',
-  'good': 'success',
-  'pass': 'success',
-  'passed': 'success',
-  'current': 'success',
-  'completed': 'success',
-  'available': 'success',
-  'onboarded': 'success',
-  'friendly': 'success',
-  'healthy': 'success',
-  'ok': 'success',
-  'running': 'success',
-  'ready': 'success',
-  'associated': 'success',
-  'authenticated': 'success',
+  good: 'success',
+  pass: 'success',
+  passed: 'success',
+  current: 'success',
+  completed: 'success',
+  available: 'success',
+  onboarded: 'success',
+  friendly: 'success',
+  healthy: 'success',
+  ok: 'success',
+  running: 'success',
+  ready: 'success',
+  associated: 'success',
+  authenticated: 'success',
 
   // Warning states
-  'warning': 'warning',
-  'degraded': 'warning',
-  'expiring': 'warning',
+  warning: 'warning',
+  degraded: 'warning',
+  expiring: 'warning',
   'expiring soon': 'warning',
-  'pending': 'warning',
-  'upgrading': 'warning',
-  'analyzing': 'warning',
-  'medium': 'warning',
-  'moderate': 'warning',
+  pending: 'warning',
+  upgrading: 'warning',
+  analyzing: 'warning',
+  medium: 'warning',
+  moderate: 'warning',
   'late roam': 'warning',
-  'idle': 'warning',
+  idle: 'warning',
 
   // Error/Critical states
-  'offline': 'error',
-  'disconnected': 'error',
-  'down': 'error',
-  'inactive': 'error',
-  'error': 'error',
-  'failed': 'error',
-  'fail': 'error',
-  'critical': 'error',
-  'high': 'error',
-  'malicious': 'error',
-  'expired': 'error',
-  'unavailable': 'error',
+  offline: 'error',
+  disconnected: 'error',
+  down: 'error',
+  inactive: 'error',
+  error: 'error',
+  failed: 'error',
+  fail: 'error',
+  critical: 'error',
+  high: 'error',
+  malicious: 'error',
+  expired: 'error',
+  unavailable: 'error',
   'out-of-service': 'error',
 
   // Info states
-  'info': 'info',
-  'informational': 'info',
-  'update_available': 'info',
-  'upgrade_available': 'info',
-  'new': 'info',
+  info: 'info',
+  informational: 'info',
+  update_available: 'info',
+  upgrade_available: 'info',
+  new: 'info',
 
   // Neutral/Unknown states
-  'unknown': 'neutral',
-  'draft': 'neutral',
-  'none': 'neutral',
+  unknown: 'neutral',
+  draft: 'neutral',
+  none: 'neutral',
   'n/a': 'neutral',
-  'low': 'neutral',
+  low: 'neutral',
 };
 
 // ==================== Badge Style Configurations ====================
@@ -172,16 +175,16 @@ export function getStatusBadgeClassName(status: string | undefined | null): stri
  * Used for alerts, events, and alarms.
  */
 const SEVERITY_MAP: Record<string, SemanticStatus> = {
-  'critical': 'error',
-  'high': 'error',
-  'major': 'error',
-  'medium': 'warning',
-  'moderate': 'warning',
-  'warning': 'warning',
-  'minor': 'warning',
-  'low': 'neutral',
-  'info': 'info',
-  'informational': 'info',
+  critical: 'error',
+  high: 'error',
+  major: 'error',
+  medium: 'warning',
+  moderate: 'warning',
+  warning: 'warning',
+  minor: 'warning',
+  low: 'neutral',
+  info: 'info',
+  informational: 'info',
 };
 
 /**
@@ -211,18 +214,18 @@ export function getSeverityBadgeConfig(severity: string | undefined | null): Sta
  * Used for system events and logs.
  */
 const EVENT_LEVEL_MAP: Record<string, SemanticStatus> = {
-  'error': 'error',
-  'err': 'error',
-  'critical': 'error',
-  'crit': 'error',
-  'alert': 'error',
-  'emergency': 'error',
-  'emerg': 'error',
-  'warning': 'warning',
-  'warn': 'warning',
-  'notice': 'info',
-  'info': 'info',
-  'debug': 'neutral',
+  error: 'error',
+  err: 'error',
+  critical: 'error',
+  crit: 'error',
+  alert: 'error',
+  emergency: 'error',
+  emerg: 'error',
+  warning: 'warning',
+  warn: 'warning',
+  notice: 'info',
+  info: 'info',
+  debug: 'neutral',
 };
 
 /**
@@ -257,7 +260,7 @@ export function formatStatusLabel(status: string | undefined | null): string {
     .replace(/_/g, ' ')
     .replace(/-/g, ' ')
     .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join(' ');
 }
 

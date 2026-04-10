@@ -15,11 +15,24 @@ import {
   Users,
   Gauge,
   Network,
-  Settings2
+  Settings2,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { useDashboardLayout } from '../hooks/useDashboardLayout';
 import { DashboardCustomization } from './dashboard/DashboardCustomization';
@@ -82,14 +95,8 @@ export function Dashboard() {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
 
-  const {
-    widgets,
-    visibleWidgets,
-    setWidgets,
-    moveWidget,
-    toggleWidget,
-    resetToDefault,
-  } = useDashboardLayout();
+  const { widgets, visibleWidgets, setWidgets, moveWidget, toggleWidget, resetToDefault } =
+    useDashboardLayout();
 
   const handleDragStart = (index: number) => {
     setDragIndex(index);
@@ -110,22 +117,22 @@ export function Dashboard() {
   };
 
   const isWidgetVisible = (widgetId: string) => {
-    return visibleWidgets.some(w => w.id === widgetId);
+    return visibleWidgets.some((w) => w.id === widgetId);
   };
 
   // Utility function to detect randomized MAC addresses
   const isRandomizedMac = (macAddress: string): boolean => {
     if (!macAddress) return false;
-    
+
     // Remove any separators (colons, hyphens, dots)
-    const cleanMac = macAddress.replace(/[:-.\s]/g, '').toUpperCase();
-    
+    const cleanMac = macAddress.replace(/[:.\s-]/g, '').toUpperCase();
+
     // Check if MAC address has valid length
     if (cleanMac.length !== 12) return false;
-    
+
     // Get the second hexadecimal digit (bit 1 of first octet)
     const secondDigit = cleanMac.charAt(1);
-    
+
     // If bit 1 is set (locally administered), it's a random MAC
     // Second digit will be 2, 3, 6, 7, A, B, E, F
     return ['2', '3', '6', '7', 'A', 'B', 'E', 'F'].includes(secondDigit);
@@ -143,7 +150,7 @@ export function Dashboard() {
       setRefreshing(false);
       return;
     }
-    
+
     if (showRefreshing) {
       setRefreshing(true);
     } else {
@@ -153,27 +160,23 @@ export function Dashboard() {
 
     try {
       console.log('[Dashboard] Fetching dashboard data...');
-      
+
       // Try multiple possible endpoints for dashboard data
-      const endpoints = [
-        '/v1/dashboard',
-        '/v1/reports/dashboard',
-        '/v1/aps/reports/dashboard'
-      ];
-      
+      const endpoints = ['/v1/dashboard', '/v1/reports/dashboard', '/v1/aps/reports/dashboard'];
+
       let response: Response | null = null;
       let successEndpoint = '';
-      
+
       // Try each endpoint until one works
       for (const endpoint of endpoints) {
         try {
           console.log(`[Dashboard] Trying endpoint: ${endpoint}`);
           const resp = await apiService.makeAuthenticatedRequest(
-            endpoint, 
-            { method: 'GET' }, 
+            endpoint,
+            { method: 'GET' },
             10000
           );
-          
+
           if (resp.ok) {
             response = resp;
             successEndpoint = endpoint;
@@ -187,13 +190,13 @@ export function Dashboard() {
           continue;
         }
       }
-      
+
       if (response && response.ok) {
         const data = await response.json();
         console.log('[Dashboard] Received dashboard data:', data);
-        
+
         setDashboardData(data);
-        
+
         if (showRefreshing) {
           toast.success('Dashboard refreshed');
         }
@@ -201,7 +204,7 @@ export function Dashboard() {
         // If all endpoints fail, try building dashboard from individual components
         console.log('[Dashboard] Dashboard endpoints unavailable, trying component approach...');
         const componentData = await loadDashboardComponents();
-        
+
         if (componentData) {
           console.log('[Dashboard] Successfully built dashboard from components');
           setDashboardData(componentData);
@@ -211,11 +214,11 @@ export function Dashboard() {
         } else {
           // Silently set error without logging - this is expected for some Extreme Platform ONE versions
           setError('Dashboard endpoint not available. Please check API configuration.');
-          
+
           // Only show toast if user explicitly refreshed
           if (showRefreshing) {
             toast.info('Dashboard unavailable', {
-              description: 'This controller version does not support dashboard endpoints.'
+              description: 'This controller version does not support dashboard endpoints.',
             });
           }
         }
@@ -224,10 +227,10 @@ export function Dashboard() {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       console.error('[Dashboard] Exception:', err);
-      
+
       if (!showRefreshing) {
         toast.error('Failed to load dashboard', {
-          description: errorMessage
+          description: errorMessage,
         });
       }
     } finally {
@@ -240,15 +243,16 @@ export function Dashboard() {
     try {
       // Try to build dashboard from individual API calls with comprehensive data
       console.log('[Dashboard] Attempting to build dashboard from components...');
-      
-      const [apsResponse, clientsResponse, sitesResponse, alertsResponse, eventsResponse] = await Promise.allSettled([
-        apiService.makeAuthenticatedRequest('/v1/aps', { method: 'GET' }, 15000),
-        apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000),
-        apiService.makeAuthenticatedRequest('/v1/sites', { method: 'GET' }, 10000),
-        apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000),
-        apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000)
-      ]);
-      
+
+      const [apsResponse, clientsResponse, sitesResponse, alertsResponse, eventsResponse] =
+        await Promise.allSettled([
+          apiService.makeAuthenticatedRequest('/v1/aps', { method: 'GET' }, 15000),
+          apiService.makeAuthenticatedRequest('/v1/stations', { method: 'GET' }, 15000),
+          apiService.makeAuthenticatedRequest('/v1/sites', { method: 'GET' }, 10000),
+          apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000),
+          apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000),
+        ]);
+
       // Build a comprehensive dashboard structure
       const componentData: DashboardData = {
         networkHealth: {
@@ -263,40 +267,50 @@ export function Dashboard() {
           inactiveSWs: 0,
           troubleSWs: 0,
           totalClients: 0,
-          randomMacClients: 0
+          randomMacClients: 0,
         },
         countOfUniqueUsersReport: [],
-        topSitesByClientCount: []
+        topSitesByClientCount: [],
       };
-      
+
       let hasData = false;
       let apsArray: any[] = [];
       let clientsArray: any[] = [];
       let sitesArray: any[] = [];
-      
+
       // Parse APs data if available
       if (apsResponse.status === 'fulfilled' && apsResponse.value.ok) {
         try {
           const apsData = await apsResponse.value.json();
-          apsArray = Array.isArray(apsData) ? apsData : (apsData.aps || apsData.accessPoints || []);
-          
+          apsArray = Array.isArray(apsData) ? apsData : apsData.aps || apsData.accessPoints || [];
+
           console.log('[Dashboard] Processing APs data:', apsArray.length, 'access points found');
-          
+
           // Count AP statuses with more detailed categorization
           apsArray.forEach((ap: any) => {
             const status = ap.status?.toLowerCase() || '';
             const connectionState = ap.connectionState?.toLowerCase() || '';
             const operationalState = ap.operationalState?.toLowerCase() || '';
-            
+
             // Check multiple status fields for more accurate state detection
-            const isOnline = status === 'connected' || status === 'online' || status === 'up' ||
-                           connectionState === 'connected' || connectionState === 'online' ||
-                           operationalState === 'up' || operationalState === 'online';
-            
-            const isOffline = status === 'disconnected' || status === 'offline' || status === 'down' ||
-                            connectionState === 'disconnected' || connectionState === 'offline' ||
-                            operationalState === 'down' || operationalState === 'offline';
-            
+            const isOnline =
+              status === 'connected' ||
+              status === 'online' ||
+              status === 'up' ||
+              connectionState === 'connected' ||
+              connectionState === 'online' ||
+              operationalState === 'up' ||
+              operationalState === 'online';
+
+            const isOffline =
+              status === 'disconnected' ||
+              status === 'offline' ||
+              status === 'down' ||
+              connectionState === 'disconnected' ||
+              connectionState === 'offline' ||
+              operationalState === 'down' ||
+              operationalState === 'offline';
+
             if (isOnline) {
               // Check if it's primary or backup based on role/type
               const role = ap.role?.toLowerCase() || ap.type?.toLowerCase() || '';
@@ -313,84 +327,101 @@ export function Dashboard() {
               // Unknown state, count as inactive
               componentData.networkHealth.inactiveAPs++;
             }
-            
+
             // Check for low power APs
-            if (ap.powerMode?.toLowerCase() === 'low' || ap.poeClass === '1' || ap.poeClass === '2') {
+            if (
+              ap.powerMode?.toLowerCase() === 'low' ||
+              ap.poeClass === '1' ||
+              ap.poeClass === '2'
+            ) {
               componentData.networkHealth.lowPowerAPs++;
             }
           });
-          
+
           console.log('[Dashboard] Network Health:', componentData.networkHealth);
         } catch (parseError) {
           console.log('[Dashboard] Failed to parse APs response:', parseError);
         }
       } else {
-        console.log('[Dashboard] APs request failed:', apsResponse.status === 'fulfilled' ? apsResponse.value.status : 'rejected');
+        console.log(
+          '[Dashboard] APs request failed:',
+          apsResponse.status === 'fulfilled' ? apsResponse.value.status : 'rejected'
+        );
       }
-      
+
       // Parse clients data if available
       if (clientsResponse.status === 'fulfilled' && clientsResponse.value.ok) {
         try {
           const clientsData = await clientsResponse.value.json();
-          clientsArray = Array.isArray(clientsData) ? clientsData : (clientsData.clients || clientsData.stations || []);
-          
+          clientsArray = Array.isArray(clientsData)
+            ? clientsData
+            : clientsData.clients || clientsData.stations || [];
+
           console.log('[Dashboard] Processing clients data:', clientsArray.length, 'clients found');
-          
+
           // Create a client count report with timestamp data
           if (clientsArray.length > 0) {
             const now = Date.now();
             const oneHourAgo = now - 3600000;
-            
+
             // Count total clients and those with randomized MACs
             let randomMacCount = 0;
             componentData.networkHealth.totalClients = clientsArray.length;
-            
+
             clientsArray.forEach((client: any) => {
               const mac = client.macAddress || client.mac || client.clientMac || '';
               if (isRandomizedMac(mac)) {
                 randomMacCount++;
               }
             });
-            
+
             componentData.networkHealth.randomMacClients = randomMacCount;
-            console.log('[Dashboard] Detected', randomMacCount, 'clients with randomized MAC addresses out of', clientsArray.length);
-            
+            console.log(
+              '[Dashboard] Detected',
+              randomMacCount,
+              'clients with randomized MAC addresses out of',
+              clientsArray.length
+            );
+
             // Generate simulated time series data (5-minute intervals)
-            const timePoints = [];
+            const timePoints: { timestamp: number; value: string }[] = [];
             const interval = 300000; // 5 minutes
             for (let t = oneHourAgo; t <= now; t += interval) {
               timePoints.push({
                 timestamp: t,
-                value: clientsArray.length.toString()
+                value: clientsArray.length.toString(),
               });
             }
-            
-            componentData.countOfUniqueUsersReport = [{
-              statistics: [{
-                count: 0,
-                statName: 'tntUniqueUsers',
-                type: 'number',
-                unit: 'users',
-                values: timePoints
-              }]
-            }];
+
+            componentData.countOfUniqueUsersReport = [
+              {
+                statistics: [
+                  {
+                    values: timePoints,
+                  },
+                ],
+              },
+            ];
             hasData = true;
           }
         } catch (parseError) {
           console.log('[Dashboard] Failed to parse clients response:', parseError);
         }
       } else {
-        console.log('[Dashboard] Clients request failed:', clientsResponse.status === 'fulfilled' ? clientsResponse.value.status : 'rejected');
+        console.log(
+          '[Dashboard] Clients request failed:',
+          clientsResponse.status === 'fulfilled' ? clientsResponse.value.status : 'rejected'
+        );
       }
-      
+
       // Parse sites data if available
       if (sitesResponse.status === 'fulfilled' && sitesResponse.value.ok) {
         try {
           const sitesData = await sitesResponse.value.json();
-          sitesArray = Array.isArray(sitesData) ? sitesData : (sitesData.sites || []);
-          
+          sitesArray = Array.isArray(sitesData) ? sitesData : sitesData.sites || [];
+
           console.log('[Dashboard] Processing sites data:', sitesArray.length, 'sites found');
-          
+
           // Build site-based statistics
           if (sitesArray.length > 0 && apsArray.length > 0 && clientsArray.length > 0) {
             // Map clients to sites via APs
@@ -433,13 +464,15 @@ export function Dashboard() {
               .slice(0, 10)
               .map(([siteId, count]) => ({
                 name: siteNames[siteId] || siteId,
-                value: count
+                value: count,
               }));
 
             if (topClientSites.length > 0) {
-              componentData.topSitesByClientCount = [{
-                distributionStats: topClientSites
-              }];
+              componentData.topSitesByClientCount = [
+                {
+                  distributionStats: topClientSites,
+                },
+              ];
               hasData = true;
             }
           }
@@ -447,38 +480,41 @@ export function Dashboard() {
           console.log('[Dashboard] Failed to parse sites response:', parseError);
         }
       }
-      
+
       // Parse alerts/notifications for system status
       if (alertsResponse.status === 'fulfilled' && alertsResponse.value.ok) {
         try {
           const alertsData = await alertsResponse.value.json();
-          const alerts = Array.isArray(alertsData) ? alertsData : (alertsData.alerts || []);
-          
+          const alerts = Array.isArray(alertsData) ? alertsData : alertsData.alerts || [];
+
           console.log('[Dashboard] Processing alerts data:', alerts.length, 'alerts found');
-          
+
           // Check for critical system alerts that affect mobility status
-          const criticalAlerts = alerts.filter((alert: any) => 
-            alert.severity?.toLowerCase() === 'critical' || 
-            alert.level?.toLowerCase() === 'critical'
+          const criticalAlerts = alerts.filter(
+            (alert: any) =>
+              alert.severity?.toLowerCase() === 'critical' ||
+              alert.level?.toLowerCase() === 'critical'
           );
-          
+
           // Set mobility status based on critical alerts
           componentData.networkHealth.mobilityStatus = criticalAlerts.length === 0;
-          componentData.networkHealth.globalSyncStatus = criticalAlerts.length === 0 ? 'In Sync' : 'Issues Detected';
-          
+          componentData.networkHealth.globalSyncStatus =
+            criticalAlerts.length === 0 ? 'In Sync' : 'Issues Detected';
         } catch (parseError) {
           console.log('[Dashboard] Failed to parse alerts response:', parseError);
         }
       }
-      
+
       // Parse events/notifications for additional context
       if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
         try {
           const eventsData = await eventsResponse.value.json();
-          const events = Array.isArray(eventsData) ? eventsData : (eventsData.notifications || eventsData.events || []);
-          
+          const events = Array.isArray(eventsData)
+            ? eventsData
+            : eventsData.notifications || eventsData.events || [];
+
           console.log('[Dashboard] Processing events data:', events.length, 'events found');
-          
+
           // Could process events for additional insights here
           // For now, just confirm we received the data
           if (events.length > 0) {
@@ -488,18 +524,18 @@ export function Dashboard() {
           console.log('[Dashboard] Failed to parse events response:', parseError);
         }
       }
-      
+
       // Set link status based on whether we have data
       if (hasData) {
         componentData.networkHealth.linkStatus = 'Connected';
       }
-      
+
       // If we got at least some data, return it
       if (hasData) {
         console.log('[Dashboard] Successfully built comprehensive dashboard from components');
         return componentData;
       }
-      
+
       console.log('[Dashboard] No data available from components');
       return null;
     } catch (err) {
@@ -525,10 +561,11 @@ export function Dashboard() {
     if (!dashboardData?.networkHealth) return null;
 
     const { networkHealth } = dashboardData;
-    const totalAPs = networkHealth.primaryActiveAPs + networkHealth.backupActiveAPs + networkHealth.inactiveAPs;
+    const totalAPs =
+      networkHealth.primaryActiveAPs + networkHealth.backupActiveAPs + networkHealth.inactiveAPs;
     const totalSWs = networkHealth.activeSWs + networkHealth.inactiveSWs + networkHealth.troubleSWs;
     const apHealthPercent = totalAPs > 0 ? (networkHealth.primaryActiveAPs / totalAPs) * 100 : 0;
-    
+
     // If no data at all, don't render
     if (totalAPs === 0 && totalSWs === 0) {
       return null;
@@ -551,7 +588,15 @@ export function Dashboard() {
                 sourcePage="dashboard"
                 catalogId="metric_network_health"
               />
-              <Badge variant={apHealthPercent >= 90 ? 'default' : apHealthPercent >= 70 ? 'secondary' : 'destructive'}>
+              <Badge
+                variant={
+                  apHealthPercent >= 90
+                    ? 'default'
+                    : apHealthPercent >= 70
+                      ? 'secondary'
+                      : 'destructive'
+                }
+              >
                 {apHealthPercent.toFixed(0)}% Healthy
               </Badge>
             </div>
@@ -641,8 +686,8 @@ export function Dashboard() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs text-muted-foreground">Mobility</span>
-                  <Badge 
-                    variant={networkHealth.mobilityStatus ? 'default' : 'outline'} 
+                  <Badge
+                    variant={networkHealth.mobilityStatus ? 'default' : 'outline'}
                     className="text-xs"
                   >
                     {networkHealth.mobilityStatus ? 'Enabled' : 'Disabled'}
@@ -677,16 +722,24 @@ export function Dashboard() {
                       {networkHealth.totalClients - (networkHealth.randomMacClients || 0)}
                     </Badge>
                   </div>
-                  {networkHealth.randomMacClients !== undefined && networkHealth.randomMacClients > 0 && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-info" title="Devices using privacy/randomized MAC addresses">
-                        Random MACs
-                      </span>
-                      <Badge variant="outline" className="text-xs text-info border-info/50">
-                        {networkHealth.randomMacClients} ({Math.round((networkHealth.randomMacClients / networkHealth.totalClients) * 100)}%)
-                      </Badge>
-                    </div>
-                  )}
+                  {networkHealth.randomMacClients !== undefined &&
+                    networkHealth.randomMacClients > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span
+                          className="text-xs text-info"
+                          title="Devices using privacy/randomized MAC addresses"
+                        >
+                          Random MACs
+                        </span>
+                        <Badge variant="outline" className="text-xs text-info border-info/50">
+                          {networkHealth.randomMacClients} (
+                          {Math.round(
+                            (networkHealth.randomMacClients / networkHealth.totalClients) * 100
+                          )}
+                          %)
+                        </Badge>
+                      </div>
+                    )}
                   {networkHealth.randomMacClients === 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-xs text-muted-foreground">Random MACs</span>
@@ -707,15 +760,11 @@ export function Dashboard() {
               </div>
               <div className="space-y-1">
                 <div className="text-center py-2">
-                  <div className="text-3xl font-bold text-primary">
-                    {totalAPs}
-                  </div>
+                  <div className="text-3xl font-bold text-primary">{totalAPs}</div>
                   <div className="text-xs text-muted-foreground">Total APs</div>
                 </div>
                 <div className="text-center py-2">
-                  <div className="text-3xl font-bold text-secondary">
-                    {totalSWs}
-                  </div>
+                  <div className="text-3xl font-bold text-secondary">{totalSWs}</div>
                   <div className="text-xs text-muted-foreground">Total Switches</div>
                 </div>
               </div>
@@ -726,22 +775,23 @@ export function Dashboard() {
     );
   };
 
-
   const renderUniqueClientsChart = () => {
     if (!dashboardData?.countOfUniqueUsersReport?.[0]?.statistics?.[0]?.values) return null;
 
     const values = dashboardData.countOfUniqueUsersReport[0].statistics[0].values;
-    
+
     // Sample every 10th point
     const chartData = values
       .filter((_, index) => index % 10 === 0)
-      .map(point => ({
+      .map((point) => ({
         time: formatTimestamp(point.timestamp),
         clients: parseInt(point.value) || 0,
       }));
 
     const currentClients = parseInt(values[values.length - 1]?.value || '0');
-    const avgClients = Math.round(values.reduce((sum, v) => sum + parseInt(v.value || '0'), 0) / values.length);
+    const avgClients = Math.round(
+      values.reduce((sum, v) => sum + parseInt(v.value || '0'), 0) / values.length
+    );
 
     return (
       <Card className="border-info/10">
@@ -754,15 +804,11 @@ export function Dashboard() {
             <div className="flex items-center gap-4">
               <div className="text-right">
                 <div className="text-sm text-muted-foreground">Current</div>
-                <div className="text-lg font-semibold text-primary">
-                  {currentClients}
-                </div>
+                <div className="text-lg font-semibold text-primary">{currentClients}</div>
               </div>
               <div className="text-right">
                 <div className="text-sm text-muted-foreground">Average</div>
-                <div className="text-sm font-medium text-muted-foreground">
-                  {avgClients}
-                </div>
+                <div className="text-sm font-medium text-muted-foreground">{avgClients}</div>
               </div>
               <SaveToWorkspace
                 widgetId="dashboard-unique-clients-chart"
@@ -780,15 +826,8 @@ export function Dashboard() {
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis 
-                dataKey="time" 
-                stroke="var(--muted-foreground)"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis 
-                stroke="var(--muted-foreground)"
-                style={{ fontSize: '12px' }}
-              />
+              <XAxis dataKey="time" stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
+              <YAxis stroke="var(--muted-foreground)" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{
                   backgroundColor: 'var(--card)',
@@ -868,7 +907,8 @@ export function Dashboard() {
     const networkHealth = dashboardData.networkHealth;
 
     // Calculate network health score (0-100)
-    const totalAPs = networkHealth.primaryActiveAPs + networkHealth.backupActiveAPs + networkHealth.inactiveAPs;
+    const totalAPs =
+      networkHealth.primaryActiveAPs + networkHealth.backupActiveAPs + networkHealth.inactiveAPs;
     const activeAPs = networkHealth.primaryActiveAPs + networkHealth.backupActiveAPs;
     const healthScore = totalAPs > 0 ? Math.round((activeAPs / totalAPs) * 100) : 0;
 
@@ -876,8 +916,10 @@ export function Dashboard() {
     let avgClients = 0;
     let currentClients = 0;
     if (clientReport?.values && clientReport.values.length > 0) {
-      const clientValues = clientReport.values.map(v => parseInt(v.value) || 0);
-      avgClients = Math.round(clientValues.reduce((sum, val) => sum + val, 0) / clientValues.length);
+      const clientValues = clientReport.values.map((v) => parseInt(v.value) || 0);
+      avgClients = Math.round(
+        clientValues.reduce((sum, val) => sum + val, 0) / clientValues.length
+      );
       currentClients = clientValues[clientValues.length - 1];
     }
 
@@ -912,11 +954,15 @@ export function Dashboard() {
                 <p className="text-sm text-muted-foreground">Health Score</p>
               </div>
               <div>
-                <p className={`text-2xl font-semibold ${
-                  healthScore >= 90 ? 'text-[color:var(--status-success)]' :
-                  healthScore >= 70 ? 'text-[color:var(--status-warning)]' :
-                  'text-[color:var(--status-error)]'
-                }`}>
+                <p
+                  className={`text-2xl font-semibold ${
+                    healthScore >= 90
+                      ? 'text-[color:var(--status-success)]'
+                      : healthScore >= 70
+                        ? 'text-[color:var(--status-warning)]'
+                        : 'text-[color:var(--status-error)]'
+                  }`}
+                >
                   {healthScore}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -934,9 +980,7 @@ export function Dashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold text-info">{avgClients}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Current: {currentClients}
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Current: {currentClients}</p>
                 </div>
               </div>
             )}
@@ -948,18 +992,18 @@ export function Dashboard() {
                 <p className="text-sm text-muted-foreground">Quality</p>
               </div>
               <div>
-                <p className={`text-2xl font-semibold ${
-                  healthScore >= 90 ? 'text-[color:var(--status-success)]' :
-                  healthScore >= 70 ? 'text-[color:var(--status-warning)]' :
-                  'text-[color:var(--status-error)]'
-                }`}>
-                  {healthScore >= 90 ? 'Excellent' :
-                   healthScore >= 70 ? 'Good' :
-                   'Fair'}
+                <p
+                  className={`text-2xl font-semibold ${
+                    healthScore >= 90
+                      ? 'text-[color:var(--status-success)]'
+                      : healthScore >= 70
+                        ? 'text-[color:var(--status-warning)]'
+                        : 'text-[color:var(--status-error)]'
+                  }`}
+                >
+                  {healthScore >= 90 ? 'Excellent' : healthScore >= 70 ? 'Good' : 'Fair'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Overall rating
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">Overall rating</p>
               </div>
             </div>
 
@@ -972,9 +1016,7 @@ export function Dashboard() {
                 </div>
                 <div>
                   <p className="text-2xl font-semibold text-warning">{networkHealth.lowPowerAPs}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    APs affected
-                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">APs affected</p>
                 </div>
               </div>
             )}
@@ -1000,17 +1042,26 @@ export function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              The dashboard endpoint is not available on this controller. The system tried multiple methods to load dashboard data.
+              The dashboard endpoint is not available on this controller. The system tried multiple
+              methods to load dashboard data.
             </p>
             <div className="bg-muted/20 border border-border rounded-lg p-4">
               <p className="text-sm text-muted-foreground mb-2">
                 <strong>Alternative Views:</strong>
               </p>
               <ul className="text-sm text-muted-foreground list-disc list-inside space-y-1">
-                <li>Use <strong>Access Points</strong> page to monitor AP health and status</li>
-                <li>Use <strong>Connected Clients</strong> page to view active users</li>
-                <li>Use <strong>Alerts & Events</strong> page for system notifications</li>
-                <li>Use <strong>Report Widgets</strong> page for detailed analytics</li>
+                <li>
+                  Use <strong>Access Points</strong> page to monitor AP health and status
+                </li>
+                <li>
+                  Use <strong>Connected Clients</strong> page to view active users
+                </li>
+                <li>
+                  Use <strong>Alerts & Events</strong> page for system notifications
+                </li>
+                <li>
+                  Use <strong>Report Widgets</strong> page for detailed analytics
+                </li>
               </ul>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1018,24 +1069,24 @@ export function Dashboard() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
-              <Button 
-                onClick={() => window.location.href = '#'} 
+              <Button
+                onClick={() => (window.location.href = '#')}
                 variant="outline"
                 size="sm"
                 disabled
               >
                 Access Points
               </Button>
-              <Button 
-                onClick={() => window.location.href = '#'} 
+              <Button
+                onClick={() => (window.location.href = '#')}
                 variant="outline"
                 size="sm"
                 disabled
               >
                 Connected Clients
               </Button>
-              <Button 
-                onClick={() => window.location.href = '#'} 
+              <Button
+                onClick={() => (window.location.href = '#')}
                 variant="outline"
                 size="sm"
                 disabled
@@ -1066,7 +1117,7 @@ export function Dashboard() {
                   Monitor and manage all access points in your network
                 </p>
               </div>
-              
+
               <div className="p-4 rounded-lg bg-muted/5 border border-border hover:border-secondary/50 transition-colors cursor-not-allowed">
                 <div className="flex items-center gap-3 mb-2">
                   <Users className="h-5 w-5 text-secondary" />
@@ -1076,7 +1127,7 @@ export function Dashboard() {
                   View all active users and their connection details
                 </p>
               </div>
-              
+
               <div className="p-4 rounded-lg bg-muted/5 border border-border hover:border-info/50 transition-colors cursor-not-allowed">
                 <div className="flex items-center gap-3 mb-2">
                   <TrendingUp className="h-5 w-5 text-info" />
@@ -1093,14 +1144,17 @@ export function Dashboard() {
     );
   }
 
-  const hasFullData = dashboardData &&
+  const hasFullData =
+    dashboardData &&
     dashboardData.countOfUniqueUsersReport &&
     dashboardData.countOfUniqueUsersReport.length > 0;
 
-  const hasPartialData = dashboardData &&
+  const hasPartialData =
+    dashboardData &&
     (dashboardData.networkHealth.primaryActiveAPs > 0 ||
-     dashboardData.networkHealth.inactiveAPs > 0 ||
-     (dashboardData.countOfUniqueUsersReport && dashboardData.countOfUniqueUsersReport.length > 0));
+      dashboardData.networkHealth.inactiveAPs > 0 ||
+      (dashboardData.countOfUniqueUsersReport &&
+        dashboardData.countOfUniqueUsersReport.length > 0));
 
   return (
     <div className="space-y-6">
@@ -1109,17 +1163,13 @@ export function Dashboard() {
         <div>
           <h3 className="text-lg font-semibold">Default Dashboard</h3>
           <p className="text-sm text-muted-foreground">
-            {hasFullData 
+            {hasFullData
               ? 'Real-time network monitoring and analytics'
               : 'Basic network status overview'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setCustomizeOpen(true)}
-            size="sm"
-            variant="outline"
-          >
+          <Button onClick={() => setCustomizeOpen(true)} size="sm" variant="outline">
             <Settings2 className="h-4 w-4 mr-2" />
             Customize
           </Button>
@@ -1154,7 +1204,8 @@ export function Dashboard() {
               <div className="flex-1">
                 <p className="text-sm font-medium">Limited Dashboard Data</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Some dashboard features are unavailable. Showing basic network health from available data sources.
+                  Some dashboard features are unavailable. Showing basic network health from
+                  available data sources.
                 </p>
               </div>
             </div>
@@ -1203,7 +1254,7 @@ export function Dashboard() {
           </DraggableWidget>
         );
       })}
-      
+
       {/* Show placeholder if we have partial data but no charts */}
       {hasPartialData && !hasFullData && (
         <Card className="border-muted">
@@ -1218,9 +1269,7 @@ export function Dashboard() {
                   <Activity className="h-4 w-4 text-muted-foreground" />
                   <p className="text-sm font-medium text-muted-foreground">Performance Trends</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Historical data unavailable
-                </p>
+                <p className="text-xs text-muted-foreground">Historical data unavailable</p>
               </div>
 
               <div className="p-4 rounded-lg bg-muted/5 border border-dashed border-border">
@@ -1228,9 +1277,7 @@ export function Dashboard() {
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <p className="text-sm font-medium text-muted-foreground">Client Analytics</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Advanced metrics unavailable
-                </p>
+                <p className="text-xs text-muted-foreground">Advanced metrics unavailable</p>
               </div>
             </div>
           </CardContent>

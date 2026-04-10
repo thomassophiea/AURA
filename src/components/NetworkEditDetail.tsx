@@ -7,8 +7,32 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Save, Trash2, Wifi, Lock, Eye, EyeOff, Loader2, Network, Shield, ChevronDown, ChevronUp, Clock, Settings } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from './ui/dialog';
+import {
+  AlertCircle,
+  Save,
+  Trash2,
+  Wifi,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2,
+  Network,
+  Shield,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Settings,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from './ui/dialog';
 import { Checkbox } from './ui/checkbox';
 import { Alert, AlertDescription } from './ui/alert';
 import { apiService, Service, Role, Topology, AaaPolicy, ClassOfService } from '../services/api';
@@ -17,7 +41,7 @@ import type { Site, Profile } from '../types/network';
 
 // Legacy manual site-grouping concept used by the WLAN assignment UI (local to this component).
 // The canonical LegacySiteGroup (controller pair) lives in src/types/domain.ts.
-interface LegacyLegacySiteGroup {
+interface LegacySiteGroup {
   id: string;
   name: string;
   description?: string;
@@ -26,7 +50,11 @@ interface LegacyLegacySiteGroup {
   lastModified?: string;
   color?: string;
 }
-import { generateDefaultService, generatePrivacyConfig, validateServiceData } from '../utils/serviceDefaults';
+import {
+  generateDefaultService,
+  generatePrivacyConfig,
+  validateServiceData,
+} from '../utils/serviceDefaults';
 import { validateEnterpriseAuthRequirements, isEnterpriseAuth } from '../utils/wlanAuthValidation';
 import { toast } from 'sonner';
 
@@ -147,6 +175,7 @@ interface NetworkFormData {
   loadBalancing: boolean; // Legacy field
   radiusAccounting: boolean; // Maps to accountingEnabled
   customProperties: Record<string, string>;
+  enabledSchedule?: string;
 }
 
 export function NetworkEditDetail({ serviceId, onSave, isInline = false }: NetworkEditDetailProps) {
@@ -154,13 +183,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   const [roles, setRoles] = useState<Role[]>([]);
   const [topologies, setTopologies] = useState<Topology[]>([]);
   const [aaaPolicies, setAaaPolicies] = useState<AaaPolicy[]>([]);
-  const [cosOptions, setCosOptions] = useState<ClassOfService[]>([]);
+  const [cosOptions, setCosOptions] = useState<
+    Array<{ id: string; name: string; [key: string]: any }>
+  >([]);
   const [eGuestProfiles, setEGuestProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('basic');
-  
+
   // Site Assignment State
   const [sites, setSites] = useState<Site[]>([]);
   const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
@@ -287,7 +318,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     fastRoaming: false,
     loadBalancing: false,
     radiusAccounting: false,
-    customProperties: {}
+    customProperties: {},
   });
 
   useEffect(() => {
@@ -300,13 +331,20 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       setError(null);
 
       // Load all data sources in parallel — use nametoidmap for dropdown-only data
-      const [serviceResponse, rolesResponse, topologiesResponse, aaaPoliciesResponse, cosResponse, eGuestResponse] = await Promise.allSettled([
+      const [
+        serviceResponse,
+        rolesResponse,
+        topologiesResponse,
+        aaaPoliciesResponse,
+        cosResponse,
+        eGuestResponse,
+      ] = await Promise.allSettled([
         apiService.getServiceById(serviceId),
         apiService.getRoleNameToIdMap(),
         apiService.getTopologyNameToIdMap(),
         apiService.getAaaPolicyNameToIdMap(),
         apiService.getCoSNameToIdMap(),
-        apiService.getEGuestNameToIdMap()
+        apiService.getEGuestNameToIdMap(),
       ]);
 
       if (serviceResponse.status === 'fulfilled') {
@@ -318,7 +356,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         // Get WPA3-SAE configuration
         const saeElement = serviceData.privacy?.WpaSaeElement || serviceData.WpaSaeElement;
         const pskElement = serviceData.privacy?.WpaPskElement || serviceData.WpaPskElement;
-        const enterpriseElement = serviceData.privacy?.WpaEnterpriseElement || serviceData.WpaEnterpriseElement;
+        const enterpriseElement =
+          serviceData.privacy?.WpaEnterpriseElement || serviceData.WpaEnterpriseElement;
 
         // Detect security type from privacy elements
         let detectedSecurityType = 'open';
@@ -326,24 +365,35 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         if (pskElement) {
           detectedSecurityType = 'wpa2-personal';
-          detectedEncryption = pskElement.mode === 'aesOnly' ? 'aes' :
-                              pskElement.mode === 'tkipOnly' ? 'tkip' :
-                              pskElement.mode === 'mixed' ? 'tkip-aes' : 'aes';
+          detectedEncryption =
+            pskElement.mode === 'aesOnly'
+              ? 'aes'
+              : pskElement.mode === 'tkipOnly'
+                ? 'tkip'
+                : pskElement.mode === 'mixed'
+                  ? 'tkip-aes'
+                  : 'aes';
         } else if (saeElement) {
           detectedSecurityType = 'wpa3-personal';
           detectedEncryption = 'aes';
         } else if (enterpriseElement) {
           const pmfRequired = enterpriseElement.pmfMode === 'required';
           detectedSecurityType = pmfRequired ? 'wpa3-enterprise' : 'wpa2-enterprise';
-          detectedEncryption = enterpriseElement.mode === 'aesOnly' ? 'aes' :
-                              enterpriseElement.mode === 'tkipOnly' ? 'tkip' :
-                              enterpriseElement.mode === 'mixed' ? 'tkip-aes' : 'aes';
+          detectedEncryption =
+            enterpriseElement.mode === 'aesOnly'
+              ? 'aes'
+              : enterpriseElement.mode === 'tkipOnly'
+                ? 'tkip'
+                : enterpriseElement.mode === 'mixed'
+                  ? 'tkip-aes'
+                  : 'aes';
         }
 
         // Map service data to comprehensive form data with ALL Extreme Platform ONE fields
         const mappedFormData = {
           // Basic Settings
-          name: serviceData.serviceName || serviceData.name || serviceData.ssid || 'Unnamed Network',
+          name:
+            serviceData.serviceName || serviceData.name || serviceData.ssid || 'Unnamed Network',
           ssid: serviceData.ssid || serviceData.name || '',
           description: serviceData.description || '',
           enabled: serviceData.enabled !== false && serviceData.status !== 'disabled',
@@ -353,11 +403,18 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           privacyType: serviceData.security?.privacyType || serviceData.privacyType || '',
           authType: serviceData.security?.authType || serviceData.authType || '',
           authMethod: serviceData.security?.authMethod || serviceData.authMethod || '',
-          encryption: detectedEncryption || serviceData.security?.encryption || serviceData.encryption || '',
-          passphrase: pskElement?.presharedKey || saeElement?.presharedKey || serviceData.security?.passphrase || serviceData.passphrase || '',
+          encryption:
+            detectedEncryption || serviceData.security?.encryption || serviceData.encryption || '',
+          passphrase:
+            pskElement?.presharedKey ||
+            saeElement?.presharedKey ||
+            serviceData.security?.passphrase ||
+            serviceData.passphrase ||
+            '',
 
           // WPA3-SAE Configuration
-          pmfMode: saeElement?.pmfMode || pskElement?.pmfMode || enterpriseElement?.pmfMode || 'disabled',
+          pmfMode:
+            saeElement?.pmfMode || pskElement?.pmfMode || enterpriseElement?.pmfMode || 'disabled',
           saeMethod: saeElement?.saeMethod || 'SaeH2e',
           beaconProtection: serviceData.beaconProtection || false,
 
@@ -440,7 +497,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           roamingAssistPolicy: serviceData.roamingAssistPolicy || 'none',
 
           // Vendor Attributes
-          vendorSpecificAttributes: serviceData.vendorSpecificAttributes || ['apName', 'vnsName', 'ssid'],
+          vendorSpecificAttributes: serviceData.vendorSpecificAttributes || [
+            'apName',
+            'vnsName',
+            'ssid',
+          ],
 
           // Mesh
           shutdownOnMeshpointLoss: serviceData.shutdownOnMeshpointLoss || false,
@@ -452,7 +513,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           fastRoaming: enterpriseElement?.fastTransitionEnabled || false,
           loadBalancing: serviceData.loadBalancing || false,
           radiusAccounting: serviceData.accountingEnabled || false,
-          customProperties: serviceData.customProperties || {}
+          customProperties: serviceData.customProperties || {},
         };
 
         console.log('Mapped form data:', mappedFormData);
@@ -466,13 +527,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         Object.entries(map).map(([name, id]) => ({ id, name }));
 
       if (rolesResponse.status === 'fulfilled') {
-        setRoles(mapToArray(rolesResponse.value));
+        setRoles(mapToArray(rolesResponse.value) as any);
       } else {
         setRoles([]);
       }
 
       if (topologiesResponse.status === 'fulfilled') {
-        setTopologies(mapToArray(topologiesResponse.value));
+        setTopologies(mapToArray(topologiesResponse.value) as any);
       } else {
         setTopologies([]);
       }
@@ -484,7 +545,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       }
 
       if (cosResponse.status === 'fulfilled') {
-        setCosOptions(mapToArray(cosResponse.value));
+        setCosOptions(mapToArray(cosResponse.value) as any);
       } else {
         setCosOptions([]);
       }
@@ -495,12 +556,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       } else {
         setEGuestProfiles([]);
       }
-
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load network data';
       setError(errorMessage);
       toast.error('Failed to load network data', {
-        description: errorMessage
+        description: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -513,11 +573,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     try {
       const [sitesResponse, savedGroups] = await Promise.all([
         apiService.getSites(),
-        Promise.resolve(localStorage.getItem('siteGroups'))
+        Promise.resolve(localStorage.getItem('siteGroups')),
       ]);
-      
+
       setSites(sitesResponse);
-      
+
       if (savedGroups) {
         try {
           setLegacySiteGroups(JSON.parse(savedGroups));
@@ -542,7 +602,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     try {
       const assignmentService = new WLANAssignmentService();
       const profileMap = await assignmentService.discoverProfilesForSites(siteIds);
-      
+
       const newProfilesBySite = new Map<string, Profile[]>();
       for (const siteId of siteIds) {
         newProfilesBySite.set(siteId, profileMap[siteId] || []);
@@ -555,8 +615,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
   // Get all site IDs including those from site groups
   const getExpandedSiteIds = (): string[] => {
-    const siteIdsFromGroups = selectedLegacySiteGroups.flatMap(groupId => {
-      const group = siteGroups.find(g => g.id === groupId);
+    const siteIdsFromGroups = selectedLegacySiteGroups.flatMap((groupId) => {
+      const group = siteGroups.find((g) => g.id === groupId);
       return group?.siteIds || [];
     });
     return [...new Set([...selectedSites, ...siteIdsFromGroups])];
@@ -564,19 +624,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
   // Toggle site selection
   const toggleSite = (siteId: string) => {
-    setSelectedSites(prev => 
-      prev.includes(siteId) 
-        ? prev.filter(id => id !== siteId)
-        : [...prev, siteId]
+    setSelectedSites((prev) =>
+      prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]
     );
   };
 
   // Toggle site group selection
   const toggleLegacySiteGroup = (groupId: string) => {
-    setSelectedLegacySiteGroups(prev =>
-      prev.includes(groupId)
-        ? prev.filter(id => id !== groupId)
-        : [...prev, groupId]
+    setSelectedLegacySiteGroups((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
     );
   };
 
@@ -591,19 +647,19 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     setAssigningSites(true);
     try {
       const assignmentService = new WLANAssignmentService();
-      
+
       // Discover profiles for all selected sites
       const profileMap = await assignmentService.discoverProfilesForSites(expandedSiteIds);
       const allProfiles = Object.values(profileMap).flat();
-      
+
       // Deduplicate profiles
-      const uniqueProfiles = allProfiles.filter((profile, index, self) =>
-        index === self.findIndex(p => p.id === profile.id)
+      const uniqueProfiles = allProfiles.filter(
+        (profile, index, self) => index === self.findIndex((p) => p.id === profile.id)
       );
 
       if (uniqueProfiles.length === 0) {
         toast.error('No profiles found at selected sites', {
-          description: 'Ensure sites have device groups with profiles configured'
+          description: 'Ensure sites have device groups with profiles configured',
         });
         return;
       }
@@ -611,7 +667,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       // Assign to each profile
       let successCount = 0;
       let failCount = 0;
-      
+
       for (const profile of uniqueProfiles) {
         try {
           await apiService.assignServiceToProfile(serviceId, profile.id);
@@ -633,7 +689,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
       if (successCount > 0) {
         toast.success(`Assigned to ${successCount} profile(s)`, {
-          description: failCount > 0 ? `${failCount} failed` : `Across ${expandedSiteIds.length} site(s)`
+          description:
+            failCount > 0 ? `${failCount} failed` : `Across ${expandedSiteIds.length} site(s)`,
         });
       } else {
         toast.error('Failed to assign to any profiles');
@@ -679,8 +736,12 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       }
 
       // Validate enterprise AAA requirements
-      const effectiveAaaPolicyId = formData.aaaPolicyId === 'none' ? '' : (formData.aaaPolicyId || '');
-      const authError = validateEnterpriseAuthRequirements(formData.securityType, effectiveAaaPolicyId);
+      const effectiveAaaPolicyId =
+        formData.aaaPolicyId === 'none' ? '' : formData.aaaPolicyId || '';
+      const authError = validateEnterpriseAuthRequirements(
+        formData.securityType,
+        effectiveAaaPolicyId
+      );
       if (authError) {
         toast.error('Authentication Configuration Error', { description: authError });
         setActiveTab('basic');
@@ -705,11 +766,19 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             saeMethod: formData.saeMethod,
             presharedKey: formData.passphrase || service.privacy?.WpaSaeElement?.presharedKey || '',
             keyHexEncoded: false,
-            encryption: formData.encryption === 'aes' ? 'AES' : formData.encryption === 'tkip-aes' ? 'TKIP_AES' : 'AES',
-            akmSuiteSelector: 'SAE'
-          }
+            encryption:
+              formData.encryption === 'aes'
+                ? 'AES'
+                : formData.encryption === 'tkip-aes'
+                  ? 'TKIP_AES'
+                  : 'AES',
+            akmSuiteSelector: 'SAE',
+          },
         };
-      } else if (formData.securityType === 'wpa2-personal' || formData.securityType === 'wpa-personal') {
+      } else if (
+        formData.securityType === 'wpa2-personal' ||
+        formData.securityType === 'wpa-personal'
+      ) {
         // WPA2-Personal (PSK)
         privacyConfig = {
           type: formData.securityType === 'wpa2-personal' ? 'WPA2' : 'WPA',
@@ -718,37 +787,58 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             pmfMode: formData.pmfMode || 'disabled',
             presharedKey: formData.passphrase || service.privacy?.WpaPskElement?.presharedKey || '',
             keyHexEncoded: false,
-            encryption: formData.encryption === 'aes' ? 'AES' : formData.encryption === 'tkip' ? 'TKIP' : formData.encryption === 'tkip-aes' ? 'TKIP_AES' : 'AES'
-          }
+            encryption:
+              formData.encryption === 'aes'
+                ? 'AES'
+                : formData.encryption === 'tkip'
+                  ? 'TKIP'
+                  : formData.encryption === 'tkip-aes'
+                    ? 'TKIP_AES'
+                    : 'AES',
+          },
         };
       } else if (formData.securityType.includes('enterprise')) {
         // WPA-Enterprise / WPA2-Enterprise / WPA3-Enterprise
-        const mode = formData.securityType === 'wpa3-enterprise' ? 'WPA3' :
-                     formData.securityType === 'wpa2-enterprise' ? 'WPA2' :
-                     formData.securityType === 'wpa23-enterprise' ? 'WPA2/3' : 'WPA';
+        const mode =
+          formData.securityType === 'wpa3-enterprise'
+            ? 'WPA3'
+            : formData.securityType === 'wpa2-enterprise'
+              ? 'WPA2'
+              : formData.securityType === 'wpa23-enterprise'
+                ? 'WPA2/3'
+                : 'WPA';
 
         privacyConfig = {
           type: mode,
           WpaEnterpriseElement: {
             mode: mode,
-            pmfMode: formData.pmfMode || (formData.securityType === 'wpa3-enterprise' ? 'required' : 'disabled'),
-            encryption: formData.encryption === 'aes' ? 'AES' : formData.encryption === 'tkip' ? 'TKIP' : formData.encryption === 'tkip-aes' ? 'TKIP_AES' : 'AES',
+            pmfMode:
+              formData.pmfMode ||
+              (formData.securityType === 'wpa3-enterprise' ? 'required' : 'disabled'),
+            encryption:
+              formData.encryption === 'aes'
+                ? 'AES'
+                : formData.encryption === 'tkip'
+                  ? 'TKIP'
+                  : formData.encryption === 'tkip-aes'
+                    ? 'TKIP_AES'
+                    : 'AES',
             fastTransitionEnabled: formData.fastTransitionEnabled,
-            fastTransitionMdId: formData.fastTransitionMdId || 0
-          }
+            fastTransitionMdId: formData.fastTransitionMdId || 0,
+          },
         };
       } else if (formData.securityType === 'owe') {
         // OWE (Opportunistic Wireless Encryption)
         privacyConfig = {
           type: 'OWE',
           OweElement: {
-            encryption: 'AES'
-          }
+            encryption: 'AES',
+          },
         };
       } else if (formData.securityType === 'open') {
         // Open network
         privacyConfig = {
-          type: 'Open'
+          type: 'Open',
         };
       } else if (formData.passphrase && formData.passphrase.trim()) {
         // Fallback: use existing privacy config generator
@@ -788,10 +878,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         // === ROLE ASSIGNMENT ===
         authenticatedUserDefaultRoleID: formData.authenticatedUserDefaultRoleID || 'none',
         unAuthenticatedUserDefaultRoleID: formData.unAuthenticatedUserDefaultRoleID || 'none',
-        mbatimeoutRoleId: formData.mbatimeoutRoleId === 'none' ? null : formData.mbatimeoutRoleId,
+        mbatimeoutRoleId:
+          formData.mbatimeoutRoleId === 'none' ? undefined : formData.mbatimeoutRoleId,
 
         // === NETWORK SETTINGS ===
-        defaultTopology: formData.defaultTopology === 'none' ? null : formData.defaultTopology,
+        defaultTopology: formData.defaultTopology === 'none' ? undefined : formData.defaultTopology,
         proxied: formData.proxied,
         vlan: formData.vlan ? parseInt(formData.vlan) : undefined,
         band: formData.band,
@@ -808,7 +899,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         mbo: formData.mbo,
 
         // === QUALITY OF SERVICE ===
-        defaultCoS: formData.defaultCoS === 'none' ? null : formData.defaultCoS,
+        defaultCoS: formData.defaultCoS === 'none' ? undefined : formData.defaultCoS,
         bandwidthLimitEnabled: formData.bandwidthLimitEnabled,
         downloadLimit: formData.bandwidthLimitEnabled ? formData.downloadLimit : 0,
         uploadLimit: formData.bandwidthLimitEnabled ? formData.uploadLimit : 0,
@@ -843,7 +934,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         includeHostname: formData.includeHostname,
 
         // === ROAMING & OPTIMIZATION ===
-        roamingAssistPolicy: formData.roamingAssistPolicy === 'none' ? null : formData.roamingAssistPolicy,
+        roamingAssistPolicy:
+          formData.roamingAssistPolicy === 'none' ? null : formData.roamingAssistPolicy,
         loadBalancing: formData.loadBalancing,
 
         // === RADIUS VENDOR ATTRIBUTES ===
@@ -855,7 +947,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       };
 
       // Remove undefined values to avoid API issues
-      Object.keys(completeServiceData).forEach(key => {
+      Object.keys(completeServiceData).forEach((key) => {
         if (completeServiceData[key as keyof Service] === undefined) {
           delete completeServiceData[key as keyof Service];
         }
@@ -878,16 +970,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       setService(updatedService);
 
       toast.success('Network configuration saved successfully', {
-        description: `Settings for ${formData.name} have been updated with all controller features.`
+        description: `Settings for ${formData.name} have been updated with all controller features.`,
       });
 
       // Call onSave callback to refresh parent component
       if (onSave) {
         onSave();
       }
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save network configuration';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to save network configuration';
       setError(errorMessage);
 
       // Enhanced error logging for debugging
@@ -904,29 +996,35 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       console.error('- Check if service ID exists:', serviceId);
       console.error('- Verify field names match API expectations');
       console.error('- Check for required fields that might be missing');
-      console.error('- Privacy object structure:', service.privacy);
+      console.error('- Privacy object structure:', service?.privacy);
       console.error('- Security type:', formData.securityType);
 
       if (err && typeof err === 'object') {
         console.error('Error object properties:', Object.getOwnPropertyNames(err));
-        console.error('Error object values:', Object.fromEntries(
-          Object.getOwnPropertyNames(err).map(prop => [prop, (err as any)[prop]])
-        ));
+        console.error(
+          'Error object values:',
+          Object.fromEntries(
+            Object.getOwnPropertyNames(err).map((prop) => [prop, (err as any)[prop]])
+          )
+        );
       }
 
       // Provide actionable error message to user
       let userFriendlyError = errorMessage;
       if (errorMessage.includes('422')) {
-        userFriendlyError = 'Validation failed. The controller rejected the update. Check that all field values are valid (e.g., valid VLAN range, proper passphrase length, valid UUIDs for roles/topologies).';
+        userFriendlyError =
+          'Validation failed. The controller rejected the update. Check that all field values are valid (e.g., valid VLAN range, proper passphrase length, valid UUIDs for roles/topologies).';
       } else if (errorMessage.includes('404')) {
-        userFriendlyError = 'Service not found. The network configuration may have been deleted by another user.';
+        userFriendlyError =
+          'Service not found. The network configuration may have been deleted by another user.';
       } else if (errorMessage.includes('403')) {
-        userFriendlyError = 'Access denied. You may not have permission to modify this network configuration.';
+        userFriendlyError =
+          'Access denied. You may not have permission to modify this network configuration.';
       }
 
       toast.error('Failed to save network configuration', {
         description: userFriendlyError,
-        duration: 10000 // Longer duration for error messages
+        duration: 10000, // Longer duration for error messages
       });
     } finally {
       setSaving(false);
@@ -934,9 +1032,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   };
 
   const handleInputChange = (field: keyof NetworkFormData, value: string | boolean | number) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -954,14 +1052,34 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   // Helper: is this an enterprise auth type?
   const isEnterprise = isEnterpriseAuth(formData.securityType || '');
   // Helper: is this a PSK auth type that needs passphrase config?
-  const isPsk = ['wep', 'wpa-personal', 'wpa2-personal', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.securityType);
+  const isPsk = [
+    'wep',
+    'wpa-personal',
+    'wpa2-personal',
+    'wpa3-personal',
+    'wpa3-compatibility',
+  ].includes(formData.securityType);
   // Helper: show 6E WPA Compliance badge?
-  const show6eBadge = ['owe', 'wpa3-personal', 'wpa3-enterprise', 'wpa3-compatibility', 'wpa23-enterprise'].includes(formData.securityType);
+  const show6eBadge = [
+    'owe',
+    'wpa3-personal',
+    'wpa3-enterprise',
+    'wpa3-compatibility',
+    'wpa23-enterprise',
+  ].includes(formData.securityType);
 
   // ── Reusable Components (Mist-inspired card grid) ───────────────────
 
   /** Settings card — rounded, bordered, fills grid cell */
-  const SettingsCard = ({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) => (
+  const SettingsCard = ({
+    title,
+    children,
+    className = '',
+  }: {
+    title: string;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
     <div className={`rounded-lg border border-border/50 bg-card ${className}`}>
       <div className="px-5 py-3 border-b border-border/40">
         <h3 className="text-[13px] font-semibold">{title}</h3>
@@ -979,11 +1097,21 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   );
 
   /** Toggle field — label left, switch + status right */
-  const Toggle = ({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) => (
+  const Toggle = ({
+    label,
+    checked,
+    onChange,
+  }: {
+    label: string;
+    checked: boolean;
+    onChange: (v: boolean) => void;
+  }) => (
     <div className="flex items-center justify-between py-3 px-1">
       <span className="text-[13px] mr-4">{label}</span>
       <div className="flex items-center gap-3 shrink-0">
-        <span className={`text-[11px] font-semibold tracking-wide ${checked ? 'text-emerald-500' : 'text-muted-foreground/50'}`}>
+        <span
+          className={`text-[11px] font-semibold tracking-wide ${checked ? 'text-emerald-500' : 'text-muted-foreground/50'}`}
+        >
           {checked ? 'ON' : 'OFF'}
         </span>
         <Switch checked={checked} onCheckedChange={onChange} />
@@ -1009,11 +1137,25 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           <p className="text-xs text-muted-foreground">SSID: {formData.ssid || '—'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" disabled={saving} className="h-8 w-8 text-muted-foreground hover:text-destructive">
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={saving}
+            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+          >
             <Trash2 className="h-4 w-4" />
           </Button>
-          <Button onClick={handleSave} disabled={saving} size="sm" className="h-8 px-4 text-xs font-medium">
-            {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            className="h-8 px-4 text-xs font-medium"
+          >
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5 mr-1.5" />
+            )}
             {saving ? 'Saving…' : 'Save'}
           </Button>
         </div>
@@ -1021,23 +1163,38 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
       {/* ═══ CARD GRID — Mist-style multi-column layout ═══ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-
         {/* ── SSID ── */}
         <SettingsCard title="SSID">
           <div className="space-y-5">
             <Field label="Network Name">
-              <Input value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} placeholder="e.g. Corporate WiFi" className="h-9 text-sm" />
+              <Input
+                value={formData.name}
+                onChange={(e) => handleInputChange('name', e.target.value)}
+                placeholder="e.g. Corporate WiFi"
+                className="h-9 text-sm"
+              />
             </Field>
             <Field label="SSID">
-              <Input value={formData.ssid} onChange={(e) => handleInputChange('ssid', e.target.value)} placeholder="Broadcast name" className="h-9 text-sm" />
+              <Input
+                value={formData.ssid}
+                onChange={(e) => handleInputChange('ssid', e.target.value)}
+                placeholder="Broadcast name"
+                className="h-9 text-sm"
+              />
               <p className="text-xs text-muted-foreground mt-1">
-                Supports variable substitution, e.g. <code className="font-mono bg-muted px-1 rounded">{'{{site_name}}'}</code>
+                Supports variable substitution, e.g.{' '}
+                <code className="font-mono bg-muted px-1 rounded">{'{{site_name}}'}</code>
               </p>
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="WLAN Status">
-                <Select value={formData.enabled ? 'enabled' : 'disabled'} onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.enabled ? 'enabled' : 'disabled'}
+                  onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="enabled">Enabled</SelectItem>
                     <SelectItem value="disabled">Disabled</SelectItem>
@@ -1045,8 +1202,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 </Select>
               </Field>
               <Field label="Hotspot 2.0">
-                <Select value={formData.hotspot ? 'enabled' : 'disabled'} onValueChange={(v) => { handleInputChange('hotspot', v === 'enabled'); handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled'); }}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.hotspot ? 'enabled' : 'disabled'}
+                  onValueChange={(v) => {
+                    handleInputChange('hotspot', v === 'enabled');
+                    handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled');
+                  }}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="disabled">Disabled</SelectItem>
                     <SelectItem value="enabled">Enabled</SelectItem>
@@ -1062,8 +1227,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           <div className="space-y-5">
             <Field label="Auth Type">
               <div className="flex items-center gap-2">
-                <Select value={formData.securityType} onValueChange={(v) => handleInputChange('securityType', v)}>
-                  <SelectTrigger className="h-9 text-sm flex-1"><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.securityType}
+                  onValueChange={(v) => handleInputChange('securityType', v)}
+                >
+                  <SelectTrigger className="h-9 text-sm flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="open">Open</SelectItem>
                     <SelectItem value="owe">OWE (Enhanced Open)</SelectItem>
@@ -1092,24 +1262,60 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                       <div className="space-y-4 py-3">
                         <Field label="Passphrase">
                           <div className="relative">
-                            <Input type={showPassphrase ? 'text' : 'password'} value={formData.passphrase} onChange={(e) => handleInputChange('passphrase', e.target.value)} placeholder={formData.securityType === 'wep' ? '10 or 26 hex characters' : '8–63 characters'} className="h-10 pr-10 text-sm" />
-                            <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" onClick={() => setShowPassphrase(!showPassphrase)}>
-                              {showPassphrase ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            <Input
+                              type={showPassphrase ? 'text' : 'password'}
+                              value={formData.passphrase}
+                              onChange={(e) => handleInputChange('passphrase', e.target.value)}
+                              placeholder={
+                                formData.securityType === 'wep'
+                                  ? '10 or 26 hex characters'
+                                  : '8–63 characters'
+                              }
+                              className="h-10 pr-10 text-sm"
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPassphrase(!showPassphrase)}
+                            >
+                              {showPassphrase ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
                             </button>
                           </div>
                         </Field>
                         <div className="grid grid-cols-2 gap-4">
                           <Field label="Encryption">
-                            <Select value={formData.encryption} onValueChange={(v) => handleInputChange('encryption', v)}>
-                              <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                            <Select
+                              value={formData.encryption}
+                              onValueChange={(v) => handleInputChange('encryption', v)}
+                            >
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
                               <SelectContent>
-                                {formData.securityType === 'wep' ? <SelectItem value="wep">WEP</SelectItem> : (<><SelectItem value="aes">AES (CCMP)</SelectItem><SelectItem value="tkip">TKIP</SelectItem><SelectItem value="tkip-aes">TKIP + AES</SelectItem></>)}
+                                {formData.securityType === 'wep' ? (
+                                  <SelectItem value="wep">WEP</SelectItem>
+                                ) : (
+                                  <>
+                                    <SelectItem value="aes">AES (CCMP)</SelectItem>
+                                    <SelectItem value="tkip">TKIP</SelectItem>
+                                    <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </Field>
                           <Field label="PMF">
-                            <Select value={formData.pmfMode} onValueChange={(v) => handleInputChange('pmfMode', v)}>
-                              <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                            <Select
+                              value={formData.pmfMode}
+                              onValueChange={(v) => handleInputChange('pmfMode', v)}
+                            >
+                              <SelectTrigger className="h-10">
+                                <SelectValue />
+                              </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="disabled">Disabled</SelectItem>
                                 <SelectItem value="capable">Capable</SelectItem>
@@ -1120,16 +1326,28 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                         </div>
                       </div>
                       <DialogFooter>
-                        <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
-                        <DialogClose asChild><Button>Apply</Button></DialogClose>
+                        <DialogClose asChild>
+                          <Button variant="ghost">Cancel</Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button>Apply</Button>
+                        </DialogClose>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 )}
               </div>
             </Field>
-            {show6eBadge && <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 text-[10px] font-medium">6E WPA Compliance</Badge>}
-            <Toggle label="MAC-based Auth (MBA)" checked={formData.macBasedAuth} onChange={(v) => handleInputChange('macBasedAuth', v)} />
+            {show6eBadge && (
+              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 text-[10px] font-medium">
+                6E WPA Compliance
+              </Badge>
+            )}
+            <Toggle
+              label="MAC-based Auth (MBA)"
+              checked={formData.macBasedAuth}
+              onChange={(v) => handleInputChange('macBasedAuth', v)}
+            />
           </div>
         </SettingsCard>
 
@@ -1137,20 +1355,38 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         <SettingsCard title="Role & VLAN">
           <div className="space-y-5">
             <Field label="Default Auth Role">
-              <Select value={formData.authenticatedUserDefaultRoleID || 'none'} onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <Select
+                value={formData.authenticatedUserDefaultRoleID || 'none'}
+                onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {roles.map((r) => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
             <Field label="Default VLAN / Topology">
-              <Select value={formData.defaultTopology || 'none'} onValueChange={(v) => handleInputChange('defaultTopology', v)}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <Select
+                value={formData.defaultTopology || 'none'}
+                onValueChange={(v) => handleInputChange('defaultTopology', v)}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">None</SelectItem>
-                  {topologies.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  {topologies.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </Field>
@@ -1160,12 +1396,21 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         {/* ── Captive Portal ── */}
         <SettingsCard title="Captive Portal">
           <div className="space-y-5">
-            <Toggle label="Enable Captive Portal" checked={formData.captivePortal} onChange={(v) => handleInputChange('captivePortal', v)} />
+            <Toggle
+              label="Enable Captive Portal"
+              checked={formData.captivePortal}
+              onChange={(v) => handleInputChange('captivePortal', v)}
+            />
             {formData.captivePortal && (
               <>
                 <Field label="Portal Type">
-                  <Select value={formData.captivePortalType || 'none'} onValueChange={(v) => handleInputChange('captivePortalType', v)}>
-                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <Select
+                    value={formData.captivePortalType || 'none'}
+                    onValueChange={(v) => handleInputChange('captivePortalType', v)}
+                  >
+                    <SelectTrigger className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
                       <SelectItem value="eGuest">eGuest</SelectItem>
@@ -1175,11 +1420,20 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 </Field>
                 {formData.captivePortalType === 'eGuest' && eGuestProfiles.length > 0 && (
                   <Field label="eGuest Profile">
-                    <Select value={formData.eGuestPortalId || 'none'} onValueChange={(v) => handleInputChange('eGuestPortalId', v)}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                    <Select
+                      value={formData.eGuestPortalId || 'none'}
+                      onValueChange={(v) => handleInputChange('eGuestPortalId', v)}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">None</SelectItem>
-                        {eGuestProfiles.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                        {eGuestProfiles.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </Field>
@@ -1194,92 +1448,222 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           <SettingsCard title="Enterprise AAA" className="lg:col-span-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Field label="AAA Policy">
-                <Select value={formData.aaaPolicyId || 'none'} onValueChange={(v) => handleInputChange('aaaPolicyId', v)}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="none">None</SelectItem>{aaaPolicies.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                <Select
+                  value={formData.aaaPolicyId || 'none'}
+                  onValueChange={(v) => handleInputChange('aaaPolicyId', v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {aaaPolicies.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-                {isEnterpriseAuth(formData.securityType) && (!formData.aaaPolicyId || formData.aaaPolicyId === 'none') && (
-                  <p role="alert" className="text-xs text-destructive flex items-center gap-1 mt-1">
-                    <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                    AAA policy required for enterprise authentication
-                  </p>
-                )}
+                {isEnterpriseAuth(formData.securityType) &&
+                  (!formData.aaaPolicyId || formData.aaaPolicyId === 'none') && (
+                    <p
+                      role="alert"
+                      className="text-xs text-destructive flex items-center gap-1 mt-1"
+                    >
+                      <AlertCircle className="h-3 w-3" aria-hidden="true" />
+                      AAA policy required for enterprise authentication
+                    </p>
+                  )}
               </Field>
               <Field label="Auth Method">
-                <Select value={formData.authMethod || 'radius'} onValueChange={(v) => handleInputChange('authMethod', v)}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="radius">RADIUS</SelectItem><SelectItem value="ldap">LDAP</SelectItem><SelectItem value="local">Local</SelectItem></SelectContent>
+                <Select
+                  value={formData.authMethod || 'radius'}
+                  onValueChange={(v) => handleInputChange('authMethod', v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="radius">RADIUS</SelectItem>
+                    <SelectItem value="ldap">LDAP</SelectItem>
+                    <SelectItem value="local">Local</SelectItem>
+                  </SelectContent>
                 </Select>
               </Field>
               <Field label="Encryption">
-                <Select value={formData.encryption || 'aes'} onValueChange={(v) => handleInputChange('encryption', v)}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="aes">AES (CCMP)</SelectItem><SelectItem value="tkip">TKIP</SelectItem><SelectItem value="tkip-aes">TKIP + AES</SelectItem></SelectContent>
+                <Select
+                  value={formData.encryption || 'aes'}
+                  onValueChange={(v) => handleInputChange('encryption', v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="aes">AES (CCMP)</SelectItem>
+                    <SelectItem value="tkip">TKIP</SelectItem>
+                    <SelectItem value="tkip-aes">TKIP + AES</SelectItem>
+                  </SelectContent>
                 </Select>
               </Field>
               <Field label="PMF Mode">
-                <Select value={formData.pmfMode || 'disabled'} onValueChange={(v) => handleInputChange('pmfMode', v)}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="disabled">Disabled</SelectItem><SelectItem value="capable">Capable</SelectItem><SelectItem value="required">Required</SelectItem></SelectContent>
+                <Select
+                  value={formData.pmfMode || 'disabled'}
+                  onValueChange={(v) => handleInputChange('pmfMode', v)}
+                >
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="disabled">Disabled</SelectItem>
+                    <SelectItem value="capable">Capable</SelectItem>
+                    <SelectItem value="required">Required</SelectItem>
+                  </SelectContent>
                 </Select>
               </Field>
             </div>
             <div className="mt-3 pt-3 border-t border-border/40">
-              <Toggle label="Fast Transition (802.11r)" checked={formData.fastTransitionEnabled} onChange={(v) => handleInputChange('fastTransitionEnabled', v)} />
+              <Toggle
+                label="Fast Transition (802.11r)"
+                checked={formData.fastTransitionEnabled}
+                onChange={(v) => handleInputChange('fastTransitionEnabled', v)}
+              />
             </div>
           </SettingsCard>
         )}
 
         {/* ── SSID Scheduling (toggle) ── */}
         <div className="rounded-lg border border-border/50 bg-card">
-          <button onClick={() => setShowSchedulingCard(!showSchedulingCard)} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+          <button
+            onClick={() => setShowSchedulingCard(!showSchedulingCard)}
+            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+          >
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">SSID Scheduling</h3>
             </div>
-            {showSchedulingCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            {showSchedulingCard ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
           </button>
-          {showSchedulingCard && <div className="border-t border-border/40 px-5 py-4">
-          <div>
-            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => {
-              const schedule = formData.enabledSchedule || {};
-              const ds = schedule[day] || { start: { hour: 0, minute: 0 }, stop: { hour: 0, minute: 0 } };
-              const sH = ds.start?.hour ?? 0, sM = ds.start?.minute ?? 0, eH = ds.stop?.hour ?? 0, eM = ds.stop?.minute ?? 0;
-              const isOff = sH === 0 && sM === 0 && eH === 0 && eM === 0;
-              return (
-                <div key={day} className="flex items-center justify-between h-10 border-b border-border/20 last:border-0">
-                  <span className="text-xs font-medium capitalize w-20">{day}</span>
-                  <div className="flex items-center gap-1.5">
-                    <Input type="time" value={`${String(sH).padStart(2,'0')}:${String(sM).padStart(2,'0')}`} onChange={(e) => { const [h,m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...ds, start: { hour: h, minute: m } } } as any); }} className="w-24 h-7 text-xs" />
-                    <span className="text-[10px] text-muted-foreground">→</span>
-                    <Input type="time" value={`${String(eH).padStart(2,'0')}:${String(eM).padStart(2,'0')}`} onChange={(e) => { const [h,m] = e.target.value.split(':').map(Number); handleInputChange('enabledSchedule' as any, { ...formData.enabledSchedule, [day]: { ...ds, stop: { hour: h, minute: m } } } as any); }} className="w-24 h-7 text-xs" />
-                    <div className={`w-1.5 h-1.5 rounded-full ${isOff ? 'bg-muted-foreground/30' : 'bg-emerald-500'}`} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          </div>}
+          {showSchedulingCard && (
+            <div className="border-t border-border/40 px-5 py-4">
+              <div>
+                {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(
+                  (day) => {
+                    const schedule = formData.enabledSchedule || {};
+                    const ds = schedule[day] || {
+                      start: { hour: 0, minute: 0 },
+                      stop: { hour: 0, minute: 0 },
+                    };
+                    const sH = ds.start?.hour ?? 0,
+                      sM = ds.start?.minute ?? 0,
+                      eH = ds.stop?.hour ?? 0,
+                      eM = ds.stop?.minute ?? 0;
+                    const isOff = sH === 0 && sM === 0 && eH === 0 && eM === 0;
+                    return (
+                      <div
+                        key={day}
+                        className="flex items-center justify-between h-10 border-b border-border/20 last:border-0"
+                      >
+                        <span className="text-xs font-medium capitalize w-20">{day}</span>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="time"
+                            value={`${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`}
+                            onChange={(e) => {
+                              const [h, m] = e.target.value.split(':').map(Number);
+                              handleInputChange(
+                                'enabledSchedule' as any,
+                                {
+                                  ...((formData.enabledSchedule as any) || {}),
+                                  [day]: { ...ds, start: { hour: h, minute: m } },
+                                } as any
+                              );
+                            }}
+                            className="w-24 h-7 text-xs"
+                          />
+                          <span className="text-[10px] text-muted-foreground">→</span>
+                          <Input
+                            type="time"
+                            value={`${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`}
+                            onChange={(e) => {
+                              const [h, m] = e.target.value.split(':').map(Number);
+                              handleInputChange(
+                                'enabledSchedule' as any,
+                                {
+                                  ...((formData.enabledSchedule as any) || {}),
+                                  [day]: { ...ds, stop: { hour: h, minute: m } },
+                                } as any
+                              );
+                            }}
+                            className="w-24 h-7 text-xs"
+                          />
+                          <div
+                            className={`w-1.5 h-1.5 rounded-full ${isOff ? 'bg-muted-foreground/30' : 'bg-emerald-500'}`}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ── QoS Priority ── */}
         <SettingsCard title="QoS Priority">
           <div className="space-y-5">
             <Field label="Class of Service">
-              <Select value={formData.defaultCoS || 'none'} onValueChange={(v) => handleInputChange('defaultCoS', v)}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select CoS" /></SelectTrigger>
-                <SelectContent><SelectItem value="none">None</SelectItem>{cosOptions.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              <Select
+                value={formData.defaultCoS || 'none'}
+                onValueChange={(v) => handleInputChange('defaultCoS', v)}
+              >
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Select CoS" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {cosOptions.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </Field>
             <div className="grid grid-cols-3 gap-4">
               <Field label="Pre-Auth Timeout">
-                <Input type="number" value={formData.preAuthenticatedIdleTimeout} onChange={(e) => handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)} className="h-9 text-sm" />
+                <Input
+                  type="number"
+                  value={formData.preAuthenticatedIdleTimeout}
+                  onChange={(e) =>
+                    handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
+                  }
+                  className="h-9 text-sm"
+                />
               </Field>
               <Field label="Post-Auth Timeout">
-                <Input type="number" value={formData.postAuthenticatedIdleTimeout} onChange={(e) => handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)} className="h-9 text-sm" />
+                <Input
+                  type="number"
+                  value={formData.postAuthenticatedIdleTimeout}
+                  onChange={(e) =>
+                    handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
+                  }
+                  className="h-9 text-sm"
+                />
               </Field>
               <Field label="Max Session">
-                <Input type="number" value={formData.sessionTimeout} onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)} className="h-9 text-sm" />
+                <Input
+                  type="number"
+                  value={formData.sessionTimeout}
+                  onChange={(e) =>
+                    handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)
+                  }
+                  className="h-9 text-sm"
+                />
               </Field>
             </div>
           </div>
@@ -1287,33 +1671,106 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Advanced (toggle) ── spans full width */}
         <div className="rounded-lg border border-border/50 bg-card lg:col-span-2">
-          <button onClick={() => setShowAdvancedCard(!showAdvancedCard)} className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors">
+          <button
+            onClick={() => setShowAdvancedCard(!showAdvancedCard)}
+            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+          >
             <div className="flex items-center gap-2">
               <Settings className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-sm font-semibold">Advanced</h3>
             </div>
-            {showAdvancedCard ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            {showAdvancedCard ? (
+              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            )}
           </button>
-          {showAdvancedCard && <div className="border-t border-border/40 px-5 py-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
-            <Toggle label="MultiBand Operation" checked={formData.bandSteering} onChange={(v) => handleInputChange('bandSteering', v)} />
-            <Toggle label="RADIUS Accounting" checked={formData.accountingEnabled} onChange={(v) => { handleInputChange('accountingEnabled', v); handleInputChange('radiusAccounting', v); }} />
-            <Toggle label="Hide SSID" checked={formData.hidden} onChange={(v) => { handleInputChange('hidden', v); handleInputChange('broadcastSSID', !v); }} />
-            <Toggle label="Include Hostname" checked={formData.includeHostname} onChange={(v) => handleInputChange('includeHostname', v)} />
-            <Toggle label="FTM (11mc) Responder" checked={formData.enable11mcSupport} onChange={(v) => handleInputChange('enable11mcSupport', v)} />
-            <Toggle label="Radio Mgmt (11k)" checked={formData.enabled11kSupport} onChange={(v) => handleInputChange('enabled11kSupport', v)} />
-            <Toggle label="U-APSD (WMM-PS)" checked={formData.uapsdEnabled} onChange={(v) => handleInputChange('uapsdEnabled', v)} />
-            <Toggle label="Admission Ctrl — Voice" checked={formData.admissionControlVoice} onChange={(v) => handleInputChange('admissionControlVoice', v)} />
-            <Toggle label="Admission Ctrl — Video" checked={formData.admissionControlVideo} onChange={(v) => handleInputChange('admissionControlVideo', v)} />
-            <Toggle label="Admission Ctrl — BE" checked={formData.admissionControlBestEffort} onChange={(v) => handleInputChange('admissionControlBestEffort', v)} />
-            <Toggle label="Admission Ctrl — BK" checked={formData.admissionControlBackgroundTraffic} onChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)} />
-            <Toggle label="Client-to-Client" checked={formData.clientToClientCommunication} onChange={(v) => { handleInputChange('clientToClientCommunication', v); handleInputChange('isolateClients', !v); }} />
-            <Toggle label="Clear on Disconnect" checked={formData.purgeOnDisconnect} onChange={(v) => handleInputChange('purgeOnDisconnect', v)} />
-            <Toggle label="Beacon Protection" checked={formData.beaconProtection} onChange={(v) => handleInputChange('beaconProtection', v)} />
-          </div>
-          </div>}
+          {showAdvancedCard && (
+            <div className="border-t border-border/40 px-5 py-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
+                <Toggle
+                  label="MultiBand Operation"
+                  checked={formData.bandSteering}
+                  onChange={(v) => handleInputChange('bandSteering', v)}
+                />
+                <Toggle
+                  label="RADIUS Accounting"
+                  checked={formData.accountingEnabled}
+                  onChange={(v) => {
+                    handleInputChange('accountingEnabled', v);
+                    handleInputChange('radiusAccounting', v);
+                  }}
+                />
+                <Toggle
+                  label="Hide SSID"
+                  checked={formData.hidden}
+                  onChange={(v) => {
+                    handleInputChange('hidden', v);
+                    handleInputChange('broadcastSSID', !v);
+                  }}
+                />
+                <Toggle
+                  label="Include Hostname"
+                  checked={formData.includeHostname}
+                  onChange={(v) => handleInputChange('includeHostname', v)}
+                />
+                <Toggle
+                  label="FTM (11mc) Responder"
+                  checked={formData.enable11mcSupport}
+                  onChange={(v) => handleInputChange('enable11mcSupport', v)}
+                />
+                <Toggle
+                  label="Radio Mgmt (11k)"
+                  checked={formData.enabled11kSupport}
+                  onChange={(v) => handleInputChange('enabled11kSupport', v)}
+                />
+                <Toggle
+                  label="U-APSD (WMM-PS)"
+                  checked={formData.uapsdEnabled}
+                  onChange={(v) => handleInputChange('uapsdEnabled', v)}
+                />
+                <Toggle
+                  label="Admission Ctrl — Voice"
+                  checked={formData.admissionControlVoice}
+                  onChange={(v) => handleInputChange('admissionControlVoice', v)}
+                />
+                <Toggle
+                  label="Admission Ctrl — Video"
+                  checked={formData.admissionControlVideo}
+                  onChange={(v) => handleInputChange('admissionControlVideo', v)}
+                />
+                <Toggle
+                  label="Admission Ctrl — BE"
+                  checked={formData.admissionControlBestEffort}
+                  onChange={(v) => handleInputChange('admissionControlBestEffort', v)}
+                />
+                <Toggle
+                  label="Admission Ctrl — BK"
+                  checked={formData.admissionControlBackgroundTraffic}
+                  onChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)}
+                />
+                <Toggle
+                  label="Client-to-Client"
+                  checked={formData.clientToClientCommunication}
+                  onChange={(v) => {
+                    handleInputChange('clientToClientCommunication', v);
+                    handleInputChange('isolateClients', !v);
+                  }}
+                />
+                <Toggle
+                  label="Clear on Disconnect"
+                  checked={formData.purgeOnDisconnect}
+                  onChange={(v) => handleInputChange('purgeOnDisconnect', v)}
+                />
+                <Toggle
+                  label="Beacon Protection"
+                  checked={formData.beaconProtection}
+                  onChange={(v) => handleInputChange('beaconProtection', v)}
+                />
+              </div>
+            </div>
+          )}
         </div>
-
       </div>
     </div>
   );

@@ -1,5 +1,20 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Building2, Users, Wifi, Activity, MapPin, X, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUp, ArrowDown, ArrowUpDown, AlertCircle } from 'lucide-react';
+import {
+  Building2,
+  Users,
+  Wifi,
+  Activity,
+  MapPin,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  AlertCircle,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -55,13 +70,13 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
   const { query, setQuery, filterRows, hasActiveSearch } = useCompoundSearch<Site>({
     storageKey: 'sites-search',
     fields: [
-      s => s.name,
-      s => s.site_group_name,
-      s => s.location,
-      s => s.country,
-      s => s.status,
-      s => s.tags?.join(' '),
-      s => s.description,
+      (s) => s.name,
+      (s) => s.site_group_name,
+      (s) => s.location,
+      (s) => s.country,
+      (s) => s.status,
+      (s) => s.tags?.join(' '),
+      (s) => s.description,
     ],
   });
 
@@ -81,15 +96,19 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
       const rawSites = await apiService.getSites();
 
       // Default site group for sites without an explicit site_group_id
-      const defaultSg = siteGroups.find(sg => sg.is_default)
-        || (siteGroups.length === 1 ? siteGroups[0] : undefined);
+      const defaultSg =
+        siteGroups.find((sg) => sg.is_default) ||
+        (siteGroups.length === 1 ? siteGroups[0] : undefined);
 
       // Map raw api.Site → domain.Site with enrichment
-      const mapped: Site[] = (rawSites as any[]).map(s => {
+      const mapped: Site[] = (rawSites as any[]).map((s) => {
         const sgId = s.site_group_id || s.siteGroupId || defaultSg?.id || '';
-        const sgName = s.site_group_name || s.siteGroupName ||
-          siteGroups.find(sg => sg.id === sgId)?.name ||
-          defaultSg?.name || '';
+        const sgName =
+          s.site_group_name ||
+          s.siteGroupName ||
+          siteGroups.find((sg) => sg.id === sgId)?.name ||
+          defaultSg?.name ||
+          '';
 
         return {
           id: s.id,
@@ -128,17 +147,20 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
   // Re-enrich site_group_name if siteGroups loads after sites
   useEffect(() => {
     if (siteGroups.length > 0 && sites.length > 0) {
-      setSites(prev => prev.map(s => ({
-        ...s,
-        site_group_name: s.site_group_name || siteGroups.find(sg => sg.id === s.site_group_id)?.name || '',
-      })));
+      setSites((prev) =>
+        prev.map((s) => ({
+          ...s,
+          site_group_name:
+            s.site_group_name || siteGroups.find((sg) => sg.id === s.site_group_id)?.name || '',
+        }))
+      );
     }
   }, [siteGroups]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cross-page pre-filter (applied before compound search)
   const preFilteredSites = useMemo(() => {
     if (!siteGroupFilter) return sites;
-    return sites.filter(s => s.site_group_id === siteGroupFilter.id);
+    return sites.filter((s) => s.site_group_id === siteGroupFilter.id);
   }, [sites, siteGroupFilter]);
 
   const filteredSites = useMemo(() => filterRows(preFilteredSites), [filterRows, preFilteredSites]);
@@ -160,17 +182,31 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
     return sortedSites.slice(start, start + itemsPerPage);
   }, [sortedSites, currentPage, itemsPerPage]);
 
-  useEffect(() => { setCurrentPage(1); }, [query, sortField, sortDirection, siteGroupFilter]);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [query, sortField, sortDirection, siteGroupFilter]);
 
   // Metric card values
-  const activeSiteCount = useMemo(() => filteredSites.filter(s => s.status === 'active').length, [filteredSites]);
-  const inactiveSiteCount = useMemo(() => filteredSites.filter(s => s.status !== 'active').length, [filteredSites]);
-  const totalAPs = useMemo(() => filteredSites.reduce((sum, s) => sum + (s.ap_count ?? 0), 0), [filteredSites]);
-  const totalClients = useMemo(() => filteredSites.reduce((sum, s) => sum + (s.client_count ?? 0), 0), [filteredSites]);
+  const activeSiteCount = useMemo(
+    () => filteredSites.filter((s) => s.status === 'active').length,
+    [filteredSites]
+  );
+  const inactiveSiteCount = useMemo(
+    () => filteredSites.filter((s) => s.status !== 'active').length,
+    [filteredSites]
+  );
+  const totalAPs = useMemo(
+    () => filteredSites.reduce((sum, s) => sum + (s.ap_count ?? 0), 0),
+    [filteredSites]
+  );
+  const totalClients = useMemo(
+    () => filteredSites.reduce((sum, s) => sum + (s.client_count ?? 0), 0),
+    [filteredSites]
+  );
 
   const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortDirection(d => d === 'asc' ? 'desc' : 'asc');
+      setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
     } else {
       setSortField(field);
       setSortDirection('asc');
@@ -187,25 +223,34 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
   };
 
   const handleSelectAll = (checked: boolean) => {
-    setSelectedSites(checked ? new Set(paginatedSites.map(s => s.id)) : new Set());
+    setSelectedSites(checked ? new Set(paginatedSites.map((s) => s.id)) : new Set());
   };
 
   const handleSelectRow = (id: string, checked: boolean) => {
-    setSelectedSites(prev => {
+    setSelectedSites((prev) => {
       const next = new Set(prev);
-      if (checked) next.add(id); else next.delete(id);
+      if (checked) next.add(id);
+      else next.delete(id);
       return next;
     });
   };
 
   const handleDismissFilter = () => {
-    try { sessionStorage.removeItem(FILTER_SESSION_KEY); } catch { /* noop */ }
+    try {
+      sessionStorage.removeItem(FILTER_SESSION_KEY);
+    } catch {
+      /* noop */
+    }
     onClearFilter?.();
   };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
-    return sortDirection === 'asc' ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="h-3 w-3 ml-1" />
+    );
   };
 
   if (loading && sites.length === 0) {
@@ -213,7 +258,9 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
       <div className="flex-1 space-y-4 p-4 md:p-6">
         <Skeleton className="h-16 w-full" />
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-28 w-full" />)}
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-28 w-full" />
+          ))}
         </div>
         <Skeleton className="h-96 w-full" />
       </div>
@@ -231,10 +278,15 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
         refreshing={loading}
         actions={
           <>
-            <ColumnCustomizationDialog customization={columnCustomization} />
+            <ColumnCustomizationDialog customization={columnCustomization as any} />
             <ExportButton
               data={sortedSites}
-              columns={columnCustomization.visibleColumnConfigs.map(c => ({ key: c?.key || '', label: c?.label || '' }))}
+              columns={
+                columnCustomization.visibleColumnConfigs.map((c) => ({
+                  key: c?.key || '',
+                  label: c?.label || '',
+                })) as any
+              }
               filename="sites"
             />
           </>
@@ -261,7 +313,9 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
               </div>
             </div>
             <div className="text-2xl font-bold text-foreground">{filteredSites.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">{siteGroupFilter ? 'Filtered' : 'All sites'}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {siteGroupFilter ? 'Filtered' : 'All sites'}
+            </p>
           </div>
         </Card>
 
@@ -375,38 +429,44 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={paginatedSites.length > 0 && paginatedSites.every(s => selectedSites.has(s.id))}
+                          checked={
+                            paginatedSites.length > 0 &&
+                            paginatedSites.every((s) => selectedSites.has(s.id))
+                          }
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      {columnCustomization.visibleColumnConfigs.map(col => col && (
-                        <TableHead
-                          key={col.key}
-                          className={`select-none ${col.sortable ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
-                          onClick={() => col.sortable && handleSort(col.fieldPath || col.key)}
-                        >
-                          <div className="flex items-center">
-                            {col.label}
-                            {col.sortable && <SortIcon field={col.fieldPath || col.key} />}
-                          </div>
-                        </TableHead>
-                      ))}
+                      {columnCustomization.visibleColumnConfigs.map(
+                        (col) =>
+                          col && (
+                            <TableHead
+                              key={col.key}
+                              className={`select-none ${col.sortable ? 'cursor-pointer hover:bg-muted/50 transition-colors' : ''}`}
+                              onClick={() => col.sortable && handleSort(col.fieldPath || col.key)}
+                            >
+                              <div className="flex items-center">
+                                {col.label}
+                                {col.sortable && <SortIcon field={col.fieldPath || col.key} />}
+                              </div>
+                            </TableHead>
+                          )
+                      )}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedSites.map(site => (
+                    {paginatedSites.map((site) => (
                       <TableRow
                         key={site.id}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(site)}
                       >
-                        <TableCell onClick={e => e.stopPropagation()}>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={selectedSites.has(site.id)}
                             onCheckedChange={(checked) => handleSelectRow(site.id, !!checked)}
                           />
                         </TableCell>
-                        {columnCustomization.visibleColumnConfigs.map(col => {
+                        {columnCustomization.visibleColumnConfigs.map((col) => {
                           if (!col) return null;
                           return (
                             <TableCell key={col.key}>
@@ -426,33 +486,67 @@ export function SitesPage({ siteGroupFilter, onClearFilter, onShowDetail }: Site
               <div className="flex items-center justify-between mt-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Rows per page:</span>
-                  <Select value={String(itemsPerPage)} onValueChange={v => { setItemsPerPage(Number(v)); setCurrentPage(1); }}>
+                  <Select
+                    value={String(itemsPerPage)}
+                    onValueChange={(v) => {
+                      setItemsPerPage(Number(v));
+                      setCurrentPage(1);
+                    }}
+                  >
                     <SelectTrigger className="h-8 w-20">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {[10, 25, 50, 100].map(n => (
-                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      {[10, 25, 50, 100].map((n) => (
+                        <SelectItem key={n} value={String(n)}>
+                          {n}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <span>
-                    {((currentPage - 1) * itemsPerPage) + 1}–{Math.min(currentPage * itemsPerPage, sortedSites.length)} of {sortedSites.length}
+                    {(currentPage - 1) * itemsPerPage + 1}–
+                    {Math.min(currentPage * itemsPerPage, sortedSites.length)} of{' '}
+                    {sortedSites.length}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
                     <ChevronsLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
                     <ChevronsRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -485,7 +579,8 @@ interface SiteDetailContentProps {
 }
 
 function SiteDetailContent({ site }: SiteDetailContentProps) {
-  const statusVariant = site.status === 'active' ? 'default' : site.status === 'error' ? 'destructive' : 'secondary';
+  const statusVariant =
+    site.status === 'active' ? 'default' : site.status === 'error' ? 'destructive' : 'secondary';
 
   return (
     <div className="space-y-6">
@@ -568,8 +663,10 @@ function SiteDetailContent({ site }: SiteDetailContentProps) {
         <div>
           <p className="text-sm text-muted-foreground mb-2">Tags</p>
           <div className="flex flex-wrap gap-1.5">
-            {site.tags.map(tag => (
-              <Badge key={tag} variant="outline" className="text-xs">{tag}</Badge>
+            {site.tags.map((tag) => (
+              <Badge key={tag} variant="outline" className="text-xs">
+                {tag}
+              </Badge>
             ))}
           </div>
         </div>

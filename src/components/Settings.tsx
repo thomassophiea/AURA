@@ -9,11 +9,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
-import { 
-  Save, 
-  Settings as SettingsIcon, 
-  Bell, 
-  Palette, 
+import {
+  Save,
+  Settings as SettingsIcon,
+  Bell,
+  Palette,
   Server,
   Shield,
   FileText,
@@ -31,9 +31,9 @@ import {
   Key,
   CheckCircle2,
   XCircle,
-  Eye
+  Eye,
 } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { ExportButton } from './ExportButton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -58,6 +58,7 @@ interface AuditLog {
   resource: string;
   status: 'success' | 'failure';
   details?: string;
+  ipAddress?: string;
 }
 
 interface Notification {
@@ -126,7 +127,7 @@ export function Settings() {
   });
 
   const [saving, setSaving] = useState(false);
-  
+
   // System Configuration State
   const [isLoadingSystem, setIsLoadingSystem] = useState(false);
   const [globalSettings, setGlobalSettings] = useState<GlobalSettings>({});
@@ -136,7 +137,7 @@ export function Settings() {
   const [regionalNotifications, setRegionalNotifications] = useState<Notification[]>([]);
   const [workflow, setWorkflow] = useState<any>({});
   const [adoptionRules, setAdoptionRules] = useState<AdoptionRule[]>([]);
-  
+
   // New System Settings State
   const [networkTime, setNetworkTime] = useState<NetworkTimeSettings>({});
   const [systemInfo, setSystemInfo] = useState<SystemInfo>({});
@@ -281,7 +282,6 @@ export function Settings() {
       } catch (error) {
         console.warn('Failed to load maintenance settings:', error);
       }
-
     } catch (error) {
       console.error('Error loading system configuration:', error);
     } finally {
@@ -292,10 +292,10 @@ export function Settings() {
   const handleSavePreferences = async () => {
     try {
       setSaving(true);
-      
+
       // Save to localStorage
       localStorage.setItem('user_preferences', JSON.stringify(localPrefs));
-      
+
       // Apply theme if changed
       const root = document.documentElement;
       root.classList.remove('light', 'dark');
@@ -303,16 +303,16 @@ export function Settings() {
       root.setAttribute('data-theme', localPrefs.theme);
       document.body.classList.remove('light', 'dark');
       document.body.classList.add(localPrefs.theme);
-      
+
       // Simulate async save delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       toast.success('Preferences saved successfully', {
-        description: 'Your settings have been updated.'
+        description: 'Your settings have been updated.',
       });
     } catch (error) {
       toast.error('Failed to save preferences', {
-        description: 'Please try again.'
+        description: 'Please try again.',
       });
     } finally {
       setSaving(false);
@@ -325,7 +325,7 @@ export function Settings() {
       const response = await apiService.makeAuthenticatedRequest('/v1/globalsettings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(globalSettings)
+        body: JSON.stringify(globalSettings),
       });
 
       if (response.ok) {
@@ -346,7 +346,7 @@ export function Settings() {
       const response = await apiService.makeAuthenticatedRequest('/v1/devices/adoptionrules', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rules: adoptionRules })
+        body: JSON.stringify({ rules: adoptionRules }),
       });
 
       if (response.ok) {
@@ -367,7 +367,7 @@ export function Settings() {
       const response = await apiService.makeAuthenticatedRequest('/v1/system/time', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(networkTime)
+        body: JSON.stringify(networkTime),
       });
 
       if (response.ok) {
@@ -388,7 +388,7 @@ export function Settings() {
       const response = await apiService.makeAuthenticatedRequest('/v1/system/logging', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loggingSettings)
+        body: JSON.stringify(loggingSettings),
       });
 
       if (response.ok) {
@@ -407,7 +407,7 @@ export function Settings() {
     try {
       setSaving(true);
       const response = await apiService.makeAuthenticatedRequest('/v1/system/time/test', {
-        method: 'POST'
+        method: 'POST',
       });
 
       if (response.ok) {
@@ -427,7 +427,7 @@ export function Settings() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
     return `${Math.floor(diffMins / 1440)}d ago`;
@@ -443,7 +443,7 @@ export function Settings() {
       hour: 'numeric',
       minute: '2-digit',
       second: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -460,10 +460,10 @@ export function Settings() {
     'Asia/Tokyo',
     'Asia/Shanghai',
     'Australia/Sydney',
-    'Pacific/Auckland'
+    'Pacific/Auckland',
   ];
 
-  const filteredTimezones = popularTimezones.filter(tz =>
+  const filteredTimezones = popularTimezones.filter((tz) =>
     tz.toLowerCase().includes(timezoneSearch.toLowerCase())
   );
 
@@ -512,13 +512,13 @@ export function Settings() {
                 <div className="flex gap-2">
                   <Button
                     variant={localPrefs.theme === 'light' ? 'default' : 'outline'}
-                    onClick={() => setLocalPrefs(prev => ({ ...prev, theme: 'light' }))}
+                    onClick={() => setLocalPrefs((prev) => ({ ...prev, theme: 'light' }))}
                   >
                     Light
                   </Button>
                   <Button
                     variant={localPrefs.theme === 'dark' ? 'default' : 'outline'}
-                    onClick={() => setLocalPrefs(prev => ({ ...prev, theme: 'dark' }))}
+                    onClick={() => setLocalPrefs((prev) => ({ ...prev, theme: 'dark' }))}
                   >
                     Dark
                   </Button>
@@ -537,7 +537,7 @@ export function Settings() {
                   id="sidebar"
                   checked={localPrefs.sidebarCollapsed}
                   onCheckedChange={(checked) =>
-                    setLocalPrefs(prev => ({ ...prev, sidebarCollapsed: checked }))
+                    setLocalPrefs((prev) => ({ ...prev, sidebarCollapsed: checked }))
                   }
                 />
               </div>
@@ -553,7 +553,7 @@ export function Settings() {
                 <Select
                   value={localPrefs.refreshInterval}
                   onValueChange={(v: '30' | '60' | '120' | '300' | 'off') =>
-                    setLocalPrefs(prev => ({ ...prev, refreshInterval: v }))
+                    setLocalPrefs((prev) => ({ ...prev, refreshInterval: v }))
                   }
                 >
                   <SelectTrigger className="w-36">
@@ -580,7 +580,7 @@ export function Settings() {
                 <Select
                   value={localPrefs.defaultTimeRange}
                   onValueChange={(v: '15m' | '1h' | '24h' | '7d' | '30d') =>
-                    setLocalPrefs(prev => ({ ...prev, defaultTimeRange: v }))
+                    setLocalPrefs((prev) => ({ ...prev, defaultTimeRange: v }))
                   }
                 >
                   <SelectTrigger className="w-36">
@@ -638,7 +638,7 @@ export function Settings() {
                   id="notifications"
                   checked={localPrefs.notificationsEnabled}
                   onCheckedChange={(checked) =>
-                    setLocalPrefs(prev => ({ ...prev, notificationsEnabled: checked }))
+                    setLocalPrefs((prev) => ({ ...prev, notificationsEnabled: checked }))
                   }
                 />
               </div>
@@ -656,7 +656,7 @@ export function Settings() {
                     id="notif-sound"
                     checked={localPrefs.notificationsSound}
                     onCheckedChange={(checked) =>
-                      setLocalPrefs(prev => ({ ...prev, notificationsSound: checked }))
+                      setLocalPrefs((prev) => ({ ...prev, notificationsSound: checked }))
                     }
                   />
                 </div>
@@ -675,7 +675,7 @@ export function Settings() {
                     id="notif-desktop"
                     checked={localPrefs.notificationsDesktop}
                     onCheckedChange={(checked) =>
-                      setLocalPrefs(prev => ({ ...prev, notificationsDesktop: checked }))
+                      setLocalPrefs((prev) => ({ ...prev, notificationsDesktop: checked }))
                     }
                   />
                 </div>
@@ -765,7 +765,9 @@ export function Settings() {
                               <Input
                                 id={key}
                                 value={String(value || '')}
-                                onChange={(e) => setGlobalSettings(prev => ({ ...prev, [key]: e.target.value }))}
+                                onChange={(e) =>
+                                  setGlobalSettings((prev) => ({ ...prev, [key]: e.target.value }))
+                                }
                                 placeholder={`Enter ${key}`}
                               />
                             </div>
@@ -840,10 +842,14 @@ export function Settings() {
                           id="timezone"
                           className="w-full px-3 py-2 bg-input border border-border rounded-md"
                           value={networkTime.timezone || 'America/Detroit'}
-                          onChange={(e) => setNetworkTime(prev => ({ ...prev, timezone: e.target.value }))}
+                          onChange={(e) =>
+                            setNetworkTime((prev) => ({ ...prev, timezone: e.target.value }))
+                          }
                         >
-                          {filteredTimezones.map(tz => (
-                            <option key={tz} value={tz}>{tz}</option>
+                          {filteredTimezones.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -851,7 +857,7 @@ export function Settings() {
                       {/* Network Time (NTP/SNTP) */}
                       <div className="space-y-4 pt-4 border-t border-border">
                         <Label className="text-lg">Network Time</Label>
-                        
+
                         <div className="flex items-center justify-between">
                           <div>
                             <Label htmlFor="ntp-enabled">NTP/SNTP</Label>
@@ -862,7 +868,9 @@ export function Settings() {
                           <Switch
                             id="ntp-enabled"
                             checked={networkTime.ntpEnabled !== false}
-                            onCheckedChange={(checked) => setNetworkTime(prev => ({ ...prev, ntpEnabled: checked }))}
+                            onCheckedChange={(checked) =>
+                              setNetworkTime((prev) => ({ ...prev, ntpEnabled: checked }))
+                            }
                           />
                         </div>
 
@@ -898,7 +906,12 @@ export function Settings() {
                               <Input
                                 id="ntp-server1"
                                 value={networkTime.ntpServer1 || ''}
-                                onChange={(e) => setNetworkTime(prev => ({ ...prev, ntpServer1: e.target.value }))}
+                                onChange={(e) =>
+                                  setNetworkTime((prev) => ({
+                                    ...prev,
+                                    ntpServer1: e.target.value,
+                                  }))
+                                }
                                 placeholder="time.apple.com"
                               />
                             </div>
@@ -908,7 +921,12 @@ export function Settings() {
                               <Input
                                 id="ntp-server2"
                                 value={networkTime.ntpServer2 || ''}
-                                onChange={(e) => setNetworkTime(prev => ({ ...prev, ntpServer2: e.target.value }))}
+                                onChange={(e) =>
+                                  setNetworkTime((prev) => ({
+                                    ...prev,
+                                    ntpServer2: e.target.value,
+                                  }))
+                                }
                                 placeholder="time.nist.gov"
                               />
                             </div>
@@ -947,9 +965,9 @@ export function Settings() {
                       View system details and hardware information
                     </p>
                   </div>
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     onClick={loadSystemConfiguration}
                     disabled={isLoadingSystem}
                   >
@@ -989,7 +1007,7 @@ export function Settings() {
                         <Label className="text-muted-foreground">CPU Usage</Label>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-muted rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-primary h-2 rounded-full transition-all"
                               style={{ width: `${systemInfo.cpuUsage || 0}%` }}
                             />
@@ -1001,7 +1019,7 @@ export function Settings() {
                         <Label className="text-muted-foreground">Memory Usage</Label>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 bg-muted rounded-full h-2">
-                            <div 
+                            <div
                               className="bg-secondary h-2 rounded-full transition-all"
                               style={{ width: `${systemInfo.memoryUsage || 0}%` }}
                             />
@@ -1042,7 +1060,9 @@ export function Settings() {
                         <Switch
                           id="logging-enabled"
                           checked={loggingSettings.enabled !== false}
-                          onCheckedChange={(checked) => setLoggingSettings(prev => ({ ...prev, enabled: checked }))}
+                          onCheckedChange={(checked) =>
+                            setLoggingSettings((prev) => ({ ...prev, enabled: checked }))
+                          }
                         />
                       </div>
 
@@ -1054,7 +1074,9 @@ export function Settings() {
                               id="log-level"
                               className="w-full px-3 py-2 bg-input border border-border rounded-md"
                               value={loggingSettings.level || 'info'}
-                              onChange={(e) => setLoggingSettings(prev => ({ ...prev, level: e.target.value }))}
+                              onChange={(e) =>
+                                setLoggingSettings((prev) => ({ ...prev, level: e.target.value }))
+                              }
                             >
                               <option value="debug">Debug</option>
                               <option value="info">Info</option>
@@ -1069,7 +1091,12 @@ export function Settings() {
                             <Input
                               id="remote-server"
                               value={loggingSettings.remoteServer || ''}
-                              onChange={(e) => setLoggingSettings(prev => ({ ...prev, remoteServer: e.target.value }))}
+                              onChange={(e) =>
+                                setLoggingSettings((prev) => ({
+                                  ...prev,
+                                  remoteServer: e.target.value,
+                                }))
+                              }
                               placeholder="syslog.example.com"
                             />
                           </div>
@@ -1080,7 +1107,12 @@ export function Settings() {
                               id="remote-port"
                               type="number"
                               value={loggingSettings.remotePort || 514}
-                              onChange={(e) => setLoggingSettings(prev => ({ ...prev, remotePort: parseInt(e.target.value) }))}
+                              onChange={(e) =>
+                                setLoggingSettings((prev) => ({
+                                  ...prev,
+                                  remotePort: parseInt(e.target.value),
+                                }))
+                              }
                               placeholder="514"
                             />
                           </div>
@@ -1135,7 +1167,9 @@ export function Settings() {
                         <Switch
                           id="snmp-enabled"
                           checked={snmpSettings.enabled}
-                          onCheckedChange={(checked) => setSnmpSettings(prev => ({ ...prev, enabled: checked }))}
+                          onCheckedChange={(checked) =>
+                            setSnmpSettings((prev) => ({ ...prev, enabled: checked }))
+                          }
                         />
                       </div>
                       {snmpSettings.enabled && (
@@ -1146,7 +1180,9 @@ export function Settings() {
                               id="snmp-community"
                               type="password"
                               value={snmpSettings.community || ''}
-                              onChange={(e) => setSnmpSettings(prev => ({ ...prev, community: e.target.value }))}
+                              onChange={(e) =>
+                                setSnmpSettings((prev) => ({ ...prev, community: e.target.value }))
+                              }
                               placeholder="public"
                             />
                           </div>
@@ -1155,7 +1191,9 @@ export function Settings() {
                             <Input
                               id="snmp-location"
                               value={snmpSettings.location || ''}
-                              onChange={(e) => setSnmpSettings(prev => ({ ...prev, location: e.target.value }))}
+                              onChange={(e) =>
+                                setSnmpSettings((prev) => ({ ...prev, location: e.target.value }))
+                              }
                               placeholder="Data Center 1"
                             />
                           </div>
@@ -1164,14 +1202,19 @@ export function Settings() {
                             <Input
                               id="snmp-contact"
                               value={snmpSettings.contact || ''}
-                              onChange={(e) => setSnmpSettings(prev => ({ ...prev, contact: e.target.value }))}
+                              onChange={(e) =>
+                                setSnmpSettings((prev) => ({ ...prev, contact: e.target.value }))
+                              }
                               placeholder="admin@example.com"
                             />
                           </div>
                         </>
                       )}
                       <div className="flex justify-end pt-4 border-t border-border">
-                        <Button onClick={() => toast.info('SNMP settings are read-only')} variant="outline">
+                        <Button
+                          onClick={() => toast.info('SNMP settings are read-only')}
+                          variant="outline"
+                        >
                           <Eye className="w-4 h-4 mr-2" />
                           View Only
                         </Button>
@@ -1235,9 +1278,11 @@ export function Settings() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {auditLogs.slice(0, 50).map(log => (
+                        {auditLogs.slice(0, 50).map((log) => (
                           <TableRow key={log.id}>
-                            <TableCell className="text-sm">{formatTimestamp(log.timestamp)}</TableCell>
+                            <TableCell className="text-sm">
+                              {formatTimestamp(log.timestamp)}
+                            </TableCell>
                             <TableCell className="font-medium">{log.user}</TableCell>
                             <TableCell>{log.action}</TableCell>
                             <TableCell className="text-muted-foreground">{log.resource}</TableCell>
@@ -1293,12 +1338,16 @@ export function Settings() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {adoptionRules.map(rule => (
+                          {adoptionRules.map((rule) => (
                             <TableRow key={rule.id}>
                               <TableCell className="font-medium">{rule.name}</TableCell>
                               <TableCell>{rule.siteId || 'Any'}</TableCell>
-                              <TableCell className="text-muted-foreground">{rule.modelMatch || 'Any'}</TableCell>
-                              <TableCell className="text-muted-foreground">{rule.serialMatch || 'Any'}</TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {rule.modelMatch || 'Any'}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">
+                                {rule.serialMatch || 'Any'}
+                              </TableCell>
                               <TableCell>
                                 <Badge variant={rule.enabled ? 'default' : 'secondary'}>
                                   {rule.enabled ? 'Enabled' : 'Disabled'}

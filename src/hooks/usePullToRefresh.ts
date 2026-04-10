@@ -27,7 +27,7 @@ export interface PullToRefreshReturn {
     onTouchMove: (e: React.TouchEvent) => void;
     onTouchEnd: () => void;
   };
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
   indicatorStyle: React.CSSProperties;
 }
 

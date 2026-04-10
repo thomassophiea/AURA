@@ -1,7 +1,18 @@
-import { useState, useEffect ,  memo } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { BarChart3, TrendingUp, Users, Activity, Download, Upload } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts';
 import { apiService } from '../services/api';
 import { formatCompactNumber } from '../lib/units';
 
@@ -143,9 +154,7 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
           <BarChart3 className="h-5 w-5 text-primary" />
           Venue Statistics
         </CardTitle>
-        <CardDescription>
-          Comprehensive venue analytics for the last {duration}
-        </CardDescription>
+        <CardDescription>Comprehensive venue analytics for the last {duration}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Scorecards Grid */}
@@ -157,7 +166,9 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
                 <Users className="h-4 w-4 text-blue-500" />
                 <div className="text-sm font-medium text-muted-foreground">Total Clients</div>
               </div>
-              <div className="text-2xl font-bold">{formatCompactNumber(stats.uniqueClientsTotalScorecard)}</div>
+              <div className="text-2xl font-bold">
+                {formatCompactNumber(stats.uniqueClientsTotalScorecard)}
+              </div>
             </div>
           )}
 
@@ -168,7 +179,9 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 <div className="text-sm font-medium text-muted-foreground">Peak Clients</div>
               </div>
-              <div className="text-2xl font-bold">{formatCompactNumber(stats.uniqueClientsPeakScorecard)}</div>
+              <div className="text-2xl font-bold">
+                {formatCompactNumber(stats.uniqueClientsPeakScorecard)}
+              </div>
             </div>
           )}
 
@@ -190,7 +203,9 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
                 <BarChart3 className="h-4 w-4 text-orange-500" />
                 <div className="text-sm font-medium text-muted-foreground">Avg Throughput</div>
               </div>
-              <div className="text-2xl font-bold">{formatBps(stats.averageThroughputScorecard)}</div>
+              <div className="text-2xl font-bold">
+                {formatBps(stats.averageThroughputScorecard)}
+              </div>
             </div>
           )}
         </div>
@@ -220,12 +235,12 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
                   contentStyle={{
                     backgroundColor: 'hsl(var(--popover))',
                     border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
+                    borderRadius: '6px',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}
-                  formatter={(value: number, name: string) => [
+                  formatter={(value: any, name: any) => [
                     formatBytes(value),
-                    name === 'upload' ? 'Upload' : 'Download'
+                    name === 'upload' ? 'Upload' : 'Download',
                   ]}
                 />
                 <Legend />
@@ -277,12 +292,12 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
                   contentStyle={{
                     backgroundColor: 'hsl(var(--popover))',
                     border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
+                    borderRadius: '6px',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}
-                  formatter={(value: number, name: string) => [
+                  formatter={(value: any, name: any) => [
                     formatBps(value),
-                    name === 'uploadThroughput' ? 'Upload' : 'Download'
+                    name === 'uploadThroughput' ? 'Upload' : 'Download',
                   ]}
                 />
                 <Legend />

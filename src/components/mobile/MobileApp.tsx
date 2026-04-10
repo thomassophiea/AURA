@@ -17,7 +17,7 @@ import { useHaptic } from '@/hooks/useHaptic';
 import { usePWAInstall } from '@/hooks/usePWAInstall';
 
 interface MobileAppProps {
-  theme: 'light' | 'dark' | 'system';
+  theme: string;
   onThemeToggle: () => void;
   onLogout: () => void;
   userEmail?: string;
@@ -84,12 +84,7 @@ export function MobileApp({
           />
         );
       case 'sle':
-        return (
-          <MobileSLEView
-            currentSite={currentSite}
-            onSiteChange={onSiteChange}
-          />
-        );
+        return <MobileSLEView currentSite={currentSite} onSiteChange={onSiteChange} />;
       case 'networks':
         return <MobileNetworksList currentSite={currentSite} />;
       case 'clients':
@@ -114,24 +109,13 @@ export function MobileApp({
         />
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto">
-          {renderPage()}
-        </div>
+        <div className="flex-1 overflow-y-auto">{renderPage()}</div>
 
         {/* Bottom Navigation */}
-        <MobileBottomNav
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          badges={badges}
-        />
+        <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} badges={badges} />
 
         {/* PWA Install Prompt */}
-        {showPrompt && (
-          <PWAInstallPrompt
-            onInstall={promptToInstall}
-            onDismiss={dismissPrompt}
-          />
-        )}
+        {showPrompt && <PWAInstallPrompt onInstall={promptToInstall} onDismiss={dismissPrompt} />}
       </div>
     </MobileShell>
   );

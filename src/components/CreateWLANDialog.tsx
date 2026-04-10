@@ -1,6 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, CheckCircle, AlertCircle, Wifi, MapPin, Users, GripVertical, Settings, Info, ChevronDown, ChevronUp, Folder, FolderOpen } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Loader2,
+  CheckCircle,
+  AlertCircle,
+  Wifi,
+  MapPin,
+  Users,
+  GripVertical,
+  Settings,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  Folder,
+  FolderOpen,
+} from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -19,7 +40,10 @@ import { useAppContext } from '@/contexts/AppContext';
 import { DeploymentModeSelector } from './wlans/DeploymentModeSelector';
 import { ProfilePickerDialog } from './wlans/ProfilePickerDialog';
 import { EffectiveSetPreview } from './wlans/EffectiveSetPreview';
-import { ProfileInterfaceAssignmentDialog, type ProfileWithInterfaces } from './wlans/ProfileInterfaceAssignmentDialog';
+import {
+  ProfileInterfaceAssignmentDialog,
+  type ProfileWithInterfaces,
+} from './wlans/ProfileInterfaceAssignmentDialog';
 // Legacy manual site-grouping concept (color-coded groups stored in localStorage).
 // The canonical SiteGroup (controller pair) is in src/types/domain.ts.
 interface LegacySiteGroup {
@@ -41,7 +65,7 @@ import type {
   DeploymentMode,
   EffectiveProfileSet,
   SecurityType,
-  PMFMode
+  PMFMode,
 } from '../types/network';
 
 interface CreateWLANDialogProps {
@@ -70,7 +94,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     band: 'dual',
     enabled: true,
     selectedSites: [],
-    selectedLegacySiteGroups: [],
+    selectedSiteGroups: [],
     authenticatedUserDefaultRoleID: null,
     // Basic options
     hidden: false,
@@ -138,7 +162,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Profile picker state
   const [profilePickerOpen, setProfilePickerOpen] = useState(false);
-  const [profilePickerSite, setProfilePickerSite] = useState<{ siteId: string; siteName: string; mode: 'INCLUDE_ONLY' | 'EXCLUDE_SOME' } | null>(null);
+  const [profilePickerSite, setProfilePickerSite] = useState<{
+    siteId: string;
+    siteName: string;
+    mode: 'INCLUDE_ONLY' | 'EXCLUDE_SOME';
+  } | null>(null);
 
   // Effective sets for preview
   const [effectiveSets, setEffectiveSets] = useState<EffectiveProfileSet[]>([]);
@@ -197,7 +225,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         band: 'dual',
         enabled: true,
         selectedSites: [], // Will be populated with all sites after load
-        selectedLegacySiteGroups: [],
+        selectedSiteGroups: [],
         authenticatedUserDefaultRoleID: null, // Will be set to 'bridged' after roles load
         // Basic options
         hidden: false,
@@ -219,8 +247,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         beaconProtection: false,
         preAuthenticatedIdleTimeout: 300,
         postAuthenticatedIdleTimeout: 1800,
-        sessionTimeout: 0
-      });
+        sessionTimeout: 0,
+      } as any);
       setSiteConfigs(new Map());
       setProfilesBySite(new Map());
       setEffectiveSets([]);
@@ -235,7 +263,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setIsDragging(true);
       setDragStart({
         x: e.clientX - position.x,
-        y: e.clientY - position.y
+        y: e.clientY - position.y,
       });
     }
   };
@@ -245,7 +273,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       if (isDragging) {
         setPosition({
           x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y
+          y: e.clientY - dragStart.y,
         });
       }
     };
@@ -262,6 +290,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
+    return undefined;
   }, [isDragging, dragStart]);
 
   // Discover profiles when sites or site groups change
@@ -273,7 +302,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setProfilesBySite(new Map());
       setEffectiveSets([]);
     }
-  }, [formData.selectedSites, formData.selectedLegacySiteGroups]);
+  }, [formData.selectedSites, formData.selectedSiteGroups]);
 
   // Recalculate effective sets when site configs change
   useEffect(() => {
@@ -285,21 +314,22 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   // Check for 6GHz band with non-WPA3/OWE security
   useEffect(() => {
     const bandLower = formData.band?.toLowerCase() || '';
-    const includes6GHz = bandLower.includes('6ghz') || 
-                         bandLower.includes('6 ghz') ||
-                         bandLower === 'all' || 
-                         bandLower.includes('tri');
-    
+    const includes6GHz =
+      bandLower.includes('6ghz') ||
+      bandLower.includes('6 ghz') ||
+      bandLower === 'all' ||
+      bandLower.includes('tri');
+
     const validSecurityFor6GHz = [
       'wpa3-personal',
       'wpa3-enterprise-transition',
       'wpa3-enterprise-192',
       'owe',
-      'wpa3-compatibility'
+      'wpa3-compatibility',
     ];
-    
+
     const isSecurityValid = validSecurityFor6GHz.includes(formData.security);
-    
+
     setShow6GHzWarning(includes6GHz && !isSecurityValid);
   }, [formData.band, formData.security]);
 
@@ -311,7 +341,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       // Auto-select all sites by default for easy deployment
       if (data.length > 0) {
         const allSiteIds = data.map((s: any) => s.id);
-        setFormData(prev => ({ ...prev, selectedSites: allSiteIds }));
+        setFormData((prev) => ({ ...prev, selectedSites: allSiteIds }));
         console.log('[CreateWLAN] Auto-selected all sites:', allSiteIds.length);
       }
     } catch (error) {
@@ -332,7 +362,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       // Auto-select "bridged" role if it exists
       const bridgedId = nameMap['bridged'] || nameMap['Bridged'];
       if (bridgedId) {
-        setFormData(prev => ({ ...prev, authenticatedUserDefaultRoleID: bridgedId }));
+        setFormData((prev) => ({ ...prev, authenticatedUserDefaultRoleID: bridgedId }));
         console.log('[CreateWLAN] Auto-selected "bridged" role:', bridgedId);
       }
     } catch (error) {
@@ -411,21 +441,23 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         console.log(`Site ${siteId}: Found ${profiles.length} profiles`, profiles);
 
         if (profiles.length === 0) {
-          console.warn(`⚠️ No profiles found for site ${siteId}. This site may not have device groups or profiles configured.`);
+          console.warn(
+            `⚠️ No profiles found for site ${siteId}. This site may not have device groups or profiles configured.`
+          );
         }
 
         newProfilesBySite.set(siteId, profiles);
 
         // Initialize site config if not exists (default to ALL_PROFILES_AT_SITE)
         if (!newSiteConfigs.has(siteId)) {
-          const site = sites.find(s => s.id === siteId);
+          const site = sites.find((s) => s.id === siteId);
           const config = {
             siteId,
             siteName: site?.name || site?.siteName || siteId,
             deploymentMode: 'ALL_PROFILES_AT_SITE' as const,
             includedProfiles: [],
             excludedProfiles: [],
-            profiles
+            profiles,
           };
           console.log(`Creating new site config for ${siteId}:`, config);
           newSiteConfigs.set(siteId, config);
@@ -443,10 +475,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       if (totalProfilesFound === 0) {
         console.error(`❌ No profiles found across ${sitesToDiscover.length} site(s)`);
         toast.warning('No Profiles Found', {
-          description: `No profiles were discovered at the selected site(s). Please ensure the site(s) have device groups with profiles configured.`
+          description: `No profiles were discovered at the selected site(s). Please ensure the site(s) have device groups with profiles configured.`,
         });
       } else {
-        console.log(`✅ Discovered ${totalProfilesFound} total profiles across ${sitesToDiscover.length} sites`);
+        console.log(
+          `✅ Discovered ${totalProfilesFound} total profiles across ${sitesToDiscover.length} sites`
+        );
       }
 
       console.log('Final site configs:', Array.from(newSiteConfigs.entries()));
@@ -455,7 +489,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       console.error('❌ Failed to discover profiles:', error);
       console.error('Error details:', error);
       toast.error('Failed to discover profiles', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setDiscoveringProfiles(false);
@@ -466,10 +500,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     const sets: EffectiveProfileSet[] = [];
 
     for (const config of siteConfigs.values()) {
-      const effectiveSet = effectiveSetCalculator.calculateEffectiveSet(
-        config,
-        config.profiles
-      );
+      const effectiveSet = effectiveSetCalculator.calculateEffectiveSet(config, config.profiles);
       sets.push(effectiveSet);
     }
 
@@ -478,8 +509,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Get all sites from selected site groups
   const getExpandedSiteIds = (): string[] => {
-    const groupSites = formData.selectedLegacySiteGroups.flatMap(groupId => {
-      const group = siteGroups.find(g => g.id === groupId);
+    const groupSites = formData.selectedSiteGroups.flatMap((groupId) => {
+      const group = siteGroups.find((g) => g.id === groupId);
       return group?.siteIds || [];
     });
     return [...new Set([...formData.selectedSites, ...groupSites])];
@@ -492,11 +523,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   const toggleSite = (siteId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       selectedSites: prev.selectedSites.includes(siteId)
-        ? prev.selectedSites.filter(id => id !== siteId)
-        : [...prev.selectedSites, siteId]
+        ? prev.selectedSites.filter((id) => id !== siteId)
+        : [...prev.selectedSites, siteId],
     }));
 
     // Remove site config if unselecting
@@ -508,11 +539,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   const toggleLegacySiteGroup = (groupId: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      selectedLegacySiteGroups: prev.selectedLegacySiteGroups.includes(groupId)
-        ? prev.selectedLegacySiteGroups.filter(id => id !== groupId)
-        : [...prev.selectedLegacySiteGroups, groupId]
+      selectedSiteGroups: prev.selectedSiteGroups.includes(groupId)
+        ? prev.selectedSiteGroups.filter((id) => id !== groupId)
+        : [...prev.selectedSiteGroups, groupId],
     }));
   };
 
@@ -525,7 +556,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       ...config,
       deploymentMode: mode,
       includedProfiles: mode === 'INCLUDE_ONLY' ? config.includedProfiles : [],
-      excludedProfiles: mode === 'EXCLUDE_SOME' ? config.excludedProfiles : []
+      excludedProfiles: mode === 'EXCLUDE_SOME' ? config.excludedProfiles : [],
     });
     setSiteConfigs(newConfigs);
   };
@@ -549,13 +580,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       newConfigs.set(profilePickerSite.siteId, {
         ...config,
         includedProfiles: selectedIds,
-        excludedProfiles: []
+        excludedProfiles: [],
       });
     } else {
       newConfigs.set(profilePickerSite.siteId, {
         ...config,
         includedProfiles: [],
-        excludedProfiles: selectedIds
+        excludedProfiles: selectedIds,
       });
     }
 
@@ -568,11 +599,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     if (!formData.ssid?.trim()) return false;
     if (!formData.security) return false;
     if (!formData.band) return false;
-    
+
     // Passphrase required only for PSK/Personal modes
     const pskModes: SecurityType[] = ['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'];
     if (pskModes.includes(formData.security) && !formData.passphrase?.trim()) return false;
-    
+
     // selected_targets requires at least one chip selected
     if (
       assignmentMode === 'selected_targets' &&
@@ -720,7 +751,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       } else {
         // selected_targets — use per-site deployment config
         const expandedSites = getExpandedSiteIds();
-        const siteAssignments = Array.from(siteConfigs.values()).map(config => ({
+        const siteAssignments = Array.from(siteConfigs.values()).map((config) => ({
           siteId: config.siteId,
           siteName: config.siteName,
           deploymentMode: config.deploymentMode,
@@ -739,8 +770,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         console.log('11. WLAN Creation Result:', result);
         console.log('=== WLAN CREATION DEBUG END ===');
 
-        const successfulAssignments = result.assignments?.filter(a => a.success) || [];
-        const failedAssignments = result.assignments?.filter(a => !a.success) || [];
+        const successfulAssignments = result.assignments?.filter((a) => a.success) || [];
+        const failedAssignments = result.assignments?.filter((a) => !a.success) || [];
 
         if (failedAssignments.length === 0) {
           toast.success('WLAN Created Successfully', {
@@ -753,7 +784,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           });
           console.warn(
             '[WLAN Deployment] Failed profiles:',
-            failedAssignments.map(a => ({ profile: a.profileName, error: a.error }))
+            failedAssignments.map((a) => ({ profile: a.profileName, error: a.error }))
           );
         } else {
           toast.error('WLAN Created but Deployment Failed', {
@@ -808,28 +839,31 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         );
         successCount++;
       } catch (error) {
-        console.error(`[InterfaceAssignment] Failed to assign to profile ${assignment.name}:`, error);
+        console.error(
+          `[InterfaceAssignment] Failed to assign to profile ${assignment.name}:`,
+          error
+        );
         failCount++;
       }
     }
 
     if (failCount === 0) {
       toast.success('Interface Assignments Saved', {
-        description: `Successfully configured ${successCount} profile(s)`
+        description: `Successfully configured ${successCount} profile(s)`,
       });
     } else if (successCount > 0) {
       toast.warning('Partial Assignment Success', {
-        description: `${successCount} succeeded, ${failCount} failed`
+        description: `${successCount} succeeded, ${failCount} failed`,
       });
     } else {
       toast.error('Assignment Failed', {
-        description: 'Could not assign interfaces to any profiles'
+        description: 'Could not assign interfaces to any profiles',
       });
     }
 
     // Trigger sync for assigned profiles
     try {
-      const profileIds = assignments.map(a => a.id);
+      const profileIds = assignments.map((a) => a.id);
       await apiService.syncMultipleProfiles(profileIds);
     } catch (error) {
       console.warn('[InterfaceAssignment] Sync failed:', error);
@@ -846,12 +880,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       sitesProcessed: siteConfigs.size,
       deviceGroupsFound: 0,
       profilesAssigned: successCount,
-      assignments: assignments.map(a => ({
+      assignments: assignments.map((a) => ({
         profileId: a.id,
         profileName: a.name,
-        success: true
+        success: true,
       })),
-      success: true
+      success: true,
     });
   };
 
@@ -872,7 +906,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
             cursor: isDragging ? 'grabbing' : 'auto',
             minWidth: 'min(95vw, 600px)',
             minHeight: '500px',
-            maxHeight: '90vh'
+            maxHeight: '90vh',
           }}
           onMouseDown={handleMouseDown}
         >
@@ -899,19 +933,19 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               <CardContent>
                 <AssignmentSection
                   value={assignmentMode}
-                  onChange={mode => {
+                  onChange={(mode) => {
                     setAssignmentMode(mode);
-                    setFormData(prev => ({ ...prev, assignmentMode: mode }));
+                    setFormData((prev) => ({ ...prev, assignmentMode: mode }));
                   }}
                   selectedSiteIds={assignedSiteIds}
                   selectedSiteGroupIds={assignedSiteGroupIds}
-                  onSitesChange={ids => {
+                  onSitesChange={(ids) => {
                     setAssignedSiteIds(ids);
-                    setFormData(prev => ({ ...prev, assignedSiteIds: ids, selectedSites: ids }));
+                    setFormData((prev) => ({ ...prev, assignedSiteIds: ids, selectedSites: ids }));
                   }}
-                  onSiteGroupsChange={ids => {
+                  onSiteGroupsChange={(ids) => {
                     setAssignedSiteGroupIds(ids);
-                    setFormData(prev => ({ ...prev, assignedSiteGroupIds: ids }));
+                    setFormData((prev) => ({ ...prev, assignedSiteGroupIds: ids }));
                   }}
                   sites={sites}
                   siteGroups={domainSiteGroups}
@@ -924,311 +958,400 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium">Network Configuration</CardTitle>
                 <CardDescription className="text-xs">
-                  Basic WLAN settings • <span className="text-[color:var(--status-error)] font-medium">* Required fields</span>
+                  Basic WLAN settings •{' '}
+                  <span className="text-[color:var(--status-error)] font-medium">
+                    * Required fields
+                  </span>
                 </CardDescription>
               </CardHeader>
               <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
-                <div className="space-y-3">
-                  <Label htmlFor="serviceName" className="text-sm font-medium">
-                    Network Name {!formData.serviceName?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
-                  </Label>
-                  <Input
-                    id="serviceName"
-                    value={formData.serviceName || ''}
-                    onChange={(e) => {
-                      const newName = e.target.value;
-                      // Sync SSID unless user has manually edited it
-                      if (!ssidManuallyEdited) {
-                        setFormData({ ...formData, serviceName: newName, ssid: newName });
-                      } else {
-                        setFormData({ ...formData, serviceName: newName });
-                      }
-                    }}
-                    placeholder="e.g. Corporate WiFi"
-                    className={!formData.serviceName?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
-                  />
-                  {!formData.serviceName?.trim() && (
-                    <p className="text-xs text-[color:var(--status-error)]">Network name is required</p>
-                  )}
-                </div>
-
-                {/* SSID - can be different from Network Name */}
-                <div className="space-y-3">
-                  <Label htmlFor="ssid">
-                    SSID {!formData.ssid?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
-                  </Label>
-                  <Input
-                    id="ssid"
-                    value={formData.ssid || ''}
-                    onChange={(e) => {
-                      setSsidManuallyEdited(true); // User edited SSID, stop auto-sync
-                      setFormData({ ...formData, ssid: e.target.value });
-                    }}
-                    placeholder="Broadcast name (visible to clients)"
-                    className={!formData.ssid?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
-                  />
-                  {!formData.ssid?.trim() && (
-                    <p className="text-xs text-[color:var(--status-error)]">SSID is required</p>
-                  )}
-                </div>
-
-                {/* Security Type */}
-                <div className="space-y-3">
-                  <Label htmlFor="security">
-                    Auth Type
-                  </Label>
-                  <Select
-                    value={formData.security}
-                    onValueChange={(value: any) => setFormData({ ...formData, security: value, securityConfig: undefined })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="owe">OWE (Enhanced Open)</SelectItem>
-                      <SelectItem value="wep">WEP (Legacy)</SelectItem>
-                      <SelectItem value="wpa2-psk">WPA2-Personal</SelectItem>
-                      <SelectItem value="wpa2-enterprise">WPA2-Enterprise</SelectItem>
-                      <SelectItem value="wpa3-personal">WPA3-Personal</SelectItem>
-                      <SelectItem value="wpa3-compatibility">WPA3-Compatibility</SelectItem>
-                      <SelectItem value="wpa3-enterprise-transition">WPA3-Enterprise Transition</SelectItem>
-                      <SelectItem value="wpa3-enterprise-192">WPA3-Enterprise 192-bit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Band */}
-                <div className="space-y-3">
-                  <Label htmlFor="band">
-                    Band
-                  </Label>
-                  <Select
-                    value={formData.band}
-                    onValueChange={(value: any) => setFormData({ ...formData, band: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="2.4GHz">2.4 GHz</SelectItem>
-                      <SelectItem value="5GHz">5 GHz</SelectItem>
-                      <SelectItem value="6GHz">6 GHz (WiFi 6E)</SelectItem>
-                      <SelectItem value="dual">Dual Band (2.4 + 5 GHz)</SelectItem>
-                      <SelectItem value="all">All Bands (2.4 + 5 + 6 GHz)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* 6GHz Security Warning */}
-                {show6GHzWarning && (
-                  <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
-                    <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
-                    <AlertDescription className="text-[color:var(--status-warning)]">
-                      6GHz (Radio 3) requires WPA3 or OWE security. The controller may reject this configuration.
-                    </AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Passphrase - for PSK/Personal modes */}
-                {['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'].includes(formData.security) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Network Name - auto-syncs to SSID unless SSID is manually edited */}
                   <div className="space-y-3">
-                    <Label htmlFor="passphrase">
-                      {formData.security === 'wpa3-personal' ? 'WPA3 Key' : 'WPA2 Key'}
-                      {!formData.passphrase?.trim() && <span className="text-[color:var(--status-error)]">*</span>}
+                    <Label htmlFor="serviceName" className="text-sm font-medium">
+                      Network Name{' '}
+                      {!formData.serviceName?.trim() && (
+                        <span className="text-[color:var(--status-error)]">*</span>
+                      )}
                     </Label>
                     <Input
-                      id="passphrase"
-                      type="password"
-                      value={formData.passphrase || ''}
-                      onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
-                      placeholder="8–63 characters"
-                      className={!formData.passphrase?.trim() ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]' : ''}
+                      id="serviceName"
+                      value={formData.serviceName || ''}
+                      onChange={(e) => {
+                        const newName = e.target.value;
+                        // Sync SSID unless user has manually edited it
+                        if (!ssidManuallyEdited) {
+                          setFormData({ ...formData, serviceName: newName, ssid: newName });
+                        } else {
+                          setFormData({ ...formData, serviceName: newName });
+                        }
+                      }}
+                      placeholder="e.g. Corporate WiFi"
+                      className={
+                        !formData.serviceName?.trim()
+                          ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]'
+                          : ''
+                      }
                     />
-                    {!formData.passphrase?.trim() && (
-                      <p className="text-xs text-[color:var(--status-error)]">Passphrase is required (8–63 characters)</p>
+                    {!formData.serviceName?.trim() && (
+                      <p className="text-xs text-[color:var(--status-error)]">
+                        Network name is required
+                      </p>
                     )}
                   </div>
-                )}
 
-                {/* PMF Mode - for WPA2/WPA3 */}
-                {['wpa2-psk', 'wpa2-enterprise', 'wpa3-compatibility'].includes(formData.security) && (
+                  {/* SSID - can be different from Network Name */}
                   <div className="space-y-3">
-                    <Label htmlFor="pmfMode">Protected Management Frames</Label>
-                    <Select
-                      value={formData.securityConfig?.pmfMode || 'disabled'}
-                      onValueChange={(value: PMFMode) => setFormData({
-                        ...formData,
-                        securityConfig: { ...formData.securityConfig, pmfMode: value }
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="disabled">Disabled</SelectItem>
-                        <SelectItem value="optional">Optional (Capable)</SelectItem>
-                        <SelectItem value="required">Required</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* WPA3 SAE Method - only for WPA3-Personal */}
-                {formData.security === 'wpa3-personal' && (
-                  <div className="space-y-3">
-                    <Label htmlFor="saeMethod">SAE Method</Label>
-                    <Select
-                      value={formData.securityConfig?.saeMethod || 'both'}
-                      onValueChange={(value: any) => setFormData({
-                        ...formData,
-                        securityConfig: { ...formData.securityConfig, saeMethod: value }
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sae">SAE Only (2.4/5 GHz)</SelectItem>
-                        <SelectItem value="h2e">H2E Only (Required for 6 GHz)</SelectItem>
-                        <SelectItem value="both">SAE/H2E (Default, backwards compatible)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {/* 6E WPA Compliance - for WPA3/OWE */}
-                {['owe', 'wpa3-personal', 'wpa3-enterprise-transition'].includes(formData.security) && (
-                  <div className="flex items-center justify-between py-2">
-                    <Label htmlFor="sixECompliance" className="cursor-pointer">6E WPA Compliance</Label>
-                    <input
-                      id="sixECompliance"
-                      type="checkbox"
-                      checked={formData.securityConfig?.sixECompliance ?? false}
-                      onChange={(e) => setFormData({
-                        ...formData,
-                        securityConfig: { ...formData.securityConfig, sixECompliance: e.target.checked }
-                      })}
-                      className="h-4 w-4 cursor-pointer"
+                    <Label htmlFor="ssid">
+                      SSID{' '}
+                      {!formData.ssid?.trim() && (
+                        <span className="text-[color:var(--status-error)]">*</span>
+                      )}
+                    </Label>
+                    <Input
+                      id="ssid"
+                      value={formData.ssid || ''}
+                      onChange={(e) => {
+                        setSsidManuallyEdited(true); // User edited SSID, stop auto-sync
+                        setFormData({ ...formData, ssid: e.target.value });
+                      }}
+                      placeholder="Broadcast name (visible to clients)"
+                      className={
+                        !formData.ssid?.trim()
+                          ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]'
+                          : ''
+                      }
                     />
+                    {!formData.ssid?.trim() && (
+                      <p className="text-xs text-[color:var(--status-error)]">SSID is required</p>
+                    )}
                   </div>
-                )}
 
-                {/* Network Options - collapsed by default for simple setups */}
-                <div
-                  className="flex items-center justify-between cursor-pointer py-2 border-t mt-2 md:col-span-2"
-                  onClick={() => setShowNetworkOptions(!showNetworkOptions)}
-                >
-                  <span className="text-xs font-medium text-muted-foreground">Network Options (VLAN, Topology, Role, CoS)</span>
-                  {showNetworkOptions ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-                </div>
-                {showNetworkOptions && (<>
-
-                {/* VLAN */}
-                <div className="space-y-3">
-                  <Label htmlFor="vlan">VLAN ID (Default: 1)</Label>
-                  <Input
-                    id="vlan"
-                    type="number"
-                    value={formData.vlan || ''}
-                    onChange={(e) => setFormData({ ...formData, vlan: e.target.value ? parseInt(e.target.value) : 1 })}
-                    placeholder="1"
-                    min="1"
-                    max="4094"
-                  />
-                </div>
-
-                {/* Topology */}
-                <div className="space-y-3">
-                  <Label htmlFor="topology">Topology</Label>
-                  <Select
-                    value={formData.topologyId || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, topologyId: value === 'none' ? undefined : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={loadingTopologies ? "Loading topologies..." : "Select topology..."} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Default Topology</SelectItem>
-                      {topologies.map((topology) => (
-                        <SelectItem key={topology.id} value={topology.id}>
-                          {topology.name}
+                  {/* Security Type */}
+                  <div className="space-y-3">
+                    <Label htmlFor="security">Auth Type</Label>
+                    <Select
+                      value={formData.security}
+                      onValueChange={(value: any) =>
+                        setFormData({ ...formData, security: value, securityConfig: undefined })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="owe">OWE (Enhanced Open)</SelectItem>
+                        <SelectItem value="wep">WEP (Legacy)</SelectItem>
+                        <SelectItem value="wpa2-psk">WPA2-Personal</SelectItem>
+                        <SelectItem value="wpa2-enterprise">WPA2-Enterprise</SelectItem>
+                        <SelectItem value="wpa3-personal">WPA3-Personal</SelectItem>
+                        <SelectItem value="wpa3-compatibility">WPA3-Compatibility</SelectItem>
+                        <SelectItem value="wpa3-enterprise-transition">
+                          WPA3-Enterprise Transition
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                        <SelectItem value="wpa3-enterprise-192">WPA3-Enterprise 192-bit</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Class of Service */}
-                <div className="space-y-3">
-                  <Label htmlFor="cos">Class of Service</Label>
-                  <Select
-                    value={formData.cosId || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, cosId: value === 'none' ? undefined : value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={loadingCos ? "Loading CoS..." : "Select CoS..."} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Default CoS</SelectItem>
-                      {cosProfiles.map((cos) => (
-                        <SelectItem key={cos.id} value={cos.id}>
-                          {cos.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                  {/* Band */}
+                  <div className="space-y-3">
+                    <Label htmlFor="band">Band</Label>
+                    <Select
+                      value={formData.band}
+                      onValueChange={(value: any) => setFormData({ ...formData, band: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="2.4GHz">2.4 GHz</SelectItem>
+                        <SelectItem value="5GHz">5 GHz</SelectItem>
+                        <SelectItem value="6GHz">6 GHz (WiFi 6E)</SelectItem>
+                        <SelectItem value="dual">Dual Band (2.4 + 5 GHz)</SelectItem>
+                        <SelectItem value="all">All Bands (2.4 + 5 + 6 GHz)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                {/* Role */}
-                <div className="space-y-3">
-                  <Label htmlFor="role">User Role (Default: bridged)</Label>
-                  <Select
-                    value={formData.authenticatedUserDefaultRoleID || 'none'}
-                    onValueChange={(value) => setFormData({ ...formData, authenticatedUserDefaultRoleID: value === 'none' ? null : value })}
+                  {/* 6GHz Security Warning */}
+                  {show6GHzWarning && (
+                    <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
+                      <AlertCircle className="h-4 w-4 text-[color:var(--status-warning)]" />
+                      <AlertDescription className="text-[color:var(--status-warning)]">
+                        6GHz (Radio 3) requires WPA3 or OWE security. The controller may reject this
+                        configuration.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Passphrase - for PSK/Personal modes */}
+                  {['wpa2-psk', 'wpa3-personal', 'wpa3-compatibility'].includes(
+                    formData.security
+                  ) && (
+                    <div className="space-y-3">
+                      <Label htmlFor="passphrase">
+                        {formData.security === 'wpa3-personal' ? 'WPA3 Key' : 'WPA2 Key'}
+                        {!formData.passphrase?.trim() && (
+                          <span className="text-[color:var(--status-error)]">*</span>
+                        )}
+                      </Label>
+                      <Input
+                        id="passphrase"
+                        type="password"
+                        value={formData.passphrase || ''}
+                        onChange={(e) => setFormData({ ...formData, passphrase: e.target.value })}
+                        placeholder="8–63 characters"
+                        className={
+                          !formData.passphrase?.trim()
+                            ? 'border-[color:var(--status-error)]/50 focus-visible:border-[color:var(--status-error)]'
+                            : ''
+                        }
+                      />
+                      {!formData.passphrase?.trim() && (
+                        <p className="text-xs text-[color:var(--status-error)]">
+                          Passphrase is required (8–63 characters)
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* PMF Mode - for WPA2/WPA3 */}
+                  {['wpa2-psk', 'wpa2-enterprise', 'wpa3-compatibility'].includes(
+                    formData.security
+                  ) && (
+                    <div className="space-y-3">
+                      <Label htmlFor="pmfMode">Protected Management Frames</Label>
+                      <Select
+                        value={formData.securityConfig?.pmfMode || 'disabled'}
+                        onValueChange={(value: PMFMode) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: { ...formData.securityConfig, pmfMode: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="disabled">Disabled</SelectItem>
+                          <SelectItem value="optional">Optional (Capable)</SelectItem>
+                          <SelectItem value="required">Required</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* WPA3 SAE Method - only for WPA3-Personal */}
+                  {formData.security === 'wpa3-personal' && (
+                    <div className="space-y-3">
+                      <Label htmlFor="saeMethod">SAE Method</Label>
+                      <Select
+                        value={formData.securityConfig?.saeMethod || 'both'}
+                        onValueChange={(value: any) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: { ...formData.securityConfig, saeMethod: value },
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="sae">SAE Only (2.4/5 GHz)</SelectItem>
+                          <SelectItem value="h2e">H2E Only (Required for 6 GHz)</SelectItem>
+                          <SelectItem value="both">
+                            SAE/H2E (Default, backwards compatible)
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* 6E WPA Compliance - for WPA3/OWE */}
+                  {['owe', 'wpa3-personal', 'wpa3-enterprise-transition'].includes(
+                    formData.security
+                  ) && (
+                    <div className="flex items-center justify-between py-2">
+                      <Label htmlFor="sixECompliance" className="cursor-pointer">
+                        6E WPA Compliance
+                      </Label>
+                      <input
+                        id="sixECompliance"
+                        type="checkbox"
+                        checked={formData.securityConfig?.sixECompliance ?? false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              sixECompliance: e.target.checked,
+                            },
+                          })
+                        }
+                        className="h-4 w-4 cursor-pointer"
+                      />
+                    </div>
+                  )}
+
+                  {/* Network Options - collapsed by default for simple setups */}
+                  <div
+                    className="flex items-center justify-between cursor-pointer py-2 border-t mt-2 md:col-span-2"
+                    onClick={() => setShowNetworkOptions(!showNetworkOptions)}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder={loadingRoles ? "Loading roles..." : "Select role..."} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">No Role</SelectItem>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.id}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      Network Options (VLAN, Topology, Role, CoS)
+                    </span>
+                    {showNetworkOptions ? (
+                      <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </div>
+                  {showNetworkOptions && (
+                    <>
+                      {/* VLAN */}
+                      <div className="space-y-3">
+                        <Label htmlFor="vlan">VLAN ID (Default: 1)</Label>
+                        <Input
+                          id="vlan"
+                          type="number"
+                          value={formData.vlan || ''}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              vlan: e.target.value ? parseInt(e.target.value) : 1,
+                            })
+                          }
+                          placeholder="1"
+                          min="1"
+                          max="4094"
+                        />
+                      </div>
+
+                      {/* Topology */}
+                      <div className="space-y-3">
+                        <Label htmlFor="topology">Topology</Label>
+                        <Select
+                          value={formData.topologyId || 'none'}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              topologyId: value === 'none' ? undefined : value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={
+                                loadingTopologies ? 'Loading topologies...' : 'Select topology...'
+                              }
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Default Topology</SelectItem>
+                            {topologies.map((topology) => (
+                              <SelectItem key={topology.id} value={topology.id}>
+                                {topology.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Class of Service */}
+                      <div className="space-y-3">
+                        <Label htmlFor="cos">Class of Service</Label>
+                        <Select
+                          value={formData.cosId || 'none'}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              cosId: value === 'none' ? undefined : value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={loadingCos ? 'Loading CoS...' : 'Select CoS...'}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Default CoS</SelectItem>
+                            {cosProfiles.map((cos) => (
+                              <SelectItem key={cos.id} value={cos.id}>
+                                {cos.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Role */}
+                      <div className="space-y-3">
+                        <Label htmlFor="role">User Role (Default: bridged)</Label>
+                        <Select
+                          value={formData.authenticatedUserDefaultRoleID || 'none'}
+                          onValueChange={(value) =>
+                            setFormData({
+                              ...formData,
+                              authenticatedUserDefaultRoleID: value === 'none' ? null : value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder={loadingRoles ? 'Loading roles...' : 'Select role...'}
+                            />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">No Role</SelectItem>
+                            {roles.map((role) => (
+                              <SelectItem key={role.id} value={role.id}>
+                                {role.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
                 </div>
-                </>)}
-              </div>
               </CardContent>
             </Card>
 
             {/* Enterprise Authentication Section - Only for enterprise modes */}
-            {['wpa2-enterprise', 'wpa3-enterprise-transition', 'wpa3-enterprise-192'].includes(formData.security) && (
+            {['wpa2-enterprise', 'wpa3-enterprise-transition', 'wpa3-enterprise-192'].includes(
+              formData.security
+            ) && (
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Enterprise Authentication</CardTitle>
-                  <CardDescription className="text-xs">
-                    RADIUS/802.1X configuration
-                  </CardDescription>
+                  <CardDescription className="text-xs">RADIUS/802.1X configuration</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Enable MBA */}
                     <div className="flex items-center justify-between py-2 md:col-span-2">
-                      <Label htmlFor="mbaEnabled" className="cursor-pointer">MAC-Based Authentication (MBA)</Label>
+                      <Label htmlFor="mbaEnabled" className="cursor-pointer">
+                        MAC-Based Authentication (MBA)
+                      </Label>
                       <input
                         id="mbaEnabled"
                         type="checkbox"
                         checked={formData.securityConfig?.mbaEnabled ?? false}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, mbaEnabled: e.target.checked }
-                        })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              mbaEnabled: e.target.checked,
+                            },
+                          })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1238,13 +1361,22 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Label htmlFor="aaaPolicyId">AAA Policy</Label>
                       <Select
                         value={formData.securityConfig?.aaaPolicyId || 'none'}
-                        onValueChange={(value) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, aaaPolicyId: value === 'none' ? undefined : value }
-                        })}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              aaaPolicyId: value === 'none' ? undefined : value,
+                            },
+                          })
+                        }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder={loadingAaaPolicies ? "Loading policies..." : "Select AAA Policy..."} />
+                          <SelectValue
+                            placeholder={
+                              loadingAaaPolicies ? 'Loading policies...' : 'Select AAA Policy...'
+                            }
+                          />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="none">None (Use WLAN-level RADIUS)</SelectItem>
@@ -1262,10 +1394,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Label htmlFor="wlanAuthMethod">Authentication Method</Label>
                       <Select
                         value={formData.securityConfig?.wlanAuthMethod || 'RADIUS'}
-                        onValueChange={(value: any) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, wlanAuthMethod: value }
-                        })}
+                        onValueChange={(value: any) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: { ...formData.securityConfig, wlanAuthMethod: value },
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -1285,10 +1419,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Input
                         id="primaryRadius"
                         value={formData.securityConfig?.primaryRadiusServer || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, primaryRadiusServer: e.target.value }
-                        })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              primaryRadiusServer: e.target.value,
+                            },
+                          })
+                        }
                         placeholder="IP address or hostname"
                       />
                     </div>
@@ -1299,25 +1438,37 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Input
                         id="backupRadius"
                         value={formData.securityConfig?.backupRadiusServer || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, backupRadiusServer: e.target.value }
-                        })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              backupRadiusServer: e.target.value,
+                            },
+                          })
+                        }
                         placeholder="IP address or hostname (optional)"
                       />
                     </div>
 
                     {/* Fast Transition */}
                     <div className="flex items-center justify-between py-2 md:col-span-2">
-                      <Label htmlFor="fastTransition" className="cursor-pointer">Fast Transition (802.11r)</Label>
+                      <Label htmlFor="fastTransition" className="cursor-pointer">
+                        Fast Transition (802.11r)
+                      </Label>
                       <input
                         id="fastTransition"
                         type="checkbox"
                         checked={formData.securityConfig?.fastTransition ?? false}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, fastTransition: e.target.checked }
-                        })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              fastTransition: e.target.checked,
+                            },
+                          })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1327,10 +1478,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Label htmlFor="defaultAuthRole">Default Auth Role</Label>
                       <Select
                         value={formData.securityConfig?.defaultAuthRoleId || 'none'}
-                        onValueChange={(value) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, defaultAuthRoleId: value === 'none' ? undefined : value }
-                        })}
+                        onValueChange={(value) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              defaultAuthRoleId: value === 'none' ? undefined : value,
+                            },
+                          })
+                        }
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select role..." />
@@ -1352,10 +1508,15 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Input
                         id="defaultVlan"
                         value={formData.securityConfig?.defaultVlanId || ''}
-                        onChange={(e) => setFormData({
-                          ...formData,
-                          securityConfig: { ...formData.securityConfig, defaultVlanId: e.target.value }
-                        })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              defaultVlanId: e.target.value,
+                            },
+                          })
+                        }
                         placeholder="VLAN ID (optional)"
                       />
                     </div>
@@ -1366,15 +1527,24 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
             {/* Advanced Options Section */}
             <Card>
-              <CardHeader className="pb-2 cursor-pointer" onClick={() => setShowAdvanced(!showAdvanced)}>
+              <CardHeader
+                className="pb-2 cursor-pointer"
+                onClick={() => setShowAdvanced(!showAdvanced)}
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Settings className="h-4 w-4" />
                     <CardTitle className="text-sm font-medium">Advanced Options</CardTitle>
                   </div>
-                  {showAdvanced ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showAdvanced ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
                 </div>
-                <CardDescription className="text-xs mt-0.5">Optional advanced settings</CardDescription>
+                <CardDescription className="text-xs mt-0.5">
+                  Optional advanced settings
+                </CardDescription>
               </CardHeader>
               {showAdvanced && (
                 <CardContent className="space-y-6">
@@ -1383,7 +1553,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     {/* MultiBand Operation */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="mbo" className="cursor-pointer">MultiBand Operation</Label>
+                        <Label htmlFor="mbo" className="cursor-pointer">
+                          MultiBand Operation
+                        </Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </div>
                       <input
@@ -1397,19 +1569,25 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                     {/* RADIUS Accounting */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="accountingEnabled" className="cursor-pointer">RADIUS Accounting</Label>
+                      <Label htmlFor="accountingEnabled" className="cursor-pointer">
+                        RADIUS Accounting
+                      </Label>
                       <input
                         id="accountingEnabled"
                         type="checkbox"
                         checked={formData.accountingEnabled ?? false}
-                        onChange={(e) => setFormData({ ...formData, accountingEnabled: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, accountingEnabled: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Hide SSID */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="hideSSID" className="cursor-pointer">Hide SSID</Label>
+                      <Label htmlFor="hideSSID" className="cursor-pointer">
+                        Hide SSID
+                      </Label>
                       <input
                         id="hideSSID"
                         type="checkbox"
@@ -1421,12 +1599,16 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                     {/* Include Hostname */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="includeHostname" className="cursor-pointer">Include Hostname</Label>
+                      <Label htmlFor="includeHostname" className="cursor-pointer">
+                        Include Hostname
+                      </Label>
                       <input
                         id="includeHostname"
                         type="checkbox"
                         checked={formData.includeHostname ?? false}
-                        onChange={(e) => setFormData({ ...formData, includeHostname: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, includeHostname: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1434,14 +1616,18 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     {/* FTM (11mc) responder support */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="enable11mcSupport" className="cursor-pointer">FTM (11mc) responder support</Label>
+                        <Label htmlFor="enable11mcSupport" className="cursor-pointer">
+                          FTM (11mc) responder support
+                        </Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </div>
                       <input
                         id="enable11mcSupport"
                         type="checkbox"
                         checked={formData.enable11mcSupport ?? false}
-                        onChange={(e) => setFormData({ ...formData, enable11mcSupport: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, enable11mcSupport: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1449,98 +1635,136 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     {/* Radio Management (11k) support */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="enabled11kSupport" className="cursor-pointer">Radio Management (11k) support</Label>
+                        <Label htmlFor="enabled11kSupport" className="cursor-pointer">
+                          Radio Management (11k) support
+                        </Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </div>
                       <input
                         id="enabled11kSupport"
                         type="checkbox"
                         checked={formData.enabled11kSupport ?? false}
-                        onChange={(e) => setFormData({ ...formData, enabled11kSupport: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, enabled11kSupport: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* U-APSD (WMM-PS) */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="uapsdEnabled" className="cursor-pointer">U-APSD (WMM-PS)</Label>
+                      <Label htmlFor="uapsdEnabled" className="cursor-pointer">
+                        U-APSD (WMM-PS)
+                      </Label>
                       <input
                         id="uapsdEnabled"
                         type="checkbox"
                         checked={formData.uapsdEnabled ?? true}
-                        onChange={(e) => setFormData({ ...formData, uapsdEnabled: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, uapsdEnabled: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Admission Control for Voice */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="admissionControlVoice" className="cursor-pointer">Use Admission Control for Voice (VO)</Label>
+                      <Label htmlFor="admissionControlVoice" className="cursor-pointer">
+                        Use Admission Control for Voice (VO)
+                      </Label>
                       <input
                         id="admissionControlVoice"
                         type="checkbox"
                         checked={formData.admissionControlVoice ?? false}
-                        onChange={(e) => setFormData({ ...formData, admissionControlVoice: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, admissionControlVoice: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Admission Control for Video */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="admissionControlVideo" className="cursor-pointer">Use Admission Control for Video (VI)</Label>
+                      <Label htmlFor="admissionControlVideo" className="cursor-pointer">
+                        Use Admission Control for Video (VI)
+                      </Label>
                       <input
                         id="admissionControlVideo"
                         type="checkbox"
                         checked={formData.admissionControlVideo ?? false}
-                        onChange={(e) => setFormData({ ...formData, admissionControlVideo: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, admissionControlVideo: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Admission Control for Best Effort */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="admissionControlBestEffort" className="cursor-pointer">Use Admission Control for Best Effort (BE)</Label>
+                      <Label htmlFor="admissionControlBestEffort" className="cursor-pointer">
+                        Use Admission Control for Best Effort (BE)
+                      </Label>
                       <input
                         id="admissionControlBestEffort"
                         type="checkbox"
                         checked={formData.admissionControlBestEffort ?? false}
-                        onChange={(e) => setFormData({ ...formData, admissionControlBestEffort: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, admissionControlBestEffort: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Admission Control for Background */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="admissionControlBackgroundTraffic" className="cursor-pointer">Use Global Admission Control for Background (BK)</Label>
+                      <Label htmlFor="admissionControlBackgroundTraffic" className="cursor-pointer">
+                        Use Global Admission Control for Background (BK)
+                      </Label>
                       <input
                         id="admissionControlBackgroundTraffic"
                         type="checkbox"
                         checked={formData.admissionControlBackgroundTraffic ?? false}
-                        onChange={(e) => setFormData({ ...formData, admissionControlBackgroundTraffic: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            admissionControlBackgroundTraffic: e.target.checked,
+                          })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Client To Client Communication */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="clientToClientCommunication" className="cursor-pointer">Client To Client Communication</Label>
+                      <Label htmlFor="clientToClientCommunication" className="cursor-pointer">
+                        Client To Client Communication
+                      </Label>
                       <input
                         id="clientToClientCommunication"
                         type="checkbox"
                         checked={formData.clientToClientCommunication ?? true}
-                        onChange={(e) => setFormData({ ...formData, clientToClientCommunication: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            clientToClientCommunication: e.target.checked,
+                          })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
 
                     {/* Clear Session on Disconnect */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
-                      <Label htmlFor="purgeOnDisconnect" className="cursor-pointer">Clear Session on Disconnect</Label>
+                      <Label htmlFor="purgeOnDisconnect" className="cursor-pointer">
+                        Clear Session on Disconnect
+                      </Label>
                       <input
                         id="purgeOnDisconnect"
                         type="checkbox"
                         checked={formData.purgeOnDisconnect ?? false}
-                        onChange={(e) => setFormData({ ...formData, purgeOnDisconnect: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, purgeOnDisconnect: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1548,14 +1772,18 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     {/* Beacon Protection */}
                     <div className="flex items-center justify-between py-3 px-2 rounded hover:bg-accent transition-colors">
                       <div className="flex items-center gap-2">
-                        <Label htmlFor="beaconProtection" className="cursor-pointer">Beacon Protection</Label>
+                        <Label htmlFor="beaconProtection" className="cursor-pointer">
+                          Beacon Protection
+                        </Label>
                         <Info className="h-3 w-3 text-muted-foreground" />
                       </div>
                       <input
                         id="beaconProtection"
                         type="checkbox"
                         checked={formData.beaconProtection ?? false}
-                        onChange={(e) => setFormData({ ...formData, beaconProtection: e.target.checked })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, beaconProtection: e.target.checked })
+                        }
                         className="h-4 w-4 cursor-pointer"
                       />
                     </div>
@@ -1569,12 +1797,19 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Pre-Authenticated Idle Timeout */}
                       <div className="space-y-2">
-                        <Label htmlFor="preAuthenticatedIdleTimeout" className="text-xs">Pre-Authenticated idle timeout (seconds)</Label>
+                        <Label htmlFor="preAuthenticatedIdleTimeout" className="text-xs">
+                          Pre-Authenticated idle timeout (seconds)
+                        </Label>
                         <Input
                           id="preAuthenticatedIdleTimeout"
                           type="number"
                           value={formData.preAuthenticatedIdleTimeout ?? 300}
-                          onChange={(e) => setFormData({ ...formData, preAuthenticatedIdleTimeout: parseInt(e.target.value) || 300 })}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              preAuthenticatedIdleTimeout: parseInt(e.target.value) || 300,
+                            })
+                          }
                           min="5"
                           max="999999"
                         />
@@ -1582,12 +1817,19 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                       {/* Post-Authenticated Idle Timeout */}
                       <div className="space-y-2">
-                        <Label htmlFor="postAuthenticatedIdleTimeout" className="text-xs">Post-Authenticated idle timeout (seconds)</Label>
+                        <Label htmlFor="postAuthenticatedIdleTimeout" className="text-xs">
+                          Post-Authenticated idle timeout (seconds)
+                        </Label>
                         <Input
                           id="postAuthenticatedIdleTimeout"
                           type="number"
                           value={formData.postAuthenticatedIdleTimeout ?? 1800}
-                          onChange={(e) => setFormData({ ...formData, postAuthenticatedIdleTimeout: parseInt(e.target.value) || 1800 })}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              postAuthenticatedIdleTimeout: parseInt(e.target.value) || 1800,
+                            })
+                          }
                           min="0"
                           max="999999"
                         />
@@ -1595,12 +1837,19 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
                       {/* Maximum Session Duration */}
                       <div className="space-y-2">
-                        <Label htmlFor="sessionTimeout" className="text-xs">Maximum session duration (seconds)</Label>
+                        <Label htmlFor="sessionTimeout" className="text-xs">
+                          Maximum session duration (seconds)
+                        </Label>
                         <Input
                           id="sessionTimeout"
                           type="number"
                           value={formData.sessionTimeout ?? 0}
-                          onChange={(e) => setFormData({ ...formData, sessionTimeout: parseInt(e.target.value) || 0 })}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              sessionTimeout: parseInt(e.target.value) || 0,
+                            })
+                          }
                           min="0"
                           max="999999"
                           placeholder="0 = unlimited"
@@ -1631,10 +1880,14 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-medium">
-                      Site Assignment {getExpandedSiteIds().length === 0 && <span className="text-[color:var(--status-error)]">*</span>}
+                      Site Assignment{' '}
+                      {getExpandedSiteIds().length === 0 && (
+                        <span className="text-[color:var(--status-error)]">*</span>
+                      )}
                     </CardTitle>
                     <CardDescription className="text-xs mt-0.5">
-                      Select sites or site groups ({getExpandedSiteIds().length} total sites selected)
+                      Select sites or site groups ({getExpandedSiteIds().length} total sites
+                      selected)
                     </CardDescription>
                   </div>
                   {discoveringProfiles && (
@@ -1646,187 +1899,192 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                 </div>
               </CardHeader>
               <CardContent>
-              <div className="space-y-3">
-                {/* Site Groups Section */}
-                {siteGroups.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="flex items-center gap-2">
-                        <Folder className="h-4 w-4" />
-                        Site Groups
-                      </Label>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setLegacySiteGroupDialogOpen(true)}
-                      >
-                        <Settings className="h-3 w-3 mr-1" />
-                        Manage
-                      </Button>
+                <div className="space-y-3">
+                  {/* Site Groups Section */}
+                  {siteGroups.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-2">
+                          <Folder className="h-4 w-4" />
+                          Site Groups
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setLegacySiteGroupDialogOpen(true)}
+                        >
+                          <Settings className="h-3 w-3 mr-1" />
+                          Manage
+                        </Button>
+                      </div>
+                      <div className="space-y-1">
+                        {siteGroups.map((group) => (
+                          <div
+                            key={group.id}
+                            className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
+                              formData.selectedSiteGroups.includes(group.id)
+                                ? 'border-primary bg-primary/5'
+                                : 'hover:bg-accent/50'
+                            }`}
+                            onClick={() => toggleLegacySiteGroup(group.id)}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedSiteGroups.includes(group.id)}
+                              onChange={() => {}}
+                              className="h-4 w-4"
+                            />
+                            <div
+                              className="w-3 h-3 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: group.color }}
+                            />
+                            <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <span className="font-medium">{group.name}</span>
+                              {group.description && (
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {group.description}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="text-xs flex-shrink-0">
+                              {group.siteIds.length} {group.siteIds.length === 1 ? 'site' : 'sites'}
+                            </Badge>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      {siteGroups.map(group => (
+                  )}
+
+                  {/* Manage Site Groups Button (when no groups exist) */}
+                  {siteGroups.length === 0 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => setLegacySiteGroupDialogOpen(true)}
+                    >
+                      <Folder className="h-4 w-4 mr-2" />
+                      Create Site Groups
+                    </Button>
+                  )}
+
+                  {/* Individual Sites Section */}
+                  <div className="flex items-center justify-between">
+                    <Label>Individual Sites</Label>
+                    {sites.length > 0 && (
+                      <div className="flex gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() =>
+                            setFormData({ ...formData, selectedSites: sites.map((s) => s.id) })
+                          }
+                          disabled={formData.selectedSites.length === sites.length}
+                        >
+                          Select All
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => setFormData({ ...formData, selectedSites: [] })}
+                          disabled={formData.selectedSites.length === 0}
+                        >
+                          Clear All
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  {loadingSites ? (
+                    <div className="flex items-center justify-center h-32">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span className="text-sm">Loading...</span>
+                      </div>
+                    </div>
+                  ) : sites.length === 0 ? (
+                    <div className="text-sm text-muted-foreground text-center py-4">
+                      No sites available
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {sites.map((site) => (
                         <div
-                          key={group.id}
+                          key={site.id}
                           className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                            formData.selectedLegacySiteGroups.includes(group.id)
+                            formData.selectedSites.includes(site.id)
                               ? 'border-primary bg-primary/5'
                               : 'hover:bg-accent/50'
                           }`}
-                          onClick={() => toggleLegacySiteGroup(group.id)}
+                          onClick={() => toggleSite(site.id)}
                         >
                           <input
                             type="checkbox"
-                            checked={formData.selectedLegacySiteGroups.includes(group.id)}
+                            checked={formData.selectedSites.includes(site.id)}
                             onChange={() => {}}
                             className="h-4 w-4"
                           />
-                          <div
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: group.color }}
-                          />
-                          <FolderOpen className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <span className="font-medium">{group.name}</span>
-                            {group.description && (
-                              <p className="text-xs text-muted-foreground truncate">{group.description}</p>
-                            )}
-                          </div>
-                          <Badge variant="secondary" className="text-xs flex-shrink-0">
-                            {group.siteIds.length} {group.siteIds.length === 1 ? 'site' : 'sites'}
-                          </Badge>
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span className="flex-1">{site.name || site.siteName || site.id}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Manage Site Groups Button (when no groups exist) */}
-                {siteGroups.length === 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    onClick={() => setLegacySiteGroupDialogOpen(true)}
-                  >
-                    <Folder className="h-4 w-4 mr-2" />
-                    Create Site Groups
-                  </Button>
-                )}
-
-                {/* Individual Sites Section */}
-                <div className="flex items-center justify-between">
-                  <Label>Individual Sites</Label>
-                  {sites.length > 0 && (
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setFormData({ ...formData, selectedSites: sites.map(s => s.id) })}
-                        disabled={formData.selectedSites.length === sites.length}
-                      >
-                        Select All
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => setFormData({ ...formData, selectedSites: [] })}
-                        disabled={formData.selectedSites.length === 0}
-                      >
-                        Clear All
-                      </Button>
-                    </div>
                   )}
                 </div>
-                {loadingSites ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-sm">Loading...</span>
-                    </div>
-                  </div>
-                ) : sites.length === 0 ? (
-                  <div className="text-sm text-muted-foreground text-center py-4">
-                    No sites available
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {sites.map(site => (
-                      <div
-                        key={site.id}
-                        className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition-colors ${
-                          formData.selectedSites.includes(site.id)
-                            ? 'border-primary bg-primary/5'
-                            : 'hover:bg-accent/50'
-                        }`}
-                        onClick={() => toggleSite(site.id)}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={formData.selectedSites.includes(site.id)}
-                          onChange={() => {}}
-                          className="h-4 w-4"
-                        />
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="flex-1">{site.name || site.siteName || site.id}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
               </CardContent>
             </Card>
 
             {/* Deployment Mode Selectors — only shown when selected_targets is active */}
-            {assignmentMode === 'selected_targets' && formData.selectedSites.length > 0 && !discoveringProfiles && (
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Deployment Configuration</CardTitle>
-                  <CardDescription className="text-xs">Choose how WLANs are assigned to profiles</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {Array.from(siteConfigs.values()).map((config) => (
-                      <DeploymentModeSelector
-                        key={config.siteId}
-                        siteId={config.siteId}
-                        siteName={config.siteName}
-                        profileCount={config.profiles.length}
-                        selectedMode={config.deploymentMode}
-                        onModeChange={(mode) => handleModeChange(config.siteId, mode)}
-                        onConfigureProfiles={
-                          config.deploymentMode === 'ALL_PROFILES_AT_SITE'
-                            ? undefined
-                            : () => openProfilePicker(config.siteId, config.deploymentMode as any)
-                        }
-                        selectedProfilesCount={config.includedProfiles.length}
-                        excludedProfilesCount={config.excludedProfiles.length}
-                      />
-                    ))}
-                  </div>
+            {assignmentMode === 'selected_targets' &&
+              formData.selectedSites.length > 0 &&
+              !discoveringProfiles && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium">Deployment Configuration</CardTitle>
+                    <CardDescription className="text-xs">
+                      Choose how WLANs are assigned to profiles
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {Array.from(siteConfigs.values()).map((config) => (
+                        <DeploymentModeSelector
+                          key={config.siteId}
+                          siteId={config.siteId}
+                          siteName={config.siteName}
+                          profileCount={config.profiles.length}
+                          selectedMode={config.deploymentMode}
+                          onModeChange={(mode) => handleModeChange(config.siteId, mode)}
+                          onConfigureProfiles={
+                            config.deploymentMode === 'ALL_PROFILES_AT_SITE'
+                              ? undefined
+                              : () => openProfilePicker(config.siteId, config.deploymentMode as any)
+                          }
+                          selectedProfilesCount={config.includedProfiles.length}
+                          excludedProfilesCount={config.excludedProfiles.length}
+                        />
+                      ))}
+                    </div>
 
-                  {/* Effective Set Preview */}
-                  <EffectiveSetPreview effectiveSets={effectiveSets} />
-                </CardContent>
-              </Card>
-            )}
+                    {/* Effective Set Preview */}
+                    <EffectiveSetPreview effectiveSets={effectiveSets} />
+                  </CardContent>
+                </Card>
+              )}
           </div>
 
           <DialogFooter className="px-6 py-4 border-t mt-auto">
             <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!isValid || submitting || discoveringProfiles}
-            >
+            <Button onClick={handleSubmit} disabled={!isValid || submitting || discoveringProfiles}>
               {submitting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -6,21 +6,38 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from './ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from './ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
-import { 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Wifi, 
-  Activity, 
-  MapPin, 
-  Settings, 
-  RefreshCw, 
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Wifi,
+  Activity,
+  MapPin,
+  Settings,
+  RefreshCw,
   Filter,
   Download,
   Upload,
@@ -32,7 +49,7 @@ import {
   Smartphone,
   Router,
   Monitor,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -114,7 +131,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     location: '',
     description: '',
     managementVlan: '',
-    adminStatus: ''
+    adminStatus: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
@@ -131,7 +148,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
     try {
       const response = await apiService.makeAuthenticatedRequest('/v3/devices', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (!response.ok) {
@@ -139,7 +156,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
       }
 
       const data = await response.json();
-      
+
       // Ensure we have an array and handle various API response formats
       let deviceList: Device[] = [];
       if (Array.isArray(data)) {
@@ -154,25 +171,24 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
       }
 
       setDevices(deviceList);
-      
+
       if (deviceList.length === 0) {
         toast.info('No devices found', {
-          description: 'No devices are currently configured in the system.'
+          description: 'No devices are currently configured in the system.',
         });
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setError(errorMessage);
-      
+
       if (errorMessage.includes('timed out') || errorMessage.includes('timeout')) {
         toast.error('Request timed out', {
           description: 'The controller is taking too long to respond. Please try again.',
           duration: 8000,
           action: {
             label: 'Retry',
-            onClick: () => fetchDevices(showLoader)
-          }
+            onClick: () => fetchDevices(showLoader),
+          },
         });
       } else {
         toast.error('Failed to load devices', {
@@ -180,8 +196,8 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
           duration: 5000,
           action: {
             label: 'Retry',
-            onClick: () => fetchDevices(showLoader)
-          }
+            onClick: () => fetchDevices(showLoader),
+          },
         });
       }
     } finally {
@@ -194,7 +210,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   const fetchSites = useCallback(async () => {
     try {
       const response = await apiService.makeAuthenticatedRequest('/v3/sites', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (!response.ok) {
@@ -202,7 +218,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
       }
 
       const data = await response.json();
-      
+
       // Handle various API response formats
       let siteList: Site[] = [];
       if (Array.isArray(data)) {
@@ -226,13 +242,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     } catch (error) {
       console.error('Failed to fetch device types:', error);
       // Set default types if API fails
-      setAvailableDeviceTypes([
-        'Access Point',
-        'Switch',
-        'Router',
-        'Gateway',
-        'Controller'
-      ]);
+      setAvailableDeviceTypes(['Access Point', 'Switch', 'Router', 'Gateway', 'Controller']);
     }
   }, []);
 
@@ -245,11 +255,19 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   // Get device status badge variant
   const getStatusBadgeVariant = (status?: string) => {
     if (!status) return 'secondary';
-    
+
     const normalizedStatus = status.toLowerCase();
-    if (normalizedStatus.includes('online') || normalizedStatus === 'up' || normalizedStatus === 'active') {
+    if (
+      normalizedStatus.includes('online') ||
+      normalizedStatus === 'up' ||
+      normalizedStatus === 'active'
+    ) {
       return 'default';
-    } else if (normalizedStatus.includes('offline') || normalizedStatus === 'down' || normalizedStatus === 'inactive') {
+    } else if (
+      normalizedStatus.includes('offline') ||
+      normalizedStatus === 'down' ||
+      normalizedStatus === 'inactive'
+    ) {
       return 'destructive';
     } else if (normalizedStatus.includes('warning') || normalizedStatus === 'degraded') {
       return 'outline';
@@ -260,7 +278,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   // Get device type icon
   const getDeviceTypeIcon = (type?: string) => {
     if (!type) return <Server className="h-4 w-4" />;
-    
+
     const normalizedType = type.toLowerCase();
     if (normalizedType.includes('access') || normalizedType.includes('ap')) {
       return <Wifi className="h-4 w-4" />;
@@ -275,35 +293,50 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   };
 
   // Filter devices based on search and filters
-  const filteredDevices = devices.filter(device => {
-    const matchesSearch = !searchQuery || 
+  const filteredDevices = devices.filter((device) => {
+    const matchesSearch =
+      !searchQuery ||
       (device.deviceName && device.deviceName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (device.serialNumber && device.serialNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (device.serialNumber &&
+        device.serialNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (device.macAddress && device.macAddress.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (device.ipAddress && device.ipAddress.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || 
+
+    const matchesStatus =
+      statusFilter === 'all' ||
       (device.status && device.status.toLowerCase() === statusFilter.toLowerCase()) ||
-      (device.operationalStatus && device.operationalStatus.toLowerCase() === statusFilter.toLowerCase());
-    
-    const matchesType = typeFilter === 'all' || 
+      (device.operationalStatus &&
+        device.operationalStatus.toLowerCase() === statusFilter.toLowerCase());
+
+    const matchesType =
+      typeFilter === 'all' ||
       (device.deviceType && device.deviceType.toLowerCase().includes(typeFilter.toLowerCase()));
-    
-    const matchesSite = siteFilter === 'all' || 
+
+    const matchesSite =
+      siteFilter === 'all' ||
       (device.siteId && device.siteId === siteFilter) ||
       (device.siteName && device.siteName === siteFilter);
-    
+
     return matchesSearch && matchesStatus && matchesType && matchesSite;
   });
 
   // Use available device types from API, plus any types from existing devices
-  const deviceTypesFromDevices = Array.from(new Set(devices.map(device => device.deviceType).filter(Boolean)));
-  const deviceTypes = availableDeviceTypes.length > 0
-    ? Array.from(new Set([...availableDeviceTypes, ...deviceTypesFromDevices]))
-    : deviceTypesFromDevices;
-  
+  const deviceTypesFromDevices: string[] = Array.from(
+    new Set(devices.map((device) => device.deviceType).filter((t): t is string => Boolean(t)))
+  );
+  const deviceTypes: string[] =
+    availableDeviceTypes.length > 0
+      ? Array.from(new Set([...availableDeviceTypes, ...deviceTypesFromDevices]))
+      : deviceTypesFromDevices;
+
   // Get unique statuses for filter
-  const deviceStatuses = Array.from(new Set(devices.map(device => device.status || device.operationalStatus).filter(Boolean)));
+  const deviceStatuses: string[] = Array.from(
+    new Set(
+      devices
+        .map((device) => device.status || device.operationalStatus)
+        .filter((s): s is string => Boolean(s))
+    )
+  );
 
   // Handle form submission for create/edit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -313,10 +346,12 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
     try {
       const progressInterval = setInterval(() => {
-        setSubmitProgress(prev => Math.min(prev + 10, 90));
+        setSubmitProgress((prev) => Math.min(prev + 10, 90));
       }, 100);
 
-      const endpoint = editingDevice ? `/v3/devices/${editingDevice.id || editingDevice.serialNumber}` : '/v3/devices';
+      const endpoint = editingDevice
+        ? `/v3/devices/${editingDevice.id || editingDevice.serialNumber}`
+        : '/v3/devices';
       const method = editingDevice ? 'PUT' : 'POST';
 
       const deviceData = {
@@ -326,15 +361,15 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
         location: formData.location,
         description: formData.description,
         managementVlan: formData.managementVlan ? parseInt(formData.managementVlan) : undefined,
-        adminStatus: formData.adminStatus
+        adminStatus: formData.adminStatus,
       };
 
       const response = await apiService.makeAuthenticatedRequest(endpoint, {
         method,
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(deviceData)
+        body: JSON.stringify(deviceData),
       });
 
       clearInterval(progressInterval);
@@ -342,11 +377,14 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || `${method === 'POST' ? 'Create' : 'Update'} failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData?.message ||
+            `${method === 'POST' ? 'Create' : 'Update'} failed: ${response.status} ${response.statusText}`
+        );
       }
 
       toast.success(`Device ${editingDevice ? 'updated' : 'created'} successfully`, {
-        description: `${formData.deviceName} has been ${editingDevice ? 'updated' : 'created'}.`
+        description: `${formData.deviceName} has been ${editingDevice ? 'updated' : 'created'}.`,
       });
 
       // Reset form and close dialog
@@ -357,7 +395,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
         location: '',
         description: '',
         managementVlan: '',
-        adminStatus: ''
+        adminStatus: '',
       });
       setIsCreateDialogOpen(false);
       setIsEditDialogOpen(false);
@@ -365,12 +403,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
       // Refresh devices list
       fetchDevices(false);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error(`Failed to ${editingDevice ? 'update' : 'create'} device`, {
         description: errorMessage,
-        duration: 5000
+        duration: 5000,
       });
     } finally {
       setIsSubmitting(false);
@@ -385,28 +422,32 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     setIsSubmitting(true);
 
     try {
-      const response = await apiService.makeAuthenticatedRequest(`/v3/devices/${deviceToDelete.id || deviceToDelete.serialNumber}`, {
-        method: 'DELETE'
-      });
+      const response = await apiService.makeAuthenticatedRequest(
+        `/v3/devices/${deviceToDelete.id || deviceToDelete.serialNumber}`,
+        {
+          method: 'DELETE',
+        }
+      );
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || `Delete failed: ${response.status} ${response.statusText}`);
+        throw new Error(
+          errorData?.message || `Delete failed: ${response.status} ${response.statusText}`
+        );
       }
 
       toast.success('Device deleted successfully', {
-        description: `${deviceToDelete.deviceName || deviceToDelete.serialNumber} has been deleted.`
+        description: `${deviceToDelete.deviceName || deviceToDelete.serialNumber} has been deleted.`,
       });
 
       setIsDeleteDialogOpen(false);
       setDeviceToDelete(null);
       fetchDevices(false);
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast.error('Failed to delete device', {
         description: errorMessage,
-        duration: 5000
+        duration: 5000,
       });
     } finally {
       setIsSubmitting(false);
@@ -423,7 +464,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
       location: device.location || '',
       description: device.description || '',
       managementVlan: device.managementVlan?.toString() || '',
-      adminStatus: device.adminStatus || ''
+      adminStatus: device.adminStatus || '',
     });
     setIsEditDialogOpen(true);
   };
@@ -442,34 +483,33 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
     setIsSubmitting(true);
 
     try {
-      const promises = Array.from(selectedDevices).map(deviceId => {
-        const device = devices.find(d => (d.id || d.serialNumber) === deviceId);
+      const promises = Array.from(selectedDevices).map((deviceId) => {
+        const device = devices.find((d) => (d.id || d.serialNumber) === deviceId);
         if (!device) return Promise.resolve();
 
         return apiService.makeAuthenticatedRequest(`/v3/devices/${deviceId}`, {
           method: 'PUT',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
           body: JSON.stringify({
             ...device,
-            adminStatus: status
-          })
+            adminStatus: status,
+          }),
         });
       });
 
       await Promise.all(promises);
 
       toast.success('Bulk operation completed', {
-        description: `${selectedDevices.size} devices updated successfully.`
+        description: `${selectedDevices.size} devices updated successfully.`,
       });
 
       setSelectedDevices(new Set());
       fetchDevices(false);
-
     } catch (error) {
       toast.error('Bulk operation failed', {
-        description: 'Some devices may not have been updated.'
+        description: 'Some devices may not have been updated.',
       });
     } finally {
       setIsSubmitting(false);
@@ -479,11 +519,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   // Format uptime
   const formatUptime = (uptime?: number) => {
     if (!uptime) return 'N/A';
-    
+
     const days = Math.floor(uptime / (24 * 60 * 60));
     const hours = Math.floor((uptime % (24 * 60 * 60)) / (60 * 60));
     const minutes = Math.floor((uptime % (60 * 60)) / 60);
-    
+
     if (days > 0) {
       return `${days}d ${hours}h`;
     } else if (hours > 0) {
@@ -496,13 +536,13 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   // Format last seen
   const formatLastSeen = (lastSeen?: string) => {
     if (!lastSeen) return 'Never';
-    
+
     try {
       const date = new Date(lastSeen);
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const diffMins = Math.floor(diffMs / (1000 * 60));
-      
+
       if (diffMins < 1) return 'Just now';
       if (diffMins < 60) return `${diffMins}m ago`;
       if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
@@ -521,9 +561,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <Server className="h-5 w-5" />
               <span>Configure Devices</span>
             </CardTitle>
-            <CardDescription>
-              Loading device configuration data...
-            </CardDescription>
+            <CardDescription>Loading device configuration data...</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-center h-32">
@@ -550,15 +588,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
         <CardContent>
           <Alert>
             <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              {error}
-            </AlertDescription>
+            <AlertDescription>{error}</AlertDescription>
           </Alert>
-          <Button 
-            onClick={() => fetchDevices()} 
-            className="mt-4"
-            disabled={loading}
-          >
+          <Button onClick={() => fetchDevices()} className="mt-4" disabled={loading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Retry
           </Button>
@@ -601,9 +633,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 <DialogContent className="max-w-md">
                   <DialogHeader>
                     <DialogTitle>Add New Device</DialogTitle>
-                    <DialogDescription>
-                      Configure a new network device
-                    </DialogDescription>
+                    <DialogDescription>Configure a new network device</DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
@@ -611,27 +641,36 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                       <Input
                         id="deviceName"
                         value={formData.deviceName}
-                        onChange={(e) => setFormData(prev => ({ ...prev, deviceName: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, deviceName: e.target.value }))
+                        }
                         placeholder="Enter device name"
                         required
                       />
                     </div>
-                    
+
                     <div className="space-y-2">
                       <Label htmlFor="deviceType">Device Type</Label>
-                      <Select value={formData.deviceType} onValueChange={(value) => setFormData(prev => ({ ...prev, deviceType: value }))}>
+                      <Select
+                        value={formData.deviceType}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, deviceType: value }))
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select device type" />
                         </SelectTrigger>
                         <SelectContent>
                           {deviceTypes.length > 0 ? (
-                            deviceTypes.map(type => (
+                            deviceTypes.map((type) => (
                               <SelectItem key={type} value={type}>
                                 {type}
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="no-types" disabled>No device types available</SelectItem>
+                            <SelectItem value="no-types" disabled>
+                              No device types available
+                            </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -639,7 +678,12 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
                     <div className="space-y-2">
                       <Label htmlFor="siteId">Site</Label>
-                      <Select value={formData.siteId} onValueChange={(value) => setFormData(prev => ({ ...prev, siteId: value }))}>
+                      <Select
+                        value={formData.siteId}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, siteId: value }))
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a site" />
                         </SelectTrigger>
@@ -651,7 +695,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="no-sites" disabled>No sites available</SelectItem>
+                            <SelectItem value="no-sites" disabled>
+                              No sites available
+                            </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
@@ -662,7 +708,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                       <Input
                         id="location"
                         value={formData.location}
-                        onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, location: e.target.value }))
+                        }
                         placeholder="Device location"
                       />
                     </div>
@@ -673,7 +721,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                         id="managementVlan"
                         type="number"
                         value={formData.managementVlan}
-                        onChange={(e) => setFormData(prev => ({ ...prev, managementVlan: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, managementVlan: e.target.value }))
+                        }
                         placeholder="VLAN ID"
                         min="1"
                         max="4094"
@@ -682,13 +732,24 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
                     <div className="space-y-2">
                       <Label htmlFor="adminStatus">Admin Status</Label>
-                      <Select value={formData.adminStatus} onValueChange={(value) => setFormData(prev => ({ ...prev, adminStatus: value }))}>
+                      <Select
+                        value={formData.adminStatus}
+                        onValueChange={(value) =>
+                          setFormData((prev) => ({ ...prev, adminStatus: value }))
+                        }
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
                         </SelectTrigger>
                         <SelectContent>
                           {devices.length > 0 ? (
-                            Array.from(new Set(devices.map(d => d.adminStatus).filter(Boolean))).map(status => (
+                            Array.from(
+                              new Set(
+                                devices
+                                  .map((d) => d.adminStatus)
+                                  .filter((s): s is string => Boolean(s))
+                              )
+                            ).map((status) => (
                               <SelectItem key={status} value={status}>
                                 {status}
                               </SelectItem>
@@ -708,7 +769,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                       <Input
                         id="description"
                         value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, description: e.target.value }))
+                        }
                         placeholder="Device description (optional)"
                       />
                     </div>
@@ -721,9 +784,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                     )}
 
                     <div className="flex justify-end space-x-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" 
+                      <Button
+                        type="button"
+                        variant="outline"
                         onClick={() => setIsCreateDialogOpen(false)}
                         disabled={isSubmitting}
                       >
@@ -756,7 +819,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 />
               </div>
             </div>
-            
+
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-32">
@@ -764,7 +827,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  {deviceStatuses.map(status => (
+                  {deviceStatuses.map((status) => (
                     <SelectItem key={status} value={status.toLowerCase()}>
                       {status}
                     </SelectItem>
@@ -778,7 +841,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Types</SelectItem>
-                  {deviceTypes.map(type => (
+                  {deviceTypes.map((type) => (
                     <SelectItem key={type} value={type.toLowerCase()}>
                       {type}
                     </SelectItem>
@@ -792,7 +855,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sites</SelectItem>
-                  {sites.map(site => (
+                  {sites.map((site) => (
                     <SelectItem key={site.id} value={site.id}>
                       {site.siteName}
                     </SelectItem>
@@ -827,11 +890,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                     <Power className="h-4 w-4 mr-1" />
                     Disable
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setSelectedDevices(new Set())}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setSelectedDevices(new Set())}>
                     Clear
                   </Button>
                 </div>
@@ -850,7 +909,14 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Activity className="h-4 w-4" />
                 <span>
-                  {filteredDevices.filter(d => d.status?.toLowerCase().includes('online') || d.operationalStatus?.toLowerCase() === 'up').length} online
+                  {
+                    filteredDevices.filter(
+                      (d) =>
+                        d.status?.toLowerCase().includes('online') ||
+                        d.operationalStatus?.toLowerCase() === 'up'
+                    ).length
+                  }{' '}
+                  online
                 </span>
               </div>
             )}
@@ -862,16 +928,22 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <Server className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium">No devices found</h3>
               <p className="text-muted-foreground mb-4">
-                {searchQuery || statusFilter !== 'all' || typeFilter !== 'all' || siteFilter !== 'all'
+                {searchQuery ||
+                statusFilter !== 'all' ||
+                typeFilter !== 'all' ||
+                siteFilter !== 'all'
                   ? 'No devices match your current filters.'
                   : 'No devices have been configured yet.'}
               </p>
-              {(!searchQuery && statusFilter === 'all' && typeFilter === 'all' && siteFilter === 'all') && (
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add First Device
-                </Button>
-              )}
+              {!searchQuery &&
+                statusFilter === 'all' &&
+                typeFilter === 'all' &&
+                siteFilter === 'all' && (
+                  <Button onClick={() => setIsCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add First Device
+                  </Button>
+                )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -881,10 +953,15 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                     <TableHead className="w-12">
                       <input
                         type="checkbox"
-                        checked={selectedDevices.size === filteredDevices.length && filteredDevices.length > 0}
+                        checked={
+                          selectedDevices.size === filteredDevices.length &&
+                          filteredDevices.length > 0
+                        }
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setSelectedDevices(new Set(filteredDevices.map(d => d.id || d.serialNumber || '')));
+                            setSelectedDevices(
+                              new Set(filteredDevices.map((d) => d.id || d.serialNumber || ''))
+                            );
                           } else {
                             setSelectedDevices(new Set());
                           }
@@ -930,19 +1007,13 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                               <span className="font-medium">{device.deviceName || 'Unknown'}</span>
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {device.serialNumber && (
-                                <div>S/N: {device.serialNumber}</div>
-                              )}
-                              {device.macAddress && (
-                                <div>MAC: {device.macAddress}</div>
-                              )}
+                              {device.serialNumber && <div>S/N: {device.serialNumber}</div>}
+                              {device.macAddress && <div>MAC: {device.macAddress}</div>}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {device.deviceType || 'Unknown'}
-                          </Badge>
+                          <Badge variant="outline">{device.deviceType || 'Unknown'}</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
@@ -956,7 +1027,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={getStatusBadgeVariant(device.status || device.operationalStatus)}>
+                          <Badge
+                            variant={getStatusBadgeVariant(
+                              device.status || device.operationalStatus
+                            )}
+                          >
                             {device.status || device.operationalStatus || 'Unknown'}
                           </Badge>
                         </TableCell>
@@ -978,11 +1053,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                             >
                               <Activity className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(device)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(device)}>
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -1012,9 +1083,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Device</DialogTitle>
-            <DialogDescription>
-              Update device configuration
-            </DialogDescription>
+            <DialogDescription>Update device configuration</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -1022,27 +1091,32 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <Input
                 id="edit-deviceName"
                 value={formData.deviceName}
-                onChange={(e) => setFormData(prev => ({ ...prev, deviceName: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, deviceName: e.target.value }))}
                 placeholder="Enter device name"
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="edit-deviceType">Device Type</Label>
-              <Select value={formData.deviceType} onValueChange={(value) => setFormData(prev => ({ ...prev, deviceType: value }))}>
+              <Select
+                value={formData.deviceType}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, deviceType: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select device type" />
                 </SelectTrigger>
                 <SelectContent>
                   {deviceTypes.length > 0 ? (
-                    deviceTypes.map(type => (
+                    deviceTypes.map((type) => (
                       <SelectItem key={type} value={type}>
                         {type}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="no-types" disabled>No device types available</SelectItem>
+                    <SelectItem value="no-types" disabled>
+                      No device types available
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -1050,19 +1124,27 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
             <div className="space-y-2">
               <Label htmlFor="edit-siteId">Site</Label>
-              <Select value={formData.siteId} onValueChange={(value) => setFormData(prev => ({ ...prev, siteId: value }))}>
+              <Select
+                value={formData.siteId}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, siteId: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a site" />
                 </SelectTrigger>
                 <SelectContent>
                   {sites.length > 0 ? (
                     sites.map((site) => (
-                      <SelectItem key={site.id || site.siteId} value={site.id || site.siteId || 'unknown'}>
+                      <SelectItem
+                        key={site.id || site.siteId}
+                        value={site.id || site.siteId || 'unknown'}
+                      >
                         {site.siteName || site.name}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="no-sites" disabled>No sites available</SelectItem>
+                    <SelectItem value="no-sites" disabled>
+                      No sites available
+                    </SelectItem>
                   )}
                 </SelectContent>
               </Select>
@@ -1073,7 +1155,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <Input
                 id="edit-location"
                 value={formData.location}
-                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
                 placeholder="Device location"
               />
             </div>
@@ -1084,7 +1166,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 id="edit-managementVlan"
                 type="number"
                 value={formData.managementVlan}
-                onChange={(e) => setFormData(prev => ({ ...prev, managementVlan: e.target.value }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, managementVlan: e.target.value }))
+                }
                 placeholder="VLAN ID"
                 min="1"
                 max="4094"
@@ -1093,13 +1177,20 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
 
             <div className="space-y-2">
               <Label htmlFor="edit-adminStatus">Admin Status</Label>
-              <Select value={formData.adminStatus} onValueChange={(value) => setFormData(prev => ({ ...prev, adminStatus: value }))}>
+              <Select
+                value={formData.adminStatus}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, adminStatus: value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
                   {devices.length > 0 ? (
-                    Array.from(new Set(devices.map(d => d.adminStatus).filter(Boolean))).map(status => (
+                    Array.from(
+                      new Set(
+                        devices.map((d) => d.adminStatus).filter((s): s is string => Boolean(s))
+                      )
+                    ).map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
                       </SelectItem>
@@ -1119,7 +1210,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
               <Input
                 id="edit-description"
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                 placeholder="Device description (optional)"
               />
             </div>
@@ -1132,9 +1223,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
             )}
 
             <div className="flex justify-end space-x-2">
-              <Button 
-                type="button" 
-                variant="outline" 
+              <Button
+                type="button"
+                variant="outline"
                 onClick={() => setIsEditDialogOpen(false)}
                 disabled={isSubmitting}
               >
@@ -1154,8 +1245,9 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Device</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deviceToDelete?.deviceName || deviceToDelete?.serialNumber}"? 
-              This action cannot be undone and will remove all device configuration and history.
+              Are you sure you want to delete "
+              {deviceToDelete?.deviceName || deviceToDelete?.serialNumber}"? This action cannot be
+              undone and will remove all device configuration and history.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

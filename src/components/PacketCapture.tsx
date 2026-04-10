@@ -23,7 +23,7 @@ import {
   FileText,
   Wifi,
   Monitor,
-  Router
+  Router,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -32,7 +32,7 @@ import {
   validateIPAddress,
   validateCaptureConfig,
   formatMacAddress,
-  estimateCaptureFileSize
+  estimateCaptureFileSize,
 } from '../lib/packetCaptureValidation';
 
 interface CaptureFile {
@@ -69,7 +69,9 @@ interface AccessPoint {
 
 export function PacketCapture() {
   // Capture location settings
-  const [captureLocation, setCaptureLocation] = useState<'appliance' | 'wired' | 'wireless'>('wireless');
+  const [captureLocation, setCaptureLocation] = useState<'appliance' | 'wired' | 'wireless'>(
+    'wireless'
+  );
   const [includeWiredClients, setIncludeWiredClients] = useState(false);
   const [selectedRadio, setSelectedRadio] = useState<string>('all');
   const [selectedAP, setSelectedAP] = useState<string>('all');
@@ -132,20 +134,26 @@ export function PacketCapture() {
       try {
         // Load access points for wireless capture using the correct endpoint
         try {
-          const apResponse = await apiService.makeAuthenticatedRequest('/v1/aps/query', {
-            method: 'POST',
-            body: JSON.stringify({})
-          }, 10000);
+          const apResponse = await apiService.makeAuthenticatedRequest(
+            '/v1/aps/query',
+            {
+              method: 'POST',
+              body: JSON.stringify({}),
+            },
+            10000
+          );
           if (!cancelled && apResponse.ok) {
             const data = await apResponse.json();
-            const apList = Array.isArray(data) ? data : (data.accessPoints || data.aps || []);
+            const apList = Array.isArray(data) ? data : data.accessPoints || data.aps || [];
             console.log('[PacketCapture] Loaded APs:', apList.length);
-            setAccessPoints(apList.map((ap: any) => ({
-              serialNumber: ap.serialNumber || ap.serial || ap.id,
-              displayName: ap.displayName || ap.name || ap.hostname,
-              name: ap.name || ap.hostname,
-              status: ap.status
-            })));
+            setAccessPoints(
+              apList.map((ap: any) => ({
+                serialNumber: ap.serialNumber || ap.serial || ap.id,
+                displayName: ap.displayName || ap.name || ap.hostname,
+                name: ap.name || ap.hostname,
+                status: ap.status,
+              }))
+            );
           }
         } catch (apErr) {
           console.warn('[PacketCapture] Failed to load APs:', apErr);
@@ -200,11 +208,12 @@ export function PacketCapture() {
   useEffect(() => {
     if (activeCaptures.length > 0) {
       const progressInterval = setInterval(() => {
-        setProgressTick(tick => tick + 1);
+        setProgressTick((tick) => tick + 1);
       }, 1000);
 
       return () => clearInterval(progressInterval);
     }
+    return undefined;
   }, [activeCaptures.length]);
 
   // Start polling for capture status updates
@@ -235,14 +244,16 @@ export function PacketCapture() {
   const loadCaptureFiles = async () => {
     try {
       const files = await apiService.getPacketCaptureFiles();
-      setCaptureFiles(files.map((f: any, idx: number) => ({
-        id: f.id || `file-${idx}`,
-        filename: f.filename || f.name || `capture-${idx}.pcap`,
-        size: f.size || 0,
-        date: f.date || f.created || new Date(f.timestamp || Date.now()).toISOString(),
-        timestamp: f.timestamp || Date.now(),
-        status: f.status
-      })));
+      setCaptureFiles(
+        files.map((f: any, idx: number) => ({
+          id: f.id || `file-${idx}`,
+          filename: f.filename || f.name || `capture-${idx}.pcap`,
+          size: f.size || 0,
+          date: f.date || f.created || new Date(f.timestamp || Date.now()).toISOString(),
+          timestamp: f.timestamp || Date.now(),
+          status: f.status,
+        }))
+      );
     } catch (err) {
       console.warn('[PacketCapture] Failed to load capture files:', err);
     }
@@ -259,7 +270,7 @@ export function PacketCapture() {
         duration: c.duration || 0,
         startTime: c.startTime || c.start || Date.now(),
         filters: c.filters || [],
-        status: (c.status || 'running') as ActiveCapture['status']
+        status: (c.status || 'running') as ActiveCapture['status'],
       }));
 
       setActiveCaptures(mappedCaptures);
@@ -311,7 +322,7 @@ export function PacketCapture() {
     const newFilter: CaptureFilter = {
       id: `filter-${Date.now()}`,
       type: newFilterType,
-      value: newFilterType === 'mac' ? formatMacAddress(trimmedValue) : trimmedValue
+      value: newFilterType === 'mac' ? formatMacAddress(trimmedValue) : trimmedValue,
     };
 
     setFilters([...filters, newFilter]);
@@ -320,7 +331,7 @@ export function PacketCapture() {
   };
 
   const removeFilter = (filterId: string) => {
-    setFilters(filters.filter(f => f.id !== filterId));
+    setFilters(filters.filter((f) => f.id !== filterId));
   };
 
   const startCapture = async () => {
@@ -332,13 +343,16 @@ export function PacketCapture() {
       duration,
       truncatePackets,
       packetDestination,
-      scpConfig: packetDestination === 'scp' ? {
-        serverIp: scpIpAddress,
-        username: scpUsername,
-        password: scpPassword,
-        path: scpDestinationPath
-      } : undefined,
-      filters
+      scpConfig:
+        packetDestination === 'scp'
+          ? {
+              serverIp: scpIpAddress,
+              username: scpUsername,
+              password: scpPassword,
+              path: scpDestinationPath,
+            }
+          : undefined,
+      filters,
     });
 
     if (!configValidation.valid) {
@@ -349,7 +363,7 @@ export function PacketCapture() {
     // Show file size estimate
     const sizeEstimate = estimateCaptureFileSize({
       duration,
-      truncatePackets
+      truncatePackets,
     });
 
     if (sizeEstimate.warning) {
@@ -363,14 +377,17 @@ export function PacketCapture() {
     try {
       // Build capture config using new API method types
       const captureType: 'DATA_PORT' | 'WIRED' | 'WIRELESS' =
-        captureLocation === 'appliance' ? 'DATA_PORT' :
-        captureLocation === 'wired' ? 'WIRED' : 'WIRELESS';
+        captureLocation === 'appliance'
+          ? 'DATA_PORT'
+          : captureLocation === 'wired'
+            ? 'WIRED'
+            : 'WIRELESS';
 
       const captureConfig: Parameters<typeof apiService.startPacketCapture>[0] = {
         captureType,
         duration,
         truncation: truncatePackets > 0 ? truncatePackets : undefined,
-        destination: packetDestination.toUpperCase() as 'FILE' | 'SCP'
+        destination: packetDestination.toUpperCase() as 'FILE' | 'SCP',
       };
 
       // Wireless-specific configuration
@@ -402,8 +419,8 @@ export function PacketCapture() {
       }
 
       // Address filters
-      const macFilters = filters.filter(f => f.type === 'mac');
-      const ipFilters = filters.filter(f => f.type === 'ip');
+      const macFilters = filters.filter((f) => f.type === 'mac');
+      const ipFilters = filters.filter((f) => f.type === 'ip');
 
       if (macFilters.length > 0) {
         captureConfig.macAddress = macFilters[0].value;
@@ -424,7 +441,7 @@ export function PacketCapture() {
           serverIp: scpIpAddress,
           username: scpUsername,
           password: scpPassword,
-          path: scpDestinationPath
+          path: scpDestinationPath,
         };
       }
 
@@ -442,8 +459,8 @@ export function PacketCapture() {
         direction,
         duration: duration * 60,
         startTime: Date.now(),
-        filters: filters.map(f => `${f.type}:${f.value}`),
-        status: 'running'
+        filters: filters.map((f) => `${f.type}:${f.value}`),
+        status: 'running',
       };
       setActiveCaptures([...activeCaptures, newCapture]);
 
@@ -464,8 +481,8 @@ export function PacketCapture() {
   const stopCapture = async (captureId: string) => {
     try {
       // Update local state immediately
-      setActiveCaptures(captures =>
-        captures.map(c => c.id === captureId ? { ...c, status: 'stopping' as const } : c)
+      setActiveCaptures((captures) =>
+        captures.map((c) => (c.id === captureId ? { ...c, status: 'stopping' as const } : c))
       );
 
       // Use new API service method
@@ -474,7 +491,7 @@ export function PacketCapture() {
       toast.success('Capture stopped successfully');
 
       // Remove from active and refresh files
-      setActiveCaptures(captures => captures.filter(c => c.id !== captureId));
+      setActiveCaptures((captures) => captures.filter((c) => c.id !== captureId));
       await loadCaptureFiles();
 
       // Stop polling if no more active captures
@@ -486,8 +503,8 @@ export function PacketCapture() {
       const errorMsg = err instanceof Error ? err.message : 'Failed to stop capture';
       toast.error(errorMsg);
       // Reset status on error
-      setActiveCaptures(captures =>
-        captures.map(c => c.id === captureId ? { ...c, status: 'running' as const } : c)
+      setActiveCaptures((captures) =>
+        captures.map((c) => (c.id === captureId ? { ...c, status: 'running' as const } : c))
       );
     }
   };
@@ -538,7 +555,7 @@ export function PacketCapture() {
       // Use new API service method
       await apiService.deletePacketCaptureFile(file.id, file.filename);
 
-      setCaptureFiles(files => files.filter(f => f.id !== file.id));
+      setCaptureFiles((files) => files.filter((f) => f.id !== file.id));
       toast.success('File deleted successfully');
     } catch (err) {
       console.error('[PacketCapture] Error deleting file:', err);
@@ -630,24 +647,34 @@ export function PacketCapture() {
                   {/* Edge Service Data Ports */}
                   <div
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      captureLocation === 'appliance' ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+                      captureLocation === 'appliance'
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:bg-accent'
                     }`}
                     onClick={() => setCaptureLocation('appliance')}
                   >
                     <Router className="h-5 w-5 text-muted-foreground" />
                     <div className="flex-1">
                       <div className="font-medium">Edge Service Data Ports</div>
-                      <div className="text-xs text-muted-foreground">Capture traffic on controller data ports</div>
+                      <div className="text-xs text-muted-foreground">
+                        Capture traffic on controller data ports
+                      </div>
                     </div>
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      captureLocation === 'appliance' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                    }`} />
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 ${
+                        captureLocation === 'appliance'
+                          ? 'border-primary bg-primary'
+                          : 'border-muted-foreground'
+                      }`}
+                    />
                   </div>
 
                   {/* Wired */}
                   <div
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      captureLocation === 'wired' ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+                      captureLocation === 'wired'
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:bg-accent'
                     }`}
                     onClick={() => setCaptureLocation('wired')}
                   >
@@ -655,11 +682,17 @@ export function PacketCapture() {
                       <Monitor className="h-5 w-5 text-muted-foreground" />
                       <div className="flex-1">
                         <div className="font-medium">Wired</div>
-                        <div className="text-xs text-muted-foreground">Capture wired network traffic</div>
+                        <div className="text-xs text-muted-foreground">
+                          Capture wired network traffic
+                        </div>
                       </div>
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        captureLocation === 'wired' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                      }`} />
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 ${
+                          captureLocation === 'wired'
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
+                        }`}
+                      />
                     </div>
                     {captureLocation === 'wired' && (
                       <div className="mt-3 ml-8 flex items-center gap-2">
@@ -678,7 +711,9 @@ export function PacketCapture() {
                   {/* Wireless */}
                   <div
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      captureLocation === 'wireless' ? 'border-primary bg-primary/5' : 'hover:bg-accent'
+                      captureLocation === 'wireless'
+                        ? 'border-primary bg-primary/5'
+                        : 'hover:bg-accent'
                     }`}
                     onClick={() => setCaptureLocation('wireless')}
                   >
@@ -686,11 +721,17 @@ export function PacketCapture() {
                       <Wifi className="h-5 w-5 text-muted-foreground" />
                       <div className="flex-1">
                         <div className="font-medium">Wireless</div>
-                        <div className="text-xs text-muted-foreground">Capture wireless traffic from access points</div>
+                        <div className="text-xs text-muted-foreground">
+                          Capture wireless traffic from access points
+                        </div>
                       </div>
-                      <div className={`w-4 h-4 rounded-full border-2 ${
-                        captureLocation === 'wireless' ? 'border-primary bg-primary' : 'border-muted-foreground'
-                      }`} />
+                      <div
+                        className={`w-4 h-4 rounded-full border-2 ${
+                          captureLocation === 'wireless'
+                            ? 'border-primary bg-primary'
+                            : 'border-muted-foreground'
+                        }`}
+                      />
                     </div>
                     {captureLocation === 'wireless' && (
                       <div className="mt-3 ml-8 space-y-3">
@@ -734,7 +775,10 @@ export function PacketCapture() {
               {/* Direction */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Direction</Label>
-                <Select value={direction} onValueChange={(v) => setDirection(v as typeof direction)}>
+                <Select
+                  value={direction}
+                  onValueChange={(v) => setDirection(v as typeof direction)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -774,7 +818,7 @@ export function PacketCapture() {
               {/* Start Button */}
               <Button
                 onClick={startCapture}
-                disabled={starting || activeCaptures.some(c => c.status === 'running')}
+                disabled={starting || activeCaptures.some((c) => c.status === 'running')}
                 className="w-full"
                 size="lg"
               >
@@ -813,7 +857,10 @@ export function PacketCapture() {
               {/* Packet Destination */}
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Packet Destination</Label>
-                <Select value={packetDestination} onValueChange={(v) => setPacketDestination(v as 'file' | 'scp')}>
+                <Select
+                  value={packetDestination}
+                  onValueChange={(v) => setPacketDestination(v as 'file' | 'scp')}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -870,7 +917,10 @@ export function PacketCapture() {
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Address Filters</Label>
                 <div className="flex gap-2">
-                  <Select value={newFilterType} onValueChange={(v) => setNewFilterType(v as typeof newFilterType)}>
+                  <Select
+                    value={newFilterType}
+                    onValueChange={(v) => setNewFilterType(v as typeof newFilterType)}
+                  >
                     <SelectTrigger className="w-28">
                       <SelectValue />
                     </SelectTrigger>
@@ -898,7 +948,11 @@ export function PacketCapture() {
                   <Label className="text-sm font-medium">Active Filters</Label>
                   <div className="flex flex-wrap gap-2">
                     {filters.map((filter) => (
-                      <Badge key={filter.id} variant="secondary" className="flex items-center gap-1">
+                      <Badge
+                        key={filter.id}
+                        variant="secondary"
+                        className="flex items-center gap-1"
+                      >
                         <span className="text-xs font-medium uppercase">{filter.type}:</span>
                         <span>{filter.value}</span>
                         <X
@@ -915,7 +969,8 @@ export function PacketCapture() {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription className="text-xs">
-                  Filters help narrow down captured traffic. Leave fields empty to capture all traffic matching the location and direction settings.
+                  Filters help narrow down captured traffic. Leave fields empty to capture all
+                  traffic matching the location and direction settings.
                 </AlertDescription>
               </Alert>
             </CardContent>
@@ -931,9 +986,7 @@ export function PacketCapture() {
                   <CardTitle className="flex items-center gap-2">
                     Packet Capture Instances
                   </CardTitle>
-                  <CardDescription>
-                    Currently running packet captures
-                  </CardDescription>
+                  <CardDescription>Currently running packet captures</CardDescription>
                 </div>
                 <Button
                   variant="default"
@@ -970,16 +1023,25 @@ export function PacketCapture() {
                       <TableRow key={capture.id}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full animate-pulse ${
-                              capture.status === 'running' ? 'bg-[color:var(--status-success)]' :
-                              capture.status === 'stopping' ? 'bg-[color:var(--status-warning)]' :
-                              'bg-gray-400'
-                            }`} />
-                            <Badge variant={
-                              capture.status === 'running' ? 'default' :
-                              capture.status === 'stopping' ? 'secondary' :
-                              'outline'
-                            } className="text-xs">
+                            <div
+                              className={`w-2 h-2 rounded-full animate-pulse ${
+                                capture.status === 'running'
+                                  ? 'bg-[color:var(--status-success)]'
+                                  : capture.status === 'stopping'
+                                    ? 'bg-[color:var(--status-warning)]'
+                                    : 'bg-gray-400'
+                              }`}
+                            />
+                            <Badge
+                              variant={
+                                capture.status === 'running'
+                                  ? 'default'
+                                  : capture.status === 'stopping'
+                                    ? 'secondary'
+                                    : 'outline'
+                              }
+                              className="text-xs"
+                            >
                               {capture.status}
                             </Badge>
                           </div>
@@ -1029,13 +1091,15 @@ export function PacketCapture() {
                               variant="destructive"
                               size="sm"
                               onClick={() => stopCapture(capture.id)}
-                              disabled={capture.status === 'stopping'}
+                              disabled={false}
                             >
                               <Square className="h-3 w-3 mr-1.5" />
                               Stop
                             </Button>
                           ) : capture.status === 'stopping' ? (
-                            <Badge variant="secondary" className="text-xs">Stopping...</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Stopping...
+                            </Badge>
                           ) : (
                             <span className="text-xs text-muted-foreground">Completed</span>
                           )}
@@ -1115,7 +1179,10 @@ export function PacketCapture() {
                               {file.status}
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
+                            <Badge
+                              variant="outline"
+                              className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                            >
                               Ready
                             </Badge>
                           )}

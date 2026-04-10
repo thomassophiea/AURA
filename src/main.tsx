@@ -1,11 +1,10 @@
-import { createRoot } from "react-dom/client";
-import * as Sentry from "@sentry/react";
-import { BrowserTracing } from "@sentry/tracing";
-import App from "./App.tsx";
-import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
-import { initVersionGate, getAppVersion, getCacheVersion } from "./lib/versionGate.ts";
-import "./styles/globals.css";
-import "./index.css";
+import { createRoot } from 'react-dom/client';
+import * as Sentry from '@sentry/react';
+import App from './App.tsx';
+import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { initVersionGate, getAppVersion, getCacheVersion } from './lib/versionGate.ts';
+import './styles/globals.css';
+import './index.css';
 
 // Initialize Sentry for error tracking and performance monitoring
 // DSN can be set via environment variable VITE_SENTRY_DSN
@@ -14,11 +13,7 @@ if (sentryDSN) {
   Sentry.init({
     dsn: sentryDSN,
     environment: import.meta.env.MODE,
-    integrations: [
-      new BrowserTracing(),
-    ],
-    // Performance tracing sample rate
-    tracesSampleRate: 0.1,
+    integrations: [Sentry.browserTracingIntegration()],
     replaysSessionSampleRate: 0.001,
     // Capture performance traces for 10% of transactions
     tracesSampleRate: 0.1,
@@ -26,7 +21,6 @@ if (sentryDSN) {
     debug: import.meta.env.DEV,
   });
 }
-
 
 /**
  * Remove the boot surface after app hydration
@@ -40,11 +34,15 @@ function removeBootSurface(): void {
   bootSurface.classList.add('fade-out');
 
   // Remove after transition
-  bootSurface.addEventListener('transitionend', () => {
-    bootSurface.remove();
-    // Also remove boot styles to reduce DOM size
-    document.getElementById('boot-styles')?.remove();
-  }, { once: true });
+  bootSurface.addEventListener(
+    'transitionend',
+    () => {
+      bootSurface.remove();
+      // Also remove boot styles to reduce DOM size
+      document.getElementById('boot-styles')?.remove();
+    },
+    { once: true }
+  );
 
   // Fallback removal if transition doesn't fire
   setTimeout(() => {
@@ -63,7 +61,7 @@ async function initApp() {
 
   // Wrap App with Sentry for profiling and error tracking
   const SentryWrappedApp = sentryDSN ? (
-    <Sentry.Profiler name="App">
+    <Sentry.Profiler name="App" updateProps={{}}>
       <App />
     </Sentry.Profiler>
   ) : (
@@ -71,10 +69,8 @@ async function initApp() {
   );
 
   // If we get here, version is OK - render the app
-  createRoot(document.getElementById("root")!).render(
-    <ErrorBoundary fullScreen>
-      {SentryWrappedApp}
-    </ErrorBoundary>
+  createRoot(document.getElementById('root')!).render(
+    <ErrorBoundary fullScreen>{SentryWrappedApp}</ErrorBoundary>
   );
 
   // Remove boot surface after a brief delay to ensure React has rendered
@@ -140,7 +136,6 @@ function registerServiceWorker() {
           console.log('[SW] All caches cleared');
         }
       });
-
     } catch (error) {
       console.log('[SW] Registration failed:', error);
     }

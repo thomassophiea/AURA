@@ -33,13 +33,31 @@ import {
   Building,
   Zap,
   Radio,
-  Target
+  Target,
 } from 'lucide-react';
 import { apiService, Site } from '../services/api';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+} from 'recharts';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
 import { ApplicationWidgets } from './ApplicationWidgets';
@@ -103,6 +121,30 @@ interface Station {
   authenticated?: boolean;
   connectionTime?: number;
   uptime?: number;
+  protocol?: string;
+  deviceType?: string;
+  manufacturer?: string;
+  status?: string;
+  ipv6Address?: string;
+  username?: string;
+  role?: string;
+  roleId?: string;
+  lastSeen?: string | number;
+  essid?: string;
+  vlan?: number | string;
+  channel?: number | string;
+  radioChannel?: number | string;
+  channelNumber?: number | string;
+  channelWidth?: number | string;
+  siteName?: string;
+  apDisplayName?: string;
+  apHostname?: string;
+  apSerial?: string;
+  apSn?: string;
+  outBytes?: number;
+  outPackets?: number;
+  inBytes?: number;
+  packets?: number;
 }
 
 export function ServiceLevelsEnhanced() {
@@ -125,7 +167,7 @@ export function ServiceLevelsEnhanced() {
   const selectedSite = filters.site;
   const setSelectedSite = (value: string) => updateFilter('site', value);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
-  
+
   // Filters
   const [timeRange, setTimeRange] = useState('24h');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -146,24 +188,21 @@ export function ServiceLevelsEnhanced() {
 
     return {
       serviceId: selectedService,
-      serviceName: services.find(s => s.id === selectedService)?.name || 'Unknown',
-      metrics: serviceReport.metrics || {}
+      serviceName: services.find((s) => s.id === selectedService)?.name || 'Unknown',
+      metrics: serviceReport.metrics || {},
     };
   };
 
   // Start metrics collection for Network Rewind
-  const { collectionCount, supabaseAvailable } = useMetricsCollection(
-    getCurrentMetrics,
-    {
-      enabled: selectedService !== null && isLive,
-      intervalMinutes: 15
-    }
-  );
+  const { collectionCount, supabaseAvailable } = useMetricsCollection(getCurrentMetrics, {
+    enabled: selectedService !== null && isLive,
+    intervalMinutes: 15,
+  });
 
   useEffect(() => {
     loadServices();
     loadSites();
-    
+
     // Auto-refresh every 30 seconds
     const interval = setInterval(() => {
       if (selectedService) {
@@ -172,7 +211,7 @@ export function ServiceLevelsEnhanced() {
         loadServices(true);
       }
     }, 30000);
-    
+
     return () => clearInterval(interval);
   }, [selectedService]);
 
@@ -208,17 +247,25 @@ export function ServiceLevelsEnhanced() {
         // STRICT: If site-specific API returned nothing, try client-side filter
         if (servicesList.length === 0) {
           try {
-            const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+            const response = await apiService.makeAuthenticatedRequest(
+              '/v1/services',
+              { method: 'GET' },
+              15000
+            );
             if (response.ok) {
               const data = await response.json();
-              const allServices = Array.isArray(data) ? data : (data.services || data.data || []);
+              const allServices = Array.isArray(data) ? data : data.services || data.data || [];
               const site = await apiService.getSiteById(siteId).catch(() => null);
               const siteName = site?.name || site?.siteName || siteId;
               servicesList = allServices.filter((service: any) => {
                 const serviceSite = service.siteName || service.site || service.location;
                 return serviceSite === siteName || serviceSite === siteId;
               });
-              console.log('[ServiceLevels] Client-side filtered to', servicesList.length, 'services for site');
+              console.log(
+                '[ServiceLevels] Client-side filtered to',
+                servicesList.length,
+                'services for site'
+              );
             }
           } catch {
             // STRICT: empty on failure
@@ -226,19 +273,23 @@ export function ServiceLevelsEnhanced() {
         }
       } else {
         // No site filter: fetch all services
-        const response = await apiService.makeAuthenticatedRequest('/v1/services', { method: 'GET' }, 15000);
+        const response = await apiService.makeAuthenticatedRequest(
+          '/v1/services',
+          { method: 'GET' },
+          15000
+        );
         if (!response.ok) {
           throw new Error(`API returned ${response.status}`);
         }
         const data = await response.json();
-        servicesList = Array.isArray(data) ? data : (data.services || data.data || []);
+        servicesList = Array.isArray(data) ? data : data.services || data.data || [];
       }
 
       console.log('[ServiceLevels] Loaded', servicesList.length, 'services');
 
       // STRICT: No additional global fallback - use what we have (even if empty)
       const filteredServices = servicesList;
-      
+
       setServices(filteredServices);
 
       // If no service is selected and we have services, select the first one
@@ -256,11 +307,10 @@ export function ServiceLevelsEnhanced() {
       if (isRefresh) {
         toast.success('Services refreshed');
       }
-
     } catch (error) {
       console.error('[ServiceLevels] Error loading services:', error);
       toast.error('Failed to load services', {
-        description: 'Unable to connect to the controller API'
+        description: 'Unable to connect to the controller API',
       });
     } finally {
       setLoading(false);
@@ -279,7 +329,7 @@ export function ServiceLevelsEnhanced() {
       // Fetch service report and stations in parallel
       const [reportResult, stationsResult] = await Promise.allSettled([
         fetchServiceReport(serviceId),
-        fetchServiceStations(serviceId)
+        fetchServiceStations(serviceId),
       ]);
 
       // Process report
@@ -290,8 +340,8 @@ export function ServiceLevelsEnhanced() {
         // Create a basic report from available data
         setServiceReport({
           serviceId,
-          serviceName: services.find(s => s.id === serviceId)?.name,
-          metrics: {}
+          serviceName: services.find((s) => s.id === serviceId)?.name,
+          metrics: {},
         });
       }
 
@@ -312,7 +362,6 @@ export function ServiceLevelsEnhanced() {
       if (isRefresh) {
         toast.success('Service data refreshed');
       }
-
     } catch (error) {
       console.error('[ServiceLevels] Error loading service details:', error);
       toast.error('Failed to load service details');
@@ -324,7 +373,7 @@ export function ServiceLevelsEnhanced() {
   const fetchServiceReport = async (serviceId: string): Promise<ServiceReport | null> => {
     try {
       console.log('[ServiceLevels] Fetching report for service:', serviceId);
-      
+
       const response = await apiService.makeAuthenticatedRequest(
         `/v1/services/${serviceId}/report`,
         { method: 'GET' },
@@ -350,7 +399,6 @@ export function ServiceLevelsEnhanced() {
       const data = await response.json();
       console.log('[ServiceLevels] Service report loaded');
       return data;
-
     } catch (error) {
       console.log('[ServiceLevels] Service report not available:', error);
       return null;
@@ -360,7 +408,7 @@ export function ServiceLevelsEnhanced() {
   const fetchServiceStations = async (serviceId: string): Promise<Station[]> => {
     try {
       console.log('[ServiceLevels] Fetching stations for service:', serviceId);
-      
+
       const response = await apiService.makeAuthenticatedRequest(
         `/v1/services/${serviceId}/stations`,
         { method: 'GET' },
@@ -377,15 +425,15 @@ export function ServiceLevelsEnhanced() {
 
         if (allStationsResponse.ok) {
           const allData = await allStationsResponse.json();
-          const allStations = Array.isArray(allData) ? allData : (allData.stations || []);
-          
+          const allStations = Array.isArray(allData) ? allData : allData.stations || [];
+
           // Filter by serviceId or ssid
-          const service = services.find(s => s.id === serviceId);
-          const filtered = allStations.filter((station: Station) => 
-            station.serviceId === serviceId || 
-            (service?.ssid && station.ssid === service.ssid)
+          const service = services.find((s) => s.id === serviceId);
+          const filtered = allStations.filter(
+            (station: Station) =>
+              station.serviceId === serviceId || (service?.ssid && station.ssid === service.ssid)
           );
-          
+
           console.log('[ServiceLevels] Filtered', filtered.length, 'stations for service');
           return filtered;
         }
@@ -394,11 +442,10 @@ export function ServiceLevelsEnhanced() {
       }
 
       const data = await response.json();
-      const stations = Array.isArray(data) ? data : (data.stations || data.clients || []);
-      
+      const stations = Array.isArray(data) ? data : data.stations || data.clients || [];
+
       console.log('[ServiceLevels] Loaded', stations.length, 'stations for service');
       return stations;
-
     } catch (error) {
       console.log('[ServiceLevels] Stations not available:', error);
       return [];
@@ -414,7 +461,7 @@ export function ServiceLevelsEnhanced() {
     let rssiCount = 0;
     let snrCount = 0;
 
-    stations.forEach(station => {
+    stations.forEach((station) => {
       totalThroughput += (station.txBytes || 0) + (station.rxBytes || 0);
 
       // Use rssi or rss field (API returns rss)
@@ -435,7 +482,7 @@ export function ServiceLevelsEnhanced() {
 
     const calculatedMetrics: ServiceReport = {
       serviceId,
-      serviceName: services.find(s => s.id === serviceId)?.name,
+      serviceName: services.find((s) => s.id === serviceId)?.name,
       metrics: {
         throughput: totalThroughput,
         clientCount: stations.length,
@@ -443,7 +490,7 @@ export function ServiceLevelsEnhanced() {
         averageSnr: snrCount > 0 ? Math.round(totalSnr / snrCount) : undefined,
         // reliability, uptime, successRate, errorRate require connection-event data
         // not available from /v1/stations — omitted to avoid misleading estimates
-      }
+      },
     };
 
     setServiceReport(calculatedMetrics);
@@ -457,18 +504,21 @@ export function ServiceLevelsEnhanced() {
         setSites([]);
         return;
       }
-      
+
       console.log('Loading sites for ServiceLevels filter...');
       const sitesData = await apiService.getSites();
       console.log('Sites loaded for ServiceLevels:', sitesData);
-      
+
       const sitesArray = Array.isArray(sitesData) ? sitesData : [];
       setSites(sitesArray);
-      
+
       console.log(`Loaded ${sitesArray.length} sites for ServiceLevels filter`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      if (!errorMessage.includes('No access token') && !errorMessage.includes('not authenticated')) {
+      if (
+        !errorMessage.includes('No access token') &&
+        !errorMessage.includes('not authenticated')
+      ) {
         console.warn('Failed to load sites for ServiceLevels:', err);
       }
       setSites([]);
@@ -477,7 +527,7 @@ export function ServiceLevelsEnhanced() {
     }
   };
 
-    const handleServiceChange = (serviceId: string) => {
+  const handleServiceChange = (serviceId: string) => {
     setSelectedService(serviceId);
     loadServiceDetails(serviceId);
   };
@@ -507,7 +557,7 @@ export function ServiceLevelsEnhanced() {
           setHistoricalMetrics({
             serviceId: snapshot.service_id,
             serviceName: snapshot.service_name,
-            metrics: snapshot.metrics
+            metrics: snapshot.metrics,
           });
         } else {
           console.log('[ServiceLevels] No historical data found for', timestamp);
@@ -520,7 +570,10 @@ export function ServiceLevelsEnhanced() {
     }
   };
 
-  const getMetricStatus = (value: number | undefined, threshold: { good: number; warn: number }): 'good' | 'warn' | 'poor' => {
+  const getMetricStatus = (
+    value: number | undefined,
+    threshold: { good: number; warn: number }
+  ): 'good' | 'warn' | 'poor' => {
     if (value === undefined) return 'good';
     if (value >= threshold.good) return 'good';
     if (value >= threshold.warn) return 'warn';
@@ -529,20 +582,44 @@ export function ServiceLevelsEnhanced() {
 
   const getMetricColor = (status: 'good' | 'warn' | 'poor'): string => {
     switch (status) {
-      case 'good': return 'text-[color:var(--status-success)]';
-      case 'warn': return 'text-[color:var(--status-warning)]';
-      case 'poor': return 'text-[color:var(--status-error)]';
+      case 'good':
+        return 'text-[color:var(--status-success)]';
+      case 'warn':
+        return 'text-[color:var(--status-warning)]';
+      case 'poor':
+        return 'text-[color:var(--status-error)]';
     }
   };
 
   const getMetricBadge = (status: 'good' | 'warn' | 'poor') => {
     switch (status) {
       case 'good':
-        return <Badge variant="outline" className="border-[color:var(--status-success)]/30 text-[color:var(--status-success)]">Excellent</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-[color:var(--status-success)]/30 text-[color:var(--status-success)]"
+          >
+            Excellent
+          </Badge>
+        );
       case 'warn':
-        return <Badge variant="outline" className="border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]">Warning</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-[color:var(--status-warning)]/30 text-[color:var(--status-warning)]"
+          >
+            Warning
+          </Badge>
+        );
       case 'poor':
-        return <Badge variant="outline" className="border-[color:var(--status-error)]/30 text-[color:var(--status-error)]">Poor</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="border-[color:var(--status-error)]/30 text-[color:var(--status-error)]"
+          >
+            Poor
+          </Badge>
+        );
     }
   };
 
@@ -559,30 +636,30 @@ export function ServiceLevelsEnhanced() {
     const k = 1000;
     const sizes = ['bps', 'Kbps', 'Mbps', 'Gbps'];
     const i = Math.floor(Math.log(bytes * 8) / Math.log(k));
-    return Math.round((bytes * 8 / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+    return Math.round(((bytes * 8) / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
   };
 
   // Use historical data if in rewind mode, otherwise use live data
-  const displayMetrics = isLive ? serviceReport : (historicalMetrics || serviceReport);
+  const displayMetrics = isLive ? serviceReport : historicalMetrics || serviceReport;
 
   // Historical time-series: only emit data for metrics available from the API.
   // clientCount and averageRssi come from real station data; no random variation applied.
   const generateTimeSeries = () => {
     if (!displayMetrics?.metrics) return [];
 
-    const points = [];
+    const points: Array<{ timestamp: number; time: string; clientCount: number }> = [];
     const now = Date.now();
     const interval = timeRange === '1h' ? 300000 : timeRange === '24h' ? 3600000 : 86400000;
     const count = timeRange === '1h' ? 12 : timeRange === '24h' ? 24 : 30;
 
     for (let i = count - 1; i >= 0; i--) {
-      const timestamp = now - (i * interval);
+      const timestamp = now - i * interval;
       points.push({
         timestamp,
         time: new Date(timestamp).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {})
+          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {}),
         }),
         clientCount: displayMetrics.metrics.clientCount || 0,
         // latency and reliability omitted — no real time-series data available from API
@@ -599,28 +676,36 @@ export function ServiceLevelsEnhanced() {
   const generateExperienceTimeSeries = () => {
     if (!displayMetrics?.metrics) return [];
 
-    const points = [];
+    const points: Array<{
+      timestamp: number;
+      time: string;
+      experienceScore: number;
+      clientCount: number;
+      latency: number;
+    }> = [];
     const now = Date.now();
     const interval = timeRange === '1h' ? 300000 : timeRange === '24h' ? 3600000 : 86400000;
     const count = timeRange === '1h' ? 12 : timeRange === '24h' ? 24 : 30;
 
     // Compute a signal-quality score from real RSSI if available
     const rssi = displayMetrics.metrics.averageRssi;
-    const signalScore = rssi !== undefined
-      ? Math.max(0, Math.min(100, ((rssi + 100) / 50) * 100))
-      : null;
+    const signalScore =
+      rssi !== undefined ? Math.max(0, Math.min(100, ((rssi + 100) / 50) * 100)) : 0;
+
+    const latencyValue = displayMetrics.metrics.latency ?? 0;
 
     for (let i = count - 1; i >= 0; i--) {
-      const timestamp = now - (i * interval);
+      const timestamp = now - i * interval;
       points.push({
         timestamp,
         time: new Date(timestamp).toLocaleTimeString('en-US', {
           hour: '2-digit',
           minute: '2-digit',
-          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {})
+          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {}),
         }),
         experienceScore: signalScore,
         clientCount: displayMetrics.metrics.clientCount || 0,
+        latency: latencyValue,
       });
     }
 
@@ -628,39 +713,43 @@ export function ServiceLevelsEnhanced() {
   };
 
   // Prepare radar chart data
-  const radarData = displayMetrics?.metrics ? [
-    {
-      metric: 'Reliability',
-      value: displayMetrics.metrics.reliability || 0,
-      fullMark: 100
-    },
-    {
-      metric: 'Uptime',
-      value: displayMetrics.metrics.uptime || 0,
-      fullMark: 100
-    },
-    {
-      metric: 'Success Rate',
-      value: displayMetrics.metrics.successRate || 0,
-      fullMark: 100
-    },
-    {
-      metric: 'Signal Quality',
-      value: displayMetrics.metrics.averageSnr ? Math.min(100, (displayMetrics.metrics.averageSnr + 100) / 2) : 80,
-      fullMark: 100
-    },
-    {
-      metric: 'Performance',
-      value: 100 - (displayMetrics.metrics.errorRate || 0),
-      fullMark: 100
-    }
-  ] : [];
+  const radarData = displayMetrics?.metrics
+    ? [
+        {
+          metric: 'Reliability',
+          value: displayMetrics.metrics.reliability || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Uptime',
+          value: displayMetrics.metrics.uptime || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Success Rate',
+          value: displayMetrics.metrics.successRate || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Signal Quality',
+          value: displayMetrics.metrics.averageSnr
+            ? Math.min(100, (displayMetrics.metrics.averageSnr + 100) / 2)
+            : 80,
+          fullMark: 100,
+        },
+        {
+          metric: 'Performance',
+          value: 100 - (displayMetrics.metrics.errorRate || 0),
+          fullMark: 100,
+        },
+      ]
+    : [];
 
   if (loading) {
     return null;
   }
 
-  const currentService = services.find(s => s.id === selectedService);
+  const currentService = services.find((s) => s.id === selectedService);
 
   return (
     <div className="space-y-6">
@@ -685,10 +774,13 @@ export function ServiceLevelsEnhanced() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={selectedSite} onValueChange={(value) => {
-            console.log('[ServiceLevels] Site filter changed to:', value);
-            setSelectedSite(value);
-          }}>
+          <Select
+            value={selectedSite}
+            onValueChange={(value) => {
+              console.log('[ServiceLevels] Site filter changed to:', value);
+              setSelectedSite(value);
+            }}
+          >
             <SelectTrigger className="w-48">
               <Building className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Select Site" />
@@ -712,7 +804,7 @@ export function ServiceLevelsEnhanced() {
               )}
             </SelectContent>
           </Select>
-          
+
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-40">
               <Clock className="h-4 w-4 mr-2" />
@@ -747,9 +839,10 @@ export function ServiceLevelsEnhanced() {
               <SelectValue placeholder="Select a service" />
             </SelectTrigger>
             <SelectContent>
-              {services.map(service => (
+              {services.map((service) => (
                 <SelectItem key={service.id} value={service.id}>
-                  {service.name} {service.ssid && service.ssid !== service.name ? `(${service.ssid})` : ''}
+                  {service.name}{' '}
+                  {service.ssid && service.ssid !== service.name ? `(${service.ssid})` : ''}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -788,10 +881,14 @@ export function ServiceLevelsEnhanced() {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics.metrics?.reliability, { good: 95, warn: 90 }))}`}>
-                  {displayMetrics.metrics?.reliability?.toFixed(2) || 'N/A'}%
+                <div
+                  className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics?.metrics?.reliability, { good: 95, warn: 90 }))}`}
+                >
+                  {displayMetrics?.metrics?.reliability?.toFixed(2) || 'N/A'}%
                 </div>
-                {getMetricBadge(getMetricStatus(displayMetrics.metrics?.reliability, { good: 95, warn: 90 }))}
+                {getMetricBadge(
+                  getMetricStatus(displayMetrics?.metrics?.reliability, { good: 95, warn: 90 })
+                )}
               </CardContent>
             </Card>
 
@@ -802,10 +899,14 @@ export function ServiceLevelsEnhanced() {
                 <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics.metrics?.uptime, { good: 99, warn: 95 }))}`}>
-                  {displayMetrics.metrics?.uptime?.toFixed(2) || 'N/A'}%
+                <div
+                  className={`text-2xl font-bold ${getMetricColor(getMetricStatus(displayMetrics?.metrics?.uptime, { good: 99, warn: 95 }))}`}
+                >
+                  {displayMetrics?.metrics?.uptime?.toFixed(2) || 'N/A'}%
                 </div>
-                {getMetricBadge(getMetricStatus(displayMetrics.metrics?.uptime, { good: 99, warn: 95 }))}
+                {getMetricBadge(
+                  getMetricStatus(displayMetrics?.metrics?.uptime, { good: 99, warn: 95 })
+                )}
               </CardContent>
             </Card>
 
@@ -816,10 +917,10 @@ export function ServiceLevelsEnhanced() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{displayMetrics.metrics?.clientCount || serviceStations.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Active connections
-                </p>
+                <div className="text-2xl font-bold">
+                  {displayMetrics?.metrics?.clientCount || serviceStations.length}
+                </div>
+                <p className="text-xs text-muted-foreground">Active connections</p>
               </CardContent>
             </Card>
           </div>
@@ -834,171 +935,218 @@ export function ServiceLevelsEnhanced() {
               </CardHeader>
               <CardContent className="space-y-5">
                 {/* Latency */}
-                {displayMetrics.metrics?.latency !== undefined && (
+                {displayMetrics?.metrics?.latency !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Zap className="h-4 w-4 text-blue-500" />
                         <span className="text-sm font-medium">Latency</span>
                       </div>
-                      <span className={`text-sm font-bold ${
-                        serviceReport.metrics.latency < 20 ? 'text-[color:var(--status-success)]' :
-                        serviceReport.metrics.latency < 50 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                      }`}>
-                        {serviceReport.metrics.latency.toFixed(1)} ms
+                      <span
+                        className={`text-sm font-bold ${
+                          displayMetrics!.metrics!.latency! < 20
+                            ? 'text-[color:var(--status-success)]'
+                            : displayMetrics!.metrics!.latency! < 50
+                              ? 'text-[color:var(--status-warning)]'
+                              : 'text-[color:var(--status-error)]'
+                        }`}
+                      >
+                        {displayMetrics!.metrics!.latency!.toFixed(1)} ms
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.latency < 20 ? '✓ Excellent - Ideal for real-time applications' :
-                       serviceReport.metrics.latency < 50 ? '⚠ Good - Suitable for most applications' :
-                       '⚠ High - May impact user experience'}
+                      {displayMetrics!.metrics!.latency! < 20
+                        ? '✓ Excellent - Ideal for real-time applications'
+                        : displayMetrics!.metrics!.latency! < 50
+                          ? '⚠ Good - Suitable for most applications'
+                          : '⚠ High - May impact user experience'}
                     </p>
                   </div>
                 )}
 
                 {/* Jitter */}
-                {displayMetrics.metrics?.jitter !== undefined && (
+                {displayMetrics?.metrics?.jitter !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Activity className="h-4 w-4 text-purple-500" />
                         <span className="text-sm font-medium">Jitter</span>
                       </div>
-                      <span className={`text-sm font-bold ${
-                        serviceReport.metrics.jitter < 10 ? 'text-[color:var(--status-success)]' :
-                        serviceReport.metrics.jitter < 30 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                      }`}>
-                        {serviceReport.metrics.jitter.toFixed(1)} ms
+                      <span
+                        className={`text-sm font-bold ${
+                          displayMetrics!.metrics!.jitter! < 10
+                            ? 'text-[color:var(--status-success)]'
+                            : displayMetrics!.metrics!.jitter! < 30
+                              ? 'text-[color:var(--status-warning)]'
+                              : 'text-[color:var(--status-error)]'
+                        }`}
+                      >
+                        {displayMetrics!.metrics!.jitter!.toFixed(1)} ms
                       </span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.jitter < 10 ? '✓ Stable connection - Minimal variation' :
-                       serviceReport.metrics.jitter < 30 ? '⚠ Acceptable - Some variation detected' :
-                       '⚠ High variation - May affect VoIP/video quality'}
+                      {displayMetrics!.metrics!.jitter! < 10
+                        ? '✓ Stable connection - Minimal variation'
+                        : displayMetrics!.metrics!.jitter! < 30
+                          ? '⚠ Acceptable - Some variation detected'
+                          : '⚠ High variation - May affect VoIP/video quality'}
                     </p>
                   </div>
                 )}
 
                 {/* Packet Loss */}
-                {displayMetrics.metrics?.packetLoss !== undefined && (
+                {displayMetrics?.metrics?.packetLoss !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Target className="h-4 w-4 text-orange-500" />
                         <span className="text-sm font-medium">Packet Loss</span>
                       </div>
-                      <span className={`text-sm font-bold ${getMetricColor(getMetricStatus(100 - serviceReport.metrics.packetLoss, { good: 99, warn: 95 }))}`}>
-                        {serviceReport.metrics.packetLoss.toFixed(3)}%
+                      <span
+                        className={`text-sm font-bold ${getMetricColor(getMetricStatus(100 - displayMetrics!.metrics!.packetLoss!, { good: 99, warn: 95 }))}`}
+                      >
+                        {displayMetrics!.metrics!.packetLoss!.toFixed(3)}%
                       </span>
                     </div>
                     <Progress
-                      value={Math.max(0, 100 - (serviceReport.metrics.packetLoss * 20))}
+                      value={Math.max(0, 100 - displayMetrics!.metrics!.packetLoss! * 20)}
                       className="h-1.5"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.packetLoss < 0.5 ? '✓ Excellent - No significant packet loss' :
-                       serviceReport.metrics.packetLoss < 2 ? '⚠ Acceptable - Minor packet loss detected' :
-                       '⚠ Critical - Check network infrastructure'}
+                      {displayMetrics!.metrics!.packetLoss! < 0.5
+                        ? '✓ Excellent - No significant packet loss'
+                        : displayMetrics!.metrics!.packetLoss! < 2
+                          ? '⚠ Acceptable - Minor packet loss detected'
+                          : '⚠ Critical - Check network infrastructure'}
                     </p>
                   </div>
                 )}
 
                 {/* RSSI */}
-                {displayMetrics.metrics?.averageRssi !== undefined && (
+                {displayMetrics?.metrics?.averageRssi !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Radio className="h-4 w-4 text-green-500" />
                         <span className="text-sm font-medium">Signal Strength (RSSI)</span>
                       </div>
-                      <span className={`text-sm font-bold ${
-                        serviceReport.metrics.averageRssi >= -50 ? 'text-[color:var(--status-success)]' :
-                        serviceReport.metrics.averageRssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                      }`}>
-                        {serviceReport.metrics.averageRssi} dBm
+                      <span
+                        className={`text-sm font-bold ${
+                          displayMetrics!.metrics!.averageRssi! >= -50
+                            ? 'text-[color:var(--status-success)]'
+                            : displayMetrics!.metrics!.averageRssi! >= -70
+                              ? 'text-[color:var(--status-warning)]'
+                              : 'text-[color:var(--status-error)]'
+                        }`}
+                      >
+                        {displayMetrics!.metrics!.averageRssi} dBm
                       </span>
                     </div>
                     <Progress
-                      value={Math.max(0, Math.min(100, (serviceReport.metrics.averageRssi + 100) * 1.25))}
+                      value={Math.max(
+                        0,
+                        Math.min(100, (displayMetrics!.metrics!.averageRssi! + 100) * 1.25)
+                      )}
                       className="h-1.5"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.averageRssi >= -50 ? '✓ Excellent signal - Optimal performance' :
-                       serviceReport.metrics.averageRssi >= -60 ? '✓ Good signal - Reliable connectivity' :
-                       serviceReport.metrics.averageRssi >= -70 ? '⚠ Fair signal - Consider AP placement' :
-                       '⚠ Weak signal - Recommend additional APs'}
+                      {displayMetrics!.metrics!.averageRssi! >= -50
+                        ? '✓ Excellent signal - Optimal performance'
+                        : displayMetrics!.metrics!.averageRssi! >= -60
+                          ? '✓ Good signal - Reliable connectivity'
+                          : displayMetrics!.metrics!.averageRssi! >= -70
+                            ? '⚠ Fair signal - Consider AP placement'
+                            : '⚠ Weak signal - Recommend additional APs'}
                     </p>
                   </div>
                 )}
 
                 {/* SNR */}
-                {displayMetrics.metrics?.averageSnr !== undefined && (
+                {displayMetrics?.metrics?.averageSnr !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Signal className="h-4 w-4 text-cyan-500" />
                         <span className="text-sm font-medium">Signal Quality (SNR)</span>
                       </div>
-                      <span className={`text-sm font-bold ${
-                        serviceReport.metrics.averageSnr >= 40 ? 'text-[color:var(--status-success)]' :
-                        serviceReport.metrics.averageSnr >= 25 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'
-                      }`}>
-                        {serviceReport.metrics.averageSnr} dB
+                      <span
+                        className={`text-sm font-bold ${
+                          displayMetrics!.metrics!.averageSnr! >= 40
+                            ? 'text-[color:var(--status-success)]'
+                            : displayMetrics!.metrics!.averageSnr! >= 25
+                              ? 'text-[color:var(--status-warning)]'
+                              : 'text-[color:var(--status-error)]'
+                        }`}
+                      >
+                        {displayMetrics!.metrics!.averageSnr} dB
                       </span>
                     </div>
                     <Progress
-                      value={Math.max(0, Math.min(100, (serviceReport.metrics.averageSnr / 50) * 100))}
+                      value={Math.max(
+                        0,
+                        Math.min(100, (displayMetrics!.metrics!.averageSnr! / 50) * 100)
+                      )}
                       className="h-1.5"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.averageSnr >= 40 ? '✓ Excellent - Minimal interference' :
-                       serviceReport.metrics.averageSnr >= 25 ? '✓ Good - Acceptable noise levels' :
-                       '⚠ Poor - High interference detected'}
+                      {displayMetrics!.metrics!.averageSnr! >= 40
+                        ? '✓ Excellent - Minimal interference'
+                        : displayMetrics!.metrics!.averageSnr! >= 25
+                          ? '✓ Good - Acceptable noise levels'
+                          : '⚠ Poor - High interference detected'}
                     </p>
                   </div>
                 )}
 
                 {/* Success Rate */}
-                {displayMetrics.metrics?.successRate !== undefined && (
+                {displayMetrics?.metrics?.successRate !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <CheckCircle className="h-4 w-4 text-green-500" />
                         <span className="text-sm font-medium">Success Rate</span>
                       </div>
-                      <span className={`text-sm font-bold ${getMetricColor(getMetricStatus(serviceReport.metrics.successRate, { good: 98, warn: 95 }))}`}>
-                        {serviceReport.metrics.successRate.toFixed(2)}%
+                      <span
+                        className={`text-sm font-bold ${getMetricColor(getMetricStatus(displayMetrics!.metrics!.successRate, { good: 98, warn: 95 }))}`}
+                      >
+                        {displayMetrics!.metrics!.successRate!.toFixed(2)}%
                       </span>
                     </div>
-                    <Progress value={serviceReport.metrics.successRate} className="h-1.5" />
+                    <Progress value={displayMetrics!.metrics!.successRate!} className="h-1.5" />
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.successRate >= 98 ? '✓ Optimal - Meeting SLA targets' :
-                       serviceReport.metrics.successRate >= 95 ? '⚠ Acceptable - Minor issues detected' :
-                       '⚠ Below target - Investigate connection issues'}
+                      {displayMetrics!.metrics!.successRate! >= 98
+                        ? '✓ Optimal - Meeting SLA targets'
+                        : displayMetrics!.metrics!.successRate! >= 95
+                          ? '⚠ Acceptable - Minor issues detected'
+                          : '⚠ Below target - Investigate connection issues'}
                     </p>
                   </div>
                 )}
 
                 {/* Error Rate */}
-                {displayMetrics.metrics?.errorRate !== undefined && (
+                {displayMetrics?.metrics?.errorRate !== undefined && (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-red-500" />
                         <span className="text-sm font-medium">Error Rate</span>
                       </div>
-                      <span className={`text-sm font-bold ${getMetricColor(getMetricStatus(100 - serviceReport.metrics.errorRate, { good: 98, warn: 95 }))}`}>
-                        {serviceReport.metrics.errorRate.toFixed(2)}%
+                      <span
+                        className={`text-sm font-bold ${getMetricColor(getMetricStatus(100 - displayMetrics!.metrics!.errorRate!, { good: 98, warn: 95 }))}`}
+                      >
+                        {displayMetrics!.metrics!.errorRate!.toFixed(2)}%
                       </span>
                     </div>
                     <Progress
-                      value={Math.max(0, 100 - (serviceReport.metrics.errorRate * 10))}
+                      value={Math.max(0, 100 - displayMetrics!.metrics!.errorRate! * 10)}
                       className="h-1.5"
                     />
                     <p className="text-xs text-muted-foreground">
-                      {serviceReport.metrics.errorRate < 1 ? '✓ Excellent - Minimal errors' :
-                       serviceReport.metrics.errorRate < 5 ? '⚠ Monitor - Some errors present' :
-                       '⚠ High error rate - Immediate attention needed'}
+                      {displayMetrics!.metrics!.errorRate! < 1
+                        ? '✓ Excellent - Minimal errors'
+                        : displayMetrics!.metrics!.errorRate! < 5
+                          ? '⚠ Monitor - Some errors present'
+                          : '⚠ High error rate - Immediate attention needed'}
                     </p>
                   </div>
                 )}
@@ -1018,11 +1166,11 @@ export function ServiceLevelsEnhanced() {
                       <PolarGrid />
                       <PolarAngleAxis dataKey="metric" />
                       <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                      <Radar 
-                        name="Performance" 
-                        dataKey="value" 
-                        stroke="#BB86FC" 
-                        fill="#BB86FC" 
+                      <Radar
+                        name="Performance"
+                        dataKey="value"
+                        stroke="#BB86FC"
+                        fill="#BB86FC"
                         fillOpacity={0.6}
                       />
                       <Tooltip
@@ -1030,7 +1178,7 @@ export function ServiceLevelsEnhanced() {
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                     </RadarChart>
@@ -1069,7 +1217,7 @@ export function ServiceLevelsEnhanced() {
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
@@ -1104,7 +1252,7 @@ export function ServiceLevelsEnhanced() {
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
@@ -1139,7 +1287,7 @@ export function ServiceLevelsEnhanced() {
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
@@ -1159,7 +1307,10 @@ export function ServiceLevelsEnhanced() {
           </Tabs>
 
           {/* Application Analytics Widgets */}
-          <ApplicationWidgets selectedService={selectedService || undefined} timeRange={timeRange} />
+          <ApplicationWidgets
+            selectedService={selectedService || undefined}
+            timeRange={timeRange}
+          />
 
           {/* Client Analytics Widgets */}
           {serviceStations.length > 0 && (
@@ -1174,14 +1325,20 @@ export function ServiceLevelsEnhanced() {
                   <div className="space-y-3">
                     {(() => {
                       // Extract manufacturer from MAC OUI (first 3 octets)
-                      const manufacturerCounts = serviceStations.reduce((acc: Record<string, number>, station) => {
-                        // Get first 3 octets of MAC address as manufacturer identifier
-                        const oui = station.macAddress?.substring(0, 8).toUpperCase() || 'Unknown';
-                        const manufacturer = oui.startsWith('00:') || oui.startsWith('01:') || oui.startsWith('02:') ?
-                          (oui.substring(0, 8)) : 'Other';
-                        acc[manufacturer] = (acc[manufacturer] || 0) + 1;
-                        return acc;
-                      }, {});
+                      const manufacturerCounts = serviceStations.reduce(
+                        (acc: Record<string, number>, station) => {
+                          // Get first 3 octets of MAC address as manufacturer identifier
+                          const oui =
+                            station.macAddress?.substring(0, 8).toUpperCase() || 'Unknown';
+                          const manufacturer =
+                            oui.startsWith('00:') || oui.startsWith('01:') || oui.startsWith('02:')
+                              ? oui.substring(0, 8)
+                              : 'Other';
+                          acc[manufacturer] = (acc[manufacturer] || 0) + 1;
+                          return acc;
+                        },
+                        {}
+                      );
 
                       const sortedManufacturers = Object.entries(manufacturerCounts)
                         .sort(([, a], [, b]) => b - a)
@@ -1215,11 +1372,14 @@ export function ServiceLevelsEnhanced() {
                 <CardContent>
                   <div className="space-y-3">
                     {(() => {
-                      const protocolCounts = serviceStations.reduce((acc: Record<string, number>, station) => {
-                        const protocol = station.protocol || 'Unknown';
-                        acc[protocol] = (acc[protocol] || 0) + 1;
-                        return acc;
-                      }, {});
+                      const protocolCounts = serviceStations.reduce(
+                        (acc: Record<string, number>, station) => {
+                          const protocol = station.protocol || 'Unknown';
+                          acc[protocol] = (acc[protocol] || 0) + 1;
+                          return acc;
+                        },
+                        {}
+                      );
 
                       const sortedProtocols = Object.entries(protocolCounts)
                         .sort(([, a], [, b]) => b - a)
@@ -1233,7 +1393,9 @@ export function ServiceLevelsEnhanced() {
                           <div key={protocol} className="space-y-1">
                             <div className="flex items-center justify-between text-sm">
                               <span className="font-medium truncate">{protocol}</span>
-                              <span className="text-muted-foreground">{count} ({percentage.toFixed(0)}%)</span>
+                              <span className="text-muted-foreground">
+                                {count} ({percentage.toFixed(0)}%)
+                              </span>
                             </div>
                             <Progress value={percentage} className="h-2" />
                           </div>
@@ -1253,11 +1415,15 @@ export function ServiceLevelsEnhanced() {
                 <CardContent>
                   <div className="space-y-3">
                     {(() => {
-                      const deviceTypeCounts = serviceStations.reduce((acc: Record<string, number>, station) => {
-                        const deviceType = station.deviceType || station.manufacturer || 'Unknown';
-                        acc[deviceType] = (acc[deviceType] || 0) + 1;
-                        return acc;
-                      }, {});
+                      const deviceTypeCounts = serviceStations.reduce(
+                        (acc: Record<string, number>, station) => {
+                          const deviceType =
+                            station.deviceType || station.manufacturer || 'Unknown';
+                          acc[deviceType] = (acc[deviceType] || 0) + 1;
+                          return acc;
+                        },
+                        {}
+                      );
 
                       const sortedDeviceTypes = Object.entries(deviceTypeCounts)
                         .sort(([, a], [, b]) => b - a)
@@ -1271,7 +1437,9 @@ export function ServiceLevelsEnhanced() {
                           <div key={deviceType} className="space-y-1">
                             <div className="flex items-center justify-between text-sm">
                               <span className="font-medium truncate">{deviceType}</span>
-                              <span className="text-muted-foreground">{count} ({percentage.toFixed(0)}%)</span>
+                              <span className="text-muted-foreground">
+                                {count} ({percentage.toFixed(0)}%)
+                              </span>
                             </div>
                             <Progress value={percentage} className="h-2" />
                           </div>
@@ -1291,7 +1459,9 @@ export function ServiceLevelsEnhanced() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle>Connected Clients</CardTitle>
-                    <CardDescription>Click on any client to view detailed information</CardDescription>
+                    <CardDescription>
+                      Click on any client to view detailed information
+                    </CardDescription>
                   </div>
                   <Badge variant="secondary">{serviceStations.length} Total</Badge>
                 </div>
@@ -1301,14 +1471,27 @@ export function ServiceLevelsEnhanced() {
                   <div className="space-y-2">
                     {serviceStations.slice(0, 20).map((station) => {
                       const rssi = station.rssi ?? (station as any).rss ?? 0;
-                      const signalQuality = rssi >= -50 ? 'excellent' : rssi >= -60 ? 'good' : rssi >= -70 ? 'fair' : 'poor';
+                      const signalQuality =
+                        rssi >= -50
+                          ? 'excellent'
+                          : rssi >= -60
+                            ? 'good'
+                            : rssi >= -70
+                              ? 'fair'
+                              : 'poor';
                       const SignalIcon = Signal;
 
                       // Use transmittedRate/receivedRate (API field names) with fallback to txRate/rxRate
-                      const tx = (station as any).transmittedRate || station.txRate || ((station.txBytes || 0) * 8);
-                      const rx = (station as any).receivedRate || station.rxRate || ((station.rxBytes || 0) * 8);
+                      const tx =
+                        (station as any).transmittedRate ||
+                        station.txRate ||
+                        (station.txBytes || 0) * 8;
+                      const rx =
+                        (station as any).receivedRate ||
+                        station.rxRate ||
+                        (station.rxBytes || 0) * 8;
                       const totalThroughput = tx + rx;
-                      
+
                       return (
                         <div
                           key={station.macAddress}
@@ -1332,7 +1515,10 @@ export function ServiceLevelsEnhanced() {
                                   {station.hostName || station.macAddress}
                                 </span>
                                 {station.authenticated !== false && (
-                                  <Badge variant="outline" className="text-xs border-[color:var(--status-success)]/30 text-[color:var(--status-success)]">
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs border-[color:var(--status-success)]/30 text-[color:var(--status-success)]"
+                                  >
                                     Auth
                                   </Badge>
                                 )}
@@ -1344,7 +1530,10 @@ export function ServiceLevelsEnhanced() {
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <Network className="h-3 w-3" />
-                                  {station.ssid || currentService?.ssid || currentService?.name || 'Unknown'}
+                                  {station.ssid ||
+                                    currentService?.ssid ||
+                                    currentService?.name ||
+                                    'Unknown'}
                                 </span>
                                 {station.ipAddress && (
                                   <span className="flex items-center gap-1">
@@ -1361,10 +1550,13 @@ export function ServiceLevelsEnhanced() {
                                 <div className="flex items-center gap-1 text-xs">
                                   <SignalIcon
                                     className={`h-4 w-4 ${
-                                      signalQuality === 'excellent' ? 'text-[color:var(--status-success)]' :
-                                      signalQuality === 'good' ? 'text-[color:var(--status-info)]' :
-                                      signalQuality === 'fair' ? 'text-[color:var(--status-warning)]' :
-                                      'text-[color:var(--status-error)]'
+                                      signalQuality === 'excellent'
+                                        ? 'text-[color:var(--status-success)]'
+                                        : signalQuality === 'good'
+                                          ? 'text-[color:var(--status-info)]'
+                                          : signalQuality === 'fair'
+                                            ? 'text-[color:var(--status-warning)]'
+                                            : 'text-[color:var(--status-error)]'
                                     }`}
                                   />
                                   <span>{rssi} dBm</span>
@@ -1404,8 +1596,8 @@ export function ServiceLevelsEnhanced() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm">
-                  This service currently has {serviceStations.length} connected clients, which may impact performance.
-                  Consider load balancing or adding additional capacity.
+                  This service currently has {serviceStations.length} connected clients, which may
+                  impact performance. Consider load balancing or adding additional capacity.
                 </p>
               </CardContent>
             </Card>
@@ -1424,11 +1616,7 @@ export function ServiceLevelsEnhanced() {
                 : 'No services are configured in the system'}
             </p>
             {selectedSite && selectedSite !== 'all' && (
-              <Button
-                variant="outline"
-                className="mt-4"
-                onClick={() => setSelectedSite('all')}
-              >
+              <Button variant="outline" className="mt-4" onClick={() => setSelectedSite('all')}>
                 Show All Sites
               </Button>
             )}
@@ -1445,252 +1633,288 @@ export function ServiceLevelsEnhanced() {
         width="xl"
       >
         {selectedClient && (
-            <div className="space-y-6 mt-4">
-              {/* Client Details Card */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Client Details</CardTitle>
-                    <Button variant="outline" size="sm" onClick={() => {
+          <div className="space-y-6 mt-4">
+            {/* Client Details Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Client Details</CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
                       // Reload client data
                       setIsClientDialogOpen(false);
                       setTimeout(() => {
-                        handleClientClick(selectedClient);
+                        setSelectedClient(selectedClient);
+                        setIsClientDialogOpen(true);
                       }, 100);
-                    }}>
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Connection Status */}
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2">Connection Status</h4>
-                    <Badge variant={selectedClient.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                      {selectedClient.status || 'ACTIVE'}
-                    </Badge>
-                  </div>
+                    }}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Connection Status */}
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">Connection Status</h4>
+                  <Badge variant={selectedClient.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                    {selectedClient.status || 'ACTIVE'}
+                  </Badge>
+                </div>
 
-                  {/* Signal & Connection Metrics */}
-                  <div className="grid grid-cols-3 gap-4">
-                    {(selectedClient.rssi !== undefined || (selectedClient as any).rss !== undefined) && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Signal Strength</p>
-                        <p className="text-sm font-medium">{selectedClient.rssi ?? (selectedClient as any).rss} dBm</p>
-                      </div>
-                    )}
+                {/* Signal & Connection Metrics */}
+                <div className="grid grid-cols-3 gap-4">
+                  {(selectedClient.rssi !== undefined ||
+                    (selectedClient as any).rss !== undefined) && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Data Rate</p>
+                      <p className="text-xs text-muted-foreground mb-1">Signal Strength</p>
                       <p className="text-sm font-medium">
-                        {(() => {
-                          const tx = (selectedClient as any).transmittedRate || selectedClient.txRate;
-                          const rx = (selectedClient as any).receivedRate || selectedClient.rxRate;
-                          if (tx || rx) {
-                            const txMbps = tx ? Math.round(tx / 1000000) : 0;
-                            const rxMbps = rx ? Math.round(rx / 1000000) : 0;
-                            return `${txMbps}/${rxMbps} Mbps`;
-                          }
-                          return 'N/A';
-                        })()}
-                      </p>
-                    </div>
-                    {selectedClient.protocol && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Protocol</p>
-                        <p className="text-sm font-medium">{selectedClient.protocol}</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Device Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Device Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Hostname</p>
-                      <p className="text-sm font-medium">{selectedClient.hostName || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">MAC Address</p>
-                      <p className="text-sm font-mono font-medium">{selectedClient.macAddress}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">IP Address</p>
-                      <p className="text-sm font-mono font-medium">{selectedClient.ipAddress || 'N/A'}</p>
-                    </div>
-                    {selectedClient.ipv6Address && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">IPv6 Address</p>
-                        <p className="text-sm font-mono font-medium">{selectedClient.ipv6Address}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Device Type</p>
-                      <p className="text-sm font-medium">{selectedClient.deviceType || selectedClient.manufacturer || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Manufacturer</p>
-                      <p className="text-sm font-medium">{selectedClient.manufacturer || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Username</p>
-                      <p className="text-sm font-medium">{selectedClient.username || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Role</p>
-                      <p className="text-sm font-medium">{selectedClient.role || selectedClient.roleId || 'N/A'}</p>
-                    </div>
-                  </div>
-                  {selectedClient.lastSeen && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Last Seen</p>
-                      <p className="text-sm font-medium">
-                        {new Date(selectedClient.lastSeen).toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit'
-                        })}
+                        {selectedClient.rssi ?? (selectedClient as any).rss} dBm
                       </p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Network Information */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Network Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Data Rate</p>
+                    <p className="text-sm font-medium">
+                      {(() => {
+                        const tx = (selectedClient as any).transmittedRate || selectedClient.txRate;
+                        const rx = (selectedClient as any).receivedRate || selectedClient.rxRate;
+                        if (tx || rx) {
+                          const txMbps = tx ? Math.round(tx / 1000000) : 0;
+                          const rxMbps = rx ? Math.round(rx / 1000000) : 0;
+                          return `${txMbps}/${rxMbps} Mbps`;
+                        }
+                        return 'N/A';
+                      })()}
+                    </p>
+                  </div>
+                  {selectedClient.protocol && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">SSID</p>
-                      <p className="text-sm font-medium">{selectedClient.ssid || selectedClient.essid || currentService?.ssid || 'N/A'}</p>
+                      <p className="text-xs text-muted-foreground mb-1">Protocol</p>
+                      <p className="text-sm font-medium">{selectedClient.protocol}</p>
                     </div>
-                    {selectedClient.vlan && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">VLAN</p>
-                        <p className="text-sm font-medium">{selectedClient.vlan}</p>
-                      </div>
-                    )}
-                    {(selectedClient.channel || selectedClient.radioChannel || selectedClient.channelNumber) && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Channel</p>
-                        <p className="text-sm font-medium">
-                          {selectedClient.channel || selectedClient.radioChannel || selectedClient.channelNumber}
-                          {selectedClient.channelWidth ? `/${selectedClient.channelWidth}` : ''}
-                        </p>
-                      </div>
-                    )}
-                    {selectedClient.siteName && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Site</p>
-                        <p className="text-sm font-medium">{selectedClient.siteName}</p>
-                      </div>
-                    )}
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Device Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Device Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Hostname</p>
+                    <p className="text-sm font-medium">{selectedClient.hostName || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">MAC Address</p>
+                    <p className="text-sm font-mono font-medium">{selectedClient.macAddress}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">IP Address</p>
+                    <p className="text-sm font-mono font-medium">
+                      {selectedClient.ipAddress || 'N/A'}
+                    </p>
+                  </div>
+                  {selectedClient.ipv6Address && (
                     <div>
-                      <p className="text-xs text-muted-foreground mb-1">Access Point</p>
+                      <p className="text-xs text-muted-foreground mb-1">IPv6 Address</p>
+                      <p className="text-sm font-mono font-medium">{selectedClient.ipv6Address}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Device Type</p>
+                    <p className="text-sm font-medium">
+                      {selectedClient.deviceType || selectedClient.manufacturer || 'N/A'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Manufacturer</p>
+                    <p className="text-sm font-medium">{selectedClient.manufacturer || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Username</p>
+                    <p className="text-sm font-medium">{selectedClient.username || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Role</p>
+                    <p className="text-sm font-medium">
+                      {selectedClient.role || selectedClient.roleId || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                {selectedClient.lastSeen && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Last Seen</p>
+                    <p className="text-sm font-medium">
+                      {new Date(selectedClient.lastSeen).toLocaleString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                      })}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Network Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Network Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">SSID</p>
+                    <p className="text-sm font-medium">
+                      {selectedClient.ssid || selectedClient.essid || currentService?.ssid || 'N/A'}
+                    </p>
+                  </div>
+                  {selectedClient.vlan && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">VLAN</p>
+                      <p className="text-sm font-medium">{selectedClient.vlan}</p>
+                    </div>
+                  )}
+                  {(selectedClient.channel ||
+                    selectedClient.radioChannel ||
+                    selectedClient.channelNumber) && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Channel</p>
                       <p className="text-sm font-medium">
-                        {selectedClient.apName || selectedClient.apDisplayName || selectedClient.apHostname ||
-                         selectedClient.apSerialNumber || selectedClient.apSerial || selectedClient.apSn || 'N/A'}
+                        {selectedClient.channel ||
+                          selectedClient.radioChannel ||
+                          selectedClient.channelNumber}
+                        {selectedClient.channelWidth ? `/${selectedClient.channelWidth}` : ''}
                       </p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Traffic Statistics */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Traffic Statistics</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Download className="h-4 w-4 text-green-500" />
-                      Upload (TX)
-                    </h4>
-                    <div className="ml-6 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Bytes:</span>
-                        <span className="text-sm font-medium">{formatBytes(selectedClient.txBytes || selectedClient.outBytes || 0)}</span>
-                      </div>
-                      {selectedClient.outPackets !== undefined && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Packets:</span>
-                          <span className="text-sm font-medium">{selectedClient.outPackets || 'N/A'}</span>
-                        </div>
-                      )}
+                  )}
+                  {selectedClient.siteName && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Site</p>
+                      <p className="text-sm font-medium">{selectedClient.siteName}</p>
                     </div>
-                  </div>
-
+                  )}
                   <div>
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Upload className="h-4 w-4 text-blue-600" />
-                      Download (RX)
-                    </h4>
-                    <div className="ml-6 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Bytes:</span>
-                        <span className="text-sm font-medium">{formatBytes(selectedClient.rxBytes || selectedClient.inBytes || 0)}</span>
-                      </div>
-                      {selectedClient.packets !== undefined && (
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Packets:</span>
-                          <span className="text-sm font-medium">{selectedClient.packets || 'N/A'}</span>
-                        </div>
-                      )}
-                    </div>
+                    <p className="text-xs text-muted-foreground mb-1">Access Point</p>
+                    <p className="text-sm font-medium">
+                      {selectedClient.apName ||
+                        selectedClient.apDisplayName ||
+                        selectedClient.apHostname ||
+                        selectedClient.apSerialNumber ||
+                        selectedClient.apSerial ||
+                        selectedClient.apSn ||
+                        'N/A'}
+                    </p>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
 
-                  <div className="border-t pt-3 space-y-1">
+            {/* Traffic Statistics */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Traffic Statistics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Download className="h-4 w-4 text-green-500" />
+                    Upload (TX)
+                  </h4>
+                  <div className="ml-6 space-y-1">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold">Total Data:</span>
+                      <span className="text-xs text-muted-foreground">Bytes:</span>
                       <span className="text-sm font-medium">
-                        {formatBytes((selectedClient.txBytes || selectedClient.outBytes || 0) + (selectedClient.rxBytes || selectedClient.inBytes || 0))}
+                        {formatBytes(selectedClient.txBytes || selectedClient.outBytes || 0)}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold">Total Packets:</span>
-                      <span className="text-sm font-medium">
-                        {((selectedClient.outPackets || 0) + (selectedClient.packets || 0)) || 'N/A'}
-                      </span>
-                    </div>
-                    {selectedClient.rssi !== undefined && (
+                    {selectedClient.outPackets !== undefined && (
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">Signal (RSS):</span>
-                        <span className="text-sm font-medium">{selectedClient.rssi} dBm</span>
+                        <span className="text-xs text-muted-foreground">Packets:</span>
+                        <span className="text-sm font-medium">
+                          {selectedClient.outPackets || 'N/A'}
+                        </span>
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Client Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Client Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 flex gap-2">
-                  <Button variant="outline" size="sm" disabled>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reauthenticate
-                  </Button>
-                  <Button variant="outline" size="sm" disabled>
-                    <Shield className="h-4 w-4 mr-2" />
-                    Disassociate
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                    <Upload className="h-4 w-4 text-blue-600" />
+                    Download (RX)
+                  </h4>
+                  <div className="ml-6 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Bytes:</span>
+                      <span className="text-sm font-medium">
+                        {formatBytes(selectedClient.rxBytes || selectedClient.inBytes || 0)}
+                      </span>
+                    </div>
+                    {selectedClient.packets !== undefined && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Packets:</span>
+                        <span className="text-sm font-medium">
+                          {selectedClient.packets || 'N/A'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="border-t pt-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">Total Data:</span>
+                    <span className="text-sm font-medium">
+                      {formatBytes(
+                        (selectedClient.txBytes || selectedClient.outBytes || 0) +
+                          (selectedClient.rxBytes || selectedClient.inBytes || 0)
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold">Total Packets:</span>
+                    <span className="text-sm font-medium">
+                      {(selectedClient.outPackets || 0) + (selectedClient.packets || 0) || 'N/A'}
+                    </span>
+                  </div>
+                  {selectedClient.rssi !== undefined && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold">Signal (RSS):</span>
+                      <span className="text-sm font-medium">{selectedClient.rssi} dBm</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Client Actions */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Client Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 flex gap-2">
+                <Button variant="outline" size="sm" disabled>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Reauthenticate
+                </Button>
+                <Button variant="outline" size="sm" disabled>
+                  <Shield className="h-4 w-4 mr-2" />
+                  Disassociate
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </DetailSlideOut>
     </div>

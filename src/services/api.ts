@@ -1,32 +1,64 @@
-
 import { cacheService, CACHE_TTL } from './cache';
 import { logger } from './logger';
-import { 
-  isNetworkError, 
-  isServerError, 
+import {
+  isNetworkError,
+  isServerError,
   isTimeoutError,
   getUserFriendlyMessage,
   parseError,
   withRetry,
   ERROR_TYPES,
-  type RetryOptions 
+  type RetryOptions,
 } from './errorHandler';
+import type {
+  AccessPoint,
+  APDetails,
+  APStation,
+  APAlarm,
+  APAlarmCategory,
+  APQueryColumn,
+  APInsightsResponse,
+  APPlatform,
+  APHardwareType,
+  APEvent,
+  AuthResponse,
+  ApiCallLog,
+  AaaPolicy,
+  ClassOfService,
+  ClientInsightsResponse,
+  OSOneInfo,
+  OSOneSystemInfo,
+  OSOneManufacturingInfo,
+  QueryOptions,
+  Role,
+  RRMEvent,
+  Service,
+  Site,
+  SiteStats,
+  Station,
+  StationEvent,
+  StationEventsResponse,
+  Topology,
+} from '../types/api';
 
 // Use proxy in production, direct connection in development
 const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
 const devBaseUrl = import.meta.env.VITE_DEV_CAMPUS_CONTROLLER_URL || 'https://localhost:443';
-let BASE_URL = isProduction
-  ? '/api/management'  // Proxy through our Express server
-  : `${devBaseUrl}/management`;  // Direct connection in development from env var
+const BASE_URL = isProduction
+  ? '/api/management' // Proxy through our Express server
+  : `${devBaseUrl}/management`; // Direct connection in development from env var
 
 // Dynamic controller URL support
 let DYNAMIC_CONTROLLER_URL: string | null = null;
 
-logger.log('[API Service] Environment:', isProduction ? 'Production (using proxy)' : 'Development (direct)');
+logger.log(
+  '[API Service] Environment:',
+  isProduction ? 'Production (using proxy)' : 'Development (direct)'
+);
 logger.log('[API Service] BASE_URL:', BASE_URL);
 
 // Function to get current base URL (supports dynamic controller switching)
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   // In production, always use the proxy - the X-Controller-URL header handles routing
   if (isProduction) {
     return BASE_URL; // Always /api/management in production
@@ -185,91 +217,90 @@ class ApiService {
   }
 
   private async _performLogin(userId: string, password: string): Promise<AuthResponse> {
-    try {
-      // Validate inputs
-      if (!userId.trim()) {
-        throw new Error('User ID is required');
-      }
-      if (!password.trim()) {
-        throw new Error('Password is required');
-      }
+    // Validate inputs
+    if (!userId.trim()) {
+      throw new Error('User ID is required');
+    }
+    if (!password.trim()) {
+      throw new Error('Password is required');
+    }
 
-      // Try multiple authentication formats as different Extreme Platform ONE versions may expect different formats
-      const authFormats = [
+    // Try multiple authentication formats as different Extreme Platform ONE versions may expect different formats
+    const authFormats = [
       // Format 1: JSON with camelCase grantType and userId (Extreme Networks standard)
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grantType: 'password',
           userId: userId.trim(),
-          password: password
-        })
+          password: password,
+        }),
       },
       // Format 2: JSON with snake_case grant_type and userId (OAuth 2.0 standard)
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'password',
           userId: userId.trim(),
-          password: password
-        })
+          password: password,
+        }),
       },
       // Format 3: JSON with camelCase and scope field
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grantType: 'password',
           userId: userId.trim(),
           password: password,
-          scope: ''
-        })
+          scope: '',
+        }),
       },
       // Format 4: JSON with snake_case grant_type and scope field
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'password',
           userId: userId.trim(),
           password: password,
-          scope: ''
-        })
+          scope: '',
+        }),
       },
       // Format 5: JSON with username field instead of userId (camelCase)
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grantType: 'password',
           username: userId.trim(),
-          password: password
-        })
+          password: password,
+        }),
       },
       // Format 6: JSON with username field instead of userId (snake_case)
       {
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           grant_type: 'password',
           username: userId.trim(),
-          password: password
-        })
-      }
+          password: password,
+        }),
+      },
     ];
 
     let lastError: Error | null = null;
@@ -277,28 +308,28 @@ class ApiService {
 
     for (let i = 0; i < authFormats.length; i++) {
       const format = authFormats[i];
-      
+
       try {
         // Only log first format attempt to reduce console noise
         if (i === 0) {
           logger.log(`Attempting authentication...`);
         }
-        
+
         // Add timeout for login requests
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout for login
-        
+
         const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
           method: 'POST',
           signal: controller.signal,
           ...format,
         });
-        
+
         clearTimeout(timeoutId);
 
         if (response.ok) {
           const authResponse: AuthResponse = await response.json();
-          
+
           // Store tokens and user info
           this.accessToken = authResponse.access_token;
           this.refreshToken = authResponse.refresh_token;
@@ -312,7 +343,7 @@ class ApiService {
         } else {
           const errorText = await response.text();
           let errorMessage = `Authentication failed (${response.status})`;
-          
+
           // Try to parse structured error response
           try {
             const errorData = JSON.parse(errorText);
@@ -326,51 +357,48 @@ class ApiService {
               errorMessage = errorText;
             }
           }
-          
+
           const currentError = new Error(errorMessage);
-          
+
           // Prioritize 401 errors (wrong credentials) over 422 errors (wrong format)
           if (response.status === 401) {
             credentialError = currentError;
             // Don't log each failed format to reduce noise - we'll throw the error at the end
           }
-          
+
           lastError = currentError;
         }
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           lastError = new Error(`Authentication timed out after 8 seconds`);
         } else {
-          lastError = error instanceof Error ? error : new Error(`Network error during authentication`);
+          lastError =
+            error instanceof Error ? error : new Error(`Network error during authentication`);
         }
       }
     }
 
-      // If all formats failed, throw the credential error (401) if we have one, otherwise the last error
-      if (credentialError) {
-        logger.error('❌ Authentication failed: Invalid credentials');
-        throw credentialError;
-      } else {
-        logger.error('❌ Authentication failed: Unable to connect to server');
-        throw lastError || new Error('Login failed with all authentication formats');
-      }
-    } catch (error) {
-      // Re-throw the error to be handled by the calling login() method
-      throw error;
+    // If all formats failed, throw the credential error (401) if we have one, otherwise the last error
+    if (credentialError) {
+      logger.error('❌ Authentication failed: Invalid credentials');
+      throw credentialError;
+    } else {
+      logger.error('❌ Authentication failed: Unable to connect to server');
+      throw lastError || new Error('Login failed with all authentication formats');
     }
   }
 
   async logout(): Promise<void> {
     // Cancel all pending requests first
     this.cancelAllRequests();
-    
+
     if (this.accessToken) {
       try {
         await fetch(`${getBaseUrl()}/v1/oauth2/token/${this.accessToken}`, {
           method: 'DELETE',
           headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'Accept': 'application/json',
+            Authorization: `Bearer ${this.accessToken}`,
+            Accept: 'application/json',
           },
         });
       } catch (error) {
@@ -397,12 +425,12 @@ class ApiService {
     }
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${this.accessToken}`,
-      'Accept': 'application/json',
+      Authorization: `Bearer ${this.accessToken}`,
+      Accept: 'application/json',
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
-    
+
     // Add dynamic controller URL header for multi-controller proxy routing
     if (DYNAMIC_CONTROLLER_URL && isProduction) {
       headers['X-Controller-URL'] = DYNAMIC_CONTROLLER_URL;
@@ -411,16 +439,16 @@ class ApiService {
     // Create AbortController for timeout and cancellation
     const controller = new AbortController();
     this.pendingRequests.add(controller);
-    
+
     const timeoutId = setTimeout(() => {
       controller.abort();
     }, timeoutMs);
 
     const requestId = ++this.requestCounter;
     const startTime = Date.now();
-    
+
     // Simple analytics endpoint detection - avoid complex logic
-    const isAnalyticsEndpoint = 
+    const isAnalyticsEndpoint =
       endpoint.includes('/sites/report') ||
       endpoint.includes('/aps/report') ||
       endpoint.includes('/reports/') ||
@@ -446,23 +474,23 @@ class ApiService {
       method: (options.method || 'GET').toUpperCase(),
       endpoint: endpoint,
       isPending: true,
-      requestBody: options.body ? this.safeParseJSON(options.body) : undefined
+      requestBody: options.body ? this.safeParseJSON(options.body) : undefined,
     };
     this.addApiLog(apiLog);
-    
+
     try {
       const response = await fetch(`${getBaseUrl()}${endpoint}`, {
         ...options,
         headers,
         signal: controller.signal,
       });
-      
+
       const duration = Date.now() - startTime;
-      
+
       if (!isAnalyticsEndpoint) {
         logger.log(`[Request ${requestId}] Completed: ${endpoint} (${response.status})`);
       }
-      
+
       // Clone response to read body without consuming it
       const responseClone = response.clone();
       let responseBody: any = undefined;
@@ -478,16 +506,16 @@ class ApiService {
         status: response.status,
         duration,
         responseBody: this.truncateResponseBody(responseBody),
-        isPending: false
+        isPending: false,
       });
-      
+
       clearTimeout(timeoutId);
       this.pendingRequests.delete(controller);
 
       if (response.status === 401) {
         // Define non-critical endpoints that should NOT trigger logout on 401
         // These are typically analytics, reporting, or optional features
-        const isNonCriticalEndpoint = 
+        const isNonCriticalEndpoint =
           endpoint.includes('/stations') ||
           endpoint.includes('/services') ||
           endpoint.includes('/notifications') ||
@@ -496,7 +524,7 @@ class ApiService {
           endpoint.includes('/report') ||
           endpoint.includes('/reports') ||
           endpoint.includes('/analytics');
-        
+
         // Token expired, try to refresh (unless it's a non-critical endpoint)
         if (this.refreshToken && !isAnalyticsEndpoint && !isNonCriticalEndpoint) {
           // Attempt refresh for critical endpoints
@@ -516,7 +544,9 @@ class ApiService {
           }
         } else if (isNonCriticalEndpoint) {
           // For non-critical endpoints, just throw an error without logging out
-          logger.warn(`Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`);
+          logger.warn(
+            `Authentication failed for ${endpoint}, but not logging out (non-critical endpoint)`
+          );
           if (isAnalyticsEndpoint) {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Authentication required for ${endpoint}`);
           }
@@ -545,42 +575,42 @@ class ApiService {
 
       // Parse the error using centralized error handler
       const errorDetails = parseError(error);
-      
+
       // Update API log with error
       this.updateApiLog(requestId, {
         duration,
         error: errorDetails.message,
-        isPending: false
+        isPending: false,
       });
-      
+
       if (error instanceof Error) {
         // Handle timeout errors
         if (isTimeoutError(error)) {
           if (!isAnalyticsEndpoint) {
             logger.warn(`Request to ${endpoint} timed out after ${timeoutMs}ms`);
           }
-          
+
           if (isAnalyticsEndpoint) {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: Request timeout for ${endpoint}`);
           }
-          
+
           throw new Error(getUserFriendlyMessage(error));
         }
-        
+
         // Handle network errors with user-friendly messages
         if (isNetworkError(error)) {
           if (isAnalyticsEndpoint) {
             throw new Error(`SUPPRESSED_ANALYTICS_ERROR: ${endpoint}`);
           }
-          
+
           logger.warn(`Network error for ${endpoint}: ${error.message}`);
           throw new Error(getUserFriendlyMessage(error));
         }
-        
+
         if (!isAnalyticsEndpoint) {
           logger.warn(`Request to ${endpoint} failed:`, error.message);
         }
-        
+
         // Use user-friendly message for other errors
         throw new Error(getUserFriendlyMessage(error));
       }
@@ -610,10 +640,10 @@ class ApiService {
       },
     };
 
-    return withRetry(
-      () => this.makeAuthenticatedRequest(endpoint, options),
-      { ...defaultRetryOptions, ...retryOptions }
-    );
+    return withRetry(() => this.makeAuthenticatedRequest(endpoint, options), {
+      ...defaultRetryOptions,
+      ...retryOptions,
+    });
   }
 
   private async refreshAccessToken(): Promise<void> {
@@ -630,7 +660,7 @@ class ApiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         body: JSON.stringify({
           refresh_token: this.refreshToken,
@@ -651,7 +681,7 @@ class ApiService {
       localStorage.setItem('refresh_token', authResponse.refresh_token);
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Token refresh timed out - please login again');
       }
@@ -663,7 +693,7 @@ class ApiService {
     // Check both in-memory token and localStorage
     const memoryToken = !!this.accessToken;
     const storageToken = !!localStorage.getItem('access_token');
-    
+
     // If we have a token in storage but not in memory, reload it
     if (!memoryToken && storageToken) {
       logger.log('[Auth] Reloading tokens from localStorage into memory');
@@ -671,7 +701,7 @@ class ApiService {
       this.refreshToken = localStorage.getItem('refresh_token');
       return true;
     }
-    
+
     // If we have token in memory but not storage, clear memory (storage is source of truth)
     if (memoryToken && !storageToken) {
       logger.log('[Auth] Token in memory but not storage - clearing authentication');
@@ -679,7 +709,7 @@ class ApiService {
       this.refreshToken = null;
       return false;
     }
-    
+
     return memoryToken && storageToken;
   }
 
@@ -699,18 +729,27 @@ class ApiService {
 
     try {
       // Use a lightweight endpoint to test authentication
-      const response = await this.makeAuthenticatedRequest('/v1/globalsettings', {
-        method: 'GET'
-      }, 4000); // Short timeout for validation
-      
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/globalsettings',
+        {
+          method: 'GET',
+        },
+        4000
+      ); // Short timeout for validation
+
       return response.ok;
     } catch (error) {
-      logger.log('Session validation failed:', error instanceof Error ? error.message : 'Unknown error');
-      
+      logger.log(
+        'Session validation failed:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+
       // If the error indicates session expiration, clear authentication
-      if (error instanceof Error && 
-          (error.message.includes('Session expired') || 
-           error.message.includes('Authentication required'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('Session expired') ||
+          error.message.includes('Authentication required'))
+      ) {
         logger.log('Clearing invalid session');
         await this.logout();
         // Notify the app about session expiration
@@ -718,7 +757,7 @@ class ApiService {
           this.sessionExpiredHandler();
         }
       }
-      
+
       return false;
     }
   }
@@ -730,33 +769,35 @@ class ApiService {
     retryDelay: number = 1000
   ): Promise<T> {
     let lastError: Error;
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         return await requestFn();
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
-        
+
         // Don't retry for authentication errors or client errors (4xx)
-        if (lastError.message.includes('Session expired') || 
-            lastError.message.includes('Authentication required') ||
-            lastError.message.includes('403') ||
-            lastError.message.includes('404') ||
-            lastError.message.includes('422')) {
+        if (
+          lastError.message.includes('Session expired') ||
+          lastError.message.includes('Authentication required') ||
+          lastError.message.includes('403') ||
+          lastError.message.includes('404') ||
+          lastError.message.includes('422')
+        ) {
           throw lastError;
         }
-        
+
         // Don't retry on last attempt
         if (attempt === maxRetries) {
           break;
         }
-        
+
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, retryDelay * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, retryDelay * (attempt + 1)));
         logger.log(`Retrying request (attempt ${attempt + 2}/${maxRetries + 1})...`);
       }
     }
-    
+
     throw lastError!;
   }
 
@@ -787,49 +828,51 @@ class ApiService {
     const queryString = this.buildQueryString(options);
 
     // Try multiple endpoints as Extreme Platform ONE may use different versions
-    const siteEndpoints = [
-      '/v3/sites',
-      '/v1/sites',
-      '/sites',
-      '/v2/sites',
-      '/v1/sites/all'
-    ];
+    const siteEndpoints = ['/v3/sites', '/v1/sites', '/sites', '/v2/sites', '/v1/sites/all'];
 
     for (let i = 0; i < siteEndpoints.length; i++) {
       const endpoint = siteEndpoints[i] + queryString;
       try {
         const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000); // Longer timeout for sites
-        
+
         if (!response.ok) {
-          logger.warn(`Sites API ${endpoint} returned status ${response.status}: ${response.statusText}`);
-          
+          logger.warn(
+            `Sites API ${endpoint} returned status ${response.status}: ${response.statusText}`
+          );
+
           // If it's 404, try the next endpoint
           if (response.status === 404) {
             logger.log(`Endpoint ${endpoint} not found, trying next...`);
             continue;
           }
-          
-          throw new Error(`Failed to fetch sites from ${endpoint}: ${response.status} ${response.statusText}`);
+
+          throw new Error(
+            `Failed to fetch sites from ${endpoint}: ${response.status} ${response.statusText}`
+          );
         }
-        
+
         const sites = await response.json();
         logger.log(`Successfully fetched ${sites ? sites.length : 0} sites from ${endpoint}`);
-        
+
         // Debug log the first few sites to verify structure
         if (sites && sites.length > 0) {
           logger.log('Sample site structure:', {
             endpoint: endpoint,
             firstSite: sites[0],
             totalSites: sites.length,
-            sampleSiteIds: sites.slice(0, 3).map((s: Site) => ({ id: s.id, name: s.name || s.siteName }))
+            sampleSiteIds: sites
+              .slice(0, 3)
+              .map((s: Site) => ({ id: s.id, name: s.name || s.siteName })),
           });
-          
+
           // Specifically look for the problematic site ID
-          const targetSite = sites.find((site: Site) => site.id === 'c7395471-aa5c-46dc-9211-3ed24c5789bd');
+          const targetSite = sites.find(
+            (site: Site) => site.id === 'c7395471-aa5c-46dc-9211-3ed24c5789bd'
+          );
           if (targetSite) {
             logger.log('Found target site in response:', {
               endpoint: endpoint,
-              site: targetSite
+              site: targetSite,
             });
           }
 
@@ -844,40 +887,45 @@ class ApiService {
           // Continue to next endpoint if this one returns empty
           continue;
         }
-        
       } catch (error) {
         logger.warn(`Failed to load sites from ${endpoint}:`, error);
-        
+
         // Provide more detailed error information
         if (error instanceof Error) {
           logger.warn(`Sites API ${endpoint} error details:`, {
             message: error.message,
-            stack: error.stack?.split('\n')[0] // Just first line of stack
+            stack: error.stack?.split('\n')[0], // Just first line of stack
           });
-          
+
           // If it's a network error or 404, try the next endpoint
-          if (error.message.includes('404') || 
-              error.message.includes('Not Found') || 
-              error.message.includes('Failed to fetch')) {
+          if (
+            error.message.includes('404') ||
+            error.message.includes('Not Found') ||
+            error.message.includes('Failed to fetch')
+          ) {
             logger.log(`Network/404 error for ${endpoint}, trying next endpoint...`);
             continue;
           }
-          
+
           // Check if it's a suppressed error (which shouldn't happen for sites but just in case)
-          if (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
-              error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR')) {
-            logger.log(`Sites endpoint ${endpoint} was marked as suppressed endpoint - this should not happen`);
+          if (
+            error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
+            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR')
+          ) {
+            logger.log(
+              `Sites endpoint ${endpoint} was marked as suppressed endpoint - this should not happen`
+            );
             continue;
           }
         }
-        
+
         // If this is the last endpoint, don't continue
         if (i === siteEndpoints.length - 1) {
           break;
         }
       }
     }
-    
+
     logger.warn('All site endpoints failed or returned empty results');
     return [];
   }
@@ -886,32 +934,33 @@ class ApiService {
     try {
       // First try to get from the sites list by ID, then by name
       const sites = await this.getSites();
-      const foundSite = sites.find(site => site.id === siteId);
+      const foundSite = sites.find((site) => site.id === siteId);
       if (foundSite) {
         return foundSite;
       }
       // Fallback: try matching by name (in case caller passed a name instead of ID)
-      const foundByName = sites.find(site =>
-        (site.name && site.name.toLowerCase() === siteId.toLowerCase()) ||
-        (site.siteName && site.siteName.toLowerCase() === siteId.toLowerCase())
+      const foundByName = sites.find(
+        (site) =>
+          (site.name && site.name.toLowerCase() === siteId.toLowerCase()) ||
+          (site.siteName && site.siteName.toLowerCase() === siteId.toLowerCase())
       );
       if (foundByName) {
         return foundByName;
       }
-      
+
       // If not found in sites list, try individual site lookup endpoints
       const individualEndpoints = [
         `/v3/sites/${siteId}`,
         `/v1/sites/${siteId}`,
         `/sites/${siteId}`,
-        `/v2/sites/${siteId}`
+        `/v2/sites/${siteId}`,
       ];
-      
+
       for (const endpoint of individualEndpoints) {
         try {
           logger.log(`Trying individual site lookup: ${endpoint}`);
           const response = await this.makeAuthenticatedRequest(endpoint, {}, 5000);
-          
+
           if (response.ok) {
             const site = await response.json();
             logger.log(`Found individual site via ${endpoint}:`, site);
@@ -925,7 +974,7 @@ class ApiService {
           continue;
         }
       }
-      
+
       return null;
     } catch (error) {
       logger.warn(`Failed to find site with ID ${siteId}:`, error);
@@ -937,14 +986,14 @@ class ApiService {
   async getServices(): Promise<Service[]> {
     try {
       const response = await this.makeAuthenticatedRequest('/v1/services', {}, 8000);
-      
+
       if (!response.ok) {
         logger.warn(`Services API returned status ${response.status}: ${response.statusText}`);
         return [];
       }
-      
+
       const services = await response.json();
-      
+
       if (services && Array.isArray(services)) {
         logger.log(`Successfully fetched ${services.length} services`);
         return services;
@@ -992,17 +1041,17 @@ class ApiService {
       return [];
     }
   }
-  
+
   // Get role name to ID mapping
   async getRoleNameToIdMap(): Promise<Record<string, string>> {
     try {
       const response = await this.makeAuthenticatedRequest('/v3/roles/nametoidmap', {}, 8000);
-      
+
       if (!response.ok) {
         logger.warn(`Failed to fetch role name map: ${response.status} ${response.statusText}`);
         return {};
       }
-      
+
       const data = await response.json();
       logger.log(`✓ Successfully loaded role name to ID mapping`);
       return data;
@@ -1037,7 +1086,7 @@ class ApiService {
 
   private notifyLogSubscribers(): void {
     // Notify all subscribers with the current log state
-    this.apiLogSubscribers.forEach(callback => {
+    this.apiLogSubscribers.forEach((callback) => {
       // Send a dummy update to trigger re-render
       if (this.apiCallLogs.length > 0) {
         callback(this.apiCallLogs[this.apiCallLogs.length - 1]);
@@ -1047,22 +1096,22 @@ class ApiService {
 
   private addApiLog(log: ApiCallLog): void {
     this.apiCallLogs.push(log);
-    
+
     // Keep only the last maxLogs entries
     if (this.apiCallLogs.length > this.maxLogs) {
       this.apiCallLogs.shift();
     }
 
     // Notify all subscribers
-    this.apiLogSubscribers.forEach(callback => callback(log));
+    this.apiLogSubscribers.forEach((callback) => callback(log));
   }
 
   private updateApiLog(id: number, updates: Partial<ApiCallLog>): void {
-    const log = this.apiCallLogs.find(l => l.id === id);
+    const log = this.apiCallLogs.find((l) => l.id === id);
     if (log) {
       Object.assign(log, updates);
       // Notify subscribers
-      this.apiLogSubscribers.forEach(callback => callback(log));
+      this.apiLogSubscribers.forEach((callback) => callback(log));
     }
   }
 
@@ -1079,14 +1128,14 @@ class ApiService {
 
   private truncateResponseBody(body: any): any {
     if (!body) return body;
-    
+
     const stringified = JSON.stringify(body);
     // Limit response body to 50KB to avoid memory issues
     if (stringified.length > 50000) {
       return {
         _truncated: true,
         _originalSize: stringified.length,
-        _preview: stringified.substring(0, 50000) + '...'
+        _preview: stringified.substring(0, 50000) + '...',
       };
     }
     return body;
@@ -1096,7 +1145,7 @@ class ApiService {
   async testConnectivity(): Promise<{ success: boolean; message: string; details?: any }> {
     try {
       logger.log('Testing connectivity to Extreme Platform ONE...');
-      
+
       // Test basic HTTPS connectivity with shorter timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
@@ -1104,7 +1153,7 @@ class ApiService {
       const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
         method: 'OPTIONS',
         headers: {
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
         signal: controller.signal,
       });
@@ -1119,8 +1168,8 @@ class ApiService {
           details: {
             status: response.status,
             statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries())
-          }
+            headers: Object.fromEntries(response.headers.entries()),
+          },
         };
       } else {
         return {
@@ -1128,8 +1177,8 @@ class ApiService {
           message: `Server responded with ${response.status}: ${response.statusText}`,
           details: {
             status: response.status,
-            statusText: response.statusText
-          }
+            statusText: response.statusText,
+          },
         };
       }
     } catch (error) {
@@ -1147,11 +1196,11 @@ class ApiService {
           message = error.message;
         }
       }
-      
+
       return {
         success: false,
         message,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
+        details: { error: error instanceof Error ? error.message : 'Unknown error' },
       };
     }
   }
@@ -1167,7 +1216,9 @@ class ApiService {
         throw new Error(`Failed to fetch access points: ${response.status}`);
       }
       const result = await response.json();
-      return Array.isArray(result) ? result : (result?.aps || result?.data || result?.accessPoints || []);
+      return Array.isArray(result)
+        ? result
+        : result?.aps || result?.data || result?.accessPoints || [];
     });
   }
 
@@ -1203,19 +1254,21 @@ class ApiService {
     if (!query || Object.keys(query).length === 0) {
       return this.getAccessPoints();
     }
-    
+
     // Try the query endpoint for advanced filtering
     try {
       const response = await this.makeAuthenticatedRequest('/v1/aps/query', {
         method: 'POST',
-        body: JSON.stringify(query)
+        body: JSON.stringify(query),
       });
       if (!response.ok) {
         // If query endpoint fails, fall back to basic endpoint
         return this.getAccessPoints();
       }
       const result = await response.json();
-      return Array.isArray(result) ? result : (result?.aps || result?.data || result?.accessPoints || []);
+      return Array.isArray(result)
+        ? result
+        : result?.aps || result?.data || result?.accessPoints || [];
     } catch (error) {
       // If query endpoint fails, fall back to basic endpoint
       return this.getAccessPoints();
@@ -1223,7 +1276,9 @@ class ApiService {
   }
 
   async getAccessPointDetails(serialNumber: string): Promise<APDetails> {
-    const response = await this.makeAuthenticatedRequest(`/v1/aps/${encodeURIComponent(serialNumber)}`);
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/aps/${encodeURIComponent(serialNumber)}`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch AP details: ${response.status} ${response.statusText}`);
     }
@@ -1232,7 +1287,9 @@ class ApiService {
   }
 
   async getAccessPointStations(serialNumber: string): Promise<APStation[]> {
-    const response = await this.makeAuthenticatedRequest(`/v1/aps/${encodeURIComponent(serialNumber)}/stations`);
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/aps/${encodeURIComponent(serialNumber)}/stations`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch AP stations: ${response.status} ${response.statusText}`);
     }
@@ -1251,19 +1308,26 @@ class ApiService {
    * We attempt the alarms endpoint first (works on many XCA builds) and silently fall back
    * to an empty array if not available — the AP Detail page handles empty events gracefully.
    */
-  async getAccessPointEvents(serialNumber: string, duration: number = 14): Promise<APAlarmCategory[]> {
+  async getAccessPointEvents(
+    serialNumber: string,
+    duration: number = 14
+  ): Promise<APAlarmCategory[]> {
     const endTime = Date.now();
-    const startTime = endTime - (duration * 24 * 60 * 60 * 1000);
+    const startTime = endTime - duration * 24 * 60 * 60 * 1000;
     const noCache = Date.now();
 
     const endpoint = `/v1/aps/${encodeURIComponent(serialNumber)}/alarms?startTime=${startTime}&endTime=${endTime}&noCache=${noCache}`;
 
-    logger.log(`[API] Fetching AP events for ${serialNumber} (${duration}D) via non-Swagger /alarms endpoint`);
+    logger.log(
+      `[API] Fetching AP events for ${serialNumber} (${duration}D) via non-Swagger /alarms endpoint`
+    );
 
     try {
       const response = await this.makeAuthenticatedRequest(endpoint);
       if (!response.ok) {
-        logger.warn(`[API] AP alarms endpoint returned ${response.status} for ${serialNumber} — endpoint may not exist on this controller build`);
+        logger.warn(
+          `[API] AP alarms endpoint returned ${response.status} for ${serialNumber} — endpoint may not exist on this controller build`
+        );
         return [];
       }
 
@@ -1319,7 +1383,7 @@ class ApiService {
       'channelUtilization5',
       'channelUtilization2_4',
       'noisePerRadio|all',
-      'apQoE'
+      'apQoE',
     ];
 
     const widgetList = encodeURIComponent(widgets.join(','));
@@ -1362,7 +1426,7 @@ class ApiService {
       'throughputReport|all',
       'rfQuality|all',
       'topAppGroupsByThroughputReport',
-      'appGroupsThroughputDetails'
+      'appGroupsThroughputDetails',
     ];
 
     // Expert view widgets
@@ -1372,16 +1436,11 @@ class ApiService {
       'baseliningNetworkRTT',
       'baseliningRss',
       'baseliningRxRate',
-      'baseliningTxRate'
+      'baseliningTxRate',
     ];
 
     // Troubleshoot view widgets
-    const troubleshootWidgets = [
-      'rfQuality|all',
-      'baseliningRFQI',
-      'muEvent',
-      'dlRetries'
-    ];
+    const troubleshootWidgets = ['rfQuality|all', 'baseliningRFQI', 'muEvent', 'dlRetries'];
 
     let widgets: string[];
     if (mode === 'default') {
@@ -1404,7 +1463,9 @@ class ApiService {
     try {
       const response = await this.makeAuthenticatedRequest(endpoint);
       if (!response.ok) {
-        throw new Error(`Failed to fetch Client insights: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch Client insights: ${response.status} ${response.statusText}`
+        );
       }
       const data = await response.json();
       logger.log('[API] Client insights data received');
@@ -1421,14 +1482,16 @@ class ApiService {
       {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
       }
     );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to update AP: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to update AP: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
     return await response.json();
   }
@@ -1450,7 +1513,7 @@ class ApiService {
   }
 
   async getAPDefaults(hardwareType?: string): Promise<any> {
-    const endpoint = hardwareType 
+    const endpoint = hardwareType
       ? `/v1/aps/default?hardwareType=${encodeURIComponent(hardwareType)}`
       : '/v1/aps/default';
     const response = await this.makeAuthenticatedRequest(endpoint);
@@ -1473,9 +1536,11 @@ class ApiService {
         return Array.isArray(data) ? data : [];
       });
     } catch (error) {
-      if (error instanceof Error &&
-          (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
-           error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
+          error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))
+      ) {
         // Return empty array for suppressed errors instead of throwing
         logger.log('Returning empty stations array for suppressed endpoint');
         return [];
@@ -1493,39 +1558,40 @@ class ApiService {
   async getStationsWithSiteCorrelation(): Promise<Station[]> {
     try {
       logger.log('Fetching stations with site correlation...');
-      
+
       // Fetch both stations and access points in parallel
       const [stations, accessPoints] = await Promise.all([
         this.getAllStations(),
-        this.getAccessPoints()
+        this.getAccessPoints(),
       ]);
-      
+
       // Create a map of AP serial numbers to their site information
       const apSiteMap = new Map<string, string>();
-      accessPoints.forEach(ap => {
+      accessPoints.forEach((ap) => {
         if (ap.serialNumber && ap.hostSite) {
           apSiteMap.set(ap.serialNumber, ap.hostSite);
         }
       });
-      
+
       logger.log(`Found ${accessPoints.length} access points with site mappings`);
       logger.log(`Processing ${stations.length} stations for site correlation`);
-      
+
       // Correlate stations with their sites
-      const stationsWithSites = stations.map(station => {
+      const stationsWithSites = stations.map((station) => {
         // Try multiple fields for AP serial number correlation
-        const apSerial = station.apSerial || 
-                         station.apSerialNumber || 
-                         station.accessPointSerialNumber ||
-                         station.apSerial;
-        
+        const apSerial =
+          station.apSerial ||
+          station.apSerialNumber ||
+          station.accessPointSerialNumber ||
+          station.apSerial;
+
         let correlatedSiteName = station.siteName; // Keep existing if available
-        
+
         // If we have an AP serial and can find the site, use that
         if (apSerial && apSiteMap.has(apSerial)) {
           correlatedSiteName = apSiteMap.get(apSerial);
         }
-        
+
         // Return the station with updated site information
         return {
           ...station,
@@ -1533,22 +1599,27 @@ class ApiService {
           // Also store the correlated site in a separate field for reference
           correlatedSite: correlatedSiteName,
           // Add debugging info
-          correlationSource: apSerial && apSiteMap.has(apSerial) ? 'AP-correlation' : 'original-data'
+          correlationSource:
+            apSerial && apSiteMap.has(apSerial) ? 'AP-correlation' : 'original-data',
         };
       });
-      
-      const correlatedCount = stationsWithSites.filter(s => s.correlationSource === 'AP-correlation').length;
+
+      const correlatedCount = stationsWithSites.filter(
+        (s) => s.correlationSource === 'AP-correlation'
+      ).length;
       logger.log(`Successfully correlated ${correlatedCount} stations with sites via AP mapping`);
-      
+
       return stationsWithSites;
     } catch (error) {
-      if (error instanceof Error && 
-          (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
-           error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
+          error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))
+      ) {
         logger.log('Returning empty stations array for suppressed endpoint');
         return [];
       }
-      
+
       // If correlation fails, fall back to regular stations
       logger.warn('Site correlation failed, falling back to regular station data:', error);
       return this.getAllStations();
@@ -1560,7 +1631,9 @@ class ApiService {
     try {
       // First try to get a specific station endpoint (if it exists)
       try {
-        const response = await this.makeAuthenticatedRequest(`/v1/stations/${encodeURIComponent(macAddress)}`);
+        const response = await this.makeAuthenticatedRequest(
+          `/v1/stations/${encodeURIComponent(macAddress)}`
+        );
         if (response.ok) {
           return await response.json();
         }
@@ -1571,24 +1644,28 @@ class ApiService {
 
       // Fallback: get all stations and filter for the specific MAC address
       const allStations = await this.getAllStations();
-      const station = allStations.find(s => s.macAddress?.toLowerCase() === macAddress.toLowerCase());
-      
+      const station = allStations.find(
+        (s) => s.macAddress?.toLowerCase() === macAddress.toLowerCase()
+      );
+
       if (!station) {
         throw new Error(`Station with MAC address ${macAddress} not found`);
       }
-      
+
       return station;
     } catch (error) {
-      if (error instanceof Error && 
-          (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') || 
-           error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
+          error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR'))
+      ) {
         // Return a default station object for suppressed errors
         logger.log('Returning default station object for suppressed endpoint');
         return {
           macAddress,
           status: 'Unknown',
           hostName: 'Unknown',
-          deviceType: 'Unknown'
+          deviceType: 'Unknown',
         };
       }
       throw error;
@@ -1599,7 +1676,7 @@ class ApiService {
   async disassociateStations(macAddresses: string[]): Promise<void> {
     const response = await this.makeAuthenticatedRequest('/v1/stations/disassociate', {
       method: 'POST',
-      body: JSON.stringify({ macAddresses })
+      body: JSON.stringify({ macAddresses }),
     });
     if (!response.ok) {
       throw new Error(`Failed to disassociate stations: ${response.status} ${response.statusText}`);
@@ -1612,28 +1689,38 @@ class ApiService {
 
   // Update an existing site
   async updateSite(siteId: string, siteData: Partial<Site>): Promise<Site> {
-    const response = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(siteData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/sites/${encodeURIComponent(siteId)}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(siteData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to update site: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to update site: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
     return await response.json();
   }
 
   // Delete a site
   async deleteSite(siteId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/sites/${encodeURIComponent(siteId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to delete site: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to delete site: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
   }
 
@@ -1651,10 +1738,12 @@ class ApiService {
       // Get all APs
       const allAPs = await this.getAccessPoints();
 
-      logger.log(`Filtering ${allAPs.length} access points for site ID: ${siteId}, site name: ${siteName}`);
+      logger.log(
+        `Filtering ${allAPs.length} access points for site ID: ${siteId}, site name: ${siteName}`
+      );
 
       // Filter APs by matching hostSite against the site name OR site ID
-      const filteredAPs = allAPs.filter(ap => {
+      const filteredAPs = allAPs.filter((ap) => {
         // Primary matching: hostSite field contains the site name (e.g., "Production Site", "LAB Remote Site")
         if (siteName && ap.hostSite) {
           const hostSiteMatch = String(ap.hostSite).trim().toLowerCase() === siteName.toLowerCase();
@@ -1677,11 +1766,11 @@ class ApiService {
           ap.building,
           ap.place,
           ap.area,
-          ap.zone
+          ap.zone,
         ];
 
         // Try to match any of the location/site fields with the provided siteId
-        const matches = locationFields.some(field => {
+        const matches = locationFields.some((field) => {
           if (!field) return false;
           const fieldStr = String(field).trim();
           const siteIdStr = String(siteId).trim();
@@ -1696,7 +1785,7 @@ class ApiService {
       // If no APs found with site filtering, log the available location/site values for debugging
       if (filteredAPs.length === 0 && allAPs.length > 0) {
         logger.log('No APs found for site. Available location/site values in APs:');
-        allAPs.slice(0, 5).forEach(ap => {
+        allAPs.slice(0, 5).forEach((ap) => {
           logger.log(`AP ${ap.serialNumber}:`, {
             hostSite: ap.hostSite,
             location: ap.location,
@@ -1706,37 +1795,47 @@ class ApiService {
             siteName: ap.siteName,
             campus: ap.campus,
             building: ap.building,
-            allLocationFields: Object.keys(ap).filter(key =>
-              key.toLowerCase().includes('site') ||
-              key.toLowerCase().includes('location') ||
-              key.toLowerCase().includes('campus') ||
-              key.toLowerCase().includes('building') ||
-              key.toLowerCase().includes('place') ||
-              key.toLowerCase().includes('area') ||
-              key.toLowerCase().includes('zone') ||
-              key.toLowerCase().includes('host')
-            ).map(key => `${key}: ${ap[key]}`)
+            allLocationFields: Object.keys(ap)
+              .filter(
+                (key) =>
+                  key.toLowerCase().includes('site') ||
+                  key.toLowerCase().includes('location') ||
+                  key.toLowerCase().includes('campus') ||
+                  key.toLowerCase().includes('building') ||
+                  key.toLowerCase().includes('place') ||
+                  key.toLowerCase().includes('area') ||
+                  key.toLowerCase().includes('zone') ||
+                  key.toLowerCase().includes('host')
+              )
+              .map((key) => `${key}: ${ap[key]}`),
           });
         });
       }
-      
+
       return filteredAPs;
     });
   }
 
   async reauthenticateStation(macAddress: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v1/stations/${encodeURIComponent(macAddress)}/reauthenticate`, {
-      method: 'POST'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/stations/${encodeURIComponent(macAddress)}/reauthenticate`,
+      {
+        method: 'POST',
+      }
+    );
     if (!response.ok) {
-      throw new Error(`Failed to reauthenticate station: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to reauthenticate station: ${response.status} ${response.statusText}`
+      );
     }
   }
 
   // Note: getServices() method is defined earlier in the file with better error handling
 
   async getServiceById(serviceId: string): Promise<Service> {
-    const response = await this.makeAuthenticatedRequest(`/v1/services/${encodeURIComponent(serviceId)}`);
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/services/${encodeURIComponent(serviceId)}`
+    );
     if (!response.ok) {
       throw new Error(`Failed to fetch service: ${response.status} ${response.statusText}`);
     }
@@ -1744,30 +1843,37 @@ class ApiService {
   }
 
   async updateService(serviceId: string, serviceData: Partial<Service>): Promise<Service> {
-    const response = await this.makeAuthenticatedRequest(`/v1/services/${encodeURIComponent(serviceId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(serviceData)
-    });
-    
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/services/${encodeURIComponent(serviceId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(serviceData),
+      }
+    );
+
     if (!response.ok) {
       let errorMessage = `Failed to update service: ${response.status} ${response.statusText}`;
       let errorDetails = '';
       let fullErrorResponse = '';
-      
+
       try {
         const errorResponse = await response.text();
         fullErrorResponse = errorResponse;
-        
+
         // Try to parse structured error response
         if (errorResponse) {
           try {
             const errorData = JSON.parse(errorResponse);
-            
-            if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+
+            if (
+              errorData.errors &&
+              Array.isArray(errorData.errors) &&
+              errorData.errors.length > 0
+            ) {
               const firstError = errorData.errors[0];
               errorMessage = firstError.errorMessage || firstError.message || errorMessage;
               errorDetails = firstError.details || firstError.resource || firstError.field || '';
-              
+
               // Log all error details for debugging
               logger.error('Detailed error info:', {
                 errorMessage: firstError.errorMessage,
@@ -1776,19 +1882,21 @@ class ApiService {
                 resource: firstError.resource,
                 field: firstError.field,
                 code: firstError.code,
-                fullError: firstError
+                fullError: firstError,
               });
             } else if (errorData.message) {
               errorMessage = errorData.message;
             } else if (errorData.error) {
-              errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+              errorMessage =
+                typeof errorData.error === 'string'
+                  ? errorData.error
+                  : JSON.stringify(errorData.error);
             }
-            
+
             // Include any validation errors
             if (errorData.validationErrors) {
               errorDetails += ` Validation errors: ${JSON.stringify(errorData.validationErrors)}`;
             }
-            
           } catch (parseError) {
             logger.error('Failed to parse error response as JSON:', parseError);
             // If parsing fails, use the raw error text if it's reasonable length
@@ -1797,7 +1905,7 @@ class ApiService {
             }
           }
         }
-        
+
         // Add specific guidance for different error codes
         if (response.status === 422) {
           errorMessage += ' - Validation failed';
@@ -1815,15 +1923,14 @@ class ApiService {
         } else if (response.status === 404) {
           errorMessage += ' - Service not found. The service may have been deleted.';
         }
-        
       } catch (textError) {
         logger.error('Error reading response text:', textError);
-        errorMessage += ` (Unable to read error details: ${textError.message})`;
+        errorMessage += ` (Unable to read error details: ${textError instanceof Error ? textError.message : String(textError)})`;
       }
-      
+
       throw new Error(errorMessage);
     }
-    
+
     const result = await response.json();
     logger.log('Service updated successfully:', result);
     return result;
@@ -1832,29 +1939,33 @@ class ApiService {
   async createService(serviceData: Partial<Service>): Promise<Service> {
     logger.log('Creating service:', serviceData);
     logger.log('Service payload JSON:', JSON.stringify(serviceData, null, 2));
-    
+
     const response = await this.makeAuthenticatedRequest('/v1/services', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(serviceData)
+      body: JSON.stringify(serviceData),
     });
-    
+
     if (!response.ok) {
       let errorMessage = `Failed to create service: ${response.status} ${response.statusText}`;
-      
+
       try {
         const errorResponse = await response.text();
         logger.error('Full error response:', errorResponse);
-        
+
         if (errorResponse) {
           try {
             const errorData = JSON.parse(errorResponse);
             logger.error('Parsed error data:', errorData);
-            
-            if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+
+            if (
+              errorData.errors &&
+              Array.isArray(errorData.errors) &&
+              errorData.errors.length > 0
+            ) {
               const firstError = errorData.errors[0];
               errorMessage = firstError.errorMessage || firstError.message || errorMessage;
-              
+
               // Log all errors for debugging
               errorData.errors.forEach((err: any, i: number) => {
                 logger.error(`Error ${i + 1}:`, err);
@@ -1871,7 +1982,7 @@ class ApiService {
             }
           }
         }
-        
+
         if (response.status === 422) {
           errorMessage += ' - Validation failed. Check that all required fields are provided.';
         } else if (response.status === 400) {
@@ -1879,14 +1990,13 @@ class ApiService {
         } else if (response.status === 403) {
           errorMessage += ' - Access denied. You may not have permission to create services.';
         }
-        
       } catch (textError) {
         logger.error('Error reading response text:', textError);
       }
-      
+
       throw new Error(errorMessage);
     }
-    
+
     const result = await response.json();
     logger.log('Service created successfully:', result);
     return result;
@@ -1894,22 +2004,29 @@ class ApiService {
 
   async deleteService(serviceId: string): Promise<void> {
     logger.log('Deleting service:', serviceId);
-    
-    const response = await this.makeAuthenticatedRequest(`/v1/services/${encodeURIComponent(serviceId)}`, {
-      method: 'DELETE'
-    });
-    
+
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/services/${encodeURIComponent(serviceId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`Failed to delete service: ${response.status} ${response.statusText}`);
     }
-    
+
     logger.log('Service deleted successfully');
   }
 
   async getServiceStations(serviceId: string): Promise<Station[]> {
-    const response = await this.makeAuthenticatedRequest(`/v1/services/${encodeURIComponent(serviceId)}/stations`);
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/services/${encodeURIComponent(serviceId)}/stations`
+    );
     if (!response.ok) {
-      throw new Error(`Failed to fetch service stations: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to fetch service stations: ${response.status} ${response.statusText}`
+      );
     }
     const data = await response.json();
     return Array.isArray(data) ? data : [];
@@ -1924,25 +2041,25 @@ class ApiService {
   }): Promise<Site> {
     logger.log('Creating site:', {
       url: `${getBaseUrl()}/v3/sites`,
-      payload: siteData
+      payload: siteData,
     });
-    
+
     const response = await this.makeAuthenticatedRequest('/v3/sites', {
       method: 'POST',
-      body: JSON.stringify(siteData)
+      body: JSON.stringify(siteData),
     });
-    
+
     logger.log('Site creation response:', {
       status: response.status,
       statusText: response.statusText,
-      headers: Object.fromEntries(response.headers.entries())
+      headers: Object.fromEntries(response.headers.entries()),
     });
-    
+
     if (!response.ok) {
       let errorMessage = `Failed to create site: ${response.status} ${response.statusText}`;
       let errorDetails = '';
       let fullErrorResponse = '';
-      
+
       try {
         const errorResponse = await response.text();
         fullErrorResponse = errorResponse;
@@ -1950,20 +2067,24 @@ class ApiService {
           status: response.status,
           statusText: response.statusText,
           responseText: errorResponse,
-          responseLength: errorResponse.length
+          responseLength: errorResponse.length,
         });
-        
+
         // Try to parse structured error response
         if (errorResponse) {
           try {
             const errorData = JSON.parse(errorResponse);
             logger.error('Parsed error data:', errorData);
-            
-            if (errorData.errors && Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+
+            if (
+              errorData.errors &&
+              Array.isArray(errorData.errors) &&
+              errorData.errors.length > 0
+            ) {
               const firstError = errorData.errors[0];
               errorMessage = firstError.errorMessage || firstError.message || errorMessage;
               errorDetails = firstError.details || firstError.resource || firstError.field || '';
-              
+
               // Log all error details for debugging
               logger.error('Detailed error info:', {
                 errorMessage: firstError.errorMessage,
@@ -1972,19 +2093,21 @@ class ApiService {
                 resource: firstError.resource,
                 field: firstError.field,
                 code: firstError.code,
-                fullError: firstError
+                fullError: firstError,
               });
             } else if (errorData.message) {
               errorMessage = errorData.message;
             } else if (errorData.error) {
-              errorMessage = typeof errorData.error === 'string' ? errorData.error : JSON.stringify(errorData.error);
+              errorMessage =
+                typeof errorData.error === 'string'
+                  ? errorData.error
+                  : JSON.stringify(errorData.error);
             }
-            
+
             // Include any validation errors
             if (errorData.validationErrors) {
               errorDetails += ` Validation errors: ${JSON.stringify(errorData.validationErrors)}`;
             }
-            
           } catch (parseError) {
             logger.error('Failed to parse error response as JSON:', parseError);
             // If parsing fails, use the raw error text if it's reasonable length
@@ -1993,7 +2116,7 @@ class ApiService {
             }
           }
         }
-        
+
         // Add specific guidance for different error codes
         if (response.status === 422) {
           errorMessage += ' - Validation failed';
@@ -2011,22 +2134,21 @@ class ApiService {
         } else if (response.status === 409) {
           errorMessage += ' - Conflict. A site with this name may already exist.';
         }
-        
       } catch (textError) {
         logger.error('Error reading response text:', textError);
-        errorMessage += ` (Unable to read error details: ${textError.message})`;
+        errorMessage += ` (Unable to read error details: ${textError instanceof Error ? textError.message : String(textError)})`;
       }
-      
+
       throw new Error(errorMessage);
     }
-    
+
     const result = await response.json();
     logger.log('Site created successfully:', result);
     return result;
   }
 
   // Roles API methods (getRoles is defined earlier at line ~955)
-  
+
   async getRoleById(roleId: string): Promise<Role> {
     const response = await this.makeAuthenticatedRequest(`/v3/roles/${encodeURIComponent(roleId)}`);
     if (!response.ok) {
@@ -2038,38 +2160,44 @@ class ApiService {
   async createRole(roleData: Partial<Role>): Promise<Role> {
     const response = await this.makeAuthenticatedRequest('/v3/roles', {
       method: 'POST',
-      body: JSON.stringify(roleData)
+      body: JSON.stringify(roleData),
     });
-    
+
     if (!response.ok) {
       const errorText = await response.text();
       logger.error('Create role error:', errorText);
       throw new Error(`Failed to create role: ${response.status} ${response.statusText}`);
     }
-    
+
     return await response.json();
   }
 
   async updateRole(roleId: string, roleData: Partial<Role>): Promise<Role> {
-    const response = await this.makeAuthenticatedRequest(`/v3/roles/${encodeURIComponent(roleId)}`, {
-      method: 'PUT',
-      body: JSON.stringify(roleData)
-    });
-    
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/roles/${encodeURIComponent(roleId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(roleData),
+      }
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
       logger.error('Update role error:', errorText);
       throw new Error(`Failed to update role: ${response.status} ${response.statusText}`);
     }
-    
+
     return await response.json();
   }
 
   async deleteRole(roleId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/roles/${encodeURIComponent(roleId)}`, {
-      method: 'DELETE'
-    });
-    
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/roles/${encodeURIComponent(roleId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
       logger.error('Delete role error:', errorText);
@@ -2091,14 +2219,14 @@ class ApiService {
   async getClassOfService(): Promise<ClassOfService[]> {
     try {
       const response = await this.makeAuthenticatedRequest('/v1/cos', {}, 8000);
-      
+
       if (!response.ok) {
         logger.warn(`Failed to fetch CoS: ${response.status} ${response.statusText}`);
         return [];
       }
-      
+
       const data = await response.json();
-      
+
       if (Array.isArray(data)) {
         logger.log(`✓ Successfully loaded ${data.length} Class of Service options`);
         return data;
@@ -2148,11 +2276,11 @@ class ApiService {
   }
 
   async createTopology(topologyData: any): Promise<any> {
-    cacheService.delete('topologies');
+    cacheService.clear('topologies');
     const response = await this.makeAuthenticatedRequest('/v1/topologies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(topologyData)
+      body: JSON.stringify(topologyData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -2162,12 +2290,15 @@ class ApiService {
   }
 
   async updateTopology(topologyId: string, topologyData: any): Promise<any> {
-    cacheService.delete('topologies');
-    const response = await this.makeAuthenticatedRequest(`/v1/topologies/${encodeURIComponent(topologyId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(topologyData)
-    });
+    cacheService.clear('topologies');
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/topologies/${encodeURIComponent(topologyId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(topologyData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update topology: ${response.status} - ${errorText}`);
@@ -2176,10 +2307,13 @@ class ApiService {
   }
 
   async deleteTopology(topologyId: string): Promise<void> {
-    cacheService.delete('topologies');
-    const response = await this.makeAuthenticatedRequest(`/v1/topologies/${encodeURIComponent(topologyId)}`, {
-      method: 'DELETE'
-    });
+    cacheService.clear('topologies');
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/topologies/${encodeURIComponent(topologyId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete topology: ${response.status} - ${errorText}`);
@@ -2221,11 +2355,7 @@ class ApiService {
    */
   async getDeviceGroups(): Promise<any[]> {
     // Try multiple endpoint patterns
-    const endpoints = [
-      '/v3/devicegroups',
-      '/v1/devicegroups',
-      '/v3/groups'
-    ];
+    const endpoints = ['/v3/devicegroups', '/v1/devicegroups', '/v3/groups'];
 
     for (const endpoint of endpoints) {
       try {
@@ -2252,7 +2382,9 @@ class ApiService {
       logger.log(`[API] Fetching site details to get device groups for site ${siteId}...`);
 
       // Fetch the full site object - device groups are nested in it
-      const siteResponse = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`);
+      const siteResponse = await this.makeAuthenticatedRequest(
+        `/v3/sites/${encodeURIComponent(siteId)}`
+      );
 
       if (!siteResponse.ok) {
         logger.warn(`Failed to fetch site details: ${siteResponse.status}`);
@@ -2283,12 +2415,7 @@ class ApiService {
    */
   async getProfiles(): Promise<any[]> {
     // Try multiple endpoint patterns
-    const endpoints = [
-      '/v3/profiles',
-      '/v1/profiles',
-      '/v3/approfiles',
-      '/v3/networkprofiles'
-    ];
+    const endpoints = ['/v3/profiles', '/v1/profiles', '/v3/approfiles', '/v3/networkprofiles'];
 
     for (const endpoint of endpoints) {
       try {
@@ -2311,7 +2438,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/profiles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -2321,11 +2448,14 @@ class ApiService {
   }
 
   async updateProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/profiles/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/profiles/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update profile: ${response.status} - ${errorText}`);
@@ -2334,9 +2464,12 @@ class ApiService {
   }
 
   async deleteProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/profiles/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/profiles/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete profile: ${response.status} - ${errorText}`);
@@ -2352,7 +2485,7 @@ class ApiService {
       `/v3/devicegroups/${encodeURIComponent(deviceGroupId)}/profiles`,
       `/v1/devicegroups/${encodeURIComponent(deviceGroupId)}/profiles`,
       `/v3/profiles?deviceGroupId=${encodeURIComponent(deviceGroupId)}`,
-      `/v3/groups/${encodeURIComponent(deviceGroupId)}/profiles`
+      `/v3/groups/${encodeURIComponent(deviceGroupId)}/profiles`,
     ];
 
     for (const endpoint of endpoints) {
@@ -2378,7 +2511,7 @@ class ApiService {
   async getProfileById(profileId: string): Promise<any | null> {
     const endpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}`,
-      `/v1/profiles/${encodeURIComponent(profileId)}`
+      `/v1/profiles/${encodeURIComponent(profileId)}`,
     ];
 
     for (const endpoint of endpoints) {
@@ -2415,7 +2548,10 @@ class ApiService {
       port3?: boolean;
     }
   ): Promise<void> {
-    logger.log(`Assigning service ${serviceId} to profile ${profileId} with interfaces:`, interfaces);
+    logger.log(
+      `Assigning service ${serviceId} to profile ${profileId} with interfaces:`,
+      interfaces
+    );
 
     // Method 1: Try updating profile with radioIfList (Extreme Platform ONE API format)
     // API expects: radioIfList: [{ serviceId: "...", index: 1 }, { serviceId: "...", index: 2 }]
@@ -2424,47 +2560,57 @@ class ApiService {
       const profile = await this.getProfileById(profileId);
       if (profile) {
         const updatePayload = { ...profile };
-        
+
         // Determine available radios based on device type
         // Reference: Extreme Platform ONE AP models and their radio capabilities
         const deviceType = profile.apPlatform || profile.deviceType || profile.hardwareType || '';
         const dt = deviceType.toUpperCase();
-        
+
         // All APs have Radio 1 (2.4GHz)
         const hasRadio1 = true;
-        
+
         // Single-band APs (Radio 1 only): AP505, APVMAP, SA201
-        const isSingleBand = (dt.includes('AP505') && !dt.includes('AP5050')) ||
-                             dt.includes('APVMAP') || dt.includes('SA201');
-        
+        const isSingleBand =
+          (dt.includes('AP505') && !dt.includes('AP5050')) ||
+          dt.includes('APVMAP') ||
+          dt.includes('SA201');
+
         // Tri-band APs (Radio 1, 2, 3): AP4000/4020 series, AP5010/5020/5050 series
-        const isTriBand = dt.includes('AP4000') || dt.includes('AP4020') || 
-                          dt.includes('AP5010') || dt.includes('AP5020') || dt.includes('AP5050') ||
-                          dt.includes('WI-FI 6E') || dt.includes('WIFI6E');
-        
+        const isTriBand =
+          dt.includes('AP4000') ||
+          dt.includes('AP4020') ||
+          dt.includes('AP5010') ||
+          dt.includes('AP5020') ||
+          dt.includes('AP5050') ||
+          dt.includes('WI-FI 6E') ||
+          dt.includes('WIFI6E');
+
         // Radio 2 (5GHz): All except single-band
         const hasRadio2 = !isSingleBand;
-        
+
         // Radio 3 (6GHz): Only tri-band APs
         // Note: Radio 3 requires WPA3 or OWE per Wi-Fi 6E standard - but we enable it here
         // and let the controller enforce security requirements
         const hasRadio3 = isTriBand;
-        
+
         // Build radioIfList entries for requested radios (only if AP supports them)
         const newRadioEntries: Array<{ serviceId: string; index: number }> = [];
         if (interfaces?.radio1 && hasRadio1) newRadioEntries.push({ serviceId, index: 1 });
         if (interfaces?.radio2 && hasRadio2) newRadioEntries.push({ serviceId, index: 2 });
         if (interfaces?.radio3 && hasRadio3) newRadioEntries.push({ serviceId, index: 3 });
 
-        logger.log(`Profile ${profileId} device type: ${deviceType}, radios: R1=${hasRadio1}, R2=${hasRadio2}, R3=${hasRadio3}`);
+        logger.log(
+          `Profile ${profileId} device type: ${deviceType}, radios: R1=${hasRadio1}, R2=${hasRadio2}, R3=${hasRadio3}`
+        );
 
         // Merge with existing radioIfList, avoiding duplicates
-        const existingRadioIfList: Array<{ serviceId: string; index: number }> = profile.radioIfList || [];
+        const existingRadioIfList: Array<{ serviceId: string; index: number }> =
+          profile.radioIfList || [];
         const mergedRadioIfList = [...existingRadioIfList];
-        
+
         for (const newEntry of newRadioEntries) {
           const exists = mergedRadioIfList.some(
-            e => e.serviceId === newEntry.serviceId && e.index === newEntry.index
+            (e) => e.serviceId === newEntry.serviceId && e.index === newEntry.index
           );
           if (!exists) {
             mergedRadioIfList.push(newEntry);
@@ -2479,12 +2625,13 @@ class ApiService {
           if (interfaces?.port2) newWiredEntries.push({ serviceId, index: 2 });
           if (interfaces?.port3) newWiredEntries.push({ serviceId, index: 3 });
 
-          const existingWiredIfList: Array<{ serviceId: string; index: number }> = profile.wiredIfList || [];
+          const existingWiredIfList: Array<{ serviceId: string; index: number }> =
+            profile.wiredIfList || [];
           const mergedWiredIfList = [...existingWiredIfList];
-          
+
           for (const newEntry of newWiredEntries) {
             const exists = mergedWiredIfList.some(
-              e => e.serviceId === newEntry.serviceId && e.index === newEntry.index
+              (e) => e.serviceId === newEntry.serviceId && e.index === newEntry.index
             );
             if (!exists) {
               mergedWiredIfList.push(newEntry);
@@ -2500,7 +2647,7 @@ class ApiService {
           {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(updatePayload)
+            body: JSON.stringify(updatePayload),
           }
         );
 
@@ -2519,7 +2666,7 @@ class ApiService {
     // Method 2: Try dedicated assignment endpoints as fallback
     const assignmentEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/services`,
-      `/v1/profiles/${encodeURIComponent(profileId)}/services`
+      `/v1/profiles/${encodeURIComponent(profileId)}/services`,
     ];
 
     // Build interface assignment for fallback endpoints
@@ -2538,11 +2685,11 @@ class ApiService {
         const response = await this.makeAuthenticatedRequest(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            serviceId, 
+          body: JSON.stringify({
+            serviceId,
             profileId,
-            interfaces: interfaceAssignment 
-          })
+            interfaces: interfaceAssignment,
+          }),
         });
 
         if (response.ok) {
@@ -2565,18 +2712,20 @@ class ApiService {
     return this.assignServiceToProfileWithInterfaces(serviceId, profileId, {
       radio1: true,
       radio2: true,
-      radio3: true
+      radio3: true,
     });
   }
 
   /**
    * Trigger profile synchronization / configuration deployment
-   * 
+   *
    * ExtremeCloud IQ uses the /deployments endpoint to push configuration to devices.
    * Profile changes are automatically tracked and can be pushed via this deployment mechanism.
    * If deployment API is unavailable, changes will be applied during next AP check-in.
    */
-  async syncProfile(profileId: string): Promise<{ success: boolean; message: string; deploymentId?: string }> {
+  async syncProfile(
+    profileId: string
+  ): Promise<{ success: boolean; message: string; deploymentId?: string }> {
     logger.log(`Triggering configuration deployment for profile ${profileId}`);
 
     // First, try to get devices associated with this profile
@@ -2596,16 +2745,16 @@ class ApiService {
       try {
         const deploymentPayload = {
           devices: {
-            ids: deviceIds
+            ids: deviceIds,
           },
           policy: {
-            enable_complete_configuration_update: false // Delta config only
-          }
+            enable_complete_configuration_update: false, // Delta config only
+          },
         };
 
         const response = await this.makeAuthenticatedRequest('/deployments', {
           method: 'POST',
-          body: JSON.stringify(deploymentPayload)
+          body: JSON.stringify(deploymentPayload),
         });
 
         if (response.ok) {
@@ -2614,31 +2763,33 @@ class ApiService {
           return {
             success: true,
             message: 'Configuration deployment initiated successfully',
-            deploymentId: result.id || result.deployment_id
+            deploymentId: result.id || result.deployment_id,
           };
         }
       } catch (error) {
-        logger.log(`Deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.log(
+          `Deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
 
     // Try legacy sync endpoints as fallback (for ExtremeCloud IQ Controller / on-premise)
     const legacyEndpoints = [
       `/v3/profiles/${encodeURIComponent(profileId)}/sync`,
-      `/v1/profiles/${encodeURIComponent(profileId)}/sync`
+      `/v1/profiles/${encodeURIComponent(profileId)}/sync`,
     ];
 
     for (const endpoint of legacyEndpoints) {
       try {
         const response = await this.makeAuthenticatedRequest(endpoint, {
-          method: 'POST'
+          method: 'POST',
         });
 
         if (response.ok) {
           logger.log(`Successfully triggered sync via legacy endpoint ${endpoint}`);
           return {
             success: true,
-            message: 'Profile sync triggered successfully'
+            message: 'Profile sync triggered successfully',
           };
         }
       } catch (error) {
@@ -2648,10 +2799,13 @@ class ApiService {
 
     // No explicit sync needed - ExtremeCloud IQ applies changes automatically
     // Profile modifications via PUT are immediately stored and pushed on next AP check-in
-    logger.log(`Profile ${profileId} updated - configuration will be applied during next device check-in`);
+    logger.log(
+      `Profile ${profileId} updated - configuration will be applied during next device check-in`
+    );
     return {
       success: true,
-      message: 'Profile updated successfully. Configuration will be applied automatically during next device check-in (typically within 5 minutes).'
+      message:
+        'Profile updated successfully. Configuration will be applied automatically during next device check-in (typically within 5 minutes).',
     };
   }
 
@@ -2659,7 +2813,13 @@ class ApiService {
    * Sync multiple profiles (batch operation)
    * Uses the ExtremeCloud IQ deployment API when device IDs are available
    */
-  async syncMultipleProfiles(profileIds: string[]): Promise<{ success: boolean; message: string; results?: Array<{ profileId: string; success: boolean; message: string }> }> {
+  async syncMultipleProfiles(
+    profileIds: string[]
+  ): Promise<{
+    success: boolean;
+    message: string;
+    results?: Array<{ profileId: string; success: boolean; message: string }>;
+  }> {
     logger.log(`Triggering sync for ${profileIds.length} profiles`);
 
     if (profileIds.length === 0) {
@@ -2684,28 +2844,33 @@ class ApiService {
       try {
         const deploymentPayload = {
           devices: {
-            ids: [...new Set(allDeviceIds)] // Deduplicate device IDs
+            ids: [...new Set(allDeviceIds)], // Deduplicate device IDs
           },
           policy: {
-            enable_complete_configuration_update: false
-          }
+            enable_complete_configuration_update: false,
+          },
         };
 
         const response = await this.makeAuthenticatedRequest('/deployments', {
           method: 'POST',
-          body: JSON.stringify(deploymentPayload)
+          body: JSON.stringify(deploymentPayload),
         });
 
         if (response.ok) {
           const result = await response.json();
-          logger.log(`Successfully triggered batch deployment for ${profileIds.length} profiles`, result);
+          logger.log(
+            `Successfully triggered batch deployment for ${profileIds.length} profiles`,
+            result
+          );
           return {
             success: true,
-            message: `Configuration deployment initiated for ${profileIds.length} profiles`
+            message: `Configuration deployment initiated for ${profileIds.length} profiles`,
           };
         }
       } catch (error) {
-        logger.log(`Batch deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        logger.log(
+          `Batch deployment API not available: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
 
@@ -2718,13 +2883,13 @@ class ApiService {
       })
     );
 
-    const allSucceeded = results.every(r => r.success);
+    const allSucceeded = results.every((r) => r.success);
     return {
       success: allSucceeded,
-      message: allSucceeded 
+      message: allSucceeded
         ? `All ${profileIds.length} profiles updated successfully. Configuration will be applied during next device check-in.`
         : `Some profiles failed to sync`,
-      results
+      results,
     };
   }
 
@@ -2732,10 +2897,14 @@ class ApiService {
   async checkEndpointAvailability(endpoint: string): Promise<boolean> {
     try {
       // Use HEAD request to check availability without downloading data
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'HEAD'
-      }, 3000); // Short timeout for availability check
-      
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'HEAD',
+        },
+        3000
+      ); // Short timeout for availability check
+
       return response.ok || response.status === 405; // 405 = Method Not Allowed but endpoint exists
     } catch (error) {
       return false;
@@ -2757,13 +2926,18 @@ class ApiService {
 
       const response = await this.makeAuthenticatedRequest(endpoint, options);
       if (!response.ok) {
-        logger.warn(`API call to ${endpoint} failed with status ${response.status}, using fallback`);
+        logger.warn(
+          `API call to ${endpoint} failed with status ${response.status}, using fallback`
+        );
         return fallback;
       }
 
       return await response.json();
     } catch (error) {
-      logger.log(`API call to ${endpoint} failed, using fallback:`, error instanceof Error ? error.message : 'Unknown error');
+      logger.log(
+        `API call to ${endpoint} failed, using fallback:`,
+        error instanceof Error ? error.message : 'Unknown error'
+      );
       return fallback;
     }
   }
@@ -2782,7 +2956,10 @@ class ApiService {
     try {
       // Get device groups for this site
       const deviceGroups = await this.getDeviceGroupsBySite(siteId);
-      logger.log(`[API] Found ${deviceGroups.length} device groups for site ${siteId}:`, deviceGroups);
+      logger.log(
+        `[API] Found ${deviceGroups.length} device groups for site ${siteId}:`,
+        deviceGroups
+      );
 
       if (deviceGroups.length === 0) {
         logger.log(`[API] No device groups found for site ${siteId}`);
@@ -2794,7 +2971,10 @@ class ApiService {
       for (const group of deviceGroups) {
         try {
           const profiles = await this.getProfilesByDeviceGroup(group.id);
-          logger.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
+          logger.log(
+            `[API] Found ${profiles.length} profiles in device group ${group.id}:`,
+            profiles
+          );
           allProfiles.push(...profiles);
         } catch (error) {
           logger.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
@@ -2805,7 +2985,7 @@ class ApiService {
 
       // Extract unique services from all profiles
       const serviceIds = new Set<string>();
-      allProfiles.forEach(profile => {
+      allProfiles.forEach((profile) => {
         logger.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
         logger.log(`[API]   Profile.services:`, profile.services);
 
@@ -2840,7 +3020,6 @@ class ApiService {
 
       logger.log(`[API] Found ${services.length} services for site ${siteId}`);
       return services;
-
     } catch (error) {
       logger.error(`[API] Failed to fetch services for site ${siteId}:`, error);
       return [];
@@ -2890,7 +3069,7 @@ class ApiService {
               ...profile,
               deviceGroupId: group.id,
               deviceGroupName: group.name || group.id,
-              wlans
+              wlans,
             });
           }
         } catch (error) {
@@ -2900,7 +3079,6 @@ class ApiService {
 
       logger.log(`Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
       return profilesWithWLANs;
-
     } catch (error) {
       logger.error(`Failed to fetch profiles with WLANs for site ${siteId}:`, error);
       return [];
@@ -2917,7 +3095,9 @@ class ApiService {
     try {
       // First, fetch the site details to get device groups (they're nested in the site object)
       logger.log(`[API] Fetching site details for ${siteId}...`);
-      const siteResponse = await this.makeAuthenticatedRequest(`/v3/sites/${encodeURIComponent(siteId)}`);
+      const siteResponse = await this.makeAuthenticatedRequest(
+        `/v3/sites/${encodeURIComponent(siteId)}`
+      );
 
       if (!siteResponse.ok) {
         throw new Error(`Failed to fetch site details: ${siteResponse.status}`);
@@ -2934,7 +3114,7 @@ class ApiService {
       // Now get profiles and services using these device groups
       const [profilesWithWLANs, services] = await Promise.all([
         this.getProfilesWithWLANsBySiteData(siteId, deviceGroups),
-        this.getServicesBySiteData(siteId, deviceGroups)
+        this.getServicesBySiteData(siteId, deviceGroups),
       ]);
 
       const result = {
@@ -2944,12 +3124,11 @@ class ApiService {
         wlanCount: services.length,
         deviceGroups,
         profiles: profilesWithWLANs,
-        wlans: services
+        wlans: services,
       };
 
       logger.log(`[API] Summary complete:`, result);
       return result;
-
     } catch (error) {
       logger.error(`[API] Failed to fetch WLAN assignment summary for site ${siteId}:`, error);
       throw error;
@@ -2960,7 +3139,9 @@ class ApiService {
    * Get services/WLANs for a site using device groups from site data
    */
   private async getServicesBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
-    logger.log(`[API] Fetching services for site ${siteId} using ${deviceGroups.length} device groups`);
+    logger.log(
+      `[API] Fetching services for site ${siteId} using ${deviceGroups.length} device groups`
+    );
 
     if (deviceGroups.length === 0) {
       logger.log(`[API] No device groups provided`);
@@ -2973,7 +3154,10 @@ class ApiService {
       for (const group of deviceGroups) {
         try {
           const profiles = await this.getProfilesByDeviceGroup(group.id);
-          logger.log(`[API] Found ${profiles.length} profiles in device group ${group.id}:`, profiles);
+          logger.log(
+            `[API] Found ${profiles.length} profiles in device group ${group.id}:`,
+            profiles
+          );
           allProfiles.push(...profiles);
         } catch (error) {
           logger.warn(`[API] Failed to fetch profiles for device group ${group.id}:`, error);
@@ -2984,7 +3168,7 @@ class ApiService {
 
       // Extract unique services from all profiles
       const serviceIds = new Set<string>();
-      allProfiles.forEach(profile => {
+      allProfiles.forEach((profile) => {
         logger.log(`[API] Checking profile ${profile.id || profile.name} for services...`);
         logger.log(`[API]   Profile.services:`, profile.services);
 
@@ -3019,7 +3203,6 @@ class ApiService {
 
       logger.log(`[API] Found ${services.length} services for site ${siteId}`);
       return services;
-
     } catch (error) {
       logger.error(`[API] Failed to fetch services for site ${siteId}:`, error);
       return [];
@@ -3029,8 +3212,13 @@ class ApiService {
   /**
    * Get profiles with WLANs for a site using device groups from site data
    */
-  private async getProfilesWithWLANsBySiteData(siteId: string, deviceGroups: any[]): Promise<any[]> {
-    logger.log(`[API] Fetching profiles with WLANs for site ${siteId} using ${deviceGroups.length} device groups`);
+  private async getProfilesWithWLANsBySiteData(
+    siteId: string,
+    deviceGroups: any[]
+  ): Promise<any[]> {
+    logger.log(
+      `[API] Fetching profiles with WLANs for site ${siteId} using ${deviceGroups.length} device groups`
+    );
 
     if (deviceGroups.length === 0) {
       logger.log(`[API] No device groups provided`);
@@ -3081,7 +3269,7 @@ class ApiService {
               ...profile,
               deviceGroupId: group.id,
               deviceGroupName: group.name || group.id,
-              wlans
+              wlans,
             });
           }
         } catch (error) {
@@ -3091,7 +3279,6 @@ class ApiService {
 
       logger.log(`[API] Found ${profilesWithWLANs.length} profiles with WLANs for site ${siteId}`);
       return profilesWithWLANs;
-
     } catch (error) {
       logger.error(`[API] Failed to fetch profiles with WLANs for site ${siteId}:`, error);
       return [];
@@ -3116,12 +3303,13 @@ class ApiService {
   ): Promise<any> {
     try {
       // Build widgetList parameter - format: widget1|all,widget2|all
-      const widgetList = widgetIds.map(id => `${id}|all`).join(',');
+      const widgetList = widgetIds.map((id) => `${id}|all`).join(',');
 
       // Add cache busting timestamp
       const noCache = Date.now();
 
-      const endpoint = `/v1/report/sites/${encodeURIComponent(siteId)}?` +
+      const endpoint =
+        `/v1/report/sites/${encodeURIComponent(siteId)}?` +
         `noCache=${noCache}&` +
         `duration=${duration}&` +
         `resolution=${resolution}&` +
@@ -3140,7 +3328,6 @@ class ApiService {
       logger.log(`[API] ✓ Widget data fetched successfully`);
 
       return data;
-
     } catch (error) {
       logger.error(`[API] Failed to fetch widget data:`, error);
       throw error;
@@ -3172,7 +3359,7 @@ class ApiService {
         'topAppGroupsByThroughputReport',
         'topAppGroupsByClientCountReport',
         'topAppGroupsByUsage',
-        'worstAppGroupsByThroughputReport'
+        'worstAppGroupsByThroughputReport',
       ];
 
       const data = await this.fetchWidgetData(siteId, widgetIds, duration);
@@ -3181,7 +3368,7 @@ class ApiService {
         topByThroughput: data.topAppGroupsByThroughputReport || [],
         topByClients: data.topAppGroupsByClientCountReport || [],
         topByUsage: data.topAppGroupsByUsage || [],
-        worstByThroughput: data.worstAppGroupsByThroughputReport || []
+        worstByThroughput: data.worstAppGroupsByThroughputReport || [],
       };
     } catch (error) {
       logger.error(`[API] Failed to fetch application analytics:`, error);
@@ -3201,7 +3388,7 @@ class ApiService {
         'topAccessPointsByThroughput',
         'topAccessPointsByUserCount',
         'byteUtilization',
-        'siteQoE'
+        'siteQoE',
       ];
 
       const data = await this.fetchWidgetData(siteId, widgetIds, duration);
@@ -3212,7 +3399,7 @@ class ApiService {
         topAPsByThroughput: data.topAccessPointsByThroughput || [],
         topAPsByUserCount: data.topAccessPointsByUserCount || [],
         byteUtilization: data.byteUtilization || {},
-        qoe: data.siteQoE || {}
+        qoe: data.siteQoE || {},
       };
     } catch (error) {
       logger.error(`[API] Failed to fetch site performance summary:`, error);
@@ -3236,18 +3423,17 @@ class ApiService {
         'topAppGroupsByThroughputReport',
         'worstAppGroupsByUsage',
         'worstAppGroupsByClientCountReport',
-        'worstAppGroupsByThroughputReport'
+        'worstAppGroupsByThroughputReport',
       ].join(',');
 
       const noCache = Date.now();
       // Use site-specific endpoint if siteId provided, otherwise org-wide
-      const baseEndpoint = siteId
-        ? `/v1/report/sites/${siteId}`
-        : `/v1/report/sites`;
+      const baseEndpoint = siteId ? `/v1/report/sites/${siteId}` : `/v1/report/sites`;
       const endpoint = `${baseEndpoint}?noCache=${noCache}&duration=${duration}&resolution=15&widgetList=${encodeURIComponent(widgetList)}`;
 
-      logger.log(`[API] Fetching app insights data for duration: ${duration}${siteId ? `, site: ${siteId}` : ' (org-wide)'}`);
-
+      logger.log(
+        `[API] Fetching app insights data for duration: ${duration}${siteId ? `, site: ${siteId}` : ' (org-wide)'}`
+      );
 
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 30000);
 
@@ -3264,7 +3450,7 @@ class ApiService {
         topAppGroupsByThroughputReport: data.topAppGroupsByThroughputReport || [],
         worstAppGroupsByUsage: data.worstAppGroupsByUsage || [],
         worstAppGroupsByClientCountReport: data.worstAppGroupsByClientCountReport || [],
-        worstAppGroupsByThroughputReport: data.worstAppGroupsByThroughputReport || []
+        worstAppGroupsByThroughputReport: data.worstAppGroupsByThroughputReport || [],
       };
     } catch (error) {
       logger.error(`[API] Failed to fetch app insights:`, error);
@@ -3299,7 +3485,7 @@ class ApiService {
         // Applications
         'topAppGroupsByThroughputReport',
         'topAppGroupsByClientCountReport',
-        'topAppGroupsByUsage'
+        'topAppGroupsByUsage',
       ];
 
       return await this.fetchWidgetData(siteId, widgetIds, duration);
@@ -3322,7 +3508,9 @@ class ApiService {
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch station details: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch station details: ${response.status} ${response.statusText}`
+        );
       }
 
       const data = await response.json();
@@ -3341,11 +3529,15 @@ class ApiService {
    * 2. GET /platformmanager/v2/logging/stations/events/query
    * 3. Fallback: Use audit logs filtered by MAC address
    */
-  async fetchStationEvents(macAddress: string, startTime?: number, endTime?: number): Promise<StationEvent[]> {
+  async fetchStationEvents(
+    macAddress: string,
+    startTime?: number,
+    endTime?: number
+  ): Promise<StationEvent[]> {
     try {
       // Default to last 30 days if not specified
       const now = Date.now();
-      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
+      const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
       const start = startTime || thirtyDaysAgo;
       const end = endTime || now;
@@ -3361,7 +3553,7 @@ class ApiService {
 
         if (directResponse.ok) {
           const data = await directResponse.json();
-          const events = Array.isArray(data) ? data : (data.events || data.stationEvents || []);
+          const events = Array.isArray(data) ? data : data.events || data.stationEvents || [];
           if (events.length > 0) {
             logger.log(`[API] ✓ Loaded ${events.length} station events from direct endpoint`);
             return this.normalizeStationEvents(events);
@@ -3379,7 +3571,9 @@ class ApiService {
         const data = await response.json();
         const events = data.stationEvents || (Array.isArray(data) ? data : []);
         if (events.length > 0) {
-          logger.log(`[API] ✓ Loaded ${events.length} station events from platformmanager endpoint`);
+          logger.log(
+            `[API] ✓ Loaded ${events.length} station events from platformmanager endpoint`
+          );
           return this.normalizeStationEvents(events);
         }
       }
@@ -3390,7 +3584,7 @@ class ApiService {
       const auditLogs = await this.getAuditLogs(start, end);
 
       // Filter audit logs for this specific MAC address
-      const stationLogs = auditLogs.filter(log => {
+      const stationLogs = auditLogs.filter((log) => {
         const description = (log.description || log.message || '').toLowerCase();
         const resource = (log.resource || log.resourceType || '').toLowerCase();
         const macLower = macAddress.toLowerCase();
@@ -3402,21 +3596,23 @@ class ApiService {
         logger.log(`[API] ✓ Found ${stationLogs.length} station-related events in audit logs`);
 
         // Convert audit logs to station event format
-        return stationLogs.map(log => ({
-          id: log.id,
-          timestamp: this.normalizeTimestamp(log.timestamp || log.time),
-          eventType: this.normalizeEventType(log.action || log.actionType || 'audit'),
-          macAddress: macAddress,
-          description: log.description || log.message,
-          details: log.description || log.message || '',
-          apName: log.apName || log.resource || '',
-          ssid: log.ssid || ''
-        } as StationEvent));
+        return stationLogs.map(
+          (log) =>
+            ({
+              id: log.id,
+              timestamp: this.normalizeTimestamp(log.timestamp || log.time),
+              eventType: this.normalizeEventType(log.action || log.actionType || 'audit'),
+              macAddress: macAddress,
+              description: log.description || log.message,
+              details: log.description || log.message || '',
+              apName: log.apName || log.resource || '',
+              ssid: log.ssid || '',
+            }) as StationEvent
+        );
       }
 
       logger.warn(`[API] No station events found for ${macAddress}`);
       return [];
-
     } catch (error) {
       logger.error(`[API] Failed to fetch station events for ${macAddress}:`, error);
       return [];
@@ -3454,33 +3650,38 @@ class ApiService {
    * Normalize station events to consistent format
    */
   private normalizeStationEvents(events: any[]): StationEvent[] {
-    return events.map(event => ({
-      id: event.id || event.eventId || String(Math.random()),
-      timestamp: this.normalizeTimestamp(event.timestamp || event.time || event.eventTime),
-      eventType: this.normalizeEventType(event.eventType || event.type || event.action || 'Unknown'),
-      macAddress: event.macAddress || event.mac || event.clientMac || '',
-      ipAddress: event.ipAddress || event.ip || event.clientIp,
-      ipv6Address: event.ipv6Address || event.ipv6,
-      apName: event.apName || event.ap || event.accessPoint || event.apDisplayName || '',
-      apSerial: event.apSerial || event.apSerialNumber || event.serialNumber || '',
-      ssid: event.ssid || event.network || event.wlanName || '',
-      details: event.details || event.description || event.message || '',
-      type: event.type || event.category,
-      level: event.level || event.severity,
-      category: event.category,
-      context: event.context,
-      // Additional troubleshooting fields
-      channel: event.channel || event.radioChannel,
-      band: event.band || event.frequency || event.radio,
-      rssi: event.rssi || event.signalStrength || event.signal || event.rss,
-      snr: event.snr || event.signalToNoise,
-      dataRate: event.dataRate || event.phyRate || event.rate,
-      previousAp: event.previousAp || event.fromAp || event.prevAp,
-      previousApSerial: event.previousApSerial || event.fromApSerial,
-      reasonCode: event.reasonCode || event.reason,
-      statusCode: event.statusCode || event.status,
-      authMethod: event.authMethod || event.auth || event.authentication
-    } as StationEvent));
+    return events.map(
+      (event) =>
+        ({
+          id: event.id || event.eventId || String(Math.random()),
+          timestamp: this.normalizeTimestamp(event.timestamp || event.time || event.eventTime),
+          eventType: this.normalizeEventType(
+            event.eventType || event.type || event.action || 'Unknown'
+          ),
+          macAddress: event.macAddress || event.mac || event.clientMac || '',
+          ipAddress: event.ipAddress || event.ip || event.clientIp,
+          ipv6Address: event.ipv6Address || event.ipv6,
+          apName: event.apName || event.ap || event.accessPoint || event.apDisplayName || '',
+          apSerial: event.apSerial || event.apSerialNumber || event.serialNumber || '',
+          ssid: event.ssid || event.network || event.wlanName || '',
+          details: event.details || event.description || event.message || '',
+          type: event.type || event.category,
+          level: event.level || event.severity,
+          category: event.category,
+          context: event.context,
+          // Additional troubleshooting fields
+          channel: event.channel || event.radioChannel,
+          band: event.band || event.frequency || event.radio,
+          rssi: event.rssi || event.signalStrength || event.signal || event.rss,
+          snr: event.snr || event.signalToNoise,
+          dataRate: event.dataRate || event.phyRate || event.rate,
+          previousAp: event.previousAp || event.fromAp || event.prevAp,
+          previousApSerial: event.previousApSerial || event.fromApSerial,
+          reasonCode: event.reasonCode || event.reason,
+          statusCode: event.statusCode || event.status,
+          authMethod: event.authMethod || event.auth || event.authentication,
+        }) as StationEvent
+    );
   }
 
   /**
@@ -3492,7 +3693,8 @@ class ApiService {
     // Map various event type names to standard names
     if (type.includes('roam') || type.includes('handoff')) return 'Roam';
     if (type.includes('register') || type.includes('join')) return 'Registration';
-    if (type.includes('deregister') || type.includes('leave') || type.includes('disconnect')) return 'De-registration';
+    if (type.includes('deregister') || type.includes('leave') || type.includes('disconnect'))
+      return 'De-registration';
     if (type.includes('associate') && !type.includes('dis')) return 'Associate';
     if (type.includes('disassociate') || type.includes('deassociate')) return 'Disassociate';
     if (type.includes('auth') && !type.includes('deauth')) return 'Authenticate';
@@ -3516,7 +3718,7 @@ class ApiService {
     const emptyResponse: StationEventsResponse = {
       stationEvents: [],
       apEvents: [],
-      smartRfEvents: []
+      smartRfEvents: [],
     };
 
     try {
@@ -3536,9 +3738,7 @@ class ApiService {
       const data = await response.json();
 
       // Normalize station events
-      const stationEvents = this.normalizeStationEvents(
-        data.stationEvents || []
-      );
+      const stationEvents = this.normalizeStationEvents(data.stationEvents || []);
 
       // Normalize AP events
       const apEvents: APEvent[] = (data.apEvents || []).map((event: any) => ({
@@ -3551,7 +3751,7 @@ class ApiService {
         type: event.type || event.category,
         level: event.level || event.severity,
         category: event.category,
-        context: event.context
+        context: event.context,
       }));
 
       // Normalize RRM events (API calls them smartRfEvents)
@@ -3570,15 +3770,17 @@ class ApiService {
         reason: event.reason || event.triggerReason,
         details: event.details || event.description || event.message || '',
         type: event.type || event.category,
-        level: event.level || event.severity
+        level: event.level || event.severity,
       }));
 
-      logger.log(`[API] ✓ Loaded ${stationEvents.length} station, ${apEvents.length} AP, ${smartRfEvents.length} RRM events`);
+      logger.log(
+        `[API] ✓ Loaded ${stationEvents.length} station, ${apEvents.length} AP, ${smartRfEvents.length} RRM events`
+      );
 
       return {
         stationEvents,
         apEvents,
-        smartRfEvents
+        smartRfEvents,
       };
     } catch (error) {
       logger.error(`[API] Failed to fetch correlated events for ${macAddress}:`, error);
@@ -3644,7 +3846,11 @@ class ApiService {
    * Get venue statistics for a site (comprehensive analytics)
    * Endpoint: GET /v3/sites/{siteId}/report/venue
    */
-  async getVenueStatistics(siteId: string, duration: string = '24H', resolution: number = 15): Promise<any> {
+  async getVenueStatistics(
+    siteId: string,
+    duration: string = '24H',
+    resolution: number = 15
+  ): Promise<any> {
     try {
       const widgetList = [
         'ulDlUsageTimeseries',
@@ -3652,7 +3858,7 @@ class ApiService {
         'uniqueClientsTotalScorecard',
         'uniqueClientsPeakScorecard',
         'totalTrafficScorecard',
-        'averageThroughputScorecard'
+        'averageThroughputScorecard',
       ].join(',');
 
       const endpoint = `/v3/sites/${siteId}/report/venue?duration=${duration}&resolution=${resolution}&statType=sites&widgetList=${encodeURIComponent(widgetList)}`;
@@ -3817,7 +4023,7 @@ class ApiService {
         '/v1/device-types',
         '/v3/devices/types',
         '/platformmanager/v1/devices/types',
-        '/v1/config/device-types'
+        '/v1/config/device-types',
       ];
 
       for (const endpoint of endpoints) {
@@ -3844,7 +4050,7 @@ class ApiService {
         'Controller',
         'Sensor',
         'Camera',
-        'Firewall'
+        'Firewall',
       ];
     } catch (error) {
       logger.error('[API] Failed to fetch device types:', error);
@@ -3857,7 +4063,7 @@ class ApiService {
         'Controller',
         'Sensor',
         'Camera',
-        'Firewall'
+        'Firewall',
       ];
     }
   }
@@ -3868,7 +4074,11 @@ class ApiService {
    * Get detailed AP report
    * Endpoint: GET /v1/report/aps/{apSerialNumber}
    */
-  async getAPReport(apSerialNumber: string, duration: string = '24H', resolution: number = 15): Promise<any> {
+  async getAPReport(
+    apSerialNumber: string,
+    duration: string = '24H',
+    resolution: number = 15
+  ): Promise<any> {
     try {
       const endpoint = `/v1/report/aps/${encodeURIComponent(apSerialNumber)}?duration=${duration}&resolution=${resolution}`;
       logger.log(`[API] Fetching AP report for: ${apSerialNumber}`);
@@ -3892,7 +4102,11 @@ class ApiService {
    * Get detailed site report
    * Endpoint: GET /v1/report/sites/{siteId}
    */
-  async getSiteReport(siteId: string, duration: string = '24H', resolution: number = 15): Promise<any> {
+  async getSiteReport(
+    siteId: string,
+    duration: string = '24H',
+    resolution: number = 15
+  ): Promise<any> {
     try {
       const endpoint = `/v1/report/sites/${encodeURIComponent(siteId)}?duration=${duration}&resolution=${resolution}`;
       logger.log(`[API] Fetching site report for: ${siteId}`);
@@ -4013,7 +4227,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/rfmgmt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4023,11 +4237,14 @@ class ApiService {
   }
 
   async updateRFManagementProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/rfmgmt/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/rfmgmt/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update RF profile: ${response.status} - ${errorText}`);
@@ -4036,9 +4253,12 @@ class ApiService {
   }
 
   async deleteRFManagementProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/rfmgmt/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/rfmgmt/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete RF profile: ${response.status} - ${errorText}`);
@@ -4072,7 +4292,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/iotprofile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4082,11 +4302,14 @@ class ApiService {
   }
 
   async updateIoTProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/iotprofile/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/iotprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update IoT profile: ${response.status} - ${errorText}`);
@@ -4095,9 +4318,12 @@ class ApiService {
   }
 
   async deleteIoTProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/iotprofile/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/iotprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete IoT profile: ${response.status} - ${errorText}`);
@@ -4131,7 +4357,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v4/adsp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4141,11 +4367,14 @@ class ApiService {
   }
 
   async updateADSPProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v4/adsp/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v4/adsp/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update ADSP profile: ${response.status} - ${errorText}`);
@@ -4154,9 +4383,12 @@ class ApiService {
   }
 
   async deleteADSPProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v4/adsp/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v4/adsp/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete ADSP profile: ${response.status} - ${errorText}`);
@@ -4190,7 +4422,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/analytics', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4200,11 +4432,14 @@ class ApiService {
   }
 
   async updateAnalyticsProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/analytics/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/analytics/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update analytics profile: ${response.status} - ${errorText}`);
@@ -4213,9 +4448,12 @@ class ApiService {
   }
 
   async deleteAnalyticsProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/analytics/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/analytics/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete analytics profile: ${response.status} - ${errorText}`);
@@ -4249,7 +4487,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/positioning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4259,11 +4497,14 @@ class ApiService {
   }
 
   async updatePositioningProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/positioning/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/positioning/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update positioning profile: ${response.status} - ${errorText}`);
@@ -4272,9 +4513,12 @@ class ApiService {
   }
 
   async deletePositioningProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/positioning/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/positioning/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete positioning profile: ${response.status} - ${errorText}`);
@@ -4308,7 +4552,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/meshpoints', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4318,11 +4562,14 @@ class ApiService {
   }
 
   async updateMeshPoint(meshpointId: string, data: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/meshpoints/${encodeURIComponent(meshpointId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/meshpoints/${encodeURIComponent(meshpointId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update meshpoint: ${response.status} - ${errorText}`);
@@ -4331,9 +4578,12 @@ class ApiService {
   }
 
   async deleteMeshPoint(meshpointId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/meshpoints/${encodeURIComponent(meshpointId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/meshpoints/${encodeURIComponent(meshpointId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete meshpoint: ${response.status} - ${errorText}`);
@@ -4367,7 +4617,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/switchportprofile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4377,11 +4627,14 @@ class ApiService {
   }
 
   async updateSwitchPortProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/switchportprofile/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/switchportprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update switch port profile: ${response.status} - ${errorText}`);
@@ -4390,9 +4643,12 @@ class ApiService {
   }
 
   async deleteSwitchPortProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/switchportprofile/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/switchportprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete switch port profile: ${response.status} - ${errorText}`);
@@ -4406,7 +4662,7 @@ class ApiService {
   async getAuditLogs(startTime?: number, endTime?: number): Promise<any[]> {
     try {
       let endpoint = '/v1/auditlogs';
-      const params = [];
+      const params: string[] = [];
       if (startTime) params.push(`startTime=${startTime}`);
       if (endTime) params.push(`endTime=${endTime}`);
       if (params.length > 0) endpoint += '?' + params.join('&');
@@ -4478,7 +4734,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v1/ratelimiters', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4488,11 +4744,14 @@ class ApiService {
   }
 
   async updateRateLimiter(rateLimiterId: string, data: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update rate limiter: ${response.status} - ${errorText}`);
@@ -4501,9 +4760,12 @@ class ApiService {
   }
 
   async deleteRateLimiter(rateLimiterId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/ratelimiters/${encodeURIComponent(rateLimiterId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete rate limiter: ${response.status} - ${errorText}`);
@@ -4537,7 +4799,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v1/cos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4550,7 +4812,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest(`/v1/cos/${encodeURIComponent(cosId)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4561,7 +4823,7 @@ class ApiService {
 
   async deleteCoSProfile(cosId: string): Promise<void> {
     const response = await this.makeAuthenticatedRequest(`/v1/cos/${encodeURIComponent(cosId)}`, {
-      method: 'DELETE'
+      method: 'DELETE',
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4598,7 +4860,9 @@ class ApiService {
    */
   async getSmartRFChannels(siteId?: string): Promise<any> {
     try {
-      const endpoint = siteId ? `/v3/radios/smartrfchannels?siteId=${encodeURIComponent(siteId)}` : '/v3/radios/smartrfchannels';
+      const endpoint = siteId
+        ? `/v3/radios/smartrfchannels?siteId=${encodeURIComponent(siteId)}`
+        : '/v3/radios/smartrfchannels';
       logger.log('[API] Fetching SmartRF channels');
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
@@ -4646,7 +4910,11 @@ class ApiService {
   async getEntityDistribution(): Promise<any> {
     try {
       logger.log('[API] Fetching entity distribution');
-      const response = await this.makeAuthenticatedRequest('/v1/state/entityDistribution', {}, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/state/entityDistribution',
+        {},
+        10000
+      );
 
       if (!response.ok) {
         logger.warn(`Entity distribution API returned ${response.status}`);
@@ -4671,11 +4939,15 @@ class ApiService {
   async queryStations(filters?: any): Promise<any[]> {
     try {
       logger.log('[API] Querying stations with filters');
-      const response = await this.makeAuthenticatedRequest('/v1/stations/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters || {})
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/stations/query',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(filters || {}),
+        },
+        15000
+      );
 
       if (!response.ok) {
         logger.warn(`Station query API returned ${response.status}`);
@@ -4839,7 +5111,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v3/xlocation', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -4849,11 +5121,14 @@ class ApiService {
   }
 
   async updateXLocationProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v3/xlocation/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/xlocation/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update XLocation profile: ${response.status} - ${errorText}`);
@@ -4862,9 +5137,12 @@ class ApiService {
   }
 
   async deleteXLocationProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v3/xlocation/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v3/xlocation/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete XLocation profile: ${response.status} - ${errorText}`);
@@ -5069,11 +5347,15 @@ class ApiService {
   async createEGuestProfile(profileData: any): Promise<any> {
     try {
       logger.log('[API] Creating eGuest profile');
-      const response = await this.makeAuthenticatedRequest('/v1/eguest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/eguest',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`eGuest creation failed: ${response.status}`);
@@ -5096,11 +5378,15 @@ class ApiService {
     try {
       const endpoint = `/v1/eguest/${encodeURIComponent(eguestId)}`;
       logger.log(`[API] Updating eGuest profile: ${eguestId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profileData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`eGuest update failed: ${response.status}`);
@@ -5123,9 +5409,13 @@ class ApiService {
     try {
       const endpoint = `/v1/eguest/${encodeURIComponent(eguestId)}`;
       logger.log(`[API] Deleting eGuest profile: ${eguestId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`eGuest deletion failed: ${response.status}`);
@@ -5145,11 +5435,15 @@ class ApiService {
   async createAAAPolicy(policyData: any): Promise<any> {
     try {
       logger.log('[API] Creating AAA policy');
-      const response = await this.makeAuthenticatedRequest('/v1/aaapolicy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(policyData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aaapolicy',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(policyData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`AAA policy creation failed: ${response.status}`);
@@ -5172,11 +5466,15 @@ class ApiService {
     try {
       const endpoint = `/v1/aaapolicy/${encodeURIComponent(policyId)}`;
       logger.log(`[API] Updating AAA policy: ${policyId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(policyData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(policyData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`AAA policy update failed: ${response.status}`);
@@ -5199,9 +5497,13 @@ class ApiService {
     try {
       const endpoint = `/v1/aaapolicy/${encodeURIComponent(policyId)}`;
       logger.log(`[API] Deleting AAA policy: ${policyId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`AAA policy deletion failed: ${response.status}`);
@@ -5500,7 +5802,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v1/accesscontrol', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(accessControlData)
+      body: JSON.stringify(accessControlData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -5545,7 +5847,7 @@ class ApiService {
         '/v1/system/config',
         '/v1/system/info',
         '/v1/systemconfig',
-        '/platformmanager/v1/system/config'
+        '/platformmanager/v1/system/config',
       ];
 
       for (const endpoint of endpoints) {
@@ -5583,7 +5885,7 @@ class ApiService {
         '/v1/system/version',
         '/v1/about',
         '/platformmanager/v1/version',
-        '/v1/system/info'
+        '/v1/system/info',
       ];
 
       for (const endpoint of endpoints) {
@@ -5620,7 +5922,7 @@ class ApiService {
         '/v1/cluster/status',
         '/v1/system/cluster',
         '/v1/cluster',
-        '/platformmanager/v1/cluster/status'
+        '/platformmanager/v1/cluster/status',
       ];
 
       for (const endpoint of endpoints) {
@@ -5694,7 +5996,7 @@ class ApiService {
     const response = await this.makeAuthenticatedRequest('/v1/rtlsprofile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
+      body: JSON.stringify(profileData),
     });
     if (!response.ok) {
       const errorText = await response.text();
@@ -5704,11 +6006,14 @@ class ApiService {
   }
 
   async updateRTLSProfile(profileId: string, profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest(`/v1/rtlsprofile/${encodeURIComponent(profileId)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData)
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/rtlsprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(profileData),
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to update RTLS profile: ${response.status} - ${errorText}`);
@@ -5717,9 +6022,12 @@ class ApiService {
   }
 
   async deleteRTLSProfile(profileId: string): Promise<void> {
-    const response = await this.makeAuthenticatedRequest(`/v1/rtlsprofile/${encodeURIComponent(profileId)}`, {
-      method: 'DELETE'
-    });
+    const response = await this.makeAuthenticatedRequest(
+      `/v1/rtlsprofile/${encodeURIComponent(profileId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to delete RTLS profile: ${response.status} - ${errorText}`);
@@ -5873,7 +6181,7 @@ class ApiService {
   /**
    * Get all AP interface statistics WITH RF data
    * Endpoint: GET /v1/aps/ifstats?rfStats=true
-   * 
+   *
    * Returns per-radio RF metrics including:
    * - rfqi: RF Quality Index (1-5 scale)
    * - chUtil: Channel utilization %
@@ -5885,7 +6193,11 @@ class ApiService {
   async getAPInterfaceStatsWithRF(): Promise<any[]> {
     try {
       logger.log('[API] Fetching AP interface statistics with RF data');
-      const response = await this.makeAuthenticatedRequest('/v1/aps/ifstats?rfStats=true', {}, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/ifstats?rfStats=true',
+        {},
+        15000
+      );
 
       if (!response.ok) {
         logger.warn(`AP ifstats with RF API returned ${response.status}`);
@@ -5953,7 +6265,11 @@ class ApiService {
    * Get site venue report
    * Endpoint: GET /v3/sites/{siteId}/report/venue
    */
-  async getSiteVenueReport(siteId: string, duration: string = '24H', resolution: number = 15): Promise<any> {
+  async getSiteVenueReport(
+    siteId: string,
+    duration: string = '24H',
+    resolution: number = 15
+  ): Promise<any> {
     try {
       const endpoint = `/v3/sites/${encodeURIComponent(siteId)}/report/venue?duration=${duration}&resolution=${resolution}&statType=sites`;
       logger.log(`[API] Fetching venue report for site: ${siteId}`);
@@ -6204,7 +6520,10 @@ class ApiService {
       logger.log('[API] ✓ Loaded switch port report');
       return data;
     } catch (error) {
-      logger.error(`[API] Failed to fetch switch port report for ${serialNumber}/${portId}:`, error);
+      logger.error(
+        `[API] Failed to fetch switch port report for ${serialNumber}/${portId}:`,
+        error
+      );
       return null;
     }
   }
@@ -6403,10 +6722,20 @@ class ApiService {
 
     // Strategy 1 – look for native field already present in AP objects
     for (const ap of aps) {
-      const raw = (ap as any).meshRole ?? (ap as any).apMeshRole ?? (ap as any).meshMode ?? (ap as any).meshNodeType ?? null;
+      const raw =
+        (ap as any).meshRole ??
+        (ap as any).apMeshRole ??
+        (ap as any).meshMode ??
+        (ap as any).meshNodeType ??
+        null;
       if (raw) {
         const upper = String(raw).toUpperCase();
-        if (upper.includes('PORTAL') || upper.includes('BASE') || upper.includes('ROOT') || upper === 'WIRED') {
+        if (
+          upper.includes('PORTAL') ||
+          upper.includes('BASE') ||
+          upper.includes('ROOT') ||
+          upper === 'WIRED'
+        ) {
           roles.set(ap.serialNumber, 'BASE');
         } else if (upper.includes('RELAY') || upper.includes('BACKHAUL') || upper === 'WIRELESS') {
           roles.set(ap.serialNumber, 'RELAY');
@@ -6424,8 +6753,14 @@ class ApiService {
 
         // Recursively walk any tree shape; try every plausible serial field name
         const extractSerial = (node: any): string | null =>
-          node.apSerialNumber ?? node.serialNumber ?? node.apSerial ?? node.serial ??
-          node.ap_serial ?? node.deviceSerial ?? node.device_serial ?? null;
+          node.apSerialNumber ??
+          node.serialNumber ??
+          node.apSerial ??
+          node.serial ??
+          node.ap_serial ??
+          node.deviceSerial ??
+          node.device_serial ??
+          null;
 
         const walkTree = (node: any, isRoot: boolean) => {
           const serial = extractSerial(node);
@@ -6443,8 +6778,13 @@ class ApiService {
             }
           }
           const children: any[] =
-            node.children ?? node.nodes ?? node.relays ?? node.meshNodes ??
-            node.downstreamAps ?? node.downStreamAps ?? [];
+            node.children ??
+            node.nodes ??
+            node.relays ??
+            node.meshNodes ??
+            node.downstreamAps ??
+            node.downStreamAps ??
+            [];
           for (const child of children) {
             walkTree(child, false);
           }
@@ -6471,8 +6811,13 @@ class ApiService {
 
           // If the mesh point itself carries a serial, it is the root AP
           const rootSerial: string | undefined =
-            mp.apSerialNumber ?? mp.serialNumber ?? mp.apSerial ?? mp.rootSerialNumber ??
-            mp.portalSerialNumber ?? mp.portal?.serialNumber ?? mp.portal?.apSerialNumber;
+            mp.apSerialNumber ??
+            mp.serialNumber ??
+            mp.apSerial ??
+            mp.rootSerialNumber ??
+            mp.portalSerialNumber ??
+            mp.portal?.serialNumber ??
+            mp.portal?.apSerialNumber;
           if (rootSerial && !roles.has(rootSerial)) {
             roles.set(rootSerial, 'BASE');
           }
@@ -6507,26 +6852,34 @@ class ApiService {
     // valid wired uplink → BASE.
     if (roles.size === 0 && aps.length > 0) {
       logger.log('[API] Tree yielded no roles — applying ethernet heuristic for mesh APs');
-      const meshFeatureAPs = aps.filter(ap => {
+      const meshFeatureAPs = aps.filter((ap) => {
         const features: string[] = (ap as any).features ?? [];
         return features.some((f: string) => f === 'MESH' || f === 'MESHPOINT-BEACON');
       });
-      logger.log(`[API] APs with MESH feature: ${meshFeatureAPs.map(a => (a as any).apName || a.serialNumber).join(', ')}`);
+      logger.log(
+        `[API] APs with MESH feature: ${meshFeatureAPs.map((a) => (a as any).apName || a.serialNumber).join(', ')}`
+      );
 
       if (meshFeatureAPs.length > 0) {
         for (const ap of meshFeatureAPs) {
           const ports: any[] = (ap as any).ethPorts ?? [];
           const hasWiredUplink = ports.some((p: any) => {
             const spd: string = (p.speed ?? '').toLowerCase();
-            return spd && spd !== 'speedna' && spd !== 'na' && spd !== 'auto' && spd !== 'speedauto';
+            return (
+              spd && spd !== 'speedna' && spd !== 'na' && spd !== 'auto' && spd !== 'speedauto'
+            );
           });
           roles.set(ap.serialNumber, hasWiredUplink ? 'BASE' : 'RELAY');
-          logger.log(`[API] Heuristic: ${(ap as any).apName || ap.serialNumber} → ${hasWiredUplink ? 'BASE' : 'RELAY'} (ports: ${ports.map((p:any) => p.speed).join(', ')})`);
+          logger.log(
+            `[API] Heuristic: ${(ap as any).apName || ap.serialNumber} → ${hasWiredUplink ? 'BASE' : 'RELAY'} (ports: ${ports.map((p: any) => p.speed).join(', ')})`
+          );
         }
       }
     }
 
-    logger.log(`[API] Mesh role discovery complete: ${roles.size} APs identified (BASE: ${[...roles.values()].filter(v => v === 'BASE').length}, RELAY: ${[...roles.values()].filter(v => v === 'RELAY').length})`);
+    logger.log(
+      `[API] Mesh role discovery complete: ${roles.size} APs identified (BASE: ${[...roles.values()].filter((v) => v === 'BASE').length}, RELAY: ${[...roles.values()].filter((v) => v === 'RELAY').length})`
+    );
     return roles;
   }
 
@@ -6566,11 +6919,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/configuration/backup';
       logger.log('[API] Creating configuration backup');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename: filename || `backup-${Date.now()}.zip` })
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename: filename || `backup-${Date.now()}.zip` }),
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`Backup creation failed: ${response.status}`);
@@ -6593,11 +6950,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/configuration/restore';
       logger.log(`[API] Restoring configuration from: ${filename}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ filename })
-      }, 60000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename }),
+        },
+        60000
+      );
 
       if (!response.ok) {
         throw new Error(`Configuration restore failed: ${response.status}`);
@@ -6691,11 +7052,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/license/install';
       logger.log('[API] Installing license');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ licenseKey })
-      }, 20000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ licenseKey }),
+        },
+        20000
+      );
 
       if (!response.ok) {
         throw new Error(`License installation failed: ${response.status}`);
@@ -6766,9 +7131,13 @@ class ApiService {
     try {
       const endpoint = `/platformmanager/v1/flash/files/${encodeURIComponent(filename)}`;
       logger.log(`[API] Deleting flash file: ${filename}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Flash file deletion failed: ${response.status}`);
@@ -6846,7 +7215,7 @@ class ApiService {
     try {
       const [systemInfo, manufacturingInfo] = await Promise.all([
         this.getOSOneSystemInfo(),
-        this.getOSOneManufacturingInfo()
+        this.getOSOneManufacturingInfo(),
       ]);
 
       if (!systemInfo && !manufacturingInfo) {
@@ -6856,7 +7225,7 @@ class ApiService {
       return {
         system: systemInfo,
         manufacturing: manufacturingInfo,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     } catch (error) {
       logger.error('[API] Failed to fetch complete OS ONE info:', error);
@@ -6878,7 +7247,7 @@ class ApiService {
       cpuUtilization: 0,
       memoryFreePercent: 0,
       diskPartitions: [],
-      ports: []
+      ports: [],
     };
 
     // Parse uptime
@@ -6908,7 +7277,7 @@ class ApiService {
         totalSpace: parseInt(diskMatch[2], 10),
         used: parseInt(diskMatch[3], 10),
         available: parseInt(diskMatch[4], 10),
-        usePercent: parseInt(diskMatch[5], 10)
+        usePercent: parseInt(diskMatch[5], 10),
       });
     }
 
@@ -6919,7 +7288,7 @@ class ApiService {
       parsed.ports.push({
         port: parseInt(portMatch[1], 10),
         state: portMatch[2],
-        speed: parseInt(portMatch[3], 10)
+        speed: parseInt(portMatch[3], 10),
       });
     }
 
@@ -6932,7 +7301,7 @@ class ApiService {
   private parseOSOneManufacturingInfo(data: any): OSOneManufacturingInfo {
     const result = data?.result || '';
     const parsed: OSOneManufacturingInfo = {
-      raw: result
+      raw: result,
     };
 
     // Parse key-value pairs
@@ -6950,7 +7319,7 @@ class ApiService {
       lan1Mac: /LAN 1\s+MAC address:\s*([0-9A-Fa-f:]+)/,
       lan2Mac: /LAN 2\s+MAC address:\s*([0-9A-Fa-f:]+)/,
       adminMac: /ADMIN\s+MAC address:\s*([0-9A-Fa-f:]+)/,
-      lockingId: /Locking ID:\s*(.+)/
+      lockingId: /Locking ID:\s*(.+)/,
     };
 
     for (const [key, regex] of Object.entries(patterns)) {
@@ -6980,11 +7349,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/network/ping';
       logger.log(`[API] Pinging host: ${host}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host, count: count || 4 })
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host, count: count || 4 }),
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`Ping failed: ${response.status}`);
@@ -7007,11 +7380,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/network/traceroute';
       logger.log(`[API] Traceroute to host: ${host}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ host })
-      }, 60000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host }),
+        },
+        60000
+      );
 
       if (!response.ok) {
         throw new Error(`Traceroute failed: ${response.status}`);
@@ -7034,11 +7411,15 @@ class ApiService {
     try {
       const endpoint = '/platformmanager/v1/network/dns';
       logger.log(`[API] DNS lookup for: ${hostname}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hostname })
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hostname }),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`DNS lookup failed: ${response.status}`);
@@ -7065,11 +7446,15 @@ class ApiService {
     try {
       const endpoint = `/v1/aps/upgrade?apImageName=${encodeURIComponent(imageVersion)}`;
       logger.log(`[API] Upgrading ${serialNumbers.length} APs to ${imageVersion}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers })
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers }),
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`AP software upgrade failed: ${response.status}`);
@@ -7114,14 +7499,18 @@ class ApiService {
         utcSecondsSinceEpoc: schedule.scheduledTime
           ? Math.floor(new Date(schedule.scheduledTime).getTime() / 1000)
           : null,
-        deviceInfo
+        deviceInfo,
       };
 
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to create upgrade schedule: ${response.status}`);
@@ -7152,11 +7541,15 @@ class ApiService {
     try {
       const endpoint = '/v1/devices/adoption/force';
       logger.log(`[API] Force adopting AP: ${serialNumber}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumber })
-      }, 20000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumber }),
+        },
+        20000
+      );
 
       if (!response.ok) {
         throw new Error(`Force adoption failed: ${response.status}`);
@@ -7179,9 +7572,13 @@ class ApiService {
     try {
       const endpoint = `/v1/devices/${encodeURIComponent(serialNumber)}/unadopt`;
       logger.log(`[API] Unadopting device: ${serialNumber}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 20000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        20000
+      );
 
       if (!response.ok) {
         throw new Error(`Unadoption failed: ${response.status}`);
@@ -7210,16 +7607,12 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/reboot`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/reboot`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/reboot`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/reboot`,
       ];
 
       for (const endpoint of endpoints) {
         try {
-          const response = await this.makeAuthenticatedRequest(
-            endpoint,
-            { method: 'POST' },
-            20000
-          );
+          const response = await this.makeAuthenticatedRequest(endpoint, { method: 'POST' }, 20000);
 
           if (response.ok) {
             logger.log('[API] ✓ AP reboot initiated');
@@ -7248,16 +7641,12 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/reset`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/reset`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/factoryreset`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/factoryreset`,
       ];
 
       for (const endpoint of endpoints) {
         try {
-          const response = await this.makeAuthenticatedRequest(
-            endpoint,
-            { method: 'POST' },
-            20000
-          );
+          const response = await this.makeAuthenticatedRequest(endpoint, { method: 'POST' }, 20000);
 
           if (response.ok) {
             logger.log('[API] ✓ AP reset initiated');
@@ -7286,7 +7675,7 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/site`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/site`,
-        `/v3/sites/${encodeURIComponent(siteId)}/devices`
+        `/v3/sites/${encodeURIComponent(siteId)}/devices`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7296,7 +7685,7 @@ class ApiService {
             {
               method: endpoint.includes('/sites/') ? 'POST' : 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ siteId, serialNumber })
+              body: JSON.stringify({ siteId, serialNumber }),
             },
             15000
           );
@@ -7328,7 +7717,7 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}`,
         `/v1/devices/${encodeURIComponent(serialNumber)}`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7366,7 +7755,7 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/upgrade`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/upgrade`,
-        `/platformmanager/v1/firmware/upgrade`
+        `/platformmanager/v1/firmware/upgrade`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7376,7 +7765,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ serialNumber, imageVersion })
+              body: JSON.stringify({ serialNumber, imageVersion }),
             },
             30000 // Longer timeout for firmware operations
           );
@@ -7401,14 +7790,17 @@ class ApiService {
    * Set access point event logging level
    * Endpoint: PUT /v1/aps/{serialNumber}/eventlevel
    */
-  async setEventLevel(serialNumber: string, level: 'debug' | 'info' | 'warning' | 'error'): Promise<void> {
+  async setEventLevel(
+    serialNumber: string,
+    level: 'debug' | 'info' | 'warning' | 'error'
+  ): Promise<void> {
     try {
       logger.log(`[API] Setting AP event level: ${serialNumber} -> ${level}`);
 
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/eventlevel`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/loglevel`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/config`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/config`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7418,7 +7810,7 @@ class ApiService {
             {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ eventLevel: level, logLevel: level })
+              body: JSON.stringify({ eventLevel: level, logLevel: level }),
             },
             10000
           );
@@ -7443,14 +7835,17 @@ class ApiService {
    * Set access point adoption preference
    * Endpoint: PUT /v1/aps/{serialNumber}/adoptionpreference
    */
-  async setAdoptionPreference(serialNumber: string, preference: 'controller' | 'cloud'): Promise<void> {
+  async setAdoptionPreference(
+    serialNumber: string,
+    preference: 'controller' | 'cloud'
+  ): Promise<void> {
     try {
       logger.log(`[API] Setting AP adoption preference: ${serialNumber} -> ${preference}`);
 
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/adoptionpreference`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/preference`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/adoption`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/adoption`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7460,7 +7855,7 @@ class ApiService {
             {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ adoptionPreference: preference })
+              body: JSON.stringify({ adoptionPreference: preference }),
             },
             10000
           );
@@ -7492,16 +7887,12 @@ class ApiService {
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/releasetocloud`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/release`,
-        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/cloud`
+        `/platformmanager/v1/devices/${encodeURIComponent(serialNumber)}/cloud`,
       ];
 
       for (const endpoint of endpoints) {
         try {
-          const response = await this.makeAuthenticatedRequest(
-            endpoint,
-            { method: 'POST' },
-            15000
-          );
+          const response = await this.makeAuthenticatedRequest(endpoint, { method: 'POST' }, 15000);
 
           if (response.ok) {
             logger.log('[API] ✓ AP released to cloud');
@@ -7523,18 +7914,21 @@ class ApiService {
    * Generate Certificate Signing Request (CSR) for AP
    * Endpoint: POST /v1/aps/{serialNumber}/csr
    */
-  async generateCSR(serialNumber: string, csrData?: {
-    commonName?: string;
-    organization?: string;
-    country?: string;
-  }): Promise<{ csr: string }> {
+  async generateCSR(
+    serialNumber: string,
+    csrData?: {
+      commonName?: string;
+      organization?: string;
+      country?: string;
+    }
+  ): Promise<{ csr: string }> {
     try {
       logger.log(`[API] Generating CSR for AP: ${serialNumber}`);
 
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/csr`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/certificate/csr`,
-        `/platformmanager/v1/certificates/csr`
+        `/platformmanager/v1/certificates/csr`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7544,7 +7938,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ serialNumber, ...csrData })
+              body: JSON.stringify({ serialNumber, ...csrData }),
             },
             15000
           );
@@ -7570,18 +7964,21 @@ class ApiService {
    * Apply signed certificates to AP
    * Endpoint: POST /v1/aps/{serialNumber}/certificates
    */
-  async applyCertificates(serialNumber: string, certificates: {
-    certificate: string;
-    privateKey?: string;
-    caCertificate?: string;
-  }): Promise<void> {
+  async applyCertificates(
+    serialNumber: string,
+    certificates: {
+      certificate: string;
+      privateKey?: string;
+      caCertificate?: string;
+    }
+  ): Promise<void> {
     try {
       logger.log(`[API] Applying certificates to AP: ${serialNumber}`);
 
       const endpoints = [
         `/v1/aps/${encodeURIComponent(serialNumber)}/certificates`,
         `/v1/devices/${encodeURIComponent(serialNumber)}/certificate`,
-        `/platformmanager/v1/certificates/apply`
+        `/platformmanager/v1/certificates/apply`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7591,7 +7988,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ serialNumber, ...certificates })
+              body: JSON.stringify({ serialNumber, ...certificates }),
             },
             20000
           );
@@ -7627,7 +8024,7 @@ class ApiService {
         '/v1/adoption-rules',
         '/v1/adoption/rules',
         '/v1/config/adoption-rules',
-        '/platformmanager/v1/adoption-rules'
+        '/platformmanager/v1/adoption-rules',
       ];
 
       for (const endpoint of endpoints) {
@@ -7662,7 +8059,7 @@ class ApiService {
         '/v1/adoption-rules',
         '/v1/adoption/rules',
         '/v1/config/adoption-rules',
-        '/platformmanager/v1/adoption-rules'
+        '/platformmanager/v1/adoption-rules',
       ];
 
       for (const endpoint of endpoints) {
@@ -7672,7 +8069,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(rule)
+              body: JSON.stringify(rule),
             },
             15000
           );
@@ -7704,7 +8101,7 @@ class ApiService {
         { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PUT' },
         { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PATCH' },
         { path: `/v1/adoption/rules/${encodeURIComponent(ruleId)}`, method: 'PUT' },
-        { path: `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PUT' }
+        { path: `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PUT' },
       ];
 
       for (const endpoint of endpoints) {
@@ -7714,7 +8111,7 @@ class ApiService {
             {
               method: endpoint.method,
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(rule)
+              body: JSON.stringify(rule),
             },
             15000
           );
@@ -7745,7 +8142,7 @@ class ApiService {
       const endpoints = [
         `/v1/adoption-rules/${encodeURIComponent(ruleId)}`,
         `/v1/adoption/rules/${encodeURIComponent(ruleId)}`,
-        `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`
+        `/v1/config/adoption-rules/${encodeURIComponent(ruleId)}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -7779,9 +8176,21 @@ class ApiService {
     try {
       logger.log(`[API] Toggling adoption rule ${ruleId}: ${enabled ? 'enabled' : 'disabled'}`);
       const endpoints = [
-        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}/toggle`, method: 'POST', body: { enabled } },
-        { path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`, method: 'PATCH', body: { enabled } },
-        { path: `/v1/adoption/rules/${encodeURIComponent(ruleId)}`, method: 'PATCH', body: { enabled } }
+        {
+          path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}/toggle`,
+          method: 'POST',
+          body: { enabled },
+        },
+        {
+          path: `/v1/adoption-rules/${encodeURIComponent(ruleId)}`,
+          method: 'PATCH',
+          body: { enabled },
+        },
+        {
+          path: `/v1/adoption/rules/${encodeURIComponent(ruleId)}`,
+          method: 'PATCH',
+          body: { enabled },
+        },
       ];
 
       for (const endpoint of endpoints) {
@@ -7791,7 +8200,7 @@ class ApiService {
             {
               method: endpoint.method,
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(endpoint.body)
+              body: JSON.stringify(endpoint.body),
             },
             10000
           );
@@ -7823,9 +8232,13 @@ class ApiService {
     try {
       const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/deauth`;
       logger.log(`[API] Deauthenticating station: ${macAddress}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Deauthentication failed: ${response.status}`);
@@ -7846,11 +8259,15 @@ class ApiService {
     try {
       const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/block`;
       logger.log(`[API] Blocking station: ${macAddress}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reason }),
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Station block failed: ${response.status}`);
@@ -7871,9 +8288,13 @@ class ApiService {
     try {
       const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/block`;
       logger.log(`[API] Unblocking station: ${macAddress}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Station unblock failed: ${response.status}`);
@@ -7914,15 +8335,23 @@ class ApiService {
    * Set bandwidth limit for a client
    * Endpoint: POST /v1/stations/{mac}/bandwidth/limit
    */
-  async setStationBandwidthLimit(macAddress: string, downloadLimit: number, uploadLimit: number): Promise<void> {
+  async setStationBandwidthLimit(
+    macAddress: string,
+    downloadLimit: number,
+    uploadLimit: number
+  ): Promise<void> {
     try {
       const endpoint = `/v1/stations/${encodeURIComponent(macAddress)}/bandwidth/limit`;
       logger.log(`[API] Setting bandwidth limit for: ${macAddress}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ downloadLimit, uploadLimit })
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ downloadLimit, uploadLimit }),
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Bandwidth limit failed: ${response.status}`);
@@ -7975,7 +8404,7 @@ class ApiService {
       const endpoints = [
         { path: '/v1/stations/bulk/delete', method: 'POST' },
         { path: '/v1/stations', method: 'DELETE' },
-        { path: '/v1/stations/delete', method: 'POST' }
+        { path: '/v1/stations/delete', method: 'POST' },
       ];
 
       for (const endpoint of endpoints) {
@@ -7985,7 +8414,7 @@ class ApiService {
             {
               method: endpoint.method,
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ macAddresses })
+              body: JSON.stringify({ macAddresses }),
             },
             15000
           );
@@ -8035,7 +8464,7 @@ class ApiService {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ macAddresses })
+          body: JSON.stringify({ macAddresses }),
         },
         15000
       );
@@ -8076,10 +8505,7 @@ class ApiService {
       logger.log(`[API] Bulk reauthenticating ${macAddresses.length} stations`);
 
       // Try bulk endpoint first
-      const endpoints = [
-        '/v1/stations/reauthenticate',
-        '/v1/stations/bulk/reauthenticate'
-      ];
+      const endpoints = ['/v1/stations/reauthenticate', '/v1/stations/bulk/reauthenticate'];
 
       for (const endpoint of endpoints) {
         try {
@@ -8088,7 +8514,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ macAddresses })
+              body: JSON.stringify({ macAddresses }),
             },
             15000
           );
@@ -8129,7 +8555,7 @@ class ApiService {
       const endpoints = [
         `/v1/stations/${encodeURIComponent(macAddress)}/groups`,
         `/v1/groups/${encodeURIComponent(groupId)}/stations`,
-        `/v1/stations/${encodeURIComponent(macAddress)}/group`
+        `/v1/stations/${encodeURIComponent(macAddress)}/group`,
       ];
 
       for (const endpoint of endpoints) {
@@ -8139,7 +8565,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ groupId, macAddress })
+              body: JSON.stringify({ groupId, macAddress }),
             },
             10000
           );
@@ -8172,7 +8598,7 @@ class ApiService {
       const endpoints = [
         `/v1/stations/${encodeURIComponent(macAddress)}/groups/${encodeURIComponent(groupId)}`,
         `/v1/groups/${encodeURIComponent(groupId)}/stations/${encodeURIComponent(macAddress)}`,
-        `/v1/stations/${encodeURIComponent(macAddress)}/group/${encodeURIComponent(groupId)}`
+        `/v1/stations/${encodeURIComponent(macAddress)}/group/${encodeURIComponent(groupId)}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -8212,7 +8638,7 @@ class ApiService {
         '/v1/stations/allowlist',
         '/v1/macfilters/allow',
         '/v1/stations/whitelist', // Legacy naming
-        '/v1/accesscontrol/allow'
+        '/v1/accesscontrol/allow',
       ];
 
       for (const endpoint of endpoints) {
@@ -8222,7 +8648,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ macAddress, siteId })
+              body: JSON.stringify({ macAddress, siteId }),
             },
             10000
           );
@@ -8256,7 +8682,7 @@ class ApiService {
         '/v1/stations/denylist',
         '/v1/macfilters/deny',
         '/v1/stations/blacklist', // Legacy naming
-        '/v1/accesscontrol/deny'
+        '/v1/accesscontrol/deny',
       ];
 
       for (const endpoint of endpoints) {
@@ -8266,7 +8692,7 @@ class ApiService {
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ macAddress, siteId })
+              body: JSON.stringify({ macAddress, siteId }),
             },
             10000
           );
@@ -8379,9 +8805,13 @@ class ApiService {
     try {
       const endpoint = `/v1/alarms/${encodeURIComponent(alarmId)}/acknowledge`;
       logger.log(`[API] Acknowledging alarm: ${alarmId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Alarm acknowledgment failed: ${response.status}`);
@@ -8402,9 +8832,13 @@ class ApiService {
     try {
       const endpoint = `/v1/alarms/${encodeURIComponent(alarmId)}/clear`;
       logger.log(`[API] Clearing alarm: ${alarmId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Alarm clear failed: ${response.status}`);
@@ -8510,11 +8944,15 @@ class ApiService {
     try {
       const endpoint = '/v1/security/rogue-ap/detect';
       logger.log('[API] Initiating rogue AP detection');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId })
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteId }),
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`Rogue AP detection failed: ${response.status}`);
@@ -8559,15 +8997,22 @@ class ApiService {
    * Classify a rogue AP (friendly/malicious/unknown)
    * Endpoint: POST /v1/security/rogue-ap/{mac}/classify
    */
-  async classifyRogueAP(macAddress: string, classification: 'friendly' | 'malicious' | 'unknown'): Promise<void> {
+  async classifyRogueAP(
+    macAddress: string,
+    classification: 'friendly' | 'malicious' | 'unknown'
+  ): Promise<void> {
     try {
       const endpoint = `/v1/security/rogue-ap/${encodeURIComponent(macAddress)}/classify`;
       logger.log(`[API] Classifying rogue AP: ${macAddress} as ${classification}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ classification })
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ classification }),
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Rogue AP classification failed: ${response.status}`);
@@ -8614,11 +9059,15 @@ class ApiService {
     try {
       const endpoint = '/v1/security/wids/enable';
       logger.log(`[API] Enabling WIDS for site: ${siteId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ siteId, ...config })
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteId, ...config }),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`WIDS enable failed: ${response.status}`);
@@ -8665,11 +9114,15 @@ class ApiService {
     try {
       const endpoint = '/v1/guests/create';
       logger.log('[API] Creating guest account');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(guestData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(guestData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Guest creation failed: ${response.status}`);
@@ -8692,9 +9145,13 @@ class ApiService {
     try {
       const endpoint = `/v1/guests/${encodeURIComponent(guestId)}`;
       logger.log(`[API] Deleting guest: ${guestId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Guest deletion failed: ${response.status}`);
@@ -8715,11 +9172,15 @@ class ApiService {
     try {
       const endpoint = `/v1/guests/${encodeURIComponent(guestId)}/voucher`;
       logger.log(`[API] Generating voucher for guest: ${guestId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ duration })
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ duration }),
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Voucher generation failed: ${response.status}`);
@@ -8766,11 +9227,15 @@ class ApiService {
     try {
       const endpoint = '/v1/guests/portal/customize';
       logger.log('[API] Customizing guest portal');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(config),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Guest portal customization failed: ${response.status}`);
@@ -8795,11 +9260,15 @@ class ApiService {
     try {
       const endpoint = '/v1/qos/policy/create';
       logger.log('[API] Creating QoS policy');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(policyData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(policyData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`QoS policy creation failed: ${response.status}`);
@@ -8848,11 +9317,15 @@ class ApiService {
     try {
       const endpoint = '/v1/qos/bandwidth/allocate';
       logger.log('[API] Allocating bandwidth');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(allocation)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(allocation),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Bandwidth allocation failed: ${response.status}`);
@@ -8925,11 +9398,15 @@ class ApiService {
     try {
       const endpoint = '/appsmanager/v1/applications/install';
       logger.log('[API] Installing application');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(appData)
-      }, 60000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(appData),
+        },
+        60000
+      );
 
       if (!response.ok) {
         throw new Error(`Application installation failed: ${response.status}`);
@@ -8976,11 +9453,15 @@ class ApiService {
     try {
       const endpoint = '/appsmanager/v1/containers/create';
       logger.log('[API] Creating container');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(containerData)
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(containerData),
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`Container creation failed: ${response.status}`);
@@ -9055,11 +9536,15 @@ class ApiService {
     try {
       const endpoint = '/v1/location/zone/create';
       logger.log('[API] Creating location zone');
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(zoneData)
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(zoneData),
+        },
+        15000
+      );
 
       if (!response.ok) {
         throw new Error(`Zone creation failed: ${response.status}`);
@@ -9108,11 +9593,15 @@ class ApiService {
     try {
       const endpoint = '/v1/location/presence/notify';
       logger.log(`[API] Fetching presence analytics for zone: ${zoneId}`);
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zoneId })
-      }, 15000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ zoneId }),
+        },
+        15000
+      );
 
       if (!response.ok) {
         logger.warn(`Presence analytics API returned ${response.status}`);
@@ -9217,7 +9706,7 @@ class ApiService {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(config)
+          body: JSON.stringify(config),
         },
         30000
       );
@@ -9225,7 +9714,9 @@ class ApiService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logger.error('[API] Packet capture start failed:', errorData);
-        throw new Error(errorData.message || errorData.error || `Failed to start capture: ${response.status}`);
+        throw new Error(
+          errorData.message || errorData.error || `Failed to start capture: ${response.status}`
+        );
       }
 
       const data = await response.json();
@@ -9251,7 +9742,7 @@ class ApiService {
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
+          body: JSON.stringify(body),
         },
         15000
       );
@@ -9259,7 +9750,9 @@ class ApiService {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         logger.error('[API] Packet capture stop failed:', errorData);
-        throw new Error(errorData.message || errorData.error || `Failed to stop capture: ${response.status}`);
+        throw new Error(
+          errorData.message || errorData.error || `Failed to stop capture: ${response.status}`
+        );
       }
 
       logger.log('[API] ✓ Packet capture stopped');
@@ -9282,7 +9775,7 @@ class ApiService {
         '/v1/packetcapture/active',
         '/v1/pcap/active',
         '/v1/capture/active',
-        '/platformmanager/v1/packetcapture/active'
+        '/platformmanager/v1/packetcapture/active',
       ];
 
       for (const endpoint of endpoints) {
@@ -9290,7 +9783,7 @@ class ApiService {
           const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
           if (response.ok) {
             const data = await response.json();
-            const captures = Array.isArray(data) ? data : (data.captures || data.sessions || []);
+            const captures = Array.isArray(data) ? data : data.captures || data.sessions || [];
             logger.log(`[API] ✓ Loaded ${captures.length} active captures`);
             return captures;
           }
@@ -9320,7 +9813,7 @@ class ApiService {
         '/v1/packetcapture/files',
         '/v1/pcap/files',
         '/v1/capture/files',
-        '/platformmanager/v1/packetcapture/files'
+        '/platformmanager/v1/packetcapture/files',
       ];
 
       for (const endpoint of endpoints) {
@@ -9328,7 +9821,7 @@ class ApiService {
           const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
           if (response.ok) {
             const data = await response.json();
-            const files = Array.isArray(data) ? data : (data.files || data.captures || []);
+            const files = Array.isArray(data) ? data : data.files || data.captures || [];
             logger.log(`[API] ✓ Loaded ${files.length} capture files`);
             return files;
           }
@@ -9358,7 +9851,7 @@ class ApiService {
         `/v1/packetcapture/download/${fileId}`,
         `/v1/pcap/download/${fileId}`,
         `/v1/capture/download/${filename}`,
-        `/platformmanager/v1/packetcapture/download/${fileId}`
+        `/platformmanager/v1/packetcapture/download/${fileId}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -9394,7 +9887,7 @@ class ApiService {
         `/v1/packetcapture/delete/${fileId}`,
         `/v1/pcap/delete/${fileId}`,
         `/v1/capture/delete/${filename || fileId}`,
-        `/platformmanager/v1/packetcapture/delete/${fileId}`
+        `/platformmanager/v1/packetcapture/delete/${fileId}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -9432,7 +9925,7 @@ class ApiService {
       const endpoints = [
         `/v1/packetcapture/status/${captureId}`,
         `/v1/pcap/status/${captureId}`,
-        `/platformmanager/v1/packetcapture/status/${captureId}`
+        `/platformmanager/v1/packetcapture/status/${captureId}`,
       ];
 
       for (const endpoint of endpoints) {
@@ -9486,11 +9979,15 @@ class ApiService {
   async createAFCPlan(planData: any): Promise<any> {
     try {
       logger.log('[API] Creating AFC plan:', planData.name);
-      const response = await this.makeAuthenticatedRequest('/v1/afc/plans', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(planData)
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/afc/plans',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(planData),
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to create AFC plan: ${response.status}`);
@@ -9513,9 +10010,13 @@ class ApiService {
     try {
       logger.log('[API] Running AFC analysis for plan:', planId);
       const endpoint = `/v1/afc/plans/${encodeURIComponent(planId)}/analyze`;
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST'
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+        },
+        30000
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to run AFC analysis: ${response.status}`);
@@ -9538,9 +10039,13 @@ class ApiService {
     try {
       logger.log('[API] Deleting AFC plan:', planId);
       const endpoint = `/v1/afc/plans/${encodeURIComponent(planId)}`;
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'DELETE'
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'DELETE',
+        },
+        10000
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to delete AFC plan: ${response.status}`);
@@ -9679,7 +10184,11 @@ class ApiService {
 
   async getRateLimiterNameToIdMap(): Promise<Record<string, string>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/ratelimiters/nametoidmap', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/ratelimiters/nametoidmap',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9723,7 +10232,11 @@ class ApiService {
 
   async getSwitchPortProfileNameToIdMap(): Promise<Record<string, string>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v3/switchportprofile/nametoidmap', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v3/switchportprofile/nametoidmap',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9745,7 +10258,11 @@ class ApiService {
 
   async getReportTemplateNameToIdMap(): Promise<Record<string, string>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/reports/templates/nametoidmap', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/reports/templates/nametoidmap',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9756,7 +10273,11 @@ class ApiService {
 
   async getScheduledReportNameToIdMap(): Promise<Record<string, string>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/reports/scheduled/nametoidmap', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/reports/scheduled/nametoidmap',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9880,7 +10401,11 @@ class ApiService {
 
   async getMeshpointProfileDefaults(): Promise<Record<string, unknown>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v3/meshpoints/profile/default', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v3/meshpoints/profile/default',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9946,7 +10471,11 @@ class ApiService {
 
   async getSwitchPortProfileDefaults(): Promise<Record<string, unknown>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v3/switchportprofile/default', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v3/switchportprofile/default',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -9990,7 +10519,11 @@ class ApiService {
 
   async getReportTemplateDefaults(): Promise<Record<string, unknown>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/reports/templates/default', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/reports/templates/default',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -10001,7 +10534,11 @@ class ApiService {
 
   async getScheduledReportDefaults(): Promise<Record<string, unknown>> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/reports/scheduled/default', {}, 8000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/reports/scheduled/default',
+        {},
+        8000
+      );
       if (!response.ok) return {};
       return await response.json();
     } catch (error) {
@@ -10015,7 +10552,9 @@ class ApiService {
   async getServiceSiteIds(serviceId: string): Promise<string[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/services/${encodeURIComponent(serviceId)}/siteids`, {}, 8000
+        `/v1/services/${encodeURIComponent(serviceId)}/siteids`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10028,7 +10567,9 @@ class ApiService {
   async getServiceDeviceIds(serviceId: string): Promise<string[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/services/${encodeURIComponent(serviceId)}/deviceids`, {}, 8000
+        `/v1/services/${encodeURIComponent(serviceId)}/deviceids`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10038,12 +10579,12 @@ class ApiService {
     }
   }
 
-
-
   async getServiceBssid0(serviceId: string): Promise<unknown[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/services/${encodeURIComponent(serviceId)}/bssid0`, {}, 8000
+        `/v1/services/${encodeURIComponent(serviceId)}/bssid0`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10058,7 +10599,9 @@ class ApiService {
   async getProfileBssid0(profileId: string): Promise<unknown[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v3/profiles/${encodeURIComponent(profileId)}/bssid0`, {}, 8000
+        `/v3/profiles/${encodeURIComponent(profileId)}/bssid0`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10071,7 +10614,9 @@ class ApiService {
   async getProfileChannels(profileId: string): Promise<unknown[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v3/profiles/${encodeURIComponent(profileId)}/channels`, {}, 8000
+        `/v3/profiles/${encodeURIComponent(profileId)}/channels`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10085,11 +10630,15 @@ class ApiService {
 
   async getSiteBulkIds(siteIds: string[]): Promise<unknown[]> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/sites/siteids', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(siteIds),
-      }, 10000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/sites/siteids',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(siteIds),
+        },
+        10000
+      );
       if (!response.ok) return [];
       return await response.json();
     } catch (error) {
@@ -10101,7 +10650,9 @@ class ApiService {
   async getSiteAPs(siteId: string): Promise<unknown[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/sites/${encodeURIComponent(siteId)}/aps`, {}, 10000
+        `/v1/sites/${encodeURIComponent(siteId)}/aps`,
+        {},
+        10000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10114,7 +10665,9 @@ class ApiService {
   async getSiteServices(siteId: string): Promise<unknown[]> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/sites/${encodeURIComponent(siteId)}/services`, {}, 8000
+        `/v1/sites/${encodeURIComponent(siteId)}/services`,
+        {},
+        8000
       );
       if (!response.ok) return [];
       return await response.json();
@@ -10127,11 +10680,13 @@ class ApiService {
   async getSiteApCount(siteId: string): Promise<number> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/sites/${encodeURIComponent(siteId)}/apcount`, {}, 8000
+        `/v1/sites/${encodeURIComponent(siteId)}/apcount`,
+        {},
+        8000
       );
       if (!response.ok) return 0;
       const data = await response.json();
-      return typeof data === 'number' ? data : data?.count ?? 0;
+      return typeof data === 'number' ? data : (data?.count ?? 0);
     } catch (error) {
       logger.error('Error fetching site AP count:', error);
       return 0;
@@ -10142,11 +10697,15 @@ class ApiService {
 
   async apBulkReboot(serialNumbers: string[]): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/reboot', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/reboot',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP bulk reboot failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10155,13 +10714,19 @@ class ApiService {
     }
   }
 
-  async apBulkAssign(assignments: { serialNumber: string; profileId: string; siteId?: string }[]): Promise<unknown> {
+  async apBulkAssign(
+    assignments: { serialNumber: string; profileId: string; siteId?: string }[]
+  ): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(assignments),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/assign',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(assignments),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP bulk assign failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10170,13 +10735,19 @@ class ApiService {
     }
   }
 
-  async apMultiConfig(configs: { serialNumber: string; config: Record<string, unknown> }[]): Promise<unknown> {
+  async apMultiConfig(
+    configs: { serialNumber: string; config: Record<string, unknown> }[]
+  ): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/multiconfig', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(configs),
-      }, 60000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/multiconfig',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(configs),
+        },
+        60000
+      );
       if (!response.ok) throw new Error(`AP multi-config failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10187,11 +10758,15 @@ class ApiService {
 
   async apFirmwareUpgrade(serialNumbers: string[], firmwareVersion?: string): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/swupgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers, firmwareVersion }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/swupgrade',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers, firmwareVersion }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP firmware upgrade failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10205,9 +10780,13 @@ class ApiService {
       const endpoint = siteId
         ? `/v1/aps/apbalance?siteId=${encodeURIComponent(siteId)}`
         : '/v1/aps/apbalance';
-      const response = await this.makeAuthenticatedRequest(endpoint, {
-        method: 'POST',
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        endpoint,
+        {
+          method: 'POST',
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP balance failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10218,11 +10797,15 @@ class ApiService {
 
   async apReleaseToCloud(serialNumbers: string[]): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/releasetocloud', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/releasetocloud',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP release to cloud failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10234,11 +10817,13 @@ class ApiService {
   async apSetRuState(serialNumber: string, ruState: string): Promise<unknown> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/aps/${encodeURIComponent(serialNumber)}/setRuState`, {
+        `/v1/aps/${encodeURIComponent(serialNumber)}/setRuState`,
+        {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ruState }),
-        }, 15000
+        },
+        15000
       );
       if (!response.ok) throw new Error(`Set RU state failed: ${response.status}`);
       return await response.json();
@@ -10251,11 +10836,13 @@ class ApiService {
   async apLocate(serialNumber: string, enabled: boolean): Promise<unknown> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/aps/${encodeURIComponent(serialNumber)}/locate`, {
+        `/v1/aps/${encodeURIComponent(serialNumber)}/locate`,
+        {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ enabled }),
-        }, 10000
+        },
+        10000
       );
       if (!response.ok) throw new Error(`AP locate failed: ${response.status}`);
       return await response.json();
@@ -10268,7 +10855,9 @@ class ApiService {
   async apGetLogs(serialNumber: string): Promise<string> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/aps/${encodeURIComponent(serialNumber)}/logs`, {}, 30000
+        `/v1/aps/${encodeURIComponent(serialNumber)}/logs`,
+        {},
+        30000
       );
       if (!response.ok) throw new Error(`Get AP logs failed: ${response.status}`);
       return await response.text();
@@ -10281,9 +10870,11 @@ class ApiService {
   async apCopyToDefault(serialNumber: string): Promise<unknown> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/aps/${encodeURIComponent(serialNumber)}/copytodefault`, {
+        `/v1/aps/${encodeURIComponent(serialNumber)}/copytodefault`,
+        {
           method: 'POST',
-        }, 15000
+        },
+        15000
       );
       if (!response.ok) throw new Error(`AP copy to default failed: ${response.status}`);
       return await response.json();
@@ -10293,13 +10884,20 @@ class ApiService {
     }
   }
 
-  async apRegistration(serialNumbers: string[], action: 'register' | 'unregister'): Promise<unknown> {
+  async apRegistration(
+    serialNumbers: string[],
+    action: 'register' | 'unregister'
+  ): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/registration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers, action }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/registration',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers, action }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP registration failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10311,11 +10909,15 @@ class ApiService {
   // AP Certificate Management
   async apCertApply(serialNumbers: string[]): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/cert/apply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/cert/apply',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP cert apply failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10326,11 +10928,15 @@ class ApiService {
 
   async apCertReset(serialNumbers: string[]): Promise<unknown> {
     try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/cert/reset', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serialNumbers }),
-      }, 30000);
+      const response = await this.makeAuthenticatedRequest(
+        '/v1/aps/cert/reset',
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ serialNumbers }),
+        },
+        30000
+      );
       if (!response.ok) throw new Error(`AP cert reset failed: ${response.status}`);
       return await response.json();
     } catch (error) {
@@ -10342,9 +10948,11 @@ class ApiService {
   async apCertSignRequest(serialNumber: string): Promise<unknown> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/aps/${encodeURIComponent(serialNumber)}/cert/signrequest`, {
+        `/v1/aps/${encodeURIComponent(serialNumber)}/cert/signrequest`,
+        {
           method: 'POST',
-        }, 15000
+        },
+        15000
       );
       if (!response.ok) throw new Error(`AP cert sign request failed: ${response.status}`);
       return await response.json();
@@ -10359,7 +10967,9 @@ class ApiService {
   async getRoleRuleStats(roleId: string): Promise<unknown> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v3/roles/${encodeURIComponent(roleId)}/rulestats`, {}, 10000
+        `/v3/roles/${encodeURIComponent(roleId)}/rulestats`,
+        {},
+        10000
       );
       if (!response.ok) return {};
       return await response.json();
@@ -10374,29 +10984,16 @@ class ApiService {
   async acceptBestPracticeRecommendation(recommendationId: string): Promise<void> {
     try {
       const response = await this.makeAuthenticatedRequest(
-        `/v1/bestpractices/${encodeURIComponent(recommendationId)}/accept`, {
+        `/v1/bestpractices/${encodeURIComponent(recommendationId)}/accept`,
+        {
           method: 'PUT',
-        }, 10000
+        },
+        10000
       );
       if (!response.ok) throw new Error(`Accept recommendation failed: ${response.status}`);
     } catch (error) {
       logger.error('Error accepting best practice recommendation:', error);
       throw error;
-    }
-  }
-
-  // ==================== Station Events ====================
-
-  async getStationEvents(macAddress: string): Promise<unknown[]> {
-    try {
-      const response = await this.makeAuthenticatedRequest(
-        `/v1/stations/events/${encodeURIComponent(macAddress)}`, {}, 10000
-      );
-      if (!response.ok) return [];
-      return await response.json();
-    } catch (error) {
-      logger.error('Error fetching station events:', error);
-      return [];
     }
   }
 }

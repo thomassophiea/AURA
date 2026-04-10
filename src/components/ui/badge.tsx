@@ -1,42 +1,38 @@
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot@1.1.2";
-import { cva, type VariantProps } from "class-variance-authority@0.7.1";
+import * as React from 'react';
+import { Slot } from '@radix-ui/react-slot';
+import { cva, type VariantProps } from 'class-variance-authority';
 
-import { cn } from "./utils";
+import { cn } from './utils';
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  'inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden',
   {
     variants: {
       variant: {
-        default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "border-border bg-muted text-foreground [a&]:hover:bg-muted/80",
+        default: 'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90',
+        secondary: 'border-border bg-muted text-foreground [a&]:hover:bg-muted/80',
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90",
+          'border-transparent bg-destructive text-destructive-foreground [a&]:hover:bg-destructive/90',
         outline:
-          "border-border text-foreground bg-transparent [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          'border-border text-foreground bg-transparent [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         success:
-          "border-transparent bg-[var(--status-success,#2E7D32)]/15 text-[var(--status-success,#2E7D32)] border-[var(--status-success,#2E7D32)]/30",
+          'border-transparent bg-[var(--status-success,#2E7D32)]/15 text-[var(--status-success,#2E7D32)] border-[var(--status-success,#2E7D32)]/30',
         warning:
-          "border-transparent bg-[var(--status-warning,#E65100)]/15 text-[var(--status-warning,#E65100)] border-[var(--status-warning,#E65100)]/30",
-        info:
-          "border-transparent bg-[var(--status-info,#01579B)]/15 text-[var(--status-info,#01579B)] border-[var(--status-info,#01579B)]/30",
+          'border-transparent bg-[var(--status-warning,#E65100)]/15 text-[var(--status-warning,#E65100)] border-[var(--status-warning,#E65100)]/30',
+        info: 'border-transparent bg-[var(--status-info,#01579B)]/15 text-[var(--status-info,#01579B)] border-[var(--status-info,#01579B)]/30',
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: 'default',
     },
-  },
+  }
 );
 
 const Badge = React.forwardRef<
   HTMLSpanElement,
-  React.ComponentProps<"span"> &
-    VariantProps<typeof badgeVariants> & { asChild?: boolean }
+  React.ComponentProps<'span'> & VariantProps<typeof badgeVariants> & { asChild?: boolean }
 >(({ className, variant, asChild = false, ...props }, ref) => {
-  const Comp = asChild ? Slot : "span";
+  const Comp = asChild ? Slot : 'span';
 
   return (
     <Comp
@@ -48,6 +44,6 @@ const Badge = React.forwardRef<
   );
 });
 
-Badge.displayName = "Badge";
+Badge.displayName = 'Badge';
 
 export { Badge, badgeVariants };

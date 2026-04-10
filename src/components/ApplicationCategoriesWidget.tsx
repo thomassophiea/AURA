@@ -5,7 +5,19 @@ import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
 import { RefreshCw, BarChart3, Users, Zap, AlertTriangle, TrendingUp } from 'lucide-react';
 import { apiService } from '../services/api';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  Tooltip,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+} from 'recharts';
 import { formatBitsPerSecond, formatDataVolume } from '../lib/units';
 
 interface ApplicationCategoriesWidgetProps {
@@ -22,7 +34,10 @@ interface CategoryData {
   usage?: number;
 }
 
-export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: ApplicationCategoriesWidgetProps) {
+export function ApplicationCategoriesWidget({
+  siteId,
+  duration = '24H',
+}: ApplicationCategoriesWidgetProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [data, setData] = useState<any>(null);
@@ -55,14 +70,16 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
       }
 
       setError(null);
-      console.log('[ApplicationCategoriesWidget] Fetching application category data for site:', siteId);
+      console.log(
+        '[ApplicationCategoriesWidget] Fetching application category data for site:',
+        siteId
+      );
 
       const categoryData = await apiService.fetchApplicationAnalytics(siteId, duration);
 
       console.log('[ApplicationCategoriesWidget] Category data received:', categoryData);
       setData(categoryData);
       setLastUpdate(new Date());
-
     } catch (error) {
       console.error('[ApplicationCategoriesWidget] Error loading category data:', error);
       setError(error instanceof Error ? error.message : 'Failed to load application category data');
@@ -162,7 +179,8 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
           <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
             <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
             <AlertDescription className="text-[color:var(--status-warning)]">
-              {error || 'Application category data is not available for this site. This feature may require DPI (Deep Packet Inspection) licensing.'}
+              {error ||
+                'Application category data is not available for this site. This feature may require DPI (Deep Packet Inspection) licensing.'}
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -178,20 +196,22 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
   const usageChartData = topByUsage.slice(0, 10).map((cat: CategoryData) => ({
     name: getCategoryName(cat),
     value: getCategoryBytes(cat),
-    formatted: formatBytes(getCategoryBytes(cat))
+    formatted: formatBytes(getCategoryBytes(cat)),
   }));
 
   const clientsChartData = topByClients.slice(0, 8).map((cat: CategoryData, index: number) => ({
     name: getCategoryName(cat),
     value: getCategoryClients(cat),
-    fill: COLORS[index % COLORS.length]
+    fill: COLORS[index % COLORS.length],
   }));
 
-  const throughputChartData = topByThroughput.slice(0, 8).map((cat: CategoryData, index: number) => ({
-    name: getCategoryName(cat),
-    value: getCategoryThroughput(cat),
-    fill: COLORS[index % COLORS.length]
-  }));
+  const throughputChartData = topByThroughput
+    .slice(0, 8)
+    .map((cat: CategoryData, index: number) => ({
+      name: getCategoryName(cat),
+      value: getCategoryThroughput(cat),
+      fill: COLORS[index % COLORS.length],
+    }));
 
   // Calculate totals
   const totalThroughput = throughputChartData.reduce((sum, item) => sum + item.value, 0);
@@ -243,7 +263,11 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                       margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis type="number" fontSize={10} tick={{ fill: 'hsl(var(--foreground))' }} />
+                      <XAxis
+                        type="number"
+                        fontSize={10}
+                        tick={{ fill: 'hsl(var(--foreground))' }}
+                      />
                       <YAxis
                         dataKey="name"
                         type="category"
@@ -252,13 +276,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                         tick={{ fill: 'hsl(var(--foreground))' }}
                       />
                       <Tooltip
-                        formatter={(value: number) => formatBytes(value)}
+                        formatter={(value: any) => formatBytes(value)}
                         contentStyle={{
                           fontSize: '12px',
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
@@ -288,11 +312,19 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, name, percent }) => {
+                        label={({
+                          cx,
+                          cy,
+                          midAngle,
+                          innerRadius,
+                          outerRadius,
+                          name,
+                          percent,
+                        }: any) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius * 1.2;
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          const x = cx + radius * Math.cos(-(midAngle ?? 0) * RADIAN);
+                          const y = cy + radius * Math.sin(-(midAngle ?? 0) * RADIAN);
                           return (
                             <text
                               x={x}
@@ -301,7 +333,7 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                               textAnchor={x > cx ? 'start' : 'end'}
                               dominantBaseline="central"
                             >
-                              {name} {(percent * 100).toFixed(0)}%
+                              {name} {((percent ?? 0) * 100).toFixed(0)}%
                             </text>
                           );
                         }}
@@ -314,13 +346,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number) => `${formatNumber(value)} clients`}
+                        formatter={(value: any) => `${formatNumber(value)} clients`}
                         contentStyle={{
                           fontSize: '12px',
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                     </PieChart>
@@ -359,13 +391,13 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number) => formatBytes(value)}
+                        formatter={(value: any) => formatBytes(value)}
                         contentStyle={{
                           fontSize: '12px',
                           backgroundColor: 'hsl(var(--background))',
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))'
+                          color: 'hsl(var(--foreground))',
                         }}
                       />
                       <Legend
@@ -414,7 +446,15 @@ export function ApplicationCategoriesWidget({ siteId, duration = '24H' }: Applic
                   <div className="text-right">
                     <p className="text-sm font-medium">{formatBytes(getCategoryBytes(cat))}</p>
                     <p className="text-xs text-muted-foreground">
-                      {((getCategoryBytes(cat) / topByUsage.reduce((sum: number, c: CategoryData) => sum + getCategoryBytes(c), 0)) * 100).toFixed(1)}%
+                      {(
+                        (getCategoryBytes(cat) /
+                          topByUsage.reduce(
+                            (sum: number, c: CategoryData) => sum + getCategoryBytes(c),
+                            0
+                          )) *
+                        100
+                      ).toFixed(1)}
+                      %
                     </p>
                   </div>
                 </div>

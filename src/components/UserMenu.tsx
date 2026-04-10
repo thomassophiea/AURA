@@ -21,13 +21,19 @@ import { Badge } from './ui/badge';
 
 interface UserMenuProps {
   onLogout: () => void;
-  theme: 'light' | 'ep1' | 'dev';
+  theme: string;
   onThemeToggle: () => void;
   userEmail?: string;
   onNavigateTo?: (page: string) => void;
 }
 
-export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigateTo }: UserMenuProps) {
+export function UserMenu({
+  onLogout,
+  theme,
+  onThemeToggle,
+  userEmail,
+  onNavigateTo,
+}: UserMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Extract name from email if available
@@ -35,8 +41,9 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
     const username = email.split('@')[0];
     // Remove +ep1 or similar suffixes and convert to title case
     const cleanName = username.split('+')[0].replace(/[._-]/g, ' ');
-    return cleanName.split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    return cleanName
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
   };
 
@@ -66,7 +73,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
     name: getNameFromEmail(userEmail),
     email: userEmail,
     organization: getOrganizationFromEmail(userEmail),
-    initials: getInitialsFromEmail(userEmail)
+    initials: getInitialsFromEmail(userEmail),
   };
 
   const menuItems = [
@@ -77,7 +84,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       beta: true,
       action: () => {
         console.log('About AURA');
-      }
+      },
     },
     {
       type: 'item',
@@ -86,7 +93,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       externalLink: 'https://cloud-status.extremecloudiq.com/',
       action: () => {
         window.open('https://cloud-status.extremecloudiq.com/', '_blank', 'noopener,noreferrer');
-      }
+      },
     },
     {
       type: 'item',
@@ -95,14 +102,14 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       beta: true,
       action: () => {
         console.log('Help & Support');
-      }
+      },
     },
     {
-      type: 'separator'
+      type: 'separator',
     },
     {
       type: 'section',
-      label: 'Profile'
+      label: 'Profile',
     },
     {
       type: 'item',
@@ -111,7 +118,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       beta: true,
       action: () => {
         console.log('Account Settings');
-      }
+      },
     },
     {
       type: 'item',
@@ -121,7 +128,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
         if (onNavigateTo) {
           onNavigateTo('api-documentation');
         }
-      }
+      },
     },
     {
       type: 'item',
@@ -130,7 +137,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       beta: true,
       action: () => {
         console.log('External Integrations');
-      }
+      },
     },
     {
       type: 'item',
@@ -139,10 +146,10 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       beta: true,
       action: () => {
         console.log('Preferences');
-      }
+      },
     },
     {
-      type: 'separator'
+      type: 'separator',
     },
     {
       type: 'item',
@@ -152,22 +159,22 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
       keepOpen: true,
     },
     {
-      type: 'separator'
+      type: 'separator',
     },
     {
       type: 'item',
       label: 'Sign Out',
       icon: LogOut,
       action: onLogout,
-      destructive: true
-    }
+      destructive: true,
+    },
   ];
 
   const handleItemClick = (item: any) => {
     if (item.action) {
       item.action();
     }
-    if (!item.hasSubmenu && !item.keepOpen) {
+    if (!('hasSubmenu' in item && item.hasSubmenu) && !item.keepOpen) {
       setIsOpen(false);
     }
   };
@@ -187,7 +194,7 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
           </Avatar>
         </Button>
       </PopoverTrigger>
-      
+
       <PopoverContent
         className="w-72 p-0 bg-popover text-popover-foreground border-border overflow-y-auto"
         style={{ maxHeight: 'calc(100vh - 80px)' }}
@@ -215,13 +222,11 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
             if (item.type === 'separator') {
               return <Separator key={index} className="my-2" />;
             }
-            
+
             if (item.type === 'section') {
               return (
                 <div key={index} className="px-3 py-2">
-                  <h5 className="font-medium text-foreground text-sm">
-                    {item.label}
-                  </h5>
+                  <h5 className="font-medium text-foreground text-sm">{item.label}</h5>
                 </div>
               );
             }
@@ -241,22 +246,21 @@ export function UserMenu({ onLogout, theme, onThemeToggle, userEmail, onNavigate
                 `}
               >
                 <div className="flex items-center gap-3">
-                  {IconComponent && (
-                    <IconComponent className="h-4 w-4 flex-shrink-0" />
-                  )}
+                  {IconComponent && <IconComponent className="h-4 w-4 flex-shrink-0" />}
                   <span className="text-left">{item.label}</span>
                   {item.beta && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30"
+                    >
                       Beta
                     </Badge>
                   )}
                 </div>
 
                 <div className="flex items-center gap-1">
-                  {item.externalLink && (
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  )}
-                  {item.hasSubmenu && (
+                  {item.externalLink && <ExternalLink className="h-3 w-3 text-muted-foreground" />}
+                  {'hasSubmenu' in item && (item as any).hasSubmenu && (
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>

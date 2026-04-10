@@ -4,13 +4,23 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Check, CheckCheck, Trash2, Radio, TrendingDown, Info, AlertTriangle } from 'lucide-react';
+import {
+  Bell,
+  X,
+  Check,
+  CheckCheck,
+  Trash2,
+  Radio,
+  TrendingDown,
+  Info,
+  AlertTriangle,
+} from 'lucide-react';
 import { UserMenu } from '../UserMenu';
 import { notificationService, AppNotification } from '../../services/notificationService';
 
 interface MobileHeaderProps {
   title: string;
-  theme: 'light' | 'dark' | 'system';
+  theme: string;
   onThemeToggle: () => void;
   onLogout: () => void;
   userEmail?: string;
@@ -40,12 +50,18 @@ function NotificationIcon({ type }: { type: AppNotification['type'] }) {
   }
 }
 
-export function MobileHeader({ title, theme, onThemeToggle, onLogout, userEmail }: MobileHeaderProps) {
+export function MobileHeader({
+  title,
+  theme,
+  onThemeToggle,
+  onLogout,
+  userEmail,
+}: MobileHeaderProps) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   useEffect(() => {
     const unsubscribe = notificationService.subscribe(setNotifications);
@@ -63,6 +79,7 @@ export function MobileHeader({ title, theme, onThemeToggle, onLogout, userEmail 
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return undefined;
   }, [isOpen]);
 
   const handleMarkAsRead = (id: string, e: React.MouseEvent) => {
@@ -92,9 +109,7 @@ export function MobileHeader({ title, theme, onThemeToggle, onLogout, userEmail 
       }}
     >
       <div className="h-14 px-4 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-foreground truncate flex-1">
-          {title}
-        </h1>
+        <h1 className="text-lg font-semibold text-foreground truncate flex-1">{title}</h1>
 
         <div className="flex items-center gap-2">
           {/* Notification Bell */}
@@ -154,7 +169,7 @@ export function MobileHeader({ title, theme, onThemeToggle, onLogout, userEmail 
                       <p className="text-sm">No notifications</p>
                     </div>
                   ) : (
-                    notifications.slice(0, 20).map(notification => (
+                    notifications.slice(0, 20).map((notification) => (
                       <div
                         key={notification.id}
                         className={`flex items-start gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-muted/50 transition-colors ${

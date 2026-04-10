@@ -5,12 +5,48 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
 import { Label } from './ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
-import { AlertCircle, Wifi, Search, RefreshCw, Filter, Plus, Edit, Edit2, Trash2, Eye, EyeOff, Shield, Radio, Settings, Network, Users, Globe, Lock, Unlock, ChevronDown, ChevronUp, Info, QrCode, X, Link2, Layers, Zap } from 'lucide-react';
+import {
+  AlertCircle,
+  Wifi,
+  Search,
+  RefreshCw,
+  Filter,
+  Plus,
+  Edit,
+  Edit2,
+  Trash2,
+  Eye,
+  EyeOff,
+  Shield,
+  Radio,
+  Settings,
+  Network,
+  Users,
+  Globe,
+  Lock,
+  Unlock,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  QrCode,
+  X,
+  Link2,
+  Layers,
+  Zap,
+} from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { NetworkEditDetail } from './NetworkEditDetail';
@@ -73,31 +109,40 @@ const mapAuthType = (service: Service): string => {
     privacyWpaSaeElement: service.privacy?.WpaSaeElement,
     privacyObject: service.privacy,
     privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
-    privacyFullStructure: service.privacy ? JSON.stringify(service.privacy, null, 2) : 'No privacy object'
+    privacyFullStructure: service.privacy
+      ? JSON.stringify(service.privacy, null, 2)
+      : 'No privacy object',
   });
 
   // Priority 1: Check for WPA3-SAE (Simultaneous Authentication of Equals) - WPA3-Personal
   // Check multiple possible locations and field name variations
-  const saeElement = service.WpaSaeElement 
-    || service.privacy?.WpaSaeElement 
-    || service.privacy?.wpaSaeElement
-    || service.privacy?.sae
-    || service.privacy?.SAE
-    || service.WpaSae
-    || service.privacy?.WpaSae;
+  const saeElement =
+    service.WpaSaeElement ||
+    service.privacy?.WpaSaeElement ||
+    service.privacy?.wpaSaeElement ||
+    service.privacy?.sae ||
+    service.privacy?.SAE ||
+    service.WpaSae ||
+    service.privacy?.WpaSae;
 
   if (saeElement) {
     console.log(`[ConfigureNetworks] Found WPA3-SAE for "${serviceName}":`, {
       saeElement,
-      location: service.WpaSaeElement ? 'service.WpaSaeElement' : 
-                service.privacy?.WpaSaeElement ? 'service.privacy.WpaSaeElement' :
-                service.privacy?.wpaSaeElement ? 'service.privacy.wpaSaeElement' :
-                service.privacy?.sae ? 'service.privacy.sae' :
-                service.privacy?.SAE ? 'service.privacy.SAE' :
-                service.WpaSae ? 'service.WpaSae' :
-                'service.privacy.WpaSae'
+      location: service.WpaSaeElement
+        ? 'service.WpaSaeElement'
+        : service.privacy?.WpaSaeElement
+          ? 'service.privacy.WpaSaeElement'
+          : service.privacy?.wpaSaeElement
+            ? 'service.privacy.wpaSaeElement'
+            : service.privacy?.sae
+              ? 'service.privacy.sae'
+              : service.privacy?.SAE
+                ? 'service.privacy.SAE'
+                : service.WpaSae
+                  ? 'service.WpaSae'
+                  : 'service.privacy.WpaSae',
     });
-    
+
     // Determine if it's pure WPA3 or transition mode based on PMF and SAE method
     if (saeElement?.pmfMode === 'required' && saeElement?.saeMethod === 'SaeH2e') {
       console.log(`✅ Returning WPA3-Personal (SAE) for "${serviceName}"`);
@@ -109,7 +154,7 @@ const mapAuthType = (service: Service): string => {
     console.log(`✅ Returning WPA3-Personal for "${serviceName}"`);
     return 'WPA3-Personal';
   }
-  
+
   // Also check for beaconProtection which might indicate WPA3
   if (service.beaconProtection === true || service.privacy?.beaconProtection === true) {
     console.log(`🛡️ Found beaconProtection for "${serviceName}" - might be WPA3`);
@@ -166,14 +211,15 @@ const mapAuthType = (service: Service): string => {
 
   // Priority 3c: Check for other 802.1X / EAP authentication indicators
   // Various API formats may use different field names for enterprise auth
-  const eapElement = service.WpaEapElement
-    || service.privacy?.WpaEapElement
-    || service.eapElement
-    || service.privacy?.eapElement
-    || service.dot1xElement
-    || service.privacy?.dot1xElement
-    || service['802.1x']
-    || service.privacy?.['802.1x'];
+  const eapElement =
+    service.WpaEapElement ||
+    service.privacy?.WpaEapElement ||
+    service.eapElement ||
+    service.privacy?.eapElement ||
+    service.dot1xElement ||
+    service.privacy?.dot1xElement ||
+    service['802.1x'] ||
+    service.privacy?.['802.1x'];
 
   if (eapElement) {
     console.log(`✅ Found 802.1X/EAP element for "${serviceName}":`, eapElement);
@@ -268,7 +314,12 @@ const mapAuthType = (service: Service): string => {
   }
 
   // Priority 10: Check if there's a passphrase/password field (indicates secured network)
-  if (service.passphrase || service.password || service.psk || service.privacy?.WpaSaeElement?.presharedKey) {
+  if (
+    service.passphrase ||
+    service.password ||
+    service.psk ||
+    service.privacy?.WpaSaeElement?.presharedKey
+  ) {
     return 'WPA2-PSK (Secured)';
   }
 
@@ -285,15 +336,33 @@ const mapAuthType = (service: Service): string => {
 
   // Priority 13: If there's a privacy object with content, it's NOT open - it's secured but unknown type
   // Having a privacy object typically indicates some form of security is configured
-  if (service.privacy && typeof service.privacy === 'object' && Object.keys(service.privacy).length > 0) {
-    console.log(`🔐 "${serviceName}" has privacy config but unknown type. Privacy keys:`, Object.keys(service.privacy));
+  if (
+    service.privacy &&
+    typeof service.privacy === 'object' &&
+    Object.keys(service.privacy).length > 0
+  ) {
+    console.log(
+      `🔐 "${serviceName}" has privacy config but unknown type. Privacy keys:`,
+      Object.keys(service.privacy)
+    );
     // Check for any key that suggests enterprise/802.1X authentication
-    const privacyKeys = Object.keys(service.privacy).map(k => k.toLowerCase());
-    if (privacyKeys.some(k => k.includes('enterprise') || k.includes('eap') || k.includes('802') || k.includes('1x') || k.includes('radius'))) {
+    const privacyKeys = Object.keys(service.privacy).map((k) => k.toLowerCase());
+    if (
+      privacyKeys.some(
+        (k) =>
+          k.includes('enterprise') ||
+          k.includes('eap') ||
+          k.includes('802') ||
+          k.includes('1x') ||
+          k.includes('radius')
+      )
+    ) {
       return 'WPA2-Enterprise';
     }
     // Check for PSK-related keys
-    if (privacyKeys.some(k => k.includes('psk') || k.includes('passphrase') || k.includes('key'))) {
+    if (
+      privacyKeys.some((k) => k.includes('psk') || k.includes('passphrase') || k.includes('key'))
+    ) {
       return 'WPA2-PSK';
     }
     // Unknown secured network
@@ -301,12 +370,15 @@ const mapAuthType = (service: Service): string => {
   }
 
   // Default to Open only if no auth information is found AND no privacy object
-  console.log(`⚠️ "${serviceName}" defaulting to Open - No security config found. Available fields:`, {
-    topLevelKeys: Object.keys(service),
-    privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
-    hasPrivacy: !!service.privacy,
-    privacyType: typeof service.privacy
-  });
+  console.log(
+    `⚠️ "${serviceName}" defaulting to Open - No security config found. Available fields:`,
+    {
+      topLevelKeys: Object.keys(service),
+      privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
+      hasPrivacy: !!service.privacy,
+      privacyType: typeof service.privacy,
+    }
+  );
   return 'Open';
 };
 
@@ -315,18 +387,19 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
   // Handle both 'name' and 'serviceName' fields (Extreme Platform ONE uses serviceName)
   const networkName = service.name || service.serviceName || service.ssid || 'Unnamed Network';
   const networkSSID = service.ssid || service.name || service.serviceName || 'Unnamed SSID';
-  
+
   // Handle both 'enabled' boolean and 'status' string
-  const isEnabled = service.enabled !== undefined 
-    ? service.enabled 
-    : (service.status === 'enabled' || service.status !== 'disabled');
-  
+  const isEnabled =
+    service.enabled !== undefined
+      ? service.enabled
+      : service.status === 'enabled' || service.status !== 'disabled';
+
   // Handle both 'hidden' and 'suppressSsid' fields
   const isHidden = service.hidden || service.suppressSsid || service.broadcastSSID === false;
 
   // Get auth type
   const authType = mapAuthType(service);
-  
+
   // Debug: Always log service mapping for troubleshooting auth type issues
   console.log(`[ConfigureNetworks] Network: "${networkSSID}" -> Auth: "${authType}"`, {
     id: service.id,
@@ -338,10 +411,11 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
     WpaSaeElement: service.WpaSaeElement || service.privacy?.WpaSaeElement,
     hasWpaPsk: !!(service.WpaPskElement || service.privacy?.WpaPskElement),
     hasWpaEnterprise: !!(service.WpaEnterpriseElement || service.privacy?.WpaEnterpriseElement),
-    privacyKeys: service.privacy ? Object.keys(service.privacy) : []
+    privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
   });
 
   return {
+    ...service, // Include all original service properties first
     id: service.id,
     name: networkName,
     ssid: networkSSID,
@@ -358,12 +432,12 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
     description: service.description,
     createdAt: service.createdAt || service.createTime,
     updatedAt: service.updatedAt || service.updateTime,
-    ...service // Include all original service properties
   };
 };
 
 export function ConfigureNetworks() {
-  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } =
+    useAppContext();
   const isOrgScope = navigationScope === 'global';
   const [networks, setNetworks] = useState<NetworkConfig[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -385,7 +459,9 @@ export function ConfigureNetworks() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkActionDialogOpen, setIsBulkActionDialogOpen] = useState(false);
-  const [bulkAction, setBulkAction] = useState<'enable' | 'disable' | 'delete' | 'assign' | null>(null);
+  const [bulkAction, setBulkAction] = useState<'enable' | 'disable' | 'delete' | 'assign' | null>(
+    null
+  );
   const [qrCodeWlan, setQrCodeWlan] = useState<NetworkConfig | null>(null);
   const [isQrDialogOpen, setIsQrDialogOpen] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkOperationProgress | null>(null);
@@ -395,7 +471,9 @@ export function ConfigureNetworks() {
   const [loadingProfiles, setLoadingProfiles] = useState(false);
 
   // Deployment info: site count and AP count per WLAN
-  const [deploymentInfo, setDeploymentInfo] = useState<Record<string, { sites: number; aps: number }>>({});
+  const [deploymentInfo, setDeploymentInfo] = useState<
+    Record<string, { sites: number; aps: number }>
+  >({});
 
   // Load deployment info (sites + APs) for each WLAN in background
   const loadDeploymentInfo = async (networkIds: string[]) => {
@@ -409,7 +487,7 @@ export function ConfigureNetworks() {
         info[id] = { sites: siteIds.length, aps: deviceIds.length };
       })
     );
-    setDeploymentInfo(prev => ({ ...prev, ...info }));
+    setDeploymentInfo((prev) => ({ ...prev, ...info }));
   };
 
   useEffect(() => {
@@ -417,15 +495,18 @@ export function ConfigureNetworks() {
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Fetch services from a single controller and transform to NetworkConfig[] */
-  const fetchAndTransformServices = async (sgTag?: { id: string; name: string }): Promise<{ configs: NetworkConfig[]; services: Service[] }> => {
+  const fetchAndTransformServices = async (sgTag?: {
+    id: string;
+    name: string;
+  }): Promise<{ configs: NetworkConfig[]; services: Service[] }> => {
     const timeoutPromise = new Promise((_, reject) =>
       setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
     );
 
-    const [servicesResponse] = await Promise.race([
+    const [servicesResponse] = (await Promise.race([
       Promise.allSettled([apiService.getServices()]),
-      timeoutPromise
-    ]) as [PromiseSettledResult<any>];
+      timeoutPromise,
+    ])) as [PromiseSettledResult<any>];
 
     let loadedServices: Service[] = [];
     if (servicesResponse.status === 'fulfilled') {
@@ -439,10 +520,10 @@ export function ConfigureNetworks() {
       try {
         let clientCount = 0;
         try {
-          const serviceStations = await Promise.race([
+          const serviceStations = (await Promise.race([
             apiService.getServiceStations(service.id),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
-          ]) as any[];
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000)),
+          ])) as any[];
           clientCount = Array.isArray(serviceStations) ? serviceStations.length : 0;
         } catch (e) {
           if (e instanceof Error && e.message.includes('Session expired')) throw e;
@@ -476,7 +557,10 @@ export function ConfigureNetworks() {
         for (const sg of siteGroups) {
           try {
             apiService.setBaseUrl(`${sg.controller_url}/management`);
-            const { configs, services: svcList } = await fetchAndTransformServices({ id: sg.id, name: sg.name });
+            const { configs, services: svcList } = await fetchAndTransformServices({
+              id: sg.id,
+              name: sg.name,
+            });
             allConfigs.push(...configs);
             allServices.push(...svcList);
           } catch (err) {
@@ -498,7 +582,7 @@ export function ConfigureNetworks() {
 
       // Load deployment info (sites/APs) in background
       if (allConfigs.length > 0) {
-        loadDeploymentInfo(allConfigs.map(c => c.id));
+        loadDeploymentInfo(allConfigs.map((c) => c.id));
       }
 
       if (allConfigs.length === 0 && allServices.length === 0) {
@@ -520,22 +604,28 @@ export function ConfigureNetworks() {
     ? networks.filter((n: any) => n._siteGroupId === orgSiteGroupFilter)
     : networks;
 
-  const filteredNetworks = sgFilteredNetworks.filter(network => {
+  const filteredNetworks = sgFilteredNetworks.filter((network) => {
     const matchesSearch =
       network.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       network.ssid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       network.description?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesBand = filterBand === 'all' ||
-                       network.band === filterBand ||
-                       (filterBand === 'Both' && (network.band?.toLowerCase().includes('both') || network.band?.toLowerCase().includes('dual') || network.band?.toLowerCase().includes('+')));
+    const matchesBand =
+      filterBand === 'all' ||
+      network.band === filterBand ||
+      (filterBand === 'Both' &&
+        (network.band?.toLowerCase().includes('both') ||
+          network.band?.toLowerCase().includes('dual') ||
+          network.band?.toLowerCase().includes('+')));
 
-    const matchesSecurity = filterSecurity === 'all' ||
-                           network.authType?.toLowerCase().includes(filterSecurity.toLowerCase());
+    const matchesSecurity =
+      filterSecurity === 'all' ||
+      network.authType?.toLowerCase().includes(filterSecurity.toLowerCase());
 
-    const matchesStatus = filterStatus === 'all' ||
-                         (filterStatus === 'enabled' && network.enabled) ||
-                         (filterStatus === 'disabled' && !network.enabled);
+    const matchesStatus =
+      filterStatus === 'all' ||
+      (filterStatus === 'enabled' && network.enabled) ||
+      (filterStatus === 'disabled' && !network.enabled);
 
     return matchesSearch && matchesBand && matchesSecurity && matchesStatus;
   });
@@ -543,7 +633,7 @@ export function ConfigureNetworks() {
   const handleToggleNetwork = async (networkId: string, enabled: boolean) => {
     try {
       // Find the original service to update
-      const service = services.find(s => s.id === networkId);
+      const service = services.find((s) => s.id === networkId);
       if (!service) {
         throw new Error('Service not found');
       }
@@ -553,7 +643,7 @@ export function ConfigureNetworks() {
         serviceName: service.name || service.ssid || 'Unnamed Network', // Ensure serviceName is never null/empty
         name: service.name || service.ssid || 'Unnamed Network',
         ssid: service.ssid || service.name || 'Unnamed SSID',
-        enabled: Boolean(enabled)
+        enabled: Boolean(enabled),
       };
 
       // Handle preAuthenticatedIdleTimeout validation
@@ -567,7 +657,7 @@ export function ConfigureNetworks() {
           updatePayload.preAuthenticatedIdleTimeout = currentTimeout;
         }
       }
-      
+
       // Remove any fields that could cause validation issues
       delete updatePayload.preAuthenticatedIdleTimeout;
 
@@ -575,65 +665,69 @@ export function ConfigureNetworks() {
 
       // Update the service via API
       await apiService.updateService(networkId, updatePayload);
-      
+
       // Update local state
-      setNetworks(prev => prev.map(network => 
-        network.id === networkId ? { ...network, enabled } : network
-      ));
-      
-      setServices(prev => prev.map(service => 
-        service.id === networkId ? { ...service, enabled } : service
-      ));
-      
+      setNetworks((prev) =>
+        prev.map((network) => (network.id === networkId ? { ...network, enabled } : network))
+      );
+
+      setServices((prev) =>
+        prev.map((service) => (service.id === networkId ? { ...service, enabled } : service))
+      );
+
       toast.success(`Network ${enabled ? 'enabled' : 'disabled'} successfully`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update network status';
       toast.error('Failed to update network status', {
-        description: errorMessage
+        description: errorMessage,
       });
     }
   };
 
   const handleDeleteNetwork = async (networkId: string) => {
-    const network = networks.find(n => n.id === networkId);
-    if (!confirm(`Are you sure you want to delete the network "${network?.name}"? This action cannot be undone.`)) {
+    const network = networks.find((n) => n.id === networkId);
+    if (
+      !confirm(
+        `Are you sure you want to delete the network "${network?.name}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
     try {
       // Delete the service via API
       await apiService.deleteService(networkId);
-      
+
       // Update local state
-      setNetworks(prev => prev.filter(network => network.id !== networkId));
-      setServices(prev => prev.filter(service => service.id !== networkId));
-      setSelectedNetworks(prev => prev.filter(id => id !== networkId));
-      
+      setNetworks((prev) => prev.filter((network) => network.id !== networkId));
+      setServices((prev) => prev.filter((service) => service.id !== networkId));
+      setSelectedNetworks((prev) => prev.filter((id) => id !== networkId));
+
       // Close expanded view if this network was expanded
       if (expandedNetworkId === networkId) {
         setExpandedNetworkId(null);
       }
-      
+
       toast.success('Network deleted successfully');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete network';
       toast.error('Failed to delete network', {
-        description: errorMessage
+        description: errorMessage,
       });
     }
   };
 
   const handleSelectNetwork = (networkId: string, selected: boolean) => {
     if (selected) {
-      setSelectedNetworks(prev => [...prev, networkId]);
+      setSelectedNetworks((prev) => [...prev, networkId]);
     } else {
-      setSelectedNetworks(prev => prev.filter(id => id !== networkId));
+      setSelectedNetworks((prev) => prev.filter((id) => id !== networkId));
     }
   };
 
   const handleSelectAll = (selected: boolean) => {
     if (selected) {
-      setSelectedNetworks(filteredNetworks.map(network => network.id));
+      setSelectedNetworks(filteredNetworks.map((network) => network.id));
     } else {
       setSelectedNetworks([]);
     }
@@ -655,10 +749,14 @@ export function ConfigureNetworks() {
   };
 
   const handleDeleteWlan = async (wlan: any) => {
-    if (!confirm(`Are you sure you want to delete "${wlan.serviceName || wlan.ssid}"? This cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete "${wlan.serviceName || wlan.ssid}"? This cannot be undone.`
+      )
+    ) {
       return;
     }
-    
+
     setIsDeleting(true);
     try {
       await apiService.deleteService(wlan.id);
@@ -667,7 +765,7 @@ export function ConfigureNetworks() {
     } catch (error) {
       console.error('Failed to delete WLAN:', error);
       toast.error('Failed to delete WLAN', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     } finally {
       setIsDeleting(false);
@@ -676,7 +774,7 @@ export function ConfigureNetworks() {
 
   const handleSaveEdit = async () => {
     if (!editingWlan) return;
-    
+
     try {
       await apiService.updateService(editingWlan.id, editingWlan);
       toast.success('WLAN updated successfully');
@@ -685,7 +783,7 @@ export function ConfigureNetworks() {
       loadNetworks();
     } catch (error) {
       toast.error('Failed to update WLAN', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   };
@@ -697,7 +795,7 @@ export function ConfigureNetworks() {
     try {
       const sites = await apiService.getSites();
       const allProfiles: ProfileOption[] = [];
-      
+
       for (const site of sites) {
         try {
           const deviceGroups = await apiService.getDeviceGroupsBySite(site.id);
@@ -709,7 +807,7 @@ export function ConfigureNetworks() {
                   id: profile.id,
                   name: profile.name || profile.profileName || profile.id,
                   deviceGroupId: group.id,
-                  siteName: site.name || site.siteName || site.id
+                  siteName: site.name || site.siteName || site.id,
                 });
               }
             } catch (err) {
@@ -720,10 +818,8 @@ export function ConfigureNetworks() {
           console.warn(`Failed to load device groups for site ${site.id}:`, err);
         }
       }
-      
-      const uniqueProfiles = Array.from(
-        new Map(allProfiles.map(p => [p.id, p])).values()
-      );
+
+      const uniqueProfiles = Array.from(new Map(allProfiles.map((p) => [p.id, p])).values());
       setAvailableProfiles(uniqueProfiles);
     } catch (err) {
       console.error('Failed to load profiles:', err);
@@ -741,13 +837,13 @@ export function ConfigureNetworks() {
 
   const handleBulkAssign = async () => {
     if (selectedNetworks.length === 0 || selectedProfiles.length === 0) return;
-    
+
     const totalOperations = selectedNetworks.length * selectedProfiles.length;
     setBulkProgress({
       total: totalOperations,
       completed: 0,
       succeeded: 0,
-      failed: 0
+      failed: 0,
     });
 
     let succeeded = 0;
@@ -755,17 +851,21 @@ export function ConfigureNetworks() {
     const failedItems: string[] = [];
 
     for (const wlanId of selectedNetworks) {
-      const network = networks.find(n => n.id === wlanId);
+      const network = networks.find((n) => n.id === wlanId);
       const networkName = network?.ssid || wlanId;
-      
+
       for (const profileId of selectedProfiles) {
-        const profile = availableProfiles.find(p => p.id === profileId);
+        const profile = availableProfiles.find((p) => p.id === profileId);
         const profileName = profile?.name || profileId;
-        
-        setBulkProgress(prev => prev ? {
-          ...prev,
-          currentItem: `Assigning ${networkName} to ${profileName}`
-        } : null);
+
+        setBulkProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentItem: `Assigning ${networkName} to ${profileName}`,
+              }
+            : null
+        );
 
         try {
           await apiService.assignServiceToProfile(wlanId, profileId);
@@ -776,12 +876,16 @@ export function ConfigureNetworks() {
           console.error(`Failed to assign ${networkName} to ${profileName}:`, err);
         }
 
-        setBulkProgress(prev => prev ? {
-          ...prev,
-          completed: prev.completed + 1,
-          succeeded,
-          failed
-        } : null);
+        setBulkProgress((prev) =>
+          prev
+            ? {
+                ...prev,
+                completed: prev.completed + 1,
+                succeeded,
+                failed,
+              }
+            : null
+        );
       }
     }
 
@@ -790,25 +894,27 @@ export function ConfigureNetworks() {
     setSelectedProfiles([]);
 
     if (failed === 0) {
-      toast.success(`Successfully assigned ${selectedNetworks.length} network(s) to ${selectedProfiles.length} profile(s)`);
+      toast.success(
+        `Successfully assigned ${selectedNetworks.length} network(s) to ${selectedProfiles.length} profile(s)`
+      );
     } else {
       toast.warning(`Assigned ${succeeded} of ${totalOperations} operations`, {
-        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`
+        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`,
       });
     }
-    
+
     setSelectedNetworks([]);
   };
 
   const handleBulkAction = async () => {
     if (!bulkAction || selectedNetworks.length === 0) return;
-    
+
     const total = selectedNetworks.length;
     setBulkProgress({
       total,
       completed: 0,
       succeeded: 0,
-      failed: 0
+      failed: 0,
     });
 
     let succeeded = 0;
@@ -817,25 +923,29 @@ export function ConfigureNetworks() {
 
     for (let i = 0; i < selectedNetworks.length; i++) {
       const wlanId = selectedNetworks[i];
-      const network = networks.find(n => n.id === wlanId);
+      const network = networks.find((n) => n.id === wlanId);
       const networkName = network?.ssid || wlanId;
-      
-      setBulkProgress(prev => prev ? {
-        ...prev,
-        currentItem: `Processing ${networkName}...`
-      } : null);
+
+      setBulkProgress((prev) =>
+        prev
+          ? {
+              ...prev,
+              currentItem: `Processing ${networkName}...`,
+            }
+          : null
+      );
 
       try {
         if (bulkAction === 'delete') {
           await apiService.deleteService(wlanId);
         } else {
-          const service = services.find(s => s.id === wlanId);
+          const service = services.find((s) => s.id === wlanId);
           if (service) {
             const updatePayload: any = {
               serviceName: service.name || service.ssid || 'Unnamed Network',
               name: service.name || service.ssid || 'Unnamed Network',
               ssid: service.ssid || service.name || 'Unnamed SSID',
-              enabled: bulkAction === 'enable'
+              enabled: bulkAction === 'enable',
             };
             await apiService.updateService(wlanId, updatePayload);
           }
@@ -847,28 +957,33 @@ export function ConfigureNetworks() {
         console.error(`Failed to ${bulkAction} ${networkName}:`, error);
       }
 
-      setBulkProgress(prev => prev ? {
-        ...prev,
-        completed: i + 1,
-        succeeded,
-        failed
-      } : null);
+      setBulkProgress((prev) =>
+        prev
+          ? {
+              ...prev,
+              completed: i + 1,
+              succeeded,
+              failed,
+            }
+          : null
+      );
     }
 
     setBulkProgress(null);
     setIsBulkActionDialogOpen(false);
     setBulkAction(null);
 
-    const actionPast = bulkAction === 'enable' ? 'enabled' : bulkAction === 'disable' ? 'disabled' : 'deleted';
-    
+    const actionPast =
+      bulkAction === 'enable' ? 'enabled' : bulkAction === 'disable' ? 'disabled' : 'deleted';
+
     if (failed === 0) {
       toast.success(`Successfully ${actionPast} ${succeeded} network(s)`);
     } else {
       toast.warning(`${succeeded} of ${total} networks ${actionPast}`, {
-        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`
+        description: `${failed} failed: ${failedItems.slice(0, 3).join(', ')}${failedItems.length > 3 ? '...' : ''}`,
       });
     }
-    
+
     setSelectedNetworks([]);
     loadNetworks();
   };
@@ -883,7 +998,15 @@ export function ConfigureNetworks() {
       }
 
       // Strip internal/UI-only fields, keep the config payload
-      const { id, currentClients, _siteGroupId, _siteGroupName, createdAt, updatedAt, ...configPayload } = network as any;
+      const {
+        id,
+        currentClients,
+        _siteGroupId,
+        _siteGroupName,
+        createdAt,
+        updatedAt,
+        ...configPayload
+      } = network as any;
 
       await globalElementsService.createTemplate({
         org_id: org.id,
@@ -926,25 +1049,53 @@ export function ConfigureNetworks() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12"><Skeleton className="h-4 w-4" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-12" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-20" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-14" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-24" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-12" /></TableHead>
-                    <TableHead><Skeleton className="h-4 w-16" /></TableHead>
+                    <TableHead className="w-12">
+                      <Skeleton className="h-4 w-4" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-12" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-20" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-14" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-24" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-12" />
+                    </TableHead>
+                    <TableHead>
+                      <Skeleton className="h-4 w-16" />
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {[1, 2, 3, 4, 5].map((i) => (
                     <TableRow key={i}>
-                      <TableCell><Skeleton className="h-4 w-4" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-16 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-4 w-8" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-8 w-24" /></TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-4" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-8" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-8 w-24" />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1021,33 +1172,53 @@ export function ConfigureNetworks() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Service Name</Label>
-                        <Input 
-                          value={editingWlan.serviceName || editingWlan.name || ''} 
-                          onChange={(e) => setEditingWlan({...editingWlan, serviceName: e.target.value, name: e.target.value})}
+                        <Input
+                          value={editingWlan.serviceName || editingWlan.name || ''}
+                          onChange={(e) =>
+                            setEditingWlan({
+                              ...editingWlan,
+                              serviceName: e.target.value,
+                              name: e.target.value,
+                            })
+                          }
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>SSID</Label>
-                        <Input 
-                          value={editingWlan.ssid || ''} 
-                          onChange={(e) => setEditingWlan({...editingWlan, ssid: e.target.value})}
+                        <Input
+                          value={editingWlan.ssid || ''}
+                          onChange={(e) => setEditingWlan({ ...editingWlan, ssid: e.target.value })}
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>VLAN</Label>
-                        <Input 
+                        <Input
                           type="number"
-                          value={editingWlan.dot1dPortNumber || editingWlan.vlanId || editingWlan.vlan || ''} 
-                          onChange={(e) => setEditingWlan({...editingWlan, dot1dPortNumber: parseInt(e.target.value) || 0})}
+                          value={
+                            editingWlan.dot1dPortNumber ||
+                            editingWlan.vlanId ||
+                            editingWlan.vlan ||
+                            ''
+                          }
+                          onChange={(e) =>
+                            setEditingWlan({
+                              ...editingWlan,
+                              dot1dPortNumber: parseInt(e.target.value) || 0,
+                            })
+                          }
                         />
                       </div>
                       <div className="space-y-2">
                         <Label>Status</Label>
-                        <Select 
+                        <Select
                           value={editingWlan.enabled ? 'enabled' : 'disabled'}
-                          onValueChange={(value) => setEditingWlan({...editingWlan, enabled: value === 'enabled'})}
+                          onValueChange={(value) =>
+                            setEditingWlan({ ...editingWlan, enabled: value === 'enabled' })
+                          }
                         >
-                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="enabled">Enabled</SelectItem>
                             <SelectItem value="disabled">Disabled</SelectItem>
@@ -1058,7 +1229,9 @@ export function ConfigureNetworks() {
                   </div>
                 )}
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+                  <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                    Cancel
+                  </Button>
                   <Button onClick={handleSaveEdit}>Save Changes</Button>
                 </DialogFooter>
               </DialogContent>
@@ -1072,7 +1245,9 @@ export function ConfigureNetworks() {
             <div className="inline-flex items-center gap-2 rounded-full border border-green-900/60 bg-green-950/40 pl-3 pr-2 py-1.5">
               <Zap className="h-3.5 w-3.5 text-green-400 shrink-0" />
               <span className="text-xs font-semibold text-green-400">Quick WLAN</span>
-              <span className="text-xs text-muted-foreground hidden sm:inline">— live in seconds</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                — live in seconds
+              </span>
               <button
                 type="button"
                 className="text-xs font-medium text-green-400 hover:text-green-300 transition-colors px-1"
@@ -1115,7 +1290,7 @@ export function ConfigureNetworks() {
                   className="pl-10"
                 />
               </div>
-              
+
               <Select value={filterBand} onValueChange={setFilterBand}>
                 <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="All Bands" />
@@ -1127,7 +1302,7 @@ export function ConfigureNetworks() {
                   <SelectItem value="Both">Both</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={filterSecurity} onValueChange={setFilterSecurity}>
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="All Auth Types" />
@@ -1141,7 +1316,9 @@ export function ConfigureNetworks() {
                   <SelectItem value="WPA3-PSK">WPA3-PSK</SelectItem>
                   <SelectItem value="WPA3-Personal">WPA3-Personal (SAE)</SelectItem>
                   <SelectItem value="WPA2/WPA3-PSK">WPA2/WPA3-PSK</SelectItem>
-                  <SelectItem value="WPA2/WPA3-Personal">WPA2/WPA3-Personal (Transition)</SelectItem>
+                  <SelectItem value="WPA2/WPA3-Personal">
+                    WPA2/WPA3-Personal (Transition)
+                  </SelectItem>
                   <SelectItem value="WPA2-Enterprise">WPA2-Enterprise (AES)</SelectItem>
                   <SelectItem value="WPA-Enterprise">WPA-Enterprise (TKIP)</SelectItem>
                   <SelectItem value="WPA/WPA2-Enterprise">WPA/WPA2-Enterprise (Mixed)</SelectItem>
@@ -1149,7 +1326,7 @@ export function ConfigureNetworks() {
                   <SelectItem value="WPA2/WPA3-Enterprise">WPA2/WPA3-Enterprise</SelectItem>
                 </SelectContent>
               </Select>
-              
+
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-[120px]">
                   <SelectValue placeholder="All Status" />
@@ -1161,41 +1338,46 @@ export function ConfigureNetworks() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             {selectedNetworks.length > 0 && (
               <div className="sticky top-0 z-10 flex items-center gap-2 p-3 bg-primary/10 border border-primary/20 rounded-lg mb-4 shadow-sm">
                 <Badge variant="secondary" className="text-sm font-medium">
                   {selectedNetworks.length} selected
                 </Badge>
                 <div className="flex-1" />
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => { setBulkAction('enable'); setIsBulkActionDialogOpen(true); }}
+                  onClick={() => {
+                    setBulkAction('enable');
+                    setIsBulkActionDialogOpen(true);
+                  }}
                 >
                   <Eye className="h-4 w-4 mr-1" />
                   Enable
                 </Button>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => { setBulkAction('disable'); setIsBulkActionDialogOpen(true); }}
+                  onClick={() => {
+                    setBulkAction('disable');
+                    setIsBulkActionDialogOpen(true);
+                  }}
                 >
                   <EyeOff className="h-4 w-4 mr-1" />
                   Disable
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleOpenAssignDialog}
-                >
+                <Button variant="outline" size="sm" onClick={handleOpenAssignDialog}>
                   <Link2 className="h-4 w-4 mr-1" />
                   Assign to Profiles
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
-                  onClick={() => { setBulkAction('delete'); setIsBulkActionDialogOpen(true); }}
+                  onClick={() => {
+                    setBulkAction('delete');
+                    setIsBulkActionDialogOpen(true);
+                  }}
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
                   Delete
@@ -1215,7 +1397,10 @@ export function ConfigureNetworks() {
                 <TableRow>
                   <TableHead className="w-12">
                     <Checkbox
-                      checked={selectedNetworks.length === filteredNetworks.length && filteredNetworks.length > 0}
+                      checked={
+                        selectedNetworks.length === filteredNetworks.length &&
+                        filteredNetworks.length > 0
+                      }
                       onCheckedChange={handleSelectAll}
                       aria-label="Select all networks"
                     />
@@ -1363,14 +1548,14 @@ export function ConfigureNetworks() {
                         </div>
                       </TableCell>
                     </TableRow>
-                    
+
                     {/* Expanded Configuration Panel */}
                     {expandedNetworkId === network.id && (
                       <TableRow>
                         <TableCell colSpan={99} className="p-0">
                           <div className="border-t border-b bg-card shadow-inner">
-                            <NetworkEditDetail 
-                              serviceId={network.id} 
+                            <NetworkEditDetail
+                              serviceId={network.id}
                               onSave={handleNetworkSaved}
                               isInline={true}
                             />
@@ -1380,14 +1565,16 @@ export function ConfigureNetworks() {
                     )}
                   </React.Fragment>
                 ))}
-                
+
                 {filteredNetworks.length === 0 && !loading && (
                   <TableRow>
                     <TableCell colSpan={7} className="py-16 text-center">
                       <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
                         <Network className="h-10 w-10" />
                         <span className="text-sm font-medium text-muted-foreground">
-                          {searchTerm ? 'No networks match your search' : 'No wireless networks configured'}
+                          {searchTerm
+                            ? 'No networks match your search'
+                            : 'No wireless networks configured'}
                         </span>
                         <span className="text-xs">
                           {searchTerm
@@ -1421,7 +1608,7 @@ export function ConfigureNetworks() {
                 <p className="text-2xl font-semibold mt-1">{networks.length}</p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
@@ -1433,7 +1620,7 @@ export function ConfigureNetworks() {
                 </p>
               </CardContent>
             </Card>
-            
+
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center space-x-2">
@@ -1441,7 +1628,7 @@ export function ConfigureNetworks() {
                   <span className="text-sm text-muted-foreground">Secured Networks</span>
                 </div>
                 <p className="text-2xl font-semibold mt-1">
-                  {networks.filter(network => network.authType !== 'Open').length}
+                  {networks.filter((network) => network.authType !== 'Open').length}
                 </p>
               </CardContent>
             </Card>
@@ -1449,32 +1636,46 @@ export function ConfigureNetworks() {
         </CardContent>
       </Card>
 
-      <Dialog open={isBulkActionDialogOpen} onOpenChange={(open) => {
-        if (!bulkProgress) setIsBulkActionDialogOpen(open);
-      }}>
+      <Dialog
+        open={isBulkActionDialogOpen}
+        onOpenChange={(open) => {
+          if (!bulkProgress) setIsBulkActionDialogOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {bulkAction === 'delete' ? 'Delete' : bulkAction === 'enable' ? 'Enable' : 'Disable'} {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
+              {bulkAction === 'delete' ? 'Delete' : bulkAction === 'enable' ? 'Enable' : 'Disable'}{' '}
+              {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
             </DialogTitle>
             <DialogDescription>
               {bulkProgress ? (
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center justify-between text-sm">
                     <span>{bulkProgress.currentItem || 'Processing...'}</span>
-                    <span>{bulkProgress.completed} / {bulkProgress.total}</span>
+                    <span>
+                      {bulkProgress.completed} / {bulkProgress.total}
+                    </span>
                   </div>
-                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} className="h-2" />
+                  <Progress
+                    value={(bulkProgress.completed / bulkProgress.total) * 100}
+                    className="h-2"
+                  />
                   <div className="flex gap-4 text-sm">
-                    <span className="text-[color:var(--status-success)]">✓ {bulkProgress.succeeded} succeeded</span>
+                    <span className="text-[color:var(--status-success)]">
+                      ✓ {bulkProgress.succeeded} succeeded
+                    </span>
                     {bulkProgress.failed > 0 && (
-                      <span className="text-[color:var(--status-error)]">✗ {bulkProgress.failed} failed</span>
+                      <span className="text-[color:var(--status-error)]">
+                        ✗ {bulkProgress.failed} failed
+                      </span>
                     )}
                   </div>
                 </div>
               ) : (
                 <>
-                  Are you sure you want to {bulkAction} {selectedNetworks.length} selected network{selectedNetworks.length !== 1 ? 's' : ''}?
+                  Are you sure you want to {bulkAction} {selectedNetworks.length} selected network
+                  {selectedNetworks.length !== 1 ? 's' : ''}?
                   {bulkAction === 'delete' && (
                     <span className="block mt-2 text-destructive font-medium">
                       This action cannot be undone.
@@ -1486,21 +1687,31 @@ export function ConfigureNetworks() {
           </DialogHeader>
           {!bulkProgress && (
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsBulkActionDialogOpen(false)}>Cancel</Button>
-              <Button 
+              <Button variant="outline" onClick={() => setIsBulkActionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
                 variant={bulkAction === 'delete' ? 'destructive' : 'default'}
                 onClick={handleBulkAction}
               >
-                {bulkAction === 'delete' ? 'Delete' : bulkAction === 'enable' ? 'Enable' : 'Disable'} {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
+                {bulkAction === 'delete'
+                  ? 'Delete'
+                  : bulkAction === 'enable'
+                    ? 'Enable'
+                    : 'Disable'}{' '}
+                {selectedNetworks.length} Network{selectedNetworks.length !== 1 ? 's' : ''}
               </Button>
             </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isAssignDialogOpen} onOpenChange={(open) => {
-        if (!bulkProgress) setIsAssignDialogOpen(open);
-      }}>
+      <Dialog
+        open={isAssignDialogOpen}
+        onOpenChange={(open) => {
+          if (!bulkProgress) setIsAssignDialogOpen(open);
+        }}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Assign Networks to Profiles</DialogTitle>
@@ -1508,23 +1719,37 @@ export function ConfigureNetworks() {
               {bulkProgress ? (
                 <div className="space-y-3 mt-4">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="truncate max-w-[300px]">{bulkProgress.currentItem || 'Processing...'}</span>
-                    <span>{bulkProgress.completed} / {bulkProgress.total}</span>
+                    <span className="truncate max-w-[300px]">
+                      {bulkProgress.currentItem || 'Processing...'}
+                    </span>
+                    <span>
+                      {bulkProgress.completed} / {bulkProgress.total}
+                    </span>
                   </div>
-                  <Progress value={(bulkProgress.completed / bulkProgress.total) * 100} className="h-2" />
+                  <Progress
+                    value={(bulkProgress.completed / bulkProgress.total) * 100}
+                    className="h-2"
+                  />
                   <div className="flex gap-4 text-sm">
-                    <span className="text-[color:var(--status-success)]">✓ {bulkProgress.succeeded} succeeded</span>
+                    <span className="text-[color:var(--status-success)]">
+                      ✓ {bulkProgress.succeeded} succeeded
+                    </span>
                     {bulkProgress.failed > 0 && (
-                      <span className="text-[color:var(--status-error)]">✗ {bulkProgress.failed} failed</span>
+                      <span className="text-[color:var(--status-error)]">
+                        ✗ {bulkProgress.failed} failed
+                      </span>
                     )}
                   </div>
                 </div>
               ) : (
-                <>Select profiles to assign the {selectedNetworks.length} selected network{selectedNetworks.length !== 1 ? 's' : ''} to.</>
+                <>
+                  Select profiles to assign the {selectedNetworks.length} selected network
+                  {selectedNetworks.length !== 1 ? 's' : ''} to.
+                </>
               )}
             </DialogDescription>
           </DialogHeader>
-          
+
           {!bulkProgress && (
             <div className="py-4 max-h-[300px] overflow-y-auto">
               {loadingProfiles ? (
@@ -1540,22 +1765,27 @@ export function ConfigureNetworks() {
               ) : (
                 <div className="space-y-2">
                   {availableProfiles.map((profile) => (
-                    <div key={profile.id} className="flex items-center space-x-3 p-2 rounded hover:bg-muted">
+                    <div
+                      key={profile.id}
+                      className="flex items-center space-x-3 p-2 rounded hover:bg-muted"
+                    >
                       <Checkbox
                         id={`profile-${profile.id}`}
                         checked={selectedProfiles.includes(profile.id)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            setSelectedProfiles(prev => [...prev, profile.id]);
+                            setSelectedProfiles((prev) => [...prev, profile.id]);
                           } else {
-                            setSelectedProfiles(prev => prev.filter(id => id !== profile.id));
+                            setSelectedProfiles((prev) => prev.filter((id) => id !== profile.id));
                           }
                         }}
                       />
                       <label htmlFor={`profile-${profile.id}`} className="flex-1 cursor-pointer">
                         <div className="font-medium text-sm">{profile.name}</div>
                         {profile.siteName && (
-                          <div className="text-xs text-muted-foreground">Site: {profile.siteName}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Site: {profile.siteName}
+                          </div>
                         )}
                       </label>
                     </div>
@@ -1564,15 +1794,18 @@ export function ConfigureNetworks() {
               )}
             </div>
           )}
-          
+
           {!bulkProgress && (
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>Cancel</Button>
-              <Button 
+              <Button variant="outline" onClick={() => setIsAssignDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
                 onClick={handleBulkAssign}
                 disabled={selectedProfiles.length === 0 || loadingProfiles}
               >
-                Assign to {selectedProfiles.length} Profile{selectedProfiles.length !== 1 ? 's' : ''}
+                Assign to {selectedProfiles.length} Profile
+                {selectedProfiles.length !== 1 ? 's' : ''}
               </Button>
             </DialogFooter>
           )}

@@ -18,10 +18,20 @@ import {
 } from '@/services/workspacePersistence';
 
 // Wireless-only topics
-export type WorkspaceTopic = 'AccessPoints' | 'Clients' | 'ClientExperience' | 'AppInsights' | 'ContextualInsights';
+export type WorkspaceTopic =
+  | 'AccessPoints'
+  | 'Clients'
+  | 'ClientExperience'
+  | 'AppInsights'
+  | 'ContextualInsights';
 
 // Widget types supported by the catalog
-export type WidgetType = 'kpi_tile_group' | 'timeseries_with_brush' | 'timeseries_multi_metric' | 'topn_table' | 'timeline_feed';
+export type WidgetType =
+  | 'kpi_tile_group'
+  | 'timeseries_with_brush'
+  | 'timeseries_multi_metric'
+  | 'topn_table'
+  | 'timeline_feed';
 
 // Workspace scope options
 export type WorkspaceScope = 'global' | 'site' | 'ap' | 'client';
@@ -181,10 +191,10 @@ export function useWorkspace() {
         }
 
         if (hydratedWidgets.length > 0) {
-          setState(prev => {
+          setState((prev) => {
             // Avoid duplicates - only add widgets not already present
-            const existingIds = new Set(prev.widgets.map(w => w.id));
-            const newWidgets = hydratedWidgets.filter(w => !existingIds.has(w.id));
+            const existingIds = new Set(prev.widgets.map((w) => w.id));
+            const newWidgets = hydratedWidgets.filter((w) => !existingIds.has(w.id));
 
             if (newWidgets.length === 0) return prev;
 
@@ -213,14 +223,14 @@ export function useWorkspace() {
    * Select a topic
    */
   const selectTopic = useCallback((topic: WorkspaceTopic | null) => {
-    setState(prev => ({ ...prev, selectedTopic: topic }));
+    setState((prev) => ({ ...prev, selectedTopic: topic }));
   }, []);
 
   /**
    * Update workspace context
    */
   const updateContext = useCallback((updates: Partial<WorkspaceContext>) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       context: { ...prev.context, ...updates },
     }));
@@ -230,10 +240,10 @@ export function useWorkspace() {
    * Emit cross-widget signals
    */
   const emitSignals = useCallback((newSignals: Partial<WorkspaceSignals>) => {
-    setState(prev => {
+    setState((prev) => {
       const updatedSignals = { ...prev.signals, ...newSignals };
       // Notify listeners
-      signalListeners.current.forEach(listener => listener(updatedSignals));
+      signalListeners.current.forEach((listener) => listener(updatedSignals));
       return { ...prev, signals: updatedSignals };
     });
   }, []);
@@ -267,7 +277,7 @@ export function useWorkspace() {
       linkingEnabled: true,
     };
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       widgets: [...prev.widgets, newWidget],
     }));
@@ -279,9 +289,9 @@ export function useWorkspace() {
    * Update a widget's state
    */
   const updateWidget = useCallback((id: string, updates: Partial<WorkspaceWidget>) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      widgets: prev.widgets.map(widget =>
+      widgets: prev.widgets.map((widget) =>
         widget.id === id ? { ...widget, ...updates } : widget
       ),
     }));
@@ -292,8 +302,8 @@ export function useWorkspace() {
    * Also removes from persisted saved widgets if applicable
    */
   const deleteWidget = useCallback((id: string) => {
-    setState(prev => {
-      const widget = prev.widgets.find(w => w.id === id);
+    setState((prev) => {
+      const widget = prev.widgets.find((w) => w.id === id);
 
       // If this is a saved widget, also remove from persistence
       if (widget?.isSavedWidget) {
@@ -302,7 +312,7 @@ export function useWorkspace() {
 
       return {
         ...prev,
-        widgets: prev.widgets.filter(w => w.id !== id),
+        widgets: prev.widgets.filter((w) => w.id !== id),
       };
     });
   }, []);
@@ -311,15 +321,15 @@ export function useWorkspace() {
    * Duplicate a widget
    */
   const duplicateWidget = useCallback((id: string) => {
-    setState(prev => {
-      const original = prev.widgets.find(w => w.id === id);
+    setState((prev) => {
+      const original = prev.widgets.find((w) => w.id === id);
       if (!original) return prev;
 
       const duplicate: WorkspaceWidget = {
         ...original,
         id: generateWidgetId(),
         createdAt: Date.now(),
-        position: { x: original.position.x + 20, y: original.position.y + 20 },
+        position: { x: (original.position?.x ?? 0) + 20, y: (original.position?.y ?? 0) + 20 },
       };
 
       return {
@@ -332,31 +342,40 @@ export function useWorkspace() {
   /**
    * Move a widget to a new position
    */
-  const moveWidget = useCallback((id: string, position: { x: number; y: number }) => {
-    updateWidget(id, { position });
-  }, [updateWidget]);
+  const moveWidget = useCallback(
+    (id: string, position: { x: number; y: number }) => {
+      updateWidget(id, { position });
+    },
+    [updateWidget]
+  );
 
   /**
    * Resize a widget
    */
-  const resizeWidget = useCallback((id: string, size: { width: number; height: number }) => {
-    updateWidget(id, { size });
-  }, [updateWidget]);
+  const resizeWidget = useCallback(
+    (id: string, size: { width: number; height: number }) => {
+      updateWidget(id, { size });
+    },
+    [updateWidget]
+  );
 
   /**
    * Refresh a widget
    */
-  const refreshWidget = useCallback((id: string) => {
-    updateWidget(id, { isLoading: true, error: null });
-  }, [updateWidget]);
+  const refreshWidget = useCallback(
+    (id: string) => {
+      updateWidget(id, { isLoading: true, error: null });
+    },
+    [updateWidget]
+  );
 
   /**
    * Toggle widget linking
    */
   const toggleWidgetLinking = useCallback((id: string) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
-      widgets: prev.widgets.map(widget =>
+      widgets: prev.widgets.map((widget) =>
         widget.id === id ? { ...widget, linkingEnabled: !widget.linkingEnabled } : widget
       ),
     }));
@@ -366,22 +385,25 @@ export function useWorkspace() {
    * Clear all widgets
    * Optionally clear saved widgets from persistence too
    */
-  const clearWorkspace = useCallback((clearSaved = false) => {
-    if (clearSaved) {
-      // Remove all saved widgets from persistence
-      state.widgets.forEach(w => {
-        if (w.isSavedWidget) {
-          removeSavedWidget(w.id);
-        }
-      });
-    }
+  const clearWorkspace = useCallback(
+    (clearSaved = false) => {
+      if (clearSaved) {
+        // Remove all saved widgets from persistence
+        state.widgets.forEach((w) => {
+          if (w.isSavedWidget) {
+            removeSavedWidget(w.id);
+          }
+        });
+      }
 
-    setState(prev => ({
-      ...prev,
-      widgets: [],
-      signals: {},
-    }));
-  }, [state.widgets]);
+      setState((prev) => ({
+        ...prev,
+        widgets: [],
+        signals: {},
+      }));
+    },
+    [state.widgets]
+  );
 
   /**
    * Add a widget from a saved reference (from SaveWidgetToWorkspace feature)
@@ -393,7 +415,7 @@ export function useWorkspace() {
     widget.isSavedWidget = true;
     widget.sourceWidgetId = ref.source_widget_id;
 
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       widgets: [...prev.widgets, widget],
     }));
@@ -404,7 +426,7 @@ export function useWorkspace() {
   /**
    * Get count of saved widgets
    */
-  const savedWidgetCount = state.widgets.filter(w => w.isSavedWidget).length;
+  const savedWidgetCount = state.widgets.filter((w) => w.isSavedWidget).length;
 
   const hasWidgets = state.widgets.length > 0;
 
@@ -491,7 +513,17 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 50,
     },
-    columns: ['display_name', 'experience_state', 'rfqi_score', 'device_type', 'ap_name', 'ssid', 'rssi_dbm', 'snr_db', 'retries_percent'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'rfqi_score',
+      'device_type',
+      'ap_name',
+      'ssid',
+      'rssi_dbm',
+      'snr_db',
+      'retries_percent',
+    ],
   },
   {
     id: 'kpi_experience_distribution',
@@ -549,7 +581,17 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 50,
     },
-    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'channel_utilization_percent', 'noise_floor_dbm', 'retries_percent', 'rfqi_score'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'model',
+      'status',
+      'client_count',
+      'channel_utilization_percent',
+      'noise_floor_dbm',
+      'retries_percent',
+      'rfqi_score',
+    ],
   },
   {
     id: 'timeseries_ap_radio_health',
@@ -559,7 +601,13 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
     description: 'Channel utilization, noise, retries, throughput trends',
     dataBinding: {
       endpointRef: 'access_points.timeseries',
-      metrics: ['channel_utilization_percent', 'noise_floor_dbm', 'retries_percent', 'throughput_bps', 'client_count'],
+      metrics: [
+        'channel_utilization_percent',
+        'noise_floor_dbm',
+        'retries_percent',
+        'throughput_bps',
+        'client_count',
+      ],
     },
     interaction: {
       brushEnabled: true,
@@ -578,7 +626,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'model', 'status', 'client_count', 'channel_utilization_percent', 'throughput_bps'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'model',
+      'status',
+      'client_count',
+      'channel_utilization_percent',
+      'throughput_bps',
+    ],
   },
   {
     id: 'table_aps_by_throughput',
@@ -592,7 +648,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'model', 'client_count', 'throughput_bps', 'channel', 'tx_power_dbm'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'model',
+      'client_count',
+      'throughput_bps',
+      'channel',
+      'tx_power_dbm',
+    ],
   },
   {
     id: 'table_aps_high_channel_util',
@@ -606,7 +670,16 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'channel', 'band', 'channel_utilization_percent', 'noise_floor_dbm', 'client_count', 'retries_percent'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'channel',
+      'band',
+      'channel_utilization_percent',
+      'noise_floor_dbm',
+      'client_count',
+      'retries_percent',
+    ],
   },
   {
     id: 'table_aps_high_noise',
@@ -620,7 +693,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'channel', 'band', 'noise_floor_dbm', 'channel_utilization_percent', 'retries_percent'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'channel',
+      'band',
+      'noise_floor_dbm',
+      'channel_utilization_percent',
+      'retries_percent',
+    ],
   },
   {
     id: 'table_aps_high_retries',
@@ -634,7 +715,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['ap_name', 'site_name', 'retries_percent', 'channel_utilization_percent', 'noise_floor_dbm', 'client_count', 'rssi_avg'],
+    columns: [
+      'ap_name',
+      'site_name',
+      'retries_percent',
+      'channel_utilization_percent',
+      'noise_floor_dbm',
+      'client_count',
+      'rssi_avg',
+    ],
   },
   {
     id: 'kpi_ap_status_summary',
@@ -721,7 +810,16 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'ssid', 'throughput_bps', 'rx_bytes', 'tx_bytes'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'device_type',
+      'ap_name',
+      'ssid',
+      'throughput_bps',
+      'rx_bytes',
+      'tx_bytes',
+    ],
   },
   {
     id: 'table_roaming_clients',
@@ -735,7 +833,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['display_name', 'experience_state', 'device_type', 'ap_name', 'roam_count', 'rssi_dbm', 'snr_db'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'device_type',
+      'ap_name',
+      'roam_count',
+      'rssi_dbm',
+      'snr_db',
+    ],
   },
   {
     id: 'table_clients_low_rssi',
@@ -749,7 +855,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 25,
     },
-    columns: ['display_name', 'experience_state', 'rssi_dbm', 'snr_db', 'device_type', 'ap_name', 'band'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'rssi_dbm',
+      'snr_db',
+      'device_type',
+      'ap_name',
+      'band',
+    ],
   },
   {
     id: 'table_clients_low_snr',
@@ -763,7 +877,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 25,
     },
-    columns: ['display_name', 'experience_state', 'snr_db', 'rssi_dbm', 'device_type', 'ap_name', 'band'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'snr_db',
+      'rssi_dbm',
+      'device_type',
+      'ap_name',
+      'band',
+    ],
   },
   {
     id: 'table_clients_high_retries',
@@ -777,7 +899,15 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['display_name', 'experience_state', 'retries_percent', 'rssi_dbm', 'snr_db', 'device_type', 'ap_name'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'retries_percent',
+      'rssi_dbm',
+      'snr_db',
+      'device_type',
+      'ap_name',
+    ],
   },
   {
     id: 'table_clients_by_device_type',
@@ -872,7 +1002,20 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'asc',
       limit: 100,
     },
-    columns: ['display_name', 'experience_state', 'device_type', 'manufacturer', 'ap_name', 'ssid', 'band', 'rssi_dbm', 'snr_db', 'throughput_bps', 'ip_address', 'mac_address'],
+    columns: [
+      'display_name',
+      'experience_state',
+      'device_type',
+      'manufacturer',
+      'ap_name',
+      'ssid',
+      'band',
+      'rssi_dbm',
+      'snr_db',
+      'throughput_bps',
+      'ip_address',
+      'mac_address',
+    ],
   },
 
   // ========================================
@@ -890,7 +1033,14 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['app_name', 'category', 'clients_impacted', 'bytes', 'latency_ms', 'packet_loss_percent'],
+    columns: [
+      'app_name',
+      'category',
+      'clients_impacted',
+      'bytes',
+      'latency_ms',
+      'packet_loss_percent',
+    ],
   },
   {
     id: 'timeseries_app_performance',
@@ -933,7 +1083,14 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['app_name', 'category', 'latency_ms', 'jitter_ms', 'packet_loss_percent', 'clients_impacted'],
+    columns: [
+      'app_name',
+      'category',
+      'latency_ms',
+      'jitter_ms',
+      'packet_loss_percent',
+      'clients_impacted',
+    ],
   },
   {
     id: 'app_insights_by_packet_loss',
@@ -947,7 +1104,14 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['app_name', 'category', 'packet_loss_percent', 'latency_ms', 'bytes', 'clients_impacted'],
+    columns: [
+      'app_name',
+      'category',
+      'packet_loss_percent',
+      'latency_ms',
+      'bytes',
+      'clients_impacted',
+    ],
   },
   {
     id: 'app_insights_by_category',
@@ -1037,7 +1201,14 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
       sortDirection: 'desc',
       limit: 25,
     },
-    columns: ['display_name', 'mac_address', 'failure_count', 'last_failure_reason', 'target_ap', 'target_ssid'],
+    columns: [
+      'display_name',
+      'mac_address',
+      'failure_count',
+      'last_failure_reason',
+      'target_ap',
+      'target_ssid',
+    ],
   },
   {
     id: 'insights_anomalies',
@@ -1069,7 +1240,7 @@ export const WIDGET_CATALOG: WidgetCatalogItem[] = [
  * Get catalog items by topic
  */
 export function getWidgetsByTopic(topic: WorkspaceTopic): WidgetCatalogItem[] {
-  return WIDGET_CATALOG.filter(item => item.topic === topic);
+  return WIDGET_CATALOG.filter((item) => item.topic === topic);
 }
 
 /**
@@ -1116,7 +1287,10 @@ export const PROMPT_SUGGESTIONS: Record<WorkspaceTopic, string[]> = {
 /**
  * Topic metadata
  */
-export const TOPIC_METADATA: Record<WorkspaceTopic, { label: string; description: string; color: { bg: string; text: string; border: string } }> = {
+export const TOPIC_METADATA: Record<
+  WorkspaceTopic,
+  { label: string; description: string; color: { bg: string; text: string; border: string } }
+> = {
   AccessPoints: {
     label: 'Access Points',
     description: 'Wireless access point health and performance',

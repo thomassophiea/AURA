@@ -17,14 +17,20 @@ import {
   WifiOff,
   Activity,
   RefreshCw,
-  Info
+  Info,
 } from 'lucide-react';
 import { apiService, AccessPoint, Station, Service } from '../services/api';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { Button } from './ui/button';
 
 interface AnomalyDetection {
-  type: 'client_count_drop' | 'client_count_spike' | 'auth_spike' | 'throughput_collapse' | 'ap_offline' | 'service_degradation';
+  type:
+    | 'client_count_drop'
+    | 'client_count_spike'
+    | 'auth_spike'
+    | 'throughput_collapse'
+    | 'ap_offline'
+    | 'service_degradation';
   severity: 'high' | 'medium' | 'low';
   entity: {
     type: 'site' | 'service' | 'ap';
@@ -71,17 +77,19 @@ export function AnomalyDetector() {
       const [aps, stations, services] = await Promise.all([
         apiService.getAccessPoints(),
         apiService.getStations(),
-        apiService.getServices()
+        apiService.getServices(),
       ]);
 
       // Apply site filter
-      const filteredAPs = filters.site === 'all'
-        ? aps
-        : aps.filter(ap => ap.site === filters.site || ap.hostSite === filters.site);
+      const filteredAPs =
+        filters.site === 'all'
+          ? aps
+          : aps.filter((ap) => ap.site === filters.site || ap.hostSite === filters.site);
 
-      const filteredStations = filters.site === 'all'
-        ? stations
-        : stations.filter(s => s.siteName === filters.site || s.siteId === filters.site);
+      const filteredStations =
+        filters.site === 'all'
+          ? stations
+          : stations.filter((s) => s.siteName === filters.site || s.siteId === filters.site);
 
       // Store current snapshot
       const currentSnapshot: HistoricalSnapshot = {
@@ -89,7 +97,7 @@ export function AnomalyDetector() {
         clientCount: filteredStations.length,
         apCount: filteredAPs.length,
         serviceCount: services.length,
-        avgSignalStrength: calculateAvgSignal(filteredStations)
+        avgSignalStrength: calculateAvgSignal(filteredStations),
       };
 
       // Update historical data (keep last 10 snapshots for comparison)
@@ -151,26 +159,32 @@ export function AnomalyDetector() {
   };
 
   const calculateAvgSignal = (stations: Station[]): number => {
-    const stationsWithSignal = stations.filter(s => s.signalStrength || s.rss);
+    const stationsWithSignal = stations.filter((s) => s.signalStrength || s.rss);
     if (stationsWithSignal.length === 0) return -50;
-    return stationsWithSignal.reduce((sum, s) => sum + (s.signalStrength || s.rss || 0), 0) / stationsWithSignal.length;
+    return (
+      stationsWithSignal.reduce((sum, s) => sum + (s.signalStrength || s.rss || 0), 0) /
+      stationsWithSignal.length
+    );
   };
 
-  const calculateBaseline = (snapshots: HistoricalSnapshot[]) => {
+  const calculateBaseline = (snapshots: HistoricalSnapshot[]): HistoricalSnapshot => {
     if (snapshots.length === 0) {
       return {
+        timestamp: new Date(),
         clientCount: 0,
         apCount: 0,
         serviceCount: 0,
-        avgSignalStrength: -50
+        avgSignalStrength: -50,
       };
     }
 
     return {
+      timestamp: snapshots[snapshots.length - 1].timestamp,
       clientCount: snapshots.reduce((sum, s) => sum + s.clientCount, 0) / snapshots.length,
       apCount: snapshots.reduce((sum, s) => sum + s.apCount, 0) / snapshots.length,
       serviceCount: snapshots.reduce((sum, s) => sum + s.serviceCount, 0) / snapshots.length,
-      avgSignalStrength: snapshots.reduce((sum, s) => sum + s.avgSignalStrength, 0) / snapshots.length
+      avgSignalStrength:
+        snapshots.reduce((sum, s) => sum + s.avgSignalStrength, 0) / snapshots.length,
     };
   };
 
@@ -187,7 +201,8 @@ export function AnomalyDetector() {
     if (Math.abs(changePercent) < 20) return null;
 
     const isIncrease = changePercent > 0;
-    const severity: 'high' | 'medium' | 'low' = Math.abs(changePercent) > 50 ? 'high' : Math.abs(changePercent) > 30 ? 'medium' : 'low';
+    const severity: 'high' | 'medium' | 'low' =
+      Math.abs(changePercent) > 50 ? 'high' : Math.abs(changePercent) > 30 ? 'medium' : 'low';
 
     return {
       type: isIncrease ? 'client_count_spike' : 'client_count_drop',
@@ -195,17 +210,17 @@ export function AnomalyDetector() {
       entity: {
         type: 'site',
         id: siteName,
-        name: siteName === 'all' ? 'All Sites' : siteName
+        name: siteName === 'all' ? 'All Sites' : siteName,
       },
       metric: 'Client Count',
       baseline: Math.round(baseline),
       current,
       changePercent: Math.round(changePercent * 10) / 10,
       timestamp: new Date(),
-      confidence: Math.min(0.9, 0.6 + (Math.abs(changePercent) / 100)),
+      confidence: Math.min(0.9, 0.6 + Math.abs(changePercent) / 100),
       suggestedAction: isIncrease
         ? 'Monitor for capacity issues. Check AP load distribution.'
-        : 'Investigate possible outage or authentication issues.'
+        : 'Investigate possible outage or authentication issues.',
     };
   };
 
@@ -213,22 +228,23 @@ export function AnomalyDetector() {
     aps: AccessPoint[],
     baselineCount: number
   ): AnomalyDetection[] => {
-    const offlineAPs = aps.filter(ap =>
-      ap.status?.toLowerCase() === 'down' ||
-      ap.status?.toLowerCase() === 'offline' ||
-      ap.connectionState?.toLowerCase() === 'down'
+    const offlineAPs = aps.filter(
+      (ap) =>
+        ap.status?.toLowerCase() === 'down' ||
+        ap.status?.toLowerCase() === 'offline' ||
+        ap.connectionState?.toLowerCase() === 'down'
     );
 
     // Only report if more APs offline than expected
     if (offlineAPs.length === 0) return [];
 
-    return offlineAPs.slice(0, 3).map(ap => ({
+    return offlineAPs.slice(0, 3).map((ap) => ({
       type: 'ap_offline' as const,
       severity: 'high' as const,
       entity: {
         type: 'ap' as const,
         id: ap.serialNumber,
-        name: ap.displayName || ap.serialNumber
+        name: ap.displayName || ap.serialNumber,
       },
       metric: 'AP Status',
       baseline: 1, // Expected: online
@@ -236,7 +252,7 @@ export function AnomalyDetector() {
       changePercent: -100,
       timestamp: new Date(),
       confidence: 0.95,
-      suggestedAction: 'Check AP connectivity and power. Review recent configuration changes.'
+      suggestedAction: 'Check AP connectivity and power. Review recent configuration changes.',
     }));
   };
 
@@ -248,10 +264,9 @@ export function AnomalyDetector() {
     const degradedServices: AnomalyDetection[] = [];
 
     for (const service of services) {
-      const serviceStations = stations.filter(s =>
-        s.serviceName === service.name ||
-        s.network === service.name ||
-        s.ssid === service.ssid
+      const serviceStations = stations.filter(
+        (s) =>
+          s.serviceName === service.name || s.network === service.name || s.ssid === service.ssid
       );
 
       // Check if service is disabled
@@ -262,7 +277,7 @@ export function AnomalyDetector() {
           entity: {
             type: 'service',
             id: service.id,
-            name: service.name || service.serviceName || 'Unknown Service'
+            name: service.name || service.serviceName || 'Unknown Service',
           },
           metric: 'Service Status',
           baseline: 1,
@@ -270,14 +285,13 @@ export function AnomalyDetector() {
           changePercent: -100,
           timestamp: new Date(),
           confidence: 1.0,
-          suggestedAction: 'Service is disabled. Enable if intended to be active.'
+          suggestedAction: 'Service is disabled. Enable if intended to be active.',
         });
       }
 
       // Check for poor client experience on service
-      const poorSignalClients = serviceStations.filter(s =>
-        (s.signalStrength && s.signalStrength < -80) ||
-        (s.rss && s.rss < -80)
+      const poorSignalClients = serviceStations.filter(
+        (s) => (s.signalStrength && s.signalStrength < -80) || (s.rss && s.rss < -80)
       );
 
       if (serviceStations.length > 0 && poorSignalClients.length / serviceStations.length > 0.5) {
@@ -287,7 +301,7 @@ export function AnomalyDetector() {
           entity: {
             type: 'service',
             id: service.id,
-            name: service.name || service.serviceName || 'Unknown Service'
+            name: service.name || service.serviceName || 'Unknown Service',
           },
           metric: 'Signal Quality',
           baseline: baseline.avgSignalStrength,
@@ -295,7 +309,7 @@ export function AnomalyDetector() {
           changePercent: -50,
           timestamp: new Date(),
           confidence: 0.75,
-          suggestedAction: 'Check AP placement and RF environment for this service.'
+          suggestedAction: 'Check AP placement and RF environment for this service.',
         });
       }
     }
@@ -321,7 +335,7 @@ export function AnomalyDetector() {
       entity: {
         type: 'site',
         id: 'network',
-        name: 'Network-wide'
+        name: 'Network-wide',
       },
       metric: 'Signal Strength',
       baseline: Math.round(baseline * 10) / 10,
@@ -329,49 +343,71 @@ export function AnomalyDetector() {
       changePercent: Math.round(changePercent * 10) / 10,
       timestamp: new Date(),
       confidence: 0.7,
-      suggestedAction: 'Investigate RF interference or AP power issues.'
+      suggestedAction: 'Investigate RF interference or AP power issues.',
     };
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'text-[color:var(--status-error)] border-[color:var(--status-error)]';
-      case 'medium': return 'text-[color:var(--status-warning)] border-[color:var(--status-warning)]';
-      case 'low': return 'text-[color:var(--status-info)] border-[color:var(--status-info)]';
-      default: return 'text-muted-foreground border-muted-foreground';
+      case 'high':
+        return 'text-[color:var(--status-error)] border-[color:var(--status-error)]';
+      case 'medium':
+        return 'text-[color:var(--status-warning)] border-[color:var(--status-warning)]';
+      case 'low':
+        return 'text-[color:var(--status-info)] border-[color:var(--status-info)]';
+      default:
+        return 'text-muted-foreground border-muted-foreground';
     }
   };
 
   const getSeverityBadge = (severity: string) => {
     switch (severity) {
-      case 'high': return 'destructive';
-      case 'medium': return 'outline';
-      case 'low': return 'secondary';
-      default: return 'secondary';
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'outline';
+      case 'low':
+        return 'secondary';
+      default:
+        return 'secondary';
     }
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'client_count_drop': return <TrendingDown className="h-4 w-4" />;
-      case 'client_count_spike': return <TrendingUp className="h-4 w-4" />;
-      case 'ap_offline': return <WifiOff className="h-4 w-4" />;
-      case 'auth_spike': return <AlertTriangle className="h-4 w-4" />;
-      case 'throughput_collapse': return <TrendingDown className="h-4 w-4" />;
-      case 'service_degradation': return <Activity className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
+      case 'client_count_drop':
+        return <TrendingDown className="h-4 w-4" />;
+      case 'client_count_spike':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'ap_offline':
+        return <WifiOff className="h-4 w-4" />;
+      case 'auth_spike':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'throughput_collapse':
+        return <TrendingDown className="h-4 w-4" />;
+      case 'service_degradation':
+        return <Activity className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
     }
   };
 
   const getTypeLabel = (type: string) => {
     switch (type) {
-      case 'client_count_drop': return 'Client Count Drop';
-      case 'client_count_spike': return 'Client Count Spike';
-      case 'ap_offline': return 'AP Offline';
-      case 'auth_spike': return 'Auth Failure Spike';
-      case 'throughput_collapse': return 'Signal Degradation';
-      case 'service_degradation': return 'Service Issue';
-      default: return 'Anomaly Detected';
+      case 'client_count_drop':
+        return 'Client Count Drop';
+      case 'client_count_spike':
+        return 'Client Count Spike';
+      case 'ap_offline':
+        return 'AP Offline';
+      case 'auth_spike':
+        return 'Auth Failure Spike';
+      case 'throughput_collapse':
+        return 'Signal Degradation';
+      case 'service_degradation':
+        return 'Service Issue';
+      default:
+        return 'Anomaly Detected';
     }
   };
 
@@ -406,7 +442,9 @@ export function AnomalyDetector() {
         ) : anomalies.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <Activity className="h-8 w-8 text-[color:var(--status-success)] mb-2" />
-            <div className="text-sm font-medium text-[color:var(--status-success)]">No anomalies detected</div>
+            <div className="text-sm font-medium text-[color:var(--status-success)]">
+              No anomalies detected
+            </div>
             <div className="text-xs text-muted-foreground mt-1">
               All metrics within normal ranges
             </div>
@@ -426,7 +464,10 @@ export function AnomalyDetector() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-sm">{getTypeLabel(anomaly.type)}</h4>
-                        <Badge variant={getSeverityBadge(anomaly.severity) as any} className="text-xs">
+                        <Badge
+                          variant={getSeverityBadge(anomaly.severity) as any}
+                          className="text-xs"
+                        >
                           {anomaly.severity.toUpperCase()}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
@@ -436,10 +477,17 @@ export function AnomalyDetector() {
                       <div className="text-sm text-muted-foreground mb-2">
                         <span className="font-medium">{anomaly.entity.name}</span>
                         {' - '}
-                        {anomaly.metric}: {anomaly.baseline.toFixed(1)} → {anomaly.current.toFixed(1)}
-                        {' '}
-                        <span className={anomaly.changePercent > 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-error)]'}>
-                          ({anomaly.changePercent > 0 ? '+' : ''}{anomaly.changePercent}%)
+                        {anomaly.metric}: {anomaly.baseline.toFixed(1)} →{' '}
+                        {anomaly.current.toFixed(1)}{' '}
+                        <span
+                          className={
+                            anomaly.changePercent > 0
+                              ? 'text-[color:var(--status-success)]'
+                              : 'text-[color:var(--status-error)]'
+                          }
+                        >
+                          ({anomaly.changePercent > 0 ? '+' : ''}
+                          {anomaly.changePercent}%)
                         </span>
                       </div>
                       <div className="text-xs bg-muted/50 p-2 rounded">

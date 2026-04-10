@@ -7,7 +7,7 @@ import type {
   DeviceGroup,
   Profile,
   SecurityConfig,
-  SecurityType
+  SecurityType,
 } from '../types/network';
 
 /**
@@ -30,8 +30,8 @@ function buildPrivacyPayload(
     case 'owe':
       return {
         OweElement: {
-          pmfMode: 'required'
-        }
+          pmfMode: 'required',
+        },
       };
 
     case 'wep':
@@ -40,8 +40,8 @@ function buildPrivacyPayload(
           keyLength: config?.wepKeyLength ?? 128,
           inputMethod: config?.wepInputMethod ?? 'ascii',
           keyIndex: config?.wepKeyIndex ?? 1,
-          key: config?.wepKey || ''
-        }
+          key: config?.wepKey || '',
+        },
       };
 
     case 'wpa2-psk':
@@ -50,8 +50,8 @@ function buildPrivacyPayload(
           mode: encryptionMode,
           pmfMode: pmfMode,
           presharedKey: passphrase || config?.passphrase || '',
-          keyHexEncoded: keyHexEncoded
-        }
+          keyHexEncoded: keyHexEncoded,
+        },
       };
 
     case 'wpa3-personal':
@@ -61,8 +61,8 @@ function buildPrivacyPayload(
           pmfMode: 'required',
           saeMethod: config?.saeMethod ?? 'both',
           presharedKey: passphrase || config?.passphrase || '',
-          keyHexEncoded: keyHexEncoded
-        }
+          keyHexEncoded: keyHexEncoded,
+        },
       };
 
     case 'wpa3-compatibility':
@@ -72,8 +72,8 @@ function buildPrivacyPayload(
           mode: 'aesOnly',
           pmfMode: 'optional',
           presharedKey: passphrase || config?.passphrase || '',
-          keyHexEncoded: keyHexEncoded
-        }
+          keyHexEncoded: keyHexEncoded,
+        },
       };
 
     case 'wpa2-enterprise':
@@ -81,8 +81,8 @@ function buildPrivacyPayload(
         Wpa2EnterpriseElement: {
           mode: encryptionMode,
           pmfMode: pmfMode,
-          fastTransition: config?.fastTransition ?? false
-        }
+          fastTransition: config?.fastTransition ?? false,
+        },
       };
 
     case 'wpa3-enterprise-transition':
@@ -90,8 +90,8 @@ function buildPrivacyPayload(
         Wpa3EnterpriseTransitionElement: {
           mode: 'aesOnly',
           pmfMode: 'optional',
-          fastTransition: config?.fastTransition ?? true
-        }
+          fastTransition: config?.fastTransition ?? true,
+        },
       };
 
     case 'wpa3-enterprise-192':
@@ -99,8 +99,8 @@ function buildPrivacyPayload(
         Wpa3Enterprise192Element: {
           mode: 'gcmp256',
           pmfMode: 'required',
-          fastTransition: config?.fastTransition ?? false
-        }
+          fastTransition: config?.fastTransition ?? false,
+        },
       };
 
     default:
@@ -115,7 +115,11 @@ function buildPrivacyPayload(
  */
 function buildServicePayload(serviceData: CreateServiceRequest): any {
   const securityConfig = serviceData.securityConfig;
-  const isEnterprise = ['wpa2-enterprise', 'wpa3-enterprise-transition', 'wpa3-enterprise-192'].includes(serviceData.security);
+  const isEnterprise = [
+    'wpa2-enterprise',
+    'wpa3-enterprise-transition',
+    'wpa3-enterprise-192',
+  ].includes(serviceData.security);
 
   const payload: any = {
     // Basic identification
@@ -167,7 +171,7 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     sixEWpaCompliance: securityConfig?.sixECompliance ?? false,
 
     // Policies - AAA Policy for enterprise auth
-    aaaPolicyId: isEnterprise ? (securityConfig?.aaaPolicyId || null) : null,
+    aaaPolicyId: isEnterprise ? securityConfig?.aaaPolicyId || null : null,
     mbatimeoutRoleId: null,
     roamingAssistPolicy: null,
 
@@ -183,7 +187,7 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
     // Timeouts (from form with defaults)
     preAuthenticatedIdleTimeout: serviceData.preAuthenticatedIdleTimeout ?? 300,
     postAuthenticatedIdleTimeout: serviceData.postAuthenticatedIdleTimeout ?? 1800,
-    sessionTimeout: serviceData.sessionTimeout ?? 0
+    sessionTimeout: serviceData.sessionTimeout ?? 0,
   };
 
   // Only include topology/CoS if explicitly provided (don't use hardcoded defaults)
@@ -196,8 +200,10 @@ function buildServicePayload(serviceData: CreateServiceRequest): any {
 
   // Roles - only include if provided
   if (securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID) {
-    payload.unAuthenticatedUserDefaultRoleID = securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
-    payload.authenticatedUserDefaultRoleID = securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
+    payload.unAuthenticatedUserDefaultRoleID =
+      securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
+    payload.authenticatedUserDefaultRoleID =
+      securityConfig?.defaultAuthRoleId || serviceData.authenticatedUserDefaultRoleID;
   }
 
   // Default VLAN override from security config
@@ -279,7 +285,7 @@ export class WLANAssignmentService {
       console.log('[WLANAssignment] Discovered profiles:', {
         totalProfiles: allProfiles.length,
         uniqueProfiles: uniqueProfiles.length,
-        deviceGroupsFound: Object.keys(profileMap).length
+        deviceGroupsFound: Object.keys(profileMap).length,
       });
 
       if (options.dryRun) {
@@ -289,13 +295,13 @@ export class WLANAssignmentService {
           sitesProcessed: serviceData.sites.length,
           deviceGroupsFound: Object.keys(profileMap).length,
           profilesAssigned: 0,
-          assignments: uniqueProfiles.map(p => ({
+          assignments: uniqueProfiles.map((p) => ({
             profileId: p.id,
             profileName: p.name || p.profileName || p.id,
             success: true,
-            error: 'Dry run - not executed'
+            error: 'Dry run - not executed',
           })),
-          success: true
+          success: true,
         };
       }
 
@@ -303,21 +309,19 @@ export class WLANAssignmentService {
       console.log('[WLANAssignment] Step 3: Assigning service to profiles...');
       const assignments = await this.assignToProfiles(service.id, uniqueProfiles);
 
-      const successfulAssignments = assignments.filter(a => a.success);
-      const failedAssignments = assignments.filter(a => !a.success);
+      const successfulAssignments = assignments.filter((a) => a.success);
+      const failedAssignments = assignments.filter((a) => !a.success);
 
       console.log('[WLANAssignment] Assignment results:', {
         successful: successfulAssignments.length,
-        failed: failedAssignments.length
+        failed: failedAssignments.length,
       });
 
       // Step 4: Trigger profile synchronization
       let syncResults: SyncResult[] | undefined;
       if (!options.skipSync && successfulAssignments.length > 0) {
         console.log('[WLANAssignment] Step 4: Triggering profile sync...');
-        syncResults = await this.syncProfiles(
-          successfulAssignments.map(a => a.profileId)
-        );
+        syncResults = await this.syncProfiles(successfulAssignments.map((a) => a.profileId));
         console.log('[WLANAssignment] Sync completed');
       }
 
@@ -329,14 +333,14 @@ export class WLANAssignmentService {
         assignments,
         syncResults,
         success: failedAssignments.length === 0,
-        errors: failedAssignments.length > 0
-          ? [`${failedAssignments.length} profile(s) failed to assign`]
-          : undefined
+        errors:
+          failedAssignments.length > 0
+            ? [`${failedAssignments.length} profile(s) failed to assign`]
+            : undefined,
       };
 
       console.log('[WLANAssignment] Workflow completed:', response);
       return response;
-
     } catch (error) {
       console.error('[WLANAssignment] Workflow failed:', error);
       throw error;
@@ -346,9 +350,7 @@ export class WLANAssignmentService {
   /**
    * Discover all profiles within the selected sites
    */
-  async discoverProfilesForSites(
-    siteIds: string[]
-  ): Promise<Record<string, Profile[]>> {
+  async discoverProfilesForSites(siteIds: string[]): Promise<Record<string, Profile[]>> {
     const profileMap: Record<string, Profile[]> = {};
 
     for (const siteId of siteIds) {
@@ -358,7 +360,9 @@ export class WLANAssignmentService {
         // Fetch device groups for this site
         const deviceGroups: DeviceGroup[] = await apiService.getDeviceGroupsBySite(siteId);
 
-        console.log(`[WLANAssignment] Found ${deviceGroups.length} device groups for site ${siteId}`);
+        console.log(
+          `[WLANAssignment] Found ${deviceGroups.length} device groups for site ${siteId}`
+        );
 
         // Fetch profiles for each device group
         const profiles: Profile[] = [];
@@ -368,16 +372,21 @@ export class WLANAssignmentService {
             const groupProfiles: Profile[] = await apiService.getProfilesByDeviceGroup(group.id);
 
             // Add device group info to each profile for reference
-            const enrichedProfiles = groupProfiles.map(p => ({
+            const enrichedProfiles = groupProfiles.map((p) => ({
               ...p,
               deviceGroupId: group.id,
-              siteName: siteId
+              siteName: siteId,
             }));
 
             profiles.push(...enrichedProfiles);
-            console.log(`[WLANAssignment] Found ${groupProfiles.length} profiles in group ${group.id}`);
+            console.log(
+              `[WLANAssignment] Found ${groupProfiles.length} profiles in group ${group.id}`
+            );
           } catch (error) {
-            console.warn(`[WLANAssignment] Error fetching profiles for device group ${group.id}:`, error);
+            console.warn(
+              `[WLANAssignment] Error fetching profiles for device group ${group.id}:`,
+              error
+            );
           }
         }
 
@@ -426,7 +435,7 @@ export class WLANAssignmentService {
       const batch = profiles.slice(i, i + batchSize);
       const batchNum = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(profiles.length / batchSize);
-      
+
       console.log(`[WLANAssignment] Processing batch ${batchNum}/${totalBatches}...`);
 
       const batchResults = await Promise.all(
@@ -436,14 +445,16 @@ export class WLANAssignmentService {
             // First verify the profile exists and is accessible
             const profileData = await apiService.getProfileById(profile.id).catch(() => null);
             if (!profileData) {
-              console.warn(`[WLANAssignment] Profile ${profileName} not found or inaccessible, skipping`);
+              console.warn(
+                `[WLANAssignment] Profile ${profileName} not found or inaccessible, skipping`
+              );
               failCount++;
               return {
                 profileId: profile.id,
                 profileName,
                 success: false,
                 error: 'Profile not found or inaccessible',
-                skipped: true
+                skipped: true,
               };
             }
 
@@ -453,17 +464,19 @@ export class WLANAssignmentService {
             return {
               profileId: profile.id,
               profileName,
-              success: true
+              success: true,
             };
           } catch (error) {
             failCount++;
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-            console.warn(`[WLANAssignment] ✗ Failed to assign to profile ${profileName}: ${errorMsg}`);
+            console.warn(
+              `[WLANAssignment] ✗ Failed to assign to profile ${profileName}: ${errorMsg}`
+            );
             return {
               profileId: profile.id,
               profileName,
               success: false,
-              error: errorMsg
+              error: errorMsg,
             };
           }
         })
@@ -472,7 +485,9 @@ export class WLANAssignmentService {
       results.push(...batchResults);
     }
 
-    console.log(`[WLANAssignment] Assignment complete: ${successCount} succeeded, ${failCount} failed`);
+    console.log(
+      `[WLANAssignment] Assignment complete: ${successCount} succeeded, ${failCount} failed`
+    );
     return results;
   }
 
@@ -485,11 +500,11 @@ export class WLANAssignmentService {
       await apiService.syncMultipleProfiles(profileIds);
 
       // If batch sync succeeds, return success for all
-      return profileIds.map(id => ({
+      return profileIds.map((id) => ({
         profileId: id,
         profileName: id,
         success: true,
-        syncTime: new Date().toISOString()
+        syncTime: new Date().toISOString(),
       }));
     } catch (error) {
       console.warn('[WLANAssignment] Batch sync failed, falling back to individual syncs');
@@ -503,14 +518,14 @@ export class WLANAssignmentService {
               profileId,
               profileName: profileId,
               success: true,
-              syncTime: new Date().toISOString()
+              syncTime: new Date().toISOString(),
             };
           } catch (err) {
             return {
               profileId,
               profileName: profileId,
               success: false,
-              error: err instanceof Error ? err.message : 'Unknown error'
+              error: err instanceof Error ? err.message : 'Unknown error',
             };
           }
         })
@@ -558,7 +573,7 @@ export class WLANAssignmentService {
     console.log('[WLANAssignment] Starting site-centric deployment workflow', {
       serviceData,
       siteAssignments,
-      options
+      options,
     });
 
     // Import services dynamically to avoid circular dependencies
@@ -569,15 +584,21 @@ export class WLANAssignmentService {
       // Step 1: Validate site assignments
       console.log('[WLANAssignment] Step 1: Validating site assignments...');
       for (const assignment of siteAssignments) {
-        const validation = effectiveSetCalculator.validateSiteAssignment(assignment);
+        const validation = effectiveSetCalculator.validateSiteAssignment({
+          ...assignment,
+          includedProfiles: assignment.includedProfiles ?? [],
+          excludedProfiles: assignment.excludedProfiles ?? [],
+        } as any);
         if (!validation.valid) {
-          throw new Error(`Invalid site assignment for ${assignment.siteName}: ${validation.errors.join(', ')}`);
+          throw new Error(
+            `Invalid site assignment for ${assignment.siteName}: ${validation.errors.join(', ')}`
+          );
         }
       }
 
       // Step 2: Discover profiles for all sites
       console.log('[WLANAssignment] Step 2: Discovering profiles for sites...');
-      const siteIds = siteAssignments.map(a => a.siteId);
+      const siteIds = siteAssignments.map((a) => a.siteId);
       const profileMap = await this.discoverProfilesForSites(siteIds);
 
       // Step 3: Calculate effective profile sets
@@ -588,7 +609,11 @@ export class WLANAssignmentService {
       }
 
       const effectiveSets = effectiveSetCalculator.calculateMultipleEffectiveSets(
-        siteAssignments,
+        siteAssignments.map((a) => ({
+          ...a,
+          includedProfiles: a.includedProfiles ?? [],
+          excludedProfiles: a.excludedProfiles ?? [],
+        })) as any,
         profilesBySite
       );
 
@@ -597,7 +622,7 @@ export class WLANAssignmentService {
 
       console.log('[WLANAssignment] Effective profile sets calculated:', {
         sites: effectiveSets.length,
-        totalProfiles: profilesToAssign.length
+        totalProfiles: profilesToAssign.length,
       });
 
       if (options.dryRun) {
@@ -607,13 +632,13 @@ export class WLANAssignmentService {
           sitesProcessed: siteAssignments.length,
           deviceGroupsFound: 0,
           profilesAssigned: 0,
-          assignments: profilesToAssign.map(p => ({
+          assignments: profilesToAssign.map((p) => ({
             profileId: p.id,
             profileName: p.name || p.profileName || p.id,
             success: true,
-            error: 'Dry run - not executed'
+            error: 'Dry run - not executed',
           })),
-          success: true
+          success: true,
         };
       }
 
@@ -633,12 +658,12 @@ export class WLANAssignmentService {
       console.log('[WLANAssignment] Step 5: Assigning service to profiles...');
       const assignments = await this.assignToProfiles(wlanId, profilesToAssign);
 
-      const successfulAssignments = assignments.filter(a => a.success);
-      const failedAssignments = assignments.filter(a => !a.success);
+      const successfulAssignments = assignments.filter((a) => a.success);
+      const failedAssignments = assignments.filter((a) => !a.success);
 
       console.log('[WLANAssignment] Assignment results:', {
         successful: successfulAssignments.length,
-        failed: failedAssignments.length
+        failed: failedAssignments.length,
       });
 
       // Step 6: Save assignment tracking data
@@ -655,16 +680,16 @@ export class WLANAssignmentService {
           includedProfiles: siteAssignment.includedProfiles || [],
           excludedProfiles: siteAssignment.excludedProfiles || [],
           createdAt: new Date().toISOString(),
-          lastModified: new Date().toISOString()
+          lastModified: new Date().toISOString(),
         });
       }
 
       // Save profile assignments
-      const profileAssignments = profilesToAssign.map(profile => {
-        const assignment = assignments.find(a => a.profileId === profile.id);
-        const siteAssignment = siteAssignments.find(sa => {
+      const profileAssignments = profilesToAssign.map((profile) => {
+        const assignment = assignments.find((a) => a.profileId === profile.id);
+        const siteAssignment = siteAssignments.find((sa) => {
           const profiles = profileMap[sa.siteId] || [];
-          return profiles.some(p => p.id === profile.id);
+          return profiles.some((p) => p.id === profile.id);
         });
 
         return {
@@ -676,10 +701,10 @@ export class WLANAssignmentService {
           siteName: siteAssignment?.siteName || '',
           source: 'SITE_PROPAGATION' as const,
           expectedState: 'ASSIGNED' as const,
-          actualState: (assignment?.success ? 'ASSIGNED' : 'UNKNOWN') as const,
+          actualState: assignment?.success ? ('ASSIGNED' as const) : ('UNKNOWN' as const),
           mismatch: null,
           lastReconciled: new Date().toISOString(),
-          syncStatus: 'PENDING' as const
+          syncStatus: 'PENDING' as const,
         };
       });
 
@@ -689,9 +714,7 @@ export class WLANAssignmentService {
       let syncResults;
       if (!options.skipSync && successfulAssignments.length > 0) {
         console.log('[WLANAssignment] Step 7: Triggering profile sync...');
-        syncResults = await this.syncProfiles(
-          successfulAssignments.map(a => a.profileId)
-        );
+        syncResults = await this.syncProfiles(successfulAssignments.map((a) => a.profileId));
 
         // Update sync status in storage
         for (const syncResult of syncResults) {
@@ -714,14 +737,14 @@ export class WLANAssignmentService {
         assignments,
         syncResults,
         success: failedAssignments.length === 0,
-        errors: failedAssignments.length > 0
-          ? [`${failedAssignments.length} profile(s) failed to assign`]
-          : undefined
+        errors:
+          failedAssignments.length > 0
+            ? [`${failedAssignments.length} profile(s) failed to assign`]
+            : undefined,
       };
 
       console.log('[WLANAssignment] Site-centric deployment completed:', response);
       return response;
-
     } catch (error) {
       console.error('[WLANAssignment] Site-centric deployment failed:', error);
       throw error;
@@ -732,9 +755,7 @@ export class WLANAssignmentService {
    * Creates a WLAN at global scope with no site assignment.
    * No profile discovery or sync is triggered.
    */
-  async createWLANUnassigned(
-    serviceData: CreateServiceRequest
-  ): Promise<AutoAssignmentResponse> {
+  async createWLANUnassigned(serviceData: CreateServiceRequest): Promise<AutoAssignmentResponse> {
     try {
       const servicePayload = buildServicePayload(serviceData);
       const service = await apiService.createService(servicePayload);

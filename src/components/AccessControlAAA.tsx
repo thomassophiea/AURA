@@ -5,12 +5,20 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Shield, Plus, Edit, Trash2, Server, Users, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import apiService from '@/services/api';
+import { apiService } from '@/services/api';
 
 interface AAAProfile {
   id: string;
@@ -39,7 +47,7 @@ export function AccessControlAAA() {
     authMethod: 'radius',
     accountingEnabled: false,
     macAuthEnabled: false,
-    enabled: true
+    enabled: true,
   });
 
   useEffect(() => {
@@ -50,7 +58,7 @@ export function AccessControlAAA() {
     setLoading(true);
     try {
       const response = await apiService.makeAuthenticatedRequest('/v1/access-control/aaa', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (response.ok) {
@@ -71,12 +79,16 @@ export function AccessControlAAA() {
     }
 
     if (editingProfile) {
-      setProfiles(profiles.map(p => p.id === editingProfile.id ? { ...editingProfile, ...formData } as AAAProfile : p));
+      setProfiles(
+        profiles.map((p) =>
+          p.id === editingProfile.id ? ({ ...editingProfile, ...formData } as AAAProfile) : p
+        )
+      );
       toast.success('AAA profile updated');
     } else {
       const newProfile: AAAProfile = {
+        ...(formData as AAAProfile),
         id: Date.now().toString(),
-        ...formData as AAAProfile
       };
       setProfiles([...profiles, newProfile]);
       toast.success('AAA profile created');
@@ -86,19 +98,20 @@ export function AccessControlAAA() {
 
   const handleDelete = (id: string) => {
     if (window.confirm('Delete this AAA profile?')) {
-      setProfiles(profiles.filter(p => p.id !== id));
+      setProfiles(profiles.filter((p) => p.id !== id));
       toast.success('AAA profile deleted');
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-32">
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading...</span>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-32">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span className="text-sm">Loading...</span>
+        </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="space-y-6 p-6">
@@ -108,11 +121,19 @@ export function AccessControlAAA() {
             <Shield className="h-6 w-6" />
             AAA (Authentication, Authorization, Accounting)
           </h2>
-          <p className="text-muted-foreground">Configure authentication and authorization profiles</p>
+          <p className="text-muted-foreground">
+            Configure authentication and authorization profiles
+          </p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => { setEditingProfile(null); setFormData({ name: '', authMethod: 'radius', enabled: true }); }} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button
+              onClick={() => {
+                setEditingProfile(null);
+                setFormData({ name: '', authMethod: 'radius', enabled: true });
+              }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Profile
             </Button>
@@ -124,16 +145,27 @@ export function AccessControlAAA() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label>Name</Label>
-                <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+                <Input
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Description</Label>
-                <Input value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+                <Input
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Authentication Method</Label>
-                <Select value={formData.authMethod} onValueChange={(v: any) => setFormData({ ...formData, authMethod: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select
+                  value={formData.authMethod}
+                  onValueChange={(v: any) => setFormData({ ...formData, authMethod: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="radius">RADIUS</SelectItem>
                     <SelectItem value="ldap">LDAP</SelectItem>
@@ -146,16 +178,31 @@ export function AccessControlAAA() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>RADIUS Server</Label>
-                      <Input value={formData.radiusServer} onChange={(e) => setFormData({ ...formData, radiusServer: e.target.value })} placeholder="192.168.1.50" />
+                      <Input
+                        value={formData.radiusServer}
+                        onChange={(e) => setFormData({ ...formData, radiusServer: e.target.value })}
+                        placeholder="192.168.1.50"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Port</Label>
-                      <Input type="number" value={formData.radiusPort} onChange={(e) => setFormData({ ...formData, radiusPort: parseInt(e.target.value) })} placeholder="1812" />
+                      <Input
+                        type="number"
+                        value={formData.radiusPort}
+                        onChange={(e) =>
+                          setFormData({ ...formData, radiusPort: parseInt(e.target.value) })
+                        }
+                        placeholder="1812"
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Shared Secret</Label>
-                    <Input type="password" value={formData.radiusSecret} onChange={(e) => setFormData({ ...formData, radiusSecret: e.target.value })} />
+                    <Input
+                      type="password"
+                      value={formData.radiusSecret}
+                      onChange={(e) => setFormData({ ...formData, radiusSecret: e.target.value })}
+                    />
                   </div>
                 </div>
               )}
@@ -164,30 +211,53 @@ export function AccessControlAAA() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>LDAP Server</Label>
-                      <Input value={formData.ldapServer} onChange={(e) => setFormData({ ...formData, ldapServer: e.target.value })} placeholder="ldap.example.com" />
+                      <Input
+                        value={formData.ldapServer}
+                        onChange={(e) => setFormData({ ...formData, ldapServer: e.target.value })}
+                        placeholder="ldap.example.com"
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Port</Label>
-                      <Input type="number" value={formData.ldapPort} onChange={(e) => setFormData({ ...formData, ldapPort: parseInt(e.target.value) })} placeholder="389" />
+                      <Input
+                        type="number"
+                        value={formData.ldapPort}
+                        onChange={(e) =>
+                          setFormData({ ...formData, ldapPort: parseInt(e.target.value) })
+                        }
+                        placeholder="389"
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label>Base DN</Label>
-                    <Input value={formData.ldapBaseDN} onChange={(e) => setFormData({ ...formData, ldapBaseDN: e.target.value })} placeholder="dc=example,dc=com" />
+                    <Input
+                      value={formData.ldapBaseDN}
+                      onChange={(e) => setFormData({ ...formData, ldapBaseDN: e.target.value })}
+                      placeholder="dc=example,dc=com"
+                    />
                   </div>
                 </div>
               )}
               <div className="flex items-center justify-between">
                 <Label>Enable Accounting</Label>
-                <Switch checked={formData.accountingEnabled} onCheckedChange={(c) => setFormData({ ...formData, accountingEnabled: c })} />
+                <Switch
+                  checked={formData.accountingEnabled}
+                  onCheckedChange={(c) => setFormData({ ...formData, accountingEnabled: c })}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <Label>MAC Authentication</Label>
-                <Switch checked={formData.macAuthEnabled} onCheckedChange={(c) => setFormData({ ...formData, macAuthEnabled: c })} />
+                <Switch
+                  checked={formData.macAuthEnabled}
+                  onCheckedChange={(c) => setFormData({ ...formData, macAuthEnabled: c })}
+                />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
               <Button onClick={handleSave}>{editingProfile ? 'Update' : 'Create'}</Button>
             </DialogFooter>
           </DialogContent>
@@ -213,7 +283,7 @@ export function AccessControlAAA() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles.map(profile => (
+              {profiles.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell>
                     <div>
@@ -221,17 +291,54 @@ export function AccessControlAAA() {
                       <div className="text-xs text-muted-foreground">{profile.description}</div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge>{profile.authMethod.toUpperCase()}</Badge></TableCell>
-                  <TableCell className="text-sm">{profile.radiusServer || profile.ldapServer || 'N/A'}</TableCell>
-                  <TableCell>{profile.accountingEnabled ? <CheckCircle className="h-4 w-4 text-green-500" /> : '-'}</TableCell>
-                  <TableCell>{profile.macAuthEnabled ? <CheckCircle className="h-4 w-4 text-green-500" /> : '-'}</TableCell>
-                  <TableCell><Switch checked={profile.enabled} onCheckedChange={(c) => setProfiles(profiles.map(p => p.id === profile.id ? { ...p, enabled: c } : p))} /></TableCell>
+                  <TableCell>
+                    <Badge>{profile.authMethod.toUpperCase()}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {profile.radiusServer || profile.ldapServer || 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {profile.accountingEnabled ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {profile.macAuthEnabled ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={profile.enabled}
+                      onCheckedChange={(c) =>
+                        setProfiles(
+                          profiles.map((p) => (p.id === profile.id ? { ...p, enabled: c } : p))
+                        )
+                      }
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => { setEditingProfile(profile); setFormData(profile); setDialogOpen(true); }}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingProfile(profile);
+                          setFormData(profile);
+                          setDialogOpen(true);
+                        }}
+                      >
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button size="sm" variant="destructive" onClick={() => handleDelete(profile.id)}>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(profile.id)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>

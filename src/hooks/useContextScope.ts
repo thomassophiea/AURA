@@ -83,13 +83,16 @@ export function useContextScope(): ContextScope {
     }
 
     // Resolve site name from ID
-    apiService.getSiteById(filters.site).then(site => {
-      const name = site?.name || site?.siteName || filters.site;
-      siteNameCache.set(filters.site, name);
-      setSiteName(name);
-    }).catch(() => {
-      setSiteName(filters.site);
-    });
+    apiService
+      .getSiteById(filters.site)
+      .then((site) => {
+        const name = site?.name || site?.siteName || filters.site;
+        siteNameCache.set(filters.site, name);
+        setSiteName(name);
+      })
+      .catch(() => {
+        setSiteName(filters.site);
+      });
   }, [filters.site]);
 
   const isSiteScoped = filters.site !== 'all';
@@ -112,7 +115,7 @@ export function useContextScope(): ContextScope {
     label,
     isSiteScoped,
     isEnvironmentScoped,
-    contextFingerprint
+    contextFingerprint,
   };
 }
 
@@ -125,7 +128,9 @@ export function useContextScope(): ContextScope {
  *   - On API failure: returns EMPTY dataset, NOT global fallback
  *   - On context change: immediately invalidates and refetches
  */
-export function useContextScopedData(refreshInterval?: number): ScopedData & { scope: ContextScope; refresh: () => void } {
+export function useContextScopedData(
+  refreshInterval?: number
+): ScopedData & { scope: ContextScope; refresh: () => void } {
   const scope = useContextScope();
   const { filters } = useGlobalFilters();
   const [data, setData] = useState<ScopedData>({
@@ -135,7 +140,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
     loading: true,
     error: null,
     lastRefresh: 0,
-    dataFingerprint: ''
+    dataFingerprint: '',
   });
   const abortRef = useRef<AbortController | null>(null);
   const lastFingerprintRef = useRef<string>('');
@@ -152,7 +157,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
         loading: true,
         error: null,
         lastRefresh: 0,
-        dataFingerprint: ''
+        dataFingerprint: '',
       });
       lastFingerprintRef.current = currentFingerprint;
     }
@@ -161,7 +166,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
     abortRef.current?.abort();
     abortRef.current = new AbortController();
 
-    setData(prev => ({ ...prev, loading: true, error: null }));
+    setData((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const siteId = filters.site !== 'all' ? filters.site : undefined;
@@ -170,7 +175,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
       const [aps, stations, services] = await Promise.all([
         fetchScopedAPs(siteId),
         fetchScopedStations(siteId),
-        fetchScopedServices(siteId)
+        fetchScopedServices(siteId),
       ]);
 
       setData({
@@ -180,7 +185,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
         loading: false,
         error: null,
         lastRefresh: Date.now(),
-        dataFingerprint: currentFingerprint
+        dataFingerprint: currentFingerprint,
       });
     } catch (error: any) {
       if (error?.name !== 'AbortError') {
@@ -193,7 +198,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
           loading: false,
           error: error?.message || 'Failed to load scoped data',
           lastRefresh: Date.now(),
-          dataFingerprint: currentFingerprint
+          dataFingerprint: currentFingerprint,
         });
       }
     }
@@ -206,6 +211,7 @@ export function useContextScopedData(refreshInterval?: number): ScopedData & { s
       const interval = setInterval(fetchScopedData, refreshInterval);
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [fetchScopedData, refreshInterval]);
 
   return { ...data, scope, refresh: fetchScopedData };
@@ -249,7 +255,7 @@ async function fetchScopedStations(siteId?: string): Promise<Station[]> {
     );
     if (response.ok) {
       const data = await response.json();
-      return Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
+      return Array.isArray(data) ? data : data.stations || data.clients || data.data || [];
     }
   } catch {
     // Fall through to client-side filtering of site-scoped data only
@@ -261,10 +267,8 @@ async function fetchScopedStations(siteId?: string): Promise<Station[]> {
     const site = await apiService.getSiteById(siteId);
     const siteName = site?.name || site?.siteName || siteId;
 
-    const filtered = allStations.filter(s =>
-      s.siteName === siteName ||
-      s.siteId === siteId ||
-      s.siteName === siteId
+    const filtered = allStations.filter(
+      (s) => s.siteName === siteName || s.siteId === siteId || s.siteName === siteId
     );
 
     // STRICT: return filtered results even if empty - no global fallback
@@ -300,11 +304,12 @@ async function fetchScopedServices(siteId?: string): Promise<Service[]> {
     const site = await apiService.getSiteById(siteId);
     const siteName = site?.name || site?.siteName || siteId;
 
-    const filtered = allServices.filter((s: any) =>
-      s.siteName === siteName ||
-      s.site === siteId ||
-      s.site === siteName ||
-      s.location === siteName
+    const filtered = allServices.filter(
+      (s: any) =>
+        s.siteName === siteName ||
+        s.site === siteId ||
+        s.site === siteName ||
+        s.location === siteName
     );
 
     // STRICT: return filtered results even if empty
@@ -318,9 +323,13 @@ async function fetchScopedServices(siteId?: string): Promise<Service[]> {
 /**
  * STRICT: Filter APs by context. Returns only matches, never global.
  */
-export function filterAPsByContext(aps: AccessPoint[], siteId?: string | null, siteName?: string | null): AccessPoint[] {
+export function filterAPsByContext(
+  aps: AccessPoint[],
+  siteId?: string | null,
+  siteName?: string | null
+): AccessPoint[] {
   if (!siteId) return aps;
-  return aps.filter(ap => {
+  return aps.filter((ap) => {
     const apAny = ap as any;
     return (
       apAny.hostSite === siteName ||
@@ -335,25 +344,29 @@ export function filterAPsByContext(aps: AccessPoint[], siteId?: string | null, s
 /**
  * STRICT: Filter stations by context. Returns only matches, never global.
  */
-export function filterStationsByContext(stations: Station[], siteId?: string | null, siteName?: string | null): Station[] {
+export function filterStationsByContext(
+  stations: Station[],
+  siteId?: string | null,
+  siteName?: string | null
+): Station[] {
   if (!siteId) return stations;
-  return stations.filter(s =>
-    s.siteName === siteName ||
-    s.siteId === siteId ||
-    s.siteName === siteId
+  return stations.filter(
+    (s) => s.siteName === siteName || s.siteId === siteId || s.siteName === siteId
   );
 }
 
 /**
  * STRICT: Filter services by context. Returns only matches, never global.
  */
-export function filterServicesByContext(services: Service[], siteId?: string | null, siteName?: string | null): Service[] {
+export function filterServicesByContext(
+  services: Service[],
+  siteId?: string | null,
+  siteName?: string | null
+): Service[] {
   if (!siteId) return services;
-  return services.filter((s: any) =>
-    s.siteName === siteName ||
-    s.site === siteId ||
-    s.site === siteName ||
-    s.location === siteName
+  return services.filter(
+    (s: any) =>
+      s.siteName === siteName || s.site === siteId || s.site === siteName || s.location === siteName
   );
 }
 
@@ -366,7 +379,7 @@ export async function getSiteDeviceIdentifiers(siteId: string): Promise<Set<stri
   const identifiers = new Set<string>();
   try {
     const siteAPs = await apiService.getAccessPointsBySite(siteId);
-    siteAPs.forEach(ap => {
+    siteAPs.forEach((ap) => {
       if (ap.name) identifiers.add(ap.name.toLowerCase());
       if (ap.serialNumber) identifiers.add(ap.serialNumber.toLowerCase());
       if ((ap as any).hostname) identifiers.add((ap as any).hostname.toLowerCase());
@@ -383,27 +396,26 @@ export async function getSiteDeviceIdentifiers(siteId: string): Promise<Set<stri
  * Only includes items whose source/device matches an AP at the site.
  * Items with source='system' are EXCLUDED in site-scoped mode (they are org-level).
  */
-export function filterBySiteDevices<T extends { source: string; device?: string; affectedDevices?: string[] }>(
-  items: T[],
-  siteDeviceIds: Set<string>
-): T[] {
+export function filterBySiteDevices<
+  T extends { source: string; device?: string; affectedDevices?: string[] },
+>(items: T[], siteDeviceIds: Set<string>): T[] {
   if (siteDeviceIds.size === 0) {
     // STRICT: if we have no device IDs for this site, return empty
     // (no devices = no alerts can be correlated)
     return [];
   }
 
-  return items.filter(item => {
+  return items.filter((item) => {
     const source = item.source.toLowerCase();
     const device = (item.device || '').toLowerCase();
-    const affected = (item.affectedDevices || []).map(d => d.toLowerCase());
+    const affected = (item.affectedDevices || []).map((d) => d.toLowerCase());
 
     // STRICT: system-wide alerts are NOT shown in site-scoped views
     // Only show alerts correlated to devices at this site
     return (
       siteDeviceIds.has(source) ||
       siteDeviceIds.has(device) ||
-      affected.some(d => siteDeviceIds.has(d))
+      affected.some((d) => siteDeviceIds.has(d))
     );
   });
 }

@@ -7,8 +7,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { AlertCircle, Server, Database, Lock, Plus, Pencil, Trash2, Shield, CheckCircle2, XCircle, Layers } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import {
+  AlertCircle,
+  Server,
+  Database,
+  Lock,
+  Plus,
+  Pencil,
+  Trash2,
+  Shield,
+  CheckCircle2,
+  XCircle,
+  Layers,
+} from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
@@ -68,7 +87,8 @@ interface AAAConfiguration {
 }
 
 export function ConfigureAAAPolicies() {
-  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } =
+    useAppContext();
   const isOrgScope = navigationScope === 'global';
   const [isLoading, setIsLoading] = useState(true);
   const [aaaConfig, setAaaConfig] = useState<AAAConfiguration>({
@@ -88,7 +108,7 @@ export function ConfigureAAAPolicies() {
     radiusServerSecondary: '',
     radiusAccountingEnabled: false,
     macAuthEnabled: false,
-    fallbackToLocal: false
+    fallbackToLocal: false,
   });
   const [savingPolicy, setSavingPolicy] = useState(false);
 
@@ -117,18 +137,29 @@ export function ConfigureAAAPolicies() {
       const fetchPolicies = async (sgTag?: { id: string; name: string }) => {
         const [policiesResponse, aaaPoliciesResponse] = await Promise.allSettled([
           apiService.getAAAPolicies(),
-          apiService.getAaaPolicies()
+          apiService.getAaaPolicies(),
         ]);
 
         let policies: any[] = [];
-        if (policiesResponse.status === 'fulfilled' && Array.isArray(policiesResponse.value) && policiesResponse.value.length > 0) {
+        if (
+          policiesResponse.status === 'fulfilled' &&
+          Array.isArray(policiesResponse.value) &&
+          policiesResponse.value.length > 0
+        ) {
           policies = policiesResponse.value;
-        } else if (aaaPoliciesResponse.status === 'fulfilled' && Array.isArray(aaaPoliciesResponse.value)) {
+        } else if (
+          aaaPoliciesResponse.status === 'fulfilled' &&
+          Array.isArray(aaaPoliciesResponse.value)
+        ) {
           policies = aaaPoliciesResponse.value;
         }
 
         if (sgTag) {
-          policies = policies.map(p => ({ ...p, _siteGroupId: sgTag.id, _siteGroupName: sgTag.name }));
+          policies = policies.map((p) => ({
+            ...p,
+            _siteGroupId: sgTag.id,
+            _siteGroupName: sgTag.name,
+          }));
         }
         return policies;
       };
@@ -169,7 +200,7 @@ export function ConfigureAAAPolicies() {
                 timeout: server.timeout || 5,
                 retries: server.retries || 3,
                 isPrimary: true,
-                status: 'active'
+                status: 'active',
               });
             }
           }
@@ -178,7 +209,6 @@ export function ConfigureAAAPolicies() {
           setRadiusServers(extractedServers);
         }
       }
-
     } catch (error) {
       console.error('Error loading AAA configuration:', error);
       toast.error('Failed to load AAA configuration');
@@ -205,7 +235,7 @@ export function ConfigureAAAPolicies() {
       radiusServerSecondary: '',
       radiusAccountingEnabled: false,
       macAuthEnabled: false,
-      fallbackToLocal: false
+      fallbackToLocal: false,
     });
     setShowPolicyDialog(true);
   };
@@ -219,7 +249,7 @@ export function ConfigureAAAPolicies() {
       radiusServerSecondary: policy.radiusServerSecondary || policy.secondaryServer || '',
       radiusAccountingEnabled: policy.radiusAccountingEnabled || policy.accountingEnabled || false,
       macAuthEnabled: policy.macAuthEnabled || false,
-      fallbackToLocal: policy.fallbackToLocal || false
+      fallbackToLocal: policy.fallbackToLocal || false,
     });
     setShowPolicyDialog(true);
   };
@@ -239,7 +269,7 @@ export function ConfigureAAAPolicies() {
         radiusServerSecondary: policyForm.radiusServerSecondary,
         radiusAccountingEnabled: policyForm.radiusAccountingEnabled,
         macAuthEnabled: policyForm.macAuthEnabled,
-        fallbackToLocal: policyForm.fallbackToLocal
+        fallbackToLocal: policyForm.fallbackToLocal,
       };
 
       if (editingPolicy) {
@@ -254,7 +284,7 @@ export function ConfigureAAAPolicies() {
       await loadAAAConfiguration();
     } catch (err) {
       toast.error('Failed to save AAA policy', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     } finally {
       setSavingPolicy(false);
@@ -269,7 +299,7 @@ export function ConfigureAAAPolicies() {
       await loadAAAConfiguration();
     } catch (err) {
       toast.error('Failed to delete policy', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   };
@@ -278,18 +308,18 @@ export function ConfigureAAAPolicies() {
     try {
       if (editingRadius) {
         // Update existing server
-        setRadiusServers(prev => prev.map(s => 
-          s.id === editingRadius.id ? { ...s, ...server } : s
-        ));
+        setRadiusServers((prev) =>
+          prev.map((s) => (s.id === editingRadius.id ? { ...s, ...server } : s))
+        );
         toast.success('RADIUS server updated successfully');
       } else {
         // Add new server
         const newServer: RadiusServer = {
+          ...(server as RadiusServer),
           id: Date.now().toString(),
           status: 'active',
-          ...server as RadiusServer
         };
-        setRadiusServers(prev => [...prev, newServer]);
+        setRadiusServers((prev) => [...prev, newServer]);
         toast.success('RADIUS server added successfully');
       }
       setShowRadiusDialog(false);
@@ -301,9 +331,9 @@ export function ConfigureAAAPolicies() {
 
   const handleDeleteRadius = async (id: string) => {
     if (!confirm('Are you sure you want to delete this RADIUS server?')) return;
-    
+
     try {
-      setRadiusServers(prev => prev.filter(s => s.id !== id));
+      setRadiusServers((prev) => prev.filter((s) => s.id !== id));
       toast.success('RADIUS server deleted successfully');
     } catch (error) {
       toast.error('Failed to delete RADIUS server');
@@ -314,18 +344,18 @@ export function ConfigureAAAPolicies() {
     try {
       if (editingLdap) {
         // Update existing config
-        setLdapConfigs(prev => prev.map(c => 
-          c.id === editingLdap.id ? { ...c, ...config } : c
-        ));
+        setLdapConfigs((prev) =>
+          prev.map((c) => (c.id === editingLdap.id ? { ...c, ...config } : c))
+        );
         toast.success('LDAP configuration updated successfully');
       } else {
         // Add new config
         const newConfig: LdapConfiguration = {
+          ...(config as LdapConfiguration),
           id: Date.now().toString(),
           status: 'disconnected',
-          ...config as LdapConfiguration
         };
-        setLdapConfigs(prev => [...prev, newConfig]);
+        setLdapConfigs((prev) => [...prev, newConfig]);
         toast.success('LDAP configuration added successfully');
       }
       setShowLdapDialog(false);
@@ -337,9 +367,9 @@ export function ConfigureAAAPolicies() {
 
   const handleDeleteLdap = async (id: string) => {
     if (!confirm('Are you sure you want to delete this LDAP configuration?')) return;
-    
+
     try {
-      setLdapConfigs(prev => prev.filter(c => c.id !== id));
+      setLdapConfigs((prev) => prev.filter((c) => c.id !== id));
       toast.success('LDAP configuration deleted successfully');
     } catch (error) {
       toast.error('Failed to delete LDAP configuration');
@@ -350,19 +380,16 @@ export function ConfigureAAAPolicies() {
     try {
       if (editingUser) {
         // Update existing user
-        setLocalUsers(prev => prev.map(u => 
-          u.id === editingUser.id ? { ...u, ...user } : u
-        ));
+        setLocalUsers((prev) => prev.map((u) => (u.id === editingUser.id ? { ...u, ...user } : u)));
         toast.success('User updated successfully');
       } else {
         // Add new user
         const newUser: LocalUser = {
+          ...(user as LocalUser),
           id: Date.now().toString(),
-          status: 'active',
           createdAt: new Date().toISOString(),
-          ...user as LocalUser
         };
-        setLocalUsers(prev => [...prev, newUser]);
+        setLocalUsers((prev) => [...prev, newUser]);
         toast.success('User created successfully');
       }
       setShowUserDialog(false);
@@ -374,9 +401,9 @@ export function ConfigureAAAPolicies() {
 
   const handleDeleteUser = async (id: string) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
-    
+
     try {
-      setLocalUsers(prev => prev.filter(u => u.id !== id));
+      setLocalUsers((prev) => prev.filter((u) => u.id !== id));
       toast.success('User deleted successfully');
     } catch (error) {
       toast.error('Failed to delete user');
@@ -389,15 +416,17 @@ export function ConfigureAAAPolicies() {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
+
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
     return `${Math.floor(diffMins / 1440)}d ago`;
   };
 
-  const primaryRadius = radiusServers.find(s => s.id === aaaConfig.primaryRadiusId || s.isPrimary);
-  const backupRadius = radiusServers.find(s => s.id === aaaConfig.backupRadiusId);
-  const activeLdap = ldapConfigs.find(c => c.id === aaaConfig.ldapConfigId);
+  const primaryRadius = radiusServers.find(
+    (s) => s.id === aaaConfig.primaryRadiusId || s.isPrimary
+  );
+  const backupRadius = radiusServers.find((s) => s.id === aaaConfig.backupRadiusId);
+  const activeLdap = ldapConfigs.find((c) => c.id === aaaConfig.ldapConfigId);
 
   return (
     <div className="space-y-6">
@@ -418,7 +447,7 @@ export function ConfigureAAAPolicies() {
             <h3 className="text-lg font-medium">Default AAA Configuration</h3>
           </div>
         </div>
-        
+
         {isLoading ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-12 w-full" />
@@ -434,8 +463,8 @@ export function ConfigureAAAPolicies() {
                 <div className="flex items-center gap-4">
                   <Select
                     value={aaaConfig.authenticationMethod}
-                    onValueChange={(value: any) => 
-                      setAaaConfig(prev => ({ ...prev, authenticationMethod: value }))
+                    onValueChange={(value: any) =>
+                      setAaaConfig((prev) => ({ ...prev, authenticationMethod: value }))
                     }
                   >
                     <SelectTrigger className="w-[200px]">
@@ -459,7 +488,7 @@ export function ConfigureAAAPolicies() {
                     {primaryRadius ? primaryRadius.ipAddress : 'Not configured'}
                   </span>
                   {primaryRadius && (
-                    <Badge 
+                    <Badge
                       variant={primaryRadius.status === 'active' ? 'default' : 'secondary'}
                       className="flex items-center gap-1"
                     >
@@ -481,7 +510,7 @@ export function ConfigureAAAPolicies() {
                     {backupRadius ? backupRadius.ipAddress : 'OFF'}
                   </span>
                   {backupRadius && (
-                    <Badge 
+                    <Badge
                       variant={backupRadius.status === 'active' ? 'default' : 'secondary'}
                       className="flex items-center gap-1"
                     >
@@ -503,7 +532,7 @@ export function ConfigureAAAPolicies() {
                     {activeLdap ? activeLdap.configurationName : 'OFF'}
                   </span>
                   {activeLdap && (
-                    <Badge 
+                    <Badge
                       variant={activeLdap.status === 'connected' ? 'default' : 'secondary'}
                       className="flex items-center gap-1"
                     >
@@ -524,7 +553,7 @@ export function ConfigureAAAPolicies() {
                   <Switch
                     checked={aaaConfig.authenticateLocallyForMac}
                     onCheckedChange={(checked) =>
-                      setAaaConfig(prev => ({ ...prev, authenticateLocallyForMac: checked }))
+                      setAaaConfig((prev) => ({ ...prev, authenticateLocallyForMac: checked }))
                     }
                   />
                   <span className="text-sm text-muted-foreground">
@@ -535,9 +564,7 @@ export function ConfigureAAAPolicies() {
             </div>
 
             <div className="flex justify-end">
-              <Button onClick={handleSaveAAAConfig}>
-                Save Configuration
-              </Button>
+              <Button onClick={handleSaveAAAConfig}>Save Configuration</Button>
             </div>
           </div>
         )}
@@ -570,10 +597,16 @@ export function ConfigureAAAPolicies() {
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div>
                 <h3 className="font-medium">Controller AAA Policies</h3>
-                <p className="text-sm text-muted-foreground">RADIUS authentication policies from the Campus Controller</p>
+                <p className="text-sm text-muted-foreground">
+                  RADIUS authentication policies from the Campus Controller
+                </p>
               </div>
               {isOrgScope ? (
-                <Button size="sm" onClick={() => navigateToTemplateCreation('aaa_policy')} className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => navigateToTemplateCreation('aaa_policy')}
+                  className="flex items-center gap-2"
+                >
                   <Layers className="h-4 w-4" />
                   Create Template
                 </Button>
@@ -588,9 +621,15 @@ export function ConfigureAAAPolicies() {
               {aaaPolicies.length === 0 ? (
                 <div className="text-center py-12">
                   <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No AAA policies configured on the controller</p>
+                  <p className="text-muted-foreground">
+                    No AAA policies configured on the controller
+                  </p>
                   {isOrgScope ? (
-                    <Button variant="outline" className="mt-4" onClick={() => navigateToTemplateCreation('aaa_policy')}>
+                    <Button
+                      variant="outline"
+                      className="mt-4"
+                      onClick={() => navigateToTemplateCreation('aaa_policy')}
+                    >
                       <Layers className="h-4 w-4 mr-2" />
                       Create Template
                     </Button>
@@ -621,11 +660,17 @@ export function ConfigureAAAPolicies() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {(orgSiteGroupFilter ? aaaPolicies.filter((p: any) => p._siteGroupId === orgSiteGroupFilter) : aaaPolicies).map((policy: any) => (
+                    {(orgSiteGroupFilter
+                      ? aaaPolicies.filter((p: any) => p._siteGroupId === orgSiteGroupFilter)
+                      : aaaPolicies
+                    ).map((policy: any) => (
                       <TableRow key={policy.id}>
                         {isOrgScope && siteGroups.length > 1 && (
                           <TableCell>
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 font-normal"
+                            >
                               {policy._siteGroupName || '—'}
                             </Badge>
                           </TableCell>
@@ -637,8 +682,16 @@ export function ConfigureAAAPolicies() {
                           {policy.description || '-'}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={(policy.radiusAccountingEnabled || policy.accountingEnabled) ? 'default' : 'secondary'}>
-                            {(policy.radiusAccountingEnabled || policy.accountingEnabled) ? 'Enabled' : 'Disabled'}
+                          <Badge
+                            variant={
+                              policy.radiusAccountingEnabled || policy.accountingEnabled
+                                ? 'default'
+                                : 'secondary'
+                            }
+                          >
+                            {policy.radiusAccountingEnabled || policy.accountingEnabled
+                              ? 'Enabled'
+                              : 'Disabled'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -722,7 +775,7 @@ export function ConfigureAAAPolicies() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {radiusServers.map(server => (
+                    {radiusServers.map((server) => (
                       <TableRow key={server.id}>
                         <TableCell className="font-medium">{server.name}</TableCell>
                         <TableCell>{server.ipAddress}</TableCell>
@@ -821,12 +874,16 @@ export function ConfigureAAAPolicies() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ldapConfigs.map(config => (
+                    {ldapConfigs.map((config) => (
                       <TableRow key={config.id}>
                         <TableCell className="font-medium">{config.configurationName}</TableCell>
-                        <TableCell className="max-w-[250px] truncate">{config.connectionUrl}</TableCell>
+                        <TableCell className="max-w-[250px] truncate">
+                          {config.connectionUrl}
+                        </TableCell>
                         <TableCell>{config.administratorUsername}</TableCell>
-                        <TableCell className="max-w-[200px] truncate">{config.userSearchRoot}</TableCell>
+                        <TableCell className="max-w-[200px] truncate">
+                          {config.userSearchRoot}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant={config.status === 'connected' ? 'default' : 'secondary'}
@@ -914,12 +971,10 @@ export function ConfigureAAAPolicies() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {localUsers.map(user => (
+                    {localUsers.map((user) => (
                       <TableRow key={user.id}>
                         <TableCell>
-                          <Badge
-                            variant={user.enabled ? 'default' : 'secondary'}
-                          >
+                          <Badge variant={user.enabled ? 'default' : 'secondary'}>
                             {user.enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
                         </TableCell>
@@ -990,9 +1045,7 @@ export function ConfigureAAAPolicies() {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>{editingPolicy ? 'Edit AAA Policy' : 'Create AAA Policy'}</DialogTitle>
-            <DialogDescription>
-              Configure RADIUS authentication policy settings
-            </DialogDescription>
+            <DialogDescription>Configure RADIUS authentication policy settings</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -1000,7 +1053,7 @@ export function ConfigureAAAPolicies() {
               <Input
                 id="policy-name"
                 value={policyForm.name}
-                onChange={(e) => setPolicyForm(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => setPolicyForm((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="AAA Policy Name"
               />
             </div>
@@ -1009,7 +1062,9 @@ export function ConfigureAAAPolicies() {
               <Input
                 id="policy-desc"
                 value={policyForm.description}
-                onChange={(e) => setPolicyForm(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({ ...prev, description: e.target.value }))
+                }
                 placeholder="Optional description"
               />
             </div>
@@ -1018,7 +1073,9 @@ export function ConfigureAAAPolicies() {
               <Input
                 id="policy-primary"
                 value={policyForm.radiusServerPrimary}
-                onChange={(e) => setPolicyForm(prev => ({ ...prev, radiusServerPrimary: e.target.value }))}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({ ...prev, radiusServerPrimary: e.target.value }))
+                }
                 placeholder="IP address or server ID"
               />
             </div>
@@ -1027,34 +1084,44 @@ export function ConfigureAAAPolicies() {
               <Input
                 id="policy-secondary"
                 value={policyForm.radiusServerSecondary}
-                onChange={(e) => setPolicyForm(prev => ({ ...prev, radiusServerSecondary: e.target.value }))}
+                onChange={(e) =>
+                  setPolicyForm((prev) => ({ ...prev, radiusServerSecondary: e.target.value }))
+                }
                 placeholder="IP address or server ID (optional)"
               />
             </div>
             <div className="flex items-center space-x-2">
               <Switch
                 checked={policyForm.radiusAccountingEnabled}
-                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, radiusAccountingEnabled: checked }))}
+                onCheckedChange={(checked) =>
+                  setPolicyForm((prev) => ({ ...prev, radiusAccountingEnabled: checked }))
+                }
               />
               <Label>Enable RADIUS Accounting</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
                 checked={policyForm.macAuthEnabled}
-                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, macAuthEnabled: checked }))}
+                onCheckedChange={(checked) =>
+                  setPolicyForm((prev) => ({ ...prev, macAuthEnabled: checked }))
+                }
               />
               <Label>Enable MAC Authentication</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Switch
                 checked={policyForm.fallbackToLocal}
-                onCheckedChange={(checked) => setPolicyForm(prev => ({ ...prev, fallbackToLocal: checked }))}
+                onCheckedChange={(checked) =>
+                  setPolicyForm((prev) => ({ ...prev, fallbackToLocal: checked }))
+                }
               />
               <Label>Fallback to Local Authentication</Label>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPolicyDialog(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setShowPolicyDialog(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSavePolicy} disabled={savingPolicy}>
               {savingPolicy ? 'Saving...' : editingPolicy ? 'Update Policy' : 'Create Policy'}
             </Button>
@@ -1066,14 +1133,14 @@ export function ConfigureAAAPolicies() {
 }
 
 // RADIUS Server Dialog Component
-function RadiusServerDialog({ 
-  open, 
-  onOpenChange, 
-  server, 
-  onSave 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
+function RadiusServerDialog({
+  open,
+  onOpenChange,
+  server,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   server: RadiusServer | null;
   onSave: (server: Partial<RadiusServer>) => void;
 }) {
@@ -1084,7 +1151,7 @@ function RadiusServerDialog({
     sharedSecret: '',
     timeout: 5,
     retries: 3,
-    isPrimary: false
+    isPrimary: false,
   });
 
   useEffect(() => {
@@ -1096,7 +1163,7 @@ function RadiusServerDialog({
         sharedSecret: server.sharedSecret,
         timeout: server.timeout,
         retries: server.retries,
-        isPrimary: server.isPrimary
+        isPrimary: server.isPrimary,
       });
     } else {
       setFormData({
@@ -1106,7 +1173,7 @@ function RadiusServerDialog({
         sharedSecret: '',
         timeout: 5,
         retries: 3,
-        isPrimary: false
+        isPrimary: false,
       });
     }
   }, [server, open]);
@@ -1116,9 +1183,7 @@ function RadiusServerDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{server ? 'Edit RADIUS Server' : 'Add RADIUS Server'}</DialogTitle>
-          <DialogDescription>
-            Configure RADIUS server settings for authentication
-          </DialogDescription>
+          <DialogDescription>Configure RADIUS server settings for authentication</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -1126,7 +1191,7 @@ function RadiusServerDialog({
             <Input
               id="name"
               value={formData.name}
-              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
               placeholder="Primary RADIUS"
             />
           </div>
@@ -1135,7 +1200,7 @@ function RadiusServerDialog({
             <Input
               id="ipAddress"
               value={formData.ipAddress}
-              onChange={(e) => setFormData(prev => ({ ...prev, ipAddress: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, ipAddress: e.target.value }))}
               placeholder="192.168.100.1"
             />
           </div>
@@ -1146,7 +1211,9 @@ function RadiusServerDialog({
                 id="port"
                 type="number"
                 value={formData.port}
-                onChange={(e) => setFormData(prev => ({ ...prev, port: parseInt(e.target.value) }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, port: parseInt(e.target.value) }))
+                }
               />
             </div>
             <div className="space-y-2">
@@ -1155,7 +1222,9 @@ function RadiusServerDialog({
                 id="timeout"
                 type="number"
                 value={formData.timeout}
-                onChange={(e) => setFormData(prev => ({ ...prev, timeout: parseInt(e.target.value) }))}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, timeout: parseInt(e.target.value) }))
+                }
               />
             </div>
           </div>
@@ -1165,7 +1234,7 @@ function RadiusServerDialog({
               id="sharedSecret"
               type="password"
               value={formData.sharedSecret}
-              onChange={(e) => setFormData(prev => ({ ...prev, sharedSecret: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, sharedSecret: e.target.value }))}
               placeholder="Enter shared secret"
             />
           </div>
@@ -1175,14 +1244,18 @@ function RadiusServerDialog({
               id="retries"
               type="number"
               value={formData.retries}
-              onChange={(e) => setFormData(prev => ({ ...prev, retries: parseInt(e.target.value) }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, retries: parseInt(e.target.value) }))
+              }
             />
           </div>
           <div className="flex items-center space-x-2">
             <Switch
               id="isPrimary"
               checked={formData.isPrimary}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isPrimary: checked }))}
+              onCheckedChange={(checked) =>
+                setFormData((prev) => ({ ...prev, isPrimary: checked }))
+              }
             />
             <Label htmlFor="isPrimary">Set as Primary Server</Label>
           </div>
@@ -1191,9 +1264,7 @@ function RadiusServerDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(formData)}>
-            {server ? 'Save Changes' : 'Add Server'}
-          </Button>
+          <Button onClick={() => onSave(formData)}>{server ? 'Save Changes' : 'Add Server'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1201,14 +1272,14 @@ function RadiusServerDialog({
 }
 
 // LDAP Configuration Dialog Component
-function LdapConfigDialog({ 
-  open, 
-  onOpenChange, 
-  config, 
-  onSave 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
+function LdapConfigDialog({
+  open,
+  onOpenChange,
+  config,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   config: LdapConfiguration | null;
   onSave: (config: Partial<LdapConfiguration>) => void;
 }) {
@@ -1223,7 +1294,7 @@ function LdapConfigDialog({
     hostSearchRoot: '',
     ouSearchRoot: '',
     schemaDefinition: 'RFC 2307',
-    enabled: true
+    enabled: true,
   });
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
@@ -1240,7 +1311,7 @@ function LdapConfigDialog({
         hostSearchRoot: config.hostSearchRoot,
         ouSearchRoot: config.ouSearchRoot,
         schemaDefinition: config.schemaDefinition,
-        enabled: config.enabled
+        enabled: config.enabled,
       });
     } else {
       setFormData({
@@ -1254,7 +1325,7 @@ function LdapConfigDialog({
         hostSearchRoot: '',
         ouSearchRoot: '',
         schemaDefinition: 'RFC 2307',
-        enabled: true
+        enabled: true,
       });
     }
   }, [config, open]);
@@ -1263,7 +1334,7 @@ function LdapConfigDialog({
     setIsTestingConnection(true);
     try {
       // Simulate LDAP connection test
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success('LDAP connection test successful');
     } catch (error) {
       toast.error('LDAP connection test failed');
@@ -1277,9 +1348,7 @@ function LdapConfigDialog({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{config ? 'Edit LDAP Configuration' : 'Add LDAP Configuration'}</DialogTitle>
-          <DialogDescription>
-            Configure LDAP server for directory authentication
-          </DialogDescription>
+          <DialogDescription>Configure LDAP server for directory authentication</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
           <div className="space-y-2">
@@ -1287,17 +1356,21 @@ function LdapConfigDialog({
             <Input
               id="configName"
               value={formData.configurationName}
-              onChange={(e) => setFormData(prev => ({ ...prev, configurationName: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, configurationName: e.target.value }))
+              }
               placeholder="LDAP Configuration Name"
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="ldapConfigName">LDAP Configuration Name</Label>
             <Input
               id="ldapConfigName"
               value={formData.ldapConfigurationName}
-              onChange={(e) => setFormData(prev => ({ ...prev, ldapConfigurationName: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, ldapConfigurationName: e.target.value }))
+              }
               placeholder="LDAP Configuration Name"
             />
           </div>
@@ -1307,7 +1380,7 @@ function LdapConfigDialog({
             <Input
               id="connectionUrl"
               value={formData.connectionUrl}
-              onChange={(e) => setFormData(prev => ({ ...prev, connectionUrl: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, connectionUrl: e.target.value }))}
               placeholder="ldap://x.x.x.x:389"
             />
             <p className="text-xs text-muted-foreground">LDAP Connection URL</p>
@@ -1318,7 +1391,9 @@ function LdapConfigDialog({
             <Input
               id="adminUsername"
               value={formData.administratorUsername}
-              onChange={(e) => setFormData(prev => ({ ...prev, administratorUsername: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, administratorUsername: e.target.value }))
+              }
               placeholder="Administrator Username"
             />
           </div>
@@ -1327,16 +1402,20 @@ function LdapConfigDialog({
             <Label htmlFor="adminPassword">Administrator Password</Label>
             <Input
               id="adminPassword"
-              type={formData.maskPassword ? "password" : "text"}
+              type={formData.maskPassword ? 'password' : 'text'}
               value={formData.administratorPassword}
-              onChange={(e) => setFormData(prev => ({ ...prev, administratorPassword: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, administratorPassword: e.target.value }))
+              }
               placeholder="Administrator Password"
             />
             <div className="flex items-center space-x-2">
               <Switch
                 id="maskPassword"
                 checked={formData.maskPassword}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, maskPassword: checked }))}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, maskPassword: checked }))
+                }
               />
               <Label htmlFor="maskPassword">Mask</Label>
             </div>
@@ -1347,7 +1426,7 @@ function LdapConfigDialog({
             <Input
               id="userSearchRoot"
               value={formData.userSearchRoot}
-              onChange={(e) => setFormData(prev => ({ ...prev, userSearchRoot: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, userSearchRoot: e.target.value }))}
               placeholder="User Search Root"
             />
           </div>
@@ -1357,7 +1436,7 @@ function LdapConfigDialog({
             <Input
               id="hostSearchRoot"
               value={formData.hostSearchRoot}
-              onChange={(e) => setFormData(prev => ({ ...prev, hostSearchRoot: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, hostSearchRoot: e.target.value }))}
               placeholder="Host Search Root"
             />
           </div>
@@ -1367,7 +1446,7 @@ function LdapConfigDialog({
             <Input
               id="ouSearchRoot"
               value={formData.ouSearchRoot}
-              onChange={(e) => setFormData(prev => ({ ...prev, ouSearchRoot: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, ouSearchRoot: e.target.value }))}
               placeholder="OU Search Root"
             />
           </div>
@@ -1376,7 +1455,9 @@ function LdapConfigDialog({
             <Label htmlFor="schemaDefinition">Schema Definition</Label>
             <Select
               value={formData.schemaDefinition}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, schemaDefinition: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, schemaDefinition: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1391,8 +1472,8 @@ function LdapConfigDialog({
           </div>
 
           <div className="pt-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full"
               onClick={handleTestConfiguration}
               disabled={isTestingConnection}
@@ -1415,14 +1496,14 @@ function LdapConfigDialog({
 }
 
 // Local User Dialog Component
-function LocalUserDialog({ 
-  open, 
-  onOpenChange, 
-  user, 
-  onSave 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
+function LocalUserDialog({
+  open,
+  onOpenChange,
+  user,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   user: LocalUser | null;
   onSave: (user: Partial<LocalUser>) => void;
 }) {
@@ -1435,7 +1516,7 @@ function LocalUserDialog({
     passwordHashType: 'SHA-256',
     password: '',
     maskPassword: true,
-    description: ''
+    description: '',
   });
 
   useEffect(() => {
@@ -1449,7 +1530,7 @@ function LocalUserDialog({
         passwordHashType: user.passwordHashType,
         password: '',
         maskPassword: true,
-        description: user.description
+        description: user.description,
       });
     } else {
       setFormData({
@@ -1461,7 +1542,7 @@ function LocalUserDialog({
         passwordHashType: 'SHA-256',
         password: '',
         maskPassword: true,
-        description: ''
+        description: '',
       });
     }
   }, [user, open]);
@@ -1470,19 +1551,15 @@ function LocalUserDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>
-            AAA / {user ? 'Edit Local User' : 'Add Local User'}
-          </DialogTitle>
-          <DialogDescription>
-            Manage local user accounts for authentication
-          </DialogDescription>
+          <DialogTitle>AAA / {user ? 'Edit Local User' : 'Add Local User'}</DialogTitle>
+          <DialogDescription>Manage local user accounts for authentication</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
           <div className="flex items-center space-x-2">
             <Switch
               id="enabled"
               checked={formData.enabled}
-              onCheckedChange={(checked) => setFormData(prev => ({ ...prev, enabled: checked }))}
+              onCheckedChange={(checked) => setFormData((prev) => ({ ...prev, enabled: checked }))}
             />
             <Label htmlFor="enabled">Enabled</Label>
           </div>
@@ -1492,7 +1569,7 @@ function LocalUserDialog({
             <Input
               id="username"
               value={formData.username}
-              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, username: e.target.value }))}
               placeholder="Username"
               disabled={!!user}
             />
@@ -1503,7 +1580,7 @@ function LocalUserDialog({
             <Input
               id="displayName"
               value={formData.displayName}
-              onChange={(e) => setFormData(prev => ({ ...prev, displayName: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, displayName: e.target.value }))}
               placeholder="Display Name"
             />
           </div>
@@ -1513,7 +1590,7 @@ function LocalUserDialog({
             <Input
               id="firstName"
               value={formData.firstName}
-              onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
               placeholder="First Name"
             />
           </div>
@@ -1523,7 +1600,7 @@ function LocalUserDialog({
             <Input
               id="lastName"
               value={formData.lastName}
-              onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
               placeholder="Last Name"
             />
           </div>
@@ -1532,7 +1609,9 @@ function LocalUserDialog({
             <Label htmlFor="passwordHashType">Password Hash Type</Label>
             <Select
               value={formData.passwordHashType}
-              onValueChange={(value) => setFormData(prev => ({ ...prev, passwordHashType: value }))}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, passwordHashType: value }))
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -1553,16 +1632,18 @@ function LocalUserDialog({
             </Label>
             <Input
               id="password"
-              type={formData.maskPassword ? "password" : "text"}
+              type={formData.maskPassword ? 'password' : 'text'}
               value={formData.password}
-              onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, password: e.target.value }))}
               placeholder={user ? 'Leave blank to keep current' : 'Password'}
             />
             <div className="flex items-center space-x-2">
               <Switch
                 id="maskPassword"
                 checked={formData.maskPassword}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, maskPassword: checked }))}
+                onCheckedChange={(checked) =>
+                  setFormData((prev) => ({ ...prev, maskPassword: checked }))
+                }
               />
               <Label htmlFor="maskPassword">Mask</Label>
             </div>
@@ -1573,7 +1654,7 @@ function LocalUserDialog({
             <Input
               id="description"
               value={formData.description}
-              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
               placeholder="Description"
             />
           </div>
@@ -1582,9 +1663,7 @@ function LocalUserDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(formData)}>
-            {user ? 'Save Changes' : 'Add User'}
-          </Button>
+          <Button onClick={() => onSave(formData)}>{user ? 'Save Changes' : 'Add User'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

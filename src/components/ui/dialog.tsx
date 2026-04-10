@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog@1.1.6";
-import { XIcon } from "lucide-react@0.487.0";
+import * as React from 'react';
+import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { XIcon } from 'lucide-react';
 
-import { cn } from "./utils";
+import { cn } from './utils';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -21,8 +21,8 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
-      className,
+      'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
+      className
     )}
     {...props}
   />
@@ -77,10 +77,7 @@ const DialogContent = React.forwardRef<
         -rect.width / 2 + 50,
         Math.min(newX, viewportWidth - rect.width / 2 - 50)
       );
-      const constrainedY = Math.max(
-        -(rect.height - 100),
-        Math.min(newY, viewportHeight - 100)
-      );
+      const constrainedY = Math.max(-(rect.height - 100), Math.min(newY, viewportHeight - 100));
 
       setPosition({ x: constrainedX, y: constrainedY });
     };
@@ -111,9 +108,9 @@ const DialogContent = React.forwardRef<
       <DialogPrimitive.Content
         ref={contentRef}
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] gap-4 rounded-lg border p-6 shadow-lg sm:max-w-lg overflow-y-auto",
-          isDragging && "cursor-move select-none",
-          className,
+          'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100vh-2rem)] gap-4 rounded-lg border p-6 shadow-lg sm:max-w-lg overflow-y-auto',
+          isDragging && 'cursor-move select-none',
+          className
         )}
         style={{
           top: '50%',
@@ -135,36 +132,27 @@ const DialogContent = React.forwardRef<
 });
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     data-drag-handle="true"
     className={cn(
-      "flex flex-col gap-2 text-center sm:text-left cursor-move select-none",
-      "hover:bg-accent/5 active:bg-accent/10 rounded-md -mx-1 px-1 -mt-1 pt-1 transition-colors",
+      'flex flex-col gap-2 text-center sm:text-left cursor-move select-none',
+      'hover:bg-accent/5 active:bg-accent/10 rounded-md -mx-1 px-1 -mt-1 pt-1 transition-colors',
       className
     )}
     title="Click and drag to move"
     {...props}
   />
 );
-DialogHeader.displayName = "DialogHeader";
+DialogHeader.displayName = 'DialogHeader';
 
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
+const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
-    className={cn(
-      "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-      className,
-    )}
+    className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
     {...props}
   />
 );
-DialogFooter.displayName = "DialogFooter";
+DialogFooter.displayName = 'DialogFooter';
 
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
@@ -172,7 +160,7 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg leading-none font-semibold", className)}
+    className={cn('text-lg leading-none font-semibold', className)}
     {...props}
   />
 ));
@@ -184,7 +172,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-muted-foreground text-sm", className)}
+    className={cn('text-muted-foreground text-sm', className)}
     {...props}
   />
 ));

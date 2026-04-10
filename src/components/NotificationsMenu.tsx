@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { 
-  Bell, 
-  Search, 
-  Settings, 
+import {
+  Bell,
+  Search,
+  Settings,
   Filter,
   AlertTriangle,
   Info,
@@ -15,10 +15,17 @@ import {
   Server,
   Users,
   XCircle,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { Button } from './ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from './ui/sheet';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -33,7 +40,7 @@ import { useContextScope } from '../hooks/useContextScope';
 interface Alert {
   id: string;
   type: string;
-  severity: 'critical' | 'warning' | 'info' | 'low';
+  severity: 'critical' | 'warning' | 'info' | 'low' | 'high' | 'medium';
   category: string;
   message: string;
   description?: string;
@@ -42,6 +49,9 @@ interface Alert {
   status: 'active' | 'acknowledged' | 'resolved' | 'cleared';
   affectedDevices?: string[];
   assignedTo?: string;
+  title?: string;
+  name?: string;
+  acknowledged?: boolean;
 }
 
 interface Event {
@@ -56,6 +66,7 @@ interface Event {
   user?: string;
   device?: string;
   details?: Record<string, any>;
+  title?: string;
 }
 
 interface NotificationItem {
@@ -149,11 +160,11 @@ export function NotificationsMenu() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
   const totalCount = notifications.length;
-  const criticalCount = notifications.filter(n => n.type === 'critical').length;
-  const nonCriticalCount = notifications.filter(n => n.type === 'non-critical').length;
-  const informationCount = notifications.filter(n => n.type === 'information').length;
+  const criticalCount = notifications.filter((n) => n.type === 'critical').length;
+  const nonCriticalCount = notifications.filter((n) => n.type === 'non-critical').length;
+  const informationCount = notifications.filter((n) => n.type === 'information').length;
 
   useEffect(() => {
     loadNotifications();
@@ -168,11 +179,7 @@ export function NotificationsMenu() {
       const systemData = await loadSystemNotifications();
 
       // Combine all notification sources
-      let allNotifications = [
-        ...alertsData,
-        ...eventsData,
-        ...systemData
-      ];
+      let allNotifications = [...alertsData, ...eventsData, ...systemData];
 
       // STRICT: Filter by site device correlation when site-scoped
       if (filters.site !== 'all') {
@@ -189,11 +196,14 @@ export function NotificationsMenu() {
   };
 
   // STRICT: Filter notifications by AP-site device correlation
-  const filterNotificationsBySite = async (items: NotificationItem[], siteId: string): Promise<NotificationItem[]> => {
+  const filterNotificationsBySite = async (
+    items: NotificationItem[],
+    siteId: string
+  ): Promise<NotificationItem[]> => {
     try {
       const siteAPs = await apiService.getAccessPointsBySite(siteId);
       const deviceIds = new Set<string>();
-      siteAPs.forEach(ap => {
+      siteAPs.forEach((ap) => {
         if (ap.name) deviceIds.add(ap.name.toLowerCase());
         if (ap.serialNumber) deviceIds.add(ap.serialNumber.toLowerCase());
         if ((ap as any).hostname) deviceIds.add((ap as any).hostname.toLowerCase());
@@ -203,7 +213,7 @@ export function NotificationsMenu() {
       if (deviceIds.size === 0) return []; // STRICT: no devices = no notifications
 
       // Filter items that have associated device information matching site APs
-      return items.filter(item => {
+      return items.filter((item) => {
         // NotificationItems don't have device fields directly,
         // so we check the title/message for device name references
         const titleLower = (item.title || '').toLowerCase();
@@ -220,21 +230,30 @@ export function NotificationsMenu() {
 
   const loadAlertsData = async (): Promise<NotificationItem[]> => {
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 5000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/alerts',
+        { method: 'GET' },
+        5000
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch alerts: ${response.status}`);
       }
       const data = await response.json();
-      
+
       // Convert alerts to notifications
       if (Array.isArray(data)) {
         return data.map((alert: Alert, index: number) => ({
           id: alert.id || `alert-${index}`,
-          type: alert.severity === 'high' ? 'critical' : alert.severity === 'medium' ? 'non-critical' : 'information',
+          type:
+            alert.severity === 'high'
+              ? 'critical'
+              : alert.severity === 'medium'
+                ? 'non-critical'
+                : 'information',
           title: alert.title || alert.name || 'Alert',
           message: alert.description || alert.message || 'System alert notification',
           timestamp: alert.timestamp ? formatTimestamp(alert.timestamp) : 'Recent',
-          isRead: alert.acknowledged || false
+          isRead: alert.acknowledged || false,
         }));
       }
       return [];
@@ -246,12 +265,16 @@ export function NotificationsMenu() {
 
   const loadEventsData = async (): Promise<NotificationItem[]> => {
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/events', { method: 'GET' }, 5000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/events',
+        { method: 'GET' },
+        5000
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch events: ${response.status}`);
       }
       const data = await response.json();
-      
+
       // Convert events to notifications
       if (Array.isArray(data)) {
         return data.slice(0, 10).map((event: Event, index: number) => ({
@@ -260,7 +283,7 @@ export function NotificationsMenu() {
           title: event.title || event.type || 'System Event',
           message: event.description || event.message || 'System event notification',
           timestamp: event.timestamp ? formatTimestamp(event.timestamp) : 'Recent',
-          isRead: true // Events are typically informational and marked as read
+          isRead: true, // Events are typically informational and marked as read
         }));
       }
       return [];
@@ -272,12 +295,16 @@ export function NotificationsMenu() {
 
   const loadSystemNotifications = async (): Promise<NotificationItem[]> => {
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 5000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/notifications',
+        { method: 'GET' },
+        5000
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch notifications: ${response.status}`);
       }
       const data = await response.json();
-      
+
       // Use direct notification data if available
       if (Array.isArray(data)) {
         return data.map((notification: any, index: number) => ({
@@ -286,7 +313,7 @@ export function NotificationsMenu() {
           title: notification.title || 'Notification',
           message: notification.message || notification.description || 'System notification',
           timestamp: notification.timestamp ? formatTimestamp(notification.timestamp) : 'Recent',
-          isRead: notification.isRead || notification.read || false
+          isRead: notification.isRead || notification.read || false,
         }));
       }
       return [];
@@ -318,41 +345,48 @@ export function NotificationsMenu() {
   const handleMarkAllRead = async () => {
     try {
       // Try to mark all as read via API
-      await apiService.makeAuthenticatedRequest('/v1/notifications/mark-all-read', { 
-        method: 'POST' 
-      }, 5000);
+      await apiService.makeAuthenticatedRequest(
+        '/v1/notifications/mark-all-read',
+        {
+          method: 'POST',
+        },
+        5000
+      );
     } catch (error) {
       // Silently handle API failures for mark as read operations
     }
-    
+
     // Update local state regardless
-    setNotifications(notifications.map(n => ({ ...n, isRead: true })));
+    setNotifications(notifications.map((n) => ({ ...n, isRead: true })));
   };
 
   const handleMarkAsRead = async (id: string) => {
     try {
       // Try to mark as read via API
-      await apiService.makeAuthenticatedRequest(`/v1/notifications/${id}/read`, { 
-        method: 'POST' 
-      }, 5000);
+      await apiService.makeAuthenticatedRequest(
+        `/v1/notifications/${id}/read`,
+        {
+          method: 'POST',
+        },
+        5000
+      );
     } catch (error) {
       // Silently handle API failures for mark as read operations
     }
-    
+
     // Update local state regardless
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, isRead: true } : n
-    ));
+    setNotifications(notifications.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
 
-  const filteredNotifications = notifications.filter(notification =>
-    notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    notification.message.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredNotifications = notifications.filter(
+    (notification) =>
+      notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      notification.message.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const getFilteredByType = (type?: NotificationItem['type']) => {
     if (!type) return filteredNotifications;
-    return filteredNotifications.filter(n => n.type === type);
+    return filteredNotifications.filter((n) => n.type === type);
   };
 
   const renderNotificationItem = (notification: NotificationItem) => (
@@ -360,42 +394,49 @@ export function NotificationsMenu() {
       key={notification.id}
       className={`
         p-4 rounded-lg border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50
-        ${notification.isRead
-          ? 'bg-background border-border/50 hover:border-border'
-          : 'bg-accent/20 border-accent hover:border-accent/50'
+        ${
+          notification.isRead
+            ? 'bg-background border-border/50 hover:border-border'
+            : 'bg-accent/20 border-accent hover:border-accent/50'
         }
       `}
       onClick={() => handleMarkAsRead(notification.id)}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMarkAsRead(notification.id); }}}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleMarkAsRead(notification.id);
+        }
+      }}
       role="button"
       tabIndex={0}
       aria-label={`${notification.isRead ? 'Read' : 'Unread'} notification: ${notification.title}. Click to mark as read.`}
     >
       <div className="flex items-start gap-3">
-        <div className="flex-shrink-0 mt-0.5">
-          {getNotificationIcon(notification.type)}
-        </div>
+        <div className="flex-shrink-0 mt-0.5">{getNotificationIcon(notification.type)}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h4 className={`
+            <h4
+              className={`
               font-medium text-sm leading-tight
               ${notification.isRead ? 'text-muted-foreground' : 'text-foreground'}
-            `}>
+            `}
+            >
               {notification.title}
             </h4>
             <div className="flex items-center gap-2 flex-shrink-0">
               {!notification.isRead && (
                 <div className="w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
               )}
-              <Badge 
-                variant="outline" 
+              <Badge
+                variant="outline"
                 className={`
                   text-xs px-2 py-0.5 font-medium
-                  ${notification.type === 'critical' 
-                    ? 'bg-destructive/10 text-destructive border-destructive/20' 
-                    : notification.type === 'non-critical'
-                    ? 'bg-warning/10 text-warning border-warning/20'
-                    : 'bg-info/10 text-info border-info/20'
+                  ${
+                    notification.type === 'critical'
+                      ? 'bg-destructive/10 text-destructive border-destructive/20'
+                      : notification.type === 'non-critical'
+                        ? 'bg-warning/10 text-warning border-warning/20'
+                        : 'bg-info/10 text-info border-info/20'
                   }
                 `}
               >
@@ -406,9 +447,7 @@ export function NotificationsMenu() {
           <p className="text-xs text-muted-foreground leading-relaxed mb-2">
             {notification.message}
           </p>
-          <p className="text-xs text-muted-foreground/70">
-            {notification.timestamp}
-          </p>
+          <p className="text-xs text-muted-foreground/70">{notification.timestamp}</p>
         </div>
       </div>
     </div>
@@ -425,15 +464,13 @@ export function NotificationsMenu() {
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive text-destructive-foreground border-background"
-            >
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-destructive text-destructive-foreground border-background">
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
           )}
         </Button>
       </SheetTrigger>
-      
+
       <SheetContent className="w-96 border-border/50 p-0" side="right">
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -441,17 +478,10 @@ export function NotificationsMenu() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
-                <SheetTitle className="text-lg font-medium">
-                  {unreadCount}
-                </SheetTitle>
+                <SheetTitle className="text-lg font-medium">{unreadCount}</SheetTitle>
               </div>
               {unreadCount > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleMarkAllRead}
-                  className="text-xs"
-                >
+                <Button variant="outline" size="sm" onClick={handleMarkAllRead} className="text-xs">
                   Mark All Read
                 </Button>
               )}
@@ -534,7 +564,7 @@ export function NotificationsMenu() {
                     <div className="space-y-3 pr-4">
                       {loading ? (
                         <div className="space-y-3 pr-4">
-                          {[1, 2, 3].map(i => (
+                          {[1, 2, 3].map((i) => (
                             <div key={i} className="p-4 rounded-lg border animate-pulse">
                               <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
                               <div className="h-3 bg-muted rounded w-full mb-1"></div>
@@ -549,7 +579,9 @@ export function NotificationsMenu() {
                             <div className="text-center py-8 text-muted-foreground">
                               <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
                               <p className="text-sm">No notifications found</p>
-                              <p className="text-xs mt-1">Notifications will appear here when system events occur</p>
+                              <p className="text-xs mt-1">
+                                Notifications will appear here when system events occur
+                              </p>
                             </div>
                           )}
                         </>
@@ -560,7 +592,7 @@ export function NotificationsMenu() {
                     <div className="space-y-3 pr-4">
                       {loading ? (
                         <div className="space-y-3 pr-4">
-                          {[1, 2].map(i => (
+                          {[1, 2].map((i) => (
                             <div key={i} className="p-4 rounded-lg border animate-pulse">
                               <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
                               <div className="h-3 bg-muted rounded w-full mb-1"></div>
@@ -585,7 +617,7 @@ export function NotificationsMenu() {
                     <div className="space-y-3 pr-4">
                       {loading ? (
                         <div className="space-y-3 pr-4">
-                          {[1, 2].map(i => (
+                          {[1, 2].map((i) => (
                             <div key={i} className="p-4 rounded-lg border animate-pulse">
                               <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
                               <div className="h-3 bg-muted rounded w-full mb-1"></div>
@@ -610,7 +642,7 @@ export function NotificationsMenu() {
                     <div className="space-y-3 pr-4">
                       {loading ? (
                         <div className="space-y-3 pr-4">
-                          {[1, 2, 3].map(i => (
+                          {[1, 2, 3].map((i) => (
                             <div key={i} className="p-4 rounded-lg border animate-pulse">
                               <div className="h-4 bg-muted rounded w-3/4 mb-2"></div>
                               <div className="h-3 bg-muted rounded w-full mb-1"></div>
@@ -643,7 +675,11 @@ export function NotificationsMenu() {
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
-                onClick={() => toast.info('Feature coming soon', { description: 'Notification settings will be available in a future update.' })}
+                onClick={() =>
+                  toast.info('Feature coming soon', {
+                    description: 'Notification settings will be available in a future update.',
+                  })
+                }
               >
                 <Settings className="h-4 w-4" />
                 Notification Settings
@@ -655,7 +691,11 @@ export function NotificationsMenu() {
                 onClick={loadNotifications}
                 disabled={loading}
               >
-                {loading ? <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" /> : <Filter className="h-4 w-4" />}
+                {loading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <Filter className="h-4 w-4" />
+                )}
                 Refresh
               </Button>
             </div>

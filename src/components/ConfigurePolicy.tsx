@@ -3,11 +3,35 @@ import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { AlertTriangle, Plus, Search, Edit2, Trash2, Shield, Network, AlertCircle, CheckCircle, RefreshCw, Lock, Unlock, Globe, Settings, Layers, Gauge } from 'lucide-react';
+import {
+  AlertTriangle,
+  Plus,
+  Search,
+  Edit2,
+  Trash2,
+  Shield,
+  Network,
+  AlertCircle,
+  CheckCircle,
+  RefreshCw,
+  Lock,
+  Unlock,
+  Globe,
+  Settings,
+  Layers,
+  Gauge,
+} from 'lucide-react';
 import { apiService, Role } from '../services/api';
 import { toast } from 'sonner';
 import { RoleEditDialog } from './RoleEditDialog';
@@ -16,7 +40,8 @@ import { Server } from 'lucide-react';
 import { DevEpicBadge } from './DevEpicBadge';
 
 export function ConfigurePolicy() {
-  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } = useAppContext();
+  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } =
+    useAppContext();
   const isOrgScope = navigationScope === 'global';
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +73,12 @@ export function ConfigurePolicy() {
 
   // Debug: Log dialog state changes
   useEffect(() => {
-    console.log('🔧 ConfigurePolicy state - isEditDialogOpen:', isEditDialogOpen, 'editingRole:', editingRole?.name || 'null');
+    console.log(
+      '🔧 ConfigurePolicy state - isEditDialogOpen:',
+      isEditDialogOpen,
+      'editingRole:',
+      editingRole?.name || 'null'
+    );
   }, [isEditDialogOpen, editingRole]);
 
   useEffect(() => {
@@ -56,9 +86,7 @@ export function ConfigurePolicy() {
   }, []);
 
   /** Generic multi-controller fetch helper */
-  const fetchFromAllControllers = async <T,>(
-    fetcher: () => Promise<T[]>,
-  ): Promise<T[]> => {
+  const fetchFromAllControllers = async <T,>(fetcher: () => Promise<T[]>): Promise<T[]> => {
     if (isOrgScope && siteGroups.length > 0) {
       const originalBaseUrl = apiService.getBaseUrl();
       const all: T[] = [];
@@ -66,7 +94,7 @@ export function ConfigurePolicy() {
         try {
           apiService.setBaseUrl(`${sg.controller_url}/management`);
           const data = await fetcher();
-          const tagged = (data || []).map(item => ({
+          const tagged = (data || []).map((item) => ({
             ...item,
             _siteGroupId: sg.id,
             _siteGroupName: sg.name,
@@ -90,7 +118,10 @@ export function ConfigurePolicy() {
     } catch (error) {
       console.error('Error loading roles:', error);
       toast.error('Failed to load roles', {
-        description: error instanceof Error ? error.message : 'There was an error loading network policy roles.'
+        description:
+          error instanceof Error
+            ? error.message
+            : 'There was an error loading network policy roles.',
       });
       setRoles([]);
     } finally {
@@ -135,12 +166,12 @@ export function ConfigurePolicy() {
     ? cosProfiles.filter((c: any) => c._siteGroupId === orgSiteGroupFilter)
     : cosProfiles;
 
-  const filteredRoles = sgRoles.filter(role => {
+  const filteredRoles = sgRoles.filter((role) => {
     const matchesSearch = role.name?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
-  const filteredTopologies = sgTopologies.filter(topology => {
+  const filteredTopologies = sgTopologies.filter((topology) => {
     const name = topology.name || topology.topologyName || '';
     return name.toLowerCase().includes(topologySearchTerm.toLowerCase());
   });
@@ -175,7 +206,7 @@ export function ConfigurePolicy() {
 
     if (role.canEdit === false) {
       toast.error('Cannot edit role', {
-        description: 'This role is read-only and cannot be modified.'
+        description: 'This role is read-only and cannot be modified.',
       });
       return;
     }
@@ -200,19 +231,21 @@ export function ConfigurePolicy() {
   const handleSaveRole = async (roleData: Partial<Role>) => {
     try {
       // Determine if editing an inline expanded role or creating via dialog
-      const roleToUpdate = expandedRoleId ? roles.find(r => r.id === expandedRoleId) : editingRole;
+      const roleToUpdate = expandedRoleId
+        ? roles.find((r) => r.id === expandedRoleId)
+        : editingRole;
 
       if (roleToUpdate) {
         // Update existing role
         await apiService.updateRole(roleToUpdate.id, roleData);
         toast.success('Role updated', {
-          description: `Successfully updated role "${roleData.name}"`
+          description: `Successfully updated role "${roleData.name}"`,
         });
       } else {
         // Create new role
         await apiService.createRole(roleData);
         toast.success('Role created', {
-          description: `Successfully created role "${roleData.name}"`
+          description: `Successfully created role "${roleData.name}"`,
         });
       }
 
@@ -222,8 +255,8 @@ export function ConfigurePolicy() {
       setExpandedRoleId(null); // Close inline expansion
     } catch (error) {
       console.error('Error saving role:', error);
-      toast.error(roleToUpdate ? 'Failed to update role' : 'Failed to create role', {
-        description: error instanceof Error ? error.message : 'An error occurred'
+      toast.error(editingRole ? 'Failed to update role' : 'Failed to create role', {
+        description: error instanceof Error ? error.message : 'An error occurred',
       });
       throw error; // Re-throw so dialog can handle it
     }
@@ -232,19 +265,23 @@ export function ConfigurePolicy() {
   const handleDeleteRole = async (role: Role) => {
     if (role.predefined) {
       toast.error('Cannot delete predefined role', {
-        description: 'System roles cannot be deleted.'
+        description: 'System roles cannot be deleted.',
       });
       return;
     }
 
     if (!role.canDelete) {
       toast.error('Cannot delete role', {
-        description: 'This role is in use and cannot be deleted.'
+        description: 'This role is in use and cannot be deleted.',
       });
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete the role "${role.name}"? This action cannot be undone.`)) {
+    if (
+      !confirm(
+        `Are you sure you want to delete the role "${role.name}"? This action cannot be undone.`
+      )
+    ) {
       return;
     }
 
@@ -252,13 +289,13 @@ export function ConfigurePolicy() {
       setIsDeleting(true);
       await apiService.deleteRole(role.id);
       toast.success('Role deleted', {
-        description: `Successfully deleted role "${role.name}"`
+        description: `Successfully deleted role "${role.name}"`,
       });
       await loadRoles();
     } catch (error) {
       console.error('Error deleting role:', error);
       toast.error('Failed to delete role', {
-        description: error instanceof Error ? error.message : 'An error occurred'
+        description: error instanceof Error ? error.message : 'An error occurred',
       });
     } finally {
       setIsDeleting(false);
@@ -269,7 +306,7 @@ export function ConfigurePolicy() {
     title: string,
     description: string,
     icon?: React.ReactNode,
-    action?: React.ReactNode,
+    action?: React.ReactNode
   ) => (
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
       <div className="mb-4 text-muted-foreground/50">
@@ -282,10 +319,12 @@ export function ConfigurePolicy() {
   );
 
   const getFilterCount = (role: Role): number => {
-    return (role.l2Filters?.length || 0) + 
-           (role.l3Filters?.length || 0) + 
-           (role.l3SrcDestFilters?.length || 0) + 
-           (role.l7Filters?.length || 0);
+    return (
+      (role.l2Filters?.length || 0) +
+      (role.l3Filters?.length || 0) +
+      (role.l3SrcDestFilters?.length || 0) +
+      (role.l7Filters?.length || 0)
+    );
   };
 
   const hasCaptivePortal = (role: Role): boolean => {
@@ -310,7 +349,10 @@ export function ConfigurePolicy() {
           </p>
         </div>
         {isOrgScope ? (
-          <Button onClick={() => navigateToTemplateCreation('role')} className="flex items-center gap-2">
+          <Button
+            onClick={() => navigateToTemplateCreation('role')}
+            className="flex items-center gap-2"
+          >
             <Layers className="h-4 w-4" />
             Create Template
           </Button>
@@ -327,29 +369,29 @@ export function ConfigurePolicy() {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <div className="border-b border-border px-6 pt-6">
             <TabsList className="bg-transparent border-b-0 h-auto p-0 space-x-6">
-              <TabsTrigger 
-                value="roles" 
+              <TabsTrigger
+                value="roles"
                 className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
               >
                 <Shield className="h-4 w-4 mr-2" />
                 Network Roles
               </TabsTrigger>
-              <TabsTrigger 
-                value="topologies" 
+              <TabsTrigger
+                value="topologies"
                 className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
               >
                 <Layers className="h-4 w-4 mr-2" />
                 VLANs / Topologies
               </TabsTrigger>
-              <TabsTrigger 
-                value="cos" 
+              <TabsTrigger
+                value="cos"
                 className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
               >
                 <Gauge className="h-4 w-4 mr-2" />
                 Class of Service
               </TabsTrigger>
-              <TabsTrigger 
-                value="firewall" 
+              <TabsTrigger
+                value="firewall"
                 className="bg-transparent border-b-2 border-transparent data-[state=active]:border-primary rounded-none px-0 pb-3"
               >
                 <Network className="h-4 w-4 mr-2" />
@@ -395,11 +437,14 @@ export function ConfigurePolicy() {
                   : 'Network roles define access control policies and firewall rules for wireless clients.',
                 <Shield className="h-12 w-12" />,
                 !searchTerm && !isOrgScope ? (
-                  <Button onClick={handleCreateRole} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                  <Button
+                    onClick={handleCreateRole}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                  >
                     <Plus className="h-4 w-4 mr-2" />
                     Create First Role
                   </Button>
-                ) : undefined,
+                ) : undefined
               )
             ) : (
               <div className="space-y-3">
@@ -407,120 +452,123 @@ export function ConfigurePolicy() {
                   <div key={role.id}>
                     <Card
                       className={`p-4 transition-all cursor-pointer ${
-                        expandedRoleId === role.id
-                          ? 'ring-2 ring-primary'
-                          : 'hover:'
+                        expandedRoleId === role.id ? 'ring-2 ring-primary' : 'hover:'
                       }`}
                       onClick={() => handleToggleRole(role)}
                     >
                       <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          <h3 className="font-medium">{role.name}</h3>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2 flex-wrap">
+                            <h3 className="font-medium">{role.name}</h3>
 
-                          {isOrgScope && siteGroups.length > 1 && (role as any)._siteGroupName && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal flex items-center gap-1">
-                              <Server className="h-2.5 w-2.5" />
-                              {(role as any)._siteGroupName}
-                            </Badge>
-                          )}
+                            {isOrgScope &&
+                              siteGroups.length > 1 &&
+                              (role as any)._siteGroupName && (
+                                <Badge
+                                  variant="outline"
+                                  className="text-[10px] px-1.5 py-0 font-normal flex items-center gap-1"
+                                >
+                                  <Server className="h-2.5 w-2.5" />
+                                  {(role as any)._siteGroupName}
+                                </Badge>
+                              )}
 
-                          {role.predefined && (
-                            <Badge variant="secondary" className="flex items-center gap-1">
-                              <Lock className="h-3 w-3" />
-                              System
-                            </Badge>
-                          )}
-                          
-                          <Badge 
-                            variant={role.defaultAction === 'allow' ? 'default' : 'destructive'}
-                            className="flex items-center gap-1"
-                          >
-                            {role.defaultAction === 'allow' ? (
-                              <>
-                                <Unlock className="h-3 w-3" />
-                                Allow
-                              </>
-                            ) : (
-                              <>
+                            {role.predefined && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
                                 <Lock className="h-3 w-3" />
-                                Deny
-                              </>
+                                System
+                              </Badge>
                             )}
-                          </Badge>
 
-                          {hasCaptivePortal(role) && (
-                            <Badge variant="outline" className="flex items-center gap-1">
-                              <Globe className="h-3 w-3" />
-                              Captive Portal
+                            <Badge
+                              variant={role.defaultAction === 'allow' ? 'default' : 'destructive'}
+                              className="flex items-center gap-1"
+                            >
+                              {role.defaultAction === 'allow' ? (
+                                <>
+                                  <Unlock className="h-3 w-3" />
+                                  Allow
+                                </>
+                              ) : (
+                                <>
+                                  <Lock className="h-3 w-3" />
+                                  Deny
+                                </>
+                              )}
                             </Badge>
-                          )}
+
+                            {hasCaptivePortal(role) && (
+                              <Badge variant="outline" className="flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
+                                Captive Portal
+                              </Badge>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
+                            {getFilterCount(role) > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Network className="h-3 w-3" />
+                                {getFilterCount(role)} filter rule(s)
+                              </span>
+                            )}
+                            {role.profiles && role.profiles.length > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Settings className="h-3 w-3" />
+                                {role.profiles.length} profile(s)
+                              </span>
+                            )}
+                            {role.topology && (
+                              <span className="flex items-center gap-1">
+                                <Network className="h-3 w-3" />
+                                Custom VLAN
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 mt-3">
+                            {!role.canEdit && (
+                              <Badge variant="outline" className="text-xs">
+                                Read-only
+                              </Badge>
+                            )}
+                            {role.features && role.features.length > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                {role.features.join(', ')}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground flex-wrap">
-                          {getFilterCount(role) > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Network className="h-3 w-3" />
-                              {getFilterCount(role)} filter rule(s)
-                            </span>
-                          )}
-                          {role.profiles && role.profiles.length > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Settings className="h-3 w-3" />
-                              {role.profiles.length} profile(s)
-                            </span>
-                          )}
-                          {role.topology && (
-                            <span className="flex items-center gap-1">
-                              <Network className="h-3 w-3" />
-                              Custom VLAN
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2 mt-3">
-                          {!role.canEdit && (
-                            <Badge variant="outline" className="text-xs">
-                              Read-only
-                            </Badge>
-                          )}
-                          {role.features && role.features.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              {role.features.join(', ')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewRole(role);
-                          }}
-                          className="h-8 w-8 p-0"
-                          title="View details"
-                        >
-                          <Search className="h-4 w-4" />
-                        </Button>
-                        {role.canDelete && !role.predefined && (
+                        <div className="flex items-center gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleDeleteRole(role);
+                              handleViewRole(role);
                             }}
-                            disabled={isDeleting}
-                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                            title="Delete role"
+                            className="h-8 w-8 p-0"
+                            title="View details"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Search className="h-4 w-4" />
                           </Button>
-                        )}
-                      </div>
+                          {role.canDelete && !role.predefined && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteRole(role);
+                              }}
+                              disabled={isDeleting}
+                              className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                              title="Delete role"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </Card>
 
@@ -563,7 +611,10 @@ export function ConfigurePolicy() {
                 Refresh
               </Button>
               {isOrgScope ? (
-                <Button onClick={() => navigateToTemplateCreation('topology')} className="flex items-center gap-2">
+                <Button
+                  onClick={() => navigateToTemplateCreation('topology')}
+                  className="flex items-center gap-2"
+                >
                   <Layers className="h-4 w-4" />
                   Create Template
                 </Button>
@@ -592,7 +643,7 @@ export function ConfigurePolicy() {
                 topologySearchTerm
                   ? `No topologies match "${topologySearchTerm}". Try clearing the search.`
                   : 'VLAN topologies define network segmentation. Configure them on the Campus Controller and they will appear here.',
-                <Layers className="h-12 w-12" />,
+                <Layers className="h-12 w-12" />
               )
             ) : (
               <div className="grid gap-3">
@@ -604,22 +655,33 @@ export function ConfigurePolicy() {
                           <Layers className="h-4 w-4 text-blue-500" />
                         </div>
                         <div>
-                          <div className="font-medium">{topology.name || topology.topologyName || 'Unnamed'}</div>
+                          <div className="font-medium">
+                            {topology.name || topology.topologyName || 'Unnamed'}
+                          </div>
                           <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            {topology.vlanId && <Badge variant="outline">VLAN {topology.vlanId}</Badge>}
+                            {topology.vlanId && (
+                              <Badge variant="outline">VLAN {topology.vlanId}</Badge>
+                            )}
                             {topology.mode && <Badge variant="secondary">{topology.mode}</Badge>}
-                            {topology.predefined && <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" />System</Badge>}
+                            {topology.predefined && (
+                              <Badge variant="secondary">
+                                <Lock className="h-3 w-3 mr-1" />
+                                System
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {topology.ipAddress && (
-                          <span className="text-xs text-muted-foreground font-mono">{topology.ipAddress}</span>
+                          <span className="text-xs text-muted-foreground font-mono">
+                            {topology.ipAddress}
+                          </span>
                         )}
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
                           title="View details"
                           onClick={() => {
                             setSelectedTopology(topology);
@@ -660,7 +722,7 @@ export function ConfigurePolicy() {
               renderEmptyState(
                 'No CoS profiles configured',
                 'Class of Service profiles prioritize network traffic for different application types. Create them on the Campus Controller.',
-                <Gauge className="h-12 w-12" />,
+                <Gauge className="h-12 w-12" />
               )
             ) : (
               <div className="grid gap-3">
@@ -674,16 +736,23 @@ export function ConfigurePolicy() {
                         <div>
                           <div className="font-medium">{cos.name || cos.cosName || 'Unnamed'}</div>
                           <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            {cos.priority !== undefined && <Badge variant="outline">Priority {cos.priority}</Badge>}
-                            {cos.predefined && <Badge variant="secondary"><Lock className="h-3 w-3 mr-1" />System</Badge>}
+                            {cos.priority !== undefined && (
+                              <Badge variant="outline">Priority {cos.priority}</Badge>
+                            )}
+                            {cos.predefined && (
+                              <Badge variant="secondary">
+                                <Lock className="h-3 w-3 mr-1" />
+                                System
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 w-8 p-0" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
                           title="View details"
                           onClick={() => {
                             setSelectedCos(cos);
@@ -705,7 +774,7 @@ export function ConfigurePolicy() {
             {renderEmptyState(
               'Firewall Rules — Coming Soon',
               'Advanced per-role firewall rule configuration is under development. In the meantime, use the Network Roles tab to view and manage roles that include firewall filter assignments.',
-              <Network className="h-12 w-12" />,
+              <Network className="h-12 w-12" />
             )}
           </TabsContent>
         </Tabs>
@@ -724,9 +793,7 @@ export function ConfigurePolicy() {
                 </Badge>
               )}
             </DialogTitle>
-            <DialogDescription>
-              Network policy role configuration and details
-            </DialogDescription>
+            <DialogDescription>Network policy role configuration and details</DialogDescription>
           </DialogHeader>
 
           {selectedRole && (
@@ -742,7 +809,9 @@ export function ConfigurePolicy() {
                   <div>
                     <Label className="text-muted-foreground">Default Action</Label>
                     <div className="mt-1">
-                      <Badge variant={selectedRole.defaultAction === 'allow' ? 'default' : 'destructive'}>
+                      <Badge
+                        variant={selectedRole.defaultAction === 'allow' ? 'default' : 'destructive'}
+                      >
                         {selectedRole.defaultAction}
                       </Badge>
                     </div>
@@ -772,7 +841,9 @@ export function ConfigurePolicy() {
                   </div>
                   <div>
                     <Label className="text-muted-foreground">L3 Src/Dest Filters</Label>
-                    <p className="text-sm mt-1">{selectedRole.l3SrcDestFilters?.length || 0} rule(s)</p>
+                    <p className="text-sm mt-1">
+                      {selectedRole.l3SrcDestFilters?.length || 0} rule(s)
+                    </p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">L7 Filters</Label>
@@ -813,7 +884,9 @@ export function ConfigurePolicy() {
                             <div className="font-medium">{filter.name}</div>
                             <div className="text-xs text-muted-foreground">
                               <span>Action: {filter.action}</span>
-                              {filter.appGroupId && <span className="ml-4">Group ID: {filter.appGroupId}</span>}
+                              {filter.appGroupId && (
+                                <span className="ml-4">Group ID: {filter.appGroupId}</span>
+                              )}
                             </div>
                           </div>
                         </Card>
@@ -852,7 +925,9 @@ export function ConfigurePolicy() {
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Redirect Ports</Label>
-                        <p className="text-sm mt-1">{selectedRole.cpRedirectPorts?.join(', ') || 'None'}</p>
+                        <p className="text-sm mt-1">
+                          {selectedRole.cpRedirectPorts?.join(', ') || 'None'}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -885,10 +960,7 @@ export function ConfigurePolicy() {
           )}
 
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDetailDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
@@ -941,7 +1013,7 @@ export function ConfigurePolicy() {
                   <p className="text-sm mt-1">{selectedCos.canEdit !== false ? 'Yes' : 'No'}</p>
                 </div>
               </div>
-              
+
               {/* Queue Mappings if available */}
               {selectedCos.queueMappings && (
                 <div>
@@ -955,19 +1027,19 @@ export function ConfigurePolicy() {
                   </div>
                 </div>
               )}
-              
+
               {/* DSCP Mappings if available */}
               {selectedCos.dscpMappings && (
                 <div>
                   <Label className="text-muted-foreground">DSCP Mappings</Label>
                   <p className="text-sm mt-1 text-muted-foreground">
-                    {Array.isArray(selectedCos.dscpMappings) 
+                    {Array.isArray(selectedCos.dscpMappings)
                       ? `${selectedCos.dscpMappings.length} mappings configured`
                       : 'Custom mappings configured'}
                   </p>
                 </div>
               )}
-              
+
               {selectedCos.description && (
                 <div>
                   <Label className="text-muted-foreground">Description</Label>
@@ -977,7 +1049,9 @@ export function ConfigurePolicy() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCosDetailOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setIsCosDetailOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1008,15 +1082,21 @@ export function ConfigurePolicy() {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">IP Address</Label>
-                  <p className="text-sm mt-1 font-mono">{selectedTopology.ipAddress || 'Not configured'}</p>
+                  <p className="text-sm mt-1 font-mono">
+                    {selectedTopology.ipAddress || 'Not configured'}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Subnet Mask</Label>
-                  <p className="text-sm mt-1 font-mono">{selectedTopology.subnetMask || 'Not configured'}</p>
+                  <p className="text-sm mt-1 font-mono">
+                    {selectedTopology.subnetMask || 'Not configured'}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Gateway</Label>
-                  <p className="text-sm mt-1 font-mono">{selectedTopology.gateway || 'Not configured'}</p>
+                  <p className="text-sm mt-1 font-mono">
+                    {selectedTopology.gateway || 'Not configured'}
+                  </p>
                 </div>
               </div>
               {selectedTopology.description && (
@@ -1028,7 +1108,9 @@ export function ConfigurePolicy() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTopologyDetailOpen(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setIsTopologyDetailOpen(false)}>
+              Close
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1053,7 +1135,9 @@ export function ConfigurePolicy() {
               <div className="space-y-2">
                 <Label>Mode</Label>
                 <Select defaultValue="bridged-at-ap">
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="bridged-at-ap">Bridged at AP</SelectItem>
                     <SelectItem value="bridged-at-controller">Bridged at Controller</SelectItem>
@@ -1068,7 +1152,9 @@ export function ConfigurePolicy() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsTopologyEditOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsTopologyEditOpen(false)}>
+              Cancel
+            </Button>
             <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
           </DialogFooter>
         </DialogContent>

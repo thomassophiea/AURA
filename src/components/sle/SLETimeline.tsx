@@ -44,8 +44,8 @@ export function SLETimeline({ data, status, height = 80, id = 'default' }: SLETi
             fontSize: '11px',
             backdropFilter: 'blur(8px)',
           }}
-          formatter={(value: number) => [`${value.toFixed(1)}%`, 'Success Rate']}
-          labelFormatter={(label: string) => label}
+          formatter={(value: any) => [`${value.toFixed(1)}%`, 'Success Rate']}
+          labelFormatter={(label: any) => String(label)}
         />
         <Area
           type="monotone"

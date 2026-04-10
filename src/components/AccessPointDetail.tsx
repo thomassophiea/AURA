@@ -31,10 +31,18 @@ import {
   Maximize2,
   Cable,
   CheckCircle2,
-  XCircle
+  XCircle,
 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import { apiService, AccessPoint, APDetails, APStation, APRadio, APAlarm, APAlarmCategory } from '../services/api';
+import {
+  apiService,
+  AccessPoint,
+  APDetails,
+  APStation,
+  APRadio,
+  APAlarm,
+  APAlarmCategory,
+} from '../services/api';
 import { APEventsTimeline } from './APEventsTimeline';
 import { APInsights, APInsightsFullScreen } from './APInsights';
 import { toast } from 'sonner';
@@ -63,7 +71,10 @@ interface CableHealthResult {
  * Parse ethernet speed string to Mbps
  * Handles formats like: "speed5Gbps", "speed100Mbps", "speedNA", "speedAuto"
  */
-function parseSpeedString(speedStr: string | undefined | null): { speedMbps: number | null; speedDisplay: string } {
+function parseSpeedString(speedStr: string | undefined | null): {
+  speedMbps: number | null;
+  speedDisplay: string;
+} {
   if (!speedStr || speedStr === '-') {
     return { speedMbps: null, speedDisplay: 'Unknown' };
   }
@@ -122,7 +133,7 @@ function getActualEthSpeed(ap: any): {
           return {
             ...parsed,
             portName: port.name || 'eth',
-            duplexMode: port.mode || port.duplex || ap.ethMode
+            duplexMode: port.mode || port.duplex || ap.ethMode,
           };
         }
       }
@@ -147,15 +158,30 @@ function getExpectedSpeed(model: string | undefined): number {
   const m = model.toUpperCase();
 
   // WiFi 6E / WiFi 7 APs - typically have 2.5Gbps or 5Gbps ports
-  if (m.includes('AP6') || m.includes('AP7') || m.includes('635') || m.includes('655') ||
-      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15') ||
-      m.includes('5050')) {
+  if (
+    m.includes('AP6') ||
+    m.includes('AP7') ||
+    m.includes('635') ||
+    m.includes('655') ||
+    m.includes('735') ||
+    m.includes('755') ||
+    m.includes('OAW-AP13') ||
+    m.includes('OAW-AP15') ||
+    m.includes('5050')
+  ) {
     return 5000; // 5Gbps for WiFi 6E
   }
 
   // WiFi 6 APs - typically 1Gbps or 2.5Gbps
-  if (m.includes('AP5') || m.includes('515') || m.includes('535') || m.includes('555') ||
-      m.includes('OAW-AP12') || m.includes('OAW-AP11') || m.includes('5020')) {
+  if (
+    m.includes('AP5') ||
+    m.includes('515') ||
+    m.includes('535') ||
+    m.includes('555') ||
+    m.includes('OAW-AP12') ||
+    m.includes('OAW-AP11') ||
+    m.includes('5020')
+  ) {
     return 1000;
   }
 
@@ -182,15 +208,19 @@ function getPoEIssue(ap: any): { hasIssue: boolean; description: string } | null
   if (lowPower || powerMode.includes('low') || powerMode.includes('reduced')) {
     return {
       hasIssue: true,
-      description: 'AP running in low power mode - may indicate high cable resistance'
+      description: 'AP running in low power mode - may indicate high cable resistance',
     };
   }
 
-  if (powerStatus.includes('low') || powerStatus.includes('insufficient') ||
-      powerStatus.includes('fault') || powerStatus.includes('error')) {
+  if (
+    powerStatus.includes('low') ||
+    powerStatus.includes('insufficient') ||
+    powerStatus.includes('fault') ||
+    powerStatus.includes('error')
+  ) {
     return {
       hasIssue: true,
-      description: `PoE issue detected: ${ap.ethPowerStatus}`
+      description: `PoE issue detected: ${ap.ethPowerStatus}`,
     };
   }
 
@@ -203,7 +233,9 @@ function getPoEIssue(ap: any): { hasIssue: boolean; description: string } | null
 function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
   const apAny = apDetails as any;
   const { speedMbps, speedDisplay, portName, duplexMode } = getActualEthSpeed(apAny);
-  const expectedSpeedMbps = getExpectedSpeed(apDetails.model || apAny.hardwareType || apAny.platformName);
+  const expectedSpeedMbps = getExpectedSpeed(
+    apDetails.model || apAny.hardwareType || apAny.platformName
+  );
   const issues: CableIssue[] = [];
 
   if (speedMbps === null) {
@@ -215,7 +247,7 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
       message: 'Ethernet speed not available',
       issues: [],
       duplexMode,
-      portName
+      portName,
     };
   }
 
@@ -225,7 +257,8 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
       type: 'speed_critical',
       severity: 'critical',
       description: `Critical: ${speedDisplay} link detected`,
-      recommendation: 'Multiple cable pairs likely damaged. Replace the entire cable and check both RJ45 connectors for damage.'
+      recommendation:
+        'Multiple cable pairs likely damaged. Replace the entire cable and check both RJ45 connectors for damage.',
     });
   }
   // Issue 2: Speed degradation (100Mbps when gigabit expected)
@@ -233,8 +266,9 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
     issues.push({
       type: 'speed_degraded',
       severity: 'warning',
-      description: `Speed degraded: ${speedDisplay} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`})`,
-      recommendation: 'Check blue pair (pins 4,5) and brown pair (pins 7,8) on both ends. These outer pairs are most commonly damaged and only needed for gigabit.'
+      description: `Speed degraded: ${speedDisplay} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps / 1000}Gbps` : `${expectedSpeedMbps}Mbps`})`,
+      recommendation:
+        'Check blue pair (pins 4,5) and brown pair (pins 7,8) on both ends. These outer pairs are most commonly damaged and only needed for gigabit.',
     });
   }
 
@@ -244,7 +278,8 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
       type: 'duplex_mismatch',
       severity: 'warning',
       description: `Half duplex detected (${duplexMode})`,
-      recommendation: 'Half duplex indicates cable quality issues or switch port misconfiguration. Check for cable damage, excessive length (>100m), or switch port settings.'
+      recommendation:
+        'Half duplex indicates cable quality issues or switch port misconfiguration. Check for cable damage, excessive length (>100m), or switch port settings.',
     });
   }
 
@@ -255,7 +290,8 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
       type: 'poe_issue',
       severity: 'warning',
       description: poeIssue.description,
-      recommendation: 'High cable resistance reduces power delivery. Check for corroded connectors, damaged cable, or excessive cable length.'
+      recommendation:
+        'High cable resistance reduces power delivery. Check for corroded connectors, damaged cable, or excessive cable length.',
     });
   }
 
@@ -265,13 +301,14 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
       type: 'low_power',
       severity: 'warning',
       description: 'AP operating in low power mode',
-      recommendation: 'May be due to PoE budget constraints or cable resistance. Verify PoE source capacity and cable quality.'
+      recommendation:
+        'May be due to PoE budget constraints or cable resistance. Verify PoE source capacity and cable quality.',
     });
   }
 
   // Determine overall status
   let status: 'good' | 'warning' | 'critical' = 'good';
-  if (issues.some(i => i.severity === 'critical')) {
+  if (issues.some((i) => i.severity === 'critical')) {
     status = 'critical';
   } else if (issues.length > 0) {
     status = 'warning';
@@ -284,24 +321,30 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
   } else if (issues.length === 1) {
     message = issues[0].description;
   } else {
-    message = `Multiple issues detected: ${issues.map(i => i.type.replace(/_/g, ' ')).join(', ')}`;
+    message = `Multiple issues detected: ${issues.map((i) => i.type.replace(/_/g, ' ')).join(', ')}`;
   }
 
   // Build AI insight from all issues
   let aiInsight = '';
   if (issues.length > 0) {
-    if (issues.some(i => i.type === 'speed_critical')) {
-      aiInsight = 'A 10Mbps negotiation typically indicates multiple damaged pairs. Check both ends of the cable for damage to the RJ45 connector. The blue pair (pins 4, 5) and brown pair (pins 7, 8) are most commonly damaged as they are the outer pairs. Consider replacing the cable entirely.';
-    } else if (issues.some(i => i.type === 'speed_degraded')) {
-      aiInsight = 'A 100Mbps negotiation on a gigabit-capable AP usually indicates a damaged pair in the cable. Gigabit Ethernet requires all 4 pairs, while 100Mbps only uses 2. Check the blue pair (pins 4, 5) or brown pair (pins 7, 8) on the RJ45 connector.';
+    if (issues.some((i) => i.type === 'speed_critical')) {
+      aiInsight =
+        'A 10Mbps negotiation typically indicates multiple damaged pairs. Check both ends of the cable for damage to the RJ45 connector. The blue pair (pins 4, 5) and brown pair (pins 7, 8) are most commonly damaged as they are the outer pairs. Consider replacing the cable entirely.';
+    } else if (issues.some((i) => i.type === 'speed_degraded')) {
+      aiInsight =
+        'A 100Mbps negotiation on a gigabit-capable AP usually indicates a damaged pair in the cable. Gigabit Ethernet requires all 4 pairs, while 100Mbps only uses 2. Check the blue pair (pins 4, 5) or brown pair (pins 7, 8) on the RJ45 connector.';
     }
 
-    if (issues.some(i => i.type === 'duplex_mismatch')) {
-      aiInsight += (aiInsight ? ' Additionally, ' : '') + 'Half duplex negotiation suggests signal quality issues - possibly from cable damage, interference, or excessive length.';
+    if (issues.some((i) => i.type === 'duplex_mismatch')) {
+      aiInsight +=
+        (aiInsight ? ' Additionally, ' : '') +
+        'Half duplex negotiation suggests signal quality issues - possibly from cable damage, interference, or excessive length.';
     }
 
-    if (issues.some(i => i.type === 'poe_issue' || i.type === 'low_power')) {
-      aiInsight += (aiInsight ? ' ' : '') + 'Power delivery issues can indicate high cable resistance from corroded connections or damaged conductors.';
+    if (issues.some((i) => i.type === 'poe_issue' || i.type === 'low_power')) {
+      aiInsight +=
+        (aiInsight ? ' ' : '') +
+        'Power delivery issues can indicate high cable resistance from corroded connections or damaged conductors.';
     }
   }
 
@@ -314,7 +357,7 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
     aiInsight: aiInsight || undefined,
     issues,
     duplexMode,
-    portName
+    portName,
   };
 }
 
@@ -344,17 +387,23 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
       setIsLoading(true);
       const [details, stationsData] = await Promise.all([
         apiService.getAccessPointDetails(serialNumber),
-        apiService.getAccessPointStations(serialNumber).catch(() => [])
+        apiService.getAccessPointStations(serialNumber).catch(() => []),
       ]);
 
       // Enrich AP details with formatted uptime
       const enrichedDetails = {
         ...details,
-        uptime: (details as any).sysUptime ? formatUptime((details as any).sysUptime) : details.uptime,
+        uptime: (details as any).sysUptime
+          ? formatUptime((details as any).sysUptime)
+          : details.uptime,
         // Calculate average channel utilization from all radios
-        channelUtilization: details.radios && details.radios.length > 0
-          ? Math.round(details.radios.reduce((sum, radio) => sum + (radio.channelUtilization || 0), 0) / details.radios.length)
-          : details.channelUtilization
+        channelUtilization:
+          details.radios && details.radios.length > 0
+            ? Math.round(
+                details.radios.reduce((sum, radio) => sum + (radio.channelUtilization || 0), 0) /
+                  details.radios.length
+              )
+            : details.channelUtilization,
       };
 
       setApDetails(enrichedDetails);
@@ -440,7 +489,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
   // Force re-render every 10 seconds to update "time ago" text
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setTimeUpdateCounter(prev => prev + 1);
+      setTimeUpdateCounter((prev) => prev + 1);
     }, 10000);
 
     return () => clearInterval(intervalId);
@@ -474,7 +523,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
-    const parts = [];
+    const parts: string[] = [];
     if (days > 0) parts.push(`${days}d`);
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
@@ -504,13 +553,22 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
   const getStatusBadgeVariant = (status?: string) => {
     if (!status) return 'secondary';
     const s = status.toLowerCase();
-    if (s === 'online' || s === 'connected' || s === 'up' || s === 'in-service' || s === 'inservice') return 'default';
+    if (
+      s === 'online' ||
+      s === 'connected' ||
+      s === 'up' ||
+      s === 'in-service' ||
+      s === 'inservice'
+    )
+      return 'default';
     if (s === 'offline' || s === 'disconnected' || s === 'down') return 'destructive';
     return 'secondary';
   };
 
   // Get badge variant for event severity
-  const getEventBadgeVariant = (level?: string): 'default' | 'secondary' | 'destructive' | 'outline' => {
+  const getEventBadgeVariant = (
+    level?: string
+  ): 'default' | 'secondary' | 'destructive' | 'outline' => {
     if (!level) return 'secondary';
     const l = level.toLowerCase();
     if (l === 'critical' || l === 'error') return 'destructive';
@@ -540,16 +598,16 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
       year: 'numeric',
       hour: 'numeric',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
   // Calculate event summary stats
   const eventStats = {
     total: events.length,
-    critical: events.filter(e => e.Level?.toLowerCase() === 'critical').length,
-    major: events.filter(e => e.Level?.toLowerCase() === 'major').length,
-    categories: [...new Set(events.map(e => e.Category))].length
+    critical: events.filter((e) => e.Level?.toLowerCase() === 'critical').length,
+    major: events.filter((e) => e.Level?.toLowerCase() === 'major').length,
+    categories: [...new Set(events.map((e) => e.Category))].length,
   };
 
   return (
@@ -579,7 +637,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
           onClick={handleRefresh}
           disabled={isRefreshing || isAutoRefreshing}
         >
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing || isAutoRefreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${isRefreshing || isAutoRefreshing ? 'animate-spin' : ''}`}
+          />
           Refresh
         </Button>
       </div>
@@ -602,7 +662,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <Users className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Connected Clients</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Connected Clients
+                </p>
                 <p className="text-lg font-bold text-foreground">{stations.length}</p>
               </div>
             </div>
@@ -611,7 +673,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <Activity className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Uptime</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Uptime
+                </p>
                 <p className="text-lg font-bold text-foreground">{apDetails.uptime || 'N/A'}</p>
               </div>
             </div>
@@ -620,8 +684,13 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <Wifi className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Active Radios</p>
-                <p className="text-lg font-bold text-foreground">{apDetails.radios?.filter(r => r.adminState).length || 0}/{apDetails.radios?.length || 0}</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Active Radios
+                </p>
+                <p className="text-lg font-bold text-foreground">
+                  {apDetails.radios?.filter((r) => r.adminState).length || 0}/
+                  {apDetails.radios?.length || 0}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
@@ -629,8 +698,12 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <Signal className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Modes</p>
-                <p className="text-lg font-bold text-foreground">{apDetails.radios?.map(r => r.mode.toUpperCase()).join(', ') || 'N/A'}</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Modes
+                </p>
+                <p className="text-lg font-bold text-foreground">
+                  {apDetails.radios?.map((r) => r.mode.toUpperCase()).join(', ') || 'N/A'}
+                </p>
               </div>
             </div>
           </div>
@@ -657,7 +730,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Model:</span>
-              <span className="font-medium">{apDetails.model || apDetails.hardwareType || 'N/A'}</span>
+              <span className="font-medium">
+                {apDetails.model || apDetails.hardwareType || 'N/A'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">MAC Address:</span>
@@ -689,7 +764,15 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         if (!hasEthData && cableHealth.status === 'unknown') return null;
 
         return (
-          <Card className={cableHealth.status === 'critical' ? 'border-[color:var(--status-error)]/30' : cableHealth.status === 'warning' ? 'border-[color:var(--status-warning)]/30' : ''}>
+          <Card
+            className={
+              cableHealth.status === 'critical'
+                ? 'border-[color:var(--status-error)]/30'
+                : cableHealth.status === 'warning'
+                  ? 'border-[color:var(--status-warning)]/30'
+                  : ''
+            }
+          >
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -697,13 +780,19 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                   <span>Ethernet Status</span>
                 </div>
                 {cableHealth.status === 'good' && (
-                  <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
+                  <Badge
+                    variant="outline"
+                    className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                  >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Good
                   </Badge>
                 )}
                 {cableHealth.status === 'warning' && (
-                  <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">
+                  <Badge
+                    variant="outline"
+                    className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+                  >
                     <AlertTriangle className="h-3 w-3 mr-1" />
                     Check Cable
                   </Badge>
@@ -720,24 +809,30 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
               <div className="grid grid-cols-1 gap-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Link Speed:</span>
-                  <span className={`font-medium ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : cableHealth.status === 'warning' ? 'text-[color:var(--status-warning)]' : ''}`}>
+                  <span
+                    className={`font-medium ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : cableHealth.status === 'warning' ? 'text-[color:var(--status-warning)]' : ''}`}
+                  >
                     {cableHealth.speedDisplay || 'N/A'}
                   </span>
                 </div>
-                {apAny.ethPorts && (() => {
-                  // Find the port with valid speed (same logic as getActualEthSpeed)
-                  const activePort = apAny.ethPorts.find((p: any) => {
-                    if (!p?.speed) return false;
-                    const s = String(p.speed).toLowerCase();
-                    return s !== 'speedna' && s !== 'na';
-                  }) || apAny.ethPorts[0];
-                  return activePort?.mode ? (
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Duplex Mode ({activePort.name || 'eth'}):</span>
-                      <span className="font-medium">{activePort.mode}</span>
-                    </div>
-                  ) : null;
-                })()}
+                {apAny.ethPorts &&
+                  (() => {
+                    // Find the port with valid speed (same logic as getActualEthSpeed)
+                    const activePort =
+                      apAny.ethPorts.find((p: any) => {
+                        if (!p?.speed) return false;
+                        const s = String(p.speed).toLowerCase();
+                        return s !== 'speedna' && s !== 'na';
+                      }) || apAny.ethPorts[0];
+                    return activePort?.mode ? (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">
+                          Duplex Mode ({activePort.name || 'eth'}):
+                        </span>
+                        <span className="font-medium">{activePort.mode}</span>
+                      </div>
+                    ) : null;
+                  })()}
                 {apAny.ethPowerStatus && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">PoE Status:</span>
@@ -758,11 +853,17 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
 
               {/* Cable Health Warning */}
               {(cableHealth.status === 'warning' || cableHealth.status === 'critical') && (
-                <div className={`p-3 rounded-lg ${cableHealth.status === 'critical' ? 'bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30' : 'bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30'}`}>
+                <div
+                  className={`p-3 rounded-lg ${cableHealth.status === 'critical' ? 'bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30' : 'bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30'}`}
+                >
                   <div className="flex items-start gap-2">
-                    <AlertTriangle className={`h-4 w-4 mt-0.5 ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`} />
+                    <AlertTriangle
+                      className={`h-4 w-4 mt-0.5 ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}
+                    />
                     <div className="space-y-2">
-                      <p className={`text-sm font-medium ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}>
+                      <p
+                        className={`text-sm font-medium ${cableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}
+                      >
                         {cableHealth.message}
                       </p>
                       {cableHealth.aiInsight && (
@@ -794,7 +895,10 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {apDetails.radios.map((radio, index) => (
-              <div key={radio.radioIndex || index} className="p-4 border border-border rounded-lg space-y-3">
+              <div
+                key={radio.radioIndex || index}
+                className="p-4 border border-border rounded-lg space-y-3"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Wifi className="h-4 w-4 text-muted-foreground" />
@@ -815,7 +919,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Channel Width:</span>
-                    <span className="font-medium">{radio.channelwidth.replace('Ch1Width_', '').replace('MHz', ' MHz')}</span>
+                    <span className="font-medium">
+                      {radio.channelwidth.replace('Ch1Width_', '').replace('MHz', ' MHz')}
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Max TX Power:</span>
@@ -851,7 +957,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
               <AlertCircle className="h-4 w-4" />
               <span>Events</span>
               {events.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{events.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {events.length}
+                </Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -888,7 +996,11 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 onClick={() => setShowEvents(!showEvents)}
                 className="h-8 px-2"
               >
-                {showEvents ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {showEvents ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </CardTitle>
@@ -922,7 +1034,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                     <p className="text-[10px] text-muted-foreground uppercase">Critical</p>
                   </div>
                   <div className="p-2 bg-[color:var(--status-warning-bg)] rounded-lg text-center">
-                    <p className="text-lg font-semibold text-[color:var(--status-warning)]">{eventStats.major}</p>
+                    <p className="text-lg font-semibold text-[color:var(--status-warning)]">
+                      {eventStats.major}
+                    </p>
                     <p className="text-[10px] text-muted-foreground uppercase">Major</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded-lg text-center">
@@ -947,24 +1061,31 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                         onClick={() => setExpandedEventId(isExpanded ? null : eventKey)}
                       >
                         <div className="flex items-start gap-3">
-                          <div className={`p-1.5 rounded-md ${
-                            event.Level?.toLowerCase() === 'critical'
-                              ? 'bg-destructive/10'
-                              : event.Level?.toLowerCase() === 'major'
-                              ? 'bg-[color:var(--status-warning-bg)]'
-                              : 'bg-muted'
-                          }`}>
-                            <EventIcon className={`h-4 w-4 ${
+                          <div
+                            className={`p-1.5 rounded-md ${
                               event.Level?.toLowerCase() === 'critical'
-                                ? 'text-destructive'
+                                ? 'bg-destructive/10'
                                 : event.Level?.toLowerCase() === 'major'
-                                ? 'text-[color:var(--status-warning)]'
-                                : 'text-muted-foreground'
-                            }`} />
+                                  ? 'bg-[color:var(--status-warning-bg)]'
+                                  : 'bg-muted'
+                            }`}
+                          >
+                            <EventIcon
+                              className={`h-4 w-4 ${
+                                event.Level?.toLowerCase() === 'critical'
+                                  ? 'text-destructive'
+                                  : event.Level?.toLowerCase() === 'major'
+                                    ? 'text-[color:var(--status-warning)]'
+                                    : 'text-muted-foreground'
+                              }`}
+                            />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge variant={getEventBadgeVariant(event.Level)} className="text-[10px] px-1.5 py-0">
+                              <Badge
+                                variant={getEventBadgeVariant(event.Level)}
+                                className="text-[10px] px-1.5 py-0"
+                              >
                                 {event.Level || 'Info'}
                               </Badge>
                               <Badge variant="outline" className="text-[10px] px-1.5 py-0">
@@ -974,9 +1095,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                                 {formatEventTime(event.ts)}
                               </span>
                             </div>
-                            <p className="text-sm truncate">
-                              {event.log}
-                            </p>
+                            <p className="text-sm truncate">{event.log}</p>
                           </div>
                           {isExpanded ? (
                             <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
@@ -991,7 +1110,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div>
                                 <span className="text-muted-foreground">Time:</span>
-                                <span className="ml-2 font-medium">{formatEventTime(event.ts)}</span>
+                                <span className="ml-2 font-medium">
+                                  {formatEventTime(event.ts)}
+                                </span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Type:</span>
@@ -1020,9 +1141,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                             </div>
                             <div className="pt-2">
                               <span className="text-muted-foreground text-xs">Message:</span>
-                              <p className="mt-1 text-sm bg-muted/30 p-2 rounded">
-                                {event.log}
-                              </p>
+                              <p className="mt-1 text-sm bg-muted/30 p-2 rounded">{event.log}</p>
                             </div>
                           </div>
                         )}
@@ -1044,7 +1163,9 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
       </Card>
 
       {/* Performance Metrics */}
-      {(apDetails.cpuUsage !== undefined || apDetails.memoryUsage !== undefined || apDetails.channelUtilization !== undefined) && (
+      {(apDetails.cpuUsage !== undefined ||
+        apDetails.memoryUsage !== undefined ||
+        apDetails.channelUtilization !== undefined) && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
@@ -1094,25 +1215,22 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
           ) : (
             <div className="space-y-3">
               {stations.slice(0, 10).map((station, index) => (
-                <div key={station.macAddress || index} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
+                <div
+                  key={station.macAddress || index}
+                  className="flex items-center justify-between py-2 border-b border-border last:border-b-0"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
                       {station.hostName || station.macAddress || 'Unknown Client'}
                     </p>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {station.macAddress}
-                    </p>
+                    <p className="text-xs text-muted-foreground font-mono">{station.macAddress}</p>
                   </div>
                   <div className="text-right">
                     {station.signalStrength && (
-                      <p className="text-xs text-muted-foreground">
-                        {station.signalStrength} dBm
-                      </p>
+                      <p className="text-xs text-muted-foreground">{station.signalStrength} dBm</p>
                     )}
                     {station.dataRate && (
-                      <p className="text-xs text-muted-foreground">
-                        {station.dataRate}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{station.dataRate}</p>
                     )}
                   </div>
                 </div>
@@ -1187,11 +1305,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
             {/* Header */}
             <div className="border-b bg-background px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowEventsTimeline(false)}
-                >
+                <Button variant="ghost" size="sm" onClick={() => setShowEventsTimeline(false)}>
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>

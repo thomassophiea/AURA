@@ -30,6 +30,8 @@ const NAME_FIELDS: Record<GlobalElementType, string> = {
   rate_limiter: 'name',
   ap_profile: 'name',
   rf_policy: 'name',
+  rfmgmt: 'name',
+  adsp: 'name',
 };
 
 // Fetch methods to get existing resources for create-vs-update detection
@@ -42,6 +44,8 @@ const FETCH_METHODS: Record<GlobalElementType, (() => Promise<unknown[]>) | null
   rate_limiter: async () => [], // No list method available; always create
   ap_profile: () => apiService.getProfiles(),
   rf_policy: () => apiService.getRFManagementProfiles(),
+  rfmgmt: null,
+  adsp: null,
 };
 
 class DeploymentServiceClass {
@@ -65,22 +69,36 @@ class DeploymentServiceClass {
     const validation = templateResolver.validateResolution(resolved, definitions);
 
     if (!resolved.is_fully_resolved) {
-      return this._failResult(template, context, siteGroup, startedAt,
-        `Unresolved tokens: ${resolved.unresolved_tokens.map(t => `{{${t}}}`).join(', ')}`);
+      return this._failResult(
+        template,
+        context,
+        siteGroup,
+        startedAt,
+        `Unresolved tokens: ${resolved.unresolved_tokens.map((t) => `{{${t}}}`).join(', ')}`
+      );
     }
 
     if (!validation.valid) {
-      return this._failResult(template, context, siteGroup, startedAt,
-        `Validation errors: ${validation.errors.join('; ')}`);
+      return this._failResult(
+        template,
+        context,
+        siteGroup,
+        startedAt,
+        `Validation errors: ${validation.errors.join('; ')}`
+      );
     }
 
     // Enqueue to serialize controller switching
     return new Promise<DeploymentResult>((resolve) => {
-      this._queue = this._queue.then(async () => {
-        resolve(await this._executeDeploy(template, resolved, siteGroup, startedAt));
-      }).catch(() => {
-        resolve(this._failResult(template, context, siteGroup, startedAt, 'Deployment queue error'));
-      });
+      this._queue = this._queue
+        .then(async () => {
+          resolve(await this._executeDeploy(template, resolved, siteGroup, startedAt));
+        })
+        .catch(() => {
+          resolve(
+            this._failResult(template, context, siteGroup, startedAt, 'Deployment queue error')
+          );
+        });
     });
   }
 
@@ -111,9 +129,18 @@ class DeploymentServiceClass {
         template_id: template.id,
         template_name: template.name,
         element_type: template.element_type,
-        scope_type: resolved.context.site_group_id ? (resolved.context.site_id ? 'site' : 'site_group') : 'organization',
-        scope_id: resolved.context.site_id ?? resolved.context.site_group_id ?? resolved.context.org_id,
-        scope_name: resolved.context.site_name ?? resolved.context.site_group_name ?? resolved.context.org_name ?? '',
+        scope_type: resolved.context.site_group_id
+          ? resolved.context.site_id
+            ? 'site'
+            : 'site_group'
+          : 'organization',
+        scope_id:
+          resolved.context.site_id ?? resolved.context.site_group_id ?? resolved.context.org_id,
+        scope_name:
+          resolved.context.site_name ??
+          resolved.context.site_group_name ??
+          resolved.context.org_name ??
+          '',
         status: 'success',
         controller_url: siteGroup.controller_url,
         response_data: responseData,
@@ -172,15 +199,24 @@ class DeploymentServiceClass {
     payload: Record<string, unknown>
   ): Promise<unknown> {
     switch (elementType) {
-      case 'service': return apiService.createService(payload);
-      case 'topology': return apiService.createTopology(payload);
-      case 'role': return apiService.createRole(payload);
-      case 'aaa_policy': return apiService.createAAAPolicy(payload);
-      case 'cos_profile': return apiService.createCoSProfile(payload);
-      case 'rate_limiter': return apiService.createRateLimiter(payload);
-      case 'rf_policy': return apiService.createRFManagementProfile(payload);
-      case 'ap_profile': return apiService.createProfile(payload);
-      default: throw new Error(`Unsupported element type: ${elementType}`);
+      case 'service':
+        return apiService.createService(payload);
+      case 'topology':
+        return apiService.createTopology(payload);
+      case 'role':
+        return apiService.createRole(payload);
+      case 'aaa_policy':
+        return apiService.createAAAPolicy(payload);
+      case 'cos_profile':
+        return apiService.createCoSProfile(payload);
+      case 'rate_limiter':
+        return apiService.createRateLimiter(payload);
+      case 'rf_policy':
+        return apiService.createRFManagementProfile(payload);
+      case 'ap_profile':
+        return apiService.createProfile(payload);
+      default:
+        throw new Error(`Unsupported element type: ${elementType}`);
     }
   }
 
@@ -190,15 +226,24 @@ class DeploymentServiceClass {
     payload: Record<string, unknown>
   ): Promise<unknown> {
     switch (elementType) {
-      case 'service': return apiService.updateService(id, payload);
-      case 'topology': return apiService.updateTopology(id, payload);
-      case 'role': return apiService.updateRole(id, payload);
-      case 'aaa_policy': return apiService.updateAAAPolicy(id, payload);
-      case 'cos_profile': return apiService.updateCoSProfile(id, payload);
-      case 'rate_limiter': return apiService.updateRateLimiter(id, payload);
-      case 'rf_policy': return apiService.updateRFManagementProfile(id, payload);
-      case 'ap_profile': return apiService.updateProfile(id, payload);
-      default: throw new Error(`Unsupported element type: ${elementType}`);
+      case 'service':
+        return apiService.updateService(id, payload);
+      case 'topology':
+        return apiService.updateTopology(id, payload);
+      case 'role':
+        return apiService.updateRole(id, payload);
+      case 'aaa_policy':
+        return apiService.updateAAAPolicy(id, payload);
+      case 'cos_profile':
+        return apiService.updateCoSProfile(id, payload);
+      case 'rate_limiter':
+        return apiService.updateRateLimiter(id, payload);
+      case 'rf_policy':
+        return apiService.updateRFManagementProfile(id, payload);
+      case 'ap_profile':
+        return apiService.updateProfile(id, payload);
+      default:
+        throw new Error(`Unsupported element type: ${elementType}`);
     }
   }
 
@@ -229,9 +274,7 @@ class DeploymentServiceClass {
   // -----------------------------------------------------------------------
 
   async saveRecord(record: Omit<DeploymentRecord, 'id'>): Promise<void> {
-    const { error } = await supabase
-      .from('deployment_history')
-      .insert(record);
+    const { error } = await supabase.from('deployment_history').insert(record);
 
     if (error) {
       console.error('[Deployment] Failed to save record:', error);

@@ -72,55 +72,64 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
   /**
    * Handle adding a widget from catalog
    */
-  const handleAddWidget = useCallback(async (catalogItem: WidgetCatalogItem) => {
-    const widget = createWidgetFromCatalog(catalogItem);
+  const handleAddWidget = useCallback(
+    async (catalogItem: WidgetCatalogItem) => {
+      const widget = createWidgetFromCatalog(catalogItem);
 
-    // Fetch data for the widget
-    try {
-      const result = await fetchWidgetData(widget, context, api);
-      updateWidget(widget.id, {
-        isLoading: false,
-        data: result.data,
-        error: null,
-      });
-    } catch (error) {
-      updateWidget(widget.id, {
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch data',
-      });
-    }
-  }, [api, context, createWidgetFromCatalog, updateWidget]);
+      // Fetch data for the widget
+      try {
+        const result = await fetchWidgetData(widget, context, api);
+        updateWidget(widget.id, {
+          isLoading: false,
+          data: result.data,
+          error: null,
+        });
+      } catch (error) {
+        updateWidget(widget.id, {
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Failed to fetch data',
+        });
+      }
+    },
+    [api, context, createWidgetFromCatalog, updateWidget]
+  );
 
   /**
    * Handle widget refresh
    */
-  const handleRefresh = useCallback(async (id: string) => {
-    const widget = widgets.find(w => w.id === id);
-    if (!widget) return;
+  const handleRefresh = useCallback(
+    async (id: string) => {
+      const widget = widgets.find((w) => w.id === id);
+      if (!widget) return;
 
-    refreshWidget(id);
+      refreshWidget(id);
 
-    try {
-      const result = await fetchWidgetData(widget, context, api);
-      updateWidget(id, {
-        isLoading: false,
-        data: result.data,
-        error: null,
-      });
-    } catch (error) {
-      updateWidget(id, {
-        isLoading: false,
-        error: error instanceof Error ? error.message : 'Failed to refresh data',
-      });
-    }
-  }, [api, context, widgets, refreshWidget, updateWidget]);
+      try {
+        const result = await fetchWidgetData(widget, context, api);
+        updateWidget(id, {
+          isLoading: false,
+          data: result.data,
+          error: null,
+        });
+      } catch (error) {
+        updateWidget(id, {
+          isLoading: false,
+          error: error instanceof Error ? error.message : 'Failed to refresh data',
+        });
+      }
+    },
+    [api, context, widgets, refreshWidget, updateWidget]
+  );
 
   /**
    * Handle time brush selection from a widget
    */
-  const handleTimeBrush = useCallback((timeWindow: { start: number; end: number }) => {
-    emitSignals({ selectedTimeWindow: timeWindow });
-  }, [emitSignals]);
+  const handleTimeBrush = useCallback(
+    (timeWindow: { start: number; end: number }) => {
+      emitSignals({ selectedTimeWindow: timeWindow });
+    },
+    [emitSignals]
+  );
 
   // Get catalog items for selected topic
   const catalogItems = selectedTopic ? getWidgetsByTopic(selectedTopic) : [];
@@ -220,7 +229,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
                   {/* Prompt Suggestions */}
                   {promptSuggestions.length > 0 && (
                     <div className="pt-4 border-t">
-                      <p className="text-xs text-muted-foreground mb-3 text-center">Or explore with natural language:</p>
+                      <p className="text-xs text-muted-foreground mb-3 text-center">
+                        Or explore with natural language:
+                      </p>
                       <div className="flex flex-wrap justify-center gap-2">
                         {promptSuggestions.map((suggestion, index) => (
                           <span
@@ -257,7 +268,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={clearWorkspace}
+            onClick={() => clearWorkspace()}
             className="text-muted-foreground hover:text-destructive"
           >
             <Trash2 className="h-4 w-4 mr-2" />
@@ -336,9 +347,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
                       <Plus className="h-4 w-4 text-primary" />
                       <span className="font-medium text-sm">{item.title}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {item.description}
-                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{item.description}</p>
                     <Badge variant="outline" className="mt-2 text-xs">
                       {item.type.replace(/_/g, ' ')}
                     </Badge>
@@ -349,7 +358,9 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
               {/* Prompt Suggestions */}
               {promptSuggestions.length > 0 && (
                 <div className="pt-4 border-t">
-                  <p className="text-xs text-muted-foreground mb-3">Or explore with natural language:</p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Or explore with natural language:
+                  </p>
                   <div className="flex flex-wrap gap-2">
                     {promptSuggestions.map((suggestion, index) => (
                       <span

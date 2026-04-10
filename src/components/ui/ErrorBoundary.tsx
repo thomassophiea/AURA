@@ -37,10 +37,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
     this.setState({ errorInfo });
-    
+
     console.error('[ErrorBoundary] Caught error:', error);
     console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack);
-    
+
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
@@ -52,7 +52,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       error: null,
       errorInfo: null,
     });
-    
+
     if (this.props.onReset) {
       this.props.onReset();
     }
@@ -132,7 +132,7 @@ export function ErrorFallback({
   resetErrorBoundary,
   title = 'Something went wrong',
   description = 'An unexpected error occurred.',
-}: ErrorFallbackProps): JSX.Element {
+}: ErrorFallbackProps): React.JSX.Element {
   return (
     <Card className="m-4 border-destructive/50 bg-destructive/5">
       <CardHeader className="pb-3">
@@ -149,12 +149,7 @@ export function ErrorFallback({
       </CardContent>
       {resetErrorBoundary && (
         <CardFooter>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetErrorBoundary}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={resetErrorBoundary} className="gap-2">
             <RefreshCw className="h-4 w-4" />
             Try Again
           </Button>

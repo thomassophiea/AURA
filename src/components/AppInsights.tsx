@@ -51,7 +51,7 @@ import {
   Building,
   MapPin,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
 } from 'lucide-react';
 import { Site, apiService } from '../services/api';
 import { PageHeader } from './PageHeader';
@@ -113,20 +113,20 @@ const CHART_COLORS = [
 
 // Category color mapping — mid-saturation for cross-theme readability
 const CATEGORY_COLORS: Record<string, string> = {
-  streaming: '#d6568f',      // Pink — entertainment
-  storage: '#2563eb',        // Blue 600 — data/storage
-  cloud: '#0891b2',          // Cyan 600 — cloud services
-  social: '#9066e0',         // Violet — social
-  gaming: '#ea7025',         // Orange — gaming
-  web: '#16a34a',            // Green 600 — web
-  search: '#c9a009',         // Gold — search
-  communication: '#7c6fcd',  // Indigo — comms
-  business: '#0d9488',       // Teal 600 — business
-  security: '#dc2626',       // Red 600 — security
-  realtime: '#9333ea',       // Purple 600 — realtime
-  corporate: '#64748b',      // Slate 500 — corporate
-  content: '#0284c7',        // Sky 600 — content
-  applications: '#059669',   // Emerald 600 — apps
+  streaming: '#d6568f', // Pink — entertainment
+  storage: '#2563eb', // Blue 600 — data/storage
+  cloud: '#0891b2', // Cyan 600 — cloud services
+  social: '#9066e0', // Violet — social
+  gaming: '#ea7025', // Orange — gaming
+  web: '#16a34a', // Green 600 — web
+  search: '#c9a009', // Gold — search
+  communication: '#7c6fcd', // Indigo — comms
+  business: '#0d9488', // Teal 600 — business
+  security: '#dc2626', // Red 600 — security
+  realtime: '#9333ea', // Purple 600 — realtime
+  corporate: '#64748b', // Slate 500 — corporate
+  content: '#0284c7', // Sky 600 — content
+  applications: '#059669', // Emerald 600 — apps
 };
 
 const getCategoryColor = (category: string, index: number): string => {
@@ -228,8 +228,8 @@ export function AppInsights({ api }: AppInsightsProps) {
       // Normalize name and deduplicate by id
       const seen = new Set<string>();
       const normalized = allSites
-        .map(s => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
-        .filter(s => {
+        .map((s) => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
+        .filter((s) => {
           const key = s.id || s.name;
           if (seen.has(key)) return false;
           seen.add(key);
@@ -252,7 +252,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       const base = { ...ra[0] };
       const map = new Map<string, AppGroupStat>();
       for (const s of base.distributionStats) map.set(s.id, { ...s });
-      for (const s of (rb[0]?.distributionStats || [])) {
+      for (const s of rb[0]?.distributionStats || []) {
         const existing = map.get(s.id);
         if (existing) existing.value += s.value;
         else map.set(s.id, { ...s });
@@ -262,11 +262,23 @@ export function AppInsights({ api }: AppInsightsProps) {
     };
     return {
       topAppGroupsByUsage: mergeReports(a.topAppGroupsByUsage, b.topAppGroupsByUsage),
-      topAppGroupsByClientCountReport: mergeReports(a.topAppGroupsByClientCountReport, b.topAppGroupsByClientCountReport),
-      topAppGroupsByThroughputReport: mergeReports(a.topAppGroupsByThroughputReport, b.topAppGroupsByThroughputReport),
+      topAppGroupsByClientCountReport: mergeReports(
+        a.topAppGroupsByClientCountReport,
+        b.topAppGroupsByClientCountReport
+      ),
+      topAppGroupsByThroughputReport: mergeReports(
+        a.topAppGroupsByThroughputReport,
+        b.topAppGroupsByThroughputReport
+      ),
       worstAppGroupsByUsage: mergeReports(a.worstAppGroupsByUsage, b.worstAppGroupsByUsage),
-      worstAppGroupsByClientCountReport: mergeReports(a.worstAppGroupsByClientCountReport, b.worstAppGroupsByClientCountReport),
-      worstAppGroupsByThroughputReport: mergeReports(a.worstAppGroupsByThroughputReport, b.worstAppGroupsByThroughputReport),
+      worstAppGroupsByClientCountReport: mergeReports(
+        a.worstAppGroupsByClientCountReport,
+        b.worstAppGroupsByClientCountReport
+      ),
+      worstAppGroupsByThroughputReport: mergeReports(
+        a.worstAppGroupsByThroughputReport,
+        b.worstAppGroupsByThroughputReport
+      ),
     };
   };
 
@@ -306,22 +318,38 @@ export function AppInsights({ api }: AppInsightsProps) {
     }
   }, [api, duration, selectedSite, navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { loadSites(); }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    loadSites();
+  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Prepare chart data
   const chartData = useMemo(() => {
     if (!data) return null;
     const filterUnknown = (stats: AppGroupStat[]) =>
-      stats.filter(item => !item.id?.toLowerCase().includes('unknown') && !item.name?.toLowerCase().includes('unknown'));
+      stats.filter(
+        (item) =>
+          !item.id?.toLowerCase().includes('unknown') &&
+          !item.name?.toLowerCase().includes('unknown')
+      );
 
     return {
       topUsage: filterUnknown(data.topAppGroupsByUsage?.[0]?.distributionStats || []),
-      topClientCount: filterUnknown(data.topAppGroupsByClientCountReport?.[0]?.distributionStats || []),
-      topThroughput: filterUnknown(data.topAppGroupsByThroughputReport?.[0]?.distributionStats || []),
+      topClientCount: filterUnknown(
+        data.topAppGroupsByClientCountReport?.[0]?.distributionStats || []
+      ),
+      topThroughput: filterUnknown(
+        data.topAppGroupsByThroughputReport?.[0]?.distributionStats || []
+      ),
       bottomUsage: filterUnknown(data.worstAppGroupsByUsage?.[0]?.distributionStats || []),
-      bottomClientCount: filterUnknown(data.worstAppGroupsByClientCountReport?.[0]?.distributionStats || []),
-      bottomThroughput: filterUnknown(data.worstAppGroupsByThroughputReport?.[0]?.distributionStats || []),
+      bottomClientCount: filterUnknown(
+        data.worstAppGroupsByClientCountReport?.[0]?.distributionStats || []
+      ),
+      bottomThroughput: filterUnknown(
+        data.worstAppGroupsByThroughputReport?.[0]?.distributionStats || []
+      ),
     };
   }, [data]);
 
@@ -331,9 +359,13 @@ export function AppInsights({ api }: AppInsightsProps) {
     const totalUsage = chartData.topUsage.reduce((sum, item) => sum + item.value, 0);
     const totalThroughput = chartData.topThroughput.reduce((sum, item) => sum + item.value, 0);
     const totalClients = chartData.topClientCount.reduce((sum, item) => sum + item.value, 0);
-    const totalCategories = new Set([...chartData.topUsage.map(i => i.id), ...chartData.bottomUsage.map(i => i.id)]).size;
+    const totalCategories = new Set([
+      ...chartData.topUsage.map((i) => i.id),
+      ...chartData.bottomUsage.map((i) => i.id),
+    ]).size;
     const topCategoryUsage = chartData.topUsage[0]?.value || 0;
-    const topCategoryPercent = totalUsage > 0 ? ((topCategoryUsage / totalUsage) * 100).toFixed(1) : '0';
+    const topCategoryPercent =
+      totalUsage > 0 ? ((topCategoryUsage / totalUsage) * 100).toFixed(1) : '0';
 
     return {
       totalUsage,
@@ -353,22 +385,24 @@ export function AppInsights({ api }: AppInsightsProps) {
     if (parseFloat(stats.topCategoryPercent) > 40) {
       insights.push({
         text: `${stats.topCategory} dominates with ${stats.topCategoryPercent}% of total traffic`,
-        type: 'info'
+        type: 'info',
       });
     }
 
-    const streamingApp = chartData.topUsage.find(app => app.name.toLowerCase().includes('stream'));
+    const streamingApp = chartData.topUsage.find((app) =>
+      app.name.toLowerCase().includes('stream')
+    );
     if (streamingApp) {
       insights.push({
         text: `Streaming services are actively consuming bandwidth`,
-        type: 'info'
+        type: 'info',
       });
     }
 
     if (chartData.topClientCount[0]?.value > 100) {
       insights.push({
         text: `${chartData.topClientCount[0]?.name} has the highest user engagement`,
-        type: 'success'
+        type: 'success',
       });
     }
 
@@ -376,7 +410,16 @@ export function AppInsights({ api }: AppInsightsProps) {
   }, [chartData, stats]);
 
   // Unified Comparison Card
-  const ComparisonCard = ({ topData, bottomData, title, unit, icon: Icon, color, widgetId, endpointRef }: any) => {
+  const ComparisonCard = ({
+    topData,
+    bottomData,
+    title,
+    unit,
+    icon: Icon,
+    color,
+    widgetId,
+    endpointRef,
+  }: any) => {
     const maxTop = Math.max(...topData.map((d: any) => d.value), 1);
     const maxBottom = Math.max(...bottomData.map((d: any) => d.value), 1);
 
@@ -392,7 +435,9 @@ export function AppInsights({ api }: AppInsightsProps) {
         <CardHeader className="pb-2 relative">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <div className={`p-1.5 rounded ${color} shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all`}>
+              <div
+                className={`p-1.5 rounded ${color} shadow-sm group-hover:shadow-md group-hover:scale-110 transition-all`}
+              >
                 <Icon className="h-3.5 w-3.5 text-white" />
               </div>
               <CardTitle className="text-xs font-semibold text-foreground">{title}</CardTitle>
@@ -422,19 +467,24 @@ export function AppInsights({ api }: AppInsightsProps) {
               return (
                 <div key={item.id} className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <div 
-                      className="p-1 rounded border" 
-                      style={{ 
-                        backgroundColor: `${itemColor}20`, 
-                        borderColor: `${itemColor}50` 
+                    <div
+                      className="p-1 rounded border"
+                      style={{
+                        backgroundColor: `${itemColor}20`,
+                        borderColor: `${itemColor}50`,
                       }}
                     >
                       <CategoryIcon className="h-3 w-3" style={{ color: itemColor }} />
                     </div>
-                    <span className="text-xs font-medium truncate flex-1 text-foreground" title={item.name}>
+                    <span
+                      className="text-xs font-medium truncate flex-1 text-foreground"
+                      title={item.name}
+                    >
                       {item.name}
                     </span>
-                    <span className="text-xs font-bold tabular-nums" style={{ color: itemColor }}>{formatValue(item.value)}</span>
+                    <span className="text-xs font-bold tabular-nums" style={{ color: itemColor }}>
+                      {formatValue(item.value)}
+                    </span>
                   </div>
                   <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden ml-6">
                     <div
@@ -459,21 +509,29 @@ export function AppInsights({ api }: AppInsightsProps) {
               const itemColor = getCategoryColor(item.name, index + 5);
 
               return (
-                <div key={item.id} className="space-y-1 opacity-60 hover:opacity-100 transition-opacity">
+                <div
+                  key={item.id}
+                  className="space-y-1 opacity-60 hover:opacity-100 transition-opacity"
+                >
                   <div className="flex items-center gap-2">
-                    <div 
-                      className="p-1 rounded border" 
-                      style={{ 
-                        backgroundColor: `${itemColor}15`, 
-                        borderColor: `${itemColor}30` 
+                    <div
+                      className="p-1 rounded border"
+                      style={{
+                        backgroundColor: `${itemColor}15`,
+                        borderColor: `${itemColor}30`,
                       }}
                     >
                       <CategoryIcon className="h-3 w-3" style={{ color: itemColor }} />
                     </div>
-                    <span className="text-xs font-medium truncate flex-1 text-muted-foreground" title={item.name}>
+                    <span
+                      className="text-xs font-medium truncate flex-1 text-muted-foreground"
+                      title={item.name}
+                    >
                       {item.name}
                     </span>
-                    <span className="text-xs tabular-nums text-muted-foreground">{formatValue(item.value)}</span>
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {formatValue(item.value)}
+                    </span>
                   </div>
                   <div className="h-1 bg-muted/50 rounded-full overflow-hidden ml-6">
                     <div
@@ -502,13 +560,31 @@ export function AppInsights({ api }: AppInsightsProps) {
           </div>
         </div>
         <div className="grid grid-cols-4 gap-2.5">
-          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />)}
+          {[1, 2, 3, 4].map((i) => (
+            <Skeleton
+              key={i}
+              className="h-20 animate-pulse"
+              style={{ animationDelay: `${i * 100}ms` }}
+            />
+          ))}
         </div>
         <div className="grid grid-cols-2 gap-2.5">
-          {[1, 2].map(i => <Skeleton key={i} className="h-64 animate-pulse" style={{ animationDelay: `${i * 150}ms` }} />)}
+          {[1, 2].map((i) => (
+            <Skeleton
+              key={i}
+              className="h-64 animate-pulse"
+              style={{ animationDelay: `${i * 150}ms` }}
+            />
+          ))}
         </div>
         <div className="grid grid-cols-3 gap-2.5">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-80 animate-pulse" style={{ animationDelay: `${i * 200}ms` }} />)}
+          {[1, 2, 3].map((i) => (
+            <Skeleton
+              key={i}
+              className="h-80 animate-pulse"
+              style={{ animationDelay: `${i * 200}ms` }}
+            />
+          ))}
         </div>
       </div>
     );
@@ -534,7 +610,7 @@ export function AppInsights({ api }: AppInsightsProps) {
       {/* Header */}
       <PageHeader
         title="App Insights"
-        subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${sites.find(s => s.id === selectedSite)?.name || selectedSite}` : ''}`}
+        subtitle={`Application visibility and traffic analytics${selectedSite !== 'all' ? ` • ${sites.find((s) => s.id === selectedSite)?.name || selectedSite}` : ''}`}
         icon={AppWindow}
         onRefresh={fetchData}
         refreshing={loading}
@@ -547,7 +623,7 @@ export function AppInsights({ api }: AppInsightsProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Sites</SelectItem>
-                {sites.map(site => (
+                {sites.map((site) => (
                   <SelectItem key={site.id} value={site.id}>
                     {site.name || site.id}
                   </SelectItem>
@@ -582,8 +658,12 @@ export function AppInsights({ api }: AppInsightsProps) {
                     Total Data
                     <TrendingUp className="h-3 w-3 text-[color:var(--status-success)]" />
                   </p>
-                  <p className="text-lg font-bold" style={{ color: 'var(--chart-2)' }}>{formatBytes(stats.totalUsage)}</p>
-                  <p className="text-[10px] text-muted-foreground">{stats.totalCategories} categories</p>
+                  <p className="text-lg font-bold" style={{ color: 'var(--chart-2)' }}>
+                    {formatBytes(stats.totalUsage)}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {stats.totalCategories} categories
+                  </p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md group-hover:scale-110 transition-transform">
                   <HardDrive className="h-3.5 w-3.5 text-white" />
@@ -601,7 +681,9 @@ export function AppInsights({ api }: AppInsightsProps) {
                     Throughput
                     <Activity className="h-3 w-3 text-[color:var(--status-success)] animate-pulse" />
                   </p>
-                  <p className="text-lg font-bold" style={{ color: 'var(--chart-5)' }}>{formatThroughput(stats.totalThroughput)}</p>
+                  <p className="text-lg font-bold" style={{ color: 'var(--chart-5)' }}>
+                    {formatThroughput(stats.totalThroughput)}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Avg bandwidth</p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
@@ -620,7 +702,9 @@ export function AppInsights({ api }: AppInsightsProps) {
                     Active Clients
                     <ArrowUpRight className="h-3 w-3 text-primary" />
                   </p>
-                  <p className="text-lg font-bold text-primary">{formatNumber(stats.totalClients)}</p>
+                  <p className="text-lg font-bold text-primary">
+                    {formatNumber(stats.totalClients)}
+                  </p>
                   <p className="text-[10px] text-muted-foreground">Using apps</p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
@@ -639,8 +723,12 @@ export function AppInsights({ api }: AppInsightsProps) {
                     Top Category
                     <Sparkles className="h-3 w-3 text-[color:var(--warning)]" />
                   </p>
-                  <p className="text-base font-bold truncate" style={{ color: 'var(--chart-3)' }}>{stats.topCategory}</p>
-                  <p className="text-[10px] text-muted-foreground">{stats.topCategoryPercent}% of traffic</p>
+                  <p className="text-base font-bold truncate" style={{ color: 'var(--chart-3)' }}>
+                    {stats.topCategory}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {stats.topCategoryPercent}% of traffic
+                  </p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md group-hover:scale-110 transition-transform">
                   <Zap className="h-3.5 w-3.5 text-white" />
@@ -660,7 +748,9 @@ export function AppInsights({ api }: AppInsightsProps) {
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-semibold text-primary uppercase tracking-wide mb-0.5">Quick Insights</p>
+                <p className="text-[10px] font-semibold text-primary uppercase tracking-wide mb-0.5">
+                  Quick Insights
+                </p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                   {insights.map((insight, i) => (
                     <p key={i} className="text-xs text-foreground/80 flex items-center gap-1">
@@ -712,18 +802,22 @@ export function AppInsights({ api }: AppInsightsProps) {
                       isAnimationActive={true}
                     >
                       {chartData.topUsage.slice(0, 6).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} stroke="transparent" />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={getCategoryColor(entry.name, index)}
+                          stroke="transparent"
+                        />
                       ))}
                     </Pie>
                     <Tooltip
-                      formatter={(value: number, name: string) => [formatBytes(value), name]}
+                      formatter={(value: any, name: any) => [formatBytes(value), name]}
                       contentStyle={{
                         backgroundColor: 'var(--popover)',
                         border: '1px solid var(--border)',
                         borderRadius: '8px',
                         fontSize: '12px',
                         color: 'var(--popover-foreground)',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)'
+                        boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
                       }}
                     />
                   </RechartsPieChart>
@@ -733,9 +827,10 @@ export function AppInsights({ api }: AppInsightsProps) {
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 px-1">
                 {chartData.topUsage.slice(0, 6).map((entry, index) => {
                   const color = getCategoryColor(entry.name, index);
-                  const pct = stats.totalUsage > 0
-                    ? ((entry.value / stats.totalUsage) * 100).toFixed(0)
-                    : '0';
+                  const pct =
+                    stats.totalUsage > 0
+                      ? ((entry.value / stats.totalUsage) * 100).toFixed(0)
+                      : '0';
                   return (
                     <div key={entry.id} className="flex items-center gap-1.5 min-w-0">
                       <span
@@ -785,7 +880,12 @@ export function AppInsights({ api }: AppInsightsProps) {
                     margin={{ top: 2, right: 64, left: 4, bottom: 2 }}
                     barCategoryGap="20%"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.5} horizontal={false} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      opacity={0.5}
+                      horizontal={false}
+                    />
                     <XAxis
                       type="number"
                       tick={{ fontSize: 10, fill: 'var(--muted-foreground)' }}
@@ -800,10 +900,10 @@ export function AppInsights({ api }: AppInsightsProps) {
                       width={110}
                       axisLine={false}
                       tickLine={false}
-                      tickFormatter={(v: string) => v.length > 15 ? v.substring(0, 15) + '…' : v}
+                      tickFormatter={(v: string) => (v.length > 15 ? v.substring(0, 15) + '…' : v)}
                     />
                     <Tooltip
-                      formatter={(value: number) => [formatThroughput(value), 'Throughput']}
+                      formatter={(value: any) => [formatThroughput(value), 'Throughput']}
                       labelFormatter={(label) => label}
                       contentStyle={{
                         backgroundColor: 'var(--popover)',
@@ -811,7 +911,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                         borderRadius: '8px',
                         fontSize: '12px',
                         color: 'var(--popover-foreground)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
                       }}
                       cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
                     />
@@ -822,7 +922,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                         position: 'right',
                         fontSize: 10,
                         fill: 'var(--muted-foreground)',
-                        formatter: (v: number) => formatThroughputCompact(v)
+                        formatter: (v: any) => formatThroughputCompact(v),
                       }}
                     >
                       {chartData.topThroughput.slice(0, 8).map((entry, index) => (

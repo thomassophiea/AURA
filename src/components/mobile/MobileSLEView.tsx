@@ -4,7 +4,18 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Loader2, Signal, Zap, Clock, Activity, Wifi, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  RefreshCw,
+  Loader2,
+  Signal,
+  Zap,
+  Clock,
+  Activity,
+  Wifi,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -35,30 +46,27 @@ function SLECard({ sle }: { sle: SLEMetric }) {
   const status = getSLEStatus(sle.successRate);
   const colors = SLE_STATUS_COLORS[status];
   const Icon = SLE_ICONS[sle.id] || Activity;
-  
+
   // Get trend icon
   const getTrendIcon = () => {
-    if (!sle.trend) return null;
-    if (sle.trend > 2) return <TrendingUp className="h-4 w-4 text-green-500" />;
-    if (sle.trend < -2) return <TrendingDown className="h-4 w-4 text-red-500" />;
+    if (!(sle as any).trend) return null;
+    if ((sle as any).trend > 2) return <TrendingUp className="h-4 w-4 text-green-500" />;
+    if ((sle as any).trend < -2) return <TrendingDown className="h-4 w-4 text-red-500" />;
     return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   return (
-    <div 
+    <div
       className="rounded-xl p-4 border transition-all active:scale-[0.98]"
-      style={{ 
+      style={{
         backgroundColor: `${colors.hex}15`,
-        borderColor: `${colors.hex}40`
+        borderColor: `${colors.hex}40`,
       }}
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div 
-            className="p-2 rounded-lg"
-            style={{ backgroundColor: `${colors.hex}30` }}
-          >
+          <div className="p-2 rounded-lg" style={{ backgroundColor: `${colors.hex}30` }}>
             <Icon className="h-5 w-5" style={{ color: colors.hex }} />
           </div>
           <span className="font-medium text-sm">{sle.name}</span>
@@ -68,10 +76,7 @@ function SLECard({ sle }: { sle: SLEMetric }) {
 
       {/* Score */}
       <div className="flex items-end gap-2 mb-3">
-        <span 
-          className="text-4xl font-bold tabular-nums"
-          style={{ color: colors.hex }}
-        >
+        <span className="text-4xl font-bold tabular-nums" style={{ color: colors.hex }}>
           {Math.round(sle.successRate)}
         </span>
         <span className="text-lg text-muted-foreground mb-1">%</span>
@@ -79,11 +84,11 @@ function SLECard({ sle }: { sle: SLEMetric }) {
 
       {/* Progress bar */}
       <div className="h-2 bg-muted rounded-full overflow-hidden mb-3">
-        <div 
+        <div
           className="h-full rounded-full transition-all duration-500"
-          style={{ 
+          style={{
             width: `${sle.successRate}%`,
-            backgroundColor: colors.hex 
+            backgroundColor: colors.hex,
           }}
         />
       </div>
@@ -92,11 +97,11 @@ function SLECard({ sle }: { sle: SLEMetric }) {
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div className="flex flex-col">
           <span className="text-muted-foreground">Affected</span>
-          <span className="font-medium">{sle.affectedClients ?? 0} clients</span>
+          <span className="font-medium">{(sle as any).affectedClients ?? 0} clients</span>
         </div>
         <div className="flex flex-col">
           <span className="text-muted-foreground">Total</span>
-          <span className="font-medium">{sle.totalClients ?? 0} clients</span>
+          <span className="font-medium">{(sle as any).totalClients ?? 0} clients</span>
         </div>
       </div>
 
@@ -106,14 +111,10 @@ function SLECard({ sle }: { sle: SLEMetric }) {
           <span className="text-xs text-muted-foreground mb-2 block">Top Issues</span>
           <div className="flex flex-wrap gap-1">
             {sle.classifiers
-              .filter(c => c.impactPercent > 0)
+              .filter((c) => c.impactPercent > 0)
               .slice(0, 3)
               .map((c, i) => (
-                <Badge 
-                  key={i} 
-                  variant="outline" 
-                  className="text-[10px] px-1.5 py-0"
-                >
+                <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0">
                   {c.name}: {c.impactPercent.toFixed(0)}%
                 </Badge>
               ))}
@@ -135,54 +136,61 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
 
   // Load sites
   useEffect(() => {
-    apiService.getSites().then(setSites).catch(() => {});
+    apiService
+      .getSites()
+      .then(setSites)
+      .catch(() => {});
   }, []);
 
   // Load SLE data
-  const loadData = useCallback(async (isRefresh = false) => {
-    try {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
+  const loadData = useCallback(
+    async (isRefresh = false) => {
+      try {
+        if (isRefresh) {
+          setRefreshing(true);
+        } else {
+          setLoading(true);
+        }
+
+        const siteFilter = currentSite !== 'all' ? currentSite : undefined;
+
+        // Fetch stations and APs
+        const [stationsData, apsData] = await Promise.all([
+          siteFilter
+            ? apiService
+                .getStations()
+                .then((all) =>
+                  all.filter((s: any) => s.siteId === siteFilter || s.siteName === siteFilter)
+                )
+            : apiService.getStations(),
+          siteFilter ? apiService.getAccessPointsBySite(siteFilter) : apiService.getAccessPoints(),
+        ]);
+
+        const stationsArr = Array.isArray(stationsData) ? stationsData : [];
+        const apsArr = Array.isArray(apsData) ? apsData : [];
+
+        // Get historical data
+        const timeRangeMs =
+          timeRange === '1h' ? 3600000 : timeRange === '7d' ? 604800000 : 86400000;
+        const historicalData = sleDataCollectionService.getFilteredData({
+          siteId: currentSite,
+          scope: 'wireless',
+          startTimestamp: Date.now() - timeRangeMs,
+        });
+
+        // Compute SLEs
+        const computedSles = computeAllWirelessSLEs(stationsArr, apsArr, historicalData);
+        setSles(computedSles);
+        setLastUpdate(new Date());
+      } catch (error) {
+        console.error('[MobileSLE] Error loading data:', error);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-
-      const siteFilter = currentSite !== 'all' ? currentSite : undefined;
-
-      // Fetch stations and APs
-      const [stationsData, apsData] = await Promise.all([
-        siteFilter
-          ? apiService.getStations().then(all => 
-              all.filter((s: any) => s.siteId === siteFilter || s.siteName === siteFilter)
-            )
-          : apiService.getStations(),
-        siteFilter
-          ? apiService.getAccessPointsBySite(siteFilter)
-          : apiService.getAccessPoints(),
-      ]);
-
-      const stationsArr = Array.isArray(stationsData) ? stationsData : [];
-      const apsArr = Array.isArray(apsData) ? apsData : [];
-
-      // Get historical data
-      const timeRangeMs = timeRange === '1h' ? 3600000 : timeRange === '7d' ? 604800000 : 86400000;
-      const historicalData = sleDataCollectionService.getFilteredData({
-        siteId: currentSite,
-        scope: 'wireless',
-        startTimestamp: Date.now() - timeRangeMs,
-      });
-
-      // Compute SLEs
-      const computedSles = computeAllWirelessSLEs(stationsArr, apsArr, historicalData);
-      setSles(computedSles);
-      setLastUpdate(new Date());
-    } catch (error) {
-      console.error('[MobileSLE] Error loading data:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [currentSite, timeRange]);
+    },
+    [currentSite, timeRange]
+  );
 
   useEffect(() => {
     loadData();
@@ -215,9 +223,8 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
   };
 
   // Calculate overall score
-  const overallScore = sles.length > 0
-    ? Math.round(sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length)
-    : 0;
+  const overallScore =
+    sles.length > 0 ? Math.round(sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length) : 0;
 
   const overallStatus = getSLEStatus(overallScore);
   const overallColors = SLE_STATUS_COLORS[overallStatus];
@@ -287,28 +294,29 @@ export function MobileSLEView({ currentSite, onSiteChange }: MobileSLEViewProps)
 
       {/* Overall Score Card */}
       {!loading && sles.length > 0 && (
-        <div 
+        <div
           className="rounded-xl p-6 text-center"
-          style={{ 
+          style={{
             backgroundColor: `${overallColors.hex}20`,
-            border: `2px solid ${overallColors.hex}40`
+            border: `2px solid ${overallColors.hex}40`,
           }}
         >
           <div className="text-sm text-muted-foreground mb-2">Overall Network Health</div>
-          <div 
-            className="text-6xl font-bold mb-1"
-            style={{ color: overallColors.hex }}
-          >
+          <div className="text-6xl font-bold mb-1" style={{ color: overallColors.hex }}>
             {overallScore}%
           </div>
-          <Badge 
-            style={{ 
+          <Badge
+            style={{
               backgroundColor: `${overallColors.hex}40`,
               color: overallColors.hex,
-              borderColor: overallColors.hex
+              borderColor: overallColors.hex,
             }}
           >
-            {overallStatus === 'good' ? 'Healthy' : overallStatus === 'warn' ? 'Needs Attention' : 'Critical'}
+            {overallStatus === 'good'
+              ? 'Healthy'
+              : overallStatus === 'warn'
+                ? 'Needs Attention'
+                : 'Critical'}
           </Badge>
           {lastUpdate && (
             <div className="text-xs text-muted-foreground mt-3">

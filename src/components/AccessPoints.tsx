@@ -8,16 +8,63 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
 import { DetailSlideOut } from './DetailSlideOut';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuTrigger } from './ui/dropdown-menu';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { AlertCircle, Wifi, RefreshCw, Eye, Users, Activity, Signal, Cpu, HardDrive, MoreVertical, Shield, Key, RotateCcw, MapPin, Settings, AlertTriangle, Download, Trash2, Cloud, Power, WifiOff, CheckCircle2, XCircle, Info, Anchor, Phone, FileDown, Cable, Loader2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Wifi,
+  RefreshCw,
+  Eye,
+  Users,
+  Activity,
+  Signal,
+  Cpu,
+  HardDrive,
+  MoreVertical,
+  Shield,
+  Key,
+  RotateCcw,
+  MapPin,
+  Settings,
+  AlertTriangle,
+  Download,
+  Trash2,
+  Cloud,
+  Power,
+  WifiOff,
+  CheckCircle2,
+  XCircle,
+  Info,
+  Anchor,
+  Phone,
+  FileDown,
+  Cable,
+  Loader2,
+} from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, AccessPoint, APDetails, APStation, APQueryColumn, Site } from '../services/api';
+import {
+  apiService,
+  AccessPoint,
+  APDetails,
+  APStation,
+  APQueryColumn,
+  Site,
+} from '../services/api';
 import { ExportButton } from './ExportButton';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
@@ -69,7 +116,7 @@ function getActualEthSpeed(ap: any): {
           return {
             ...parsed,
             portName: port.name || 'eth',
-            duplexMode: port.mode || port.duplex || ap.ethMode
+            duplexMode: port.mode || port.duplex || ap.ethMode,
           };
         }
       }
@@ -89,7 +136,10 @@ function getActualEthSpeed(ap: any): {
  * Parse ethernet speed string to Mbps
  * Handles formats like: "speed5Gbps", "speed100Mbps", "1Gbps", "100Mbps", "speedNA", "speedAuto"
  */
-function parseSpeedString(speedStr: string | undefined | null): { speedMbps: number | null; speedDisplay: string } {
+function parseSpeedString(speedStr: string | undefined | null): {
+  speedMbps: number | null;
+  speedDisplay: string;
+} {
   if (!speedStr || speedStr === '-') {
     return { speedMbps: null, speedDisplay: 'Unknown' };
   }
@@ -144,14 +194,28 @@ function getExpectedSpeed(model: string | undefined): number {
   const m = model.toUpperCase();
 
   // WiFi 6E / WiFi 7 APs - typically have 2.5Gbps or 5Gbps ports
-  if (m.includes('AP6') || m.includes('AP7') || m.includes('635') || m.includes('655') ||
-      m.includes('735') || m.includes('755') || m.includes('OAW-AP13') || m.includes('OAW-AP15')) {
+  if (
+    m.includes('AP6') ||
+    m.includes('AP7') ||
+    m.includes('635') ||
+    m.includes('655') ||
+    m.includes('735') ||
+    m.includes('755') ||
+    m.includes('OAW-AP13') ||
+    m.includes('OAW-AP15')
+  ) {
     return 2500; // 2.5Gbps expected
   }
 
   // WiFi 6 APs - typically 1Gbps or 2.5Gbps
-  if (m.includes('AP5') || m.includes('515') || m.includes('535') || m.includes('555') ||
-      m.includes('OAW-AP12') || m.includes('OAW-AP11')) {
+  if (
+    m.includes('AP5') ||
+    m.includes('515') ||
+    m.includes('535') ||
+    m.includes('555') ||
+    m.includes('OAW-AP12') ||
+    m.includes('OAW-AP11')
+  ) {
     return 1000; // 1Gbps expected
   }
 
@@ -168,7 +232,7 @@ function extractSwitchId(switchPorts: string | string[] | undefined): string | n
 
   // Handle array format: ["46:SW-4220", ""]
   if (Array.isArray(switchPorts)) {
-    const firstPort = switchPorts.find(p => p && p.trim() !== '');
+    const firstPort = switchPorts.find((p) => p && p.trim() !== '');
     if (!firstPort) return null;
     // Extract switch name from "46:SW-4220" format -> "sw-4220"
     const parts = firstPort.split(':');
@@ -182,7 +246,7 @@ function extractSwitchId(switchPorts: string | string[] | undefined): string | n
   if (switchPorts === '-') return null;
 
   // Try common formats: "SWITCH123:1/0/1", "switch-name/ge-0/0/1"
-  const colonMatch = switchPorts.match(/^([^:\/]+)/);
+  const colonMatch = switchPorts.match(/^([^:/]+)/);
   if (colonMatch) return colonMatch[1].trim().toLowerCase();
 
   return switchPorts.toLowerCase().trim();
@@ -211,16 +275,20 @@ function getPoEIssue(ap: any): { hasIssue: boolean; description: string } | null
   if (lowPower || powerMode.includes('low') || powerMode.includes('reduced')) {
     return {
       hasIssue: true,
-      description: 'AP running in low power mode - may indicate high cable resistance'
+      description: 'AP running in low power mode - may indicate high cable resistance',
     };
   }
 
   // Check PoE status for issues
-  if (powerStatus.includes('low') || powerStatus.includes('insufficient') ||
-      powerStatus.includes('fault') || powerStatus.includes('error')) {
+  if (
+    powerStatus.includes('low') ||
+    powerStatus.includes('insufficient') ||
+    powerStatus.includes('fault') ||
+    powerStatus.includes('error')
+  ) {
     return {
       hasIssue: true,
-      description: `PoE issue detected: ${ap.ethPowerStatus}`
+      description: `PoE issue detected: ${ap.ethPowerStatus}`,
     };
   }
 
@@ -234,10 +302,7 @@ function getPoEIssue(ap: any): { hasIssue: boolean; description: string } | null
  * 3. PoE/power issues (high resistance indication)
  * 4. Comparison with other APs on same switch
  */
-function analyzeCableHealth(
-  ap: AccessPoint,
-  allAPs: AccessPoint[]
-): CableHealthResult {
+function analyzeCableHealth(ap: AccessPoint, allAPs: AccessPoint[]): CableHealthResult {
   const apAny = ap as any;
   const { speedMbps, speedDisplay, portName, duplexMode } = getActualEthSpeed(apAny);
   const expectedSpeedMbps = getExpectedSpeed(ap.model || apAny.hardwareType || apAny.platformName);
@@ -253,7 +318,7 @@ function analyzeCableHealth(
       message: 'Ethernet speed not available',
       issues: [],
       duplexMode,
-      portName
+      portName,
     };
   }
 
@@ -262,18 +327,18 @@ function analyzeCableHealth(
   let otherAPsOnSwitch: { good: number; bad: number } | undefined;
 
   if (switchId) {
-    const apsOnSameSwitch = allAPs.filter(other => {
+    const apsOnSameSwitch = allAPs.filter((other) => {
       if (other.serialNumber === ap.serialNumber) return false;
       const otherSwitch = extractSwitchId((other as any).switchPorts);
       return otherSwitch === switchId;
     });
 
     if (apsOnSameSwitch.length > 0) {
-      const goodAPs = apsOnSameSwitch.filter(other => {
+      const goodAPs = apsOnSameSwitch.filter((other) => {
         const { speedMbps: otherSpeed } = getActualEthSpeed(other as any);
         return otherSpeed !== null && otherSpeed >= 1000;
       });
-      const badAPs = apsOnSameSwitch.filter(other => {
+      const badAPs = apsOnSameSwitch.filter((other) => {
         const { speedMbps: otherSpeed } = getActualEthSpeed(other as any);
         return otherSpeed !== null && otherSpeed < 1000;
       });
@@ -288,7 +353,8 @@ function analyzeCableHealth(
       type: 'speed_critical',
       severity: 'critical',
       description: `Critical: ${speedDisplay} link detected`,
-      recommendation: 'Multiple cable pairs likely damaged. Replace the entire cable and check both RJ45 connectors for damage.'
+      recommendation:
+        'Multiple cable pairs likely damaged. Replace the entire cable and check both RJ45 connectors for damage.',
     });
   }
   // Issue 2: Speed degradation (100Mbps when gigabit expected)
@@ -296,8 +362,9 @@ function analyzeCableHealth(
     issues.push({
       type: 'speed_degraded',
       severity: 'warning',
-      description: `Speed degraded: ${speedDisplay} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps/1000}Gbps` : `${expectedSpeedMbps}Mbps`})`,
-      recommendation: 'Check blue pair (pins 4,5) and brown pair (pins 7,8) on both ends. These outer pairs are most commonly damaged and only needed for gigabit.'
+      description: `Speed degraded: ${speedDisplay} (expected ${expectedSpeedMbps >= 1000 ? `${expectedSpeedMbps / 1000}Gbps` : `${expectedSpeedMbps}Mbps`})`,
+      recommendation:
+        'Check blue pair (pins 4,5) and brown pair (pins 7,8) on both ends. These outer pairs are most commonly damaged and only needed for gigabit.',
     });
   }
 
@@ -307,7 +374,8 @@ function analyzeCableHealth(
       type: 'duplex_mismatch',
       severity: 'warning',
       description: `Half duplex detected (${duplexMode})`,
-      recommendation: 'Half duplex indicates cable quality issues or switch port misconfiguration. Check for cable damage, excessive length (>100m), or switch port settings.'
+      recommendation:
+        'Half duplex indicates cable quality issues or switch port misconfiguration. Check for cable damage, excessive length (>100m), or switch port settings.',
     });
   }
 
@@ -318,7 +386,8 @@ function analyzeCableHealth(
       type: 'poe_issue',
       severity: 'warning',
       description: poeIssue.description,
-      recommendation: 'High cable resistance reduces power delivery. Check for corroded connectors, damaged cable, or excessive cable length.'
+      recommendation:
+        'High cable resistance reduces power delivery. Check for corroded connectors, damaged cable, or excessive cable length.',
     });
   }
 
@@ -328,13 +397,14 @@ function analyzeCableHealth(
       type: 'low_power',
       severity: 'warning',
       description: 'AP operating in low power mode',
-      recommendation: 'May be due to PoE budget constraints or cable resistance. Verify PoE source capacity and cable quality.'
+      recommendation:
+        'May be due to PoE budget constraints or cable resistance. Verify PoE source capacity and cable quality.',
     });
   }
 
   // Determine overall status based on issues
   let status: 'good' | 'warning' | 'critical' = 'good';
-  if (issues.some(i => i.severity === 'critical')) {
+  if (issues.some((i) => i.severity === 'critical')) {
     status = 'critical';
   } else if (issues.length > 0) {
     status = 'warning';
@@ -347,7 +417,7 @@ function analyzeCableHealth(
   } else if (issues.length === 1) {
     message = issues[0].description;
   } else {
-    message = `Multiple issues detected: ${issues.map(i => i.type.replace('_', ' ')).join(', ')}`;
+    message = `Multiple issues detected: ${issues.map((i) => i.type.replace('_', ' ')).join(', ')}`;
   }
 
   // Add switch context to message
@@ -364,40 +434,39 @@ function analyzeCableHealth(
     otherAPsOnSwitch,
     issues,
     duplexMode,
-    portName
+    portName,
   };
 }
-
 
 // Wi-Fi generation model prefix mapping (order matters — longer/more-specific prefixes first)
 type WifiGen = 'Wi-Fi 7' | 'Wi-Fi 6E' | 'Wi-Fi 6' | 'Wi-Fi 5' | 'Unknown';
 const WIFI_GEN_PREFIXES: Array<{ prefix: string; gen: WifiGen }> = [
   // Wi-Fi 7
-  { prefix: 'AP5020',  gen: 'Wi-Fi 7'  },
-  { prefix: 'AP4060',  gen: 'Wi-Fi 7'  },
+  { prefix: 'AP5020', gen: 'Wi-Fi 7' },
+  { prefix: 'AP4060', gen: 'Wi-Fi 7' },
   // Wi-Fi 6E
-  { prefix: 'AP3000',  gen: 'Wi-Fi 6E' },
-  { prefix: 'AP4000',  gen: 'Wi-Fi 6E' },
-  { prefix: 'AP5010',  gen: 'Wi-Fi 6E' },
-  { prefix: 'AP5050',  gen: 'Wi-Fi 6E' },
+  { prefix: 'AP3000', gen: 'Wi-Fi 6E' },
+  { prefix: 'AP4000', gen: 'Wi-Fi 6E' },
+  { prefix: 'AP5010', gen: 'Wi-Fi 6E' },
+  { prefix: 'AP5050', gen: 'Wi-Fi 6E' },
   // Wi-Fi 6
-  { prefix: 'AP302W',  gen: 'Wi-Fi 6'  },
-  { prefix: 'AP305C',  gen: 'Wi-Fi 6'  },  // must precede AP305 (Wi-Fi 5)
-  { prefix: 'AP360',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP410',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP460',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP505',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP510',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP560',   gen: 'Wi-Fi 6'  },
-  { prefix: 'AP650',   gen: 'Wi-Fi 6'  },
+  { prefix: 'AP302W', gen: 'Wi-Fi 6' },
+  { prefix: 'AP305C', gen: 'Wi-Fi 6' }, // must precede AP305 (Wi-Fi 5)
+  { prefix: 'AP360', gen: 'Wi-Fi 6' },
+  { prefix: 'AP410', gen: 'Wi-Fi 6' },
+  { prefix: 'AP460', gen: 'Wi-Fi 6' },
+  { prefix: 'AP505', gen: 'Wi-Fi 6' },
+  { prefix: 'AP510', gen: 'Wi-Fi 6' },
+  { prefix: 'AP560', gen: 'Wi-Fi 6' },
+  { prefix: 'AP650', gen: 'Wi-Fi 6' },
   // Wi-Fi 5
-  { prefix: 'AP305',   gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3705',  gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3825',  gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3865',  gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3912',  gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3935',  gen: 'Wi-Fi 5'  },
-  { prefix: 'AP3965',  gen: 'Wi-Fi 5'  },
+  { prefix: 'AP305', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3705', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3825', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3865', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3912', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3935', gen: 'Wi-Fi 5' },
+  { prefix: 'AP3965', gen: 'Wi-Fi 5' },
 ];
 
 function getWifiGeneration(model?: string): WifiGen {
@@ -412,9 +481,21 @@ function getWifiGeneration(model?: string): WifiGen {
 // Helper function to get site/location name for an AP (pure — no component state)
 function getAPSite(ap: AccessPoint): string {
   const locationFields = [
-    'hostSite', 'location', 'locationName', 'apLocation', 'ap_location',
-    'site', 'siteName', 'site_name', 'campus', 'building',
-    'siteId', 'site_id', 'place', 'area', 'zone'
+    'hostSite',
+    'location',
+    'locationName',
+    'apLocation',
+    'ap_location',
+    'site',
+    'siteName',
+    'site_name',
+    'campus',
+    'building',
+    'siteId',
+    'site_id',
+    'place',
+    'area',
+    'zone',
   ];
   for (const field of locationFields) {
     const value = (ap as any)[field];
@@ -433,7 +514,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
-  const [apMetrics, setApMetrics] = useState<Record<string, { cpuUsage?: number; memoryUsage?: number }>>({});
+  const [apMetrics, setApMetrics] = useState<
+    Record<string, { cpuUsage?: number; memoryUsage?: number }>
+  >({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingClients, setIsLoadingClients] = useState(false);
   const [isLoadingMetrics, setIsLoadingMetrics] = useState(false);
@@ -444,17 +527,22 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [selectedSite, setSelectedSite] = useState<string>('all');
 
   // Compound tokenized AND search (replaces old single-term search + site filter)
-  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<AccessPoint>({
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    filterRows: filterBySearch,
+    hasActiveSearch,
+  } = useCompoundSearch<AccessPoint>({
     storageKey: 'ap-search',
     fields: [
-      ap => ap.serialNumber,
-      ap => (ap as any).displayName || (ap as any).name || (ap as any).hostname,
-      ap => ap.model || ap.hardwareType || (ap as any).platformName,
-      ap => ap.ipAddress,
-      ap => (ap as any).macAddress || (ap as any).mac,
-      ap => ap.hostSite || (ap as any).siteName || (ap as any).location,
-      ap => ap.status || (ap as any).connectionState || (ap as any).operationalState,
-      ap => (ap as any).firmwareVersion || (ap as any).fwVersion || (ap as any).softwareVersion,
+      (ap) => ap.serialNumber,
+      (ap) => (ap as any).displayName || (ap as any).name || (ap as any).hostname,
+      (ap) => ap.model || ap.hardwareType || (ap as any).platformName,
+      (ap) => ap.ipAddress,
+      (ap) => (ap as any).macAddress || (ap as any).mac,
+      (ap) => ap.hostSite || (ap as any).siteName || (ap as any).location,
+      (ap) => ap.status || (ap as any).connectionState || (ap as any).operationalState,
+      (ap) => (ap as any).firmwareVersion || (ap as any).fwVersion || (ap as any).softwareVersion,
     ],
   });
 
@@ -463,7 +551,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
 
   const toggleSelectAP = (serial: string) => {
-    setSelectedSerials(prev => {
+    setSelectedSerials((prev) => {
       const next = new Set(prev);
       if (next.has(serial)) next.delete(serial);
       else next.add(serial);
@@ -473,7 +561,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   const toggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedSerials(new Set(sortedAccessPoints.map(ap => ap.serialNumber)));
+      setSelectedSerials(new Set(sortedAccessPoints.map((ap) => ap.serialNumber)));
     } else {
       setSelectedSerials(new Set());
     }
@@ -541,7 +629,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     masking: true,
     autoSync: true,
     syncInterval: 60,
-    lastSync: null as Date | null
+    lastSync: null as Date | null,
   });
   const [, setTimeUpdateCounter] = useState(0);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -561,15 +649,23 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   // Wi-Fi generation breakdown counts
   const wifiGenCounts = useMemo(() => {
-    const counts: Record<WifiGen, number> = { 'Wi-Fi 7': 0, 'Wi-Fi 6E': 0, 'Wi-Fi 6': 0, 'Wi-Fi 5': 0, 'Unknown': 0 };
-    accessPoints.forEach(ap => { counts[getWifiGeneration(ap.model || ap.hardwareType || ap.apModel || ap.platformName)]++; });
+    const counts: Record<WifiGen, number> = {
+      'Wi-Fi 7': 0,
+      'Wi-Fi 6E': 0,
+      'Wi-Fi 6': 0,
+      'Wi-Fi 5': 0,
+      Unknown: 0,
+    };
+    accessPoints.forEach((ap) => {
+      counts[getWifiGeneration(ap.model || ap.hardwareType || ap.apModel || ap.platformName)]++;
+    });
     return counts;
   }, [accessPoints]);
 
   // Compute cable health for all APs (memoized for performance)
   const cableHealthMap = useMemo(() => {
     const healthMap: Record<string, CableHealthResult> = {};
-    accessPoints.forEach(ap => {
+    accessPoints.forEach((ap) => {
       healthMap[ap.serialNumber] = analyzeCableHealth(ap, accessPoints);
     });
     return healthMap;
@@ -622,7 +718,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   // Force re-render every 10 seconds to update "time ago" text
   useEffect(() => {
     const intervalId = setInterval(() => {
-      setTimeUpdateCounter(prev => prev + 1);
+      setTimeUpdateCounter((prev) => prev + 1);
     }, 10000);
 
     return () => clearInterval(intervalId);
@@ -642,7 +738,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       }
 
       // Note: Access points will be loaded by the useEffect that runs on mount
-
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load access points data');
       console.error('Error loading access points:', err);
@@ -664,7 +759,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           try {
             apiService.setBaseUrl(`${sg.controller_url}/management`);
             const apsData = await apiService.getAccessPoints();
-            const tagged = (Array.isArray(apsData) ? apsData : []).map(ap => ({
+            const tagged = (Array.isArray(apsData) ? apsData : []).map((ap) => ({
               ...ap,
               _siteGroupId: sg.id,
               _siteGroupName: sg.name,
@@ -684,13 +779,19 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       }
 
       // Map sysUptime to uptime field and format it
-      const enrichedAPs = accessPointsArray.map(ap => ({
+      const enrichedAPs = accessPointsArray.map((ap) => ({
         ...ap,
-        uptime: ap.sysUptime ? formatUptime(ap.sysUptime) : ap.uptime,
+        uptime: ap.sysUptime ? formatUptime(Number(ap.sysUptime)) : ap.uptime,
         // Calculate average channel utilization from all radios
-        channelUtilization: ap.radios && ap.radios.length > 0
-          ? Math.round(ap.radios.reduce((sum: number, radio: any) => sum + (radio.channelUtilization || 0), 0) / ap.radios.length)
-          : undefined
+        channelUtilization:
+          ap.radios && ap.radios.length > 0
+            ? Math.round(
+                ap.radios.reduce(
+                  (sum: number, radio: any) => sum + (radio.channelUtilization || 0),
+                  0
+                ) / ap.radios.length
+              )
+            : undefined,
       }));
 
       setAccessPoints(enrichedAPs);
@@ -704,13 +805,16 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       loadMeshRoles(accessPointsArray);
       loadAPStates();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load access points for selected site';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load access points for selected site';
 
       // Only show errors that aren't timeouts
       if (!errorMessage.includes('timeout') && !errorMessage.includes('timed out')) {
         setError(errorMessage);
       } else {
-        setError('Loading access points is taking longer than expected. The controller may be slow to respond.');
+        setError(
+          'Loading access points is taking longer than expected. The controller may be slow to respond.'
+        );
       }
     } finally {
       setIsLoading(false);
@@ -727,7 +831,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     const clientCountsByAP: Record<string, number> = {};
 
     // Initialize all APs with 0 clients
-    aps.forEach(ap => {
+    aps.forEach((ap) => {
       clientCountsByAP[ap.serialNumber] = 0;
     });
 
@@ -754,7 +858,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       // Set final state once
       setClientCounts(clientCountsByAP);
-
     } catch (err) {
       console.error('Error loading client counts:', err);
       setClientCounts(clientCountsByAP);
@@ -779,7 +882,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       const ifStats = await apiService.getAllAPInterfaceStats();
 
       if (ifStats && ifStats.length > 0) {
-        console.log('[AP Metrics] Using bulk ifstats endpoint, received', ifStats.length, 'entries');
+        console.log(
+          '[AP Metrics] Using bulk ifstats endpoint, received',
+          ifStats.length,
+          'entries'
+        );
         // Log first entry to see available fields
         if (ifStats[0]) {
           console.log('[AP Metrics] Sample ifstats entry fields:', Object.keys(ifStats[0]));
@@ -788,8 +895,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         ifStats.forEach((stat: any) => {
           const serial = stat.serialNumber || stat.serial || stat.apSerial || stat.apSerialNumber;
           if (serial) {
-            const cpu = stat.cpuUsage ?? stat.cpuUtilization ?? stat.cpu ?? stat.cpuPercent ?? stat.cpuLoad;
-            const mem = stat.memoryUsage ?? stat.memUtilization ?? stat.memory ?? stat.memPercent ?? stat.memUsed ?? stat.memoryPercent;
+            const cpu =
+              stat.cpuUsage ?? stat.cpuUtilization ?? stat.cpu ?? stat.cpuPercent ?? stat.cpuLoad;
+            const mem =
+              stat.memoryUsage ??
+              stat.memUtilization ??
+              stat.memory ??
+              stat.memPercent ??
+              stat.memUsed ??
+              stat.memoryPercent;
             if (cpu !== undefined || mem !== undefined) {
               metricsByAP[serial] = { cpuUsage: cpu, memoryUsage: mem };
             }
@@ -798,14 +912,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
         // If we got data from ifstats, use it
         if (Object.keys(metricsByAP).length > 0) {
-          console.log('[AP Metrics] Found metrics for', Object.keys(metricsByAP).length, 'APs from ifstats');
+          console.log(
+            '[AP Metrics] Found metrics for',
+            Object.keys(metricsByAP).length,
+            'APs from ifstats'
+          );
           setApMetrics(metricsByAP);
           setIsLoadingMetrics(false);
           return;
         }
       }
 
-      console.log('[AP Metrics] Bulk ifstats did not return CPU/Memory, trying individual AP details...');
+      console.log(
+        '[AP Metrics] Bulk ifstats did not return CPU/Memory, trying individual AP details...'
+      );
 
       // Fallback: Load metrics from individual AP details in parallel
       const promises = aps.map(async (ap) => {
@@ -825,17 +945,28 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             );
             console.log('[AP Metrics] CPU/Memory-related fields found:', cpuMemFields);
             // Log all fields with numeric values between 0-100 (potential percentage metrics)
-            const percentFields = Object.entries(details).filter(([, value]) =>
-              typeof value === 'number' && value >= 0 && value <= 100
+            const percentFields = Object.entries(details).filter(
+              ([, value]) => typeof value === 'number' && value >= 0 && value <= 100
             );
             console.log('[AP Metrics] Numeric fields 0-100 (potential %):', percentFields);
             // Log full first AP data for debugging
-            console.log('[AP Metrics] Full AP data sample:', JSON.stringify(details, null, 2).substring(0, 5000));
+            console.log(
+              '[AP Metrics] Full AP data sample:',
+              JSON.stringify(details, null, 2).substring(0, 5000)
+            );
           }
           return {
             serialNumber: ap.serialNumber,
-            cpuUsage: details.cpuUsage ?? (details as any).cpuUtilization ?? (details as any).cpu ?? (details as any).cpuPercent,
-            memoryUsage: details.memoryUsage ?? (details as any).memUtilization ?? (details as any).memory ?? (details as any).memPercent
+            cpuUsage:
+              details.cpuUsage ??
+              (details as any).cpuUtilization ??
+              (details as any).cpu ??
+              (details as any).cpuPercent,
+            memoryUsage:
+              details.memoryUsage ??
+              (details as any).memUtilization ??
+              (details as any).memory ??
+              (details as any).memPercent,
           };
         } catch (error) {
           return { serialNumber: ap.serialNumber, cpuUsage: undefined, memoryUsage: undefined };
@@ -850,9 +981,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         }
       });
 
-      console.log('[AP Metrics] Found metrics for', Object.keys(metricsByAP).length, 'APs from individual details');
+      console.log(
+        '[AP Metrics] Found metrics for',
+        Object.keys(metricsByAP).length,
+        'APs from individual details'
+      );
       setApMetrics(metricsByAP);
-
     } catch (err) {
       console.error('[AP Metrics] Error loading metrics:', err);
       setApMetrics(metricsByAP);
@@ -901,13 +1035,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       } catch (detailError) {
         console.warn('Detailed AP info not available, using basic info:', detailError);
         // Fall back to basic AP info from the list
-        const basicAP = accessPoints.find(ap => ap.serialNumber === serialNumber);
+        const basicAP = accessPoints.find((ap) => ap.serialNumber === serialNumber);
         if (!basicAP) {
           throw new Error('Access point not found');
         }
         apDetails = basicAP as APDetails;
       }
-      
+
       // Try to get stations/clients for this AP
       let stations: APStation[] = [];
       try {
@@ -917,7 +1051,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         console.warn('Station data not available for AP:', serialNumber, stationError);
         stations = [];
       }
-      
+
       setSelectedAP(apDetails);
       setApStations(stations);
       setIsModalOpen(true);
@@ -952,7 +1086,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   // Derive unique site names from loaded APs
   const availableSites = useMemo(() => {
     const siteSet = new Set<string>();
-    accessPoints.forEach(ap => {
+    accessPoints.forEach((ap) => {
       const site = getAPSite(ap);
       if (site) siteSet.add(site);
     });
@@ -963,9 +1097,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const siteGroupFilteredAPs = orgSiteGroupFilter
     ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
     : accessPoints;
-  const siteFilteredAPs = selectedSite !== 'all'
-    ? siteGroupFilteredAPs.filter(ap => getAPSite(ap) === selectedSite)
-    : siteGroupFilteredAPs;
+  const siteFilteredAPs =
+    selectedSite !== 'all'
+      ? siteGroupFilteredAPs.filter((ap) => getAPSite(ap) === selectedSite)
+      : siteGroupFilteredAPs;
   const filteredAccessPoints = filterBySearch(siteFilteredAPs);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
@@ -1040,7 +1175,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       case 'cpuUsage':
         return apMetrics[ap.serialNumber]?.cpuUsage ?? apAny.cpuUsage ?? apAny.cpuUtilization ?? 0;
       case 'memoryUsage':
-        return apMetrics[ap.serialNumber]?.memoryUsage ?? apAny.memoryUsage ?? apAny.memUtilization ?? 0;
+        return (
+          apMetrics[ap.serialNumber]?.memoryUsage ?? apAny.memoryUsage ?? apAny.memUtilization ?? 0
+        );
       case 'switchPorts':
         return (apAny.switchPorts || '').toLowerCase();
       case 'source':
@@ -1055,7 +1192,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         const r = meshRoles.get(ap.serialNumber);
         return r === 'BASE' ? 0 : r === 'RELAY' ? 1 : 2;
       }
-      case 'cableHealth':
+      case 'cableHealth': {
         // Sort by severity: critical=0, warning=1, unknown=2, good=3
         const health = cableHealthMap[ap.serialNumber];
         if (!health) return 2;
@@ -1063,6 +1200,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         if (health.status === 'warning') return 1;
         if (health.status === 'unknown') return 2;
         return 3;
+      }
       default:
         return '';
     }
@@ -1072,7 +1210,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const handleSort = (columnKey: string) => {
     if (sortColumn === columnKey) {
       // Toggle direction if same column
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
       // New column, start with ascending
       setSortColumn(columnKey);
@@ -1098,7 +1236,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   });
 
   const getUniqueHardwareTypes = () => {
-    const types = new Set(accessPoints.map(ap => ap.hardwareType).filter(Boolean));
+    const types = new Set(accessPoints.map((ap) => ap.hardwareType).filter(Boolean));
     return Array.from(types);
   };
 
@@ -1107,10 +1245,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     if (!ap) {
       return 'Unknown AP';
     }
-    
+
     const nameFields = [
       'displayName',
-      'name', 
+      'name',
       'apName',
       'ap_name',
       'hostname',
@@ -1120,16 +1258,16 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       'friendly_name',
       'label',
       'identifier',
-      'title'
+      'title',
     ];
-    
+
     for (const field of nameFields) {
       const value = ap[field];
       if (typeof value === 'string' && value.trim().length > 0) {
         return value.trim();
       }
     }
-    
+
     // Fallback to serial number if no name fields are available
     return ap.serialNumber || '';
   };
@@ -1143,7 +1281,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
 
     // Check multiple possible status fields (aligned with DashboardEnhanced logic)
-    const status = (ap.status || (ap as any).connectionState || (ap as any).operationalState || (ap as any).state || '').toLowerCase();
+    const status = (
+      ap.status ||
+      (ap as any).connectionState ||
+      (ap as any).operationalState ||
+      (ap as any).state ||
+      ''
+    ).toLowerCase();
     const isUp = (ap as any).isUp;
     const isOnline = (ap as any).online;
 
@@ -1187,10 +1331,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         'Model',
         'Status',
         'Latitude',
-        'Longitude'
+        'Longitude',
       ];
 
-      const csvRows = apsToExport.map(ap => {
+      const csvRows = apsToExport.map((ap) => {
         // BSSIDs are typically the MAC address or derived from it
         // Some APs have multiple BSSIDs (one per radio/SSID combination)
         const bssid = ap.macAddress || (ap as any).bssid || ap.serialNumber || '';
@@ -1206,8 +1350,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           ap.model || ap.hardwareType || '',
           ap.status || (isAPOnline(ap) ? 'Online' : 'Offline'),
           (ap as any).latitude || (ap as any).lat || '',
-          (ap as any).longitude || (ap as any).lng || (ap as any).lon || ''
-        ].map(field => `"${String(field).replace(/"/g, '""')}"`).join(',');
+          (ap as any).longitude || (ap as any).lng || (ap as any).lon || '',
+        ]
+          .map((field) => `"${String(field).replace(/"/g, '""')}"`)
+          .join(',');
       });
 
       const csvContent = [csvHeaders.join(','), ...csvRows].join('\n');
@@ -1224,7 +1370,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911`);
+      toast.success(
+        `Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911`
+      );
     } catch (error) {
       console.error('[AccessPoints] Error exporting BSSIDs:', error);
       toast.error('Failed to export BSSIDs');
@@ -1246,7 +1394,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         exportType: 'E911_BSSID_LOCATION_DATA',
         totalAccessPoints: apsToExport.length,
         siteName: hasActiveSearch ? searchQuery : 'All Sites',
-        accessPoints: apsToExport.map(ap => ({
+        accessPoints: apsToExport.map((ap) => ({
           bssid: ap.macAddress || (ap as any).bssid || '',
           apName: getAPName(ap),
           serialNumber: ap.serialNumber,
@@ -1257,15 +1405,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             floorName: (ap as any).floorName || (ap as any).floor || '',
             coordinates: {
               latitude: (ap as any).latitude || (ap as any).lat || null,
-              longitude: (ap as any).longitude || (ap as any).lng || (ap as any).lon || null
-            }
+              longitude: (ap as any).longitude || (ap as any).lng || (ap as any).lon || null,
+            },
           },
           networkInfo: {
             ipAddress: ap.ipAddress,
             model: ap.model || ap.hardwareType,
-            status: ap.status || (isAPOnline(ap) ? 'Online' : 'Offline')
-          }
-        }))
+            status: ap.status || (isAPOnline(ap) ? 'Online' : 'Offline'),
+          },
+        })),
       };
 
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -1279,7 +1427,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911 (JSON)`);
+      toast.success(
+        `Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911 (JSON)`
+      );
     } catch (error) {
       console.error('[AccessPoints] Error exporting BSSIDs JSON:', error);
       toast.error('Failed to export BSSIDs');
@@ -1322,13 +1472,13 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     if (realTimeCount !== undefined) {
       return realTimeCount;
     }
-    
+
     // Fall back to checking AP fields if available (but this is less reliable)
     const clientFields = [
-      'clientCount', 
-      'associatedClients', 
-      'clients', 
-      'connectedClients', 
+      'clientCount',
+      'associatedClients',
+      'clients',
+      'connectedClients',
       'numClients',
       'client_count',
       'associated_clients',
@@ -1338,16 +1488,16 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       'totalClients',
       'numberOfClients',
       'activeClients',
-      'clientsConnected'
+      'clientsConnected',
     ];
-    
+
     for (const field of clientFields) {
       const value = ap[field];
       if (typeof value === 'number' && value >= 0) {
         return value;
       }
     }
-    
+
     // If we find an array of clients/stations, return the length
     if (Array.isArray(ap.stations)) {
       return ap.stations.length;
@@ -1355,12 +1505,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     if (Array.isArray(ap.clients)) {
       return ap.clients.length;
     }
-    
+
     // If we're still loading client counts, show a loading indicator
     if (isLoadingClients) {
       return '...';
     }
-    
+
     return 0;
   };
 
@@ -1397,7 +1547,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
 
-    const parts = [];
+    const parts: string[] = [];
     if (days > 0) parts.push(`${days}d`);
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
@@ -1410,8 +1560,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const renderColumnContent = (columnKey: string, ap: AccessPoint) => {
     switch (columnKey) {
       case 'connection':
-        return <div className="flex items-center justify-center">{getConnectionStatusIcon(ap)}</div>;
-      case 'apName':
+        return (
+          <div className="flex items-center justify-center">{getConnectionStatusIcon(ap)}</div>
+        );
+      case 'apName': {
         const apCableHealth = cableHealthMap[ap.serialNumber];
         const apIsOnline = isAPOnline(ap);
         return (
@@ -1424,53 +1576,76 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </TooltipTrigger>
                 <TooltipContent>
                   <p className="font-medium">AFC Anchor</p>
-                  <p className="opacity-80">6 GHz Standard Power - This AP provides GPS location for AFC (Automated Frequency Coordination)</p>
+                  <p className="opacity-80">
+                    6 GHz Standard Power - This AP provides GPS location for AFC (Automated
+                    Frequency Coordination)
+                  </p>
                 </TooltipContent>
               </Tooltip>
             )}
             {/* Cable Health Icon - only show when there's a problem (warning/critical) */}
-            {apCableHealth && (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Cable className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`} />
-                </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={5}>
-                  <div className="max-w-xs">
-                    {/* Header */}
-                    <p className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}>
-                      {apCableHealth.status === 'critical' ? 'Bad Cable Detected' : 'Possible Cable Issue'}
-                    </p>
-
-                    {/* Speed info */}
-                    <p className="mt-1">
-                      <span className={apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}>
-                        {apCableHealth.speedDisplay}
-                      </span>
-                      {' '}(expected{' '}
-                      <span className="text-[color:var(--status-success)]">
-                        {apCableHealth.expectedSpeedMbps >= 1000 ? `${apCableHealth.expectedSpeedMbps/1000}Gbps` : `${apCableHealth.expectedSpeedMbps}Mbps`}
-                      </span>)
-                    </p>
-
-                    {/* Recommendation */}
-                    {apCableHealth.issues && apCableHealth.issues.length > 0 && (
-                      <p className="text-xs mt-2 text-[color:var(--status-info)]">
-                        <span className="font-medium">Fix:</span> {apCableHealth.issues[0].recommendation}
+            {apCableHealth &&
+              (apCableHealth.status === 'warning' || apCableHealth.status === 'critical') && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Cable
+                      className={`h-4 w-4 cursor-help ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" sideOffset={5}>
+                    <div className="max-w-xs">
+                      {/* Header */}
+                      <p
+                        className={`font-semibold ${apCableHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}
+                      >
+                        {apCableHealth.status === 'critical'
+                          ? 'Bad Cable Detected'
+                          : 'Possible Cable Issue'}
                       </p>
-                    )}
 
-                    {/* Switch comparison */}
-                    {apCableHealth.otherAPsOnSwitch && apCableHealth.otherAPsOnSwitch.good > 0 && (
-                      <p className="mt-1 text-[color:var(--status-success)]">
-                        {apCableHealth.otherAPsOnSwitch.good} other APs on switch OK - issue is this cable
+                      {/* Speed info */}
+                      <p className="mt-1">
+                        <span
+                          className={
+                            apCableHealth.status === 'critical'
+                              ? 'text-[color:var(--status-error)]'
+                              : 'text-[color:var(--status-warning)]'
+                          }
+                        >
+                          {apCableHealth.speedDisplay}
+                        </span>{' '}
+                        (expected{' '}
+                        <span className="text-[color:var(--status-success)]">
+                          {apCableHealth.expectedSpeedMbps >= 1000
+                            ? `${apCableHealth.expectedSpeedMbps / 1000}Gbps`
+                            : `${apCableHealth.expectedSpeedMbps}Mbps`}
+                        </span>
+                        )
                       </p>
-                    )}
-                  </div>
-                </TooltipContent>
-              </Tooltip>
-            )}
+
+                      {/* Recommendation */}
+                      {apCableHealth.issues && apCableHealth.issues.length > 0 && (
+                        <p className="text-xs mt-2 text-[color:var(--status-info)]">
+                          <span className="font-medium">Fix:</span>{' '}
+                          {apCableHealth.issues[0].recommendation}
+                        </p>
+                      )}
+
+                      {/* Switch comparison */}
+                      {apCableHealth.otherAPsOnSwitch &&
+                        apCableHealth.otherAPsOnSwitch.good > 0 && (
+                          <p className="mt-1 text-[color:var(--status-success)]">
+                            {apCableHealth.otherAPsOnSwitch.good} other APs on switch OK - issue is
+                            this cable
+                          </p>
+                        )}
+                    </div>
+                  </TooltipContent>
+                </Tooltip>
+              )}
           </div>
         );
+      }
       case 'serialNumber':
         return <span className="font-mono text-sm">{ap.serialNumber}</span>;
       case 'hostSite':
@@ -1488,22 +1663,28 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return (
           <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center">
             <Users className="h-3.5 w-3.5 text-primary" />
-            <span className="text-sm font-semibold text-foreground tabular-nums">{getClientCount(ap)}</span>
-            {isLoadingClients && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
+            <span className="text-sm font-semibold text-foreground tabular-nums">
+              {getClientCount(ap)}
+            </span>
+            {isLoadingClients && (
+              <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />
+            )}
           </div>
         );
       case 'macAddress':
         return <span className="font-mono text-sm">{ap.macAddress || '-'}</span>;
       case 'ethMode':
         return <span className="text-sm">{(ap as any).ethMode || '-'}</span>;
-      case 'ethSpeed':
+      case 'ethSpeed': {
         const ethHealth = cableHealthMap[ap.serialNumber];
         const ethSpeedValue = (ap as any).ethSpeed || '-';
         if (ethHealth && (ethHealth.status === 'warning' || ethHealth.status === 'critical')) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}>
+                <span
+                  className={`text-sm flex items-center gap-1 ${ethHealth.status === 'critical' ? 'text-[color:var(--status-error)]' : 'text-[color:var(--status-warning)]'}`}
+                >
                   <AlertTriangle className="h-3 w-3" />
                   {ethSpeedValue}
                 </span>
@@ -1515,6 +1696,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           );
         }
         return <span className="text-sm">{ethSpeedValue}</span>;
+      }
       case 'meshRole': {
         const role = meshRoles.get(ap.serialNumber);
         if (isLoadingMeshRoles && !role) {
@@ -1522,28 +1704,37 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         }
         if (role === 'BASE') {
           return (
-            <Badge variant="outline" className="bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30 text-xs">
+            <Badge
+              variant="outline"
+              className="bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30 text-xs"
+            >
               Base
             </Badge>
           );
         }
         if (role === 'RELAY') {
           return (
-            <Badge variant="outline" className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 text-xs">
+            <Badge
+              variant="outline"
+              className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 text-xs"
+            >
               Relay
             </Badge>
           );
         }
         return <span className="text-sm text-muted-foreground">-</span>;
       }
-      case 'cableHealth':
+      case 'cableHealth': {
         const cableHealth = cableHealthMap[ap.serialNumber];
         if (!cableHealth || cableHealth.status === 'unknown') {
           return <span className="text-sm text-muted-foreground">-</span>;
         }
         if (cableHealth.status === 'good') {
           return (
-            <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
+            <Badge
+              variant="outline"
+              className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+            >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Good
             </Badge>
@@ -1553,7 +1744,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30 cursor-help">
+                <Badge
+                  variant="outline"
+                  className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30 cursor-help"
+                >
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Warning
                 </Badge>
@@ -1584,12 +1778,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <p>{cableHealth.message}</p>
               {cableHealth.otherAPsOnSwitch && cableHealth.otherAPsOnSwitch.good > 0 && (
                 <p className="mt-1 text-[color:var(--status-error)]">
-                  {cableHealth.otherAPsOnSwitch.good} other APs on same switch have good rates - issue is with this cable/connector
+                  {cableHealth.otherAPsOnSwitch.good} other APs on same switch have good rates -
+                  issue is with this cable/connector
                 </p>
               )}
             </TooltipContent>
           </Tooltip>
         );
+      }
       case 'tunnel':
         return <span className="text-sm">{(ap as any).tunnel || '-'}</span>;
       case 'wiredClients':
@@ -1605,11 +1801,17 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       case 'home':
         return <span className="text-sm">{(ap as any).home || '-'}</span>;
       case 'pwrUsage':
-        return <span className="text-sm">{(ap as any).pwrUsage ? `${(ap as any).pwrUsage}W` : '-'}</span>;
+        return (
+          <span className="text-sm">{(ap as any).pwrUsage ? `${(ap as any).pwrUsage}W` : '-'}</span>
+        );
       case 'pwrSource':
         return <span className="text-sm">{(ap as any).pwrSource || '-'}</span>;
       case 'channelUtilization':
-        return <span className="text-sm">{ap.channelUtilization !== undefined ? `${ap.channelUtilization}%` : '-'}</span>;
+        return (
+          <span className="text-sm">
+            {ap.channelUtilization !== undefined ? `${ap.channelUtilization}%` : '-'}
+          </span>
+        );
       case 'softwareVersion':
         return <span className="font-mono text-xs">{(ap as any).softwareVersion || '-'}</span>;
       case 'platformName':
@@ -1630,21 +1832,34 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return <span className="text-sm">{(ap as any).floorName || '-'}</span>;
       case 'description':
         return <span className="text-sm">{(ap as any).description || '-'}</span>;
-      case 'cpuUsage':
+      case 'cpuUsage': {
         // First check apMetrics state (loaded from AP details), then fall back to AP object fields
         const cpuFromMetrics = apMetrics[ap.serialNumber]?.cpuUsage;
-        const cpuValue = cpuFromMetrics ?? (ap as any).cpuUsage ?? (ap as any).cpuUtilization ?? (ap as any).cpu ?? null;
+        const cpuValue =
+          cpuFromMetrics ??
+          (ap as any).cpuUsage ??
+          (ap as any).cpuUtilization ??
+          (ap as any).cpu ??
+          null;
         if (cpuValue === null) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1">
-                  {isLoadingMetrics && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
-                  <span className="text-sm text-muted-foreground cursor-help">{isLoadingMetrics ? '...' : '-'}</span>
+                  {isLoadingMetrics && (
+                    <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />
+                  )}
+                  <span className="text-sm text-muted-foreground cursor-help">
+                    {isLoadingMetrics ? '...' : '-'}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isLoadingMetrics ? 'Loading CPU data...' : 'CPU data not available. Click AP for details.'}</p>
+                <p>
+                  {isLoadingMetrics
+                    ? 'Loading CPU data...'
+                    : 'CPU data not available. Click AP for details.'}
+                </p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1659,32 +1874,54 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     style={{ width: `${Math.min(cpuValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${cpuValue > 80 ? 'text-[color:var(--status-error)]' : cpuValue > 60 ? 'text-[color:var(--status-warning)]' : ''}`}>
+                <span
+                  className={`text-sm font-medium ${cpuValue > 80 ? 'text-[color:var(--status-error)]' : cpuValue > 60 ? 'text-[color:var(--status-warning)]' : ''}`}
+                >
                   {cpuValue}%
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">CPU Utilization</p>
-              <p className="opacity-80">{cpuValue > 80 ? 'High load - may impact performance' : cpuValue > 60 ? 'Moderate load' : 'Normal operation'}</p>
+              <p className="opacity-80">
+                {cpuValue > 80
+                  ? 'High load - may impact performance'
+                  : cpuValue > 60
+                    ? 'Moderate load'
+                    : 'Normal operation'}
+              </p>
             </TooltipContent>
           </Tooltip>
         );
-      case 'memoryUsage':
+      }
+      case 'memoryUsage': {
         // First check apMetrics state (loaded from AP details), then fall back to AP object fields
         const memFromMetrics = apMetrics[ap.serialNumber]?.memoryUsage;
-        const memValue = memFromMetrics ?? (ap as any).memoryUsage ?? (ap as any).memUtilization ?? (ap as any).memory ?? null;
+        const memValue =
+          memFromMetrics ??
+          (ap as any).memoryUsage ??
+          (ap as any).memUtilization ??
+          (ap as any).memory ??
+          null;
         if (memValue === null) {
           return (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1">
-                  {isLoadingMetrics && <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />}
-                  <span className="text-sm text-muted-foreground cursor-help">{isLoadingMetrics ? '...' : '-'}</span>
+                  {isLoadingMetrics && (
+                    <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />
+                  )}
+                  <span className="text-sm text-muted-foreground cursor-help">
+                    {isLoadingMetrics ? '...' : '-'}
+                  </span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isLoadingMetrics ? 'Loading memory data...' : 'Memory data not available. Click AP for details.'}</p>
+                <p>
+                  {isLoadingMetrics
+                    ? 'Loading memory data...'
+                    : 'Memory data not available. Click AP for details.'}
+                </p>
               </TooltipContent>
             </Tooltip>
           );
@@ -1699,17 +1936,26 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     style={{ width: `${Math.min(memValue, 100)}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${memValue > 85 ? 'text-[color:var(--status-error)]' : memValue > 70 ? 'text-[color:var(--status-warning)]' : ''}`}>
+                <span
+                  className={`text-sm font-medium ${memValue > 85 ? 'text-[color:var(--status-error)]' : memValue > 70 ? 'text-[color:var(--status-warning)]' : ''}`}
+                >
                   {memValue}%
                 </span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">Memory Utilization</p>
-              <p className="opacity-80">{memValue > 85 ? 'High memory usage - may cause issues' : memValue > 70 ? 'Elevated memory usage' : 'Normal memory usage'}</p>
+              <p className="opacity-80">
+                {memValue > 85
+                  ? 'High memory usage - may cause issues'
+                  : memValue > 70
+                    ? 'Elevated memory usage'
+                    : 'Normal memory usage'}
+              </p>
             </TooltipContent>
           </Tooltip>
         );
+      }
       case 'afcAnchor':
         return isAfcAnchor(ap) ? (
           <Tooltip>
@@ -1721,7 +1967,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </TooltipTrigger>
             <TooltipContent>
               <p className="font-medium">AFC Anchor</p>
-              <p className="opacity-80">This AP has GPS and provides location data for AFC (Automated Frequency Coordination) to enable 6 GHz Standard Power operation</p>
+              <p className="opacity-80">
+                This AP has GPS and provides location data for AFC (Automated Frequency
+                Coordination) to enable 6 GHz Standard Power operation
+              </p>
             </TooltipContent>
           </Tooltip>
         ) : (
@@ -1747,7 +1996,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Card key={i}>
-              <CardHeader className="pb-2"><Skeleton className="h-4 w-24" /></CardHeader>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
               <CardContent>
                 <Skeleton className="h-8 w-12 mb-1" />
                 <Skeleton className="h-3 w-20" />
@@ -1813,18 +2064,23 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sites</SelectItem>
-              {availableSites.map(site => (
+              {availableSites.map((site) => (
                 <SelectItem key={site} value={site}>
                   {site}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Button onClick={() => {
-            // Refresh columns metadata and access points
-            loadData();
-            loadAccessPoints();
-          }} variant="outline" size="sm" disabled={isAutoRefreshing}>
+          <Button
+            onClick={() => {
+              // Refresh columns metadata and access points
+              loadData();
+              loadAccessPoints();
+            }}
+            variant="outline"
+            size="sm"
+            disabled={isAutoRefreshing}
+          >
             <RefreshCw className={`mr-2 h-4 w-4 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
             Refresh APs
           </Button>
@@ -1846,7 +2102,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <Cpu className="mr-2 h-4 w-4" />
             {isLoadingMetrics ? 'Loading...' : 'Refresh Metrics'}
           </Button>
-          <ColumnCustomizationDialog customization={customization} />
+          <ColumnCustomizationDialog customization={customization as any} />
           <ExportButton
             data={sortedAccessPoints}
             columns={[
@@ -1874,13 +2130,24 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
       {/* Cable Health Alert Banner */}
       {(() => {
-        const criticalAPs = accessPoints.filter(ap => cableHealthMap[ap.serialNumber]?.status === 'critical');
-        const warningAPs = accessPoints.filter(ap => cableHealthMap[ap.serialNumber]?.status === 'warning');
+        const criticalAPs = accessPoints.filter(
+          (ap) => cableHealthMap[ap.serialNumber]?.status === 'critical'
+        );
+        const warningAPs = accessPoints.filter(
+          (ap) => cableHealthMap[ap.serialNumber]?.status === 'warning'
+        );
 
         if (criticalAPs.length === 0 && warningAPs.length === 0) return null;
 
         return (
-          <Alert variant={criticalAPs.length > 0 ? 'destructive' : 'default'} className={criticalAPs.length > 0 ? 'border-[color:var(--status-error)]/30 bg-[color:var(--status-error-bg)]' : 'border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]'}>
+          <Alert
+            variant={criticalAPs.length > 0 ? 'destructive' : 'default'}
+            className={
+              criticalAPs.length > 0
+                ? 'border-[color:var(--status-error)]/30 bg-[color:var(--status-error-bg)]'
+                : 'border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]'
+            }
+          >
             <Cable className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between w-full">
               <div>
@@ -1894,16 +2161,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     </Badge>
                   )}
                   {warningAPs.length > 0 && (
-                    <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">
+                    <Badge
+                      variant="outline"
+                      className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+                    >
                       {warningAPs.length} Warning
                     </Badge>
                   )}
                 </span>
                 <p className="mt-1 text-muted-foreground">
                   {criticalAPs.length > 0
-                    ? `APs negotiating at 10Mbps - likely bad cables: ${criticalAPs.map(ap => (ap as any).apName || ap.serialNumber).join(', ')}`
-                    : `APs with degraded link speed: ${warningAPs.map(ap => (ap as any).apName || ap.serialNumber).join(', ')}`
-                  }
+                    ? `APs negotiating at 10Mbps - likely bad cables: ${criticalAPs.map((ap) => (ap as any).apName || ap.serialNumber).join(', ')}`
+                    : `APs with degraded link speed: ${warningAPs.map((ap) => (ap as any).apName || ap.serialNumber).join(', ')}`}
                 </p>
               </div>
               <Tooltip>
@@ -1917,8 +2186,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                   <p>
                     {criticalAPs.length > 0
                       ? 'A 10Mbps link indicates multiple damaged cable pairs. Check both RJ45 connectors for damage, especially the blue pair (pins 4,5) and brown pair (pins 7,8). Consider replacing the cable.'
-                      : 'A 100Mbps link on gigabit APs usually means one cable pair is damaged. Check the blue pair (pins 4,5) or brown pair (pins 7,8) - these pairs are only used for gigabit speeds and damage often goes unnoticed.'
-                    }
+                      : 'A 100Mbps link on gigabit APs usually means one cable pair is damaged. Check the blue pair (pins 4,5) or brown pair (pins 7,8) - these pairs are only used for gigabit speeds and damage often goes unnoticed.'}
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -1926,7 +2194,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </Alert>
         );
       })()}
-
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group">
@@ -1940,12 +2207,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <div className="text-2xl font-bold text-foreground">{accessPoints.length}</div>
             <p className="text-xs text-muted-foreground mb-2">Managed devices</p>
             <div className="space-y-0.5">
-              {(['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const).map(gen => wifiGenCounts[gen] > 0 && (
-                <div key={gen} className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">{gen}</span>
-                  <span className="font-medium tabular-nums">{wifiGenCounts[gen]}</span>
-                </div>
-              ))}
+              {(['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const).map(
+                (gen) =>
+                  wifiGenCounts[gen] > 0 && (
+                    <div key={gen} className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">{gen}</span>
+                      <span className="font-medium tabular-nums">{wifiGenCounts[gen]}</span>
+                    </div>
+                  )
+              )}
             </div>
           </CardContent>
         </Card>
@@ -1966,12 +2236,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-bold text-foreground">
-                    {accessPoints.filter(ap => isAPOnline(ap)).length}
+                    {accessPoints.filter((ap) => isAPOnline(ap)).length}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    ({accessPoints.length > 0
-                      ? `${Math.round((accessPoints.filter(ap => isAPOnline(ap)).length / accessPoints.length) * 100)}%`
-                      : '0%'})
+                    (
+                    {accessPoints.length > 0
+                      ? `${Math.round((accessPoints.filter((ap) => isAPOnline(ap)).length / accessPoints.length) * 100)}%`
+                      : '0%'}
+                    )
                   </span>
                 </div>
               </div>
@@ -1982,12 +2254,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-bold text-[color:var(--status-error)]">
-                    {accessPoints.filter(ap => !isAPOnline(ap)).length}
+                    {accessPoints.filter((ap) => !isAPOnline(ap)).length}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    ({accessPoints.length > 0
-                      ? `${Math.round((accessPoints.filter(ap => !isAPOnline(ap)).length / accessPoints.length) * 100)}%`
-                      : '0%'})
+                    (
+                    {accessPoints.length > 0
+                      ? `${Math.round((accessPoints.filter((ap) => !isAPOnline(ap)).length / accessPoints.length) * 100)}%`
+                      : '0%'}
+                    )
                   </span>
                 </div>
               </div>
@@ -2011,9 +2285,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 </div>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Connected devices
-            </p>
+            <p className="text-xs text-muted-foreground">Connected devices</p>
           </CardContent>
         </Card>
 
@@ -2025,10 +2297,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{getUniqueHardwareTypes().length}</div>
-            <p className="text-xs text-muted-foreground">
-              Different models
-            </p>
+            <div className="text-2xl font-bold text-foreground">
+              {getUniqueHardwareTypes().length}
+            </div>
+            <p className="text-xs text-muted-foreground">Different models</p>
           </CardContent>
         </Card>
       </div>
@@ -2040,7 +2312,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-[color:var(--status-error)]" />
               <span className="font-medium text-sm">E911 BSSID</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">Beta</span>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">
+                Beta
+              </span>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] text-xs font-semibold border border-[color:var(--status-success)]/30">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -2128,259 +2402,343 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </div>
           ) : (
             <>
-            {/* Bulk action toolbar */}
-            {selectedSerials.size > 0 && (
-              <div className="flex items-center gap-3 mb-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                <span className="text-sm font-medium">{selectedSerials.size} AP(s) selected</span>
-                <Button size="sm" variant="outline" onClick={handleBulkReboot} disabled={isBulkActionRunning}>
-                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Power className="mr-1 h-3 w-3" />}
-                  Reboot
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleBulkFirmwareUpgrade} disabled={isBulkActionRunning}>
-                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Download className="mr-1 h-3 w-3" />}
-                  Firmware Upgrade
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleBulkReleaseToCloud} disabled={isBulkActionRunning}>
-                  {isBulkActionRunning ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Cloud className="mr-1 h-3 w-3" />}
-                  Release to Cloud
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => setSelectedSerials(new Set())} className="ml-auto">
-                  Clear selection
-                </Button>
-              </div>
-            )}
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={selectedSerials.size === sortedAccessPoints.length && sortedAccessPoints.length > 0}
-                        onCheckedChange={(checked) => toggleSelectAll(!!checked)}
-                        aria-label="Select all APs"
-                      />
-                    </TableHead>
-                    {navigationScope === 'global' && siteGroups.length > 1 && (
-                      <TableHead className="text-[10px]">
-                        <div className="flex items-center gap-1">
-                          <Server className="h-3 w-3" />
-                          <span>Site Group</span>
-                        </div>
-                      </TableHead>
+              {/* Bulk action toolbar */}
+              {selectedSerials.size > 0 && (
+                <div className="flex items-center gap-3 mb-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <span className="text-sm font-medium">{selectedSerials.size} AP(s) selected</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkReboot}
+                    disabled={isBulkActionRunning}
+                  >
+                    {isBulkActionRunning ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Power className="mr-1 h-3 w-3" />
                     )}
-                    {visibleColumns.map(columnKey => {
-                      const column = AP_TABLE_COLUMNS.find(c => c.key === columnKey);
-                      return (
-                        <TableHead
-                          key={columnKey}
-                          className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                          onClick={() => handleSort(columnKey)}
-                        >
-                          {column?.label || columnKey}
-                        </TableHead>
-                      );
-                    })}
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sortedAccessPoints.map((ap) => (
-                    <TableRow
-                      key={ap.serialNumber}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => {
-                        if (onShowDetail) {
-                          onShowDetail(ap.serialNumber, getAPName(ap));
-                        } else {
-                          loadAPDetails(ap.serialNumber);
-                        }
-                      }}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                    Reboot
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkFirmwareUpgrade}
+                    disabled={isBulkActionRunning}
+                  >
+                    {isBulkActionRunning ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Download className="mr-1 h-3 w-3" />
+                    )}
+                    Firmware Upgrade
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleBulkReleaseToCloud}
+                    disabled={isBulkActionRunning}
+                  >
+                    {isBulkActionRunning ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <Cloud className="mr-1 h-3 w-3" />
+                    )}
+                    Release to Cloud
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedSerials(new Set())}
+                    className="ml-auto"
+                  >
+                    Clear selection
+                  </Button>
+                </div>
+              )}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
                         <Checkbox
-                          checked={selectedSerials.has(ap.serialNumber)}
-                          onCheckedChange={() => toggleSelectAP(ap.serialNumber)}
-                          aria-label={`Select ${getAPName(ap)}`}
+                          checked={
+                            selectedSerials.size === sortedAccessPoints.length &&
+                            sortedAccessPoints.length > 0
+                          }
+                          onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                          aria-label="Select all APs"
                         />
-                      </TableCell>
+                      </TableHead>
                       {navigationScope === 'global' && siteGroups.length > 1 && (
-                        <TableCell>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                            {(ap as any)._siteGroupName || '—'}
-                          </Badge>
-                        </TableCell>
+                        <TableHead className="text-[10px]">
+                          <div className="flex items-center gap-1">
+                            <Server className="h-3 w-3" />
+                            <span>Site Group</span>
+                          </div>
+                        </TableHead>
                       )}
-                      {visibleColumns.map(columnKey => (
-                        <TableCell key={columnKey}>
-                          {renderColumnContent(columnKey, ap)}
-                        </TableCell>
-                      ))}
-
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                      {visibleColumns.map((columnKey) => {
+                        const column = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
+                        return (
+                          <TableHead
+                            key={columnKey}
+                            className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                            onClick={() => handleSort(columnKey)}
                           >
-                            <MoreVertical className="h-4 w-4" />
-                            <span className="sr-only">Open menu</span>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>AP Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                loadAPDetails(ap.serialNumber);
-                              }}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </DropdownMenuItem>
-                            
-                            <DropdownMenuSeparator />
-                            
-                            <DropdownMenuSub>
-                              <DropdownMenuSubTrigger>
-                                <Shield className="mr-2 h-4 w-4" />
-                                Manage Certificate
-                              </DropdownMenuSubTrigger>
-                              <DropdownMenuSubContent>
-                                <DropdownMenuItem onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    const result = await apiService.generateCSR(ap.serialNumber);
-                                    toast.success('CSR generated successfully');
-                                    console.log('[AccessPoints] Generated CSR:', result);
-                                  } catch (err) {
-                                    toast.error(err instanceof Error ? err.message : 'Failed to generate CSR');
-                                  }
-                                }}>
-                                  <Key className="mr-2 h-4 w-4" />
-                                  Generate CSR
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info('Certificate upload feature coming soon');
-                                }}>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Apply Signed Certificates
-                                </DropdownMenuItem>
-                              </DropdownMenuSubContent>
-                            </DropdownMenuSub>
-
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              toast.info('Site assignment dialog coming soon');
-                            }}>
-                              <MapPin className="mr-2 h-4 w-4" />
-                              Assign to Site
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              toast.info('Adoption preference dialog coming soon');
-                            }}>
-                              <Settings className="mr-2 h-4 w-4" />
-                              Adoption Preference
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              toast.info('Event level dialog coming soon');
-                            }}>
-                              <AlertTriangle className="mr-2 h-4 w-4" />
-                              Event Level
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await apiService.upgradeAPImage(ap.serialNumber);
-                                toast.success('Firmware upgrade initiated');
-                              } catch (err) {
-                                toast.error(err instanceof Error ? err.message : 'Failed to upgrade firmware');
-                              }
-                            }}>
-                              <Download className="mr-2 h-4 w-4" />
-                              Image Upgrade
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator />
-
-                            <DropdownMenuItem onClick={async (e) => {
-                              e.stopPropagation();
-                              if (confirm(`Reset ${getAPName(ap)} to factory defaults? This cannot be undone.`)) {
-                                try {
-                                  await apiService.resetAPToDefault(ap.serialNumber);
-                                  toast.success('Factory reset initiated');
-                                } catch (err) {
-                                  toast.error(err instanceof Error ? err.message : 'Failed to reset AP');
-                                }
-                              }
-                            }}>
-                              <RotateCcw className="mr-2 h-4 w-4" />
-                              Reset to Default
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem onClick={async (e) => {
-                              e.stopPropagation();
-                              try {
-                                await apiService.rebootAP(ap.serialNumber);
-                                toast.success('AP reboot initiated');
-                              } catch (err) {
-                                toast.error(err instanceof Error ? err.message : 'Failed to reboot AP');
-                              }
-                            }}>
-                              <Power className="mr-2 h-4 w-4" />
-                              Reboot
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator />
-
-                            <DropdownMenuItem onClick={async (e) => {
-                              e.stopPropagation();
-                              if (confirm(`Release ${getAPName(ap)} to cloud management?`)) {
-                                try {
-                                  await apiService.releaseToCloud(ap.serialNumber);
-                                  toast.success('AP released to cloud');
-                                } catch (err) {
-                                  toast.error(err instanceof Error ? err.message : 'Failed to release to cloud');
-                                }
-                              }
-                            }}>
-                              <Cloud className="mr-2 h-4 w-4" />
-                              Release to Cloud
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (confirm(`Delete ${getAPName(ap)}? This will remove the AP from the controller.`)) {
-                                  try {
-                                    await apiService.deleteAP(ap.serialNumber);
-                                    toast.success('AP deleted successfully');
-                                    // Refresh AP list
-                                    loadAccessPoints();
-                                  } catch (err) {
-                                    toast.error(err instanceof Error ? err.message : 'Failed to delete AP');
-                                  }
-                                }
-                              }}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                            {column?.label || columnKey}
+                          </TableHead>
+                        );
+                      })}
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {sortedAccessPoints.map((ap) => (
+                      <TableRow
+                        key={ap.serialNumber}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => {
+                          if (onShowDetail) {
+                            onShowDetail(ap.serialNumber, getAPName(ap));
+                          } else {
+                            loadAPDetails(ap.serialNumber);
+                          }
+                        }}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedSerials.has(ap.serialNumber)}
+                            onCheckedChange={() => toggleSelectAP(ap.serialNumber)}
+                            aria-label={`Select ${getAPName(ap)}`}
+                          />
+                        </TableCell>
+                        {navigationScope === 'global' && siteGroups.length > 1 && (
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 font-normal"
+                            >
+                              {(ap as any)._siteGroupName || '—'}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        {visibleColumns.map((columnKey) => (
+                          <TableCell key={columnKey}>
+                            {renderColumnContent(columnKey, ap)}
+                          </TableCell>
+                        ))}
+
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              onClick={(e) => e.stopPropagation()}
+                              className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                              <span className="sr-only">Open menu</span>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuLabel>AP Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  loadAPDetails(ap.serialNumber);
+                                }}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                  <Shield className="mr-2 h-4 w-4" />
+                                  Manage Certificate
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuSubContent>
+                                  <DropdownMenuItem
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        const result = await apiService.generateCSR(
+                                          ap.serialNumber
+                                        );
+                                        toast.success('CSR generated successfully');
+                                        console.log('[AccessPoints] Generated CSR:', result);
+                                      } catch (err) {
+                                        toast.error(
+                                          err instanceof Error
+                                            ? err.message
+                                            : 'Failed to generate CSR'
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <Key className="mr-2 h-4 w-4" />
+                                    Generate CSR
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toast.info('Certificate upload feature coming soon');
+                                    }}
+                                  >
+                                    <Shield className="mr-2 h-4 w-4" />
+                                    Apply Signed Certificates
+                                  </DropdownMenuItem>
+                                </DropdownMenuSubContent>
+                              </DropdownMenuSub>
+
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info('Site assignment dialog coming soon');
+                                }}
+                              >
+                                <MapPin className="mr-2 h-4 w-4" />
+                                Assign to Site
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info('Adoption preference dialog coming soon');
+                                }}
+                              >
+                                <Settings className="mr-2 h-4 w-4" />
+                                Adoption Preference
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toast.info('Event level dialog coming soon');
+                                }}
+                              >
+                                <AlertTriangle className="mr-2 h-4 w-4" />
+                                Event Level
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await apiService.upgradeAPImage(ap.serialNumber);
+                                    toast.success('Firmware upgrade initiated');
+                                  } catch (err) {
+                                    toast.error(
+                                      err instanceof Error
+                                        ? err.message
+                                        : 'Failed to upgrade firmware'
+                                    );
+                                  }
+                                }}
+                              >
+                                <Download className="mr-2 h-4 w-4" />
+                                Image Upgrade
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm(
+                                      `Reset ${getAPName(ap)} to factory defaults? This cannot be undone.`
+                                    )
+                                  ) {
+                                    try {
+                                      await apiService.resetAPToDefault(ap.serialNumber);
+                                      toast.success('Factory reset initiated');
+                                    } catch (err) {
+                                      toast.error(
+                                        err instanceof Error ? err.message : 'Failed to reset AP'
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
+                                <RotateCcw className="mr-2 h-4 w-4" />
+                                Reset to Default
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await apiService.rebootAP(ap.serialNumber);
+                                    toast.success('AP reboot initiated');
+                                  } catch (err) {
+                                    toast.error(
+                                      err instanceof Error ? err.message : 'Failed to reboot AP'
+                                    );
+                                  }
+                                }}
+                              >
+                                <Power className="mr-2 h-4 w-4" />
+                                Reboot
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+
+                              <DropdownMenuItem
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (confirm(`Release ${getAPName(ap)} to cloud management?`)) {
+                                    try {
+                                      await apiService.releaseToCloud(ap.serialNumber);
+                                      toast.success('AP released to cloud');
+                                    } catch (err) {
+                                      toast.error(
+                                        err instanceof Error
+                                          ? err.message
+                                          : 'Failed to release to cloud'
+                                      );
+                                    }
+                                  }
+                                }}
+                              >
+                                <Cloud className="mr-2 h-4 w-4" />
+                                Release to Cloud
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (
+                                    confirm(
+                                      `Delete ${getAPName(ap)}? This will remove the AP from the controller.`
+                                    )
+                                  ) {
+                                    try {
+                                      await apiService.deleteAP(ap.serialNumber);
+                                      toast.success('AP deleted successfully');
+                                      // Refresh AP list
+                                      loadAccessPoints();
+                                    } catch (err) {
+                                      toast.error(
+                                        err instanceof Error ? err.message : 'Failed to delete AP'
+                                      );
+                                    }
+                                  }
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </>
           )}
         </CardContent>
@@ -2395,202 +2753,223 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         width="xl"
       >
         <div className="space-y-4">
-            {isLoadingDetails ? (
-              <div className="space-y-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : selectedAP ? (
-              <Tabs defaultValue="overview" className="space-y-4">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="overview">Overview</TabsTrigger>
-                  <TabsTrigger value="clients">
-                    Clients ({apStations.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="technical">Technical</TabsTrigger>
-                </TabsList>
+          {isLoadingDetails ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : selectedAP ? (
+            <Tabs defaultValue="overview" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="clients">Clients ({apStations.length})</TabsTrigger>
+                <TabsTrigger value="technical">Technical</TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="overview" className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">Basic Information</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Serial Number:</span>
-                          <span className="font-mono">{selectedAP.serialNumber}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">AP Name:</span>
-                          <span>{getAPName(selectedAP)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Model:</span>
-                          <span>{selectedAP.model || selectedAP.hardwareType || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">IP Address:</span>
-                          <span className="font-mono">{selectedAP.ipAddress || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">MAC Address:</span>
-                          <span className="font-mono">{selectedAP.macAddress || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Location:</span>
-                          <span>{selectedAP.location || selectedAP.site || 'N/A'}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-base">Performance Metrics</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Connected Clients:</span>
-                          <div className="flex items-center space-x-1">
-                            <Users className="h-4 w-4" />
-                            <span>{selectedAP ? getClientCount(selectedAP as AccessPoint) : apStations.length}</span>
-                          </div>
-                        </div>
-                        {selectedAP.uptime && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Uptime:</span>
-                            <span>{selectedAP.uptime}</span>
-                          </div>
-                        )}
-                        {selectedAP.channel && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Channel:</span>
-                            <span>{selectedAP.channel}</span>
-                          </div>
-                        )}
-                        {selectedAP.txPower && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">TX Power:</span>
-                            <span>{selectedAP.txPower} dBm</span>
-                          </div>
-                        )}
-                        {selectedAP.channelUtilization !== undefined && (
-                          <div className="flex justify-between">
-                            <span className="text-muted-foreground">Channel Utilization:</span>
-                            <span>{selectedAP.channelUtilization}%</span>
-                          </div>
-                        )}
-                        {selectedAP.cpuUsage !== undefined && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground">CPU Usage:</span>
-                            <div className="flex items-center space-x-1">
-                              <Cpu className="h-4 w-4" />
-                              <span>{selectedAP.cpuUsage}%</span>
-                            </div>
-                          </div>
-                        )}
-                        {selectedAP.memoryUsage !== undefined && (
-                          <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground">Memory Usage:</span>
-                            <div className="flex items-center space-x-1">
-                              <HardDrive className="h-4 w-4" />
-                              <span>{selectedAP.memoryUsage}%</span>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="clients" className="space-y-4">
-                  {apStations.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                      <h3 className="text-lg font-medium mb-2">No Connected Clients</h3>
-                      <p className="text-muted-foreground">
-                        This access point currently has no connected client devices.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>MAC Address</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Signal Strength</TableHead>
-                            <TableHead>Connected Time</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {apStations.map((station, index) => (
-                            <TableRow key={station.macAddress || index}>
-                              <TableCell className="font-mono text-sm">
-                                {station.macAddress || 'N/A'}
-                              </TableCell>
-                              <TableCell>{station.name || station.hostname || 'Unknown Device'}</TableCell>
-                              <TableCell>
-                                <Badge variant={station.status === 'connected' ? 'default' : 'secondary'}>
-                                  {station.status || 'Connected'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {station.rssi && (
-                                  <div className="flex items-center space-x-1">
-                                    <Signal className="h-4 w-4" />
-                                    <span>{station.rssi} dBm</span>
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell>
-                                {station.connectedTime || station.uptime || 'N/A'}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </TabsContent>
-
-                <TabsContent value="technical" className="space-y-4">
+              <TabsContent value="overview" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-base">Technical Details</CardTitle>
+                      <CardTitle className="text-base">Basic Information</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        {Object.entries(selectedAP).map(([key, value]) => {
-                          // Skip showing certain fields we already display elsewhere
-                          if (['serialNumber', 'displayName', 'model', 'hardwareType', 'ipAddress', 'macAddress', 'location', 'site', 'status'].includes(key)) {
-                            return null;
-                          }
-                          
-                          // Skip null/undefined values
-                          if (value === null || value === undefined || value === '') {
-                            return null;
-                          }
-                          
-                          return (
-                            <div key={key} className="flex justify-between py-1 border-b border-border last:border-b-0">
-                              <span className="text-muted-foreground capitalize">
-                                {key.replace(/([A-Z])/g, ' $1').trim()}:
-                              </span>
-                              <span className="font-mono text-xs">
-                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              </span>
-                            </div>
-                          );
-                        })}
+                    <CardContent className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Serial Number:</span>
+                        <span className="font-mono">{selectedAP.serialNumber}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">AP Name:</span>
+                        <span>{getAPName(selectedAP)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Model:</span>
+                        <span>{selectedAP.model || selectedAP.hardwareType || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">IP Address:</span>
+                        <span className="font-mono">{selectedAP.ipAddress || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">MAC Address:</span>
+                        <span className="font-mono">{selectedAP.macAddress || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Location:</span>
+                        <span>{selectedAP.location || selectedAP.site || 'N/A'}</span>
                       </div>
                     </CardContent>
                   </Card>
-                </TabsContent>
-              </Tabs>
-            ) : null}
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Performance Metrics</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Connected Clients:</span>
+                        <div className="flex items-center space-x-1">
+                          <Users className="h-4 w-4" />
+                          <span>
+                            {selectedAP
+                              ? getClientCount(selectedAP as AccessPoint)
+                              : apStations.length}
+                          </span>
+                        </div>
+                      </div>
+                      {selectedAP.uptime && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Uptime:</span>
+                          <span>{selectedAP.uptime}</span>
+                        </div>
+                      )}
+                      {selectedAP.channel && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Channel:</span>
+                          <span>{selectedAP.channel}</span>
+                        </div>
+                      )}
+                      {selectedAP.txPower && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">TX Power:</span>
+                          <span>{selectedAP.txPower} dBm</span>
+                        </div>
+                      )}
+                      {selectedAP.channelUtilization !== undefined && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Channel Utilization:</span>
+                          <span>{selectedAP.channelUtilization}%</span>
+                        </div>
+                      )}
+                      {selectedAP.cpuUsage !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">CPU Usage:</span>
+                          <div className="flex items-center space-x-1">
+                            <Cpu className="h-4 w-4" />
+                            <span>{selectedAP.cpuUsage}%</span>
+                          </div>
+                        </div>
+                      )}
+                      {selectedAP.memoryUsage !== undefined && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-muted-foreground">Memory Usage:</span>
+                          <div className="flex items-center space-x-1">
+                            <HardDrive className="h-4 w-4" />
+                            <span>{selectedAP.memoryUsage}%</span>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="clients" className="space-y-4">
+                {apStations.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Connected Clients</h3>
+                    <p className="text-muted-foreground">
+                      This access point currently has no connected client devices.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>MAC Address</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Signal Strength</TableHead>
+                          <TableHead>Connected Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {apStations.map((station, index) => (
+                          <TableRow key={station.macAddress || index}>
+                            <TableCell className="font-mono text-sm">
+                              {station.macAddress || 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              {station.name || station.hostname || 'Unknown Device'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={station.status === 'connected' ? 'default' : 'secondary'}
+                              >
+                                {station.status || 'Connected'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {station.rssi && (
+                                <div className="flex items-center space-x-1">
+                                  <Signal className="h-4 w-4" />
+                                  <span>{station.rssi} dBm</span>
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {station.connectedTime || station.uptime || 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="technical" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Technical Details</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 text-sm">
+                      {Object.entries(selectedAP).map(([key, value]) => {
+                        // Skip showing certain fields we already display elsewhere
+                        if (
+                          [
+                            'serialNumber',
+                            'displayName',
+                            'model',
+                            'hardwareType',
+                            'ipAddress',
+                            'macAddress',
+                            'location',
+                            'site',
+                            'status',
+                          ].includes(key)
+                        ) {
+                          return null;
+                        }
+
+                        // Skip null/undefined values
+                        if (value === null || value === undefined || value === '') {
+                          return null;
+                        }
+
+                        return (
+                          <div
+                            key={key}
+                            className="flex justify-between py-1 border-b border-border last:border-b-0"
+                          >
+                            <span className="text-muted-foreground capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}:
+                            </span>
+                            <span className="font-mono text-xs">
+                              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          ) : null}
         </div>
       </DetailSlideOut>
 
@@ -2623,10 +3002,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
           {/* Provider Selection */}
           <div className="space-y-2">
-            <Label htmlFor="e911-provider" className="text-sm font-semibold text-foreground">E911 Service Provider</Label>
+            <Label htmlFor="e911-provider" className="text-sm font-semibold text-foreground">
+              E911 Service Provider
+            </Label>
             <Select
               value={e911Config.provider}
-              onValueChange={(value) => setE911Config(prev => ({ ...prev, provider: value }))}
+              onValueChange={(value) => setE911Config((prev) => ({ ...prev, provider: value }))}
             >
               <SelectTrigger id="e911-provider" className="bg-background">
                 <SelectValue placeholder="Select provider" />
@@ -2645,24 +3026,28 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <h4 className="text-sm font-semibold text-foreground">Authentication</h4>
 
             <div className="space-y-2">
-              <Label htmlFor="e911-username" className="text-sm font-medium text-foreground">Username</Label>
+              <Label htmlFor="e911-username" className="text-sm font-medium text-foreground">
+                Username
+              </Label>
               <Input
                 id="e911-username"
                 placeholder="Enter your RedSky username"
                 value={e911Config.username}
-                onChange={(e) => setE911Config(prev => ({ ...prev, username: e.target.value }))}
+                onChange={(e) => setE911Config((prev) => ({ ...prev, username: e.target.value }))}
                 className="bg-background"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="e911-password" className="text-sm font-medium text-foreground">Password</Label>
+              <Label htmlFor="e911-password" className="text-sm font-medium text-foreground">
+                Password
+              </Label>
               <Input
                 id="e911-password"
                 type="password"
                 placeholder="Enter your RedSky password"
                 value={e911Config.password}
-                onChange={(e) => setE911Config(prev => ({ ...prev, password: e.target.value }))}
+                onChange={(e) => setE911Config((prev) => ({ ...prev, password: e.target.value }))}
                 className="bg-background"
               />
             </div>
@@ -2673,12 +3058,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <h4 className="text-sm font-semibold text-foreground">BSSID Discovery Settings</h4>
 
             <div className="space-y-2">
-              <Label htmlFor="e911-location" className="text-sm font-medium text-foreground">Location</Label>
+              <Label htmlFor="e911-location" className="text-sm font-medium text-foreground">
+                Location
+              </Label>
               <Input
                 id="e911-location"
                 placeholder="RedSky Location ID or address"
                 value={e911Config.location}
-                onChange={(e) => setE911Config(prev => ({ ...prev, location: e.target.value }))}
+                onChange={(e) => setE911Config((prev) => ({ ...prev, location: e.target.value }))}
                 className="bg-background"
               />
               <p className="text-xs text-muted-foreground">
@@ -2687,19 +3074,25 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="e911-description" className="text-sm font-medium text-foreground">Description</Label>
+              <Label htmlFor="e911-description" className="text-sm font-medium text-foreground">
+                Description
+              </Label>
               <Input
                 id="e911-description"
                 placeholder="Optional description for BSSID entries"
                 value={e911Config.description}
-                onChange={(e) => setE911Config(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(e) =>
+                  setE911Config((prev) => ({ ...prev, description: e.target.value }))
+                }
                 className="bg-background"
               />
             </div>
 
             <div className="flex items-center justify-between py-2">
               <div className="space-y-0.5">
-                <Label htmlFor="e911-masking" className="text-sm font-medium text-foreground">Enable Masking</Label>
+                <Label htmlFor="e911-masking" className="text-sm font-medium text-foreground">
+                  Enable Masking
+                </Label>
                 <p className="text-xs text-muted-foreground">
                   Apply masking to BSSID data for privacy
                 </p>
@@ -2707,7 +3100,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               <Switch
                 id="e911-masking"
                 checked={e911Config.masking}
-                onCheckedChange={(checked) => setE911Config(prev => ({ ...prev, masking: checked }))}
+                onCheckedChange={(checked) =>
+                  setE911Config((prev) => ({ ...prev, masking: checked }))
+                }
               />
             </div>
           </div>
@@ -2715,7 +3110,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           {/* Auto Sync Toggle */}
           <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/20">
             <div className="space-y-0.5">
-              <Label htmlFor="e911-autosync" className="text-sm font-semibold text-foreground">Automatic Sync</Label>
+              <Label htmlFor="e911-autosync" className="text-sm font-semibold text-foreground">
+                Automatic Sync
+              </Label>
               <p className="text-xs text-muted-foreground">
                 Automatically push BSSID updates to E911 service
               </p>
@@ -2723,17 +3120,23 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <Switch
               id="e911-autosync"
               checked={e911Config.autoSync}
-              onCheckedChange={(checked) => setE911Config(prev => ({ ...prev, autoSync: checked }))}
+              onCheckedChange={(checked) =>
+                setE911Config((prev) => ({ ...prev, autoSync: checked }))
+              }
             />
           </div>
 
           {/* Sync Interval */}
           {e911Config.autoSync && (
             <div className="space-y-2">
-              <Label htmlFor="e911-interval" className="text-sm font-semibold text-foreground">Sync Interval</Label>
+              <Label htmlFor="e911-interval" className="text-sm font-semibold text-foreground">
+                Sync Interval
+              </Label>
               <Select
                 value={e911Config.syncInterval.toString()}
-                onValueChange={(value) => setE911Config(prev => ({ ...prev, syncInterval: parseInt(value) }))}
+                onValueChange={(value) =>
+                  setE911Config((prev) => ({ ...prev, syncInterval: parseInt(value) }))
+                }
               >
                 <SelectTrigger id="e911-interval" className="bg-background">
                   <SelectValue />
@@ -2762,7 +3165,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               className="flex-1 h-11 text-sm font-semibold bg-red-600 hover:bg-red-700 text-white shadow-md"
               onClick={() => {
                 toast.success('E911 configuration saved');
-                setE911Config(prev => ({ ...prev, lastSync: new Date() }));
+                setE911Config((prev) => ({ ...prev, lastSync: new Date() }));
                 setIsE911ConfigOpen(false);
               }}
             >

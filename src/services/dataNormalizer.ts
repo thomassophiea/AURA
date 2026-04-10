@@ -33,7 +33,8 @@ export function normalizeStation(raw: any): Station {
 
     // AP information - consolidate 4+ variations
     apName: raw.apName || raw.apDisplayName || raw.apHostname || raw.accessPointName || raw.ap_name,
-    apSerial: raw.apSerial || raw.apSerialNumber || raw.apSn || raw.accessPointSerial || raw.ap_serial,
+    apSerial:
+      raw.apSerial || raw.apSerialNumber || raw.apSn || raw.accessPointSerial || raw.ap_serial,
     apDisplayName: raw.apDisplayName || raw.apName || raw.apHostname,
     apHostname: raw.apHostname || raw.apName,
 
@@ -86,7 +87,7 @@ export function normalizeStation(raw: any): Station {
     siteRating: raw.siteRating || raw.site_rating,
 
     // Preserve all original fields for debugging
-    ...raw
+    ...raw,
   };
 }
 
@@ -129,7 +130,7 @@ export function normalizeAccessPoint(raw: any): AccessPoint {
     clientCount: raw.clientCount ?? raw.clients ?? raw.associated_clients ?? 0,
 
     // Preserve all original fields
-    ...raw
+    ...raw,
   };
 }
 
@@ -147,7 +148,7 @@ export function normalizeService(raw: any): Service {
     ssid: raw.ssid || raw.name || raw.serviceName,
 
     // Status variations
-    enabled: raw.enabled ?? (raw.status?.toLowerCase() === 'enabled') ?? true,
+    enabled: raw.enabled ?? (raw.status ? raw.status.toLowerCase() === 'enabled' : true),
     status: raw.status || (raw.enabled ? 'enabled' : 'disabled'),
 
     // VLAN
@@ -179,7 +180,7 @@ export function normalizeService(raw: any): Service {
     aaaPolicyId: raw.aaaPolicyId || raw.aaa_policy_id,
 
     // Preserve all original fields
-    ...raw
+    ...raw,
   };
 }
 
@@ -203,7 +204,7 @@ export function normalizeSite(raw: any): Site {
     description: raw.description || raw.desc,
 
     // Preserve all original fields
-    ...raw
+    ...raw,
   };
 }
 
@@ -252,6 +253,6 @@ export function clearNormalizationCache() {
 export function getNormalizationCacheStats() {
   return {
     size: resolutionCache.size,
-    keys: Array.from(resolutionCache.keys())
+    keys: Array.from(resolutionCache.keys()),
   };
 }

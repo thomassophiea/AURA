@@ -7,13 +7,13 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
-import { 
-  AlertTriangle, 
-  Info, 
-  CheckCircle, 
-  XCircle, 
-  Activity, 
-  RefreshCw, 
+import {
+  AlertTriangle,
+  Info,
+  CheckCircle,
+  XCircle,
+  Activity,
+  RefreshCw,
   Search,
   Filter,
   Settings,
@@ -24,7 +24,7 @@ import {
   User,
   Network,
   Cpu,
-  Shield
+  Shield,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -52,7 +52,7 @@ export function AlertsEvents() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
-  
+
   // Filter states
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -61,15 +61,23 @@ export function AlertsEvents() {
   const loadData = async (showRefreshing = false) => {
     try {
       if (showRefreshing) setRefreshing(true);
-      
+
       // Try to load real data from both API endpoints
       const [servicesResponse, evaluateResponse] = await Promise.allSettled([
-        apiService.makeAuthenticatedRequest('/v1/services/bestpractices', { 
-          method: 'GET' 
-        }, 6000),
-        apiService.makeAuthenticatedRequest('/v1/bestpractices/evaluate', { 
-          method: 'GET' 
-        }, 6000)
+        apiService.makeAuthenticatedRequest(
+          '/v1/services/bestpractices',
+          {
+            method: 'GET',
+          },
+          6000
+        ),
+        apiService.makeAuthenticatedRequest(
+          '/v1/bestpractices/evaluate',
+          {
+            method: 'GET',
+          },
+          6000
+        ),
       ]);
 
       let allConditions: BestPracticeCondition[] = [];
@@ -84,14 +92,19 @@ export function AlertsEvents() {
             hasValidData = true;
           }
         } catch (error) {
-          console.log('SUPPRESSED_ANALYTICS_ERROR: Failed to parse services/bestpractices data:', error);
+          console.log(
+            'SUPPRESSED_ANALYTICS_ERROR: Failed to parse services/bestpractices data:',
+            error
+          );
         }
       } else if (servicesResponse.status === 'fulfilled' && servicesResponse.value.status === 401) {
         // Session expired - let the global handler deal with it
         throw new Error('Session expired. Please login again.');
       } else {
-        console.log('SUPPRESSED_ANALYTICS_ERROR: Services bestpractices API returned:', 
-          servicesResponse.status === 'fulfilled' ? servicesResponse.value.status : 'rejected');
+        console.log(
+          'SUPPRESSED_ANALYTICS_ERROR: Services bestpractices API returned:',
+          servicesResponse.status === 'fulfilled' ? servicesResponse.value.status : 'rejected'
+        );
       }
 
       // Process bestpractices/evaluate response
@@ -99,28 +112,36 @@ export function AlertsEvents() {
         try {
           const data = await evaluateResponse.value.json();
           // Handle both array and object with conditions array
-          const evaluateConditions = Array.isArray(data) ? data : 
-            (data.conditions && Array.isArray(data.conditions)) ? data.conditions : [];
-          
+          const evaluateConditions = Array.isArray(data)
+            ? data
+            : data.conditions && Array.isArray(data.conditions)
+              ? data.conditions
+              : [];
+
           if (evaluateConditions.length > 0) {
             allConditions = [...allConditions, ...evaluateConditions];
             hasValidData = true;
           }
         } catch (error) {
-          console.log('SUPPRESSED_ANALYTICS_ERROR: Failed to parse bestpractices/evaluate data:', error);
+          console.log(
+            'SUPPRESSED_ANALYTICS_ERROR: Failed to parse bestpractices/evaluate data:',
+            error
+          );
         }
       } else if (evaluateResponse.status === 'fulfilled' && evaluateResponse.value.status === 401) {
         // Session expired - let the global handler deal with it
         throw new Error('Session expired. Please login again.');
       } else {
-        console.log('SUPPRESSED_ANALYTICS_ERROR: Bestpractices evaluate API returned:', 
-          evaluateResponse.status === 'fulfilled' ? evaluateResponse.value.status : 'rejected');
+        console.log(
+          'SUPPRESSED_ANALYTICS_ERROR: Bestpractices evaluate API returned:',
+          evaluateResponse.status === 'fulfilled' ? evaluateResponse.value.status : 'rejected'
+        );
       }
 
       if (hasValidData && allConditions.length > 0) {
         // Remove duplicates based on ID
-        const uniqueConditions = allConditions.filter((condition, index, self) => 
-          index === self.findIndex(c => c.id === condition.id)
+        const uniqueConditions = allConditions.filter(
+          (condition, index, self) => index === self.findIndex((c) => c.id === condition.id)
         );
         setConditions(uniqueConditions);
         if (showRefreshing) {
@@ -128,117 +149,31 @@ export function AlertsEvents() {
         }
         return;
       }
-      
-      // Use mock data as fallback
-      setConditions(getMockConditions());
-      
+
       if (showRefreshing) {
-        toast.success('System health data refreshed (demo data)');
+        toast.success('System health data refreshed');
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // Handle session expiration
-      if (errorMessage.includes('Session expired') || errorMessage.includes('Authentication required')) {
+      if (
+        errorMessage.includes('Session expired') ||
+        errorMessage.includes('Authentication required')
+      ) {
         throw error;
       }
-      
+
       console.log('SUPPRESSED_ANALYTICS_ERROR: Failed to load best practices:', error);
-      // Use mock data on error
-      setConditions(getMockConditions());
-      
+
       if (showRefreshing) {
-        toast.success('System health data refreshed (demo data)');
+        toast.success('System health data refreshed');
       }
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
-
-  // Mock data based on your provided structure
-  const getMockConditions = (): BestPracticeCondition[] => [
-    {
-      id: "6ab62dac-75da-11ea-bc55-0242ac130003",
-      criteria: "All active APs assigned to sites",
-      detailedDescription: "Managed access points must be assigned to a site to provide service. APs not assigned to a site can be adopted, but they will not contribute to service coverage.",
-      causeBy: [],
-      status: "Good",
-      type: "Config"
-    },
-    {
-      id: "6ab6206e-75da-11ea-bc55-0242ac130003",
-      criteria: "More than 4 SSIDs configured per radio",
-      detailedDescription: "One radio can support a maximum of 8 SSIDs. However, the more SSIDs assigned to a radio, the higher the channel utilization. A best practice is to assign no more than 4 SSIDs to one radio.",
-      causeBy: [
-        {
-          type: "Profile",
-          name: "Home-5010",
-          id: "702d3822-668c-11f0-956f-000c29ccc511"
-        }
-      ],
-      status: "Warning",
-      type: "Config"
-    },
-    {
-      id: "6ab6260e-75da-11ea-bc55-0242ac130003",
-      criteria: "Backup of system configuration has not been scheduled",
-      detailedDescription: "A best practice is to configure a schedule for the automatic back up of the system configuration. Back up the configuration to a separate media or host. You can restore your configuration from a backup file in the event of a system failure.",
-      causeBy: [
-        {
-          type: "Backup",
-          name: null,
-          id: null
-        }
-      ],
-      status: "Warning",
-      type: "Config"
-    },
-    {
-      id: "6ab62848-75da-11ea-bc55-0242ac130003",
-      criteria: "TKIP encryption for network privacy not detected",
-      detailedDescription: "TKIP encryption is considered to be a less secure means of communication. An industry best practice is to use a more secure option for network privacy. Please disable TKIP option in the WPA privacy settings.",
-      causeBy: [],
-      status: "Good",
-      type: "Config"
-    },
-    {
-      id: "6ab647c4-75da-11ea-bc55-0242ac130003",
-      criteria: "APs have been updated to run the latest version image",
-      detailedDescription: "Run the supported AP firmware version. Running other firmware revisions can lead to unexpected results.",
-      causeBy: [],
-      status: "Good",
-      type: "Operational"
-    },
-    {
-      id: "d46f4cb0-3b27-11ec-a13c-0800200c9a66",
-      criteria: "Some assigned entitlements expire in less than 30 days",
-      detailedDescription: "The system must be licensed to operate. It is recommended to start license renew process 90 days before license expired to avoid interruption of functionality.",
-      causeBy: [
-        {
-          type: "License",
-          name: null,
-          id: null
-        }
-      ],
-      status: "Error",
-      type: "Operational"
-    },
-    {
-      id: "287ab993-3292-440a-8826-3c1b2e562f5f",
-      criteria: "6 GHz Standard Power AP is using Fixed / Manually Assigned Fallback Channel",
-      detailedDescription: "6 GHz Standard Power AP configured with Fixed / Manually Assigned Channel is using the Fallback Channel as a result of an AFC channel change.",
-      causeBy: [
-        {
-          type: "Ap",
-          name: "WM042233W-30019",
-          id: "WM042233W-30019"
-        }
-      ],
-      status: "Warning",
-      type: "Operational"
-    }
-  ];
 
   useEffect(() => {
     loadData();
@@ -303,33 +238,36 @@ export function AlertsEvents() {
     }
   };
 
-  const filteredConditions = conditions.filter(condition => {
-    const matchesType = activeTab === 'all' || 
+  const filteredConditions = conditions.filter((condition) => {
+    const matchesType =
+      activeTab === 'all' ||
       (activeTab === 'configuration' && condition.type === 'Config') ||
       (activeTab === 'operational' && condition.type === 'Operational');
     const matchesStatus = statusFilter === 'all' || condition.status === statusFilter;
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch =
+      searchTerm === '' ||
       condition.criteria.toLowerCase().includes(searchTerm.toLowerCase()) ||
       condition.detailedDescription.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      condition.causeBy.some(cause => 
-        cause.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cause.type.toLowerCase().includes(searchTerm.toLowerCase())
+      condition.causeBy.some(
+        (cause) =>
+          cause.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cause.type.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    
+
     return matchesType && matchesStatus && matchesSearch;
   });
 
   // Count conditions by status
   const statusCounts = {
-    error: conditions.filter(c => c.status === 'Error').length,
-    warning: conditions.filter(c => c.status === 'Warning').length,
-    good: conditions.filter(c => c.status === 'Good').length
+    error: conditions.filter((c) => c.status === 'Error').length,
+    warning: conditions.filter((c) => c.status === 'Warning').length,
+    good: conditions.filter((c) => c.status === 'Good').length,
   };
 
   // Count by type
   const typeCounts = {
-    config: conditions.filter(c => c.type === 'Config').length,
-    operational: conditions.filter(c => c.type === 'Operational').length
+    config: conditions.filter((c) => c.type === 'Config').length,
+    operational: conditions.filter((c) => c.type === 'Operational').length,
   };
 
   if (loading) {
@@ -341,9 +279,7 @@ export function AlertsEvents() {
             <div className="h-4 w-96 bg-muted animate-pulse rounded"></div>
           </div>
         </div>
-        
 
-        
         <Card>
           <CardContent className="p-6">
             <div className="space-y-4">
@@ -369,7 +305,7 @@ export function AlertsEvents() {
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent 
+          <CardContent
             className="p-6 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg"
             onClick={() => {
               setStatusFilter('Error');
@@ -385,9 +321,9 @@ export function AlertsEvents() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent 
+          <CardContent
             className="p-6 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg"
             onClick={() => {
               setStatusFilter('Warning');
@@ -403,9 +339,9 @@ export function AlertsEvents() {
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
-          <CardContent 
+          <CardContent
             className="p-6 cursor-pointer hover:bg-muted/50 transition-colors rounded-lg"
             onClick={() => {
               setStatusFilter('Good');
@@ -431,12 +367,7 @@ export function AlertsEvents() {
             Monitor configuration compliance and operational recommendations
           </p>
         </div>
-        <Button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          variant="outline"
-          size="sm"
-        >
+        <Button onClick={handleRefresh} disabled={refreshing} variant="outline" size="sm">
           <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -455,7 +386,7 @@ export function AlertsEvents() {
                 className="pl-10"
               />
             </div>
-            
+
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger>
                 <SelectValue placeholder="Filter by status" />
@@ -467,7 +398,7 @@ export function AlertsEvents() {
                 <SelectItem value="Good">Compliant</SelectItem>
               </SelectContent>
             </Select>
-            
+
             <div className="flex items-center text-sm text-muted-foreground">
               <Filter className="h-4 w-4 mr-2" />
               {filteredConditions.length} conditions shown
@@ -498,12 +429,11 @@ export function AlertsEvents() {
             <CardHeader>
               <CardTitle>Best Practices Assessment</CardTitle>
               <CardDescription>
-                {activeTab === 'configuration' 
+                {activeTab === 'configuration'
                   ? 'Configuration compliance and recommendations'
                   : activeTab === 'operational'
-                  ? 'Operational status and system health checks'
-                  : 'Complete system health and configuration assessment'
-                }
+                    ? 'Operational status and system health checks'
+                    : 'Complete system health and configuration assessment'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -519,7 +449,7 @@ export function AlertsEvents() {
                           {getStatusIcon(condition.status)}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge 
+                              <Badge
                                 variant={getStatusBadgeVariant(condition.status)}
                                 className="text-xs"
                               >
@@ -540,7 +470,7 @@ export function AlertsEvents() {
                           <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                         )}
                       </CollapsibleTrigger>
-                      
+
                       <CollapsibleContent className="pt-4">
                         <div className="pl-7 space-y-4">
                           {/* Detailed Description */}
@@ -550,7 +480,7 @@ export function AlertsEvents() {
                               {condition.detailedDescription}
                             </p>
                           </div>
-                          
+
                           {/* Affected Components */}
                           {condition.causeBy.length > 0 && (
                             <div>
@@ -570,7 +500,7 @@ export function AlertsEvents() {
                               </div>
                             </div>
                           )}
-                          
+
                           {/* Action Buttons */}
                           <div className="flex space-x-2">
                             {condition.status !== 'Good' && (
@@ -589,7 +519,7 @@ export function AlertsEvents() {
                     </div>
                   </Collapsible>
                 ))}
-                
+
                 {filteredConditions.length === 0 && (
                   <div className="text-center py-12">
                     <div className="flex flex-col items-center">
@@ -598,8 +528,7 @@ export function AlertsEvents() {
                       <p className="text-sm text-muted-foreground">
                         {searchTerm || statusFilter !== 'all'
                           ? 'Try adjusting your filters'
-                          : 'All best practices are being followed'
-                        }
+                          : 'All best practices are being followed'}
                       </p>
                     </div>
                   </div>

@@ -16,7 +16,7 @@ import {
   Calendar,
   Clock,
   XCircle,
-  TrendingUp
+  TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
@@ -42,6 +42,7 @@ interface AccessPoint {
 
 interface FirmwareImage {
   name: string;
+  version?: string;
   isRecommended: boolean;
 }
 
@@ -66,13 +67,13 @@ export function APFirmwareManager() {
     try {
       const [aps, imageList] = await Promise.all([
         apiService.getAccessPoints(),
-        apiService.getAPSoftwareVersions()
+        apiService.getAPSoftwareVersions(),
       ]);
       setAccessPoints(Array.isArray(aps) ? aps : []);
       // imageList is an array of image name strings like "AP7612-LEAN-5.9.3.2-002R.img"
       const images: FirmwareImage[] = (imageList || []).map((img: string, idx: number) => ({
         name: img,
-        isRecommended: idx === 0
+        isRecommended: idx === 0,
       }));
       setFirmwareImages(images);
     } catch (error) {
@@ -94,7 +95,7 @@ export function APFirmwareManager() {
   };
 
   const selectAll = () => {
-    setSelectedAPs(new Set(accessPoints.map(ap => ap.serialNumber)));
+    setSelectedAPs(new Set(accessPoints.map((ap) => ap.serialNumber)));
   };
 
   const deselectAll = () => {
@@ -141,7 +142,7 @@ export function APFirmwareManager() {
         name: scheduleName,
         targetVersion: selectedVersion,
         scheduledTime: new Date(scheduleTime).toISOString(),
-        deviceSerialNumbers: Array.from(selectedAPs)
+        deviceSerialNumbers: Array.from(selectedAPs),
       });
       toast.success('Upgrade scheduled successfully');
       setShowScheduleDialog(false);
@@ -162,11 +163,15 @@ export function APFirmwareManager() {
   const getUpgradeStatus = (ap: AccessPoint) => {
     if (firmwareImages.length === 0) return { status: 'unknown', color: 'gray' };
     // Check exact version match — avoid substring false-positives (e.g. "5.9.2" inside "5.9.2.1")
-    if (ap.currentFirmware && firmwareImages.some(img =>
-      img.name === ap.currentFirmware ||
-      img.version === ap.currentFirmware ||
-      img.name.split(/[\s_-]/)[0] === ap.currentFirmware
-    )) {
+    if (
+      ap.currentFirmware &&
+      firmwareImages.some(
+        (img) =>
+          img.name === ap.currentFirmware ||
+          img.version === ap.currentFirmware ||
+          img.name.split(/[\s_-]/)[0] === ap.currentFirmware
+      )
+    ) {
       return { status: 'up-to-date', color: 'green' };
     }
     return { status: 'update-available', color: 'yellow' };
@@ -174,9 +179,10 @@ export function APFirmwareManager() {
 
   const stats = {
     total: accessPoints.length,
-    upToDate: accessPoints.filter(ap => getUpgradeStatus(ap).status === 'up-to-date').length,
-    updateAvailable: accessPoints.filter(ap => getUpgradeStatus(ap).status === 'update-available').length,
-    selected: selectedAPs.size
+    upToDate: accessPoints.filter((ap) => getUpgradeStatus(ap).status === 'up-to-date').length,
+    updateAvailable: accessPoints.filter((ap) => getUpgradeStatus(ap).status === 'update-available')
+      .length,
+    selected: selectedAPs.size,
   };
 
   if (loading) {
@@ -204,7 +210,12 @@ export function APFirmwareManager() {
             </p>
           </DesktopOnly>
         </div>
-        <TouchButton variant="outline" size="sm" onClick={loadData} aria-label="Refresh AP firmware data">
+        <TouchButton
+          variant="outline"
+          size="sm"
+          onClick={loadData}
+          aria-label="Refresh AP firmware data"
+        >
           <RefreshCw className="h-4 w-4 md:mr-2" />
           <span className="hidden md:inline">Refresh</span>
         </TouchButton>
@@ -214,9 +225,7 @@ export function APFirmwareManager() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total APs
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total APs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -228,9 +237,7 @@ export function APFirmwareManager() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Up to Date
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Up to Date</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -256,9 +263,7 @@ export function APFirmwareManager() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Selected
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Selected</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -273,9 +278,7 @@ export function APFirmwareManager() {
       <Card>
         <CardHeader>
           <CardTitle>Firmware Selection & Actions</CardTitle>
-          <CardDescription>
-            Select firmware version and access points to upgrade
-          </CardDescription>
+          <CardDescription>Select firmware version and access points to upgrade</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -290,7 +293,12 @@ export function APFirmwareManager() {
                     <div className="flex items-center gap-2">
                       <span>{image.name}</span>
                       {image.isRecommended && (
-                        <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Latest</Badge>
+                        <Badge
+                          variant="outline"
+                          className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                        >
+                          Latest
+                        </Badge>
                       )}
                     </div>
                   </SelectItem>
@@ -325,15 +333,23 @@ export function APFirmwareManager() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Access Points</CardTitle>
-              <CardDescription>
-                Select access points to upgrade
-              </CardDescription>
+              <CardDescription>Select access points to upgrade</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={selectAll} aria-label="Select all access points">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={selectAll}
+                aria-label="Select all access points"
+              >
                 Select All
               </Button>
-              <Button variant="outline" size="sm" onClick={deselectAll} aria-label="Deselect all access points">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={deselectAll}
+                aria-label="Deselect all access points"
+              >
                 Deselect All
               </Button>
             </div>
@@ -368,8 +384,8 @@ export function APFirmwareManager() {
                           status.color === 'green'
                             ? 'bg-green-500'
                             : status.color === 'yellow'
-                            ? 'bg-amber-500'
-                            : ''
+                              ? 'bg-amber-500'
+                              : ''
                         }
                       >
                         {status.status === 'up-to-date' ? 'Up to Date' : 'Update Available'}
