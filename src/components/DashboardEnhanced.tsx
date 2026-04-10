@@ -67,6 +67,7 @@ import { AuditLogsWidget } from './AuditLogsWidget';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { OSOneWidget } from './OSOneWidget';
 import { AccessPointDetail } from './AccessPointDetail';
+import { PeerBenchmarking } from './PeerBenchmarking';
 import { ClientDetail } from './ClientDetail';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { usePersonaContext } from '../contexts/PersonaContext';
@@ -1644,6 +1645,9 @@ function DashboardEnhancedComponent() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Peer Benchmarking */}
+          <PeerBenchmarking />
 
           {/* Insight Cards Grid */}
           <div className="grid gap-6 md:grid-cols-2">
