@@ -16,9 +16,10 @@ import {
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
+  Tooltip, ResponsiveContainer, Cell, Legend,
 } from 'recharts';
 import { cn } from '../ui/utils';
+import { Skeleton } from '../ui/skeleton';
 import { parseTimeseriesData, parseRankingData } from '../../services/widgetService';
 import { formatBitsPerSecond, formatBytes } from '../../lib/units';
 import type { ReportWidgetConfig } from '../../types/reportConfig';
@@ -70,9 +71,10 @@ interface Props {
   widget: ReportWidgetConfig;
   widgetData: Record<string, any>;
   metrics: ReportMetrics;
+  platformLoading?: boolean;
 }
 
-export function ReportWidgetRenderer({ widget, widgetData, metrics }: Props) {
+export function ReportWidgetRenderer({ widget, widgetData, metrics, platformLoading }: Props) {
   const { displayType, widgetKey, title, config: wCfg } = widget;
 
   // ── Scorecard ──
@@ -82,7 +84,7 @@ export function ReportWidgetRenderer({ widget, widgetData, metrics }: Props) {
 
   // ── Timeseries ──
   if (displayType === 'timeseries') {
-    return renderTimeseries(widget, widgetData);
+    return renderTimeseries(widget, widgetData, platformLoading);
   }
 
   // ── Ranking ──
@@ -90,16 +92,11 @@ export function ReportWidgetRenderer({ widget, widgetData, metrics }: Props) {
     if (widgetKey.startsWith('_metric_')) {
       return renderComputedRanking(widget, metrics);
     }
-    return renderApiRanking(widget, widgetData);
+    return renderApiRanking(widget, widgetData, platformLoading);
   }
 
-  // ── Pie Chart ──
-  if (displayType === 'pie_chart') {
-    return renderPieChart(widget, metrics);
-  }
-
-  // ── Bar Chart ──
-  if (displayType === 'bar_chart') {
+  // ── Bar Chart (also handles legacy pie_chart) ──
+  if (displayType === 'bar_chart' || displayType === 'pie_chart') {
     return renderBarChart(widget, metrics);
   }
 
@@ -162,7 +159,19 @@ function renderScorecard(widget: ReportWidgetConfig, m: ReportMetrics) {
   );
 }
 
-function renderTimeseries(widget: ReportWidgetConfig, widgetData: Record<string, any>) {
+function renderTimeseries(widget: ReportWidgetConfig, widgetData: Record<string, any>, platformLoading?: boolean) {
+  if (platformLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{widget.title || widget.widgetKey}</CardTitle></CardHeader>
+        <CardContent>
+          <Skeleton className="h-4 w-3/4 mb-2" />
+          <Skeleton className="h-32 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
   const raw = widgetData[widget.widgetKey];
   const parsed = parseTimeseriesData(raw);
 
@@ -205,7 +214,25 @@ function renderTimeseries(widget: ReportWidgetConfig, widgetData: Record<string,
   );
 }
 
-function renderApiRanking(widget: ReportWidgetConfig, widgetData: Record<string, any>) {
+function renderApiRanking(widget: ReportWidgetConfig, widgetData: Record<string, any>, platformLoading?: boolean) {
+  if (platformLoading) {
+    return (
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{widget.title || widget.widgetKey}</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-1">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-1.5 w-full" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const raw = widgetData[widget.widgetKey];
   const parsed = parseRankingData(raw);
   if (!parsed.length) {
@@ -302,44 +329,6 @@ function renderComputedRanking(widget: ReportWidgetConfig, m: ReportMetrics) {
   return null;
 }
 
-function renderPieChart(widget: ReportWidgetConfig, m: ReportMetrics) {
-  const key = widget.widgetKey;
-  let data: { name: string; value: number; fill: string }[] = [];
-
-  if (key === '_metric_band_distribution') {
-    data = [
-      { name: '2.4 GHz', value: m.bands['2.4 GHz'] || 0, fill: '#f59e0b' },
-      { name: '5 GHz', value: m.bands['5 GHz'] || 0, fill: '#3b82f6' },
-      { name: '6 GHz', value: m.bands['6 GHz'] || 0, fill: '#8b5cf6' },
-    ].filter(d => d.value > 0);
-  } else if (key === '_metric_ap_model_distribution') {
-    data = m.apModels.slice(0, 8).map((mod, i) => ({
-      name: mod.model, value: mod.count, fill: CHART_COLORS[i % CHART_COLORS.length],
-    }));
-  }
-
-  if (!data.length) {
-    return <Card><CardContent className="py-8 text-center text-xs text-muted-foreground">No data</CardContent></Card>;
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-2"><CardTitle className="text-sm">{widget.title || widget.widgetKey}</CardTitle></CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={200}>
-          <PieChart>
-            <Pie data={data} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value"
-              label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
-              {data.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
-            </Pie>
-            <Tooltip />
-          </PieChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
-  );
-}
-
 function renderBarChart(widget: ReportWidgetConfig, m: ReportMetrics) {
   const key = widget.widgetKey;
 
@@ -390,6 +379,68 @@ function renderBarChart(widget: ReportWidgetConfig, m: ReportMetrics) {
               </Bar>
             </BarChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (key === '_metric_band_distribution') {
+    const totalBandClients = Object.values(m.bands).reduce((s, v) => s + v, 0);
+    const data = [
+      { name: '2.4 GHz', count: m.bands['2.4 GHz'] || 0, color: '#f59e0b' },
+      { name: '5 GHz', count: m.bands['5 GHz'] || 0, color: '#3b82f6' },
+      { name: '6 GHz', count: m.bands['6 GHz'] || 0, color: '#8b5cf6' },
+    ].filter(d => d.count > 0);
+    if (!data.length) return null;
+    return (
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{widget.title || 'Client Band Distribution'}</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {data.map((d) => {
+              const pct = totalBandClients > 0 ? (d.count / totalBandClients) * 100 : 0;
+              return (
+                <div key={d.name} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{d.name}</span>
+                    <span className="text-muted-foreground">{d.count} ({pct.toFixed(1)}%)</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: d.color }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (key === '_metric_ap_model_distribution') {
+    const data = m.apModels.slice(0, 8);
+    const totalAps = m.totalAps || data.reduce((s, d) => s + d.count, 0);
+    if (!data.length) return null;
+    return (
+      <Card>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">{widget.title || 'AP Model Distribution'}</CardTitle></CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {data.map((d, i) => {
+              const pct = totalAps > 0 ? (d.count / totalAps) * 100 : 0;
+              return (
+                <div key={d.model} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium truncate max-w-[180px]">{d.model}</span>
+                    <span className="text-muted-foreground">{d.count} ({pct.toFixed(1)}%)</span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </CardContent>
       </Card>
     );

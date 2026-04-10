@@ -45,7 +45,7 @@ const TYPE_BADGES: Record<WidgetDisplayType, { label: string; color: string }> =
   scorecard: { label: 'KPI', color: 'bg-violet-500/15 text-violet-400' },
   distribution: { label: 'Dist', color: 'bg-amber-500/15 text-amber-400' },
   bar_chart: { label: 'Bar', color: 'bg-orange-500/15 text-orange-400' },
-  pie_chart: { label: 'Pie', color: 'bg-pink-500/15 text-pink-400' },
+  pie_chart: { label: 'Bar', color: 'bg-orange-500/15 text-orange-400' },
 };
 
 interface WidgetPickerProps {

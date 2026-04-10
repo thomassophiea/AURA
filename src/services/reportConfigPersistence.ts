@@ -9,7 +9,7 @@ import type { ReportConfig, ReportConfigStore } from '../types/reportConfig';
 import { DEFAULT_REPORT_CONFIG } from '../config/defaultReportConfig';
 
 const STORAGE_KEY = 'aura_report_configs';
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 function defaultStore(): ReportConfigStore {
   return {
@@ -38,6 +38,21 @@ export function loadReportConfigs(): ReportConfigStore {
     // Ensure activeConfigId points to a valid config
     if (!store.configs.find(c => c.id === store.activeConfigId)) {
       store.activeConfigId = store.configs[0].id;
+    }
+
+    // Migrate v1 -> v2: convert pie_chart displayType to bar_chart
+    if (store.version < 2) {
+      store.configs.forEach(config => {
+        config.pages.forEach(page => {
+          page.widgets.forEach(w => {
+            if (w.displayType === ('pie_chart' as any)) {
+              w.displayType = 'bar_chart';
+            }
+          });
+        });
+      });
+      store.version = 2;
+      saveReportConfigs(store);
     }
 
     return store;

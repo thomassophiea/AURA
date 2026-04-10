@@ -25,7 +25,7 @@ import {
 } from './ui/select';
 import { cn } from './ui/utils';
 import { apiService } from '../services/api';
-import { fetchWidgetData } from '../services/widgetService';
+import { fetchWidgetData, parseTimeseriesData, parseRankingData } from '../services/widgetService';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useReportConfig } from '../hooks/useReportConfig';
 import { getWidgetKeysForConfig } from '../config/defaultReportConfig';
@@ -46,12 +46,50 @@ const DURATION_OPTIONS = [
   { value: '30D', label: '30D' },
 ];
 
+function widgetHasData(
+  widget: { widgetKey: string; source: string; displayType: string },
+  metrics: ReportMetrics,
+  widgetData: Record<string, any>,
+  tier2Loading: boolean,
+): boolean {
+  const { widgetKey, source, displayType } = widget;
+
+  // Scorecards always show — a 0 value is still informative
+  if (displayType === 'scorecard') return true;
+
+  // Platform report widgets: show skeleton while loading, hide if empty after load
+  if (source === 'platform_report') {
+    if (tier2Loading) return true;
+    if (displayType === 'timeseries') {
+      const parsed = parseTimeseriesData(widgetData[widgetKey]);
+      return parsed.length > 0 && parsed[0]?.statistics?.length > 0;
+    }
+    if (displayType === 'ranking') {
+      return parseRankingData(widgetData[widgetKey]).length > 0;
+    }
+    return !!widgetData[widgetKey];
+  }
+
+  // Computed widgets: check data availability
+  switch (widgetKey) {
+    case '_metric_ssid_distribution': return metrics.ssidDist.length > 0;
+    case '_metric_band_distribution': return Object.values(metrics.bands).some(v => v > 0);
+    case '_metric_ap_model_distribution': return metrics.apModels.length > 0;
+    case '_metric_rssi_distribution': return Object.values(metrics.rssiRanges).some(v => v > 0);
+    case '_metric_best_practices': return metrics.bpTotal > 0;
+    case '_metric_best_practices_full': return metrics.bestPractices.length > 0;
+    case '_metric_ap_inventory': return metrics.apModels.length > 0;
+    default: return true;
+  }
+}
+
 export function ReportCenter() {
   const { filters } = useGlobalFilters();
   const rc = useReportConfig();
 
   const [duration, setDuration] = useState(rc.activeConfig.duration || '24H');
-  const [loading, setLoading] = useState(true);
+  const [tier1Loading, setTier1Loading] = useState(true);
+  const [tier2Loading, setTier2Loading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -69,20 +107,16 @@ export function ReportCenter() {
   const siteId = filters.site !== 'all' ? filters.site : undefined;
   const widgetKeysNeeded = useMemo(() => getWidgetKeysForConfig(rc.activeConfig), [rc.activeConfig]);
 
-  // ── Data Loading ──
-  const loadAllData = useCallback(async (isRefresh = false) => {
+  // ── Tier 1: Fast local data (APs, clients, sites, services, best practices) ──
+  const loadTier1 = useCallback(async (isRefresh = false) => {
     try {
-      if (isRefresh) setRefreshing(true);
-      else setLoading(true);
+      if (!isRefresh) setTier1Loading(true);
 
-      const [aps, stations, sites, services, widgets, bpResp] = await Promise.allSettled([
+      const [aps, stations, sites, services, bpResp] = await Promise.allSettled([
         apiService.getAccessPointsBySite(siteId),
         apiService.getAllStations(),
         apiService.getSites(),
         apiService.getServices(),
-        widgetKeysNeeded.length > 0
-          ? fetchWidgetData({ siteId, duration, widgets: widgetKeysNeeded })
-          : Promise.resolve({}),
         apiService.makeAuthenticatedRequest('/v1/bestpractices/evaluate', { method: 'GET' }, 10000),
       ]);
 
@@ -90,7 +124,6 @@ export function ReportCenter() {
       if (stations.status === 'fulfilled') setStationData(stations.value || []);
       if (sites.status === 'fulfilled') setSiteData(sites.value || []);
       if (services.status === 'fulfilled') setServiceData(services.value || []);
-      if (widgets.status === 'fulfilled') setWidgetData(widgets.value || {});
 
       if (bpResp.status === 'fulfilled') {
         try {
@@ -103,17 +136,34 @@ export function ReportCenter() {
       }
 
       setLastUpdated(new Date());
-      if (isRefresh) toast.success('Report data refreshed');
     } catch (error) {
-      console.error('[ReportCenter] Failed to load data:', error);
+      console.error('[ReportCenter] Failed to load tier 1 data:', error);
       toast.error('Failed to load report data');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      setTier1Loading(false);
+    }
+  }, [siteId]);
+
+  // ── Tier 2: Slow platform widget data (up to 30s) ──
+  const loadTier2 = useCallback(async () => {
+    try {
+      setTier2Loading(true);
+      if (widgetKeysNeeded.length > 0) {
+        const data = await fetchWidgetData({ siteId, duration, widgets: widgetKeysNeeded });
+        setWidgetData(data || {});
+      } else {
+        setWidgetData({});
+      }
+    } catch (error) {
+      console.error('[ReportCenter] Failed to load platform widget data:', error);
+    } finally {
+      setTier2Loading(false);
     }
   }, [siteId, duration, widgetKeysNeeded]);
 
-  useEffect(() => { loadAllData(); }, [loadAllData]);
+  // Fire both tiers concurrently on mount and when dependencies change
+  useEffect(() => { loadTier1(); }, [loadTier1]);
+  useEffect(() => { loadTier2(); }, [loadTier2]);
 
   // ── Computed Metrics ──
   const metrics: ReportMetrics = useMemo(() => {
@@ -191,6 +241,13 @@ export function ReportCenter() {
   }, [apData, stationData, siteData, serviceData, bestPractices]);
 
   // ── Handlers ──
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.allSettled([loadTier1(true), loadTier2()]);
+    setRefreshing(false);
+    toast.success('Report data refreshed');
+  }, [loadTier1, loadTier2]);
+
   const handleExport = () => {
     const report = {
       generatedAt: new Date().toISOString(),
@@ -221,8 +278,8 @@ export function ReportCenter() {
     return config !== null;
   };
 
-  // ── Loading State ──
-  if (loading) {
+  // ── Loading State (only blocks on fast Tier 1 data) ──
+  if (tier1Loading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-8 w-full rounded" />
@@ -319,7 +376,7 @@ export function ReportCenter() {
                 ))}
               </div>
 
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => loadAllData(true)} disabled={refreshing}>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleRefresh} disabled={refreshing}>
                 <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
               </Button>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setIsShareOpen(true)}>
@@ -377,33 +434,43 @@ export function ReportCenter() {
             <p className="text-xs text-muted-foreground">{currentPage.description}</p>
           )}
 
-          {/* Widget grid */}
-          <div className="grid grid-cols-4 gap-4">
-            {currentPage.widgets.map(widget => (
-              <div
-                key={widget.id}
-                className={cn('col-span-4', {
-                  'col-span-4 md:col-span-1': (widget.gridSpan || 1) === 1,
-                  'col-span-4 md:col-span-2': widget.gridSpan === 2,
-                  'col-span-4 md:col-span-3': widget.gridSpan === 3,
-                  'col-span-4': widget.gridSpan === 4,
-                })}
-              >
-                <ReportWidgetRenderer
-                  widget={widget}
-                  widgetData={widgetData}
-                  metrics={metrics}
-                />
+          {/* Widget grid — only render widgets that have data */}
+          {(() => {
+            const visibleWidgets = currentPage.widgets.filter(w =>
+              widgetHasData(w, metrics, widgetData, tier2Loading)
+            );
+            return visibleWidgets.length > 0 ? (
+              <div className="grid grid-cols-4 gap-4">
+                {visibleWidgets.map(widget => (
+                  <div
+                    key={widget.id}
+                    className={cn('col-span-4', {
+                      'col-span-4 md:col-span-1': (widget.gridSpan || 1) === 1,
+                      'col-span-4 md:col-span-2': widget.gridSpan === 2,
+                      'col-span-4 md:col-span-3': widget.gridSpan === 3,
+                      'col-span-4': widget.gridSpan === 4,
+                    })}
+                  >
+                    <ReportWidgetRenderer
+                      widget={widget}
+                      widgetData={widgetData}
+                      metrics={metrics}
+                      platformLoading={tier2Loading && widget.source === 'platform_report'}
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-
-          {currentPage.widgets.length === 0 && (
-            <div className="text-center py-16 text-muted-foreground">
-              <p className="text-sm">This page has no widgets.</p>
-              <p className="text-xs mt-1">Click Edit to add widgets from the catalog.</p>
-            </div>
-          )}
+            ) : currentPage.widgets.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="text-sm">This page has no widgets.</p>
+                <p className="text-xs mt-1">Click Edit to add widgets from the catalog.</p>
+              </div>
+            ) : (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="text-sm">No widgets have data to display.</p>
+              </div>
+            );
+          })()}
         </div>
       ) : (
         <div className="text-center py-16 text-muted-foreground">
