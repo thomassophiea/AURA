@@ -47,6 +47,7 @@ import { ApplicationEndpointTester } from './ApplicationEndpointTester';
 import { ClientExperienceHero } from './ClientExperienceHero';
 import { useMetricsCollection } from '../hooks/useMetricsCollection';
 import { metricsStorage } from '../services/metricsStorage';
+import { PeerBenchmarking } from './PeerBenchmarking';
 
 interface Service {
   id: string;
@@ -729,6 +730,9 @@ export function ServiceLevelsEnhanced() {
           </Button>
         </div>
       </div>
+
+      {/* Peer Benchmarking */}
+      <PeerBenchmarking />
 
       {/* Service Selection */}
       <Card>
