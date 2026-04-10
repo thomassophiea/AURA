@@ -18,7 +18,7 @@ function w(
   displayType: ReportWidgetConfig['displayType'],
   gridSpan: 1 | 2 | 3 | 4 = 1,
   title?: string,
-  config?: Record<string, any>,
+  config?: Record<string, any>
 ): ReportWidgetConfig {
   return {
     id,
@@ -135,6 +135,7 @@ const rfAnalytics: ReportPageConfig = {
     w('rf-sc1', '_metric_band_24', 'scorecard', 1, '2.4 GHz Clients'),
     w('rf-sc2', '_metric_band_5', 'scorecard', 1, '5 GHz Clients'),
     w('rf-sc3', '_metric_band_6', 'scorecard', 1, '6 GHz Clients'),
+    w('rf-sc4', '_metric_avg_rssi', 'scorecard', 1, 'Avg SNR'),
     w('rf-rq', 'rfQuality', 'ranking', 2, 'RF Quality'),
     w('rf-ch1', 'channelDistributionRadio1', 'ranking', 2, 'Channel Distribution (Radio 1)'),
     w('rf-ch2', 'channelDistributionRadio2', 'ranking', 2, 'Channel Distribution (Radio 2)'),
@@ -150,7 +151,13 @@ const applications: ReportPageConfig = {
   category: 'apps',
   widgets: [
     w('app-usage', 'topAppGroupsByUsage', 'ranking', 2, 'Top Applications by Usage'),
-    w('app-clients', 'topAppGroupsByClientCountReport', 'ranking', 2, 'Top Applications by Client Count'),
+    w(
+      'app-clients',
+      'topAppGroupsByClientCountReport',
+      'ranking',
+      2,
+      'Top Applications by Client Count'
+    ),
   ],
 };
 
@@ -164,6 +171,7 @@ const sitesPage: ReportPageConfig = {
     w('site-sc1', '_metric_total_sites', 'scorecard', 1, 'Total Sites'),
     w('site-sc2', '_metric_total_aps', 'scorecard', 1, 'Total APs'),
     w('site-sc3', '_metric_total_clients', 'scorecard', 1, 'Total Clients'),
+    w('site-sc4', '_metric_networks', 'scorecard', 1, 'Networks'),
     w('site-tp', 'topSitesByThroughput', 'ranking', 2, 'Top Sites by Throughput'),
     w('site-cl', 'topSitesByClientCount', 'ranking', 2, 'Top Sites by Client Count'),
   ],
@@ -194,8 +202,8 @@ export const DEFAULT_REPORT_CONFIG: ReportConfig = {
 /** Get all platform_report widget keys needed for a config */
 export function getWidgetKeysForConfig(config: ReportConfig): string[] {
   const keys = new Set<string>();
-  config.pages.forEach(page => {
-    page.widgets.forEach(w => {
+  config.pages.forEach((page) => {
+    page.widgets.forEach((w) => {
       if (w.source === 'platform_report') {
         keys.add(w.widgetKey);
       }
