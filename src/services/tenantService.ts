@@ -82,6 +82,17 @@ const STORAGE_KEYS = {
   USER_PROFILE: 'api_user_profile'
 };
 
+// Default site group that is always present
+const DEFAULT_CONTROLLER: Controller = {
+  id: 'default-southeast',
+  org_id: 'local',
+  name: 'SouthEast',
+  url: 'https://tsophiea.ddns.net',
+  is_active: true,
+  is_default: true,
+  connection_status: 'unknown',
+};
+
 class TenantService {
   private currentController: Controller | null = null;
   private currentOrg: Organization | null = null;
@@ -380,9 +391,15 @@ class TenantService {
   private getLocalControllers(): Controller[] {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.CONTROLLERS);
-      return saved ? JSON.parse(saved) : [];
+      const controllers: Controller[] = saved ? JSON.parse(saved) : [];
+      // Ensure the default SouthEast site group is always present
+      if (!controllers.some(c => c.id === DEFAULT_CONTROLLER.id)) {
+        controllers.unshift({ ...DEFAULT_CONTROLLER });
+        localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(controllers));
+      }
+      return controllers;
     } catch {
-      return [];
+      return [{ ...DEFAULT_CONTROLLER }];
     }
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent, type ReactNode } from 'react';
+import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent } from 'react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
@@ -7,7 +7,6 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
 import { tenantService, Controller } from '../services/tenantService';
-import { xiqService, XIQ_REGION_ORDER, XIQ_REGION_LABELS, type XIQRegion } from '../services/xiqService';
 import { toast } from 'sonner';
 
 interface LoginFormProps {
@@ -16,7 +15,7 @@ interface LoginFormProps {
   onThemeToggle?: () => void;
 }
 
-type LoginStep = 'controller' | 'credentials' | 'xiq';
+type LoginStep = 'controller' | 'credentials';
 
 /* ---------- Floating-label input (matches XIQ login aesthetic) ---------- */
 function FloatingInput({
@@ -83,88 +82,11 @@ function FloatingInput({
   );
 }
 
-/* ---------- Floating-label select ---------- */
-function FloatingSelect({
-  id, value, onChange, label, disabled, children
-}: {
-  id: string; value: string;
-  onChange: (e: ChangeEvent<HTMLSelectElement>) => void;
-  label: string; disabled?: boolean; children: ReactNode;
-}) {
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <div style={{ position: 'relative', height: '54px' }}>
-      <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        disabled={disabled}
-        style={{
-          display: 'block',
-          width: '100%',
-          height: '100%',
-          paddingTop: '18px',
-          paddingBottom: '4px',
-          paddingLeft: '12px',
-          paddingRight: '32px',
-          boxSizing: 'border-box' as const,
-          borderWidth: '1px',
-          borderStyle: 'solid',
-          borderRadius: '4px',
-          backgroundColor: 'var(--input-bg, transparent)',
-          borderColor: 'var(--input-border, rgba(0,0,0,0.15))',
-          color: 'var(--input-text, inherit)',
-          fontSize: '14px',
-          outline: 'none',
-          appearance: 'none' as const,
-          opacity: disabled ? 0.5 : 1,
-        }}
-      >
-        {children}
-      </select>
-      <label
-        htmlFor={id}
-        style={{
-          position: 'absolute',
-          left: '12px',
-          top: '8px',
-          fontSize: '11px',
-          color: focused
-            ? 'var(--input-border-focus, #8981e5)'
-            : 'var(--input-placeholder, #babcce)',
-          pointerEvents: 'none',
-          transition: 'color 0.15s ease',
-          lineHeight: 1,
-        }}
-      >
-        {label}
-      </label>
-      <div
-        style={{
-          position: 'absolute',
-          right: '12px',
-          top: '56%',
-          transform: 'translateY(-50%)',
-          pointerEvents: 'none',
-          color: 'var(--input-placeholder, #babcce)',
-        }}
-      >
-        <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-          <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </div>
-    </div>
-  );
-}
-
 
 /* ---------- Main LoginForm ---------- */
 export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle: _onThemeToggle }: LoginFormProps) {
   // Login step state
-  const [step, setStep] = useState<LoginStep>('xiq');
+  const [step, setStep] = useState<LoginStep>('controller');
 
   // Controller state
   const [controllers, setControllers] = useState<Controller[]>([]);
@@ -183,12 +105,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // XIQ state
-  const [xiqEmail, setXiqEmail] = useState('');
-  const [xiqPassword, setXiqPassword] = useState('');
-  const [xiqRegion, setXiqRegion] = useState<XIQRegion>('global');
-  const [xiqLoading, setXiqLoading] = useState(false);
-  const [xiqError, setXiqError] = useState('');
 
   // Load controllers on mount
   useEffect(() => {
@@ -237,13 +153,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
           apiService.setBaseUrl(controllerUrl);
         }
 
-        // Pre-fill saved ExtremeCloud credentials for this site group
-        const savedXIQ = xiqService.getCredentials(selectedCtrl.id);
-        if (savedXIQ) {
-          setXiqEmail(savedXIQ.email);
-          setXiqPassword(savedXIQ.password);
-          setXiqRegion(savedXIQ.region);
-        }
       }
     } catch (error) {
       console.error('Failed to load controllers:', error);
@@ -397,22 +306,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
           last_connected_at: new Date().toISOString()
         });
 
-        // Migrate any pending XIQ token/credentials to the real controller ID
-        const pendingCreds = xiqService.getCredentials('xiq_pending');
-        if (pendingCreds) {
-          xiqService.saveCredentials(
-            selectedController.id,
-            pendingCreds.email,
-            pendingCreds.password,
-            pendingCreds.region
-          );
-          // Re-establish token under real controller ID (best-effort background call)
-          if (xiqService.getToken('xiq_pending')) {
-            xiqService.login(pendingCreds.email, pendingCreds.password, pendingCreds.region, selectedController.id)
-              .catch(() => {/* silent */});
-          }
-          xiqService.clearCredentials('xiq_pending');
-        }
       }
 
       onLoginSuccess();
@@ -431,43 +324,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
     }
   };
 
-  const handleXIQLogin = async () => {
-    setXiqLoading(true);
-    setXiqError('');
-    try {
-      // XIQ login happens before controller selection — store under 'xiq_pending'.
-      // After the user logs into their controller, credentials are re-associated to
-      // the real controller ID.
-      await xiqService.login(xiqEmail, xiqPassword, xiqRegion, 'xiq_pending');
-      xiqService.saveCredentials('xiq_pending', xiqEmail, xiqPassword, xiqRegion);
-      toast.success('Connected to XIQ', { description: `Region: ${XIQ_REGION_LABELS[xiqRegion]}` });
-      // Skip controller step if there is only one and it is already selected
-      if (controllers.length === 1 && selectedController) {
-        setStep('credentials');
-      } else {
-        setStep('controller');
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'XIQ login failed';
-      if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('invalid')) {
-        setXiqError('Invalid XIQ email or password.');
-      } else if (msg.toLowerCase().includes('timeout')) {
-        setXiqError('Connection timed out. Check your network and region selection.');
-      } else {
-        setXiqError(msg);
-      }
-    } finally {
-      setXiqLoading(false);
-    }
-  };
-
-  const handleSkipXIQ = () => {
-    if (controllers.length === 1 && selectedController) {
-      setStep('credentials');
-    } else {
-      setStep('controller');
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -499,9 +355,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               Autonomous Unified Radio Agent
             </div>
             <CardDescription className="text-center mt-2">
-              {step === 'controller' ? 'Select a site group to connect' :
-               step === 'xiq' ? 'Sign in to ExtremeCloud' :
-               'Sign in to continue'}
+              {step === 'controller' ? 'Select a site group to connect' : 'Sign in to continue'}
             </CardDescription>
           </CardHeader>
 
@@ -734,87 +588,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               </div>
             )}
 
-            {/* ExtremeCloud Step */}
-            {step === 'xiq' && (
-              <div className="space-y-3">
-                {/* Already authenticated notice */}
-                {xiqService.isAuthenticated('xiq_pending') && (
-                  <div className="flex items-center gap-2 p-3 bg-[color:var(--status-success-bg)] border border-[color:var(--status-success)]/30 rounded-lg text-sm text-[color:var(--status-success)]">
-                    <CheckCircle className="h-4 w-4 shrink-0" />
-                    <span>ExtremeCloud session active.</span>
-                  </div>
-                )}
-
-                <form onSubmit={e => { e.preventDefault(); if (xiqEmail.trim() && xiqPassword.trim()) handleXIQLogin(); }} className="space-y-3">
-                  <FloatingSelect
-                    id="xiq-region"
-                    label="Region"
-                    value={xiqRegion}
-                    onChange={e => setXiqRegion(e.target.value as XIQRegion)}
-                    disabled={xiqLoading}
-                  >
-                    {XIQ_REGION_ORDER.map(r => (
-                      <option key={r} value={r}>{XIQ_REGION_LABELS[r]}</option>
-                    ))}
-                  </FloatingSelect>
-
-                  <FloatingInput
-                    id="xiq-email"
-                    type="email"
-                    label="Email"
-                    value={xiqEmail}
-                    onChange={e => setXiqEmail(e.target.value)}
-                    disabled={xiqLoading}
-                    autoComplete="username"
-                  />
-
-                  <FloatingInput
-                    id="xiq-password"
-                    type="password"
-                    label="Password"
-                    value={xiqPassword}
-                    onChange={e => setXiqPassword(e.target.value)}
-                    disabled={xiqLoading}
-                    autoComplete="current-password"
-                  />
-
-                  {xiqError && (
-                    <Alert variant="destructive">
-                      <AlertDescription>{xiqError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={xiqLoading || !xiqEmail.trim() || !xiqPassword.trim()}
-                  >
-                    {xiqLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign In to ExtremeCloud'
-                    )}
-                  </Button>
-                </form>
-
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleSkipXIQ}
-                  disabled={xiqLoading}
-                >
-                  Skip for now
-                </Button>
-
-                <p className="text-[11px] text-muted-foreground text-center pt-1">
-                  Connects API to your ExtremeCloud organization for future migration.
-                  You can connect later from Site Group settings.
-                </p>
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
