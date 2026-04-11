@@ -430,7 +430,7 @@ function DashboardEnhancedComponent() {
       clearInterval(interval);
       clearInterval(historyInterval);
     };
-  }, [filters.site]); // Reload when site filter changes
+  }, [filters.site, operationalCtx.siteId, operationalCtx.mode]); // Reload when site filter or operational context changes
 
   // Record metrics for AI Baseline calculation when data is loaded
   useEffect(() => {
@@ -441,7 +441,7 @@ function DashboardEnhancedComponent() {
         rfqi: latestRfqi?.rfqi ?? 0,
         clientCount: clientStats.total,
         apOnlineCount: apStats.online,
-        siteId: filters.site !== 'all' ? filters.site : undefined,
+        siteId: getActiveSiteFilter(),
       });
     }
   }, [apStats.online, clientStats.total, rfqiData, filters.site]);
@@ -576,8 +576,18 @@ function DashboardEnhancedComponent() {
     }
   };
 
+  // Returns the currently active site ID for API calls.
+  // Prefers the operational context (updated synchronously on site selection)
+  // over the debounced global filter to avoid a 300ms stale-data window.
+  const getActiveSiteFilter = (): string | undefined => {
+    if (operationalCtx.mode === 'SITE' && operationalCtx.siteId) {
+      return operationalCtx.siteId;
+    }
+    return filters.site !== 'all' ? filters.site : undefined;
+  };
+
   const fetchAccessPoints = async (): Promise<AccessPoint[]> => {
-    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    const siteFilter = getActiveSiteFilter();
     console.log(
       '[Dashboard] Fetching access points' + (siteFilter ? ` for site: ${siteFilter}` : '')
     );
@@ -599,7 +609,7 @@ function DashboardEnhancedComponent() {
   };
 
   const fetchStations = async (): Promise<Station[]> => {
-    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    const siteFilter = getActiveSiteFilter();
     console.log('[Dashboard] Fetching stations' + (siteFilter ? ` for site: ${siteFilter}` : ''));
 
     try {
@@ -688,7 +698,7 @@ function DashboardEnhancedComponent() {
   };
 
   const fetchServices = async (): Promise<Service[]> => {
-    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    const siteFilter = getActiveSiteFilter();
     console.log('[Dashboard] Fetching services' + (siteFilter ? ` for site: ${siteFilter}` : ''));
 
     try {
@@ -756,7 +766,7 @@ function DashboardEnhancedComponent() {
   };
 
   const fetchNotifications = async (): Promise<Notification[]> => {
-    const siteFilter = filters.site !== 'all' ? filters.site : undefined;
+    const siteFilter = getActiveSiteFilter();
     console.log(
       '[Dashboard] Fetching notifications' + (siteFilter ? ` for site: ${siteFilter}` : '')
     );
@@ -868,7 +878,7 @@ function DashboardEnhancedComponent() {
 
   // Fetch RFQI (RF Quality Index) data from controller for health visualization
   const fetchRFQIData = async () => {
-    const siteId = filters.site !== 'all' ? filters.site : undefined;
+    const siteId = getActiveSiteFilter();
     console.log(
       '[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites')
     );
@@ -4522,9 +4532,9 @@ function DashboardEnhancedComponent() {
           )}
 
           {/* Phase 1 Widgets: Venue Statistics */}
-          {showSection('venue-stats') && filters.site && filters.site !== 'all' && (
+          {showSection('venue-stats') && getActiveSiteFilter() && (
             <VenueStatisticsWidget
-              siteId={filters.site}
+              siteId={getActiveSiteFilter()!}
               duration={
                 filters.timeRange === '15m'
                   ? '15M'
