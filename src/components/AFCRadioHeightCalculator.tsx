@@ -1051,7 +1051,7 @@ export function AFCRadioHeightCalculator() {
           <Button
             size="sm"
             onClick={() => setShowCampusLookup((v) => !v)}
-            className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white shadow-md shadow-violet-500/30 border-0"
+            className="gap-1.5 bg-violet-500 hover:bg-violet-400 !text-white shadow-md shadow-violet-500/40 border-0"
           >
             <Sparkles className="h-4 w-4" />
             Public Information Lookup
@@ -1212,7 +1212,7 @@ export function AFCRadioHeightCalculator() {
               <Button
                 onClick={handleCampusSearch}
                 disabled={campusSearching || !campusSearchQuery.trim()}
-                className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
+                className="gap-1.5 bg-violet-500 hover:bg-violet-400 !text-white border-0"
               >
                 {campusSearching ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1563,7 +1563,11 @@ export function AFCRadioHeightCalculator() {
                         <Button
                           onClick={applyCampusFloorHeights}
                           disabled={committableCount === 0}
-                          className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
+                          className={`gap-1.5 border-0 ${
+                            committableCount === 0
+                              ? 'bg-muted text-muted-foreground'
+                              : 'bg-violet-500 hover:bg-violet-400 !text-white'
+                          }`}
                         >
                           <CheckCheck className="h-4 w-4" />
                           Commit All ({committableCount})
@@ -1725,13 +1729,13 @@ export function AFCRadioHeightCalculator() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="relative flex-1 min-w-48 max-w-72">
+            <div className="relative flex-1 min-w-64">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search AP, building, floor…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 pl-8 text-sm"
+                className="h-8 pl-8 pr-8 text-sm"
               />
               {searchQuery && (
                 <button
