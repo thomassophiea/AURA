@@ -160,6 +160,8 @@ export function RoamingTrail({
   const [showLegend, setShowLegend] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [alertFilter, setAlertFilter] = useState<AlertFilter>({ type: 'none' });
+  const [hoveredEventKey, setHoveredEventKey] = useState<string | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   // Event correlation toggles
   const [showAPEvents, setShowAPEvents] = useState(true);
   const [showRRMEvents, setShowRRMEvents] = useState(true);
@@ -1228,6 +1230,25 @@ export function RoamingTrail({
                       setSelectedEventKey(getEventKey(event));
                       setShowDetails(true);
                       setAlertFilter({ type: 'none' });
+                      setHoveredEventKey(null);
+                    }}
+                    onMouseEnter={(e) => {
+                      setHoveredEventKey(getEventKey(event));
+                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                      const container = (e.currentTarget as HTMLElement).closest(
+                        '.relative'
+                      ) as HTMLElement;
+                      const containerRect = container?.getBoundingClientRect();
+                      if (containerRect) {
+                        setHoverPos({
+                          x: rect.left - containerRect.left + rect.width / 2,
+                          y: rect.top - containerRect.top,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredEventKey(null);
+                      setHoverPos(null);
                     }}
                     className={`
                       absolute rounded-full border-2 border-background
@@ -1242,18 +1263,6 @@ export function RoamingTrail({
                       top: `${y}px`,
                       transform: 'translate(-50%, -50%)',
                     }}
-                    title={[
-                      event.eventType,
-                      event.apName,
-                      event.rssi !== undefined ? `RSSI: ${event.rssi} dBm` : null,
-                      event.snr !== undefined ? `SNR: ${event.snr} dB` : null,
-                      event.dataRate !== undefined ? `Rate: ${event.dataRate} Mbps` : null,
-                      event.channel ? `Ch ${event.channel}` : null,
-                      event.frequency || null,
-                      formatTime(event.timestamp),
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -1395,6 +1404,165 @@ export function RoamingTrail({
                   />
                 );
               })}
+
+            {/* Hover tooltip card */}
+            {hoveredEventKey &&
+              hoverPos &&
+              (() => {
+                const hEvent = roamingEvents.find((e) => getEventKey(e) === hoveredEventKey);
+                if (!hEvent) return null;
+
+                const rssiLabel =
+                  hEvent.rssi !== undefined
+                    ? hEvent.rssi >= -60
+                      ? 'Excellent'
+                      : hEvent.rssi >= -70
+                        ? 'Good'
+                        : hEvent.rssi >= -80
+                          ? 'Fair'
+                          : 'Poor'
+                    : null;
+
+                // Determine quick insight text
+                let insight = '';
+                if (hEvent.isFailedRoam) {
+                  insight = 'Auth/association failed — check RADIUS logs';
+                } else if (hEvent.isLateRoam) {
+                  insight = `Roamed late at ${hEvent.rssi} dBm (sticky client)`;
+                } else if (hEvent.isBandSteering) {
+                  insight = `Band change: ${hEvent.bandSteeringFrom} → ${hEvent.bandSteeringTo}`;
+                } else if (hEvent.previousApName && hEvent.previousApName !== hEvent.apName) {
+                  if (hEvent.previousRssi !== undefined && hEvent.rssi !== undefined) {
+                    const delta = hEvent.rssi - hEvent.previousRssi;
+                    insight =
+                      delta > 0
+                        ? `Signal improved ${delta > 0 ? '+' : ''}${delta} dBm from prev AP`
+                        : `Signal weaker by ${Math.abs(delta)} dBm vs prev AP`;
+                  } else {
+                    insight = `Roamed from ${hEvent.previousApName}`;
+                  }
+                } else if (hEvent.dwell && hEvent.dwell < 30000) {
+                  insight = `Only ${formatDuration(hEvent.dwell)} at prev AP — rapid roam`;
+                }
+
+                // Flip tooltip left if too close to right edge
+                const flipLeft = hoverPos.x > 60;
+
+                return (
+                  <div
+                    className="absolute z-50 pointer-events-none"
+                    style={{
+                      left: flipLeft ? `${hoverPos.x}px` : `${hoverPos.x}px`,
+                      top: `${hoverPos.y - 8}px`,
+                      transform: flipLeft ? 'translate(-100%, -100%)' : 'translate(8px, -100%)',
+                    }}
+                  >
+                    <div
+                      className="bg-popover border border-border rounded-lg shadow-lg p-2.5 text-xs min-w-[200px] max-w-[260px]"
+                      style={{ backdropFilter: 'blur(4px)' }}
+                    >
+                      {/* Header row */}
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <span className="font-semibold text-foreground truncate">
+                          {hEvent.eventType}
+                        </span>
+                        {hEvent.isFailedRoam && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
+                            Failed
+                          </span>
+                        )}
+                        {hEvent.isLateRoam && !hEvent.isFailedRoam && (
+                          <span
+                            className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                            style={{
+                              background: 'var(--status-warning-bg)',
+                              color: 'var(--status-warning)',
+                            }}
+                          >
+                            Late Roam
+                          </span>
+                        )}
+                      </div>
+
+                      {/* AP + time */}
+                      <div className="text-muted-foreground mb-1.5 truncate">{hEvent.apName}</div>
+                      <div className="text-muted-foreground/70 mb-2">
+                        {formatTime(hEvent.timestamp)}
+                      </div>
+
+                      {/* RF metrics row */}
+                      {(hEvent.rssi !== undefined || hEvent.channel || hEvent.frequency) && (
+                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                          {hEvent.rssi !== undefined && (
+                            <span
+                              className="font-mono font-bold"
+                              style={{
+                                color:
+                                  hEvent.rssi >= -60
+                                    ? 'var(--status-success)'
+                                    : hEvent.rssi >= -70
+                                      ? 'var(--status-warning)'
+                                      : 'var(--status-error)',
+                              }}
+                            >
+                              {hEvent.rssi} dBm
+                              {rssiLabel && (
+                                <span className="font-normal ml-1 opacity-70">({rssiLabel})</span>
+                              )}
+                            </span>
+                          )}
+                          {hEvent.snr !== undefined && (
+                            <span className="text-muted-foreground">SNR {hEvent.snr} dB</span>
+                          )}
+                          {(hEvent.channel || hEvent.frequency) && (
+                            <span className="text-muted-foreground">
+                              {hEvent.channel ? `Ch ${hEvent.channel}` : ''}
+                              {hEvent.channel && hEvent.frequency ? ' · ' : ''}
+                              {hEvent.frequency || ''}
+                            </span>
+                          )}
+                          {hEvent.dataRate !== undefined && (
+                            <span className="text-muted-foreground">{hEvent.dataRate} Mbps</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Insight */}
+                      {insight && (
+                        <div
+                          className="text-[10px] px-2 py-1 rounded border-l-2 leading-relaxed"
+                          style={{
+                            background: hEvent.isFailedRoam
+                              ? 'var(--status-error-bg)'
+                              : hEvent.isLateRoam ||
+                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                ? 'var(--status-warning-bg)'
+                                : 'var(--status-info-bg)',
+                            borderColor: hEvent.isFailedRoam
+                              ? 'var(--status-error)'
+                              : hEvent.isLateRoam ||
+                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                ? 'var(--status-warning)'
+                                : 'var(--status-info)',
+                            color: hEvent.isFailedRoam
+                              ? 'var(--status-error)'
+                              : hEvent.isLateRoam ||
+                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                ? 'var(--status-warning)'
+                                : 'var(--status-info)',
+                          }}
+                        >
+                          {insight}
+                        </div>
+                      )}
+
+                      <div className="mt-2 text-[10px] text-muted-foreground/50">
+                        Click for full details
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
           </div>
         </div>
 
@@ -1733,18 +1901,18 @@ export function RoamingTrail({
                               : rssi >= -80
                                 ? 'Fair'
                                 : 'Poor';
-                        const colorClass =
+                        const barColor =
                           rssi >= -60
-                            ? 'bg-[color:var(--status-success)]'
+                            ? 'var(--status-success)'
                             : rssi >= -70
-                              ? 'bg-orange-400'
-                              : 'bg-[color:var(--status-error)]';
-                        const textColorClass =
+                              ? 'var(--status-warning)'
+                              : 'var(--status-error)';
+                        const textColor =
                           rssi >= -60
-                            ? 'text-[color:var(--status-success)]'
+                            ? 'var(--status-success)'
                             : rssi >= -70
-                              ? 'text-orange-500'
-                              : 'text-[color:var(--status-error)]';
+                              ? 'var(--status-warning)'
+                              : 'var(--status-error)';
                         const delta =
                           selectedEvent.previousRssi !== undefined
                             ? rssi - selectedEvent.previousRssi
@@ -1754,21 +1922,25 @@ export function RoamingTrail({
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs text-muted-foreground">RSSI</span>
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-sm font-mono font-bold ${textColorClass}`}>
+                                <span
+                                  className="text-sm font-mono font-bold"
+                                  style={{ color: textColor }}
+                                >
                                   {rssi} dBm
                                 </span>
                                 <span
-                                  className={`text-[10px] font-medium px-1 py-0.5 rounded ${colorClass} text-white`}
+                                  className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                  style={{ background: barColor }}
                                 >
                                   {qualityLabel}
                                 </span>
                                 {delta !== null && (
                                   <span
-                                    className={`text-[10px] font-mono font-medium ${
-                                      delta > 0
-                                        ? 'text-[color:var(--status-success)]'
-                                        : 'text-[color:var(--status-error)]'
-                                    }`}
+                                    className="text-[10px] font-mono font-medium"
+                                    style={{
+                                      color:
+                                        delta > 0 ? 'var(--status-success)' : 'var(--status-error)',
+                                    }}
                                   >
                                     {delta > 0 ? '+' : ''}
                                     {delta} dBm
@@ -1778,8 +1950,8 @@ export function RoamingTrail({
                             </div>
                             <div className="h-2 bg-muted rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${colorClass}`}
-                                style={{ width: `${pct}%` }}
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${pct}%`, background: barColor }}
                               />
                             </div>
                             {selectedEvent.previousRssi !== undefined && (
@@ -1811,28 +1983,26 @@ export function RoamingTrail({
                               : snr >= 10
                                 ? 'Fair'
                                 : 'Poor';
-                        const snrColor =
+                        const snrBarColor =
                           snr >= 25
-                            ? 'bg-[color:var(--status-success)]'
+                            ? 'var(--status-success)'
                             : snr >= 15
-                              ? 'bg-orange-400'
-                              : 'bg-[color:var(--status-error)]';
-                        const snrText =
-                          snr >= 25
-                            ? 'text-[color:var(--status-success)]'
-                            : snr >= 15
-                              ? 'text-orange-500'
-                              : 'text-[color:var(--status-error)]';
+                              ? 'var(--status-warning)'
+                              : 'var(--status-error)';
                         return (
                           <div>
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs text-muted-foreground">SNR</span>
                               <div className="flex items-center gap-1.5">
-                                <span className={`text-sm font-mono font-bold ${snrText}`}>
+                                <span
+                                  className="text-sm font-mono font-bold"
+                                  style={{ color: snrBarColor }}
+                                >
                                   {snr} dB
                                 </span>
                                 <span
-                                  className={`text-[10px] font-medium px-1 py-0.5 rounded ${snrColor} text-white`}
+                                  className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                  style={{ background: snrBarColor }}
                                 >
                                   {snrLabel}
                                 </span>
@@ -1840,8 +2010,8 @@ export function RoamingTrail({
                             </div>
                             <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all ${snrColor}`}
-                                style={{ width: `${pct}%` }}
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${pct}%`, background: snrBarColor }}
                               />
                             </div>
                           </div>
