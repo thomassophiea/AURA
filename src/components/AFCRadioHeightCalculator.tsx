@@ -35,6 +35,16 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { apiService } from '../services/api';
+import {
+  searchPublicLookup,
+  generateEstimatedFloorHeights,
+  effectiveFloorsAboveGround,
+  effectiveTypicalFloorHeightFt,
+  effectiveFloorHeightAboveGroundFt,
+  type PublicLookupResult,
+  type PublicLookupBuilding,
+  type ConfidenceLevel,
+} from '../services/publicLookupService';
 import { toast } from 'sonner';
 import { ExportButton } from './ExportButton';
 
@@ -113,30 +123,20 @@ const BUILDING_PRESETS = [
 
 const PROFILES_KEY = 'afc-radio-height-profiles';
 
-// ── AI Campus Lookup — Demo Data ───────────────────────────────────────────────
-
-interface CampusBuilding {
-  name: string;
-  type: string;
-  floors: number | null;
-  ceiling_height: { min: number | null; max: number | null };
-  rf_complexity: string;
-}
-interface CampusData {
-  campus: string;
-  units: { ceiling_height: string };
-  buildings: CampusBuilding[];
-}
+// ── Public Information Lookup — animation + labels ──────────────────────────
 
 const CAMPUS_SEARCH_STEPS = [
-  'Querying public campus building databases…',
-  'Analyzing architectural specifications…',
-  'Estimating RF coverage complexity…',
-  'Computing floor height recommendations…',
+  'Querying public information sources…',
+  'Matching organization and campus…',
+  'Retrieving building metadata…',
+  'Estimating floor heights above ground…',
 ];
 
 function buildingTypeLabel(type: string): string {
   const map: Record<string, string> = {
+    highrise_office: 'Highrise Office',
+    highrise_mixed_use: 'Highrise Mixed Use',
+    commercial_tower: 'Commercial Tower',
     academic: 'Academic',
     administrative: 'Administrative',
     student_center_atrium: 'Student Center / Atrium',
@@ -154,14 +154,12 @@ function buildingTypeLabel(type: string): string {
   return map[type] ?? type;
 }
 
-function rfComplexityColor(level: string): string {
-  if (level === 'low')
+function confidenceBadgeClass(level: ConfidenceLevel): string {
+  if (level === 'high')
     return 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/20 border';
   if (level === 'medium')
     return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/20 border';
-  if (level === 'high')
-    return 'bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/20 border';
-  return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 border'; // very_high
+  return 'bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 border';
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -285,13 +283,14 @@ export function AFCRadioHeightCalculator() {
   const [newProfileName, setNewProfileName] = useState('');
   const [showProfiles, setShowProfiles] = useState(false);
 
-  // AI Campus Lookup
+  // Public Information Lookup
   const [showCampusLookup, setShowCampusLookup] = useState(false);
   const [campusSearchQuery, setCampusSearchQuery] = useState('');
   const [campusSearching, setCampusSearching] = useState(false);
   const [campusSearchStep, setCampusSearchStep] = useState(0);
-  const [campusResults, setCampusResults] = useState<CampusData | null>(null);
-  const [selectedCampusBuildings, setSelectedCampusBuildings] = useState<Set<string>>(new Set());
+  const [lookupResult, setLookupResult] = useState<PublicLookupResult | null>(null);
+  const [lookupBuildings, setLookupBuildings] = useState<PublicLookupBuilding[]>([]);
+  const [expandedLookupBuilding, setExpandedLookupBuilding] = useState<string | null>(null);
   const [copySource, setCopySource] = useState<string | null>(null);
 
   const csvInputRef = useRef<HTMLInputElement>(null);
@@ -835,60 +834,146 @@ export function AFCRadioHeightCalculator() {
     localStorage.setItem(PROFILES_KEY, JSON.stringify(updated));
   };
 
-  // ── AI Campus Lookup ───────────────────────────────────────────────────────
+  // ── Public Information Lookup ──────────────────────────────────────────────
 
   const handleCampusSearch = async () => {
     setCampusSearching(true);
-    setCampusResults(null);
+    setLookupResult(null);
+    setLookupBuildings([]);
+    setExpandedLookupBuilding(null);
     setCampusSearchStep(0);
-    // Simulate multi-step AI search with progressive status messages
     for (let step = 0; step < CAMPUS_SEARCH_STEPS.length; step++) {
       setCampusSearchStep(step);
       await new Promise<void>((res) => setTimeout(res, 600));
     }
-    // Campus lookup requires a real public data source — no local data available.
-    toast.info('No public data found for this campus. Enter floor heights manually.');
+    const result = await searchPublicLookup(campusSearchQuery);
     setCampusSearching(false);
+    if (!result) {
+      toast.info('No public data found for this campus. Enter floor heights manually.');
+      return;
+    }
+    setLookupResult(result);
+    setLookupBuildings(result.buildings.map((b) => ({ ...b, isSelected: true })));
+    toast.success(
+      `Found ${result.buildings.length} building${result.buildings.length !== 1 ? 's' : ''} for ${result.organizationName}`
+    );
+  };
+
+  const toggleLookupBuildingSelected = (id: string) => {
+    setLookupBuildings((prev) =>
+      prev.map((b) => (b.id === id ? { ...b, isSelected: !b.isSelected } : b))
+    );
+  };
+
+  const selectAllLookupBuildings = () => {
+    setLookupBuildings((prev) => prev.map((b) => ({ ...b, isSelected: true })));
+  };
+
+  const deselectAllLookupBuildings = () => {
+    setLookupBuildings((prev) => prev.map((b) => ({ ...b, isSelected: false })));
+  };
+
+  const confirmAllLookupBuildings = () => {
+    setLookupBuildings((prev) => prev.map((b) => (b.isSelected ? { ...b, isConfirmed: true } : b)));
+    toast.success('Marked selected buildings as confirmed');
+  };
+
+  const updateLookupBuildingFloors = (id: string, value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    const n = Math.max(1, Math.min(200, Math.floor(value)));
+    setLookupBuildings((prev) =>
+      prev.map((b) => {
+        if (b.id !== id) return b;
+        const typical = effectiveTypicalFloorHeightFt(b);
+        return {
+          ...b,
+          overriddenFloorsAboveGround: n,
+          estimatedFloors: generateEstimatedFloorHeights(n, typical),
+          isConfirmed: false,
+        };
+      })
+    );
+  };
+
+  const updateLookupBuildingTypicalHeight = (id: string, value: number) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    setLookupBuildings((prev) =>
+      prev.map((b) => {
+        if (b.id !== id) return b;
+        const floors = effectiveFloorsAboveGround(b);
+        return {
+          ...b,
+          overriddenTypicalFloorHeightFt: value,
+          estimatedFloors: generateEstimatedFloorHeights(floors, value),
+          isConfirmed: false,
+        };
+      })
+    );
+  };
+
+  const updateLookupFloorHeightOverride = (id: string, floor: number, value: number | null) => {
+    setLookupBuildings((prev) =>
+      prev.map((b) => {
+        if (b.id !== id) return b;
+        return {
+          ...b,
+          estimatedFloors: b.estimatedFloors.map((f) =>
+            f.floor === floor
+              ? {
+                  ...f,
+                  overriddenHeightAboveGroundFt:
+                    value === null || !Number.isFinite(value) ? undefined : value,
+                  isOverridden: value !== null && Number.isFinite(value),
+                }
+              : f
+          ),
+          isConfirmed: false,
+        };
+      })
+    );
   };
 
   const applyCampusFloorHeights = () => {
-    if (!campusResults) return;
+    if (!lookupResult) return;
     const FT_TO_M = 0.3048;
-    const siteName = campusResults.campus;
+    const siteName = lookupResult.organizationName;
+    const committable = lookupBuildings.filter((b) => b.isSelected && b.isConfirmed);
+    if (!committable.length) {
+      toast.error('Confirm at least one selected building before committing');
+      return;
+    }
     const newFloors: FloorConfig[] = [];
-
-    campusResults.buildings
-      .filter((b) => selectedCampusBuildings.has(b.name) && b.floors && b.floors > 0)
-      .forEach((b) => {
-        const avgCeilingFt =
-          b.ceiling_height.min !== null && b.ceiling_height.max !== null
-            ? (b.ceiling_height.min + b.ceiling_height.max) / 2
-            : 10;
-        const avgCeilingM = avgCeilingFt * FT_TO_M;
-        for (let i = 1; i <= (b.floors as number); i++) {
-          const floorLabel = i === 1 ? 'Ground' : String(i);
-          const key = `${siteName}||${b.name}||${floorLabel}`;
-          newFloors.push({
-            key,
-            site: siteName,
-            building: b.name,
-            floor: floorLabel,
-            floorNumber: i,
-            floorHeightAboveGround: Math.round((i - 1) * avgCeilingM * 100) / 100,
-            heightUncertainty: null,
-            apHeightDefault: null,
-            apHeightUncertaintyDefault: null,
-          });
-        }
+    committable.forEach((b) => {
+      const floors = effectiveFloorsAboveGround(b);
+      b.estimatedFloors.slice(0, floors).forEach((f) => {
+        const heightFt = effectiveFloorHeightAboveGroundFt(f);
+        const floorLabel = f.floor === 1 ? 'Ground' : String(f.floor);
+        const key = `${siteName}||${b.buildingName}||${floorLabel}`;
+        newFloors.push({
+          key,
+          site: siteName,
+          building: b.buildingName,
+          floor: floorLabel,
+          floorNumber: f.floor,
+          floorHeightAboveGround: Math.round(heightFt * FT_TO_M * 100) / 100,
+          heightUncertainty: null,
+          apHeightDefault: null,
+          apHeightUncertaintyDefault: null,
+        });
       });
+    });
 
     setFloorConfigs((prev) => {
       const nonDemo = prev.filter((fc) => fc.site !== siteName);
       return [...nonDemo, ...newFloors];
     });
 
+    setLookupBuildings((prev) =>
+      prev.map((b) => (committable.find((c) => c.id === b.id) ? { ...b, isCommitted: true } : b))
+    );
+
     toast.success(
-      `Populated ${newFloors.length} floor configs across ${selectedCampusBuildings.size} buildings`
+      `Committed ${newFloors.length} floors across ${committable.length} building${committable.length !== 1 ? 's' : ''}`
     );
     setActiveTab('floors');
     setShowCampusLookup(false);
@@ -1112,11 +1197,13 @@ export function AFCRadioHeightCalculator() {
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Enter institution or campus name…"
+                  placeholder='Enter organization, campus, or building name (try "Comcast")…'
                   value={campusSearchQuery}
                   onChange={(e) => {
                     setCampusSearchQuery(e.target.value);
-                    setCampusResults(null);
+                    setLookupResult(null);
+                    setLookupBuildings([]);
+                    setExpandedLookupBuilding(null);
                   }}
                   onKeyDown={(e) => e.key === 'Enter' && !campusSearching && handleCampusSearch()}
                   className="pl-8 h-9"
@@ -1163,17 +1250,18 @@ export function AFCRadioHeightCalculator() {
             )}
 
             {/* Results */}
-            {campusResults && !campusSearching && (
+            {lookupResult && !campusSearching && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div>
                     <h3 className="font-semibold flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-violet-500" />
-                      {campusResults.campus}
+                      {lookupResult.organizationName}
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {campusResults.buildings.length} buildings found · Heights in{' '}
-                      {campusResults.units.ceiling_height} (converted to metres on apply)
+                      {lookupBuildings.length} building
+                      {lookupBuildings.length !== 1 ? 's' : ''} found · Estimated from public
+                      information · Heights shown in feet (converted to metres on commit)
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1181,11 +1269,7 @@ export function AFCRadioHeightCalculator() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() =>
-                        setSelectedCampusBuildings(
-                          new Set(campusResults.buildings.map((b) => b.name))
-                        )
-                      }
+                      onClick={selectAllLookupBuildings}
                     >
                       Select All
                     </Button>
@@ -1193,107 +1277,301 @@ export function AFCRadioHeightCalculator() {
                       variant="ghost"
                       size="sm"
                       className="h-7 text-xs"
-                      onClick={() => setSelectedCampusBuildings(new Set())}
+                      onClick={deselectAllLookupBuildings}
                     >
                       Deselect All
                     </Button>
                   </div>
                 </div>
 
-                {/* Building cards grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto pr-1">
-                  {campusResults.buildings.map((b) => {
-                    const selected = selectedCampusBuildings.has(b.name);
-                    const avgFt =
-                      b.ceiling_height.min !== null && b.ceiling_height.max !== null
-                        ? (b.ceiling_height.min + b.ceiling_height.max) / 2
-                        : null;
-                    const avgM = avgFt ? (avgFt * 0.3048).toFixed(1) : null;
-                    const hasFloors = b.floors && b.floors > 0;
+                {/* Building cards */}
+                <div className="space-y-2 max-h-[32rem] overflow-y-auto pr-1">
+                  {lookupBuildings.map((b) => {
+                    const selected = b.isSelected === true;
+                    const confirmed = b.isConfirmed === true;
+                    const committed = b.isCommitted === true;
+                    const expanded = expandedLookupBuilding === b.id;
+                    const floorsEff = effectiveFloorsAboveGround(b);
+                    const typicalEff = effectiveTypicalFloorHeightFt(b);
+                    const maxHeightFt = Math.round((floorsEff - 1) * typicalEff * 10) / 10;
+                    const isFloorsOverridden = b.overriddenFloorsAboveGround !== undefined;
+                    const isTypicalOverridden = b.overriddenTypicalFloorHeightFt !== undefined;
                     return (
-                      <button
-                        key={b.name}
-                        onClick={() =>
-                          setSelectedCampusBuildings((prev) => {
-                            const n = new Set(prev);
-                            if (n.has(b.name)) n.delete(b.name);
-                            else n.add(b.name);
-                            return n;
-                          })
-                        }
-                        className={`text-left p-3 rounded-lg border transition-all ${
+                      <div
+                        key={b.id}
+                        className={`rounded-lg border transition-all ${
                           selected
-                            ? 'border-violet-500/50 bg-violet-50 dark:bg-violet-950/30 shadow-sm'
-                            : 'border-border bg-muted/20 opacity-50'
+                            ? 'border-violet-500/50 bg-violet-50/50 dark:bg-violet-950/20'
+                            : 'border-border bg-muted/20 opacity-60'
                         }`}
                       >
-                        <div className="flex items-start justify-between gap-1 mb-1.5">
-                          <span className="text-xs font-semibold leading-snug">{b.name}</span>
-                          <div
-                            className={`h-4 w-4 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
+                        {/* Header row */}
+                        <div className="p-3 flex items-start gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleLookupBuildingSelected(b.id)}
+                            aria-label={selected ? 'Deselect building' : 'Select building'}
+                            className={`h-5 w-5 rounded border flex-shrink-0 mt-0.5 flex items-center justify-center transition-colors ${
                               selected ? 'bg-violet-600 border-violet-600' : 'border-border'
                             }`}
                           >
-                            {selected && <CheckCircle className="h-3 w-3 text-white" />}
+                            {selected && <CheckCircle className="h-3.5 w-3.5 text-white" />}
+                          </button>
+
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold leading-tight">
+                                  {b.buildingName}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                  <MapPin className="h-3 w-3 flex-shrink-0" />
+                                  <span>
+                                    {b.addressLine1}, {b.city}, {b.state} {b.postalCode}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1 flex-wrap">
+                                <Badge
+                                  className={`text-[10px] px-1.5 py-0 ${confidenceBadgeClass(b.estimatedSourceConfidence)}`}
+                                >
+                                  {b.estimatedSourceConfidence} confidence
+                                </Badge>
+                                {b.buildingType && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                                  >
+                                    {buildingTypeLabel(b.buildingType)}
+                                  </Badge>
+                                )}
+                                {committed ? (
+                                  <Badge className="text-[10px] px-1.5 py-0 bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/20">
+                                    Committed
+                                  </Badge>
+                                ) : confirmed ? (
+                                  <Badge className="text-[10px] px-1.5 py-0 bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border border-[color:var(--status-info)]/20">
+                                    Confirmed
+                                  </Badge>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                                  >
+                                    Confirmation required
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+                              <span className="flex items-center gap-1">
+                                <Layers className="h-3.5 w-3.5" />
+                                {floorsEff} floors{' '}
+                                {isFloorsOverridden && (
+                                  <span className="text-violet-600 dark:text-violet-400">
+                                    (override)
+                                  </span>
+                                )}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Building2 className="h-3.5 w-3.5" />~{typicalEff.toFixed(1)} ft /
+                                floor{' '}
+                                {isTypicalOverridden && (
+                                  <span className="text-violet-600 dark:text-violet-400">
+                                    (override)
+                                  </span>
+                                )}
+                              </span>
+                              <span>0 – {maxHeightFt.toFixed(1)} ft range</span>
+                              <span className="italic">Estimated from public information</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedLookupBuilding((prev) => (prev === b.id ? null : b.id))
+                              }
+                              className="mt-2 text-xs text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
+                            >
+                              {expanded ? (
+                                <ChevronDown className="h-3.5 w-3.5" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5" />
+                              )}
+                              {expanded ? 'Hide' : 'Review'} floor estimates
+                            </button>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          <Badge
-                            className={`text-[10px] px-1.5 py-0 ${rfComplexityColor(b.rf_complexity)}`}
-                          >
-                            RF: {b.rf_complexity.replace('_', ' ')}
-                          </Badge>
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] px-1.5 py-0 text-muted-foreground"
-                          >
-                            {buildingTypeLabel(b.type)}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                          {hasFloors ? (
-                            <span className="flex items-center gap-1">
-                              <Layers className="h-3.5 w-3.5" />
-                              {b.floors} floor{b.floors !== 1 ? 's' : ''}
-                            </span>
-                          ) : (
-                            <span className="italic">No floors (outdoor)</span>
-                          )}
-                          {avgM && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="h-3.5 w-3.5" />~{avgM} m ceiling
-                            </span>
-                          )}
-                        </div>
-                      </button>
+
+                        {/* Expanded detail */}
+                        {expanded && (
+                          <div className="border-t px-3 py-3 space-y-3 bg-background/50">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Floors above ground (override)</Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={200}
+                                  step={1}
+                                  value={floorsEff}
+                                  onChange={(e) =>
+                                    updateLookupBuildingFloors(b.id, parseInt(e.target.value, 10))
+                                  }
+                                  className="h-8"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">
+                                  Typical floor height ft (override)
+                                </Label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  step={0.1}
+                                  value={typicalEff}
+                                  onChange={(e) =>
+                                    updateLookupBuildingTypicalHeight(
+                                      b.id,
+                                      parseFloat(e.target.value)
+                                    )
+                                  }
+                                  className="h-8"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Floor preview table — compact for tall buildings */}
+                            <div className="border rounded overflow-hidden">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="h-8 text-xs">Floor</TableHead>
+                                    <TableHead className="h-8 text-xs">Estimated (ft)</TableHead>
+                                    <TableHead className="h-8 text-xs">Override (ft)</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {(() => {
+                                    const floors = b.estimatedFloors.slice(0, floorsEff);
+                                    const visible =
+                                      floors.length <= 14
+                                        ? floors.map((f, i) => ({ f, ellipsis: false, i }))
+                                        : [
+                                            ...floors
+                                              .slice(0, 10)
+                                              .map((f, i) => ({ f, ellipsis: false, i })),
+                                            {
+                                              f: null as unknown as (typeof floors)[number],
+                                              ellipsis: true,
+                                              i: -1,
+                                            },
+                                            ...floors.slice(-2).map((f, i) => ({
+                                              f,
+                                              ellipsis: false,
+                                              i: floors.length - 2 + i,
+                                            })),
+                                          ];
+                                    return visible.map((row, idx) => {
+                                      if (row.ellipsis) {
+                                        return (
+                                          <TableRow key={`e-${idx}`}>
+                                            <TableCell
+                                              colSpan={3}
+                                              className="text-xs text-muted-foreground italic text-center py-1"
+                                            >
+                                              … {floors.length - 12} floors hidden …
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      }
+                                      const f = row.f;
+                                      return (
+                                        <TableRow key={f.floor}>
+                                          <TableCell className="py-1 text-xs">{f.floor}</TableCell>
+                                          <TableCell className="py-1 text-xs">
+                                            {f.estimatedHeightAboveGroundFt.toFixed(1)}
+                                          </TableCell>
+                                          <TableCell className="py-1 text-xs">
+                                            <Input
+                                              type="number"
+                                              step={0.1}
+                                              placeholder="—"
+                                              value={f.overriddenHeightAboveGroundFt ?? ''}
+                                              onChange={(e) => {
+                                                const v = e.target.value;
+                                                updateLookupFloorHeightOverride(
+                                                  b.id,
+                                                  f.floor,
+                                                  v === '' ? null : parseFloat(v)
+                                                );
+                                              }}
+                                              className="h-6 text-xs w-24"
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    });
+                                  })()}
+                                </TableBody>
+                              </Table>
+                            </div>
+
+                            {b.notes && (
+                              <p className="text-[11px] text-muted-foreground italic">{b.notes}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
 
-                {/* Apply button */}
-                <div className="flex items-center justify-between pt-2 border-t">
-                  <p className="text-xs text-muted-foreground">
-                    {selectedCampusBuildings.size} building
-                    {selectedCampusBuildings.size !== 1 ? 's' : ''} selected · floor heights
-                    computed from average ceiling height
-                  </p>
-                  <Button
-                    onClick={applyCampusFloorHeights}
-                    disabled={selectedCampusBuildings.size === 0}
-                    className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
-                  >
-                    <CheckCheck className="h-4 w-4" />
-                    Apply Floor Heights (
-                    {
-                      [...selectedCampusBuildings].filter((n) =>
-                        campusResults.buildings.find(
-                          (b) => b.name === n && b.floors && b.floors > 0
-                        )
-                      ).length
-                    }{' '}
-                    buildings)
-                  </Button>
-                </div>
+                <p className="text-[11px] text-muted-foreground italic">
+                  Values are estimated from public information for demonstration purposes. Not for
+                  compliance use without validation. User confirmation is required before
+                  committing.
+                </p>
+
+                {/* Action bar */}
+                {(() => {
+                  const selectedCount = lookupBuildings.filter((b) => b.isSelected).length;
+                  const confirmedCount = lookupBuildings.filter(
+                    (b) => b.isSelected && b.isConfirmed
+                  ).length;
+                  const committableCount = confirmedCount;
+                  const anyUnconfirmedSelected = lookupBuildings.some(
+                    (b) => b.isSelected && !b.isConfirmed
+                  );
+                  return (
+                    <div className="flex items-center justify-between pt-2 border-t flex-wrap gap-2">
+                      <p className="text-xs text-muted-foreground">
+                        {selectedCount} selected · {confirmedCount} confirmed
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={confirmAllLookupBuildings}
+                          disabled={!anyUnconfirmedSelected}
+                          className="gap-1.5"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Confirm All
+                        </Button>
+                        <Button
+                          onClick={applyCampusFloorHeights}
+                          disabled={committableCount === 0}
+                          className="gap-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white border-0"
+                        >
+                          <CheckCheck className="h-4 w-4" />
+                          Commit All ({committableCount})
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </CardContent>
