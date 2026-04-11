@@ -5,7 +5,21 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default [
-  { ignores: ['dist', 'build', 'node_modules', '*.config.js', '*.config.ts'] },
+  {
+    ignores: [
+      'dist',
+      'build',
+      'node_modules',
+      '.claude',
+      '**/._*',          // macOS resource fork files
+      '*.config.js',
+      '*.config.ts',
+      'server.js',
+      'scripts/**',
+      'aws-lambda/**',
+      'public/service-worker.js',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
