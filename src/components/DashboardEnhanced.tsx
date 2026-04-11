@@ -310,6 +310,9 @@ function DashboardEnhancedComponent() {
   const [selectedEntityName, setSelectedEntityName] = useState<string | null>(null);
   const [isConnectedClientsCollapsed, setIsConnectedClientsCollapsed] = useState(true);
 
+  // Sites list for display-name resolution (id → human-readable name)
+  const [sites, setSites] = useState<Array<{ id: string; name: string; [key: string]: any }>>([]);
+
   // AI Insights - Client Health Tracking (inspired by Sunil Jose Kodiyan's design)
   const [healthViewMode, setHealthViewMode] = useState<'sites' | 'devices' | 'clients'>('sites');
   const [aiInsightsDetailPanel, setAiInsightsDetailPanel] = useState(true);
@@ -372,7 +375,8 @@ function DashboardEnhancedComponent() {
     if (operationalCtx.mode === 'SITE') {
       setSelectorTab('site');
       setSelectedEntityId(operationalCtx.siteId);
-      setSelectedEntityName(operationalCtx.siteId);
+      const site = sites.find((s) => s.id === operationalCtx.siteId);
+      setSelectedEntityName(site?.name || site?.siteName || operationalCtx.siteId);
       return;
     }
     if (operationalCtx.mode === 'AP') {
@@ -398,7 +402,16 @@ function DashboardEnhancedComponent() {
     operationalCtx.clientId,
     accessPoints,
     stations,
+    sites,
   ]);
+
+  // On mount: always start at the AI Insights overview regardless of what was
+  // persisted in localStorage. The user can navigate into a specific site/AP/client
+  // from there. Without this, a previous session's "SITE" mode would immediately
+  // route into a site UUID view on every fresh page load.
+  useEffect(() => {
+    setOperationalMode('AI_INSIGHTS');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadDashboardData();
@@ -543,6 +556,14 @@ function DashboardEnhancedComponent() {
       fetchRFQIData().catch((err) => {
         console.log('[Dashboard] Failed to load RFQI data:', err);
       });
+
+      // Load sites list for display-name resolution (non-blocking, cached after first load)
+      if (sites.length === 0) {
+        apiService
+          .getSites()
+          .then(setSites)
+          .catch(() => {});
+      }
 
       if (isRefresh) {
         toast.success('Dashboard refreshed');
