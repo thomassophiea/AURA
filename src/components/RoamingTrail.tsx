@@ -67,6 +67,8 @@ interface RoamingEvent {
   previousFrequency?: string;
   previousRssi?: number;
   dwell?: number; // Time spent at previous AP in ms
+  snr?: number; // Signal-to-noise ratio in dB
+  dataRate?: number; // PHY data rate in Mbps
   isFailedRoam?: boolean;
   isLateRoam?: boolean; // Roamed at very weak signal
 }
@@ -222,6 +224,18 @@ export function RoamingTrail({
         const rssiStr = parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI;
         const rssi = rssiStr ? parseInt(rssiStr) : event.rssi || undefined;
 
+        // Parse SNR
+        const snrStr = parsedDetails.SNR || parsedDetails.Snr || parsedDetails.snr;
+        const snr = snrStr ? parseInt(snrStr) : event.snr || undefined;
+
+        // Parse data rate
+        const dataRateStr =
+          parsedDetails.Rate ||
+          parsedDetails.DataRate ||
+          parsedDetails.PHYRate ||
+          parsedDetails.Mbps;
+        const dataRate = dataRateStr ? parseFloat(dataRateStr) : event.dataRate || undefined;
+
         // Parse reason code
         const reasonCodeStr =
           parsedDetails.Reason || parsedDetails.ReasonCode || parsedDetails.Code;
@@ -320,6 +334,8 @@ export function RoamingTrail({
           ipAddress: event.ipAddress,
           ipv6Address: event.ipv6Address,
           rssi,
+          snr,
+          dataRate,
           status,
           isFailedRoam,
           isLateRoam,
@@ -1226,6 +1242,18 @@ export function RoamingTrail({
                       top: `${y}px`,
                       transform: 'translate(-50%, -50%)',
                     }}
+                    title={[
+                      event.eventType,
+                      event.apName,
+                      event.rssi !== undefined ? `RSSI: ${event.rssi} dBm` : null,
+                      event.snr !== undefined ? `SNR: ${event.snr} dB` : null,
+                      event.dataRate !== undefined ? `Rate: ${event.dataRate} Mbps` : null,
+                      event.channel ? `Ch ${event.channel}` : null,
+                      event.frequency || null,
+                      formatTime(event.timestamp),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
@@ -1236,6 +1264,24 @@ export function RoamingTrail({
                       }
                     }}
                   />
+                  {/* RSSI inline label */}
+                  {event.rssi && (
+                    <div
+                      className={`
+                        absolute pointer-events-none z-10 text-[9px] font-mono font-semibold leading-none
+                        ${dimmed ? 'opacity-30' : ''}
+                        ${event.rssi >= -60 ? 'text-green-600 dark:text-green-400' : event.rssi >= -70 ? 'text-orange-500' : 'text-red-500'}
+                      `}
+                      style={{
+                        left: `${x}%`,
+                        top: `${y + 10}px`,
+                        transform: 'translate(-50%, 0)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {event.rssi}
+                    </div>
+                  )}
                   {/* Failed roam X marker */}
                   {event.isFailedRoam && (
                     <div
@@ -1255,7 +1301,7 @@ export function RoamingTrail({
                       className="absolute z-20 cursor-pointer"
                       style={{
                         left: `${x}%`,
-                        top: `${y + 10}px`,
+                        top: `${y + 20}px`,
                         transform: 'translate(-50%, 0)',
                       }}
                       onClick={(e) => {
@@ -1665,29 +1711,153 @@ export function RoamingTrail({
                 </div>
               )}
 
-              {/* Signal */}
-              {selectedEvent.rssi && (
+              {/* Signal / RF Metrics */}
+              {(selectedEvent.rssi || selectedEvent.snr || selectedEvent.dataRate) && (
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-2">
                     <Signal className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Signal Strength</span>
+                    <span className="font-medium">RF Metrics</span>
                   </div>
-                  <div className="ml-6 flex items-center gap-2">
-                    <span
-                      className={`font-mono ${
-                        selectedEvent.rssi >= -60
-                          ? 'text-[color:var(--status-success)]'
-                          : selectedEvent.rssi >= -70
-                            ? 'text-[color:var(--status-warning)]'
-                            : 'text-[color:var(--status-error)]'
-                      }`}
-                    >
-                      {selectedEvent.rssi} dBm
-                    </span>
-                    {selectedEvent.previousRssi && (
-                      <span className="text-xs text-muted-foreground">
-                        (was {selectedEvent.previousRssi} dBm)
-                      </span>
+                  <div className="ml-2 space-y-2">
+                    {/* RSSI with visual bar */}
+                    {selectedEvent.rssi &&
+                      (() => {
+                        const rssi = selectedEvent.rssi;
+                        // Map -90..-40 dBm to 0..100%
+                        const pct = Math.max(0, Math.min(100, ((rssi + 90) / 50) * 100));
+                        const qualityLabel =
+                          rssi >= -60
+                            ? 'Excellent'
+                            : rssi >= -70
+                              ? 'Good'
+                              : rssi >= -80
+                                ? 'Fair'
+                                : 'Poor';
+                        const colorClass =
+                          rssi >= -60
+                            ? 'bg-[color:var(--status-success)]'
+                            : rssi >= -70
+                              ? 'bg-orange-400'
+                              : 'bg-[color:var(--status-error)]';
+                        const textColorClass =
+                          rssi >= -60
+                            ? 'text-[color:var(--status-success)]'
+                            : rssi >= -70
+                              ? 'text-orange-500'
+                              : 'text-[color:var(--status-error)]';
+                        const delta =
+                          selectedEvent.previousRssi !== undefined
+                            ? rssi - selectedEvent.previousRssi
+                            : null;
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-muted-foreground">RSSI</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-sm font-mono font-bold ${textColorClass}`}>
+                                  {rssi} dBm
+                                </span>
+                                <span
+                                  className={`text-[10px] font-medium px-1 py-0.5 rounded ${colorClass} text-white`}
+                                >
+                                  {qualityLabel}
+                                </span>
+                                {delta !== null && (
+                                  <span
+                                    className={`text-[10px] font-mono font-medium ${
+                                      delta > 0
+                                        ? 'text-[color:var(--status-success)]'
+                                        : 'text-[color:var(--status-error)]'
+                                    }`}
+                                  >
+                                    {delta > 0 ? '+' : ''}
+                                    {delta} dBm
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="h-2 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${colorClass}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                            {selectedEvent.previousRssi !== undefined && (
+                              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                                <span>Previous AP:</span>
+                                <span className="font-mono font-medium">
+                                  {selectedEvent.previousRssi} dBm
+                                </span>
+                                <span className="text-muted-foreground/60">
+                                  ({selectedEvent.previousApName})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+
+                    {/* SNR */}
+                    {selectedEvent.snr &&
+                      (() => {
+                        const snr = selectedEvent.snr;
+                        // Map 0..40 dB to 0..100%
+                        const pct = Math.max(0, Math.min(100, (snr / 40) * 100));
+                        const snrLabel =
+                          snr >= 25
+                            ? 'Excellent'
+                            : snr >= 15
+                              ? 'Good'
+                              : snr >= 10
+                                ? 'Fair'
+                                : 'Poor';
+                        const snrColor =
+                          snr >= 25
+                            ? 'bg-[color:var(--status-success)]'
+                            : snr >= 15
+                              ? 'bg-orange-400'
+                              : 'bg-[color:var(--status-error)]';
+                        const snrText =
+                          snr >= 25
+                            ? 'text-[color:var(--status-success)]'
+                            : snr >= 15
+                              ? 'text-orange-500'
+                              : 'text-[color:var(--status-error)]';
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs text-muted-foreground">SNR</span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-sm font-mono font-bold ${snrText}`}>
+                                  {snr} dB
+                                </span>
+                                <span
+                                  className={`text-[10px] font-medium px-1 py-0.5 rounded ${snrColor} text-white`}
+                                >
+                                  {snrLabel}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all ${snrColor}`}
+                                style={{ width: `${pct}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                    {/* Data Rate */}
+                    {selectedEvent.dataRate && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">PHY Rate</span>
+                        <span className="font-mono font-semibold">
+                          {selectedEvent.dataRate >= 1000
+                            ? `${(selectedEvent.dataRate / 1000).toFixed(1)} Gbps`
+                            : `${formatCompactNumber(selectedEvent.dataRate)} Mbps`}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
