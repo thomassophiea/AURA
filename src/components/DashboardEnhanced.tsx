@@ -218,7 +218,7 @@ function DashboardEnhancedComponent() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   // Operational Context for Contextual Insights
-  const { ctx: operationalCtx } = useOperationalContext();
+  const { ctx: operationalCtx, setMode: setOperationalMode } = useOperationalContext();
 
   // AP Data
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
@@ -357,6 +357,48 @@ function DashboardEnhancedComponent() {
       }
     }
   }, [operationalCtx.siteId, operationalCtx.mode]);
+
+  // Sync operational context (driven by UnifiedFilterBar selections) to the
+  // local selectorTab/selectedEntityId state that controls which Insights
+  // sub-view renders. Without this, clicking a site/AP/client in the filter
+  // bar silently updates the shared context but never routes the page.
+  useEffect(() => {
+    if (operationalCtx.mode === 'AI_INSIGHTS') {
+      setSelectorTab('ai-insights');
+      setSelectedEntityId(null);
+      setSelectedEntityName(null);
+      return;
+    }
+    if (operationalCtx.mode === 'SITE') {
+      setSelectorTab('site');
+      setSelectedEntityId(operationalCtx.siteId);
+      setSelectedEntityName(operationalCtx.siteId);
+      return;
+    }
+    if (operationalCtx.mode === 'AP') {
+      setSelectorTab('access-point');
+      setSelectedEntityId(operationalCtx.apId);
+      const ap = accessPoints.find((a) => a.serialNumber === operationalCtx.apId);
+      setSelectedEntityName(
+        ap?.displayName || ap?.hostname || ap?.serialNumber || operationalCtx.apId
+      );
+      return;
+    }
+    if (operationalCtx.mode === 'CLIENT') {
+      setSelectorTab('client');
+      setSelectedEntityId(operationalCtx.clientId);
+      const st = stations.find((s) => s.macAddress === operationalCtx.clientId);
+      setSelectedEntityName(st?.hostName || operationalCtx.clientId);
+      return;
+    }
+  }, [
+    operationalCtx.mode,
+    operationalCtx.siteId,
+    operationalCtx.apId,
+    operationalCtx.clientId,
+    accessPoints,
+    stations,
+  ]);
 
   useEffect(() => {
     loadDashboardData();
@@ -3353,6 +3395,7 @@ function DashboardEnhancedComponent() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  setOperationalMode('AI_INSIGHTS');
                   setSelectedEntityId(null);
                   setSelectedEntityName(null);
                 }}
@@ -3384,6 +3427,7 @@ function DashboardEnhancedComponent() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  setOperationalMode('AI_INSIGHTS');
                   setSelectedEntityId(null);
                   setSelectedEntityName(null);
                 }}
@@ -3413,6 +3457,7 @@ function DashboardEnhancedComponent() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
+                  setOperationalMode('AI_INSIGHTS');
                   setSelectedEntityId(null);
                   setSelectedEntityName(null);
                 }}
