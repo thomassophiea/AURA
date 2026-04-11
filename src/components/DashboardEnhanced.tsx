@@ -1933,6 +1933,17 @@ function DashboardEnhancedComponent() {
           {/* Peer Benchmarking */}
           <PeerBenchmarking />
 
+          {/* Best Practice Evaluation — real data from /v1/bestpractices/evaluate */}
+          <div className="space-y-4">
+            <div className="border-b pb-2">
+              <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
+              <p className="text-sm text-muted-foreground">
+                Network configuration and optimization recommendations
+              </p>
+            </div>
+            <BestPracticesWidget />
+          </div>
+
           {/* Insight Cards Grid */}
           <div className="grid gap-6 md:grid-cols-2">
             {/* Network Health */}
@@ -3295,6 +3306,17 @@ function DashboardEnhancedComponent() {
               </CardContent>
             </Card>
           )}
+
+          {/* Audit Logs — real data from /v1/auditlogs */}
+          <div className="space-y-4">
+            <div className="border-b pb-2">
+              <h3 className="text-lg font-semibold">Audit Logs</h3>
+              <p className="text-sm text-muted-foreground">
+                Recent configuration and operational changes
+              </p>
+            </div>
+            <AuditLogsWidget />
+          </div>
 
           {/* Drill-down hint & Attribution */}
           <Card className="bg-muted/30 border-dashed">
