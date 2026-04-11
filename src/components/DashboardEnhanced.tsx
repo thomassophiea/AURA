@@ -1755,34 +1755,52 @@ function DashboardEnhancedComponent() {
     const avgSnr = stations.reduce((sum, s) => sum + (s.snr || 20), 0) / stations.length;
     const authenticatedRate = (clientStats.authenticated / Math.max(clientStats.total, 1)) * 100;
     const apUptime = apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 100;
+    const channelUtil = apStats.avgChannelUtil;
+    const rfqi = clientStats.avgRfqi;
+    const totalThroughputMbps =
+      (clientStats.throughputUpload + clientStats.throughputDownload) / 1_000_000;
 
     return {
       avgRssi,
       avgSnr,
       authenticatedRate,
       apUptime,
+      channelUtil,
+      rfqi,
+      totalThroughputMbps,
     };
   };
 
   const performanceMetrics = calculatePerformanceMetrics();
 
   // Prepare radar chart data for multi-dimensional performance view
-  // Radar chart — only axes backed by real API data (latency/packetLoss removed; no real source)
+  // All 5 axes are backed by real API data.
   const radarData = performanceMetrics
     ? [
         {
           metric: 'Reliability',
-          value: performanceMetrics.authenticatedRate || 0,
+          value: Math.round(performanceMetrics.authenticatedRate) || 0,
           fullMark: 100,
         },
         {
-          metric: 'Uptime',
-          value: performanceMetrics.apUptime || 0,
+          metric: 'AP Uptime',
+          value: Math.round(performanceMetrics.apUptime) || 0,
           fullMark: 100,
         },
         {
-          metric: 'Signal Quality',
-          value: Math.min(100, (performanceMetrics.avgSnr + 100) / 2) || 0,
+          metric: 'Signal (SNR)',
+          value: Math.min(100, Math.round((performanceMetrics.avgSnr / 50) * 100)) || 0,
+          fullMark: 100,
+        },
+        {
+          metric: 'Signal (RSSI)',
+          // -100 dBm → 0, -50 dBm → 62, -30 dBm → 87, 0 dBm → 100
+          value: Math.max(0, Math.min(100, Math.round((performanceMetrics.avgRssi + 100) * 1.25))),
+          fullMark: 100,
+        },
+        {
+          metric: 'RF Quality',
+          value: Math.round(performanceMetrics.rfqi) || 0,
           fullMark: 100,
         },
       ]
@@ -3863,6 +3881,127 @@ function DashboardEnhancedComponent() {
                               ? '⚠ Acceptable - Minor issues detected'
                               : '⚠ Below target - Investigate connection issues'}
                         </p>
+                      </div>
+                    )}
+
+                    {/* AP Uptime */}
+                    {performanceMetrics && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wifi className="h-4 w-4 text-[color:var(--status-info)]" />
+                            <span className="text-sm font-medium">AP Uptime</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.apUptime >= 99
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.apUptime >= 95
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.apUptime.toFixed(1)}%
+                          </span>
+                        </div>
+                        <Progress value={performanceMetrics.apUptime} className="h-1.5" />
+                        <p className="text-xs text-muted-foreground">
+                          {apStats.online} of {apStats.total} APs online
+                          {apStats.offline > 0 ? ` — ${apStats.offline} offline` : ' — all healthy'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Channel Utilization */}
+                    {performanceMetrics && performanceMetrics.channelUtil > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <BarChart3 className="h-4 w-4 text-[color:var(--status-warning)]" />
+                            <span className="text-sm font-medium">Channel Utilization</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.channelUtil <= 50
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.channelUtil <= 75
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.channelUtil.toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress value={performanceMetrics.channelUtil} className="h-1.5" />
+                        <p className="text-xs text-muted-foreground">
+                          {performanceMetrics.channelUtil <= 50
+                            ? '✓ Healthy — ample airtime available'
+                            : performanceMetrics.channelUtil <= 75
+                              ? '⚠ Moderate — monitor for congestion'
+                              : '⚠ High utilization — consider channel plan or adding APs'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* RF Quality Index */}
+                    {performanceMetrics && performanceMetrics.rfqi > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="h-4 w-4 text-[color:var(--status-success)]" />
+                            <span className="text-sm font-medium">RF Quality Index</span>
+                          </div>
+                          <span
+                            className={`text-sm font-bold ${
+                              performanceMetrics.rfqi >= 80
+                                ? 'text-[color:var(--status-success)]'
+                                : performanceMetrics.rfqi >= 60
+                                  ? 'text-[color:var(--status-warning)]'
+                                  : 'text-[color:var(--status-error)]'
+                            }`}
+                          >
+                            {performanceMetrics.rfqi.toFixed(0)}%
+                          </span>
+                        </div>
+                        <Progress value={performanceMetrics.rfqi} className="h-1.5" />
+                        <p className="text-xs text-muted-foreground">
+                          {performanceMetrics.rfqi >= 80
+                            ? '✓ Excellent RF environment'
+                            : performanceMetrics.rfqi >= 60
+                              ? '⚠ Acceptable — some interference present'
+                              : '⚠ Poor RF — investigate interference sources'}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Network Throughput */}
+                    {performanceMetrics && performanceMetrics.totalThroughputMbps > 0 && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-[color:var(--status-info)]" />
+                            <span className="text-sm font-medium">Network Throughput</span>
+                          </div>
+                          <span className="text-sm font-bold text-[color:var(--status-info)]">
+                            {performanceMetrics.totalThroughputMbps >= 1000
+                              ? `${(performanceMetrics.totalThroughputMbps / 1000).toFixed(2)} Gbps`
+                              : `${performanceMetrics.totalThroughputMbps.toFixed(1)} Mbps`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Upload className="h-3 w-3" />
+                            {clientStats.throughputUpload >= 1_000_000
+                              ? `${(clientStats.throughputUpload / 1_000_000).toFixed(1)} Mbps`
+                              : `${(clientStats.throughputUpload / 1_000).toFixed(0)} Kbps`}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Download className="h-3 w-3" />
+                            {clientStats.throughputDownload >= 1_000_000
+                              ? `${(clientStats.throughputDownload / 1_000_000).toFixed(1)} Mbps`
+                              : `${(clientStats.throughputDownload / 1_000).toFixed(0)} Kbps`}
+                          </span>
+                        </div>
                       </div>
                     )}
                   </CardContent>
