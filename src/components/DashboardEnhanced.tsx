@@ -314,7 +314,6 @@ function DashboardEnhancedComponent() {
   const [sites, setSites] = useState<Array<{ id: string; name: string; [key: string]: any }>>([]);
 
   // AI Insights - Client Health Tracking (inspired by Sunil Jose Kodiyan's design)
-  const [healthViewMode, setHealthViewMode] = useState<'sites' | 'devices' | 'clients'>('sites');
   const [aiInsightsDetailPanel, setAiInsightsDetailPanel] = useState(true);
   const [aiActiveHealthTab, setAiActiveHealthTab] = useState<'needsAttention' | 'healthy'>(
     'healthy'
@@ -2287,41 +2286,6 @@ function DashboardEnhancedComponent() {
             </Card>
           </div>
 
-          {/* Compact View Toggle */}
-          <div className="flex items-center justify-end gap-3">
-            <span className="text-base text-muted-foreground mr-2">View:</span>
-            <button
-              onClick={() => setHealthViewMode('sites')}
-              className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
-                healthViewMode === 'sites'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              Sites
-            </button>
-            <button
-              onClick={() => setHealthViewMode('devices')}
-              className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
-                healthViewMode === 'devices'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              Devices
-            </button>
-            <button
-              onClick={() => setHealthViewMode('clients')}
-              className={`px-4 py-2 rounded-md transition-colors text-base font-medium ${
-                healthViewMode === 'clients'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              Clients
-            </button>
-          </div>
-
           {/* Recent Events Summary */}
           <Card className="border-slate-700/50">
             <CardHeader className="pb-2">
@@ -2393,14 +2357,7 @@ function DashboardEnhancedComponent() {
                   </div>
                   <div>
                     <CardTitle className="text-lg font-bold text-foreground">
-                      {filters.site === 'all'
-                        ? 'Org'
-                        : healthViewMode === 'sites'
-                          ? 'Site'
-                          : healthViewMode === 'devices'
-                            ? 'Device'
-                            : 'Client'}{' '}
-                      Health Overview
+                      {filters.site === 'all' ? 'Org' : 'Site'} Health Overview
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
                       Real-time RF Quality Intelligence
@@ -2588,12 +2545,7 @@ function DashboardEnhancedComponent() {
                           <AlertCircle className="w-4 h-4" />
                           <div className="text-left">
                             <div className="text-sm font-medium">Needs Attention</div>
-                            <div className="text-xs opacity-75">
-                              {healthViewMode === 'clients'
-                                ? Math.max(0, clientStats.total - clientStats.authenticated)
-                                : apStats.offline}{' '}
-                              {healthViewMode === 'sites' ? 'sites' : healthViewMode}
-                            </div>
+                            <div className="text-xs opacity-75">{apStats.offline} APs</div>
                           </div>
                         </div>
                       </button>
@@ -2612,12 +2564,7 @@ function DashboardEnhancedComponent() {
                           <CheckCircle2 className="w-4 h-4" />
                           <div className="text-left">
                             <div className="text-sm font-medium">Healthy</div>
-                            <div className="text-xs opacity-75">
-                              {healthViewMode === 'clients'
-                                ? clientStats.authenticated
-                                : apStats.online}{' '}
-                              {healthViewMode === 'sites' ? 'sites' : healthViewMode}
-                            </div>
+                            <div className="text-xs opacity-75">{apStats.online} APs</div>
                           </div>
                         </div>
                       </button>
@@ -3295,7 +3242,7 @@ function DashboardEnhancedComponent() {
                             <div>
                               <span className="text-sm text-muted-foreground">Affected</span>
                               <p className="font-medium">
-                                {selectedNetworkEvent.affectedCount} {healthViewMode}
+                                {selectedNetworkEvent.affectedCount} devices
                               </p>
                             </div>
                             <div>
