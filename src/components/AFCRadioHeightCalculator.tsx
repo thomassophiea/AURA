@@ -1051,7 +1051,8 @@ export function AFCRadioHeightCalculator() {
           <Button
             size="sm"
             onClick={() => setShowCampusLookup((v) => !v)}
-            className="gap-1.5 bg-violet-500 hover:bg-violet-400 !text-white shadow-md shadow-violet-500/40 border-0"
+            className="gap-1.5 shadow-md border-0"
+            style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}
           >
             <Sparkles className="h-4 w-4" />
             Public Information Lookup
@@ -1167,10 +1168,18 @@ export function AFCRadioHeightCalculator() {
 
       {/* AI Campus Lookup panel */}
       {showCampusLookup && (
-        <Card className="border-violet-500/40 shadow-lg shadow-violet-500/10 overflow-hidden">
+        <Card
+          className="shadow-lg overflow-hidden"
+          style={{ borderColor: 'rgba(139, 92, 246, 0.4)' }}
+        >
           {/* Gradient banner */}
-          <div className="bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
+          <div
+            className="px-4 py-3 flex items-center justify-between"
+            style={{
+              background: 'linear-gradient(to right, #8b5cf6, #6366f1)',
+            }}
+          >
+            <div className="flex items-center gap-2" style={{ color: '#ffffff' }}>
               <Sparkles className="h-4 w-4" />
               <span className="font-semibold text-sm">Public Information Lookup</span>
               <Badge className="bg-white/20 text-white border-white/30 border text-xs">Demo</Badge>
@@ -1212,7 +1221,12 @@ export function AFCRadioHeightCalculator() {
               <Button
                 onClick={handleCampusSearch}
                 disabled={campusSearching || !campusSearchQuery.trim()}
-                className="gap-1.5 bg-violet-500 hover:bg-violet-400 !text-white border-0"
+                className="gap-1.5 border-0"
+                style={
+                  campusSearching || !campusSearchQuery.trim()
+                    ? undefined
+                    : { backgroundColor: '#8b5cf6', color: '#ffffff' }
+                }
               >
                 {campusSearching ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />
@@ -1563,11 +1577,12 @@ export function AFCRadioHeightCalculator() {
                         <Button
                           onClick={applyCampusFloorHeights}
                           disabled={committableCount === 0}
-                          className={`gap-1.5 border-0 ${
+                          className="gap-1.5 border-0"
+                          style={
                             committableCount === 0
-                              ? 'bg-muted text-muted-foreground'
-                              : 'bg-violet-500 hover:bg-violet-400 !text-white'
-                          }`}
+                              ? undefined
+                              : { backgroundColor: '#8b5cf6', color: '#ffffff' }
+                          }
                         >
                           <CheckCheck className="h-4 w-4" />
                           Commit All ({committableCount})
@@ -1729,7 +1744,7 @@ export function AFCRadioHeightCalculator() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="relative flex-1 min-w-64">
+            <div className="relative flex-1" style={{ minWidth: '16rem', maxWidth: '24rem' }}>
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input
                 placeholder="Search AP, building, floor…"
