@@ -34,7 +34,7 @@ export async function fetchWidgetData(
   context: WorkspaceContext,
   api: any // API service instance
 ): Promise<WidgetDataResponse> {
-  const catalogItem = WIDGET_CATALOG.find(item => item.id === widget.catalogId);
+  const catalogItem = WIDGET_CATALOG.find((item) => item.id === widget.catalogId);
   if (!catalogItem) {
     throw new Error(`Widget catalog item not found: ${widget.catalogId}`);
   }
@@ -61,7 +61,13 @@ export async function fetchWidgetData(
     case 'clients.list':
       return fetchClientsList(api, effectiveSiteId, catalogItem);
     case 'clients.timeseries':
-      return fetchClientsTimeseries(api, effectiveSiteId, effectiveTimeRange, widget.localFilters?.clientId, catalogItem);
+      return fetchClientsTimeseries(
+        api,
+        effectiveSiteId,
+        effectiveTimeRange,
+        widget.localFilters?.clientId,
+        catalogItem
+      );
     case 'clients.by_device_type':
       return fetchClientsByDeviceType(api, effectiveSiteId);
     case 'clients.by_manufacturer':
@@ -162,8 +168,8 @@ async function fetchAccessPointsList(
 
   // Filter by site if specified
   if (siteId) {
-    accessPoints = accessPoints.filter((ap: any) =>
-      ap.hostSite === siteId || ap.siteId === siteId || ap.siteName === siteId
+    accessPoints = accessPoints.filter(
+      (ap: any) => ap.hostSite === siteId || ap.siteId === siteId || ap.siteName === siteId
     );
   }
 
@@ -233,13 +239,17 @@ async function fetchAccessPointsTimeseries(
   }
 
   try {
-    const widgetData = await api.fetchWidgetData(siteId, [
-      'throughputReport',
-      'countOfUniqueUsersReport',
-      'channelUtilization5',
-      'channelUtilization2_4',
-      'noisePerRadio',
-    ], timeRange);
+    const widgetData = await api.fetchWidgetData(
+      siteId,
+      [
+        'throughputReport',
+        'countOfUniqueUsersReport',
+        'channelUtilization5',
+        'channelUtilization2_4',
+        'noisePerRadio',
+      ],
+      timeRange
+    );
 
     const timeseriesData = {
       throughput_bps: extractTimeseries(widgetData.throughputReport),
@@ -277,8 +287,8 @@ async function fetchClientsList(
 
   // Filter by site if specified
   if (siteId) {
-    clients = clients.filter((client: any) =>
-      client.siteId === siteId || client.siteName === siteId
+    clients = clients.filter(
+      (client: any) => client.siteId === siteId || client.siteName === siteId
     );
   }
 
@@ -455,10 +465,11 @@ async function fetchAppInsightsTimeseries(
   }
 
   try {
-    const widgetData = await api.fetchWidgetData(siteId, [
-      'topAppGroupsByUsage',
-      'topAppGroupsByThroughputReport',
-    ], timeRange);
+    const widgetData = await api.fetchWidgetData(
+      siteId,
+      ['topAppGroupsByUsage', 'topAppGroupsByThroughputReport'],
+      timeRange
+    );
 
     return {
       data: widgetData,
@@ -517,7 +528,8 @@ async function fetchClientExperienceRFQI(
     let totalScore = 0;
     let siteCount = 0;
 
-    for (const site of sites.slice(0, 10)) { // Limit to avoid too many requests
+    for (const site of sites.slice(0, 10)) {
+      // Limit to avoid too many requests
       try {
         const rfqData = await api.fetchRFQualityData(site.id, timeRange);
         const siteScore = calculateAggregateRfqiScore(rfqData);
@@ -752,14 +764,18 @@ async function fetchAccessPointsStatusSummary(
   let accessPoints = await api.getAccessPoints();
 
   if (siteId) {
-    accessPoints = accessPoints.filter((ap: any) =>
-      ap.hostSite === siteId || ap.siteId === siteId
-    );
+    accessPoints = accessPoints.filter((ap: any) => ap.hostSite === siteId || ap.siteId === siteId);
   }
 
-  const online = accessPoints.filter((ap: any) => ap.status === 'online' || ap.status === 'up').length;
-  const offline = accessPoints.filter((ap: any) => ap.status === 'offline' || ap.status === 'down').length;
-  const degraded = accessPoints.filter((ap: any) => ap.status === 'degraded' || ap.status === 'warning').length;
+  const online = accessPoints.filter(
+    (ap: any) => ap.status === 'online' || ap.status === 'up'
+  ).length;
+  const offline = accessPoints.filter(
+    (ap: any) => ap.status === 'offline' || ap.status === 'down'
+  ).length;
+  const degraded = accessPoints.filter(
+    (ap: any) => ap.status === 'degraded' || ap.status === 'warning'
+  ).length;
 
   return {
     data: {
@@ -786,13 +802,20 @@ async function fetchAccessPointsChannelUtilTimeseries(
   }
 
   try {
-    const widgetData = await api.fetchWidgetData(siteId, ['channelUtilization5', 'channelUtilization2_4'], timeRange);
+    const widgetData = await api.fetchWidgetData(
+      siteId,
+      ['channelUtilization5', 'channelUtilization2_4'],
+      timeRange
+    );
     return {
       data: {
         channel_util_5ghz: extractTimeseries(widgetData.channelUtilization5),
         channel_util_2_4ghz: extractTimeseries(widgetData.channelUtilization2_4),
       },
-      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'access_points.channel_util_timeseries' },
+      metadata: {
+        timeRange: getTimeRangeMs(timeRange),
+        source: 'access_points.channel_util_timeseries',
+      },
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch channel utilization timeseries:', error);
@@ -807,13 +830,14 @@ async function fetchAccessPointsByModel(
   let accessPoints = await api.getAccessPoints();
 
   if (siteId) {
-    accessPoints = accessPoints.filter((ap: any) =>
-      ap.hostSite === siteId || ap.siteId === siteId
-    );
+    accessPoints = accessPoints.filter((ap: any) => ap.hostSite === siteId || ap.siteId === siteId);
   }
 
   // Group by model
-  const byModel = new Map<string, { count: number; online: number; clients: number; throughput: number }>();
+  const byModel = new Map<
+    string,
+    { count: number; online: number; clients: number; throughput: number }
+  >();
 
   for (const ap of accessPoints) {
     const model = ap.model || 'Unknown';
@@ -855,7 +879,10 @@ async function fetchClientsByDeviceType(
     clients = clients.filter((c: any) => c.siteId === siteId);
   }
 
-  const byType = new Map<string, { count: number; rssi: number; snr: number; throughput: number }>();
+  const byType = new Map<
+    string,
+    { count: number; rssi: number; snr: number; throughput: number }
+  >();
 
   for (const client of clients) {
     const identity = resolveClientIdentity(client);
@@ -921,17 +948,17 @@ async function fetchClientsByManufacturer(
   };
 }
 
-async function fetchClientsByBand(
-  api: any,
-  siteId: string | null
-): Promise<WidgetDataResponse> {
+async function fetchClientsByBand(api: any, siteId: string | null): Promise<WidgetDataResponse> {
   let clients = await api.getStationsWithSiteCorrelation();
 
   if (siteId) {
     clients = clients.filter((c: any) => c.siteId === siteId);
   }
 
-  const byBand = new Map<string, { count: number; rssi: number; throughput: number; rfqi: number }>();
+  const byBand = new Map<
+    string,
+    { count: number; rssi: number; throughput: number; rfqi: number }
+  >();
 
   for (const client of clients) {
     const band = client.band || client.radioBand || '5GHz';
@@ -959,17 +986,17 @@ async function fetchClientsByBand(
   };
 }
 
-async function fetchClientsBySSID(
-  api: any,
-  siteId: string | null
-): Promise<WidgetDataResponse> {
+async function fetchClientsBySSID(api: any, siteId: string | null): Promise<WidgetDataResponse> {
   let clients = await api.getStationsWithSiteCorrelation();
 
   if (siteId) {
     clients = clients.filter((c: any) => c.siteId === siteId);
   }
 
-  const bySSID = new Map<string, { count: number; rssi: number; throughput: number; rfqi: number }>();
+  const bySSID = new Map<
+    string,
+    { count: number; rssi: number; throughput: number; rfqi: number }
+  >();
 
   for (const client of clients) {
     const ssid = client.network || client.ssid || 'Unknown';
@@ -1065,7 +1092,9 @@ async function fetchClientExperienceDistribution(
     clients = clients.filter((c: any) => c.siteId === siteId);
   }
 
-  let good = 0, fair = 0, poor = 0;
+  let good = 0,
+    fair = 0,
+    poor = 0;
 
   for (const client of clients) {
     const score = calculateClientRfqiScore(client);
@@ -1099,12 +1128,11 @@ async function fetchClientExperienceRFComponents(
   }
 
   try {
-    const widgetData = await api.fetchWidgetData(siteId, [
-      'rfQuality',
-      'channelUtilization5',
-      'noisePerRadio',
-      'retransmittedPackets',
-    ], timeRange);
+    const widgetData = await api.fetchWidgetData(
+      siteId,
+      ['rfQuality', 'channelUtilization5', 'noisePerRadio', 'retransmittedPackets'],
+      timeRange
+    );
 
     return {
       data: {
@@ -1131,7 +1159,10 @@ async function fetchClientExperienceBySSID(
     clients = clients.filter((c: any) => c.siteId === siteId);
   }
 
-  const bySSID = new Map<string, { count: number; rfqi: number; rssi: number; snr: number; retries: number }>();
+  const bySSID = new Map<
+    string,
+    { count: number; rfqi: number; rssi: number; snr: number; retries: number }
+  >();
 
   for (const client of clients) {
     const ssid = client.network || client.ssid || 'Unknown';
@@ -1174,7 +1205,10 @@ async function fetchAppInsightsByCategory(
     const appInsights = await api.getAppInsights(timeRange, siteId || undefined);
     const apps = appInsights.topAppGroupsByUsage || [];
 
-    const byCategory = new Map<string, { apps: number; bytes: number; clients: number; latency: number }>();
+    const byCategory = new Map<
+      string,
+      { apps: number; bytes: number; clients: number; latency: number }
+    >();
 
     for (const app of apps) {
       const category = app.category || 'Uncategorized';
@@ -1215,7 +1249,9 @@ async function fetchAppInsightsSummary(
     const appInsights = await api.getAppInsights(timeRange, siteId || undefined);
     const apps = appInsights.topAppGroupsByUsage || [];
 
-    let totalBytes = 0, totalFlows = 0, totalLatency = 0;
+    let totalBytes = 0,
+      totalFlows = 0,
+      totalLatency = 0;
     for (const app of apps) {
       totalBytes += app.value || 0;
       totalFlows += app.flows || 0;
@@ -1233,7 +1269,10 @@ async function fetchAppInsightsSummary(
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch app insights summary:', error);
-    return { data: { app_count: 0, total_flows: 0, total_bytes: 0, avg_latency_ms: 0 }, metadata: { source: 'app_insights.summary' } };
+    return {
+      data: { app_count: 0, total_flows: 0, total_bytes: 0, avg_latency_ms: 0 },
+      metadata: { source: 'app_insights.summary' },
+    };
   }
 }
 
@@ -1252,7 +1291,9 @@ async function fetchRoamingEvents(
       : [];
 
     const roamingEvents = events
-      .filter((e: any) => e.type === 'roam' || e.eventType === 'roaming' || e.category === 'roaming')
+      .filter(
+        (e: any) => e.type === 'roam' || e.eventType === 'roaming' || e.category === 'roaming'
+      )
       .map((e: any) => ({
         event_id: e.id || `roam-${Date.now()}-${Math.random()}`,
         timestamp: e.timestamp || e.startTime,
@@ -1266,7 +1307,10 @@ async function fetchRoamingEvents(
 
     return {
       data: roamingEvents,
-      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.roaming_events' },
+      metadata: {
+        timeRange: getTimeRangeMs(timeRange),
+        source: 'contextual_insights.roaming_events',
+      },
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch roaming events:', error);
@@ -1285,9 +1329,12 @@ async function fetchAssociationEvents(
       : [];
 
     const assocEvents = events
-      .filter((e: any) =>
-        e.type === 'associate' || e.type === 'disassociate' ||
-        e.eventType === 'association' || e.eventType === 'disassociation'
+      .filter(
+        (e: any) =>
+          e.type === 'associate' ||
+          e.type === 'disassociate' ||
+          e.eventType === 'association' ||
+          e.eventType === 'disassociation'
       )
       .map((e: any) => ({
         event_id: e.id || `assoc-${Date.now()}-${Math.random()}`,
@@ -1302,7 +1349,10 @@ async function fetchAssociationEvents(
 
     return {
       data: assocEvents,
-      metadata: { timeRange: getTimeRangeMs(timeRange), source: 'contextual_insights.association_events' },
+      metadata: {
+        timeRange: getTimeRangeMs(timeRange),
+        source: 'contextual_insights.association_events',
+      },
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch association events:', error);
@@ -1321,10 +1371,13 @@ async function fetchRFEvents(
       : [];
 
     const rfEvents = events
-      .filter((e: any) =>
-        e.type === 'channelChange' || e.type === 'powerChange' ||
-        e.eventType === 'channel_change' || e.eventType === 'power_change' ||
-        e.category === 'rf'
+      .filter(
+        (e: any) =>
+          e.type === 'channelChange' ||
+          e.type === 'powerChange' ||
+          e.eventType === 'channel_change' ||
+          e.eventType === 'power_change' ||
+          e.category === 'rf'
       )
       .map((e: any) => ({
         event_id: e.id || `rf-${Date.now()}-${Math.random()}`,
@@ -1377,7 +1430,10 @@ async function fetchFailedAssociations(
 
       return {
         data: transformed.slice(0, limit),
-        metadata: { totalCount: transformed.length, source: 'contextual_insights.failed_associations' },
+        metadata: {
+          totalCount: transformed.length,
+          source: 'contextual_insights.failed_associations',
+        },
       };
     }
 
@@ -1399,9 +1455,12 @@ async function fetchAnomalies(
       : [];
 
     const anomalies = events
-      .filter((e: any) =>
-        e.severity === 'critical' || e.severity === 'warning' ||
-        e.type === 'anomaly' || e.category === 'anomaly'
+      .filter(
+        (e: any) =>
+          e.severity === 'critical' ||
+          e.severity === 'warning' ||
+          e.type === 'anomaly' ||
+          e.category === 'anomaly'
       )
       .map((e: any) => ({
         anomaly_id: e.id || `anomaly-${Date.now()}-${Math.random()}`,
@@ -1437,7 +1496,9 @@ async function fetchInsightsSummary(
       ? await api.getAccessPointEvents(siteId, getTimeRangeDays(timeRange))
       : [];
 
-    let critical = 0, warning = 0, info = 0;
+    let critical = 0,
+      warning = 0,
+      info = 0;
 
     for (const event of events) {
       if (event.severity === 'critical') critical++;
@@ -1456,7 +1517,10 @@ async function fetchInsightsSummary(
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch insights summary:', error);
-    return { data: { critical_count: 0, warning_count: 0, info_count: 0, total_count: 0 }, metadata: { source: 'contextual_insights.summary' } };
+    return {
+      data: { critical_count: 0, warning_count: 0, info_count: 0, total_count: 0 },
+      metadata: { source: 'contextual_insights.summary' },
+    };
   }
 }
 
@@ -1472,15 +1536,21 @@ async function fetchAlertsList(
   try {
     // NOTE: /v1/alerts is NOT in Swagger. Use /v1/notifications (Swagger: NotificationManager).
     // Count warning/critical notifications as "alerts".
-    const response = await api.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
+    const response = await api.makeAuthenticatedRequest(
+      '/v1/notifications',
+      { method: 'GET' },
+      10000
+    );
     if (!response.ok) {
       return { data: [], metadata: { source: 'alerts.list' } };
     }
     const notifData = await response.json();
-    let notifications = Array.isArray(notifData) ? notifData : (notifData.notifications || []);
+    let notifications = Array.isArray(notifData) ? notifData : notifData.notifications || [];
 
     if (siteId) {
-      notifications = notifications.filter((n: any) => n.siteId === siteId || n.siteName === siteId);
+      notifications = notifications.filter(
+        (n: any) => n.siteId === siteId || n.siteName === siteId
+      );
     }
 
     const transformed = notifications.map((n: any) => ({
@@ -1510,7 +1580,7 @@ async function fetchEventsList(
 ): Promise<WidgetDataResponse> {
   try {
     const events = siteId
-      ? await api.getAccessPointEvents?.(siteId, getTimeRangeDays(timeRange)) || []
+      ? (await api.getAccessPointEvents?.(siteId, getTimeRangeDays(timeRange))) || []
       : [];
 
     const transformed = events.map((event: any) => ({
@@ -1540,12 +1610,16 @@ async function fetchAlarmsList(
   try {
     // NOTE: /v1/alarms and /v1/alarms/active are NOT in Swagger. Use /v1/notifications.
     // Treat warning/critical severity notifications as "alarms".
-    const response = await api.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000);
+    const response = await api.makeAuthenticatedRequest(
+      '/v1/notifications',
+      { method: 'GET' },
+      10000
+    );
     if (!response.ok) {
       return { data: [], metadata: { source: 'alarms.list' } };
     }
     const notifData = await response.json();
-    let notifications = Array.isArray(notifData) ? notifData : (notifData.notifications || []);
+    const notifications = Array.isArray(notifData) ? notifData : notifData.notifications || [];
 
     // Filter to warning/critical severity as active "alarms"
     let alarms = notifications.filter((n: any) => {
@@ -1583,7 +1657,7 @@ async function fetchAPEventsList(
 ): Promise<WidgetDataResponse> {
   try {
     const events = siteId
-      ? await api.getAccessPointEvents?.(siteId, getTimeRangeDays(timeRange)) || []
+      ? (await api.getAccessPointEvents?.(siteId, getTimeRangeDays(timeRange))) || []
       : [];
 
     return {
@@ -1611,7 +1685,7 @@ async function fetchClientEventsList(
 
 async function fetchSitesList(api: any): Promise<WidgetDataResponse> {
   try {
-    const sites = await api.getSites?.() || [];
+    const sites = (await api.getSites?.()) || [];
 
     const transformed = sites.map((site: any) => ({
       site_id: site.id,
@@ -1643,7 +1717,7 @@ async function fetchVenueStatistics(
   }
 
   try {
-    const venueData = await api.fetchVenueStatistics?.(siteId, timeRange) || {};
+    const venueData = (await api.fetchVenueStatistics?.(siteId, timeRange)) || {};
 
     return {
       data: {
@@ -1671,7 +1745,7 @@ async function fetchVenueTimeseries(
   }
 
   try {
-    const widgetData = await api.fetchWidgetData?.(siteId, ['throughputReport'], timeRange) || {};
+    const widgetData = (await api.fetchWidgetData?.(siteId, ['throughputReport'], timeRange)) || {};
 
     return {
       data: {
@@ -1703,12 +1777,13 @@ async function fetchNetworkPerformanceSummary(
       ? aps.filter((ap: any) => ap.hostSite === siteId || ap.siteId === siteId)
       : aps;
 
-    const filteredClients = siteId
-      ? clients.filter((c: any) => c.siteId === siteId)
-      : clients;
+    const filteredClients = siteId ? clients.filter((c: any) => c.siteId === siteId) : clients;
 
-    const onlineAPs = filteredAPs.filter((ap: any) => ap.status === 'online' || ap.status === 'up').length;
-    const healthScore = filteredAPs.length > 0 ? Math.round((onlineAPs / filteredAPs.length) * 100) : 100;
+    const onlineAPs = filteredAPs.filter(
+      (ap: any) => ap.status === 'online' || ap.status === 'up'
+    ).length;
+    const healthScore =
+      filteredAPs.length > 0 ? Math.round((onlineAPs / filteredAPs.length) * 100) : 100;
 
     let totalRFQI = 0;
     for (const client of filteredClients) {
@@ -1728,7 +1803,16 @@ async function fetchNetworkPerformanceSummary(
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch network performance:', error);
-    return { data: { health_score: 0, total_aps: 0, online_aps: 0, total_clients: 0, avg_client_experience: 0 }, metadata: { source: 'network.performance_summary' } };
+    return {
+      data: {
+        health_score: 0,
+        total_aps: 0,
+        online_aps: 0,
+        total_clients: 0,
+        avg_client_experience: 0,
+      },
+      metadata: { source: 'network.performance_summary' },
+    };
   }
 }
 
@@ -1738,13 +1822,12 @@ async function fetchTrafficSummary(
   timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
-    const clients = await api.getStationsWithSiteCorrelation?.() || [];
+    const clients = (await api.getStationsWithSiteCorrelation?.()) || [];
 
-    const filteredClients = siteId
-      ? clients.filter((c: any) => c.siteId === siteId)
-      : clients;
+    const filteredClients = siteId ? clients.filter((c: any) => c.siteId === siteId) : clients;
 
-    let totalRx = 0, totalTx = 0;
+    let totalRx = 0,
+      totalTx = 0;
     for (const client of filteredClients) {
       totalRx += client.rxBytes || 0;
       totalTx += client.txBytes || 0;
@@ -1761,7 +1844,10 @@ async function fetchTrafficSummary(
     };
   } catch (error) {
     console.warn('[WorkspaceDataService] Failed to fetch traffic summary:', error);
-    return { data: { total_rx_bytes: 0, total_tx_bytes: 0, total_bytes: 0, client_count: 0 }, metadata: { source: 'traffic.summary' } };
+    return {
+      data: { total_rx_bytes: 0, total_tx_bytes: 0, total_bytes: 0, client_count: 0 },
+      metadata: { source: 'traffic.summary' },
+    };
   }
 }
 
@@ -1769,12 +1855,9 @@ async function fetchTrafficSummary(
 // AUDIT FETCHERS
 // ========================================
 
-async function fetchAuditLogs(
-  api: any,
-  timeRange: string
-): Promise<WidgetDataResponse> {
+async function fetchAuditLogs(api: any, timeRange: string): Promise<WidgetDataResponse> {
   try {
-    const logs = await api.getAuditLogs?.() || [];
+    const logs = (await api.getAuditLogs?.()) || [];
 
     const transformed = logs.map((log: any) => ({
       log_id: log.id,
@@ -1794,4 +1877,3 @@ async function fetchAuditLogs(
     return { data: [], metadata: { source: 'audit.logs' } };
   }
 }
-

@@ -70,6 +70,7 @@ import { useTableCustomization } from '@/hooks/useTableCustomization';
 import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { CLIENTS_TABLE_COLUMNS } from '@/config/clientsTableColumns';
 import { SaveToWorkspace } from './SaveToWorkspace';
+import { resolveClientIdentity } from '@/lib/clientIdentity';
 
 interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
@@ -1157,7 +1158,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
       <DetailSlideOut
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={`Client Details - ${selectedStation?.hostName || selectedStation?.macAddress}`}
+        title={`Client Details - ${selectedStation ? resolveClientIdentity(selectedStation).displayName : ''}`}
         description="Detailed information and events for this connected client"
         width="3xl"
       >
@@ -1620,7 +1621,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                 <Route className="h-6 w-6 text-primary" />
                 <div>
                   <h1 className="text-2xl font-bold">
-                    Roaming Trail - {selectedStation.hostName || selectedStation.macAddress}
+                    Roaming Trail - {resolveClientIdentity(selectedStation).displayName}
                   </h1>
                   <p className="text-sm text-muted-foreground">
                     Visual timeline showing how this client roamed between access points

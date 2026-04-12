@@ -24,7 +24,7 @@ import {
   FileText,
   Route,
   ArrowLeft,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { apiService, Station, StationEvent, APEvent, RRMEvent } from '../services/api';
@@ -35,6 +35,7 @@ import { siteMappingService } from '../services/siteMapping';
 import { simpleServiceMapping } from '../services/simpleServiceMapping';
 import { toast } from 'sonner';
 import { formatCompactNumber } from '../lib/units';
+import { resolveClientIdentity } from '../lib/clientIdentity';
 
 interface ClientDetailProps {
   macAddress: string;
@@ -44,7 +45,11 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const [clientDetails, setClientDetails] = useState<Station | null>(null);
   const [trafficStats, setTrafficStats] = useState<StationTrafficStats | null>(null);
   const [resolvedSiteName, setResolvedSiteName] = useState<string | null>(null);
-  const [resolvedServiceDetails, setResolvedServiceDetails] = useState<{ ssid: string; networkName: string; vlan: string } | null>(null);
+  const [resolvedServiceDetails, setResolvedServiceDetails] = useState<{
+    ssid: string;
+    networkName: string;
+    vlan: string;
+  } | null>(null);
   const [resolvedRoleName, setResolvedRoleName] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -67,7 +72,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       setIsLoading(true);
       const details = await apiService.getStation(macAddress);
       setClientDetails(details);
-      
+
       // Debug logging to see what fields are available
       console.log('Station details for', macAddress, ':', {
         ssid: details.ssid,
@@ -97,37 +102,37 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         siteName: details.siteName,
         rxRate: details.rxRate,
         dataRate: details.dataRate,
-        txRate: details.txRate
+        txRate: details.txRate,
       });
 
       // Log ALL fields to see what's actually available
       console.log('All station fields:', details);
-      
+
       // Load site name if siteId is available
       if (details.siteId) {
         loadSiteName(details.siteId);
       }
-      
+
       // Load service details if serviceId is available
       if (details.serviceId) {
         loadServiceDetails(details.serviceId);
       }
-      
+
       // Load role name if roleId is available
       if (details.roleId) {
         loadRoleName(details.roleId);
       }
     } catch (error) {
       console.error('Failed to load client details:', error);
-      
+
       // Check if it's a "not found" error
       if (error instanceof Error && error.message.includes('not found')) {
         toast.error('Client not found', {
-          description: `No client with MAC address ${macAddress} was found in the system.`
+          description: `No client with MAC address ${macAddress} was found in the system.`,
         });
       } else {
         toast.error('Failed to load client details', {
-          description: error instanceof Error ? error.message : 'An unknown error occurred'
+          description: error instanceof Error ? error.message : 'An unknown error occurred',
         });
       }
     } finally {
@@ -152,7 +157,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     try {
       setIsLoadingServiceDetails(true);
       console.log(`ClientDetail: Loading service details for serviceId: ${serviceId}`);
-      
+
       const serviceDetails = await simpleServiceMapping.getServiceDetails(serviceId);
       console.log(`ClientDetail: Resolved service details: ${serviceId} ->`, serviceDetails);
       setResolvedServiceDetails(serviceDetails);
@@ -168,7 +173,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     try {
       setIsLoadingRoleName(true);
       console.log(`ClientDetail: Loading role name for roleId: ${roleId}`);
-      
+
       const roleName = await simpleServiceMapping.getRoleName(roleId);
       console.log(`ClientDetail: Resolved role name: ${roleId} -> ${roleName}`);
       setResolvedRoleName(roleName);
@@ -199,12 +204,15 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       console.log('[ClientDetail] Loading station events with correlation for:', macAddress);
 
       // Try to fetch correlated events (station + AP + RRM)
-      const correlatedEvents = await apiService.fetchStationEventsWithCorrelation(macAddress, '24H');
+      const correlatedEvents = await apiService.fetchStationEventsWithCorrelation(
+        macAddress,
+        '24H'
+      );
 
       console.log('[ClientDetail] Loaded correlated events:', {
         station: correlatedEvents.stationEvents.length,
         ap: correlatedEvents.apEvents.length,
-        rrm: correlatedEvents.smartRfEvents.length
+        rrm: correlatedEvents.smartRfEvents.length,
       });
 
       setStationEvents(correlatedEvents.stationEvents);
@@ -220,11 +228,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([
-      loadClientDetails(),
-      loadTrafficStats(),
-      loadStationEvents()
-    ]);
+    await Promise.all([loadClientDetails(), loadTrafficStats(), loadStationEvents()]);
     setIsRefreshing(false);
     toast.success('Client details refreshed');
   };
@@ -250,7 +254,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
 
   useEffect(() => {
     // Preload sites only - services and roles will load on demand
-    siteMappingService.loadSites().catch(error => {
+    siteMappingService.loadSites().catch((error) => {
       console.warn('Failed to preload sites for mapping:', error);
     });
     loadClientDetails();
@@ -280,13 +284,14 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         <div className="space-y-2">
           <h3 className="text-lg font-medium">Client not found</h3>
           <p className="text-muted-foreground text-sm max-w-md mx-auto">
-            The client with MAC address <code className="bg-muted px-1 py-0.5 rounded text-xs">{macAddress}</code> could not be found. 
-            It may have been disconnected or the MAC address may be incorrect.
+            The client with MAC address{' '}
+            <code className="bg-muted px-1 py-0.5 rounded text-xs">{macAddress}</code> could not be
+            found. It may have been disconnected or the MAC address may be incorrect.
           </p>
         </div>
-        <Button 
-          variant="outline" 
-          size="sm" 
+        <Button
+          variant="outline"
+          size="sm"
           onClick={loadClientDetails}
           disabled={isLoading}
           className="mt-4"
@@ -309,16 +314,16 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const formatBytes = (bytes?: number) => {
     if (bytes === undefined || bytes === null || bytes === 0) return '0 B';
     if (bytes < 0) return 'N/A';
-    
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let value = bytes;
     let unitIndex = 0;
-    
+
     while (value >= 1024 && unitIndex < units.length - 1) {
       value /= 1024;
       unitIndex++;
     }
-    
+
     // Format with appropriate decimal places
     const formatted = unitIndex === 0 ? value.toString() : value.toFixed(value < 10 ? 2 : 1);
     return `${formatted} ${units[unitIndex]}`;
@@ -338,24 +343,26 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   // Format timestamp to readable date and time
   const formatDateTime = (timestamp?: string | number) => {
     if (!timestamp) return 'N/A';
-    
+
     try {
       let date: Date;
-      
+
       // Handle both string and number timestamps
       if (typeof timestamp === 'string') {
         // Try parsing as ISO string first, then as number
-        date = isNaN(Date.parse(timestamp)) ? new Date(parseInt(timestamp) * 1000) : new Date(timestamp);
+        date = isNaN(Date.parse(timestamp))
+          ? new Date(parseInt(timestamp) * 1000)
+          : new Date(timestamp);
       } else {
         // Handle Unix timestamp (seconds) - convert to milliseconds if needed
         date = timestamp > 1e10 ? new Date(timestamp) : new Date(timestamp * 1000);
       }
-      
+
       // Check if date is valid
       if (isNaN(date.getTime())) {
         return 'N/A';
       }
-      
+
       // Format as readable date and time
       return date.toLocaleString('en-US', {
         year: 'numeric',
@@ -364,7 +371,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        hour12: true
+        hour12: true,
       });
     } catch (error) {
       return 'N/A';
@@ -385,7 +392,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     if (resolvedServiceDetails?.networkName && resolvedServiceDetails.networkName !== 'N/A') {
       return resolvedServiceDetails.networkName;
     }
-    return client.network || client.networkName || client.profileName || client.serviceName || 'N/A';
+    return (
+      client.network || client.networkName || client.profileName || client.serviceName || 'N/A'
+    );
   };
 
   const getVLAN = (client: Station): string => {
@@ -407,8 +416,6 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     return client.role || 'N/A';
   };
 
-
-
   const getChannel = (client: Station): string => {
     const channel = client.channel || client.radioChannel || client.channelNumber;
     if (channel === undefined || channel === null) return 'N/A';
@@ -416,23 +423,27 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   };
 
   const getAccessPoint = (client: Station): string => {
-    return client.apName || client.apDisplayName || client.apHostname || client.accessPointName || 'N/A';
+    return (
+      client.apName || client.apDisplayName || client.apHostname || client.accessPointName || 'N/A'
+    );
   };
 
   const getAPSerial = (client: Station): string => {
-    return client.apSerial || client.apSerialNumber || client.apSn || client.accessPointSerial || 'N/A';
+    return (
+      client.apSerial || client.apSerialNumber || client.apSn || client.accessPointSerial || 'N/A'
+    );
   };
 
   // Helper component for displaying field values
-  const FieldDisplay = ({ 
-    label, 
-    value, 
-    icon: Icon, 
-    isMono = false
-  }: { 
-    label: string; 
-    value: string; 
-    icon?: any; 
+  const FieldDisplay = ({
+    label,
+    value,
+    icon: Icon,
+    isMono = false,
+  }: {
+    label: string;
+    value: string;
+    icon?: any;
     isMono?: boolean;
   }) => (
     <div className="flex justify-between">
@@ -441,7 +452,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         <span className="text-muted-foreground">{label}:</span>
       </div>
       <div className="flex items-center space-x-1">
-        <span className={`font-medium ${isMono ? 'font-mono text-xs' : ''} ${value === 'N/A' ? 'text-muted-foreground' : ''}`}>
+        <span
+          className={`font-medium ${isMono ? 'font-mono text-xs' : ''} ${value === 'N/A' ? 'text-muted-foreground' : ''}`}
+        >
           {value}
         </span>
       </div>
@@ -456,12 +469,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
           <Smartphone className="h-5 w-5 text-muted-foreground" />
           <span className="font-medium">Client Details</span>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-        >
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
           Refresh
         </Button>
@@ -485,9 +493,11 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 <Signal className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Signal Strength</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Signal Strength
+                </p>
                 <p className="text-lg font-bold text-foreground">
-                  {(trafficStats?.rss || trafficStats?.signalStrength || clientDetails.signalStrength)
+                  {trafficStats?.rss || trafficStats?.signalStrength || clientDetails.signalStrength
                     ? `${trafficStats?.rss || trafficStats?.signalStrength || clientDetails.signalStrength} dBm`
                     : 'N/A'}
                 </p>
@@ -499,8 +509,12 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 <Shield className="h-4 w-4 text-white" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">Protocol</p>
-                <p className="text-lg font-bold text-foreground">{clientDetails.protocol || 'N/A'}</p>
+                <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
+                  Protocol
+                </p>
+                <p className="text-lg font-bold text-foreground">
+                  {clientDetails.protocol || 'N/A'}
+                </p>
               </div>
             </div>
           </div>
@@ -510,7 +524,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       {/* Client Insights */}
       <ClientInsights
         macAddress={macAddress}
-        clientName={clientDetails.hostName || macAddress}
+        clientName={resolveClientIdentity(clientDetails).displayName}
         onOpenFullScreen={() => setShowClientInsights(true)}
       />
 
@@ -538,7 +552,12 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-muted-foreground shrink-0">IPv6 Address:</span>
-              <span className="font-mono text-xs truncate" title={clientDetails.ipv6Address || 'N/A'}>{clientDetails.ipv6Address || 'N/A'}</span>
+              <span
+                className="font-mono text-xs truncate"
+                title={clientDetails.ipv6Address || 'N/A'}
+              >
+                {clientDetails.ipv6Address || 'N/A'}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Device Type:</span>
@@ -561,15 +580,17 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                     <span className="text-xs text-muted-foreground">Loading...</span>
                   </div>
                 ) : (
-                  <span className={`font-medium ${getRole(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}>
+                  <span
+                    className={`font-medium ${getRole(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}
+                  >
                     {getRole(clientDetails)}
                   </span>
                 )}
               </div>
             </div>
-            <FieldDisplay 
-              label="Last Seen" 
-              value={formatDateTime(clientDetails.lastSeen)} 
+            <FieldDisplay
+              label="Last Seen"
+              value={formatDateTime(clientDetails.lastSeen)}
               icon={Clock}
             />
           </div>
@@ -598,7 +619,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                     <span className="text-xs text-muted-foreground">Loading...</span>
                   </div>
                 ) : (
-                  <span className={`font-medium ${getSSID(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}>
+                  <span
+                    className={`font-medium ${getSSID(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}
+                  >
                     {getSSID(clientDetails)}
                   </span>
                 )}
@@ -617,17 +640,15 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                     <span className="text-xs text-muted-foreground">Loading...</span>
                   </div>
                 ) : (
-                  <span className={`font-medium ${getVLAN(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}>
+                  <span
+                    className={`font-medium ${getVLAN(clientDetails) === 'N/A' ? 'text-muted-foreground' : ''}`}
+                  >
                     {getVLAN(clientDetails)}
                   </span>
                 )}
               </div>
             </div>
-            <FieldDisplay 
-              label="Channel" 
-              value={getChannel(clientDetails)} 
-              icon={Signal}
-            />
+            <FieldDisplay label="Channel" value={getChannel(clientDetails)} icon={Signal} />
             <div className="flex justify-between">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -646,12 +667,11 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 )}
               </div>
             </div>
-            <FieldDisplay 
-              label="Access Point" 
-              value={getAccessPoint(clientDetails)} 
+            <FieldDisplay
+              label="Access Point"
+              value={getAccessPoint(clientDetails)}
               icon={Activity}
             />
-
           </div>
         </CardContent>
       </Card>
@@ -683,7 +703,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Bytes:</span>
                   <span className="font-medium">
-                    {formatBytes(trafficStats?.txBytes || trafficStats?.outBytes || clientDetails.txBytes)}
+                    {formatBytes(
+                      trafficStats?.txBytes || trafficStats?.outBytes || clientDetails.txBytes
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -707,7 +729,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Bytes:</span>
                   <span className="font-medium">
-                    {formatBytes(trafficStats?.rxBytes || trafficStats?.inBytes || clientDetails.rxBytes)}
+                    {formatBytes(
+                      trafficStats?.rxBytes || trafficStats?.inBytes || clientDetails.rxBytes
+                    )}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -729,14 +753,16 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                   <span className="font-medium">
                     {formatBytes(
                       (trafficStats.txBytes || trafficStats.outBytes || 0) +
-                      (trafficStats.rxBytes || trafficStats.inBytes || 0)
+                        (trafficStats.rxBytes || trafficStats.inBytes || 0)
                     )}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Packets:</span>
                   <span className="font-medium">
-                    {formatCompactNumber((trafficStats.outPackets || 0) + (trafficStats.packets || 0))}
+                    {formatCompactNumber(
+                      (trafficStats.outPackets || 0) + (trafficStats.packets || 0)
+                    )}
                   </span>
                 </div>
                 {trafficStats.rss && (
@@ -759,7 +785,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
               <FileText className="h-4 w-4" />
               <span>Recent Events</span>
               {stationEvents.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{stationEvents.length}</Badge>
+                <Badge variant="secondary" className="ml-2">
+                  {stationEvents.length}
+                </Badge>
               )}
             </div>
             <div className="flex items-center space-x-2">
@@ -790,21 +818,14 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
             <div className="text-center py-12">
               <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground font-medium mb-2">No station events available</p>
-              <p className="text-sm text-muted-foreground mb-2">
-                Station {macAddress}
-              </p>
+              <p className="text-sm text-muted-foreground mb-2">Station {macAddress}</p>
               <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
                 <p>Station events may be unavailable if:</p>
                 <p>• Your controller doesn't support the station events API</p>
                 <p>• No events have been logged for this station in the last 30 days</p>
                 <p>• Audit logging is not enabled</p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={loadStationEvents}
-              >
+              <Button variant="outline" size="sm" className="mt-4" onClick={loadStationEvents}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
@@ -822,7 +843,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                     All ({stationEvents.length})
                   </Button>
                   {(() => {
-                    const eventTypes = Array.from(new Set(stationEvents.map(e => e.eventType).filter(Boolean)));
+                    const eventTypes = Array.from(
+                      new Set(stationEvents.map((e) => e.eventType).filter(Boolean))
+                    );
                     return eventTypes.map((type) => (
                       <Button
                         key={type}
@@ -830,7 +853,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                         size="sm"
                         onClick={() => setEventTypeFilter(type)}
                       >
-                        {type} ({stationEvents.filter(e => e.eventType === type).length})
+                        {type} ({stationEvents.filter((e) => e.eventType === type).length})
                       </Button>
                     ));
                   })()}
@@ -850,7 +873,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
               <ScrollArea className="h-[400px]">
                 <div className="space-y-2">
                   {stationEvents
-                    .filter(event => eventTypeFilter === 'all' || event.eventType === eventTypeFilter)
+                    .filter(
+                      (event) => eventTypeFilter === 'all' || event.eventType === eventTypeFilter
+                    )
                     .map((event, idx) => (
                       <div
                         key={event.id || idx}
@@ -859,9 +884,14 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                         <div className="flex items-start justify-between mb-2">
                           <Badge
                             variant={
-                              event.eventType === 'Associate' || event.eventType === 'Authenticate' || event.eventType === 'Registration' ? 'default' :
-                              event.eventType === 'Disassociate' || event.eventType === 'De-registration' ? 'destructive' :
-                              'secondary'
+                              event.eventType === 'Associate' ||
+                              event.eventType === 'Authenticate' ||
+                              event.eventType === 'Registration'
+                                ? 'default'
+                                : event.eventType === 'Disassociate' ||
+                                    event.eventType === 'De-registration'
+                                  ? 'destructive'
+                                  : 'secondary'
                             }
                             className="text-xs"
                           >
@@ -878,146 +908,186 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                                 day: 'numeric',
                                 hour: '2-digit',
                                 minute: '2-digit',
-                                second: '2-digit'
+                                second: '2-digit',
                               });
                             })()}
                           </div>
                         </div>
 
                         {/* Parse and display structured details */}
-                        {event.details && (() => {
-                          const parseDetails = (details: string) => {
-                            const parsed: Record<string, string> = {};
-                            const regex = /(\w+)\[([^\]]+)\]/g;
-                            let match;
-                            while ((match = regex.exec(details)) !== null) {
-                              parsed[match[1]] = match[2];
-                            }
-                            return parsed;
-                          };
+                        {event.details &&
+                          (() => {
+                            const parseDetails = (details: string) => {
+                              const parsed: Record<string, string> = {};
+                              const regex = /(\w+)\[([^\]]+)\]/g;
+                              let match;
+                              while ((match = regex.exec(details)) !== null) {
+                                parsed[match[1]] = match[2];
+                              }
+                              return parsed;
+                            };
 
-                          const parsedDetails = parseDetails(event.details);
-                          const hasStructuredData = Object.keys(parsedDetails).length > 0;
+                            const parsedDetails = parseDetails(event.details);
+                            const hasStructuredData = Object.keys(parsedDetails).length > 0;
 
-                          return (
-                            <div className="mb-2">
-                              {hasStructuredData ? (
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
-                                  {parsedDetails.Cause && (
-                                    <div>
-                                      <span className="text-muted-foreground">Cause: </span>
-                                      <span className="font-medium">{parsedDetails.Cause}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Reason && (
-                                    <div>
-                                      <span className="text-muted-foreground">Reason: </span>
-                                      <span className="font-medium">{parsedDetails.Reason}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Status && (
-                                    <div>
-                                      <span className="text-muted-foreground">Status: </span>
-                                      <span className="font-medium">{parsedDetails.Status}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Code && (
-                                    <div>
-                                      <span className="text-muted-foreground">Code: </span>
-                                      <span className="font-mono font-medium">{parsedDetails.Code}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.DevFamily && (
-                                    <div>
-                                      <span className="text-muted-foreground">Device: </span>
-                                      <span className="font-medium">{parsedDetails.DevFamily}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Hostname && (
-                                    <div>
-                                      <span className="text-muted-foreground">Hostname: </span>
-                                      <span className="font-medium">{parsedDetails.Hostname}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Port && (
-                                    <div>
-                                      <span className="text-muted-foreground">Port: </span>
-                                      <span className="font-medium">{parsedDetails.Port}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.Network && (
-                                    <div>
-                                      <span className="text-muted-foreground">Network: </span>
-                                      <span className="font-medium">{parsedDetails.Network}</span>
-                                    </div>
-                                  )}
-                                  {parsedDetails.FT && (
-                                    <div>
-                                      <span className="text-muted-foreground">Fast Transition: </span>
-                                      <span className="font-medium">{parsedDetails.FT}</span>
-                                    </div>
-                                  )}
-                                  {/* Signal strength with color indicator */}
-                                  {(parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI) && (() => {
-                                    const rssi = parseInt(parsedDetails.Signal || parsedDetails.RSS || parsedDetails.RSSI);
-                                    if (isNaN(rssi)) return null;
-                                    const color = rssi >= -60 ? 'text-[color:var(--status-success)]' : rssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]';
-                                    return (
+                            return (
+                              <div className="mb-2">
+                                {hasStructuredData ? (
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs mb-2">
+                                    {parsedDetails.Cause && (
                                       <div>
-                                        <span className="text-muted-foreground">Signal: </span>
-                                        <span className={`font-medium ${color}`}>{rssi} dBm</span>
+                                        <span className="text-muted-foreground">Cause: </span>
+                                        <span className="font-medium">{parsedDetails.Cause}</span>
                                       </div>
-                                    );
-                                  })()}
-                                  {/* Channel info */}
-                                  {parsedDetails.Channel && (
-                                    <div>
-                                      <span className="text-muted-foreground">Channel: </span>
-                                      <span className="font-medium">{parsedDetails.Channel}</span>
-                                    </div>
-                                  )}
-                                  {/* Band/Radio frequency */}
-                                  {(parsedDetails.Band || parsedDetails.Radio) && (
-                                    <div>
-                                      <span className="text-muted-foreground">Band: </span>
-                                      <span className="font-medium">{parsedDetails.Band || parsedDetails.Radio}</span>
-                                    </div>
-                                  )}
-                                  {/* Auth method */}
-                                  {(parsedDetails.Auth || parsedDetails.AuthMethod) && (
-                                    <div>
-                                      <span className="text-muted-foreground">Auth: </span>
-                                      <span className="font-medium">{parsedDetails.Auth || parsedDetails.AuthMethod}</span>
-                                    </div>
-                                  )}
-                                  {/* Previous AP for roaming context */}
-                                  {(parsedDetails.From || parsedDetails.FromAP || parsedDetails.PrevAP) && (
-                                    <div>
-                                      <span className="text-muted-foreground">From AP: </span>
-                                      <span className="font-medium">{parsedDetails.From || parsedDetails.FromAP || parsedDetails.PrevAP}</span>
-                                    </div>
-                                  )}
-                                  {/* SNR if available */}
-                                  {parsedDetails.SNR && (
-                                    <div>
-                                      <span className="text-muted-foreground">SNR: </span>
-                                      <span className="font-medium">{parsedDetails.SNR} dB</span>
-                                    </div>
-                                  )}
-                                  {/* Data rate */}
-                                  {(parsedDetails.Rate || parsedDetails.DataRate || parsedDetails.PhyRate) && (
-                                    <div>
-                                      <span className="text-muted-foreground">Rate: </span>
-                                      <span className="font-medium">{parsedDetails.Rate || parsedDetails.DataRate || parsedDetails.PhyRate} Mbps</span>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-foreground mb-2">{event.details}</p>
-                              )}
-                            </div>
-                          );
-                        })()}
+                                    )}
+                                    {parsedDetails.Reason && (
+                                      <div>
+                                        <span className="text-muted-foreground">Reason: </span>
+                                        <span className="font-medium">{parsedDetails.Reason}</span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.Status && (
+                                      <div>
+                                        <span className="text-muted-foreground">Status: </span>
+                                        <span className="font-medium">{parsedDetails.Status}</span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.Code && (
+                                      <div>
+                                        <span className="text-muted-foreground">Code: </span>
+                                        <span className="font-mono font-medium">
+                                          {parsedDetails.Code}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.DevFamily && (
+                                      <div>
+                                        <span className="text-muted-foreground">Device: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.DevFamily}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.Hostname && (
+                                      <div>
+                                        <span className="text-muted-foreground">Hostname: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.Hostname}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.Port && (
+                                      <div>
+                                        <span className="text-muted-foreground">Port: </span>
+                                        <span className="font-medium">{parsedDetails.Port}</span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.Network && (
+                                      <div>
+                                        <span className="text-muted-foreground">Network: </span>
+                                        <span className="font-medium">{parsedDetails.Network}</span>
+                                      </div>
+                                    )}
+                                    {parsedDetails.FT && (
+                                      <div>
+                                        <span className="text-muted-foreground">
+                                          Fast Transition:{' '}
+                                        </span>
+                                        <span className="font-medium">{parsedDetails.FT}</span>
+                                      </div>
+                                    )}
+                                    {/* Signal strength with color indicator */}
+                                    {(parsedDetails.Signal ||
+                                      parsedDetails.RSS ||
+                                      parsedDetails.RSSI) &&
+                                      (() => {
+                                        const rssi = parseInt(
+                                          parsedDetails.Signal ||
+                                            parsedDetails.RSS ||
+                                            parsedDetails.RSSI
+                                        );
+                                        if (isNaN(rssi)) return null;
+                                        const color =
+                                          rssi >= -60
+                                            ? 'text-[color:var(--status-success)]'
+                                            : rssi >= -70
+                                              ? 'text-[color:var(--status-warning)]'
+                                              : 'text-[color:var(--status-error)]';
+                                        return (
+                                          <div>
+                                            <span className="text-muted-foreground">Signal: </span>
+                                            <span className={`font-medium ${color}`}>
+                                              {rssi} dBm
+                                            </span>
+                                          </div>
+                                        );
+                                      })()}
+                                    {/* Channel info */}
+                                    {parsedDetails.Channel && (
+                                      <div>
+                                        <span className="text-muted-foreground">Channel: </span>
+                                        <span className="font-medium">{parsedDetails.Channel}</span>
+                                      </div>
+                                    )}
+                                    {/* Band/Radio frequency */}
+                                    {(parsedDetails.Band || parsedDetails.Radio) && (
+                                      <div>
+                                        <span className="text-muted-foreground">Band: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.Band || parsedDetails.Radio}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {/* Auth method */}
+                                    {(parsedDetails.Auth || parsedDetails.AuthMethod) && (
+                                      <div>
+                                        <span className="text-muted-foreground">Auth: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.Auth || parsedDetails.AuthMethod}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {/* Previous AP for roaming context */}
+                                    {(parsedDetails.From ||
+                                      parsedDetails.FromAP ||
+                                      parsedDetails.PrevAP) && (
+                                      <div>
+                                        <span className="text-muted-foreground">From AP: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.From ||
+                                            parsedDetails.FromAP ||
+                                            parsedDetails.PrevAP}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {/* SNR if available */}
+                                    {parsedDetails.SNR && (
+                                      <div>
+                                        <span className="text-muted-foreground">SNR: </span>
+                                        <span className="font-medium">{parsedDetails.SNR} dB</span>
+                                      </div>
+                                    )}
+                                    {/* Data rate */}
+                                    {(parsedDetails.Rate ||
+                                      parsedDetails.DataRate ||
+                                      parsedDetails.PhyRate) && (
+                                      <div>
+                                        <span className="text-muted-foreground">Rate: </span>
+                                        <span className="font-medium">
+                                          {parsedDetails.Rate ||
+                                            parsedDetails.DataRate ||
+                                            parsedDetails.PhyRate}{' '}
+                                          Mbps
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-foreground mb-2">{event.details}</p>
+                                )}
+                              </div>
+                            );
+                          })()}
 
                         {/* Display all available event fields */}
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
@@ -1030,7 +1100,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                           {event.apSerial && (
                             <div>
                               <span className="text-muted-foreground">AP Serial: </span>
-                              <span className="font-mono text-xs font-medium">{event.apSerial}</span>
+                              <span className="font-mono text-xs font-medium">
+                                {event.apSerial}
+                              </span>
                             </div>
                           )}
                           {event.ssid && (
@@ -1048,7 +1120,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                           {event.ipv6Address && (
                             <div className="col-span-2">
                               <span className="text-muted-foreground">IPv6: </span>
-                              <span className="font-mono text-xs font-medium">{event.ipv6Address}</span>
+                              <span className="font-mono text-xs font-medium">
+                                {event.ipv6Address}
+                              </span>
                             </div>
                           )}
                           {event.type && (
@@ -1079,7 +1153,9 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                           {event.rssi && (
                             <div>
                               <span className="text-muted-foreground">Signal: </span>
-                              <span className={`font-medium ${event.rssi >= -60 ? 'text-[color:var(--status-success)]' : event.rssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'}`}>
+                              <span
+                                className={`font-medium ${event.rssi >= -60 ? 'text-[color:var(--status-success)]' : event.rssi >= -70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]'}`}
+                              >
                                 {event.rssi} dBm
                               </span>
                             </div>
@@ -1172,7 +1248,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       {showClientInsights && (
         <ClientInsightsFullScreen
           macAddress={macAddress}
-          clientName={clientDetails?.hostName || macAddress}
+          clientName={clientDetails ? resolveClientIdentity(clientDetails).displayName : macAddress}
           onClose={() => setShowClientInsights(false)}
         />
       )}
@@ -1196,7 +1272,8 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
                 <Route className="h-6 w-6 text-primary" />
                 <div>
                   <h1 className="text-2xl font-bold">
-                    Roaming Trail - {clientDetails?.hostName || macAddress}
+                    Roaming Trail -{' '}
+                    {clientDetails ? resolveClientIdentity(clientDetails).displayName : macAddress}
                   </h1>
                   <p className="text-sm text-muted-foreground">
                     Visual timeline showing how this client roamed between access points
