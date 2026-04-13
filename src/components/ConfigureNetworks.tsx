@@ -54,7 +54,7 @@ import { NetworkEditDetail } from './NetworkEditDetail';
 import { CreateWLANDialog } from './CreateWLANDialog';
 import { QuickWLANDialog } from './QuickWLANDialog';
 import { WifiQRCodeDialog } from './WifiQRCodeDialog';
-import { apiService, Service, Role } from '../services/api';
+import { apiService, Service, Role, Topology } from '../services/api';
 import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server, ArrowUpFromLine } from 'lucide-react';
@@ -383,8 +383,33 @@ const mapAuthType = (service: Service): string => {
   return 'Open';
 };
 
+const normalizeVlanId = (value: unknown): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+};
+
+const resolveDefaultVlan = (
+  service: Service,
+  topologyById: Record<string, Topology>
+): number | undefined => {
+  const topologyId = typeof service.defaultTopology === 'string' ? service.defaultTopology : '';
+  const topologyVlanId = topologyId ? normalizeVlanId(topologyById[topologyId]?.vlanid) : undefined;
+
+  return topologyVlanId ?? normalizeVlanId(service.vlan) ?? normalizeVlanId(service.vlanId);
+};
+
 // Helper function to transform service data to network config
-const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkConfig => {
+const transformServiceToNetwork = (
+  service: Service,
+  clientCount = 0,
+  topologyById: Record<string, Topology> = {}
+): NetworkConfig => {
   // Handle both 'name' and 'serviceName' fields (Extreme Platform ONE uses serviceName)
   const networkName = service.name || service.serviceName || service.ssid || 'Unnamed Network';
   const networkSSID = service.ssid || service.name || service.serviceName || 'Unnamed SSID';
@@ -421,7 +446,7 @@ const transformServiceToNetwork = (service: Service, clientCount = 0): NetworkCo
     name: networkName,
     ssid: networkSSID,
     authType, // Use the pre-calculated auth type
-    vlanId: service.dot1dPortNumber || service.vlan || service.vlanId,
+    vlanId: resolveDefaultVlan(service, topologyById),
     band: '2.4/5 GHz', // Simplified for now
     enabled: isEnabled,
     hidden: isHidden,
@@ -555,17 +580,31 @@ export function ConfigureNetworks() {
       setTimeout(() => reject(new Error('Request timed out after 15 seconds')), 15000)
     );
 
-    const [servicesResponse] = (await Promise.race([
-      Promise.allSettled([apiService.getServices()]),
+    const [servicesResponse, topologiesResponse] = (await Promise.race([
+      Promise.allSettled([apiService.getServices(), apiService.getTopologies()]),
       timeoutPromise,
-    ])) as [PromiseSettledResult<any>];
+    ])) as [PromiseSettledResult<Service[]>, PromiseSettledResult<Topology[]>];
 
     let loadedServices: Service[] = [];
+    let loadedTopologies: Topology[] = [];
     if (servicesResponse.status === 'fulfilled') {
       loadedServices = servicesResponse.value;
     } else {
       console.warn('Failed to load services:', servicesResponse.reason);
     }
+
+    if (topologiesResponse.status === 'fulfilled') {
+      loadedTopologies = topologiesResponse.value;
+    } else {
+      console.warn('Failed to load topologies:', topologiesResponse.reason);
+    }
+
+    const topologyById = loadedTopologies.reduce<Record<string, Topology>>((acc, topology) => {
+      if (topology?.id) {
+        acc[topology.id] = topology;
+      }
+      return acc;
+    }, {});
 
     const configs: NetworkConfig[] = [];
     for (const service of loadedServices) {
@@ -581,7 +620,7 @@ export function ConfigureNetworks() {
           if (e instanceof Error && e.message.includes('Session expired')) throw e;
         }
 
-        const networkConfig = transformServiceToNetwork(service, clientCount);
+        const networkConfig = transformServiceToNetwork(service, clientCount, topologyById);
         if (sgTag) {
           (networkConfig as any)._siteGroupId = sgTag.id;
           (networkConfig as any)._siteGroupName = sgTag.name;
