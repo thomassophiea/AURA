@@ -1051,8 +1051,8 @@ export function AFCRadioHeightCalculator() {
           <Button
             size="sm"
             onClick={() => setShowCampusLookup((v) => !v)}
-            className="gap-1.5 shadow-md border-0"
-            style={{ backgroundColor: '#8b5cf6', color: '#ffffff' }}
+            variant="outline"
+            className="gap-1.5 shadow-md text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
           >
             <Sparkles className="h-4 w-4" />
             Public Information Lookup
@@ -1221,12 +1221,8 @@ export function AFCRadioHeightCalculator() {
               <Button
                 onClick={handleCampusSearch}
                 disabled={campusSearching || !campusSearchQuery.trim()}
-                className="gap-1.5 border-0"
-                style={
-                  campusSearching || !campusSearchQuery.trim()
-                    ? undefined
-                    : { backgroundColor: '#8b5cf6', color: '#ffffff' }
-                }
+                variant="outline"
+                className="gap-1.5 text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
               >
                 {campusSearching ? (
                   <RefreshCw className="h-4 w-4 animate-spin" />

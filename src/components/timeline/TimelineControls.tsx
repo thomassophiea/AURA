@@ -58,10 +58,10 @@ export function TimelineControls({
             {/* Status indicator - click to unlock if locked */}
             {isLocked ? (
               <Button
-                variant="default"
+                variant="outline"
                 size="sm"
                 onClick={onToggleLock}
-                className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md font-semibold"
+                className="gap-2 shadow-md font-semibold text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
                 title="Click to unlock (or click on any chart)"
               >
                 <Lock className="h-4 w-4" />
@@ -70,7 +70,9 @@ export function TimelineControls({
             ) : (
               <Badge variant="secondary" className="gap-1.5 px-2 py-1.5 flex items-center">
                 <Unlock className="h-3.5 w-3.5" />
-                <span className="font-medium">{currentTime === null ? 'Unlocked' : 'Tracking'}</span>
+                <span className="font-medium">
+                  {currentTime === null ? 'Unlocked' : 'Tracking'}
+                </span>
               </Badge>
             )}
 
@@ -129,14 +131,35 @@ export function TimelineControls({
       {showHelp && (
         <div className="px-4 py-3 bg-blue-500/5 border-t border-blue-500/20">
           <div className="text-sm space-y-2">
-            <div className="font-semibold text-[color:var(--status-info)]">⏱️ Timeline Navigation Guide</div>
+            <div className="font-semibold text-[color:var(--status-info)]">
+              ⏱️ Timeline Navigation Guide
+            </div>
             <ul className="space-y-1.5 text-xs text-muted-foreground ml-4">
-              <li><strong>Hover:</strong> Move mouse over any chart to preview time - reference line appears across all charts</li>
-              <li><strong>🎯 Click to Lock:</strong> Click directly on any chart to lock the timeline at that exact moment (click again to unlock)</li>
-              <li><strong>Time Range Selection:</strong> Hold <kbd className="px-1.5 py-0.5 bg-muted border rounded text-xs font-mono">Shift</kbd> + drag across chart to highlight a time window</li>
-              <li><strong>Copy Timeline:</strong> Lock a time, then click "Copy to..." to sync this exact moment to the other insights page</li>
-              <li><strong>Correlation Workflow:</strong> See a spike in Client Insights → Click to lock → Copy to AP Insights → See what AP was doing at same time!</li>
-              <li><strong>Clear Selection:</strong> Click "Clear Selection" button to remove time window highlights</li>
+              <li>
+                <strong>Hover:</strong> Move mouse over any chart to preview time - reference line
+                appears across all charts
+              </li>
+              <li>
+                <strong>🎯 Click to Lock:</strong> Click directly on any chart to lock the timeline
+                at that exact moment (click again to unlock)
+              </li>
+              <li>
+                <strong>Time Range Selection:</strong> Hold{' '}
+                <kbd className="px-1.5 py-0.5 bg-muted border rounded text-xs font-mono">Shift</kbd>{' '}
+                + drag across chart to highlight a time window
+              </li>
+              <li>
+                <strong>Copy Timeline:</strong> Lock a time, then click "Copy to..." to sync this
+                exact moment to the other insights page
+              </li>
+              <li>
+                <strong>Correlation Workflow:</strong> See a spike in Client Insights → Click to
+                lock → Copy to AP Insights → See what AP was doing at same time!
+              </li>
+              <li>
+                <strong>Clear Selection:</strong> Click "Clear Selection" button to remove time
+                window highlights
+              </li>
             </ul>
           </div>
         </div>

@@ -6,9 +6,27 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
 import { Badge } from './ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Bell, Plus, Trash2, Webhook, Mail, Send, RefreshCw, CheckCircle, AlertTriangle, Settings } from 'lucide-react';
+import {
+  Bell,
+  Plus,
+  Trash2,
+  Webhook,
+  Mail,
+  Send,
+  RefreshCw,
+  CheckCircle,
+  AlertTriangle,
+  Settings,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 
@@ -53,7 +71,7 @@ export function EventNotificationsConfig() {
     { value: 'alarm.critical', label: 'Critical Alarm' },
     { value: 'alarm.major', label: 'Major Alarm' },
     { value: 'license.expiring', label: 'License Expiring' },
-    { value: 'firmware.upgrade', label: 'Firmware Upgrade' }
+    { value: 'firmware.upgrade', label: 'Firmware Upgrade' },
   ];
 
   const [webhookForm, setWebhookForm] = useState({
@@ -61,7 +79,7 @@ export function EventNotificationsConfig() {
     url: '',
     enabled: true,
     events: [] as string[],
-    secret: ''
+    secret: '',
   });
 
   const [emailForm, setEmailForm] = useState({
@@ -69,7 +87,7 @@ export function EventNotificationsConfig() {
     recipients: '',
     enabled: true,
     events: [] as string[],
-    schedule: 'immediate' as 'immediate' | 'hourly' | 'daily'
+    schedule: 'immediate' as 'immediate' | 'hourly' | 'daily',
   });
 
   useEffect(() => {
@@ -84,16 +102,35 @@ export function EventNotificationsConfig() {
         setWebhooks(await webhooksRes.json());
       } else {
         setWebhooks([
-          { id: '1', name: 'Slack Alerts', url: 'https://hooks.slack.com/...', enabled: true, events: ['alarm.critical', 'ap.disconnected'], lastTriggered: new Date().toISOString(), lastStatus: 'success' }
+          {
+            id: '1',
+            name: 'Slack Alerts',
+            url: 'https://hooks.slack.com/...',
+            enabled: true,
+            events: ['alarm.critical', 'ap.disconnected'],
+            lastTriggered: new Date().toISOString(),
+            lastStatus: 'success',
+          },
         ]);
       }
 
-      const emailRes = await apiService.makeAuthenticatedRequest('/v1/email-notifications', {}, 8000);
+      const emailRes = await apiService.makeAuthenticatedRequest(
+        '/v1/email-notifications',
+        {},
+        8000
+      );
       if (emailRes.ok) {
         setEmailNotifications(await emailRes.json());
       } else {
         setEmailNotifications([
-          { id: '1', name: 'Critical Alerts', recipients: ['admin@example.com'], enabled: true, events: ['alarm.critical'], schedule: 'immediate' }
+          {
+            id: '1',
+            name: 'Critical Alerts',
+            recipients: ['admin@example.com'],
+            enabled: true,
+            events: ['alarm.critical'],
+            schedule: 'immediate',
+          },
         ]);
       }
     } catch (error) {
@@ -121,7 +158,7 @@ export function EventNotificationsConfig() {
         url: webhook.url,
         enabled: webhook.enabled,
         events: webhook.events,
-        secret: webhook.secret || ''
+        secret: webhook.secret || '',
       });
     } else {
       resetWebhookForm();
@@ -138,7 +175,7 @@ export function EventNotificationsConfig() {
         recipients: email.recipients.join(', '),
         enabled: email.enabled,
         events: email.events,
-        schedule: email.schedule || 'immediate'
+        schedule: email.schedule || 'immediate',
       });
     } else {
       resetEmailForm();
@@ -154,10 +191,12 @@ export function EventNotificationsConfig() {
     }
     try {
       if (editingWebhook?.id) {
-        setWebhooks(prev => prev.map(w => w.id === editingWebhook.id ? { ...w, ...webhookForm } : w));
+        setWebhooks((prev) =>
+          prev.map((w) => (w.id === editingWebhook.id ? { ...w, ...webhookForm } : w))
+        );
         toast.success('Webhook updated');
       } else {
-        setWebhooks(prev => [...prev, { ...webhookForm, id: Date.now().toString() }]);
+        setWebhooks((prev) => [...prev, { ...webhookForm, id: Date.now().toString() }]);
         toast.success('Webhook created');
       }
       setIsDialogOpen(false);
@@ -172,13 +211,21 @@ export function EventNotificationsConfig() {
       toast.error('Name and recipients are required');
       return;
     }
-    const recipients = emailForm.recipients.split(',').map(r => r.trim()).filter(Boolean);
+    const recipients = emailForm.recipients
+      .split(',')
+      .map((r) => r.trim())
+      .filter(Boolean);
     try {
       if (editingEmail?.id) {
-        setEmailNotifications(prev => prev.map(e => e.id === editingEmail.id ? { ...e, ...emailForm, recipients } : e));
+        setEmailNotifications((prev) =>
+          prev.map((e) => (e.id === editingEmail.id ? { ...e, ...emailForm, recipients } : e))
+        );
         toast.success('Email notification updated');
       } else {
-        setEmailNotifications(prev => [...prev, { ...emailForm, recipients, id: Date.now().toString() }]);
+        setEmailNotifications((prev) => [
+          ...prev,
+          { ...emailForm, recipients, id: Date.now().toString() },
+        ]);
         toast.success('Email notification created');
       }
       setIsDialogOpen(false);
@@ -191,7 +238,9 @@ export function EventNotificationsConfig() {
   const testWebhook = async (webhook: WebhookConfig) => {
     toast.info('Sending test event...');
     try {
-      await apiService.makeAuthenticatedRequest(`/v1/webhooks/${webhook.id}/test`, { method: 'POST' });
+      await apiService.makeAuthenticatedRequest(`/v1/webhooks/${webhook.id}/test`, {
+        method: 'POST',
+      });
       toast.success('Test event sent successfully');
     } catch {
       toast.error('Failed to send test event');
@@ -200,28 +249,32 @@ export function EventNotificationsConfig() {
 
   const deleteWebhook = async (webhook: WebhookConfig) => {
     if (!confirm(`Delete webhook "${webhook.name}"?`)) return;
-    setWebhooks(prev => prev.filter(w => w.id !== webhook.id));
+    setWebhooks((prev) => prev.filter((w) => w.id !== webhook.id));
     toast.success('Webhook deleted');
   };
 
   const deleteEmail = async (email: EmailNotification) => {
     if (!confirm(`Delete email notification "${email.name}"?`)) return;
-    setEmailNotifications(prev => prev.filter(e => e.id !== email.id));
+    setEmailNotifications((prev) => prev.filter((e) => e.id !== email.id));
     toast.success('Email notification deleted');
   };
 
   const toggleWebhook = (webhook: WebhookConfig) => {
-    setWebhooks(prev => prev.map(w => w.id === webhook.id ? { ...w, enabled: !w.enabled } : w));
+    setWebhooks((prev) =>
+      prev.map((w) => (w.id === webhook.id ? { ...w, enabled: !w.enabled } : w))
+    );
     toast.success(webhook.enabled ? 'Webhook disabled' : 'Webhook enabled');
   };
 
   const toggleEmail = (email: EmailNotification) => {
-    setEmailNotifications(prev => prev.map(e => e.id === email.id ? { ...e, enabled: !e.enabled } : e));
+    setEmailNotifications((prev) =>
+      prev.map((e) => (e.id === email.id ? { ...e, enabled: !e.enabled } : e))
+    );
     toast.success(email.enabled ? 'Email notification disabled' : 'Email notification enabled');
   };
 
   const getEventLabel = (value: string) => {
-    return eventTypes.find(e => e.value === value)?.label || value;
+    return eventTypes.find((e) => e.value === value)?.label || value;
   };
 
   if (loading) {
@@ -247,7 +300,9 @@ export function EventNotificationsConfig() {
             Refresh
           </Button>
         </div>
-        <CardDescription>Configure webhooks and email notifications for system events</CardDescription>
+        <CardDescription>
+          Configure webhooks and email notifications for system events
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -276,8 +331,11 @@ export function EventNotificationsConfig() {
               </div>
             ) : (
               <div className="space-y-3">
-                {webhooks.map(webhook => (
-                  <div key={webhook.id} className="flex items-center justify-between p-4 border rounded-lg">
+                {webhooks.map((webhook) => (
+                  <div
+                    key={webhook.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{webhook.name}</span>
@@ -290,7 +348,7 @@ export function EventNotificationsConfig() {
                       </div>
                       <div className="text-sm text-muted-foreground mb-2">{webhook.url}</div>
                       <div className="flex flex-wrap gap-1">
-                        {webhook.events.map(event => (
+                        {webhook.events.map((event) => (
                           <Badge key={event} variant="secondary" className="text-xs">
                             {getEventLabel(event)}
                           </Badge>
@@ -305,7 +363,11 @@ export function EventNotificationsConfig() {
                       <Button variant="outline" size="sm" onClick={() => testWebhook(webhook)}>
                         <Send className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => openWebhookDialog(webhook)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openWebhookDialog(webhook)}
+                      >
                         <Settings className="h-4 w-4" />
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => deleteWebhook(webhook)}>
@@ -332,18 +394,23 @@ export function EventNotificationsConfig() {
               </div>
             ) : (
               <div className="space-y-3">
-                {emailNotifications.map(email => (
-                  <div key={email.id} className="flex items-center justify-between p-4 border rounded-lg">
+                {emailNotifications.map((email) => (
+                  <div
+                    key={email.id}
+                    className="flex items-center justify-between p-4 border rounded-lg"
+                  >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium">{email.name}</span>
-                        <Badge variant="outline" className="text-xs">{email.schedule}</Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {email.schedule}
+                        </Badge>
                       </div>
                       <div className="text-sm text-muted-foreground mb-2">
                         {email.recipients.join(', ')}
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        {email.events.map(event => (
+                        {email.events.map((event) => (
                           <Badge key={event} variant="secondary" className="text-xs">
                             {getEventLabel(event)}
                           </Badge>
@@ -351,10 +418,7 @@ export function EventNotificationsConfig() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Switch
-                        checked={email.enabled}
-                        onCheckedChange={() => toggleEmail(email)}
-                      />
+                      <Switch checked={email.enabled} onCheckedChange={() => toggleEmail(email)} />
                       <Button variant="outline" size="sm" onClick={() => openEmailDialog(email)}>
                         <Settings className="h-4 w-4" />
                       </Button>
@@ -385,7 +449,9 @@ export function EventNotificationsConfig() {
                     <Input
                       id="webhook-name"
                       value={webhookForm.name}
-                      onChange={(e) => setWebhookForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setWebhookForm((prev) => ({ ...prev, name: e.target.value }))
+                      }
                       placeholder="My Webhook"
                     />
                   </div>
@@ -394,7 +460,7 @@ export function EventNotificationsConfig() {
                     <Input
                       id="webhook-url"
                       value={webhookForm.url}
-                      onChange={(e) => setWebhookForm(prev => ({ ...prev, url: e.target.value }))}
+                      onChange={(e) => setWebhookForm((prev) => ({ ...prev, url: e.target.value }))}
                       placeholder="https://example.com/webhook"
                     />
                   </div>
@@ -404,14 +470,16 @@ export function EventNotificationsConfig() {
                       id="webhook-secret"
                       type="password"
                       value={webhookForm.secret}
-                      onChange={(e) => setWebhookForm(prev => ({ ...prev, secret: e.target.value }))}
+                      onChange={(e) =>
+                        setWebhookForm((prev) => ({ ...prev, secret: e.target.value }))
+                      }
                       placeholder="Signing secret for payload verification"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Trigger Events</Label>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                      {eventTypes.map(event => (
+                      {eventTypes.map((event) => (
                         <div key={event.value} className="flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -419,14 +487,23 @@ export function EventNotificationsConfig() {
                             checked={webhookForm.events.includes(event.value)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setWebhookForm(prev => ({ ...prev, events: [...prev.events, event.value] }));
+                                setWebhookForm((prev) => ({
+                                  ...prev,
+                                  events: [...prev.events, event.value],
+                                }));
                               } else {
-                                setWebhookForm(prev => ({ ...prev, events: prev.events.filter(ev => ev !== event.value) }));
+                                setWebhookForm((prev) => ({
+                                  ...prev,
+                                  events: prev.events.filter((ev) => ev !== event.value),
+                                }));
                               }
                             }}
                             className="h-4 w-4"
                           />
-                          <Label htmlFor={`webhook-${event.value}`} className="text-sm cursor-pointer">
+                          <Label
+                            htmlFor={`webhook-${event.value}`}
+                            className="text-sm cursor-pointer"
+                          >
                             {event.label}
                           </Label>
                         </div>
@@ -437,20 +514,32 @@ export function EventNotificationsConfig() {
                     <Switch
                       id="webhook-enabled"
                       checked={webhookForm.enabled}
-                      onCheckedChange={(checked) => setWebhookForm(prev => ({ ...prev, enabled: checked }))}
+                      onCheckedChange={(checked) =>
+                        setWebhookForm((prev) => ({ ...prev, enabled: checked }))
+                      }
                     />
                     <Label htmlFor="webhook-enabled">Enabled</Label>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={saveWebhook} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={saveWebhook}
+                    variant="outline"
+                    className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+                  >
+                    Save
+                  </Button>
                 </DialogFooter>
               </>
             ) : (
               <>
                 <DialogHeader>
-                  <DialogTitle>{editingEmail ? 'Edit Email Notification' : 'Create Email Notification'}</DialogTitle>
+                  <DialogTitle>
+                    {editingEmail ? 'Edit Email Notification' : 'Create Email Notification'}
+                  </DialogTitle>
                   <DialogDescription>
                     Configure email notifications for system events
                   </DialogDescription>
@@ -461,7 +550,7 @@ export function EventNotificationsConfig() {
                     <Input
                       id="email-name"
                       value={emailForm.name}
-                      onChange={(e) => setEmailForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) => setEmailForm((prev) => ({ ...prev, name: e.target.value }))}
                       placeholder="Critical Alerts"
                     />
                   </div>
@@ -470,7 +559,9 @@ export function EventNotificationsConfig() {
                     <Input
                       id="email-recipients"
                       value={emailForm.recipients}
-                      onChange={(e) => setEmailForm(prev => ({ ...prev, recipients: e.target.value }))}
+                      onChange={(e) =>
+                        setEmailForm((prev) => ({ ...prev, recipients: e.target.value }))
+                      }
                       placeholder="admin@example.com, ops@example.com"
                     />
                   </div>
@@ -478,7 +569,9 @@ export function EventNotificationsConfig() {
                     <Label htmlFor="email-schedule">Schedule</Label>
                     <Select
                       value={emailForm.schedule}
-                      onValueChange={(value: 'immediate' | 'hourly' | 'daily') => setEmailForm(prev => ({ ...prev, schedule: value }))}
+                      onValueChange={(value: 'immediate' | 'hourly' | 'daily') =>
+                        setEmailForm((prev) => ({ ...prev, schedule: value }))
+                      }
                     >
                       <SelectTrigger id="email-schedule">
                         <SelectValue />
@@ -493,7 +586,7 @@ export function EventNotificationsConfig() {
                   <div className="space-y-2">
                     <Label>Trigger Events</Label>
                     <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto border rounded-md p-2">
-                      {eventTypes.map(event => (
+                      {eventTypes.map((event) => (
                         <div key={event.value} className="flex items-center gap-2">
                           <input
                             type="checkbox"
@@ -501,14 +594,23 @@ export function EventNotificationsConfig() {
                             checked={emailForm.events.includes(event.value)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setEmailForm(prev => ({ ...prev, events: [...prev.events, event.value] }));
+                                setEmailForm((prev) => ({
+                                  ...prev,
+                                  events: [...prev.events, event.value],
+                                }));
                               } else {
-                                setEmailForm(prev => ({ ...prev, events: prev.events.filter(ev => ev !== event.value) }));
+                                setEmailForm((prev) => ({
+                                  ...prev,
+                                  events: prev.events.filter((ev) => ev !== event.value),
+                                }));
                               }
                             }}
                             className="h-4 w-4"
                           />
-                          <Label htmlFor={`email-${event.value}`} className="text-sm cursor-pointer">
+                          <Label
+                            htmlFor={`email-${event.value}`}
+                            className="text-sm cursor-pointer"
+                          >
                             {event.label}
                           </Label>
                         </div>
@@ -519,14 +621,24 @@ export function EventNotificationsConfig() {
                     <Switch
                       id="email-enabled"
                       checked={emailForm.enabled}
-                      onCheckedChange={(checked) => setEmailForm(prev => ({ ...prev, enabled: checked }))}
+                      onCheckedChange={(checked) =>
+                        setEmailForm((prev) => ({ ...prev, enabled: checked }))
+                      }
                     />
                     <Label htmlFor="email-enabled">Enabled</Label>
                   </div>
                 </div>
                 <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={saveEmail} className="bg-primary hover:bg-primary/90 text-primary-foreground">Save</Button>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={saveEmail}
+                    variant="outline"
+                    className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+                  >
+                    Save
+                  </Button>
                 </DialogFooter>
               </>
             )}

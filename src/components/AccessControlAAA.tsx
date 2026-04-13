@@ -132,7 +132,8 @@ export function AccessControlAAA() {
                 setEditingProfile(null);
                 setFormData({ name: '', authMethod: 'radius', enabled: true });
               }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+              variant="outline"
+              className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
             >
               <Plus className="h-4 w-4 mr-2" />
               Create Profile

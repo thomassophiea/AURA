@@ -7,12 +7,8 @@ import { Plus, Copy, Pencil, Trash2, FileCode2, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '../ui/table';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { GLOBAL_ELEMENT_TYPE_LABELS } from '../../types/globalElements';
 import type { GlobalElementTemplate, GlobalElementType } from '../../types/globalElements';
 import { templateResolver } from '../../services/templateResolver';
@@ -29,10 +25,11 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<GlobalElementType | 'all'>('all');
 
-  const filtered = templates.filter(t => {
-    const matchesSearch = !search
-      || t.name.toLowerCase().includes(search.toLowerCase())
-      || (t.description ?? '').toLowerCase().includes(search.toLowerCase());
+  const filtered = templates.filter((t) => {
+    const matchesSearch =
+      !search ||
+      t.name.toLowerCase().includes(search.toLowerCase()) ||
+      (t.description ?? '').toLowerCase().includes(search.toLowerCase());
     const matchesType = typeFilter === 'all' || t.element_type === typeFilter;
     return matchesSearch && matchesType;
   });
@@ -59,18 +56,23 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
           <Input
             placeholder="Search templates..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
+            onChange={(e) => setSearch(e.target.value)}
             className="pl-8 h-8 text-sm"
           />
         </div>
-        <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as GlobalElementType | 'all')}>
+        <Select
+          value={typeFilter}
+          onValueChange={(v) => setTypeFilter(v as GlobalElementType | 'all')}
+        >
           <SelectTrigger className="w-[150px] h-8 text-sm">
             <SelectValue placeholder="All types" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
             {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
+              <SelectItem key={value} value={value}>
+                {label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -93,11 +95,13 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
           {templates.length === 0 ? (
             <>
               <p className="text-xs mt-1.5 text-muted-foreground/60 max-w-xs">
-                Templates let you define reusable configuration with variables that can be deployed across sites.
+                Templates let you define reusable configuration with variables that can be deployed
+                across sites.
               </p>
               <Button
                 size="sm"
-                className="mt-4 bg-primary hover:bg-primary/90 text-primary-foreground"
+                variant="outline"
+                className="mt-4 text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
                 onClick={onCreate}
               >
                 <Plus className="h-4 w-4 mr-1.5" />
@@ -105,7 +109,9 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
               </Button>
             </>
           ) : (
-            <p className="text-xs mt-1.5 text-muted-foreground/60">Try clearing the search or filter to see all templates.</p>
+            <p className="text-xs mt-1.5 text-muted-foreground/60">
+              Try clearing the search or filter to see all templates.
+            </p>
           )}
         </div>
       ) : (
@@ -122,19 +128,17 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map(t => {
+              {filtered.map((t) => {
                 const tokenCount = templateResolver.extractTokens(t.config_payload).length;
                 return (
-                  <TableRow
-                    key={t.id}
-                    className="cursor-pointer"
-                    onClick={() => onEdit(t)}
-                  >
+                  <TableRow key={t.id} className="cursor-pointer" onClick={() => onEdit(t)}>
                     <TableCell>
                       <div className="min-w-[120px]">
                         <span className="font-medium text-sm">{t.name}</span>
                         {t.description && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{t.description}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {t.description}
+                          </p>
                         )}
                       </div>
                     </TableCell>
@@ -145,7 +149,9 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
                       {tokenCount > 0 ? (
-                        <span className="text-xs">{tokenCount} var{tokenCount !== 1 ? 's' : ''}</span>
+                        <span className="text-xs">
+                          {tokenCount} var{tokenCount !== 1 ? 's' : ''}
+                        </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">None</span>
                       )}
@@ -161,21 +167,30 @@ export function TemplateList({ templates, onEdit, onCreate, onDelete, onDuplicat
                     <TableCell>
                       <div className="flex items-center gap-0.5">
                         <Button
-                          variant="ghost" size="sm" className="h-7 w-7 p-0"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
                           onClick={(e) => handleDuplicate(e, t)}
                           title="Duplicate"
                         >
                           <Copy className="h-3.5 w-3.5" />
                         </Button>
                         <Button
-                          variant="ghost" size="sm" className="h-7 w-7 p-0"
-                          onClick={(e) => { e.stopPropagation(); onEdit(t); }}
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(t);
+                          }}
                           title="Edit"
                         >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button
-                          variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-destructive"
                           onClick={(e) => handleDelete(e, t.id)}
                           title="Delete"
                         >

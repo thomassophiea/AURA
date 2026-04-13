@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -36,6 +36,7 @@ import {
   Network,
   Users,
   Globe,
+  Building,
   Lock,
   Unlock,
   ChevronDown,
@@ -446,6 +447,13 @@ export function ConfigureNetworks() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedNetworks, setSelectedNetworks] = useState<string[]>([]);
+  const [selectedSite, setSelectedSiteState] = useState<string>(() => {
+    try {
+      return sessionStorage.getItem('networks-site-filter') || 'all';
+    } catch {
+      return 'all';
+    }
+  });
   const [filterBand, setFilterBand] = useState<string>('all');
   const [filterSecurity, setFilterSecurity] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -469,6 +477,17 @@ export function ConfigureNetworks() {
   const [availableProfiles, setAvailableProfiles] = useState<ProfileOption[]>([]);
   const [selectedProfiles, setSelectedProfiles] = useState<string[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [serviceSiteIds, setServiceSiteIds] = useState<Record<string, string[]>>({});
+  const [siteIdToName, setSiteIdToName] = useState<Record<string, string>>({});
+
+  const setSelectedSite = (site: string) => {
+    setSelectedSiteState(site);
+    try {
+      sessionStorage.setItem('networks-site-filter', site);
+    } catch {
+      /* ignore storage errors */
+    }
+  };
 
   // Deployment info: site count and AP count per WLAN
   const [deploymentInfo, setDeploymentInfo] = useState<
@@ -488,6 +507,39 @@ export function ConfigureNetworks() {
       })
     );
     setDeploymentInfo((prev) => ({ ...prev, ...info }));
+  };
+
+  const loadNetworkSiteMappings = async (networkIds: string[]) => {
+    if (networkIds.length === 0) {
+      setServiceSiteIds({});
+      return;
+    }
+
+    const sites = await apiService.getSites();
+    const nextSiteIdToName: Record<string, string> = {};
+    (Array.isArray(sites) ? sites : []).forEach((site) => {
+      if (site.id) {
+        nextSiteIdToName[site.id] = site.name || site.siteName || site.id;
+      }
+    });
+    setSiteIdToName(nextSiteIdToName);
+
+    const mappingEntries = await Promise.allSettled(
+      networkIds.map(async (networkId) => {
+        const ids = await apiService.getServiceSiteIds(networkId);
+        return [networkId, ids] as const;
+      })
+    );
+
+    const nextMapping: Record<string, string[]> = {};
+    mappingEntries.forEach((entry) => {
+      if (entry.status === 'fulfilled') {
+        const [networkId, ids] = entry.value;
+        nextMapping[networkId] = Array.isArray(ids) ? ids : [];
+      }
+    });
+
+    setServiceSiteIds(nextMapping);
   };
 
   useEffect(() => {
@@ -583,6 +635,10 @@ export function ConfigureNetworks() {
       // Load deployment info (sites/APs) in background
       if (allConfigs.length > 0) {
         loadDeploymentInfo(allConfigs.map((c) => c.id));
+        loadNetworkSiteMappings(allConfigs.map((c) => c.id));
+      } else {
+        setServiceSiteIds({});
+        setSiteIdToName({});
       }
 
       if (allConfigs.length === 0 && allServices.length === 0) {
@@ -604,7 +660,33 @@ export function ConfigureNetworks() {
     ? networks.filter((n: any) => n._siteGroupId === orgSiteGroupFilter)
     : networks;
 
-  const filteredNetworks = sgFilteredNetworks.filter((network) => {
+  const availableSites = useMemo(() => {
+    const siteSet = new Set<string>();
+    sgFilteredNetworks.forEach((network) => {
+      const ids = serviceSiteIds[network.id] || [];
+      ids.forEach((siteId) => {
+        const siteName = siteIdToName[siteId] || siteId;
+        if (siteName) siteSet.add(siteName);
+      });
+    });
+    return Array.from(siteSet).sort();
+  }, [sgFilteredNetworks, serviceSiteIds, siteIdToName]);
+
+  useEffect(() => {
+    if (selectedSite !== 'all' && !availableSites.includes(selectedSite)) {
+      setSelectedSite('all');
+    }
+  }, [availableSites, selectedSite]);
+
+  const siteFilteredNetworks =
+    selectedSite === 'all'
+      ? sgFilteredNetworks
+      : sgFilteredNetworks.filter((network) => {
+          const ids = serviceSiteIds[network.id] || [];
+          return ids.some((siteId) => (siteIdToName[siteId] || siteId) === selectedSite);
+        });
+
+  const filteredNetworks = siteFilteredNetworks.filter((network) => {
     const matchesSearch =
       network.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       network.ssid?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1138,7 +1220,11 @@ export function ConfigureNetworks() {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
-              <Button onClick={() => setShowCreateDialog(true)}>
+              <Button
+                variant="outline"
+                className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+                onClick={() => setShowCreateDialog(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Create WLAN
               </Button>
@@ -1280,7 +1366,7 @@ export function ConfigureNetworks() {
         <CardContent>
           {/* Filters and Search */}
           <div className="flex flex-col space-y-4 mb-6">
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -1324,6 +1410,21 @@ export function ConfigureNetworks() {
                   <SelectItem value="WPA/WPA2-Enterprise">WPA/WPA2-Enterprise (Mixed)</SelectItem>
                   <SelectItem value="WPA3-Enterprise">WPA3-Enterprise</SelectItem>
                   <SelectItem value="WPA2/WPA3-Enterprise">WPA2/WPA3-Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedSite} onValueChange={setSelectedSite}>
+                <SelectTrigger className="w-[145px] h-8 text-xs">
+                  <Building className="h-3.5 w-3.5 mr-1.5" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Sites</SelectItem>
+                  {availableSites.map((site) => (
+                    <SelectItem key={site} value={site}>
+                      {site}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
 
@@ -1584,7 +1685,7 @@ export function ConfigureNetworks() {
                         {!searchTerm && !isOrgScope && (
                           <button
                             onClick={() => setShowCreateDialog(true)}
-                            className="mt-2 px-4 py-2 rounded-md text-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            className="mt-2 px-4 py-2 rounded-md text-sm border border-border text-high-emphasis hover:bg-accent transition-colors"
                           >
                             Create WLAN
                           </button>

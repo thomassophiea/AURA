@@ -128,7 +128,10 @@ export function RFManagementTools() {
       if (editingProfile) {
         profileData.id = editingProfile.id;
         profileData.custId = editingProfile.custId;
-        await apiService.updateRFManagementProfile(editingProfile.id, { ...editingProfile, ...profileData });
+        await apiService.updateRFManagementProfile(editingProfile.id, {
+          ...editingProfile,
+          ...profileData,
+        });
         toast.success('RF profile updated');
       } else {
         await apiService.createRFManagementProfile(profileData);
@@ -138,7 +141,7 @@ export function RFManagementTools() {
       loadRFProfiles();
     } catch (err) {
       toast.error(editingProfile ? 'Failed to update RF profile' : 'Failed to create RF profile', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     } finally {
       setSaving(false);
@@ -157,7 +160,7 @@ export function RFManagementTools() {
       loadRFProfiles();
     } catch (err) {
       toast.error('Failed to delete RF profile', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   };
@@ -180,7 +183,11 @@ export function RFManagementTools() {
               <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
-            <Button onClick={handleCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button
+              onClick={handleCreate}
+              variant="outline"
+              className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Profile
             </Button>
@@ -197,9 +204,7 @@ export function RFManagementTools() {
         <Card>
           <CardHeader>
             <CardTitle>RF Management Profiles ({profiles.length})</CardTitle>
-            <CardDescription>
-              SmartRF, ACS, and XAI RF optimization profiles
-            </CardDescription>
+            <CardDescription>SmartRF, ACS, and XAI RF optimization profiles</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -238,16 +243,27 @@ export function RFManagementTools() {
                       <TableCell>
                         {profile.smartRf ? (
                           <div className="text-sm space-y-1">
-                            <div>Sensitivity: <Badge variant="secondary" className="text-xs">{profile.smartRf.basic?.sensitivity || 'N/A'}</Badge></div>
+                            <div>
+                              Sensitivity:{' '}
+                              <Badge variant="secondary" className="text-xs">
+                                {profile.smartRf.basic?.sensitivity || 'N/A'}
+                              </Badge>
+                            </div>
                             <div className="flex gap-1 flex-wrap">
                               {profile.smartRf.basic?.coverageHoleRecovery && (
-                                <Badge variant="secondary" className="text-xs">Coverage Recovery</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Coverage Recovery
+                                </Badge>
                               )}
                               {profile.smartRf.basic?.interferenceRecovery && (
-                                <Badge variant="secondary" className="text-xs">Interference Recovery</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Interference Recovery
+                                </Badge>
                               )}
                               {profile.smartRf.basic?.neighborRecovery && (
-                                <Badge variant="secondary" className="text-xs">Neighbor Recovery</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Neighbor Recovery
+                                </Badge>
                               )}
                             </div>
                           </div>
@@ -256,16 +272,32 @@ export function RFManagementTools() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge className={profile.canEdit ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-muted text-muted-foreground'}>
+                        <Badge
+                          className={
+                            profile.canEdit
+                              ? 'bg-green-500/15 text-green-600 dark:text-green-400'
+                              : 'bg-muted text-muted-foreground'
+                          }
+                        >
                           {profile.canEdit ? 'Editable' : 'Read-only'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(profile)} disabled={!profile.canEdit}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(profile)}
+                            disabled={!profile.canEdit}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => handleDelete(profile)} disabled={!profile.canDelete}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDelete(profile)}
+                            disabled={!profile.canDelete}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -283,9 +315,7 @@ export function RFManagementTools() {
           <SheetContent side="right" className="sm:max-w-lg w-full overflow-y-auto">
             <SheetHeader>
               <SheetTitle>{editingProfile ? 'Edit RF Profile' : 'Create RF Profile'}</SheetTitle>
-              <SheetDescription>
-                Configure RF management policy settings
-              </SheetDescription>
+              <SheetDescription>Configure RF management policy settings</SheetDescription>
             </SheetHeader>
             <div className="space-y-4">
               <div>
@@ -300,7 +330,10 @@ export function RFManagementTools() {
 
               <div>
                 <Label>Policy Type</Label>
-                <Select value={rfForm.type} onValueChange={(value) => setRfForm({ ...rfForm, type: value })}>
+                <Select
+                  value={rfForm.type}
+                  onValueChange={(value) => setRfForm({ ...rfForm, type: value })}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -317,7 +350,10 @@ export function RFManagementTools() {
                   <h4 className="text-sm font-medium">Smart RF Settings</h4>
                   <div>
                     <Label>Sensitivity</Label>
-                    <Select value={rfForm.sensitivity} onValueChange={(value) => setRfForm({ ...rfForm, sensitivity: value })}>
+                    <Select
+                      value={rfForm.sensitivity}
+                      onValueChange={(value) => setRfForm({ ...rfForm, sensitivity: value })}
+                    >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -330,21 +366,32 @@ export function RFManagementTools() {
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Coverage Hole Recovery</Label>
-                    <Switch checked={rfForm.coverageHoleRecovery} onCheckedChange={(v) => setRfForm({ ...rfForm, coverageHoleRecovery: v })} />
+                    <Switch
+                      checked={rfForm.coverageHoleRecovery}
+                      onCheckedChange={(v) => setRfForm({ ...rfForm, coverageHoleRecovery: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Interference Recovery</Label>
-                    <Switch checked={rfForm.interferenceRecovery} onCheckedChange={(v) => setRfForm({ ...rfForm, interferenceRecovery: v })} />
+                    <Switch
+                      checked={rfForm.interferenceRecovery}
+                      onCheckedChange={(v) => setRfForm({ ...rfForm, interferenceRecovery: v })}
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label>Neighbor Recovery</Label>
-                    <Switch checked={rfForm.neighborRecovery} onCheckedChange={(v) => setRfForm({ ...rfForm, neighborRecovery: v })} />
+                    <Switch
+                      checked={rfForm.neighborRecovery}
+                      onCheckedChange={(v) => setRfForm({ ...rfForm, neighborRecovery: v })}
+                    />
                   </div>
                 </div>
               )}
 
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowDialog(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setShowDialog(false)}>
+                  Cancel
+                </Button>
                 <Button onClick={handleSave} disabled={saving}>
                   {saving ? 'Saving...' : editingProfile ? 'Update' : 'Create'}
                 </Button>

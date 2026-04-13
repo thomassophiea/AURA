@@ -53,7 +53,7 @@ export function AccessControlRules() {
     authType: '',
     policyRoleId: '',
     portalId: '',
-    description: ''
+    description: '',
   });
 
   const [endSystemGroups, setEndSystemGroups] = useState<GroupOption[]>([]);
@@ -66,10 +66,16 @@ export function AccessControlRules() {
   const loadRules = async () => {
     setLoading(true);
     try {
-      const response = await apiService.makeAuthenticatedRequest('/v1/accesscontrol/rules', {}, 8000);
+      const response = await apiService.makeAuthenticatedRequest(
+        '/v1/accesscontrol/rules',
+        {},
+        8000
+      );
       if (response.ok) {
         const data = await response.json();
-        setRules(Array.isArray(data) ? data.sort((a: AccessRule, b: AccessRule) => a.order - b.order) : []);
+        setRules(
+          Array.isArray(data) ? data.sort((a: AccessRule, b: AccessRule) => a.order - b.order) : []
+        );
       }
     } catch (error) {
       console.error('Failed to load access control rules:', error);
@@ -82,12 +88,30 @@ export function AccessControlRules() {
   const loadDropdownOptions = async () => {
     try {
       const [esGroups, dtGroups, locGroups, tGroups, roles, portalList] = await Promise.all([
-        apiService.makeAuthenticatedRequest('/v1/endsystemgroups', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => []),
-        apiService.makeAuthenticatedRequest('/v1/devicetypegroups', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => []),
-        apiService.makeAuthenticatedRequest('/v1/locationgroups', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => []),
-        apiService.makeAuthenticatedRequest('/v1/timegroups', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => []),
-        apiService.makeAuthenticatedRequest('/v1/roles', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => []),
-        apiService.makeAuthenticatedRequest('/v1/portals', {}, 5000).then(r => r.ok ? r.json() : []).catch(() => [])
+        apiService
+          .makeAuthenticatedRequest('/v1/endsystemgroups', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        apiService
+          .makeAuthenticatedRequest('/v1/devicetypegroups', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        apiService
+          .makeAuthenticatedRequest('/v1/locationgroups', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        apiService
+          .makeAuthenticatedRequest('/v1/timegroups', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        apiService
+          .makeAuthenticatedRequest('/v1/roles', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
+        apiService
+          .makeAuthenticatedRequest('/v1/portals', {}, 5000)
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []),
       ]);
       setEndSystemGroups(Array.isArray(esGroups) ? esGroups : []);
       setDeviceTypeGroups(Array.isArray(dtGroups) ? dtGroups : []);
@@ -116,14 +140,14 @@ export function AccessControlRules() {
         await apiService.makeAuthenticatedRequest(`/v1/accesscontrol/rules/${editingRule.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formData),
         });
         toast.success('Rule updated');
       } else {
         await apiService.makeAuthenticatedRequest('/v1/accesscontrol/rules', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formData),
         });
         toast.success('Rule created');
       }
@@ -137,7 +161,9 @@ export function AccessControlRules() {
   const handleDeleteRule = async (rule: AccessRule) => {
     if (!confirm(`Delete rule "${rule.name}"?`)) return;
     try {
-      await apiService.makeAuthenticatedRequest(`/v1/accesscontrol/rules/${rule.id}`, { method: 'DELETE' });
+      await apiService.makeAuthenticatedRequest(`/v1/accesscontrol/rules/${rule.id}`, {
+        method: 'DELETE',
+      });
       toast.success('Rule deleted');
       loadRules();
     } catch (error) {
@@ -150,9 +176,9 @@ export function AccessControlRules() {
       await apiService.makeAuthenticatedRequest(`/v1/accesscontrol/rules/${rule.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...rule, enabled: !rule.enabled })
+        body: JSON.stringify({ ...rule, enabled: !rule.enabled }),
       });
-      setRules(rules.map(r => r.id === rule.id ? { ...r, enabled: !r.enabled } : r));
+      setRules(rules.map((r) => (r.id === rule.id ? { ...r, enabled: !r.enabled } : r)));
       toast.success(`Rule ${!rule.enabled ? 'enabled' : 'disabled'}`);
     } catch (error) {
       toast.error('Failed to update rule');
@@ -173,7 +199,7 @@ export function AccessControlRules() {
       authType: '',
       policyRoleId: '',
       portalId: '',
-      description: ''
+      description: '',
     });
     setIsDialogOpen(true);
   };
@@ -192,22 +218,27 @@ export function AccessControlRules() {
       authType: rule.authType || '',
       policyRoleId: rule.policyRoleId || '',
       portalId: rule.portalId || '',
-      description: rule.description || ''
+      description: rule.description || '',
     });
     setIsDialogOpen(true);
   };
 
-  const filteredRules = rules.filter(rule =>
-    rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    rule.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredRules = rules.filter(
+    (rule) =>
+      rule.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      rule.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getActionBadgeClass = (action: string) => {
     switch (action) {
-      case 'accept': return 'bg-green-500 hover:bg-green-600';
-      case 'deny': return 'bg-red-500 hover:bg-red-600';
-      case 'redirect': return 'bg-blue-500 hover:bg-blue-600';
-      default: return 'bg-gray-500';
+      case 'accept':
+        return 'bg-green-500 hover:bg-green-600';
+      case 'deny':
+        return 'bg-red-500 hover:bg-red-600';
+      case 'redirect':
+        return 'bg-blue-500 hover:bg-blue-600';
+      default:
+        return 'bg-gray-500';
     }
   };
 
@@ -228,9 +259,15 @@ export function AccessControlRules() {
             <ListChecks className="h-6 w-6" />
             Access Control Rules
           </h2>
-          <p className="text-muted-foreground">Define rules for network access control and policy assignment</p>
+          <p className="text-muted-foreground">
+            Define rules for network access control and policy assignment
+          </p>
         </div>
-        <Button onClick={openCreateDialog} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button
+          onClick={openCreateDialog}
+          variant="outline"
+          className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Rule
         </Button>
@@ -241,7 +278,9 @@ export function AccessControlRules() {
           <div className="flex justify-between items-center">
             <div>
               <CardTitle>Access Rules</CardTitle>
-              <CardDescription>{filteredRules.length} rule(s) configured (processed in order)</CardDescription>
+              <CardDescription>
+                {filteredRules.length} rule(s) configured (processed in order)
+              </CardDescription>
             </div>
             <div className="relative w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -271,7 +310,9 @@ export function AccessControlRules() {
               {filteredRules.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                    {searchTerm ? 'No rules match your search' : 'No access control rules configured'}
+                    {searchTerm
+                      ? 'No rules match your search'
+                      : 'No access control rules configured'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -301,7 +342,11 @@ export function AccessControlRules() {
                         <Button size="sm" variant="outline" onClick={() => openEditDialog(rule)}>
                           <Edit className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteRule(rule)}>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteRule(rule)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -335,7 +380,9 @@ export function AccessControlRules() {
                   type="number"
                   min={1}
                   value={formData.order}
-                  onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 1 })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, order: parseInt(e.target.value) || 1 })
+                  }
                 />
               </div>
             </div>
@@ -354,7 +401,9 @@ export function AccessControlRules() {
               <Label>Action *</Label>
               <Select
                 value={formData.action}
-                onValueChange={(v: 'accept' | 'deny' | 'redirect') => setFormData({ ...formData, action: v })}
+                onValueChange={(v: 'accept' | 'deny' | 'redirect') =>
+                  setFormData({ ...formData, action: v })
+                }
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -381,8 +430,10 @@ export function AccessControlRules() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Any</SelectItem>
-                      {endSystemGroups.map(g => (
-                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      {endSystemGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -399,8 +450,10 @@ export function AccessControlRules() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Any</SelectItem>
-                      {deviceTypeGroups.map(g => (
-                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      {deviceTypeGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -417,8 +470,10 @@ export function AccessControlRules() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Any</SelectItem>
-                      {locationGroups.map(g => (
-                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      {locationGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -435,8 +490,10 @@ export function AccessControlRules() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">Any</SelectItem>
-                      {timeGroups.map(g => (
-                        <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                      {timeGroups.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -475,8 +532,10 @@ export function AccessControlRules() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">None</SelectItem>
-                    {policyRoles.map(r => (
-                      <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>
+                    {policyRoles.map((r) => (
+                      <SelectItem key={r.id} value={r.id}>
+                        {r.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -495,8 +554,10 @@ export function AccessControlRules() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">None</SelectItem>
-                    {portals.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                    {portals.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -513,7 +574,9 @@ export function AccessControlRules() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSaveRule}>{editingRule ? 'Update' : 'Create'}</Button>
           </DialogFooter>
         </DialogContent>

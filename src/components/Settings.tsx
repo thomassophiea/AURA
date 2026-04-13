@@ -601,7 +601,8 @@ export function Settings() {
                 <Button
                   onClick={handleSavePreferences}
                   disabled={saving}
-                  className="bg-primary hover:bg-primary/90"
+                  variant="outline"
+                  className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
                 >
                   {saving ? (
                     <>
@@ -686,7 +687,8 @@ export function Settings() {
                 <Button
                   onClick={handleSavePreferences}
                   disabled={saving}
-                  className="bg-primary hover:bg-primary/90"
+                  variant="outline"
+                  className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
                 >
                   {saving ? (
                     <>

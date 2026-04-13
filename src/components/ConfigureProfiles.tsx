@@ -31,7 +31,9 @@ export function ConfigureProfiles() {
     }
   }, []);
 
-  useEffect(() => { loadProfiles(); }, [loadProfiles]);
+  useEffect(() => {
+    loadProfiles();
+  }, [loadProfiles]);
 
   const handleDelete = async (profileId: string, profileName: string) => {
     if (!confirm(`Delete profile "${profileName}"?`)) return;
@@ -44,13 +46,20 @@ export function ConfigureProfiles() {
     }
   };
 
-  const openCreate = () => { setEditingProfile(null); setSheetOpen(true); };
-  const openEdit = (profile: DeviceProfile) => { setEditingProfile(profile); setSheetOpen(true); };
-  const handleSaved = () => { setSheetOpen(false); loadProfiles(); };
+  const openCreate = () => {
+    setEditingProfile(null);
+    setSheetOpen(true);
+  };
+  const openEdit = (profile: DeviceProfile) => {
+    setEditingProfile(profile);
+    setSheetOpen(true);
+  };
+  const handleSaved = () => {
+    setSheetOpen(false);
+    loadProfiles();
+  };
 
-  const filtered = profiles.filter(p =>
-    p.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = profiles.filter((p) => p.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
     <div className="p-6 space-y-4">
@@ -72,8 +81,14 @@ export function ConfigureProfiles() {
           <Button variant="outline" size="sm" onClick={loadProfiles} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
-          <Button size="sm" onClick={openCreate}>
-            <Plus className="h-4 w-4 mr-1" />New Profile
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+            onClick={openCreate}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            New Profile
           </Button>
         </div>
       </div>
@@ -83,7 +98,7 @@ export function ConfigureProfiles() {
         <Input
           placeholder="Search profiles..."
           value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="pl-10"
         />
       </div>
@@ -113,7 +128,7 @@ export function ConfigureProfiles() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map(profile => (
+                filtered.map((profile) => (
                   <TableRow key={profile.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">

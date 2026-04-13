@@ -381,7 +381,11 @@ export function ConfigureAdoptionRules() {
                 Configure automatic device adoption rules based on device properties
               </p>
             </div>
-            <Button onClick={handleCreateRule} className="bg-primary hover:bg-primary/90">
+            <Button
+              onClick={handleCreateRule}
+              variant="outline"
+              className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Create Rule
             </Button>
@@ -821,7 +825,11 @@ export function ConfigureAdoptionRules() {
             >
               Cancel
             </Button>
-            <Button onClick={handleSaveRule} className="bg-primary hover:bg-primary/90">
+            <Button
+              onClick={handleSaveRule}
+              variant="outline"
+              className="text-high-emphasis border-border hover:bg-accent hover:text-high-emphasis"
+            >
               {isEditDialogOpen ? 'Update Rule' : 'Create Rule'}
             </Button>
           </DialogFooter>
