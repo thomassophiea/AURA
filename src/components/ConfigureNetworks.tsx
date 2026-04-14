@@ -401,7 +401,21 @@ const resolveDefaultVlan = (
   const topologyId = typeof service.defaultTopology === 'string' ? service.defaultTopology : '';
   const topologyVlanId = topologyId ? normalizeVlanId(topologyById[topologyId]?.vlanid) : undefined;
 
-  return topologyVlanId ?? normalizeVlanId(service.vlan) ?? normalizeVlanId(service.vlanId);
+  return (
+    topologyVlanId ??
+    normalizeVlanId(service.vlan) ??
+    normalizeVlanId(service.vlanId) ??
+    normalizeVlanId(service.dot1dPortNumber)
+  );
+};
+
+const resolveDefaultTopologyName = (
+  service: Service,
+  topologyById: Record<string, Topology>
+): string | undefined => {
+  const topologyId = typeof service.defaultTopology === 'string' ? service.defaultTopology : '';
+  const topology = topologyId ? topologyById[topologyId] : undefined;
+  return topology?.name;
 };
 
 // Helper function to transform service data to network config
@@ -425,6 +439,8 @@ const transformServiceToNetwork = (
 
   // Get auth type
   const authType = mapAuthType(service);
+  const defaultVlanId = resolveDefaultVlan(service, topologyById);
+  const defaultTopologyName = resolveDefaultTopologyName(service, topologyById);
 
   // Debug: Always log service mapping for troubleshooting auth type issues
   console.log(`[ConfigureNetworks] Network: "${networkSSID}" -> Auth: "${authType}"`, {
@@ -446,7 +462,8 @@ const transformServiceToNetwork = (
     name: networkName,
     ssid: networkSSID,
     authType, // Use the pre-calculated auth type
-    vlanId: resolveDefaultVlan(service, topologyById),
+    vlanId: defaultVlanId,
+    defaultTopologyName,
     band: '2.4/5 GHz', // Simplified for now
     enabled: isEnabled,
     hidden: isHidden,
