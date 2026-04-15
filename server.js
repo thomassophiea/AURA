@@ -1302,6 +1302,56 @@ app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, (re
   xiqReq.end();
 });
 
+// XIQ API proxy — forwards authenticated GET requests to ExtremeCloud IQ
+// Browser sends: X-XIQ-Token (Bearer token) + X-XIQ-Region (region key)
+app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
+  const token = req.headers['x-xiq-token'];
+  const region = req.headers['x-xiq-region'] || 'global';
+
+  if (!token) return res.status(401).json({ error: 'X-XIQ-Token header required' });
+
+  const baseUrl = XIQ_REGION_URLS[region];
+  if (!baseUrl) return res.status(400).json({ error: `Unknown XIQ region: ${region}` });
+
+  // Strip the /xiq/api prefix to get the upstream XIQ path + query string
+  const xiqPath = req.path.replace(/^\/xiq\/api/, '');
+  const search = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  const url = new URL(`${baseUrl}${xiqPath}${search}`);
+
+  console.log(`[XIQ API Proxy] GET ${url.hostname}${url.pathname}${url.search}`);
+
+  const options = {
+    hostname: url.hostname,
+    port: 443,
+    path: url.pathname + url.search,
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+    timeout: 20000,
+  };
+
+  const xiqReq = https.request(options, (xiqRes) => {
+    let raw = '';
+    xiqRes.on('data', chunk => { raw += chunk; });
+    xiqRes.on('end', () => {
+      res.status(xiqRes.statusCode);
+      try { res.json(JSON.parse(raw)); } catch { res.send(raw); }
+    });
+  });
+
+  xiqReq.on('timeout', () => {
+    xiqReq.destroy();
+    if (!res.headersSent) res.status(504).json({ error: 'XIQ request timed out' });
+  });
+  xiqReq.on('error', (err) => {
+    if (!res.headersSent) res.status(502).json({ error: err.message || 'XIQ proxy error' });
+  });
+  xiqReq.end();
+});
+
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
 console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
 app.use('/api', (req, res, next) => {

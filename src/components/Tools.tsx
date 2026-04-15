@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Radio, TestTube, Zap, Network, FileText, RefreshCw, Stethoscope, Building2 } from 'lucide-react';
+import {
+  Radio,
+  TestTube,
+  Zap,
+  Network,
+  FileText,
+  RefreshCw,
+  Stethoscope,
+  Building2,
+  CloudUpload,
+} from 'lucide-react';
 import { AFCPlanningTool } from './AFCPlanningTool';
 import { AFCRadioHeightCalculator } from './AFCRadioHeightCalculator';
 import { ApiTestTool } from './ApiTestTool';
 import { RFManagementTools } from './RFManagementTools';
 import { PacketCapture } from './PacketCapture';
+import { XIQMigrationTool } from './XIQMigrationTool';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -30,7 +41,11 @@ export function Tools() {
         .map((log: any) => ({
           timestamp: log.timestamp || log.time || new Date().toISOString(),
           level: log.severity || (log.status?.toLowerCase().includes('error') ? 'error' : 'info'),
-          message: log.description || log.message || `${log.action || ''} ${log.resource || ''}`.trim() || JSON.stringify(log),
+          message:
+            log.description ||
+            log.message ||
+            `${log.action || ''} ${log.resource || ''}`.trim() ||
+            JSON.stringify(log),
         }))
         .filter((entry: { level: string }) => {
           if (logLevel === 'info') return true;
@@ -74,6 +89,10 @@ export function Tools() {
               <Stethoscope className="h-4 w-4" />
               Diagnostics
             </TabsTrigger>
+            <TabsTrigger value="xiq-migration" className="flex items-center gap-2">
+              <CloudUpload className="h-4 w-4" />
+              XIQ Migration
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -109,11 +128,10 @@ export function Tools() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Configure interface, filters, duration, and download captures from the dedicated Packet Capture tab.
+                  Configure interface, filters, duration, and download captures from the dedicated
+                  Packet Capture tab.
                 </p>
-                <Button onClick={() => setActiveTab('packet-capture')}>
-                  Open Packet Capture
-                </Button>
+                <Button onClick={() => setActiveTab('packet-capture')}>Open Packet Capture</Button>
               </CardContent>
             </Card>
 
@@ -161,6 +179,10 @@ export function Tools() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="xiq-migration" className="m-0 h-[calc(100%-3rem)] overflow-auto">
+          <XIQMigrationTool />
         </TabsContent>
       </Tabs>
     </div>
