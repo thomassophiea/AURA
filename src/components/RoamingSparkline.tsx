@@ -13,7 +13,8 @@ interface TooltipProps {
 
 function SparklineTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload?.length) return null;
-  const bucket = payload[0].payload;
+  const bucket = payload[0]?.payload as SparklineBucket | undefined;
+  if (!bucket) return null;
   return (
     <div
       style={{
@@ -76,7 +77,7 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
 
   return (
     <div
-      role="img"
+      role="region"
       aria-label="Roaming activity sparkline showing event density and average data rate over time"
       style={{ width: '100%', padding: '16px 24px' }}
     >
