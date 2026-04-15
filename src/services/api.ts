@@ -2813,9 +2813,7 @@ class ApiService {
    * Sync multiple profiles (batch operation)
    * Uses the ExtremeCloud IQ deployment API when device IDs are available
    */
-  async syncMultipleProfiles(
-    profileIds: string[]
-  ): Promise<{
+  async syncMultipleProfiles(profileIds: string[]): Promise<{
     success: boolean;
     message: string;
     results?: Array<{ profileId: string; success: boolean; message: string }>;
@@ -4130,9 +4128,14 @@ class ApiService {
    * Get detailed station report
    * Endpoint: GET /v1/report/stations/{stationId}
    */
-  async getStationReport(stationId: string, duration: string = '24H'): Promise<any> {
+  async getStationReport(
+    stationId: string,
+    duration: string = '24H',
+    widgetList?: string
+  ): Promise<any> {
     try {
-      const endpoint = `/v1/report/stations/${encodeURIComponent(stationId)}?duration=${duration}`;
+      let endpoint = `/v1/report/stations/${encodeURIComponent(stationId)}?duration=${duration}`;
+      if (widgetList) endpoint += `&widgetList=${encodeURIComponent(widgetList)}`;
       logger.log(`[API] Fetching station report for: ${stationId}`);
       const response = await this.makeAuthenticatedRequest(endpoint, {}, 15000);
 

@@ -32,9 +32,9 @@ import { formatCompactNumber } from '../lib/units';
 import { RoamingSparkline } from './RoamingSparkline';
 import {
   buildSparklineBuckets,
-  extractThroughputPoints,
-  extractRttPoints,
+  extractAllSeriesFromReport,
   mergeReportIntoBuckets,
+  SPARKLINE_WIDGET_LIST,
 } from '../lib/roamingSparklineData';
 import type { SparklineBucket } from '../lib/roamingSparklineData';
 
@@ -559,12 +559,12 @@ export function RoamingTrail({
     [roamingEvents]
   );
 
-  // Enrich sparkline with station report data (throughput + TCP RTT)
+  // Enrich sparkline with full station report (throughput, RTT, baseline RSS, Tx rate, wireless RTT)
   const [stationReport, setStationReport] = useState<unknown>(null);
   useEffect(() => {
     let cancelled = false;
     setStationReport(null);
-    apiService.getStationReport(macAddress, '7D').then((report) => {
+    apiService.getStationReport(macAddress, '7D', SPARKLINE_WIDGET_LIST).then((report) => {
       if (!cancelled) setStationReport(report);
     });
     return () => {
@@ -574,10 +574,15 @@ export function RoamingTrail({
 
   const enrichedSparklineData: SparklineBucket[] = useMemo(() => {
     if (!stationReport) return sparklineData;
-    const tpts = extractThroughputPoints(stationReport);
-    const rpts = extractRttPoints(stationReport);
-    if (tpts.length === 0 && rpts.length === 0) return sparklineData;
-    return mergeReportIntoBuckets(sparklineData, tpts, rpts);
+    const series = extractAllSeriesFromReport(stationReport);
+    const hasAny =
+      series.throughputPoints.length > 0 ||
+      series.rttPoints.length > 0 ||
+      series.rssPoints.length > 0 ||
+      series.txRatePoints.length > 0 ||
+      series.wirelessRttPoints.length > 0;
+    if (!hasAny) return sparklineData;
+    return mergeReportIntoBuckets(sparklineData, series);
   }, [sparklineData, stationReport]);
 
   // Get unique APs and time range (includes correlation events)
