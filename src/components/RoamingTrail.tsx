@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
 import {
   MapPin,
@@ -20,7 +20,7 @@ import {
   PanelRightClose,
   PanelRightOpen,
 } from 'lucide-react';
-import { StationEvent, APEvent, RRMEvent } from '../services/api';
+import { StationEvent, APEvent, RRMEvent, apiService } from '../services/api';
 import {
   getReasonCodeInfo,
   isFailureReasonCode,
@@ -30,7 +30,12 @@ import {
 } from '../lib/wifi-codes';
 import { formatCompactNumber } from '../lib/units';
 import { RoamingSparkline } from './RoamingSparkline';
-import { buildSparklineBuckets } from '../lib/roamingSparklineData';
+import {
+  buildSparklineBuckets,
+  extractThroughputPoints,
+  extractRttPoints,
+  mergeReportIntoBuckets,
+} from '../lib/roamingSparklineData';
 import type { SparklineBucket } from '../lib/roamingSparklineData';
 
 interface RoamingTrailProps {
@@ -553,6 +558,27 @@ export function RoamingTrail({
     () => buildSparklineBuckets(roamingEvents),
     [roamingEvents]
   );
+
+  // Enrich sparkline with station report data (throughput + TCP RTT)
+  const [stationReport, setStationReport] = useState<unknown>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setStationReport(null);
+    apiService.getStationReport(macAddress, '7D').then((report) => {
+      if (!cancelled) setStationReport(report);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [macAddress]);
+
+  const enrichedSparklineData: SparklineBucket[] = useMemo(() => {
+    if (!stationReport) return sparklineData;
+    const tpts = extractThroughputPoints(stationReport);
+    const rpts = extractRttPoints(stationReport);
+    if (tpts.length === 0 && rpts.length === 0) return sparklineData;
+    return mergeReportIntoBuckets(sparklineData, tpts, rpts);
+  }, [sparklineData, stationReport]);
 
   // Get unique APs and time range (includes correlation events)
   const { uniqueAPs, timeRange } = useMemo(() => {
@@ -1134,7 +1160,7 @@ export function RoamingTrail({
       <div className="flex-1 flex min-h-0">
         {viewMode === 'sparkline' ? (
           <div className="flex-1 overflow-auto">
-            <RoamingSparkline data={sparklineData} />
+            <RoamingSparkline data={enrichedSparklineData} />
           </div>
         ) : (
           <>
