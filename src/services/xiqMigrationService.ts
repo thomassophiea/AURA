@@ -10,9 +10,20 @@
  *   fetchExistingTopologies()      → existing VLANs on controller (conflict check)
  *   convertToControllerFormat()    → XIQ objects → controller schema
  *   executeMigration()             → POST in order, assign profiles, optionally enable
- *   downloadMigrationReport()      → JSON report download
+ *   downloadMigrationReport()      → PDF report download
+ *
+ * XIQ API Notes (as of v25.9.0-36):
+ *   - PSK/PPSK passwords are WRITE-ONLY — no endpoint returns key_value.
+ *     Use POST /ssids/{id}/psk/password to set; imported services will need
+ *     passwords configured manually on the controller.
+ *   - SSID list: GET /policy/ssids (paginated, limit/page params)
+ *   - Devices:   GET /devices (serial_number, hostname, product_type, location)
+ *   - Profiles:  GET /user-profiles (vlan_profile.default_vlan_id for VLAN mapping)
+ *   - RADIUS:    GET /radius-servers or /radius-servers/external
  */
 
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { type XIQStoredToken } from './xiqService';
 import { apiService } from './api';
 
@@ -113,6 +124,21 @@ export interface ConvertedConfig {
   topologies: Record<string, unknown>[];
   aaaPolicies: Record<string, unknown>[];
   services: Record<string, unknown>[];
+  /**
+   * Regular PSK SSIDs where the key was unavailable — imported with placeholder '12345678'.
+   * Must be updated on the controller before enabling.
+   */
+  pskPlaceholders: string[];
+  /**
+   * PPSK SSIDs where no key was available — PPSK uses per-user keys managed by XIQ,
+   * so a placeholder is not applicable. These are imported as open; configure via XIQ PPSK portal.
+   */
+  ppskWarnings: string[];
+  /**
+   * RADIUS servers where shared_secret was empty — XIQ may mask secrets in GET responses.
+   * The AAA policy was created but authentication will fail until the secret is set on the controller.
+   */
+  radiusSecretWarnings: string[];
 }
 
 // ─── XIQ Proxy Helpers ────────────────────────────────────────────────────────
@@ -336,11 +362,15 @@ function convertPrivacy(security: XIQSSIDSecurity): Record<string, unknown> | nu
   };
   const pmfMode = pmfMap[security.pmf] ?? 'enabled';
   if (security.type === 'open' || security.type === 'owe') return null;
-  if (security.type === 'psk' || security.type === 'ppsk') {
-    if (!security.psk) return null;
-    return {
-      WpaPskElement: { mode: 'auto', pmfMode, keyHexEncoded: false, presharedKey: security.psk },
-    };
+  if (security.type === 'psk') {
+    // XIQ never returns the PSK key — use placeholder so the controller entry is valid.
+    // Operator must update this password before enabling the SSID.
+    const presharedKey = security.psk ?? '12345678';
+    return { WpaPskElement: { mode: 'auto', pmfMode, keyHexEncoded: false, presharedKey } };
+  }
+  if (security.type === 'ppsk') {
+    const presharedKey = security.psk ?? '12345678';
+    return { WpaPskElement: { mode: 'auto', pmfMode, keyHexEncoded: false, presharedKey } };
   }
   if (security.type === 'dot1x') {
     return { WpaEnterpriseElement: { mode: 'auto', pmfMode } };
@@ -414,6 +444,8 @@ export function convertToControllerFormat(
   }
 
   // Convert RADIUS → AAA Policies
+  const radiusSecretWarnings = selectedRADIUS.filter((r) => !r.secret).map((r) => r.name);
+
   const aaaPolicies: Record<string, unknown>[] = [];
   if (selectedRADIUS.length > 0) {
     aaaPolicies.push({
@@ -437,10 +469,15 @@ export function convertToControllerFormat(
 
   // Convert SSIDs → Services
   const services: Record<string, unknown>[] = [];
+  const pskPlaceholders: string[] = []; // PSK SSIDs where '12345678' was used as placeholder
+  const ppskWarnings: string[] = []; // PPSK SSIDs imported as open (no shared placeholder applicable)
   for (const ssid of selectedSSIDs) {
     const privacy = convertPrivacy(ssid.security);
-    if ((ssid.security.type === 'psk' || ssid.security.type === 'ppsk') && privacy === null)
-      continue;
+    if (ssid.security.type === 'psk' && !ssid.security.psk) {
+      pskPlaceholders.push(ssid.name);
+    } else if (ssid.security.type === 'ppsk' && !ssid.security.psk) {
+      ppskWarnings.push(ssid.name);
+    }
     const topologyId = ssid.vlan_id ? (vlanToTopologyId.get(ssid.vlan_id) ?? null) : null;
     const serviceId = uuid();
     const service: Record<string, unknown> = {
@@ -502,7 +539,7 @@ export function convertToControllerFormat(
     services.push(service);
   }
 
-  return { topologies, aaaPolicies, services };
+  return { topologies, aaaPolicies, services, pskPlaceholders, ppskWarnings, radiusSecretWarnings };
 }
 
 // ─── Migration Execution ──────────────────────────────────────────────────────
@@ -559,6 +596,25 @@ export async function executeMigration(
     services: { succeeded: [], failed: [] },
     profileAssignments: { updated: 0, failed: 0 },
   };
+
+  if (config.pskPlaceholders.length > 0) {
+    log(
+      `Warning: PSK password unavailable for ${config.pskPlaceholders.length} SSID(s) — placeholder "12345678" used. Update the password on the controller before enabling: ${config.pskPlaceholders.join(', ')}`,
+      'warn'
+    );
+  }
+  if (config.ppskWarnings.length > 0) {
+    log(
+      `Warning: PPSK key unavailable for ${config.ppskWarnings.length} SSID(s) — placeholder "12345678" used. Update keys on the controller: ${config.ppskWarnings.join(', ')}`,
+      'warn'
+    );
+  }
+  if (config.radiusSecretWarnings.length > 0) {
+    log(
+      `Warning: RADIUS shared secret not returned by XIQ for ${config.radiusSecretWarnings.length} server(s) — AAA policy created but authentication will fail until secrets are set on the controller: ${config.radiusSecretWarnings.join(', ')}`,
+      'warn'
+    );
+  }
 
   if (options.dryRun) {
     log('DRY RUN — no changes will be made to the controller', 'warn');
@@ -693,35 +749,326 @@ export async function executeMigration(
   return result;
 }
 
-// ─── Report Download ──────────────────────────────────────────────────────────
+// ─── PDF Report Download ──────────────────────────────────────────────────────
 
-export function downloadMigrationReport(data: XIQMigrationData, result?: MigrationResult): void {
-  const report = {
-    generated: new Date().toISOString(),
-    summary: {
-      ssids: data.ssids.length,
-      vlans: data.vlans.length,
-      radius: data.radius.length,
-      devices: data.devices.length,
-    },
-    ssids: data.ssids.map((s) => ({
-      name: s.name,
-      security: s.security.type,
-      enabled: s.enabled,
-      vlan: s.vlan_id,
-    })),
-    vlans: data.vlans.map((v) => ({ name: v.name, vlan_id: v.vlan_id })),
-    radius: data.radius.map((r) => ({ name: r.name, ip: r.ip })),
-    devices: data.devices.map((d) => ({ name: d.name, serial: d.serial_number, model: d.model })),
-    migrationResult: result ?? null,
-  };
-  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `XIQ_Migration_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+const BRAND_PURPLE = [106, 90, 205] as [number, number, number]; // #6a5acd — Extreme purple
+const BRAND_DARK = [30, 30, 46] as [number, number, number];
+const SUCCESS_GREEN = [34, 197, 94] as [number, number, number];
+const WARN_AMBER = [234, 179, 8] as [number, number, number];
+const FAIL_RED = [239, 68, 68] as [number, number, number];
+
+function addSectionHeader(doc: jsPDF, title: string, y: number): number {
+  doc.setFillColor(...BRAND_PURPLE);
+  doc.rect(14, y, 182, 8, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(title, 17, y + 5.5);
+  doc.setTextColor(0, 0, 0);
+  return y + 12;
+}
+
+function checkPageBreak(doc: jsPDF, y: number, needed = 20): number {
+  if (y + needed > 275) {
+    doc.addPage();
+    return 20;
+  }
+  return y;
+}
+
+export function downloadMigrationReport(
+  data: XIQMigrationData,
+  result?: MigrationResult,
+  selectedSsidIds?: Set<string>
+): void {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const now = new Date();
+  const timestamp = now.toISOString().slice(0, 19).replace('T', ' ');
+  const filename = `XIQ_Migration_${now.toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`;
+
+  // ── Cover header ──────────────────────────────────────────────────────────
+  doc.setFillColor(...BRAND_DARK);
+  doc.rect(0, 0, 210, 38, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('XIQ Migration Report', 14, 18);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Generated: ${timestamp}`, 14, 26);
+  doc.text('AURA — Autonomous Unified Radio Agent', 14, 32);
+  doc.setTextColor(0, 0, 0);
+
+  let y = 48;
+
+  // ── Migration result summary (if available) ───────────────────────────────
+  if (result) {
+    y = addSectionHeader(doc, 'Migration Summary', y);
+
+    const statusColor = (n: number, bad = false): [number, number, number] =>
+      n === 0 ? [120, 120, 120] : bad ? FAIL_RED : SUCCESS_GREEN;
+
+    const summaryRows = [
+      [
+        'Topologies Created',
+        String(result.topologies.succeeded),
+        String(result.topologies.skipped),
+        String(result.topologies.failed),
+      ],
+      [
+        'AAA Policies Created',
+        String(result.aaaPolicies.succeeded),
+        '—',
+        String(result.aaaPolicies.failed),
+      ],
+      [
+        'Services (SSIDs) Created',
+        String(result.services.succeeded.length),
+        '—',
+        String(result.services.failed.length),
+      ],
+      [
+        'Profile Assignments',
+        String(result.profileAssignments.updated),
+        '—',
+        String(result.profileAssignments.failed),
+      ],
+    ];
+
+    autoTable(doc, {
+      startY: y,
+      head: [['Object', 'Succeeded', 'Skipped', 'Failed']],
+      body: summaryRows,
+      headStyles: { fillColor: BRAND_PURPLE, textColor: [255, 255, 255], fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { halign: 'center' },
+        2: { halign: 'center' },
+        3: { halign: 'center' },
+      },
+      styles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+
+    // Failed services
+    if (result.services.failed.length > 0) {
+      y = checkPageBreak(doc, y, 30);
+      y = addSectionHeader(doc, 'Failed Services', y);
+      autoTable(doc, {
+        startY: y,
+        head: [['SSID Name', 'Error']],
+        body: result.services.failed.map((f) => [f.name, f.error]),
+        headStyles: { fillColor: FAIL_RED, textColor: [255, 255, 255] },
+        styles: { fontSize: 8 },
+        margin: { left: 14, right: 14 },
+      });
+      y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+    }
+  }
+
+  // ── SSIDs ─────────────────────────────────────────────────────────────────
+  const migratedSsids = selectedSsidIds
+    ? data.ssids.filter((s) => selectedSsidIds.has(s.id))
+    : data.ssids;
+
+  y = checkPageBreak(doc, y, 30);
+  y = addSectionHeader(doc, `Migrated SSIDs (${migratedSsids.length})`, y);
+
+  if (migratedSsids.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [['SSID Name', 'Security', 'WPA', 'VLAN', 'Broadcast', 'Fast Roam', 'PSK Note']],
+      body: migratedSsids.map((s) => [
+        s.name,
+        s.security.type.toUpperCase(),
+        s.security.wpa_version,
+        s.vlan_id ? String(s.vlan_id) : '—',
+        s.broadcast_ssid ? 'Yes' : 'No',
+        s.fast_roaming ? 'Yes' : 'No',
+        s.security.type === 'psk'
+          ? s.security.psk
+            ? 'Included'
+            : '⚠ Placeholder: 12345678'
+          : s.security.type === 'ppsk'
+            ? s.security.psk
+              ? 'Included'
+              : '⚠ Placeholder: 12345678'
+            : '—',
+      ]),
+      headStyles: { fillColor: BRAND_PURPLE, textColor: [255, 255, 255] },
+      columnStyles: {
+        6: { fontStyle: 'italic', textColor: [180, 100, 0] },
+      },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  }
+
+  // ── VLANs / Topologies ────────────────────────────────────────────────────
+  if (data.vlans.length > 0) {
+    y = checkPageBreak(doc, y, 30);
+    y = addSectionHeader(doc, `VLANs / Topologies (${data.vlans.length})`, y);
+    autoTable(doc, {
+      startY: y,
+      head: [['Name', 'VLAN ID', 'User Profile']],
+      body: data.vlans.map((v) => [v.name, String(v.vlan_id), v.user_profile_name || '—']),
+      headStyles: { fillColor: BRAND_PURPLE, textColor: [255, 255, 255] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  }
+
+  // ── RADIUS Servers ────────────────────────────────────────────────────────
+  if (data.radius.length > 0) {
+    y = checkPageBreak(doc, y, 30);
+    y = addSectionHeader(doc, `RADIUS Servers (${data.radius.length})`, y);
+    autoTable(doc, {
+      startY: y,
+      head: [
+        ['Name', 'IP Address', 'Auth Port', 'Acct Port', 'Timeout', 'Retries', 'Shared Secret'],
+      ],
+      body: data.radius.map((r) => [
+        r.name,
+        r.ip,
+        String(r.auth_port),
+        String(r.acct_port),
+        String(r.timeout),
+        String(r.retries),
+        r.secret ? '✓ Present' : '⚠ Not returned',
+      ]),
+      columnStyles: {
+        6: { fontStyle: 'italic' },
+      },
+      headStyles: { fillColor: BRAND_PURPLE, textColor: [255, 255, 255] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+
+    // RADIUS secret warning box
+    const radiusNoSecret = data.radius.filter((r) => !r.secret);
+    if (radiusNoSecret.length > 0) {
+      const boxH = 6 + radiusNoSecret.length * 5 + 6;
+      y = checkPageBreak(doc, y, boxH + 4);
+      doc.setFillColor(255, 251, 235);
+      doc.setDrawColor(...WARN_AMBER);
+      doc.roundedRect(14, y, 182, boxH, 2, 2, 'FD');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(146, 64, 14);
+      doc.text('⚠  RADIUS Shared Secret — Manual Action Required', 18, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(
+        'XIQ may not return shared secrets via API. The AAA policy was created but RADIUS',
+        18,
+        y + 10
+      );
+      doc.text(
+        'authentication will fail until the correct secret is entered on the controller:',
+        18,
+        y + 15
+      );
+      doc.setTextColor(0, 0, 0);
+      radiusNoSecret.forEach((r, i) => {
+        doc.text(`• ${r.name}  (${r.ip})`, 20, y + 20 + i * 5);
+      });
+      y += boxH + 4;
+    }
+  }
+
+  // ── Devices ───────────────────────────────────────────────────────────────
+  if (data.devices.length > 0) {
+    y = checkPageBreak(doc, y, 30);
+    y = addSectionHeader(doc, `Access Points (${data.devices.length})`, y);
+    autoTable(doc, {
+      startY: y,
+      head: [['Name', 'Serial Number', 'Model', 'Location']],
+      body: data.devices.map((d) => [d.name, d.serial_number, d.model, d.location || '—']),
+      headStyles: { fillColor: BRAND_PURPLE, textColor: [255, 255, 255] },
+      styles: { fontSize: 8 },
+      margin: { left: 14, right: 14 },
+    });
+    y = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+  }
+
+  // ── PSK placeholder notice ────────────────────────────────────────────────
+  const pskPlaceholderSsids = migratedSsids.filter(
+    (s) => s.security.type === 'psk' && !s.security.psk
+  );
+  if (pskPlaceholderSsids.length > 0) {
+    const boxH = 6 + pskPlaceholderSsids.length * 5 + 6;
+    y = checkPageBreak(doc, y, boxH + 4);
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(...WARN_AMBER);
+    doc.roundedRect(14, y, 182, boxH, 2, 2, 'FD');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(146, 64, 14);
+    doc.text('⚠  PSK Password Placeholder — Update Before Enabling', 18, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(
+      'XIQ does not expose PSK keys via API. A placeholder password "12345678" was used.',
+      18,
+      y + 10
+    );
+    doc.text(
+      'Change this password on the controller for each SSID below before enabling it:',
+      18,
+      y + 15
+    );
+    doc.setTextColor(0, 0, 0);
+    pskPlaceholderSsids.forEach((s, i) => {
+      doc.text(`• ${s.name}`, 20, y + 20 + i * 5);
+    });
+    y += boxH + 4;
+  }
+
+  // ── PPSK placeholder notice ───────────────────────────────────────────────
+  const ppskSsids = migratedSsids.filter((s) => s.security.type === 'ppsk' && !s.security.psk);
+  if (ppskSsids.length > 0) {
+    const boxH = 6 + ppskSsids.length * 5 + 6;
+    y = checkPageBreak(doc, y, boxH + 4);
+    doc.setFillColor(255, 251, 235);
+    doc.setDrawColor(...WARN_AMBER);
+    doc.roundedRect(14, y, 182, boxH, 2, 2, 'FD');
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(146, 64, 14);
+    doc.text('⚠  PPSK Password Placeholder — Update Before Enabling', 18, y + 5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(
+      'XIQ does not expose PPSK keys via API. A placeholder password "12345678" was used.',
+      18,
+      y + 10
+    );
+    doc.text(
+      'Update the password on the controller for each SSID below before enabling it:',
+      18,
+      y + 15
+    );
+    doc.setTextColor(0, 0, 0);
+    ppskSsids.forEach((s, i) => {
+      doc.text(`• ${s.name}`, 20, y + 20 + i * 5);
+    });
+    y += boxH + 4;
+  }
+
+  // ── Footer on every page ──────────────────────────────────────────────────
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(150, 150, 150);
+    doc.text(`Page ${i} of ${pageCount}  •  XIQ Migration Report  •  ${timestamp}`, 105, 290, {
+      align: 'center',
+    });
+  }
+
+  doc.save(filename);
 }

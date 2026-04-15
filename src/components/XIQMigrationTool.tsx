@@ -7,7 +7,6 @@ import {
   Loader2,
   ChevronRight,
   Download,
-  FileJson,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -89,7 +88,11 @@ function SelectList<T extends { id: string; name: string }>({
             key={item.id}
             className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 cursor-pointer"
           >
-            <Checkbox checked={selected.has(item.id)} onCheckedChange={() => onToggle(item.id)} />
+            <Checkbox
+              checked={selected.has(item.id)}
+              onCheckedChange={() => onToggle(item.id)}
+              style={{ width: 20, height: 20, flexShrink: 0 }}
+            />
             <span className="text-sm font-medium flex-1">{item.name}</span>
             {renderSub?.(item)}
           </label>
@@ -260,7 +263,7 @@ export function XIQMigrationTool() {
       if (ok > 0 && fail === 0) toast.success(`${ok} SSID(s) migrated successfully`);
       else if (ok > 0) toast.warning(`${ok} succeeded, ${fail} failed`);
       else toast.error('Migration failed');
-      if (downloadReportAfter) downloadMigrationReport(xiqData, result);
+      if (downloadReportAfter) downloadMigrationReport(xiqData, result, ssidSel);
     } catch (err) {
       addLog(err instanceof Error ? err.message : 'Migration error', 'error');
       toast.error('Migration error');
@@ -418,10 +421,13 @@ export function XIQMigrationTool() {
             ))}
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => downloadMigrationReport(xiqData)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => downloadMigrationReport(xiqData, undefined, ssidSel)}
+            >
               <Download className="h-4 w-4 mr-1" />
-              <FileJson className="h-4 w-4 mr-1" />
-              Download Migration Report
+              Download PDF Report
             </Button>
           </div>
 
@@ -494,6 +500,11 @@ export function XIQMigrationTool() {
               </Tabs>
               <Button
                 className="mt-4 w-full"
+                style={{
+                  backgroundColor: ssidSel.size === 0 ? '#374151' : '#2563eb',
+                  color: '#ffffff',
+                  opacity: ssidSel.size === 0 ? 0.6 : 1,
+                }}
                 disabled={ssidSel.size === 0}
                 onClick={() => setStep(3)}
               >
@@ -581,7 +592,11 @@ export function XIQMigrationTool() {
             </CardHeader>
             <CardContent className="space-y-5">
               <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox checked={dryRun} onCheckedChange={(v) => setDryRun(!!v)} />
+                <Checkbox
+                  checked={dryRun}
+                  onCheckedChange={(v) => setDryRun(!!v)}
+                  style={{ width: 20, height: 20, flexShrink: 0 }}
+                />
                 <span className="font-medium text-sm">Dry Run (no changes will be made)</span>
               </label>
 
@@ -623,6 +638,7 @@ export function XIQMigrationTool() {
                 <Checkbox
                   checked={downloadReportAfter}
                   onCheckedChange={(v) => setDownloadReportAfter(!!v)}
+                  style={{ width: 20, height: 20, flexShrink: 0 }}
                 />
                 <div>
                   <span className="font-medium text-sm block">Download Migration Report</span>
@@ -741,7 +757,9 @@ export function XIQMigrationTool() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => xiqData && downloadMigrationReport(xiqData, migrationResult)}
+                    onClick={() =>
+                      xiqData && downloadMigrationReport(xiqData, migrationResult, ssidSel)
+                    }
                   >
                     <Download className="h-4 w-4 mr-1" />
                     Download Report
