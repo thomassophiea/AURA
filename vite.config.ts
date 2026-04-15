@@ -10,7 +10,8 @@ function getVersionInfo() {
     try {
       const versionData = JSON.parse(readFileSync(versionPath, 'utf-8'));
       // Use cacheVersion if available, otherwise calculate from commitCount
-      const cacheVersion = versionData.cacheVersion || (parseInt(versionData.commitCount, 10) + 500) || 1;
+      const cacheVersion =
+        versionData.cacheVersion || parseInt(versionData.commitCount, 10) + 500 || 1;
       return {
         version: versionData.version || '0.0.0',
         cacheVersion: cacheVersion,
@@ -49,12 +50,30 @@ export default defineConfig(({ mode }) => ({
       'next-themes@0.4.6': 'next-themes',
       'lucide-react@0.487.0': 'lucide-react',
       'input-otp@1.4.2': 'input-otp',
-      'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png': path.resolve(__dirname, './src/assets/f6780e138108fdbc214f37376d5cea1e3356ac35.png'),
-      'figma:asset/f1f5cc28e22c424e4ca3f5a6e9fc54a076249463.png': path.resolve(__dirname, './src/assets/f1f5cc28e22c424e4ca3f5a6e9fc54a076249463.png'),
-      'figma:asset/d52a85d61a44a0cc362e0d9fa9ad5f37bd190aa6.png': path.resolve(__dirname, './src/assets/d52a85d61a44a0cc362e0d9fa9ad5f37bd190aa6.png'),
-      'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png': path.resolve(__dirname, './src/assets/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png'),
-      'figma:asset/606ca3719aa8a0b22b98f374434ef979c5eb6e01.png': path.resolve(__dirname, './src/assets/606ca3719aa8a0b22b98f374434ef979c5eb6e01.png'),
-      'figma:asset/4380861a10b2a42eae7b09184256259a2a45e923.png': path.resolve(__dirname, './src/assets/4380861a10b2a42eae7b09184256259a2a45e923.png'),
+      'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png': path.resolve(
+        __dirname,
+        './src/assets/f6780e138108fdbc214f37376d5cea1e3356ac35.png'
+      ),
+      'figma:asset/f1f5cc28e22c424e4ca3f5a6e9fc54a076249463.png': path.resolve(
+        __dirname,
+        './src/assets/f1f5cc28e22c424e4ca3f5a6e9fc54a076249463.png'
+      ),
+      'figma:asset/d52a85d61a44a0cc362e0d9fa9ad5f37bd190aa6.png': path.resolve(
+        __dirname,
+        './src/assets/d52a85d61a44a0cc362e0d9fa9ad5f37bd190aa6.png'
+      ),
+      'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png': path.resolve(
+        __dirname,
+        './src/assets/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png'
+      ),
+      'figma:asset/606ca3719aa8a0b22b98f374434ef979c5eb6e01.png': path.resolve(
+        __dirname,
+        './src/assets/606ca3719aa8a0b22b98f374434ef979c5eb6e01.png'
+      ),
+      'figma:asset/4380861a10b2a42eae7b09184256259a2a45e923.png': path.resolve(
+        __dirname,
+        './src/assets/4380861a10b2a42eae7b09184256259a2a45e923.png'
+      ),
       'embla-carousel-react@8.6.0': 'embla-carousel-react',
       'cmdk@1.1.1': 'cmdk',
       'class-variance-authority@0.7.1': 'class-variance-authority',
@@ -123,5 +142,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
     open: true,
+  },
+  test: {
+    // Exclude macOS AppleDouble resource fork files (._*) which are not real test files
+    exclude: ['**/node_modules/**', '**/dist/**', '**/.{git,cache}/**', '**/._*'],
   },
 }));
