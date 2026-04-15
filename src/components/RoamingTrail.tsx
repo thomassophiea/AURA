@@ -29,6 +29,9 @@ import {
   type RoamingIssue,
 } from '../lib/wifi-codes';
 import { formatCompactNumber } from '../lib/units';
+import { RoamingSparkline } from './RoamingSparkline';
+import { buildSparklineBuckets } from '../lib/roamingSparklineData';
+import type { SparklineBucket } from '../lib/roamingSparklineData';
 
 interface RoamingTrailProps {
   events: StationEvent[];
@@ -162,6 +165,7 @@ export function RoamingTrail({
   const [alertFilter, setAlertFilter] = useState<AlertFilter>({ type: 'none' });
   const [hoveredEventKey, setHoveredEventKey] = useState<string | null>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [viewMode, setViewMode] = useState<'trail' | 'sparkline'>('trail');
   // Event correlation toggles
   const [showAPEvents, setShowAPEvents] = useState(true);
   const [showRRMEvents, setShowRRMEvents] = useState(true);
@@ -545,6 +549,11 @@ export function RoamingTrail({
     }));
   }, [rrmEvents, showRRMEvents, filterType, timeFilter]);
 
+  const sparklineData: SparklineBucket[] = useMemo(
+    () => buildSparklineBuckets(roamingEvents),
+    [roamingEvents]
+  );
+
   // Get unique APs and time range (includes correlation events)
   const { uniqueAPs, timeRange } = useMemo(() => {
     const apSet = new Set<string>();
@@ -818,6 +827,33 @@ export function RoamingTrail({
               </button>
             </div>
 
+            {/* View mode toggle */}
+            <div className="flex gap-1 bg-muted rounded p-0.5" role="group" aria-label="View mode">
+              <button
+                onClick={() => setViewMode('trail')}
+                aria-pressed={viewMode === 'trail'}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'trail'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Standard roaming trail view"
+              >
+                Trail
+              </button>
+              <button
+                onClick={() => setViewMode('sparkline')}
+                aria-pressed={viewMode === 'sparkline'}
+                className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                  viewMode === 'sparkline'
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+                title="Sparkline trend view"
+              >
+                Sparkline
+              </button>
+            </div>
             {/* Filter controls */}
             <div className="flex gap-1 bg-muted rounded p-0.5">
               {filterType === 'time' ? (
@@ -1094,163 +1130,177 @@ export function RoamingTrail({
         </div>
       )}
 
-      {/* Main timeline view */}
+      {/* Main content: trail or sparkline */}
       <div className="flex-1 flex min-h-0">
-        {/* AP Names sidebar */}
-        <div className="w-60 border-r bg-muted/20 flex-shrink-0">
-          <div
-            className="bg-muted/40 border-b px-3 py-2 font-semibold text-xs"
-            style={{ height: '40px', display: 'flex', alignItems: 'center' }}
-          >
-            Access Points ({uniqueAPs.length})
+        {viewMode === 'sparkline' ? (
+          <div className="flex-1 overflow-auto">
+            <RoamingSparkline data={sparklineData} />
           </div>
-          {uniqueAPs.map((ap) => {
-            const apEvents = roamingEvents.filter((e) => e.apName === ap);
-            const apDwellTimes = apEvents.filter((e) => e.dwell).map((e) => e.dwell || 0);
-            const totalDwell = apDwellTimes.reduce((a, b) => a + b, 0);
-
-            return (
+        ) : (
+          <>
+            {/* AP Names sidebar */}
+            <div className="w-60 border-r bg-muted/20 flex-shrink-0">
               <div
-                key={ap}
-                className="px-3 py-2 border-b flex items-center gap-2 hover:bg-accent/50 transition-colors"
-                style={{ height: `${AP_ROW_HEIGHT}px` }}
+                className="bg-muted/40 border-b px-3 py-2 font-semibold text-xs"
+                style={{ height: '40px', display: 'flex', alignItems: 'center' }}
               >
-                <Radio className="h-4 w-4 text-primary flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-xs truncate">{ap}</div>
-                  <div className="text-[10px] text-muted-foreground">{apEvents.length} events</div>
-                  {totalDwell > 0 && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Dwell: {formatDuration(totalDwell)}
-                    </div>
-                  )}
-                </div>
+                Access Points ({uniqueAPs.length})
               </div>
-            );
-          })}
-        </div>
+              {uniqueAPs.map((ap) => {
+                const apEvents = roamingEvents.filter((e) => e.apName === ap);
+                const apDwellTimes = apEvents.filter((e) => e.dwell).map((e) => e.dwell || 0);
+                const totalDwell = apDwellTimes.reduce((a, b) => a + b, 0);
 
-        {/* Timeline chart */}
-        <div className="flex-1 relative" onClick={() => setSelectedEventKey(null)}>
-          <div className="relative w-full h-full">
-            {/* Time grid lines */}
-            {[0, 25, 50, 75].map((percent) => (
-              <div
-                key={percent}
-                className="absolute top-0 bottom-0 border-l border-border/40"
-                style={{ left: `${percent}%` }}
-              >
-                <div
-                  className="text-[10px] text-muted-foreground px-1 py-2 whitespace-nowrap"
-                  style={{ height: '40px', display: 'flex', alignItems: 'center' }}
-                >
-                  {formatTimeShort(
-                    timeRange.min + (timeRange.max - timeRange.min) * (percent / 100)
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {/* AP row lines */}
-            {uniqueAPs.map((ap, idx) => (
-              <div
-                key={ap}
-                className="absolute left-0 right-0 border-b border-border/30"
-                style={{
-                  top: `${idx * AP_ROW_HEIGHT + 40}px`,
-                  height: `${AP_ROW_HEIGHT}px`,
-                }}
-              />
-            ))}
-
-            {/* Connection lines */}
-            {roamingEvents.map((event, idx) => {
-              if (idx === roamingEvents.length - 1) return null;
-              const nextEvent = roamingEvents[idx + 1];
-
-              const x1 = getTimelinePosition(event.timestamp);
-              const y1 = getAPRow(event.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
-              const x2 = getTimelinePosition(nextEvent.timestamp);
-              const y2 = getAPRow(nextEvent.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
-
-              const isBandSteering = nextEvent.isBandSteering;
-              const isFailedConnection = nextEvent.isFailedRoam;
-
-              return (
-                <svg
-                  key={`line-${idx}`}
-                  className="absolute cursor-pointer"
-                  style={{ left: 0, top: 0, width: '100%', height: '100%', zIndex: 5 }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedEventKey(getEventKey(nextEvent));
-                    setShowDetails(true);
-                  }}
-                >
-                  <line
-                    x1={`${x1}%`}
-                    y1={y1}
-                    x2={`${x2}%`}
-                    y2={y2}
-                    stroke={
-                      isFailedConnection ? '#ef4444' : isBandSteering ? '#ef4444' : 'currentColor'
-                    }
-                    strokeWidth="2"
-                    strokeDasharray={isBandSteering ? '6,3' : isFailedConnection ? '3,3' : 'none'}
-                    className={!isBandSteering && !isFailedConnection ? 'text-primary/40' : ''}
-                  />
-                </svg>
-              );
-            })}
-
-            {/* Event dots */}
-            {roamingEvents.map((event, idx) => {
-              const x = getTimelinePosition(event.timestamp);
-              const y = getAPRow(event.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
-              const isHighlighted = isEventHighlighted(event, idx);
-
-              const dotColor = event.isFailedRoam
-                ? 'bg-red-500 ring-2 ring-red-300'
-                : event.isLateRoam
-                  ? 'bg-orange-500 ring-2 ring-orange-300'
-                  : event.status === 'good'
-                    ? 'bg-green-500'
-                    : event.status === 'warning'
-                      ? 'bg-orange-500'
-                      : 'bg-red-500';
-
-              // Dim non-highlighted events when a filter is active
-              const dimmed = alertFilter.type !== 'none' && !isHighlighted;
-
-              return (
-                <React.Fragment key={idx}>
+                return (
                   <div
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedEventKey(getEventKey(event));
-                      setShowDetails(true);
-                      setAlertFilter({ type: 'none' });
-                      setHoveredEventKey(null);
+                    key={ap}
+                    className="px-3 py-2 border-b flex items-center gap-2 hover:bg-accent/50 transition-colors"
+                    style={{ height: `${AP_ROW_HEIGHT}px` }}
+                  >
+                    <Radio className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-xs truncate">{ap}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {apEvents.length} events
+                      </div>
+                      {totalDwell > 0 && (
+                        <div className="text-[10px] text-muted-foreground">
+                          Dwell: {formatDuration(totalDwell)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Timeline chart */}
+            <div className="flex-1 relative" onClick={() => setSelectedEventKey(null)}>
+              <div className="relative w-full h-full">
+                {/* Time grid lines */}
+                {[0, 25, 50, 75].map((percent) => (
+                  <div
+                    key={percent}
+                    className="absolute top-0 bottom-0 border-l border-border/40"
+                    style={{ left: `${percent}%` }}
+                  >
+                    <div
+                      className="text-[10px] text-muted-foreground px-1 py-2 whitespace-nowrap"
+                      style={{ height: '40px', display: 'flex', alignItems: 'center' }}
+                    >
+                      {formatTimeShort(
+                        timeRange.min + (timeRange.max - timeRange.min) * (percent / 100)
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* AP row lines */}
+                {uniqueAPs.map((ap, idx) => (
+                  <div
+                    key={ap}
+                    className="absolute left-0 right-0 border-b border-border/30"
+                    style={{
+                      top: `${idx * AP_ROW_HEIGHT + 40}px`,
+                      height: `${AP_ROW_HEIGHT}px`,
                     }}
-                    onMouseEnter={(e) => {
-                      setHoveredEventKey(getEventKey(event));
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                      const container = (e.currentTarget as HTMLElement).closest(
-                        '.relative'
-                      ) as HTMLElement;
-                      const containerRect = container?.getBoundingClientRect();
-                      if (containerRect) {
-                        setHoverPos({
-                          x: rect.left - containerRect.left + rect.width / 2,
-                          y: rect.top - containerRect.top,
-                        });
-                      }
-                    }}
-                    onMouseLeave={() => {
-                      setHoveredEventKey(null);
-                      setHoverPos(null);
-                    }}
-                    className={`
+                  />
+                ))}
+
+                {/* Connection lines */}
+                {roamingEvents.map((event, idx) => {
+                  if (idx === roamingEvents.length - 1) return null;
+                  const nextEvent = roamingEvents[idx + 1];
+
+                  const x1 = getTimelinePosition(event.timestamp);
+                  const y1 = getAPRow(event.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+                  const x2 = getTimelinePosition(nextEvent.timestamp);
+                  const y2 = getAPRow(nextEvent.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+
+                  const isBandSteering = nextEvent.isBandSteering;
+                  const isFailedConnection = nextEvent.isFailedRoam;
+
+                  return (
+                    <svg
+                      key={`line-${idx}`}
+                      className="absolute cursor-pointer"
+                      style={{ left: 0, top: 0, width: '100%', height: '100%', zIndex: 5 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedEventKey(getEventKey(nextEvent));
+                        setShowDetails(true);
+                      }}
+                    >
+                      <line
+                        x1={`${x1}%`}
+                        y1={y1}
+                        x2={`${x2}%`}
+                        y2={y2}
+                        stroke={
+                          isFailedConnection
+                            ? '#ef4444'
+                            : isBandSteering
+                              ? '#ef4444'
+                              : 'currentColor'
+                        }
+                        strokeWidth="2"
+                        strokeDasharray={
+                          isBandSteering ? '6,3' : isFailedConnection ? '3,3' : 'none'
+                        }
+                        className={!isBandSteering && !isFailedConnection ? 'text-primary/40' : ''}
+                      />
+                    </svg>
+                  );
+                })}
+
+                {/* Event dots */}
+                {roamingEvents.map((event, idx) => {
+                  const x = getTimelinePosition(event.timestamp);
+                  const y = getAPRow(event.apName) * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+                  const isHighlighted = isEventHighlighted(event, idx);
+
+                  const dotColor = event.isFailedRoam
+                    ? 'bg-red-500 ring-2 ring-red-300'
+                    : event.isLateRoam
+                      ? 'bg-orange-500 ring-2 ring-orange-300'
+                      : event.status === 'good'
+                        ? 'bg-green-500'
+                        : event.status === 'warning'
+                          ? 'bg-orange-500'
+                          : 'bg-red-500';
+
+                  // Dim non-highlighted events when a filter is active
+                  const dimmed = alertFilter.type !== 'none' && !isHighlighted;
+
+                  return (
+                    <React.Fragment key={idx}>
+                      <div
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedEventKey(getEventKey(event));
+                          setShowDetails(true);
+                          setAlertFilter({ type: 'none' });
+                          setHoveredEventKey(null);
+                        }}
+                        onMouseEnter={(e) => {
+                          setHoveredEventKey(getEventKey(event));
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const container = (e.currentTarget as HTMLElement).closest(
+                            '.relative'
+                          ) as HTMLElement;
+                          const containerRect = container?.getBoundingClientRect();
+                          if (containerRect) {
+                            setHoverPos({
+                              x: rect.left - containerRect.left + rect.width / 2,
+                              y: rect.top - containerRect.top,
+                            });
+                          }
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredEventKey(null);
+                          setHoverPos(null);
+                        }}
+                        className={`
                       absolute rounded-full border-2 border-background
                       hover:scale-125 transition-all cursor-pointer z-10
                       ${dotColor}
@@ -1258,1074 +1308,1091 @@ export function RoamingTrail({
                       ${isHighlighted ? 'w-5 h-5 ring-2 ring-amber-400 ring-offset-1 scale-110 z-20' : 'w-4 h-4'}
                       ${dimmed ? 'opacity-30' : ''}
                     `}
-                    style={{
-                      left: `${x}%`,
-                      top: `${y}px`,
-                      transform: 'translate(-50%, -50%)',
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        setSelectedEventKey(getEventKey(event));
-                        setShowDetails(true);
-                      }
-                    }}
-                  />
-                  {/* RSSI inline label */}
-                  {event.rssi && (
-                    <div
-                      className={`
+                        style={{
+                          left: `${x}%`,
+                          top: `${y}px`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            setSelectedEventKey(getEventKey(event));
+                            setShowDetails(true);
+                          }
+                        }}
+                      />
+                      {/* RSSI inline label */}
+                      {event.rssi && (
+                        <div
+                          className={`
                         absolute pointer-events-none z-10 text-[9px] font-mono font-semibold leading-none
                         ${dimmed ? 'opacity-30' : ''}
                         ${event.rssi >= -60 ? 'text-green-600 dark:text-green-400' : event.rssi >= -70 ? 'text-orange-500' : 'text-red-500'}
                       `}
-                      style={{
-                        left: `${x}%`,
-                        top: `${y + 10}px`,
-                        transform: 'translate(-50%, 0)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {event.rssi}
-                    </div>
-                  )}
-                  {/* Failed roam X marker */}
-                  {event.isFailedRoam && (
-                    <div
-                      className="absolute z-20 pointer-events-none"
-                      style={{
-                        left: `${x}%`,
-                        top: `${y}px`,
-                        transform: 'translate(-50%, -50%)',
-                      }}
-                    >
-                      <X className="h-3 w-3 text-white" />
-                    </div>
-                  )}
-                  {/* Interband roaming indicator */}
-                  {event.isBandSteering && (
-                    <div
-                      className="absolute z-20 cursor-pointer"
-                      style={{
-                        left: `${x}%`,
-                        top: `${y + 20}px`,
-                        transform: 'translate(-50%, 0)',
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedEventKey(getEventKey(event));
-                        setShowDetails(true);
-                      }}
-                    >
-                      <svg width="12" height="8" viewBox="0 0 12 8">
-                        <path
-                          d="M 6 0 L 11 7 L 1 7 Z"
-                          fill="#ef4444"
-                          stroke="#fff"
-                          strokeWidth="1"
-                        />
-                      </svg>
-                    </div>
-                  )}
-                </React.Fragment>
-              );
-            })}
+                          style={{
+                            left: `${x}%`,
+                            top: `${y + 10}px`,
+                            transform: 'translate(-50%, 0)',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {event.rssi}
+                        </div>
+                      )}
+                      {/* Failed roam X marker */}
+                      {event.isFailedRoam && (
+                        <div
+                          className="absolute z-20 pointer-events-none"
+                          style={{
+                            left: `${x}%`,
+                            top: `${y}px`,
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        >
+                          <X className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+                      {/* Interband roaming indicator */}
+                      {event.isBandSteering && (
+                        <div
+                          className="absolute z-20 cursor-pointer"
+                          style={{
+                            left: `${x}%`,
+                            top: `${y + 20}px`,
+                            transform: 'translate(-50%, 0)',
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEventKey(getEventKey(event));
+                            setShowDetails(true);
+                          }}
+                        >
+                          <svg width="12" height="8" viewBox="0 0 12 8">
+                            <path
+                              d="M 6 0 L 11 7 L 1 7 Z"
+                              fill="#ef4444"
+                              stroke="#fff"
+                              strokeWidth="1"
+                            />
+                          </svg>
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
 
-            {/* AP Events (blue squares) */}
-            {showAPEvents &&
-              filteredAPEvents.map((event, idx) => {
-                const x = getTimelinePosition(event.timestamp);
-                const apRow = event.apName ? getAPRow(event.apName) : 0;
-                const y = apRow * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+                {/* AP Events (blue squares) */}
+                {showAPEvents &&
+                  filteredAPEvents.map((event, idx) => {
+                    const x = getTimelinePosition(event.timestamp);
+                    const apRow = event.apName ? getAPRow(event.apName) : 0;
+                    const y = apRow * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
 
-                // Skip if AP not in our list (event outside visible APs)
-                if (apRow < 0) return null;
+                    // Skip if AP not in our list (event outside visible APs)
+                    if (apRow < 0) return null;
 
-                return (
-                  <div
-                    key={`ap-${idx}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCorrelationEvent(event as any);
-                      setSelectedEventKey(null);
-                      setShowDetails(true);
-                    }}
-                    className={`
+                    return (
+                      <div
+                        key={`ap-${idx}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCorrelationEvent(event as any);
+                          setSelectedEventKey(null);
+                          setShowDetails(true);
+                        }}
+                        className={`
                     absolute w-3.5 h-3.5 rounded-sm border-2 border-background bg-blue-500
                     hover:scale-125 transition-all cursor-pointer z-10
                     ${selectedCorrelationEvent === (event as any) ? 'ring-2 ring-blue-400 ring-offset-1 scale-125' : ''}
                   `}
-                    style={{
-                      left: `${x}%`,
-                      top: `${y - 12}px`,
-                      transform: 'translate(-50%, -50%)',
-                    }}
-                    title={`AP Event: ${event.eventType || 'Unknown'} at ${event.apName || 'Unknown AP'}`}
-                    role="button"
-                    tabIndex={0}
-                  />
-                );
-              })}
+                        style={{
+                          left: `${x}%`,
+                          top: `${y - 12}px`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                        title={`AP Event: ${event.eventType || 'Unknown'} at ${event.apName || 'Unknown AP'}`}
+                        role="button"
+                        tabIndex={0}
+                      />
+                    );
+                  })}
 
-            {/* RRM Events (purple diamonds) */}
-            {showRRMEvents &&
-              filteredRRMEvents.map((event, idx) => {
-                const x = getTimelinePosition(event.timestamp);
-                const apRow = event.apName ? getAPRow(event.apName) : 0;
-                const y = apRow * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
+                {/* RRM Events (purple diamonds) */}
+                {showRRMEvents &&
+                  filteredRRMEvents.map((event, idx) => {
+                    const x = getTimelinePosition(event.timestamp);
+                    const apRow = event.apName ? getAPRow(event.apName) : 0;
+                    const y = apRow * AP_ROW_HEIGHT + 40 + AP_ROW_HEIGHT / 2;
 
-                // Skip if AP not in our list (event outside visible APs)
-                if (apRow < 0) return null;
+                    // Skip if AP not in our list (event outside visible APs)
+                    if (apRow < 0) return null;
 
-                return (
-                  <div
-                    key={`rrm-${idx}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedCorrelationEvent(event as any);
-                      setSelectedEventKey(null);
-                      setShowDetails(true);
-                    }}
-                    className={`
+                    return (
+                      <div
+                        key={`rrm-${idx}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCorrelationEvent(event as any);
+                          setSelectedEventKey(null);
+                          setShowDetails(true);
+                        }}
+                        className={`
                     absolute w-3.5 h-3.5 bg-purple-500 border-2 border-background
                     hover:scale-125 transition-all cursor-pointer z-10
                     ${selectedCorrelationEvent === (event as any) ? 'ring-2 ring-purple-400 ring-offset-1 scale-125' : ''}
                   `}
-                    style={{
-                      left: `${x}%`,
-                      top: `${y + 12}px`,
-                      transform: 'translate(-50%, -50%) rotate(45deg)',
-                    }}
-                    title={`RRM Event: ${event.eventType || 'Unknown'} at ${event.apName || 'Unknown AP'}`}
-                    role="button"
-                    tabIndex={0}
-                  />
-                );
-              })}
+                        style={{
+                          left: `${x}%`,
+                          top: `${y + 12}px`,
+                          transform: 'translate(-50%, -50%) rotate(45deg)',
+                        }}
+                        title={`RRM Event: ${event.eventType || 'Unknown'} at ${event.apName || 'Unknown AP'}`}
+                        role="button"
+                        tabIndex={0}
+                      />
+                    );
+                  })}
 
-            {/* Hover tooltip card */}
-            {hoveredEventKey &&
-              hoverPos &&
-              (() => {
-                const hEvent = roamingEvents.find((e) => getEventKey(e) === hoveredEventKey);
-                if (!hEvent) return null;
+                {/* Hover tooltip card */}
+                {hoveredEventKey &&
+                  hoverPos &&
+                  (() => {
+                    const hEvent = roamingEvents.find((e) => getEventKey(e) === hoveredEventKey);
+                    if (!hEvent) return null;
 
-                const rssiLabel =
-                  hEvent.rssi !== undefined
-                    ? hEvent.rssi >= -60
-                      ? 'Excellent'
-                      : hEvent.rssi >= -70
-                        ? 'Good'
-                        : hEvent.rssi >= -80
-                          ? 'Fair'
-                          : 'Poor'
-                    : null;
+                    const rssiLabel =
+                      hEvent.rssi !== undefined
+                        ? hEvent.rssi >= -60
+                          ? 'Excellent'
+                          : hEvent.rssi >= -70
+                            ? 'Good'
+                            : hEvent.rssi >= -80
+                              ? 'Fair'
+                              : 'Poor'
+                        : null;
 
-                // Determine quick insight text
-                let insight = '';
-                if (hEvent.isFailedRoam) {
-                  insight = 'Auth/association failed — check RADIUS logs';
-                } else if (hEvent.isLateRoam) {
-                  insight = `Roamed late at ${hEvent.rssi} dBm (sticky client)`;
-                } else if (hEvent.isBandSteering) {
-                  insight = `Band change: ${hEvent.bandSteeringFrom} → ${hEvent.bandSteeringTo}`;
-                } else if (hEvent.previousApName && hEvent.previousApName !== hEvent.apName) {
-                  if (hEvent.previousRssi !== undefined && hEvent.rssi !== undefined) {
-                    const delta = hEvent.rssi - hEvent.previousRssi;
-                    insight =
-                      delta > 0
-                        ? `Signal improved ${delta > 0 ? '+' : ''}${delta} dBm from prev AP`
-                        : `Signal weaker by ${Math.abs(delta)} dBm vs prev AP`;
-                  } else {
-                    insight = `Roamed from ${hEvent.previousApName}`;
-                  }
-                } else if (hEvent.dwell && hEvent.dwell < 30000) {
-                  insight = `Only ${formatDuration(hEvent.dwell)} at prev AP — rapid roam`;
-                }
+                    // Determine quick insight text
+                    let insight = '';
+                    if (hEvent.isFailedRoam) {
+                      insight = 'Auth/association failed — check RADIUS logs';
+                    } else if (hEvent.isLateRoam) {
+                      insight = `Roamed late at ${hEvent.rssi} dBm (sticky client)`;
+                    } else if (hEvent.isBandSteering) {
+                      insight = `Band change: ${hEvent.bandSteeringFrom} → ${hEvent.bandSteeringTo}`;
+                    } else if (hEvent.previousApName && hEvent.previousApName !== hEvent.apName) {
+                      if (hEvent.previousRssi !== undefined && hEvent.rssi !== undefined) {
+                        const delta = hEvent.rssi - hEvent.previousRssi;
+                        insight =
+                          delta > 0
+                            ? `Signal improved ${delta > 0 ? '+' : ''}${delta} dBm from prev AP`
+                            : `Signal weaker by ${Math.abs(delta)} dBm vs prev AP`;
+                      } else {
+                        insight = `Roamed from ${hEvent.previousApName}`;
+                      }
+                    } else if (hEvent.dwell && hEvent.dwell < 30000) {
+                      insight = `Only ${formatDuration(hEvent.dwell)} at prev AP — rapid roam`;
+                    }
 
-                // Flip tooltip left if too close to right edge
-                const flipLeft = hoverPos.x > 60;
+                    // Flip tooltip left if too close to right edge
+                    const flipLeft = hoverPos.x > 60;
 
-                return (
-                  <div
-                    className="absolute z-50 pointer-events-none"
-                    style={{
-                      left: flipLeft ? `${hoverPos.x}px` : `${hoverPos.x}px`,
-                      top: `${hoverPos.y - 8}px`,
-                      transform: flipLeft ? 'translate(-100%, -100%)' : 'translate(8px, -100%)',
-                    }}
-                  >
-                    <div
-                      className="bg-popover border border-border rounded-lg shadow-lg p-2.5 text-xs min-w-[200px] max-w-[260px]"
-                      style={{ backdropFilter: 'blur(4px)' }}
-                    >
-                      {/* Header row */}
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <span className="font-semibold text-foreground truncate">
-                          {hEvent.eventType}
-                        </span>
-                        {hEvent.isFailedRoam && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
-                            Failed
-                          </span>
-                        )}
-                        {hEvent.isLateRoam && !hEvent.isFailedRoam && (
-                          <span
-                            className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
-                            style={{
-                              background: 'var(--status-warning-bg)',
-                              color: 'var(--status-warning)',
-                            }}
-                          >
-                            Late Roam
-                          </span>
-                        )}
-                      </div>
-
-                      {/* AP + time */}
-                      <div className="text-muted-foreground mb-1.5 truncate">{hEvent.apName}</div>
-                      <div className="text-muted-foreground/70 mb-2">
-                        {formatTime(hEvent.timestamp)}
-                      </div>
-
-                      {/* RF metrics row */}
-                      {(hEvent.rssi !== undefined || hEvent.channel || hEvent.frequency) && (
-                        <div className="flex items-center gap-3 mb-2 flex-wrap">
-                          {hEvent.rssi !== undefined && (
-                            <span
-                              className="font-mono font-bold"
-                              style={{
-                                color:
-                                  hEvent.rssi >= -60
-                                    ? 'var(--status-success)'
-                                    : hEvent.rssi >= -70
-                                      ? 'var(--status-warning)'
-                                      : 'var(--status-error)',
-                              }}
-                            >
-                              {hEvent.rssi} dBm
-                              {rssiLabel && (
-                                <span className="font-normal ml-1 opacity-70">({rssiLabel})</span>
-                              )}
-                            </span>
-                          )}
-                          {hEvent.snr !== undefined && (
-                            <span className="text-muted-foreground">SNR {hEvent.snr} dB</span>
-                          )}
-                          {(hEvent.channel || hEvent.frequency) && (
-                            <span className="text-muted-foreground">
-                              {hEvent.channel ? `Ch ${hEvent.channel}` : ''}
-                              {hEvent.channel && hEvent.frequency ? ' · ' : ''}
-                              {hEvent.frequency || ''}
-                            </span>
-                          )}
-                          {hEvent.dataRate !== undefined && (
-                            <span className="text-muted-foreground">{hEvent.dataRate} Mbps</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Insight */}
-                      {insight && (
+                    return (
+                      <div
+                        className="absolute z-50 pointer-events-none"
+                        style={{
+                          left: flipLeft ? `${hoverPos.x}px` : `${hoverPos.x}px`,
+                          top: `${hoverPos.y - 8}px`,
+                          transform: flipLeft ? 'translate(-100%, -100%)' : 'translate(8px, -100%)',
+                        }}
+                      >
                         <div
-                          className="text-[10px] px-2 py-1 rounded border-l-2 leading-relaxed"
-                          style={{
-                            background: hEvent.isFailedRoam
-                              ? 'var(--status-error-bg)'
-                              : hEvent.isLateRoam ||
-                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
-                                ? 'var(--status-warning-bg)'
-                                : 'var(--status-info-bg)',
-                            borderColor: hEvent.isFailedRoam
-                              ? 'var(--status-error)'
-                              : hEvent.isLateRoam ||
-                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
-                                ? 'var(--status-warning)'
-                                : 'var(--status-info)',
-                            color: hEvent.isFailedRoam
-                              ? 'var(--status-error)'
-                              : hEvent.isLateRoam ||
-                                  (hEvent.rssi !== undefined && hEvent.rssi < -70)
-                                ? 'var(--status-warning)'
-                                : 'var(--status-info)',
-                          }}
+                          className="bg-popover border border-border rounded-lg shadow-lg p-2.5 text-xs min-w-[200px] max-w-[260px]"
+                          style={{ backdropFilter: 'blur(4px)' }}
                         >
-                          {insight}
-                        </div>
-                      )}
-
-                      <div className="mt-2 text-[10px] text-muted-foreground/50">
-                        Click for full details
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-          </div>
-        </div>
-
-        {/* Event details sidebar */}
-        {showDetails && selectedEvent && (
-          <div
-            key={selectedEvent.timestamp}
-            className="w-72 border-l bg-background p-3 flex-shrink-0 z-20 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-sm">Event Details</h4>
-                <button
-                  onClick={() => setSelectedEventKey(null)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1 items-end justify-end">
-                <Badge
-                  variant={
-                    selectedEvent.isFailedRoam
-                      ? 'destructive'
-                      : selectedEvent.eventType === 'Registration' ||
-                          selectedEvent.eventType === 'Associate'
-                        ? 'default'
-                        : selectedEvent.eventType === 'De-registration' ||
-                            selectedEvent.eventType === 'Disassociate'
-                          ? 'destructive'
-                          : 'secondary'
-                  }
-                >
-                  {selectedEvent.eventType}
-                </Badge>
-                {selectedEvent.isFailedRoam && (
-                  <Badge variant="destructive" className="text-xs">
-                    Failed
-                  </Badge>
-                )}
-                {selectedEvent.isLateRoam && (
-                  <Badge
-                    variant="secondary"
-                    className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]"
-                  >
-                    Late Roam
-                  </Badge>
-                )}
-                {selectedEvent.isBandSteering && (
-                  <Badge
-                    variant="outline"
-                    className="bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 text-xs"
-                  >
-                    Interband
-                  </Badge>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              {/* Dwell time */}
-              {selectedEvent.dwell && (
-                <div className="p-2 bg-muted/50 rounded flex items-center gap-2">
-                  <Timer className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Dwell at previous AP:</span>
-                  <span className="font-medium">{formatDuration(selectedEvent.dwell)}</span>
-                </div>
-              )}
-
-              {/* Reason code interpretation */}
-              {selectedEvent.reasonCode &&
-                (() => {
-                  const info = getReasonCodeInfo(selectedEvent.reasonCode);
-                  if (!info) return null;
-                  return (
-                    <div
-                      className={`p-3 rounded border-l-4 ${
-                        info.severity === 'error'
-                          ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]'
-                          : info.severity === 'warning'
-                            ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]'
-                            : 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]'
-                      }`}
-                    >
-                      <div className="font-medium text-sm">
-                        Reason Code {selectedEvent.reasonCode}: {info.short}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">{info.description}</div>
-                    </div>
-                  );
-                })()}
-
-              {/* AP Info */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <MapPin className="h-4 w-4 text-primary" />
-                  <span className="font-medium">Access Point</span>
-                </div>
-                <div className="ml-6 text-muted-foreground">{selectedEvent.apName}</div>
-                <div className="ml-6 text-xs text-muted-foreground font-mono">
-                  {selectedEvent.apSerial}
-                </div>
-                {selectedEvent.previousApName &&
-                  selectedEvent.previousApName !== selectedEvent.apName && (
-                    <div className="ml-6 text-xs text-muted-foreground mt-1">
-                      From: {selectedEvent.previousApName}
-                    </div>
-                  )}
-              </div>
-
-              {/* SSID */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Wifi className="h-4 w-4 text-primary" />
-                  <span className="font-medium">SSID</span>
-                </div>
-                <div className="ml-6 text-muted-foreground">{selectedEvent.ssid}</div>
-              </div>
-
-              {/* Roam Insight - Why did the client roam? */}
-              {(() => {
-                // Generate roaming insight based on event data
-                const insights: {
-                  type: 'success' | 'warning' | 'error' | 'info';
-                  title: string;
-                  description: string;
-                }[] = [];
-
-                // Check if this is actually a roam (AP changed)
-                const isActualRoam =
-                  selectedEvent.previousApName &&
-                  selectedEvent.previousApName !== selectedEvent.apName;
-                const isBandChange = selectedEvent.isBandSteering;
-
-                if (isActualRoam) {
-                  // Analyze the roam reason
-                  if (selectedEvent.previousRssi !== undefined) {
-                    if (selectedEvent.previousRssi < -75) {
-                      insights.push({
-                        type: 'warning',
-                        title: 'Signal-Triggered Roam (Late)',
-                        description: `Client roamed from ${selectedEvent.previousApName} at ${selectedEvent.previousRssi} dBm. This is below the optimal roaming threshold (-70 dBm). The client waited too long to roam, which may indicate sticky client behavior or aggressive roaming settings on the AP.`,
-                      });
-                    } else if (selectedEvent.previousRssi < -70) {
-                      insights.push({
-                        type: 'info',
-                        title: 'Normal Signal-Triggered Roam',
-                        description: `Client roamed from ${selectedEvent.previousApName} at ${selectedEvent.previousRssi} dBm. This is within the expected roaming threshold range. The client properly detected a better AP and transitioned.`,
-                      });
-                    } else {
-                      insights.push({
-                        type: 'info',
-                        title: 'Proactive Roam (Good Signal)',
-                        description: `Client roamed from ${selectedEvent.previousApName} while signal was still good (${selectedEvent.previousRssi} dBm). This could be due to 802.11k/v assistance, load balancing, or the client finding a significantly better AP.`,
-                      });
-                    }
-                  } else {
-                    insights.push({
-                      type: 'info',
-                      title: 'AP Transition',
-                      description: `Client moved from ${selectedEvent.previousApName} to ${selectedEvent.apName}. Signal strength data not available for detailed analysis.`,
-                    });
-                  }
-
-                  // Dwell time analysis
-                  if (selectedEvent.dwell) {
-                    if (selectedEvent.dwell < 30000) {
-                      // Less than 30 seconds
-                      insights.push({
-                        type: 'warning',
-                        title: 'Rapid Roaming',
-                        description: `Client only stayed at previous AP for ${formatDuration(selectedEvent.dwell)}. Frequent roaming may indicate coverage gaps, interference, or misconfigured roaming thresholds.`,
-                      });
-                    } else if (selectedEvent.dwell > 3600000) {
-                      // More than 1 hour
-                      insights.push({
-                        type: 'success',
-                        title: 'Stable Connection',
-                        description: `Client maintained connection to previous AP for ${formatDuration(selectedEvent.dwell)} before roaming. This indicates good network stability.`,
-                      });
-                    }
-                  }
-
-                  // Current signal quality
-                  if (selectedEvent.rssi !== undefined) {
-                    if (selectedEvent.rssi >= -60) {
-                      insights.push({
-                        type: 'success',
-                        title: 'Excellent New Connection',
-                        description: `New AP signal is excellent at ${selectedEvent.rssi} dBm. Client should experience optimal performance.`,
-                      });
-                    } else if (selectedEvent.rssi >= -70) {
-                      insights.push({
-                        type: 'info',
-                        title: 'Good New Connection',
-                        description: `New AP signal is acceptable at ${selectedEvent.rssi} dBm. Performance should be adequate for most applications.`,
-                      });
-                    } else {
-                      insights.push({
-                        type: 'warning',
-                        title: 'Weak New Connection',
-                        description: `New AP signal is weak at ${selectedEvent.rssi} dBm. Client may experience reduced throughput or need to roam again soon.`,
-                      });
-                    }
-                  }
-                } else if (isBandChange) {
-                  // Interband roam on same AP
-                  insights.push({
-                    type: 'error',
-                    title: 'Interband Roam (Same AP)',
-                    description: `Client switched from ${selectedEvent.bandSteeringFrom || 'unknown band'} to ${selectedEvent.bandSteeringTo || 'unknown band'} on the same AP. This typically indicates interference, signal degradation, or suboptimal band steering configuration.`,
-                  });
-
-                  if (
-                    selectedEvent.bandSteeringTo?.includes('2.4') ||
-                    selectedEvent.bandSteeringTo?.includes('2G')
-                  ) {
-                    insights.push({
-                      type: 'warning',
-                      title: 'Fallback to 2.4GHz',
-                      description:
-                        'Client fell back to 2.4GHz band. This usually indicates 5GHz signal issues (interference, distance, or obstacles). Consider checking 5GHz radio power and channel utilization.',
-                    });
-                  }
-                } else if (
-                  selectedEvent.eventType.toLowerCase().includes('register') ||
-                  selectedEvent.eventType.toLowerCase().includes('associate')
-                ) {
-                  // Initial association
-                  insights.push({
-                    type: 'info',
-                    title: 'Initial Association',
-                    description: `Client associated to ${selectedEvent.apName}. This appears to be a new connection rather than a roam from another AP.`,
-                  });
-
-                  if (selectedEvent.rssi !== undefined) {
-                    if (selectedEvent.rssi < -70) {
-                      insights.push({
-                        type: 'warning',
-                        title: 'Weak Initial Signal',
-                        description: `Client associated with ${selectedEvent.rssi} dBm signal. Consider why the client chose this AP over potentially closer ones. May indicate coverage issues or client roaming aggressiveness settings.`,
-                      });
-                    }
-                  }
-                } else if (
-                  selectedEvent.eventType.toLowerCase().includes('de-reg') ||
-                  selectedEvent.eventType.toLowerCase().includes('disassoc')
-                ) {
-                  // Disconnection
-                  if (selectedEvent.isFailedRoam) {
-                    insights.push({
-                      type: 'error',
-                      title: 'Failed Connection',
-                      description:
-                        'Client disconnection due to authentication or association failure. Check RADIUS logs and verify client credentials.',
-                    });
-                  } else {
-                    insights.push({
-                      type: 'info',
-                      title: 'Client Disconnection',
-                      description: `Client disconnected from ${selectedEvent.apName}. This may be intentional (client left coverage) or due to network issues.`,
-                    });
-                  }
-                }
-
-                if (insights.length === 0) return null;
-
-                return (
-                  <div className="p-3 bg-muted/30 rounded-lg border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      <span className="font-semibold text-sm">Roam Insight</span>
-                    </div>
-                    <div className="space-y-2">
-                      {insights.map((insight, idx) => (
-                        <div
-                          key={idx}
-                          className={`p-2 rounded text-xs border-l-2 ${
-                            insight.type === 'success'
-                              ? 'bg-[color:var(--status-success-bg)] border-[color:var(--status-success)] text-[color:var(--status-success)]'
-                              : insight.type === 'warning'
-                                ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)] text-[color:var(--status-warning)]'
-                                : insight.type === 'error'
-                                  ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)] text-[color:var(--status-error)]'
-                                  : 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)] text-[color:var(--status-info)]'
-                          }`}
-                        >
-                          <div className="font-medium mb-0.5">{insight.title}</div>
-                          <div className="opacity-90">{insight.description}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Interband Roaming Info */}
-              {selectedEvent.isBandSteering && (
-                <div className="p-3 bg-[color:var(--status-error-bg)] border-l-4 border-[color:var(--status-error)] rounded">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
-                    <span className="font-semibold text-[color:var(--status-error)]">
-                      Interband Roaming (Same AP)
-                    </span>
-                  </div>
-                  <div className="text-sm">
-                    {selectedEvent.bandSteeringFrom} → {selectedEvent.bandSteeringTo}
-                  </div>
-                  <div className="text-xs text-[color:var(--status-error)] opacity-80 mt-1">
-                    Band change on the same AP indicates poor band steering configuration or
-                    interference issues.
-                  </div>
-                </div>
-              )}
-
-              {/* Signal / RF Metrics */}
-              {(selectedEvent.rssi || selectedEvent.snr || selectedEvent.dataRate) && (
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Signal className="h-4 w-4 text-primary" />
-                    <span className="font-medium">RF Metrics</span>
-                  </div>
-                  <div className="ml-2 space-y-2">
-                    {/* RSSI with visual bar */}
-                    {selectedEvent.rssi &&
-                      (() => {
-                        const rssi = selectedEvent.rssi;
-                        // Map -90..-40 dBm to 0..100%
-                        const pct = Math.max(0, Math.min(100, ((rssi + 90) / 50) * 100));
-                        const qualityLabel =
-                          rssi >= -60
-                            ? 'Excellent'
-                            : rssi >= -70
-                              ? 'Good'
-                              : rssi >= -80
-                                ? 'Fair'
-                                : 'Poor';
-                        const barColor =
-                          rssi >= -60
-                            ? 'var(--status-success)'
-                            : rssi >= -70
-                              ? 'var(--status-warning)'
-                              : 'var(--status-error)';
-                        const textColor =
-                          rssi >= -60
-                            ? 'var(--status-success)'
-                            : rssi >= -70
-                              ? 'var(--status-warning)'
-                              : 'var(--status-error)';
-                        const delta =
-                          selectedEvent.previousRssi !== undefined
-                            ? rssi - selectedEvent.previousRssi
-                            : null;
-                        return (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-muted-foreground">RSSI</span>
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="text-sm font-mono font-bold"
-                                  style={{ color: textColor }}
-                                >
-                                  {rssi} dBm
-                                </span>
-                                <span
-                                  className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
-                                  style={{ background: barColor }}
-                                >
-                                  {qualityLabel}
-                                </span>
-                                {delta !== null && (
-                                  <span
-                                    className="text-[10px] font-mono font-medium"
-                                    style={{
-                                      color:
-                                        delta > 0 ? 'var(--status-success)' : 'var(--status-error)',
-                                    }}
-                                  >
-                                    {delta > 0 ? '+' : ''}
-                                    {delta} dBm
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{ width: `${pct}%`, background: barColor }}
-                              />
-                            </div>
-                            {selectedEvent.previousRssi !== undefined && (
-                              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                                <span>Previous AP:</span>
-                                <span className="font-mono font-medium">
-                                  {selectedEvent.previousRssi} dBm
-                                </span>
-                                <span className="text-muted-foreground/60">
-                                  ({selectedEvent.previousApName})
-                                </span>
-                              </div>
+                          {/* Header row */}
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="font-semibold text-foreground truncate">
+                              {hEvent.eventType}
+                            </span>
+                            {hEvent.isFailedRoam && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
+                                Failed
+                              </span>
+                            )}
+                            {hEvent.isLateRoam && !hEvent.isFailedRoam && (
+                              <span
+                                className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                                style={{
+                                  background: 'var(--status-warning-bg)',
+                                  color: 'var(--status-warning)',
+                                }}
+                              >
+                                Late Roam
+                              </span>
                             )}
                           </div>
-                        );
-                      })()}
 
-                    {/* SNR */}
-                    {selectedEvent.snr &&
-                      (() => {
-                        const snr = selectedEvent.snr;
-                        // Map 0..40 dB to 0..100%
-                        const pct = Math.max(0, Math.min(100, (snr / 40) * 100));
-                        const snrLabel =
-                          snr >= 25
-                            ? 'Excellent'
-                            : snr >= 15
-                              ? 'Good'
-                              : snr >= 10
-                                ? 'Fair'
-                                : 'Poor';
-                        const snrBarColor =
-                          snr >= 25
-                            ? 'var(--status-success)'
-                            : snr >= 15
-                              ? 'var(--status-warning)'
-                              : 'var(--status-error)';
-                        return (
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs text-muted-foreground">SNR</span>
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="text-sm font-mono font-bold"
-                                  style={{ color: snrBarColor }}
-                                >
-                                  {snr} dB
-                                </span>
-                                <span
-                                  className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
-                                  style={{ background: snrBarColor }}
-                                >
-                                  {snrLabel}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full rounded-full transition-all"
-                                style={{ width: `${pct}%`, background: snrBarColor }}
-                              />
-                            </div>
+                          {/* AP + time */}
+                          <div className="text-muted-foreground mb-1.5 truncate">
+                            {hEvent.apName}
                           </div>
-                        );
-                      })()}
+                          <div className="text-muted-foreground/70 mb-2">
+                            {formatTime(hEvent.timestamp)}
+                          </div>
 
-                    {/* Data Rate */}
-                    {selectedEvent.dataRate && (
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">PHY Rate</span>
-                        <span className="font-mono font-semibold">
-                          {selectedEvent.dataRate >= 1000
-                            ? `${(selectedEvent.dataRate / 1000).toFixed(1)} Gbps`
-                            : `${formatCompactNumber(selectedEvent.dataRate)} Mbps`}
-                        </span>
+                          {/* RF metrics row */}
+                          {(hEvent.rssi !== undefined || hEvent.channel || hEvent.frequency) && (
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              {hEvent.rssi !== undefined && (
+                                <span
+                                  className="font-mono font-bold"
+                                  style={{
+                                    color:
+                                      hEvent.rssi >= -60
+                                        ? 'var(--status-success)'
+                                        : hEvent.rssi >= -70
+                                          ? 'var(--status-warning)'
+                                          : 'var(--status-error)',
+                                  }}
+                                >
+                                  {hEvent.rssi} dBm
+                                  {rssiLabel && (
+                                    <span className="font-normal ml-1 opacity-70">
+                                      ({rssiLabel})
+                                    </span>
+                                  )}
+                                </span>
+                              )}
+                              {hEvent.snr !== undefined && (
+                                <span className="text-muted-foreground">SNR {hEvent.snr} dB</span>
+                              )}
+                              {(hEvent.channel || hEvent.frequency) && (
+                                <span className="text-muted-foreground">
+                                  {hEvent.channel ? `Ch ${hEvent.channel}` : ''}
+                                  {hEvent.channel && hEvent.frequency ? ' · ' : ''}
+                                  {hEvent.frequency || ''}
+                                </span>
+                              )}
+                              {hEvent.dataRate !== undefined && (
+                                <span className="text-muted-foreground">
+                                  {hEvent.dataRate} Mbps
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Insight */}
+                          {insight && (
+                            <div
+                              className="text-[10px] px-2 py-1 rounded border-l-2 leading-relaxed"
+                              style={{
+                                background: hEvent.isFailedRoam
+                                  ? 'var(--status-error-bg)'
+                                  : hEvent.isLateRoam ||
+                                      (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                    ? 'var(--status-warning-bg)'
+                                    : 'var(--status-info-bg)',
+                                borderColor: hEvent.isFailedRoam
+                                  ? 'var(--status-error)'
+                                  : hEvent.isLateRoam ||
+                                      (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                    ? 'var(--status-warning)'
+                                    : 'var(--status-info)',
+                                color: hEvent.isFailedRoam
+                                  ? 'var(--status-error)'
+                                  : hEvent.isLateRoam ||
+                                      (hEvent.rssi !== undefined && hEvent.rssi < -70)
+                                    ? 'var(--status-warning)'
+                                    : 'var(--status-info)',
+                              }}
+                            >
+                              {insight}
+                            </div>
+                          )}
+
+                          <div className="mt-2 text-[10px] text-muted-foreground/50">
+                            Click for full details
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              )}
+                    );
+                  })()}
+              </div>
+            </div>
 
-              {/* Channel/Band */}
-              {(selectedEvent.channel || selectedEvent.frequency) && (
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Activity className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Channel/Band</span>
+            {/* Event details sidebar */}
+            {showDetails && selectedEvent && (
+              <div
+                key={selectedEvent.timestamp}
+                className="w-72 border-l bg-background p-3 flex-shrink-0 z-20 overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm">Event Details</h4>
+                    <button
+                      onClick={() => setSelectedEventKey(null)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div className="ml-6 text-muted-foreground">
-                    {selectedEvent.channel && `Ch ${selectedEvent.channel}`}
-                    {selectedEvent.channel && selectedEvent.frequency && ' • '}
-                    {selectedEvent.frequency}
-                  </div>
-                </div>
-              )}
-
-              {/* Auth method */}
-              {selectedEvent.authMethod && (
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground">Auth:</span>
-                  <span className="font-medium">{selectedEvent.authMethod}</span>
-                </div>
-              )}
-
-              {/* IP Address */}
-              {(selectedEvent.ipAddress || selectedEvent.ipv6Address) && (
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    <span className="font-medium">IP Address</span>
-                  </div>
-                  {selectedEvent.ipAddress && (
-                    <div className="ml-6 flex items-center gap-2">
-                      <span
-                        className={`font-mono text-xs ${selectedEvent.ipAddress.startsWith('169.') ? 'text-[color:var(--status-warning)]' : 'text-muted-foreground'}`}
-                      >
-                        {selectedEvent.ipAddress}
-                      </span>
-                      {selectedEvent.ipAddress.startsWith('169.') && (
-                        <span className="text-[10px] px-1.5 py-0.5 bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded font-medium">
-                          Self-Assigned (DHCP Issue)
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {selectedEvent.ipv6Address && (
-                    <div className="ml-6 text-muted-foreground font-mono text-xs truncate">
-                      {selectedEvent.ipv6Address}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Alert Analysis */}
-              {(selectedEvent.isFailedRoam ||
-                selectedEvent.isLateRoam ||
-                selectedEvent.isBandSteering ||
-                (selectedEvent.dwell &&
-                  selectedEvent.dwell > 600000 &&
-                  selectedEvent.previousRssi &&
-                  selectedEvent.previousRssi < -75)) && (
-                <div className="border-t pt-3 mt-3">
-                  <div className="font-medium mb-2 text-xs text-muted-foreground flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3" />
-                    Alert Analysis
-                  </div>
-                  <div className="space-y-2">
+                  <div className="flex flex-wrap gap-1 items-end justify-end">
+                    <Badge
+                      variant={
+                        selectedEvent.isFailedRoam
+                          ? 'destructive'
+                          : selectedEvent.eventType === 'Registration' ||
+                              selectedEvent.eventType === 'Associate'
+                            ? 'default'
+                            : selectedEvent.eventType === 'De-registration' ||
+                                selectedEvent.eventType === 'Disassociate'
+                              ? 'destructive'
+                              : 'secondary'
+                      }
+                    >
+                      {selectedEvent.eventType}
+                    </Badge>
                     {selectedEvent.isFailedRoam && (
-                      <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
-                        <div className="font-medium text-[color:var(--status-error)]">
-                          Authentication Failure
-                        </div>
-                        <div className="text-[color:var(--status-error)] opacity-80 mt-1">
-                          Client failed to authenticate. Check RADIUS logs, verify credentials, and
-                          ensure PMK caching is working properly.
-                        </div>
-                      </div>
+                      <Badge variant="destructive" className="text-xs">
+                        Failed
+                      </Badge>
                     )}
                     {selectedEvent.isLateRoam && (
-                      <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
-                        <div className="font-medium text-[color:var(--status-warning)]">
-                          Late Roaming
-                        </div>
-                        <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
-                          Client roamed at {selectedEvent.rssi} dBm (below -75 dBm threshold).
-                          Consider adjusting client roaming aggressiveness or AP coverage overlap.
-                        </div>
-                      </div>
+                      <Badge
+                        variant="secondary"
+                        className="text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)]"
+                      >
+                        Late Roam
+                      </Badge>
                     )}
                     {selectedEvent.isBandSteering && (
-                      <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
-                        <div className="font-medium text-[color:var(--status-error)]">
-                          Interband Roaming (Same AP)
-                        </div>
-                        <div className="text-[color:var(--status-error)] opacity-80 mt-1">
-                          Client changed bands from{' '}
-                          {selectedEvent.bandSteeringFrom ||
-                            selectedEvent.previousFrequency ||
-                            'unknown band'}{' '}
-                          to{' '}
-                          {selectedEvent.bandSteeringTo ||
-                            selectedEvent.frequency ||
-                            'unknown band'}{' '}
-                          on <strong>{selectedEvent.apName}</strong>.
-                        </div>
-                        <div className="text-[color:var(--status-error)] opacity-80 mt-2 font-medium">
-                          This is especially problematic because:
-                        </div>
-                        <ul className="text-[color:var(--status-error)] opacity-80 mt-1 ml-3 list-disc space-y-0.5">
-                          <li>The client couldn't maintain connection on the preferred band</li>
-                          <li>
-                            May indicate interference, poor signal, or band steering
-                            misconfiguration
-                          </li>
-                          <li>If falling to 2.4GHz: likely 5GHz coverage/interference issues</li>
-                          <li>Consider adjusting band steering thresholds or AP radio power</li>
-                        </ul>
-                      </div>
+                      <Badge
+                        variant="outline"
+                        className="bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/20 text-xs"
+                      >
+                        Interband
+                      </Badge>
                     )}
-                    {selectedEvent.dwell &&
-                      selectedEvent.dwell > 600000 &&
-                      selectedEvent.previousRssi &&
-                      selectedEvent.previousRssi < -75 && (
-                        <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
-                          <div className="font-medium text-[color:var(--status-warning)]">
-                            Sticky Client Behavior
+                  </div>
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  {/* Dwell time */}
+                  {selectedEvent.dwell && (
+                    <div className="p-2 bg-muted/50 rounded flex items-center gap-2">
+                      <Timer className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Dwell at previous AP:</span>
+                      <span className="font-medium">{formatDuration(selectedEvent.dwell)}</span>
+                    </div>
+                  )}
+
+                  {/* Reason code interpretation */}
+                  {selectedEvent.reasonCode &&
+                    (() => {
+                      const info = getReasonCodeInfo(selectedEvent.reasonCode);
+                      if (!info) return null;
+                      return (
+                        <div
+                          className={`p-3 rounded border-l-4 ${
+                            info.severity === 'error'
+                              ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]'
+                              : info.severity === 'warning'
+                                ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]'
+                                : 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]'
+                          }`}
+                        >
+                          <div className="font-medium text-sm">
+                            Reason Code {selectedEvent.reasonCode}: {info.short}
                           </div>
-                          <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
-                            Client stayed at {selectedEvent.previousApName} for{' '}
-                            {formatDuration(selectedEvent.dwell)} with poor signal (
-                            {selectedEvent.previousRssi} dBm). Consider enabling 802.11v BSS
-                            Transition Management or adjusting minimum RSSI thresholds.
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {info.description}
                           </div>
+                        </div>
+                      );
+                    })()}
+
+                  {/* AP Info */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="font-medium">Access Point</span>
+                    </div>
+                    <div className="ml-6 text-muted-foreground">{selectedEvent.apName}</div>
+                    <div className="ml-6 text-xs text-muted-foreground font-mono">
+                      {selectedEvent.apSerial}
+                    </div>
+                    {selectedEvent.previousApName &&
+                      selectedEvent.previousApName !== selectedEvent.apName && (
+                        <div className="ml-6 text-xs text-muted-foreground mt-1">
+                          From: {selectedEvent.previousApName}
                         </div>
                       )}
                   </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Correlation Event details sidebar (AP Events and RRM Events) */}
-        {showDetails && selectedCorrelationEvent && !selectedEvent && (
-          <div
-            key={selectedCorrelationEvent.timestamp}
-            className="w-72 border-l bg-background p-3 flex-shrink-0 z-20 overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-sm">
-                  {'channel' in selectedCorrelationEvent ? 'RRM Event' : 'AP Event'}
-                </h4>
-                <button
-                  onClick={() => setSelectedCorrelationEvent(null)}
-                  className="text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <Badge
-                className={
-                  'channel' in selectedCorrelationEvent
-                    ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
-                    : 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30'
-                }
-              >
-                {selectedCorrelationEvent.eventType || 'Event'}
-              </Badge>
-            </div>
-
-            <div className="space-y-3 text-sm">
-              {/* Timestamp */}
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span className="font-medium">Time</span>
-                </div>
-                <div className="ml-6 text-muted-foreground text-xs">
-                  {new Date(parseInt(selectedCorrelationEvent.timestamp)).toLocaleString()}
-                </div>
-              </div>
-
-              {/* AP Info */}
-              {selectedCorrelationEvent.apName && (
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Radio className="h-4 w-4 text-primary" />
-                    <span className="font-medium">Access Point</span>
+                  {/* SSID */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Wifi className="h-4 w-4 text-primary" />
+                      <span className="font-medium">SSID</span>
+                    </div>
+                    <div className="ml-6 text-muted-foreground">{selectedEvent.ssid}</div>
                   </div>
-                  <div className="ml-6 text-muted-foreground">
-                    {selectedCorrelationEvent.apName}
-                  </div>
-                  {selectedCorrelationEvent.apSerial && (
-                    <div className="ml-6 text-xs text-muted-foreground font-mono">
-                      {selectedCorrelationEvent.apSerial}
+
+                  {/* Roam Insight - Why did the client roam? */}
+                  {(() => {
+                    // Generate roaming insight based on event data
+                    const insights: {
+                      type: 'success' | 'warning' | 'error' | 'info';
+                      title: string;
+                      description: string;
+                    }[] = [];
+
+                    // Check if this is actually a roam (AP changed)
+                    const isActualRoam =
+                      selectedEvent.previousApName &&
+                      selectedEvent.previousApName !== selectedEvent.apName;
+                    const isBandChange = selectedEvent.isBandSteering;
+
+                    if (isActualRoam) {
+                      // Analyze the roam reason
+                      if (selectedEvent.previousRssi !== undefined) {
+                        if (selectedEvent.previousRssi < -75) {
+                          insights.push({
+                            type: 'warning',
+                            title: 'Signal-Triggered Roam (Late)',
+                            description: `Client roamed from ${selectedEvent.previousApName} at ${selectedEvent.previousRssi} dBm. This is below the optimal roaming threshold (-70 dBm). The client waited too long to roam, which may indicate sticky client behavior or aggressive roaming settings on the AP.`,
+                          });
+                        } else if (selectedEvent.previousRssi < -70) {
+                          insights.push({
+                            type: 'info',
+                            title: 'Normal Signal-Triggered Roam',
+                            description: `Client roamed from ${selectedEvent.previousApName} at ${selectedEvent.previousRssi} dBm. This is within the expected roaming threshold range. The client properly detected a better AP and transitioned.`,
+                          });
+                        } else {
+                          insights.push({
+                            type: 'info',
+                            title: 'Proactive Roam (Good Signal)',
+                            description: `Client roamed from ${selectedEvent.previousApName} while signal was still good (${selectedEvent.previousRssi} dBm). This could be due to 802.11k/v assistance, load balancing, or the client finding a significantly better AP.`,
+                          });
+                        }
+                      } else {
+                        insights.push({
+                          type: 'info',
+                          title: 'AP Transition',
+                          description: `Client moved from ${selectedEvent.previousApName} to ${selectedEvent.apName}. Signal strength data not available for detailed analysis.`,
+                        });
+                      }
+
+                      // Dwell time analysis
+                      if (selectedEvent.dwell) {
+                        if (selectedEvent.dwell < 30000) {
+                          // Less than 30 seconds
+                          insights.push({
+                            type: 'warning',
+                            title: 'Rapid Roaming',
+                            description: `Client only stayed at previous AP for ${formatDuration(selectedEvent.dwell)}. Frequent roaming may indicate coverage gaps, interference, or misconfigured roaming thresholds.`,
+                          });
+                        } else if (selectedEvent.dwell > 3600000) {
+                          // More than 1 hour
+                          insights.push({
+                            type: 'success',
+                            title: 'Stable Connection',
+                            description: `Client maintained connection to previous AP for ${formatDuration(selectedEvent.dwell)} before roaming. This indicates good network stability.`,
+                          });
+                        }
+                      }
+
+                      // Current signal quality
+                      if (selectedEvent.rssi !== undefined) {
+                        if (selectedEvent.rssi >= -60) {
+                          insights.push({
+                            type: 'success',
+                            title: 'Excellent New Connection',
+                            description: `New AP signal is excellent at ${selectedEvent.rssi} dBm. Client should experience optimal performance.`,
+                          });
+                        } else if (selectedEvent.rssi >= -70) {
+                          insights.push({
+                            type: 'info',
+                            title: 'Good New Connection',
+                            description: `New AP signal is acceptable at ${selectedEvent.rssi} dBm. Performance should be adequate for most applications.`,
+                          });
+                        } else {
+                          insights.push({
+                            type: 'warning',
+                            title: 'Weak New Connection',
+                            description: `New AP signal is weak at ${selectedEvent.rssi} dBm. Client may experience reduced throughput or need to roam again soon.`,
+                          });
+                        }
+                      }
+                    } else if (isBandChange) {
+                      // Interband roam on same AP
+                      insights.push({
+                        type: 'error',
+                        title: 'Interband Roam (Same AP)',
+                        description: `Client switched from ${selectedEvent.bandSteeringFrom || 'unknown band'} to ${selectedEvent.bandSteeringTo || 'unknown band'} on the same AP. This typically indicates interference, signal degradation, or suboptimal band steering configuration.`,
+                      });
+
+                      if (
+                        selectedEvent.bandSteeringTo?.includes('2.4') ||
+                        selectedEvent.bandSteeringTo?.includes('2G')
+                      ) {
+                        insights.push({
+                          type: 'warning',
+                          title: 'Fallback to 2.4GHz',
+                          description:
+                            'Client fell back to 2.4GHz band. This usually indicates 5GHz signal issues (interference, distance, or obstacles). Consider checking 5GHz radio power and channel utilization.',
+                        });
+                      }
+                    } else if (
+                      selectedEvent.eventType.toLowerCase().includes('register') ||
+                      selectedEvent.eventType.toLowerCase().includes('associate')
+                    ) {
+                      // Initial association
+                      insights.push({
+                        type: 'info',
+                        title: 'Initial Association',
+                        description: `Client associated to ${selectedEvent.apName}. This appears to be a new connection rather than a roam from another AP.`,
+                      });
+
+                      if (selectedEvent.rssi !== undefined) {
+                        if (selectedEvent.rssi < -70) {
+                          insights.push({
+                            type: 'warning',
+                            title: 'Weak Initial Signal',
+                            description: `Client associated with ${selectedEvent.rssi} dBm signal. Consider why the client chose this AP over potentially closer ones. May indicate coverage issues or client roaming aggressiveness settings.`,
+                          });
+                        }
+                      }
+                    } else if (
+                      selectedEvent.eventType.toLowerCase().includes('de-reg') ||
+                      selectedEvent.eventType.toLowerCase().includes('disassoc')
+                    ) {
+                      // Disconnection
+                      if (selectedEvent.isFailedRoam) {
+                        insights.push({
+                          type: 'error',
+                          title: 'Failed Connection',
+                          description:
+                            'Client disconnection due to authentication or association failure. Check RADIUS logs and verify client credentials.',
+                        });
+                      } else {
+                        insights.push({
+                          type: 'info',
+                          title: 'Client Disconnection',
+                          description: `Client disconnected from ${selectedEvent.apName}. This may be intentional (client left coverage) or due to network issues.`,
+                        });
+                      }
+                    }
+
+                    if (insights.length === 0) return null;
+
+                    return (
+                      <div className="p-3 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="h-4 w-4 text-primary" />
+                          <span className="font-semibold text-sm">Roam Insight</span>
+                        </div>
+                        <div className="space-y-2">
+                          {insights.map((insight, idx) => (
+                            <div
+                              key={idx}
+                              className={`p-2 rounded text-xs border-l-2 ${
+                                insight.type === 'success'
+                                  ? 'bg-[color:var(--status-success-bg)] border-[color:var(--status-success)] text-[color:var(--status-success)]'
+                                  : insight.type === 'warning'
+                                    ? 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)] text-[color:var(--status-warning)]'
+                                    : insight.type === 'error'
+                                      ? 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)] text-[color:var(--status-error)]'
+                                      : 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)] text-[color:var(--status-info)]'
+                              }`}
+                            >
+                              <div className="font-medium mb-0.5">{insight.title}</div>
+                              <div className="opacity-90">{insight.description}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Interband Roaming Info */}
+                  {selectedEvent.isBandSteering && (
+                    <div className="p-3 bg-[color:var(--status-error-bg)] border-l-4 border-[color:var(--status-error)] rounded">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="h-4 w-4 text-[color:var(--status-error)]" />
+                        <span className="font-semibold text-[color:var(--status-error)]">
+                          Interband Roaming (Same AP)
+                        </span>
+                      </div>
+                      <div className="text-sm">
+                        {selectedEvent.bandSteeringFrom} → {selectedEvent.bandSteeringTo}
+                      </div>
+                      <div className="text-xs text-[color:var(--status-error)] opacity-80 mt-1">
+                        Band change on the same AP indicates poor band steering configuration or
+                        interference issues.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Signal / RF Metrics */}
+                  {(selectedEvent.rssi || selectedEvent.snr || selectedEvent.dataRate) && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Signal className="h-4 w-4 text-primary" />
+                        <span className="font-medium">RF Metrics</span>
+                      </div>
+                      <div className="ml-2 space-y-2">
+                        {/* RSSI with visual bar */}
+                        {selectedEvent.rssi &&
+                          (() => {
+                            const rssi = selectedEvent.rssi;
+                            // Map -90..-40 dBm to 0..100%
+                            const pct = Math.max(0, Math.min(100, ((rssi + 90) / 50) * 100));
+                            const qualityLabel =
+                              rssi >= -60
+                                ? 'Excellent'
+                                : rssi >= -70
+                                  ? 'Good'
+                                  : rssi >= -80
+                                    ? 'Fair'
+                                    : 'Poor';
+                            const barColor =
+                              rssi >= -60
+                                ? 'var(--status-success)'
+                                : rssi >= -70
+                                  ? 'var(--status-warning)'
+                                  : 'var(--status-error)';
+                            const textColor =
+                              rssi >= -60
+                                ? 'var(--status-success)'
+                                : rssi >= -70
+                                  ? 'var(--status-warning)'
+                                  : 'var(--status-error)';
+                            const delta =
+                              selectedEvent.previousRssi !== undefined
+                                ? rssi - selectedEvent.previousRssi
+                                : null;
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-muted-foreground">RSSI</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className="text-sm font-mono font-bold"
+                                      style={{ color: textColor }}
+                                    >
+                                      {rssi} dBm
+                                    </span>
+                                    <span
+                                      className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                      style={{ background: barColor }}
+                                    >
+                                      {qualityLabel}
+                                    </span>
+                                    {delta !== null && (
+                                      <span
+                                        className="text-[10px] font-mono font-medium"
+                                        style={{
+                                          color:
+                                            delta > 0
+                                              ? 'var(--status-success)'
+                                              : 'var(--status-error)',
+                                        }}
+                                      >
+                                        {delta > 0 ? '+' : ''}
+                                        {delta} dBm
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{ width: `${pct}%`, background: barColor }}
+                                  />
+                                </div>
+                                {selectedEvent.previousRssi !== undefined && (
+                                  <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                                    <span>Previous AP:</span>
+                                    <span className="font-mono font-medium">
+                                      {selectedEvent.previousRssi} dBm
+                                    </span>
+                                    <span className="text-muted-foreground/60">
+                                      ({selectedEvent.previousApName})
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                        {/* SNR */}
+                        {selectedEvent.snr &&
+                          (() => {
+                            const snr = selectedEvent.snr;
+                            // Map 0..40 dB to 0..100%
+                            const pct = Math.max(0, Math.min(100, (snr / 40) * 100));
+                            const snrLabel =
+                              snr >= 25
+                                ? 'Excellent'
+                                : snr >= 15
+                                  ? 'Good'
+                                  : snr >= 10
+                                    ? 'Fair'
+                                    : 'Poor';
+                            const snrBarColor =
+                              snr >= 25
+                                ? 'var(--status-success)'
+                                : snr >= 15
+                                  ? 'var(--status-warning)'
+                                  : 'var(--status-error)';
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs text-muted-foreground">SNR</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span
+                                      className="text-sm font-mono font-bold"
+                                      style={{ color: snrBarColor }}
+                                    >
+                                      {snr} dB
+                                    </span>
+                                    <span
+                                      className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                      style={{ background: snrBarColor }}
+                                    >
+                                      {snrLabel}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all"
+                                    style={{ width: `${pct}%`, background: snrBarColor }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                        {/* Data Rate */}
+                        {selectedEvent.dataRate && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground">PHY Rate</span>
+                            <span className="font-mono font-semibold">
+                              {selectedEvent.dataRate >= 1000
+                                ? `${(selectedEvent.dataRate / 1000).toFixed(1)} Gbps`
+                                : `${formatCompactNumber(selectedEvent.dataRate)} Mbps`}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Channel/Band */}
+                  {(selectedEvent.channel || selectedEvent.frequency) && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Channel/Band</span>
+                      </div>
+                      <div className="ml-6 text-muted-foreground">
+                        {selectedEvent.channel && `Ch ${selectedEvent.channel}`}
+                        {selectedEvent.channel && selectedEvent.frequency && ' • '}
+                        {selectedEvent.frequency}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Auth method */}
+                  {selectedEvent.authMethod && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground">Auth:</span>
+                      <span className="font-medium">{selectedEvent.authMethod}</span>
+                    </div>
+                  )}
+
+                  {/* IP Address */}
+                  {(selectedEvent.ipAddress || selectedEvent.ipv6Address) && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        <span className="font-medium">IP Address</span>
+                      </div>
+                      {selectedEvent.ipAddress && (
+                        <div className="ml-6 flex items-center gap-2">
+                          <span
+                            className={`font-mono text-xs ${selectedEvent.ipAddress.startsWith('169.') ? 'text-[color:var(--status-warning)]' : 'text-muted-foreground'}`}
+                          >
+                            {selectedEvent.ipAddress}
+                          </span>
+                          {selectedEvent.ipAddress.startsWith('169.') && (
+                            <span className="text-[10px] px-1.5 py-0.5 bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded font-medium">
+                              Self-Assigned (DHCP Issue)
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {selectedEvent.ipv6Address && (
+                        <div className="ml-6 text-muted-foreground font-mono text-xs truncate">
+                          {selectedEvent.ipv6Address}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Alert Analysis */}
+                  {(selectedEvent.isFailedRoam ||
+                    selectedEvent.isLateRoam ||
+                    selectedEvent.isBandSteering ||
+                    (selectedEvent.dwell &&
+                      selectedEvent.dwell > 600000 &&
+                      selectedEvent.previousRssi &&
+                      selectedEvent.previousRssi < -75)) && (
+                    <div className="border-t pt-3 mt-3">
+                      <div className="font-medium mb-2 text-xs text-muted-foreground flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Alert Analysis
+                      </div>
+                      <div className="space-y-2">
+                        {selectedEvent.isFailedRoam && (
+                          <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
+                            <div className="font-medium text-[color:var(--status-error)]">
+                              Authentication Failure
+                            </div>
+                            <div className="text-[color:var(--status-error)] opacity-80 mt-1">
+                              Client failed to authenticate. Check RADIUS logs, verify credentials,
+                              and ensure PMK caching is working properly.
+                            </div>
+                          </div>
+                        )}
+                        {selectedEvent.isLateRoam && (
+                          <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
+                            <div className="font-medium text-[color:var(--status-warning)]">
+                              Late Roaming
+                            </div>
+                            <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
+                              Client roamed at {selectedEvent.rssi} dBm (below -75 dBm threshold).
+                              Consider adjusting client roaming aggressiveness or AP coverage
+                              overlap.
+                            </div>
+                          </div>
+                        )}
+                        {selectedEvent.isBandSteering && (
+                          <div className="p-2 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded text-xs">
+                            <div className="font-medium text-[color:var(--status-error)]">
+                              Interband Roaming (Same AP)
+                            </div>
+                            <div className="text-[color:var(--status-error)] opacity-80 mt-1">
+                              Client changed bands from{' '}
+                              {selectedEvent.bandSteeringFrom ||
+                                selectedEvent.previousFrequency ||
+                                'unknown band'}{' '}
+                              to{' '}
+                              {selectedEvent.bandSteeringTo ||
+                                selectedEvent.frequency ||
+                                'unknown band'}{' '}
+                              on <strong>{selectedEvent.apName}</strong>.
+                            </div>
+                            <div className="text-[color:var(--status-error)] opacity-80 mt-2 font-medium">
+                              This is especially problematic because:
+                            </div>
+                            <ul className="text-[color:var(--status-error)] opacity-80 mt-1 ml-3 list-disc space-y-0.5">
+                              <li>The client couldn't maintain connection on the preferred band</li>
+                              <li>
+                                May indicate interference, poor signal, or band steering
+                                misconfiguration
+                              </li>
+                              <li>
+                                If falling to 2.4GHz: likely 5GHz coverage/interference issues
+                              </li>
+                              <li>Consider adjusting band steering thresholds or AP radio power</li>
+                            </ul>
+                          </div>
+                        )}
+                        {selectedEvent.dwell &&
+                          selectedEvent.dwell > 600000 &&
+                          selectedEvent.previousRssi &&
+                          selectedEvent.previousRssi < -75 && (
+                            <div className="p-2 bg-[color:var(--status-warning-bg)] border border-[color:var(--status-warning)]/30 rounded text-xs">
+                              <div className="font-medium text-[color:var(--status-warning)]">
+                                Sticky Client Behavior
+                              </div>
+                              <div className="text-[color:var(--status-warning)] opacity-80 mt-1">
+                                Client stayed at {selectedEvent.previousApName} for{' '}
+                                {formatDuration(selectedEvent.dwell)} with poor signal (
+                                {selectedEvent.previousRssi} dBm). Consider enabling 802.11v BSS
+                                Transition Management or adjusting minimum RSSI thresholds.
+                              </div>
+                            </div>
+                          )}
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* RRM-specific: Channel info */}
-              {'channel' in selectedCorrelationEvent && selectedCorrelationEvent.channel && (
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <Activity className="h-4 w-4 text-purple-500" />
-                    <span className="font-medium">Channel</span>
+            {/* Correlation Event details sidebar (AP Events and RRM Events) */}
+            {showDetails && selectedCorrelationEvent && !selectedEvent && (
+              <div
+                key={selectedCorrelationEvent.timestamp}
+                className="w-72 border-l bg-background p-3 flex-shrink-0 z-20 overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm">
+                      {'channel' in selectedCorrelationEvent ? 'RRM Event' : 'AP Event'}
+                    </h4>
+                    <button
+                      onClick={() => setSelectedCorrelationEvent(null)}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  <div className="ml-6 text-muted-foreground">
-                    {(selectedCorrelationEvent as RRMEvent).previousChannel && (
-                      <span className="text-[color:var(--status-error)]">
-                        {(selectedCorrelationEvent as RRMEvent).previousChannel} →{' '}
-                      </span>
-                    )}
-                    <span className="text-[color:var(--status-success)] font-medium">
-                      {selectedCorrelationEvent.channel}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* RRM-specific: Power info */}
-              {'txPower' in selectedCorrelationEvent &&
-                (selectedCorrelationEvent as RRMEvent).txPower && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Signal className="h-4 w-4 text-purple-500" />
-                      <span className="font-medium">Tx Power</span>
-                    </div>
-                    <div className="ml-6 text-muted-foreground">
-                      {(selectedCorrelationEvent as RRMEvent).previousTxPower && (
-                        <span className="text-[color:var(--status-error)]">
-                          {(selectedCorrelationEvent as RRMEvent).previousTxPower} dBm →{' '}
-                        </span>
-                      )}
-                      <span className="text-[color:var(--status-success)] font-medium">
-                        {(selectedCorrelationEvent as RRMEvent).txPower} dBm
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-              {/* RRM-specific: Band */}
-              {'band' in selectedCorrelationEvent &&
-                (selectedCorrelationEvent as RRMEvent).band && (
-                  <div className="flex gap-2">
-                    <span className="text-muted-foreground">Band:</span>
-                    <span className="font-medium">
-                      {(selectedCorrelationEvent as RRMEvent).band}
-                    </span>
-                  </div>
-                )}
-
-              {/* RRM-specific: Reason */}
-              {'reason' in selectedCorrelationEvent &&
-                (selectedCorrelationEvent as RRMEvent).reason && (
-                  <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded text-xs">
-                    <div className="font-medium text-purple-700 dark:text-purple-400">Reason</div>
-                    <div className="text-purple-600/80 dark:text-purple-400/80 mt-1">
-                      {(selectedCorrelationEvent as RRMEvent).reason}
-                    </div>
-                  </div>
-                )}
-
-              {/* Details */}
-              {selectedCorrelationEvent.details && (
-                <div>
-                  <div className="font-medium mb-1 text-xs text-muted-foreground">Details</div>
-                  <div className="text-xs text-muted-foreground font-mono bg-background/50 p-2 rounded break-words">
-                    {selectedCorrelationEvent.details}
-                  </div>
-                </div>
-              )}
-
-              {/* Level/Severity */}
-              {selectedCorrelationEvent.level && (
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground">Level:</span>
                   <Badge
-                    variant={
-                      selectedCorrelationEvent.level.toLowerCase() === 'error'
-                        ? 'destructive'
-                        : selectedCorrelationEvent.level.toLowerCase() === 'warning'
-                          ? 'secondary'
-                          : 'outline'
+                    className={
+                      'channel' in selectedCorrelationEvent
+                        ? 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30'
+                        : 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30'
                     }
                   >
-                    {selectedCorrelationEvent.level}
+                    {selectedCorrelationEvent.eventType || 'Event'}
                   </Badge>
                 </div>
-              )}
-            </div>
-          </div>
+
+                <div className="space-y-3 text-sm">
+                  {/* Timestamp */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <Clock className="h-4 w-4 text-primary" />
+                      <span className="font-medium">Time</span>
+                    </div>
+                    <div className="ml-6 text-muted-foreground text-xs">
+                      {new Date(parseInt(selectedCorrelationEvent.timestamp)).toLocaleString()}
+                    </div>
+                  </div>
+
+                  {/* AP Info */}
+                  {selectedCorrelationEvent.apName && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Radio className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Access Point</span>
+                      </div>
+                      <div className="ml-6 text-muted-foreground">
+                        {selectedCorrelationEvent.apName}
+                      </div>
+                      {selectedCorrelationEvent.apSerial && (
+                        <div className="ml-6 text-xs text-muted-foreground font-mono">
+                          {selectedCorrelationEvent.apSerial}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* RRM-specific: Channel info */}
+                  {'channel' in selectedCorrelationEvent && selectedCorrelationEvent.channel && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Activity className="h-4 w-4 text-purple-500" />
+                        <span className="font-medium">Channel</span>
+                      </div>
+                      <div className="ml-6 text-muted-foreground">
+                        {(selectedCorrelationEvent as RRMEvent).previousChannel && (
+                          <span className="text-[color:var(--status-error)]">
+                            {(selectedCorrelationEvent as RRMEvent).previousChannel} →{' '}
+                          </span>
+                        )}
+                        <span className="text-[color:var(--status-success)] font-medium">
+                          {selectedCorrelationEvent.channel}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* RRM-specific: Power info */}
+                  {'txPower' in selectedCorrelationEvent &&
+                    (selectedCorrelationEvent as RRMEvent).txPower && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <Signal className="h-4 w-4 text-purple-500" />
+                          <span className="font-medium">Tx Power</span>
+                        </div>
+                        <div className="ml-6 text-muted-foreground">
+                          {(selectedCorrelationEvent as RRMEvent).previousTxPower && (
+                            <span className="text-[color:var(--status-error)]">
+                              {(selectedCorrelationEvent as RRMEvent).previousTxPower} dBm →{' '}
+                            </span>
+                          )}
+                          <span className="text-[color:var(--status-success)] font-medium">
+                            {(selectedCorrelationEvent as RRMEvent).txPower} dBm
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* RRM-specific: Band */}
+                  {'band' in selectedCorrelationEvent &&
+                    (selectedCorrelationEvent as RRMEvent).band && (
+                      <div className="flex gap-2">
+                        <span className="text-muted-foreground">Band:</span>
+                        <span className="font-medium">
+                          {(selectedCorrelationEvent as RRMEvent).band}
+                        </span>
+                      </div>
+                    )}
+
+                  {/* RRM-specific: Reason */}
+                  {'reason' in selectedCorrelationEvent &&
+                    (selectedCorrelationEvent as RRMEvent).reason && (
+                      <div className="p-2 bg-purple-500/10 border border-purple-500/30 rounded text-xs">
+                        <div className="font-medium text-purple-700 dark:text-purple-400">
+                          Reason
+                        </div>
+                        <div className="text-purple-600/80 dark:text-purple-400/80 mt-1">
+                          {(selectedCorrelationEvent as RRMEvent).reason}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Details */}
+                  {selectedCorrelationEvent.details && (
+                    <div>
+                      <div className="font-medium mb-1 text-xs text-muted-foreground">Details</div>
+                      <div className="text-xs text-muted-foreground font-mono bg-background/50 p-2 rounded break-words">
+                        {selectedCorrelationEvent.details}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Level/Severity */}
+                  {selectedCorrelationEvent.level && (
+                    <div className="flex gap-2">
+                      <span className="text-muted-foreground">Level:</span>
+                      <Badge
+                        variant={
+                          selectedCorrelationEvent.level.toLowerCase() === 'error'
+                            ? 'destructive'
+                            : selectedCorrelationEvent.level.toLowerCase() === 'warning'
+                              ? 'secondary'
+                              : 'outline'
+                        }
+                      >
+                        {selectedCorrelationEvent.level}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
