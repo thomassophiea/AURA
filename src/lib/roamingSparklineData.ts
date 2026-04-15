@@ -3,6 +3,10 @@ export interface RoamingEventForSparkline {
   timestamp: number;
   isFailedRoam?: boolean;
   dataRate?: number;
+  rssi?: number;
+  dwell?: number;
+  isLateRoam?: boolean;
+  frequency?: string;
 }
 
 export interface SparklineBucket {
@@ -12,6 +16,10 @@ export interface SparklineBucket {
   good: number;
   failed: number;
   avgDataRate: number | null;
+  avgRssi: number | null;
+  avgDwell: number | null;
+  lateRoamCount: number;
+  bandCounts: { '2.4GHz': number; '5GHz': number; '6GHz': number; other: number };
 }
 
 function getBucketSizeMs(spanMs: number): number {
@@ -34,6 +42,14 @@ function formatBucketLabel(timeMs: number, bucketSizeMs: number): string {
   });
 }
 
+function normBand(frequency: string | undefined): keyof SparklineBucket['bandCounts'] {
+  if (!frequency) return 'other';
+  if (frequency.includes('2.4')) return '2.4GHz';
+  if (frequency.includes('5')) return '5GHz';
+  if (frequency.includes('6')) return '6GHz';
+  return 'other';
+}
+
 export function buildSparklineBuckets(events: RoamingEventForSparkline[]): SparklineBucket[] {
   if (events.length === 0) return [];
 
@@ -53,30 +69,54 @@ export function buildSparklineBuckets(events: RoamingEventForSparkline[]): Spark
     good: 0,
     failed: 0,
     avgDataRate: null,
+    avgRssi: null,
+    avgDwell: null,
+    lateRoamCount: 0,
+    bandCounts: { '2.4GHz': 0, '5GHz': 0, '6GHz': 0, other: 0 },
   }));
 
   const rateSums = new Array<number>(bucketCount).fill(0);
   const rateCounts = new Array<number>(bucketCount).fill(0);
+  const rssiSums = new Array<number>(bucketCount).fill(0);
+  const rssiCounts = new Array<number>(bucketCount).fill(0);
+  const dwellSums = new Array<number>(bucketCount).fill(0);
+  const dwellCounts = new Array<number>(bucketCount).fill(0);
 
   for (const event of events) {
     const idx = Math.floor((event.timestamp - bucketStart) / bucketSizeMs);
     if (idx < 0 || idx >= buckets.length) continue;
+
     buckets[idx].total++;
     if (event.isFailedRoam) {
       buckets[idx].failed++;
     } else {
       buckets[idx].good++;
     }
+    if (event.isLateRoam) {
+      buckets[idx].lateRoamCount++;
+    }
+
+    const band = normBand(event.frequency);
+    buckets[idx].bandCounts[band]++;
+
     if (event.dataRate != null) {
       rateSums[idx] += event.dataRate;
       rateCounts[idx]++;
     }
+    if (event.rssi != null) {
+      rssiSums[idx] += event.rssi;
+      rssiCounts[idx]++;
+    }
+    if (event.dwell != null && event.dwell > 0) {
+      dwellSums[idx] += event.dwell;
+      dwellCounts[idx]++;
+    }
   }
 
   for (let i = 0; i < buckets.length; i++) {
-    if (rateCounts[i] > 0) {
-      buckets[i].avgDataRate = rateSums[i] / rateCounts[i];
-    }
+    if (rateCounts[i] > 0) buckets[i].avgDataRate = rateSums[i] / rateCounts[i];
+    if (rssiCounts[i] > 0) buckets[i].avgRssi = rssiSums[i] / rssiCounts[i];
+    if (dwellCounts[i] > 0) buckets[i].avgDwell = dwellSums[i] / dwellCounts[i];
   }
 
   return buckets;
