@@ -4,6 +4,7 @@ import {
   Bar,
   Area,
   Line,
+  Cell,
   XAxis,
   YAxis,
   Tooltip,
@@ -50,6 +51,24 @@ function formatXTick(timeMs: number): string {
     return d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' });
   }
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/** Pick a fill color for a bar based on its dominant band. */
+function bandFill(bandCounts: SparklineBucket['bandCounts'], opacity = 0.7): string {
+  const { '5GHz': g5, '6GHz': g6, '2.4GHz': g24 } = bandCounts;
+  const max = Math.max(g5, g6, g24);
+  if (max === 0) return `rgba(34,197,94,${opacity})`;
+  if (g6 === max) return `rgba(129,140,248,${opacity})`; // 6GHz → indigo
+  if (g5 === max) return `rgba(34,197,94,${opacity})`; // 5GHz → green
+  if (g24 === max) return `rgba(251,191,36,${opacity})`; // 2.4GHz → amber
+  return `rgba(34,197,94,${opacity})`;
+}
+
+/** Whether a bucket has band diversity data (events with known frequency). */
+function hasBandData(data: SparklineBucket[]): boolean {
+  return data.some(
+    (b) => b.bandCounts['5GHz'] > 0 || b.bandCounts['6GHz'] > 0 || b.bandCounts['2.4GHz'] > 0
+  );
 }
 
 /** 0-100 connectivity health score derived from bucket data. */
@@ -218,11 +237,13 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
   const maxDwell = Math.max(...data.map((b) => b.avgDwell ?? 0));
   const maxThroughput = Math.max(...data.map((b) => b.throughputBps ?? 0));
   const maxRtt = Math.max(...data.map((b) => b.tcpRttMs ?? 0));
+  const maxTotal = Math.max(...data.map((b) => b.total));
   const hasRssi = data.some((b) => b.avgRssi != null);
   const hasDwell = data.some((b) => b.avgDwell != null);
   const hasRate = maxRate > 0;
   const hasThroughput = maxThroughput > 0;
   const hasRtt = maxRtt > 0;
+  const hasBands = hasBandData(data);
 
   const chartData = data.map((b) => ({
     ...b,
@@ -232,6 +253,8 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
     normThroughput:
       b.throughputBps != null && maxThroughput > 0 ? (b.throughputBps / maxThroughput) * 100 : null,
     normRtt: b.tcpRttMs != null && maxRtt > 0 ? (b.tcpRttMs / maxRtt) * 100 : null,
+    normIntensity: maxTotal > 0 ? (b.total / maxTotal) * 85 : null,
+    goodFill: bandFill(b.bandCounts, 0.72),
   }));
 
   const score = computeConnectivityScore(data);
@@ -248,7 +271,13 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
     tptValues.length > 0 ? tptValues.reduce((s, v) => s + v, 0) / tptValues.length : null;
 
   const legendItems = [
-    { color: 'rgba(34,197,94,0.8)', shape: 'square', label: 'Good' },
+    ...(hasBands
+      ? [
+          { color: 'rgba(34,197,94,0.8)', shape: 'square', label: '5GHz' },
+          { color: 'rgba(129,140,248,0.8)', shape: 'square', label: '6GHz' },
+          { color: 'rgba(251,191,36,0.8)', shape: 'square', label: '2.4GHz' },
+        ]
+      : [{ color: 'rgba(34,197,94,0.8)', shape: 'square', label: 'Good' }]),
     { color: 'rgba(239,68,68,0.8)', shape: 'square', label: 'Failed' },
     ...(hasRssi ? [{ color: 'rgba(251,191,36,0.9)', shape: 'area', label: 'RSSI' }] : []),
     ...(hasDwell ? [{ color: 'rgba(168,85,247,0.9)', shape: 'area', label: 'Dwell' }] : []),
@@ -406,14 +435,19 @@ export function RoamingSparkline({ data }: RoamingSparklineProps) {
             </>
           )}
 
-          {/* Stacked bars: good (green) + failed (red) */}
+          {/* Stacked bars: good (band-colored or green) + failed (red) */}
           <Bar
             yAxisId="left"
             dataKey="good"
             stackId="events"
             fill="rgba(34,197,94,0.6)"
             isAnimationActive={false}
-          />
+          >
+            {hasBands &&
+              chartData.map((entry, index) => (
+                <Cell key={`cell-good-${index}`} fill={entry.goodFill} />
+              ))}
+          </Bar>
           <Bar
             yAxisId="left"
             dataKey="failed"

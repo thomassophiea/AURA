@@ -560,13 +560,35 @@ export function RoamingTrail({
   );
 
   // Enrich sparkline with full station report (throughput, RTT, baseline RSS, Tx rate, wireless RTT)
+  // The report endpoints require the internal station UUID, not the MAC address.
+  // We first resolve the UUID via getStation(), then fetch the report.
   const [stationReport, setStationReport] = useState<unknown>(null);
   useEffect(() => {
     let cancelled = false;
     setStationReport(null);
-    apiService.getStationReport(macAddress, '7D', SPARKLINE_WIDGET_LIST).then((report) => {
-      if (!cancelled) setStationReport(report);
-    });
+
+    (async () => {
+      try {
+        // Resolve internal station ID from MAC
+        const station = await apiService.getStation(macAddress);
+        if (cancelled) return;
+        const stationId =
+          ((station as Record<string, unknown>)?.['id'] as string | undefined) || macAddress;
+
+        // Try primary report endpoint with internal ID
+        let report = await apiService.getStationReport(stationId, '7D', SPARKLINE_WIDGET_LIST);
+
+        // If that returned nothing, fall back to MAC-addressed alternate endpoint
+        if (!report) {
+          report = await apiService.getStationReport(macAddress, '7D', SPARKLINE_WIDGET_LIST);
+        }
+
+        if (!cancelled) setStationReport(report);
+      } catch {
+        // Enrichment unavailable — chart functions with event data only
+      }
+    })();
+
     return () => {
       cancelled = true;
     };
