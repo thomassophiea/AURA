@@ -1267,8 +1267,34 @@ export function ConfigureNetworks() {
                   jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-7242"
                 />
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="flex items-center gap-2">
                 Manage and configure wireless networks, SSIDs, and security policies
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    letterSpacing: '0.04em',
+                    padding: '2px 7px',
+                    borderRadius: '4px',
+                    backgroundColor: 'rgba(234,179,8,0.12)',
+                    color: '#eab308',
+                    border: '1px solid rgba(234,179,8,0.3)',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: '#eab308',
+                      display: 'inline-block',
+                    }}
+                  />
+                  DIRECT MODE — changes apply on save
+                </span>
               </CardDescription>
             </div>
             <div className="flex space-x-2">
