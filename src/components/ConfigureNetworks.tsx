@@ -1266,9 +1266,6 @@ export function ConfigureNetworks() {
                   epicTitle="WLAN Configuration"
                   jiraUrl="https://extremenetworks.atlassian.net/browse/NVO-7242"
                 />
-              </CardTitle>
-              <CardDescription className="flex items-center gap-2">
-                Manage and configure wireless networks, SSIDs, and security policies
                 <span
                   style={{
                     display: 'inline-flex',
@@ -1293,8 +1290,12 @@ export function ConfigureNetworks() {
                       display: 'inline-block',
                     }}
                   />
-                  DIRECT MODE — changes apply on save
+                  DIRECT MODE
                 </span>
+              </CardTitle>
+              <CardDescription>
+                Manage and configure wireless networks, SSIDs, and security policies — changes apply
+                on save
               </CardDescription>
             </div>
             <div className="flex space-x-2">
