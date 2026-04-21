@@ -21,6 +21,7 @@ export interface PublicLookupBuilding {
   city: string;
   state: string;
   postalCode: string;
+  country?: string;
   campusName?: string;
   buildingType?: string;
   estimatedFloorsAboveGround: number;
@@ -122,11 +123,57 @@ interface DemoEntry {
   seeds: BuildingSeed[];
 }
 
+const MTCC_BUILDING_SEEDS: BuildingSeed[] = [
+  {
+    id: 'mtcc-north-building',
+    buildingName: 'Metro Toronto Convention Centre - North Building',
+    addressLine1: '255 Front St W',
+    city: 'Toronto',
+    state: 'ON',
+    postalCode: 'M5V 2W6',
+    country: 'Canada',
+    estimatedFloorsAboveGround: 3,
+    estimatedTypicalFloorHeightFt: 18,
+    estimatedSourceConfidence: 'medium',
+    buildingType: 'convention_center',
+    campusName: 'Metro Toronto Convention Centre',
+    lookupSource: 'public_information_demo',
+    notes:
+      'Large convention halls with high ceilings. Estimate uses higher-than-office floor height.',
+  },
+  {
+    id: 'mtcc-south-building',
+    buildingName: 'Metro Toronto Convention Centre - South Building',
+    addressLine1: '222 Bremner Blvd',
+    city: 'Toronto',
+    state: 'ON',
+    postalCode: 'M5V 3L9',
+    country: 'Canada',
+    estimatedFloorsAboveGround: 3,
+    estimatedTypicalFloorHeightFt: 20,
+    estimatedSourceConfidence: 'medium',
+    buildingType: 'convention_center',
+    campusName: 'Metro Toronto Convention Centre',
+    lookupSource: 'public_information_demo',
+    notes: 'Includes exhibit halls and large open spaces. Floor heights vary significantly.',
+  },
+];
+
 const DEMO_REGISTRY: DemoEntry[] = [
   {
     aliases: ['comcast', 'comcast center', 'comcast center campus', 'comcast philadelphia'],
     organizationName: 'Comcast Center Campus',
     seeds: COMCAST_BUILDING_SEEDS,
+  },
+  {
+    aliases: [
+      'mtcc',
+      'toronto metro convention centre',
+      'metro toronto convention centre',
+      'metro toronto convention',
+    ],
+    organizationName: 'Metro Toronto Convention Centre',
+    seeds: MTCC_BUILDING_SEEDS,
   },
 ];
 
