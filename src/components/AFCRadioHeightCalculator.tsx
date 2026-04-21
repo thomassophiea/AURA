@@ -1576,7 +1576,7 @@ export function AFCRadioHeightCalculator() {
                           className="gap-1.5 border-0"
                           style={
                             committableCount === 0
-                              ? undefined
+                              ? { color: '#9ca3af' }
                               : { backgroundColor: '#8b5cf6', color: '#ffffff' }
                           }
                         >
