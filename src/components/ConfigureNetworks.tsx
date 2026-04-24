@@ -551,36 +551,63 @@ export function ConfigureNetworks() {
     setDeploymentInfo((prev) => ({ ...prev, ...info }));
   };
 
-  const loadNetworkSiteMappings = async (networkIds: string[]) => {
-    if (networkIds.length === 0) {
+  const loadNetworkSiteMappings = async (allNetworks: NetworkConfig[]) => {
+    if (allNetworks.length === 0) {
       setServiceSiteIds({});
+      setSiteIdToName({});
       return;
     }
 
-    const sites = await apiService.getSites();
     const nextSiteIdToName: Record<string, string> = {};
-    (Array.isArray(sites) ? sites : []).forEach((site) => {
-      if (site.id) {
-        nextSiteIdToName[site.id] = site.name || site.siteName || site.id;
-      }
-    });
-    setSiteIdToName(nextSiteIdToName);
-
-    const mappingEntries = await Promise.allSettled(
-      networkIds.map(async (networkId) => {
-        const ids = await apiService.getServiceSiteIds(networkId);
-        return [networkId, ids] as const;
-      })
-    );
-
     const nextMapping: Record<string, string[]> = {};
-    mappingEntries.forEach((entry) => {
-      if (entry.status === 'fulfilled') {
-        const [networkId, ids] = entry.value;
-        nextMapping[networkId] = Array.isArray(ids) ? ids : [];
-      }
-    });
 
+    // Group networks by their controller so we query each controller's own API
+    const byController = new Map<string | undefined, NetworkConfig[]>();
+    for (const network of allNetworks) {
+      const sgId = (network as any)._siteGroupId as string | undefined;
+      if (!byController.has(sgId)) byController.set(sgId, []);
+      byController.get(sgId)!.push(network);
+    }
+
+    const originalBaseUrl = apiService.getBaseUrl();
+
+    for (const [sgId, nets] of byController) {
+      const sg = sgId ? siteGroups.find((s) => s.id === sgId) : null;
+      if (sg) {
+        apiService.setBaseUrl(`${sg.controller_url}/management`);
+      }
+
+      try {
+        const sites = await apiService.getSites();
+        (Array.isArray(sites) ? sites : []).forEach((site) => {
+          if (site.id) {
+            nextSiteIdToName[site.id] = site.name || site.siteName || site.id;
+          }
+        });
+
+        const entries = await Promise.allSettled(
+          nets.map(async (network) => {
+            const ids = await apiService.getServiceSiteIds(network.id);
+            return [network.id, ids] as const;
+          })
+        );
+        entries.forEach((entry) => {
+          if (entry.status === 'fulfilled') {
+            const [networkId, ids] = entry.value;
+            nextMapping[networkId] = Array.isArray(ids) ? ids : [];
+          }
+        });
+      } catch (err) {
+        console.warn(
+          `[ConfigureNetworks] Failed to load site mappings for ${sg?.name ?? 'default'}:`,
+          err
+        );
+      }
+    }
+
+    apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+
+    setSiteIdToName(nextSiteIdToName);
     setServiceSiteIds(nextMapping);
   };
 
@@ -691,7 +718,7 @@ export function ConfigureNetworks() {
       // Load deployment info (sites/APs) in background
       if (allConfigs.length > 0) {
         loadDeploymentInfo(allConfigs.map((c) => c.id));
-        loadNetworkSiteMappings(allConfigs.map((c) => c.id));
+        loadNetworkSiteMappings(allConfigs);
       } else {
         setServiceSiteIds({});
         setSiteIdToName({});
