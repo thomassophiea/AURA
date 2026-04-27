@@ -2496,11 +2496,35 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       : []),
                     ...visibleColumns.map((columnKey): ColDef<AccessPoint> => {
                       const col = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
+                      const isApName = columnKey === 'apName';
                       return {
                         headerName: col?.label || columnKey,
                         field: columnKey as any,
                         sortable: col?.sortable ?? true,
-                        cellRenderer: (params: any) => renderColumnContent(columnKey, params.data),
+                        cellRenderer: (params: any) => {
+                          const content = renderColumnContent(columnKey, params.data);
+                          if (!isApName) return content;
+                          return (
+                            <button
+                              onClick={() => {
+                                if (onShowDetail)
+                                  onShowDetail(params.data.serialNumber, getAPName(params.data));
+                                else loadAPDetails(params.data.serialNumber);
+                              }}
+                              style={{
+                                textDecoration: 'underline',
+                                cursor: 'pointer',
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                textAlign: 'left',
+                                color: 'inherit',
+                              }}
+                            >
+                              {content}
+                            </button>
+                          );
+                        },
                         comparator: col?.sortable
                           ? (a: any, b: any, nodeA: any, nodeB: any) => {
                               const va = getSortValue(nodeA.data, columnKey);
@@ -2534,14 +2558,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       rowData={sortedAccessPoints}
                       columnDefs={agColDefs}
                       height={600}
-                      gridOptions={{
-                        onRowClicked: (e) => {
-                          if (!e.data) return;
-                          if (onShowDetail) onShowDetail(e.data.serialNumber, getAPName(e.data));
-                          else loadAPDetails(e.data.serialNumber);
-                        },
-                        rowSelection: { mode: 'multiRow' },
-                      }}
+                      gridOptions={{ rowSelection: { mode: 'multiRow' } }}
                     />
                   );
                 })()
