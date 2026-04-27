@@ -17,6 +17,11 @@ const darkTheme = themeQuartz.withParams({
   headerTextColor: 'hsl(var(--muted-foreground))',
   rowHoverColor: 'hsl(var(--accent))',
   selectedRowBackgroundColor: 'hsl(var(--primary) / 0.15)',
+  panelBackgroundColor: 'hsl(var(--card))',
+  inputBackgroundColor: 'hsl(var(--background))',
+  inputBorder: true,
+  popupShadow: '0 4px 24px rgba(0,0,0,0.5)',
+  rowBorder: true,
   fontFamily: 'inherit',
   fontSize: 12,
   rowHeight: ROW_HEIGHT,
@@ -50,6 +55,7 @@ export function AGGridWrapper<TData>({
 
   return (
     <div className={className} style={{ height: resolvedHeight }}>
+      <style>{`.ag-body-horizontal-scroll::-webkit-scrollbar{display:none}.ag-body-horizontal-scroll{-ms-overflow-style:none;scrollbar-width:none}`}</style>
       <AgGridReact
         theme={darkTheme}
         rowData={rowData}
