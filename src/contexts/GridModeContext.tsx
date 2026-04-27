@@ -15,9 +15,10 @@ const GridModeContext = createContext<GridModeContextValue>({
 export function GridModeProvider({ children }: { children: ReactNode }) {
   const [agGridEnabled, setAgGridEnabled] = useState<boolean>(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) === 'true';
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored === null ? true : stored === 'true';
     } catch {
-      return false;
+      return true;
     }
   });
 
