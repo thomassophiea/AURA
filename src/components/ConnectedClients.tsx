@@ -71,6 +71,9 @@ import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { CLIENTS_TABLE_COLUMNS } from '@/config/clientsTableColumns';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { resolveClientIdentity } from '@/lib/clientIdentity';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
@@ -148,6 +151,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
   const [isDeletingClientData, setIsDeletingClientData] = useState(false);
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const { agGridEnabled } = useGridMode();
 
   // Table customization
   const customization = useTableCustomization({
@@ -944,6 +948,65 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                   : 'No clients are currently connected to the network.'}
               </p>
             </div>
+          ) : agGridEnabled ? (
+            (() => {
+              const agColDefs: ColDef<Station>[] = [
+                {
+                  headerName: '',
+                  width: 48,
+                  sortable: false,
+                  filter: false,
+                  resizable: false,
+                  cellRenderer: (params: any) => (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedStations.has(params.data.macAddress)}
+                        onChange={(e) =>
+                          handleStationSelect(params.data.macAddress, e.target.checked)
+                        }
+                      />
+                    </div>
+                  ),
+                },
+                ...customization.visibleColumnConfigs.map(
+                  (column): ColDef<Station> => ({
+                    headerName: column.label,
+                    field: (column.fieldPath || column.key) as any,
+                    sortable: column.sortable !== false,
+                    cellRenderer: column.renderCell
+                      ? (params: any) => column.renderCell!(params.data)
+                      : undefined,
+                    comparator:
+                      column.sortable !== false
+                        ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
+                            const va = getSortValue(nodeA.data, column.key);
+                            const vb = getSortValue(nodeB.data, column.key);
+                            if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+                            return String(va).localeCompare(String(vb));
+                          }
+                        : undefined,
+                  })
+                ),
+              ];
+              return (
+                <AGGridWrapper
+                  rowData={sortedStations}
+                  columnDefs={agColDefs}
+                  height={600}
+                  gridOptions={{
+                    onRowClicked: (e) => {
+                      if (!e.data) return;
+                      if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);
+                      else {
+                        setSelectedStation(e.data);
+                        setIsModalOpen(true);
+                      }
+                    },
+                  }}
+                />
+              );
+            })()
           ) : (
             <div className="rounded-md border overflow-x-auto">
               <Table className="text-[11px] min-w-[640px]">
@@ -988,10 +1051,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                       key={station.macAddress || index}
                       className="cursor-pointer hover:bg-muted/50 h-11"
                       onClick={(e) => {
-                        // Don't trigger row click if clicking on checkbox
-                        if ((e.target as HTMLElement).closest('[data-checkbox]')) {
-                          return;
-                        }
+                        if ((e.target as HTMLElement).closest('[data-checkbox]')) return;
                         if (onShowDetail) {
                           onShowDetail(station.macAddress, station.hostName);
                         } else {

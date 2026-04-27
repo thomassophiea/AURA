@@ -53,6 +53,9 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface Device {
   id?: string;
@@ -118,6 +121,7 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [siteFilter, setSiteFilter] = useState('all');
+  const { agGridEnabled } = useGridMode();
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -945,6 +949,119 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                   </Button>
                 )}
             </div>
+          ) : agGridEnabled ? (
+            (() => {
+              const agColDefs: ColDef<Device>[] = [
+                {
+                  headerName: '',
+                  width: 48,
+                  sortable: false,
+                  filter: false,
+                  resizable: false,
+                  cellRenderer: (params: any) => {
+                    const deviceId = params.data.id || params.data.serialNumber || '';
+                    return (
+                      <input
+                        type="checkbox"
+                        checked={selectedDevices.has(deviceId)}
+                        onChange={(e) => {
+                          const next = new Set(selectedDevices);
+                          if (e.target.checked) next.add(deviceId);
+                          else next.delete(deviceId);
+                          setSelectedDevices(next);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    );
+                  },
+                },
+                {
+                  headerName: 'Device',
+                  field: 'deviceName' as any,
+                  cellRenderer: (params: any) => (
+                    <div>
+                      <div className="flex items-center gap-2">
+                        {getDeviceTypeIcon(params.data.deviceType)}
+                        <span className="font-medium">{params.data.deviceName || 'Unknown'}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {params.data.serialNumber && <span>S/N: {params.data.serialNumber} </span>}
+                        {params.data.macAddress && <span>MAC: {params.data.macAddress}</span>}
+                      </div>
+                    </div>
+                  ),
+                },
+                {
+                  headerName: 'Type',
+                  field: 'deviceType' as any,
+                  cellRenderer: (p: any) => (
+                    <Badge variant="outline">{p.data.deviceType || 'Unknown'}</Badge>
+                  ),
+                },
+                {
+                  headerName: 'Site',
+                  field: 'siteName' as any,
+                  valueGetter: (p) => p.data?.siteName || 'Unknown Site',
+                },
+                {
+                  headerName: 'Status',
+                  field: 'status' as any,
+                  cellRenderer: (p: any) => (
+                    <Badge
+                      variant={getStatusBadgeVariant(p.data.status || p.data.operationalStatus)}
+                    >
+                      {p.data.status || p.data.operationalStatus || 'Unknown'}
+                    </Badge>
+                  ),
+                },
+                {
+                  headerName: 'IP Address',
+                  field: 'ipAddress' as any,
+                  valueGetter: (p) => p.data?.ipAddress || 'N/A',
+                },
+                {
+                  headerName: 'Last Seen',
+                  field: 'lastSeen' as any,
+                  valueGetter: (p) => formatLastSeen(p.data?.lastSeen),
+                },
+                {
+                  headerName: 'Uptime',
+                  field: 'uptime' as any,
+                  valueGetter: (p) => formatUptime(p.data?.uptime),
+                },
+                {
+                  headerName: 'Actions',
+                  sortable: false,
+                  filter: false,
+                  width: 120,
+                  cellRenderer: (p: any) => (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => handleViewDetail(p.data)}
+                        className="p-1 hover:text-primary"
+                      >
+                        <Activity className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => handleEdit(p.data)} className="p-1 hover:text-primary">
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setDeviceToDelete(p.data);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                        className="p-1 hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ),
+                },
+              ];
+              return (
+                <AGGridWrapper rowData={filteredDevices} columnDefs={agColDefs} height={600} />
+              );
+            })()
           ) : (
             <div className="overflow-x-auto">
               <Table>

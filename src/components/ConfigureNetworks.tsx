@@ -59,6 +59,9 @@ import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server, ArrowUpFromLine } from 'lucide-react';
 import { globalElementsService } from '../services/globalElementsService';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 import { tenantService } from '../services/tenantService';
 import { DevEpicBadge } from './DevEpicBadge';
 
@@ -505,6 +508,7 @@ export function ConfigureNetworks() {
     () => sessionStorage.getItem('quick_wlan_banner_dismissed') === '1'
   );
   const [expandedNetworkId, setExpandedNetworkId] = useState<string | null>(null);
+  const { agGridEnabled } = useGridMode();
   const [editingWlan, setEditingWlan] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -1602,211 +1606,392 @@ export function ConfigureNetworks() {
           </div>
 
           {/* Networks Table */}
-          <div className="border rounded-lg overflow-hidden">
-            <Table className="[&_th]:py-3 [&_td]:py-3.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted-foreground">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">
-                    <Checkbox
-                      checked={
-                        selectedNetworks.length === filteredNetworks.length &&
-                        filteredNetworks.length > 0
-                      }
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all networks"
-                    />
-                  </TableHead>
-                  {isOrgScope && siteGroups.length > 1 && (
-                    <TableHead>
-                      <div className="flex items-center gap-1">
-                        <Server className="h-3 w-3" />
-                        <span>Site Group</span>
-                      </div>
-                    </TableHead>
-                  )}
-                  <TableHead>Name</TableHead>
-                  <TableHead>SSID</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Clients</TableHead>
-                  <TableHead>Privacy Type</TableHead>
-                  <TableHead>Default VLAN</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredNetworks.map((network) => (
-                  <React.Fragment key={network.id}>
-                    <TableRow
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => handleToggleExpanded(network.id)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox
-                          checked={selectedNetworks.includes(network.id)}
-                          onCheckedChange={(checked) => handleSelectNetwork(network.id, !!checked)}
-                          aria-label={`Select ${network.name}`}
-                        />
-                      </TableCell>
-                      {isOrgScope && siteGroups.length > 1 && (
-                        <TableCell>
+          {agGridEnabled ? (
+            (() => {
+              const agColDefs: ColDef<NetworkConfig>[] = [
+                {
+                  headerName: '',
+                  width: 48,
+                  sortable: false,
+                  filter: false,
+                  resizable: false,
+                  cellRenderer: (params: any) => (
+                    <div onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedNetworks.includes(params.data.id)}
+                        onChange={(e) => handleSelectNetwork(params.data.id, e.target.checked)}
+                      />
+                    </div>
+                  ),
+                },
+                ...(isOrgScope && siteGroups.length > 1
+                  ? [
+                      {
+                        headerName: 'Site Group',
+                        width: 110,
+                        cellRenderer: (p: any) => (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                            {(network as any)._siteGroupName || '—'}
+                            {(p.data as any)._siteGroupName || '—'}
+                          </Badge>
+                        ),
+                      } as ColDef<NetworkConfig>,
+                    ]
+                  : []),
+                {
+                  headerName: 'Name',
+                  field: 'name',
+                  cellRenderer: (p: any) => <span className="font-medium">{p.data.name}</span>,
+                },
+                {
+                  headerName: 'SSID',
+                  field: 'ssid',
+                  cellRenderer: (p: any) => (
+                    <span className="font-mono text-sm">{p.data.ssid}</span>
+                  ),
+                },
+                {
+                  headerName: 'Status',
+                  field: 'enabled',
+                  cellRenderer: (p: any) => (
+                    <Badge variant={p.data.enabled ? 'default' : 'secondary'}>
+                      {p.data.enabled ? 'Enabled' : 'Disabled'}
+                    </Badge>
+                  ),
+                },
+                {
+                  headerName: 'Clients',
+                  field: 'currentClients',
+                  valueGetter: (p) => p.data?.currentClients ?? 0,
+                },
+                { headerName: 'Privacy Type', field: 'authType' },
+                {
+                  headerName: 'Default VLAN',
+                  valueGetter: (p) =>
+                    (p.data as any)?.defaultTopologyName || (p.data as any)?.vlanId || '—',
+                },
+                {
+                  headerName: 'Actions',
+                  sortable: false,
+                  filter: false,
+                  width: 180,
+                  cellRenderer: (p: any) => (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      {isOrgScope ? (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePromoteToTemplate(p.data)}
+                          >
+                            <ArrowUpFromLine className="h-3.5 w-3.5 mr-1" />
+                            Promote
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setQrCodeWlan(p.data);
+                              setIsQrDialogOpen(true);
+                            }}
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleNetwork(p.data.id, !p.data.enabled)}
+                            title={p.data.enabled ? 'Disable' : 'Enable'}
+                          >
+                            {p.data.enabled ? (
+                              <EyeOff className="h-3.5 w-3.5" />
+                            ) : (
+                              <Eye className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleExpanded(p.data.id)}
+                          >
+                            {expandedNetworkId === p.data.id ? (
+                              <ChevronUp className="h-3.5 w-3.5" />
+                            ) : (
+                              <Edit2 className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setQrCodeWlan(p.data);
+                              setIsQrDialogOpen(true);
+                            }}
+                          >
+                            <QrCode className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handlePromoteToTemplate(p.data)}
+                          >
+                            <ArrowUpFromLine className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteWlan(p.data)}
+                            disabled={isDeleting}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  ),
+                },
+              ];
+              const expandedNetwork = filteredNetworks.find((n) => n.id === expandedNetworkId);
+              return (
+                <div className="space-y-4">
+                  <AGGridWrapper
+                    rowData={filteredNetworks}
+                    columnDefs={agColDefs}
+                    height={Math.min(600, filteredNetworks.length * 44 + 80)}
+                    gridOptions={{
+                      onRowClicked: (e) => {
+                        if (e.data) handleToggleExpanded(e.data.id);
+                      },
+                    }}
+                  />
+                  {expandedNetwork && expandedNetworkId && (
+                    <div className="border rounded-lg bg-card shadow-inner">
+                      <NetworkEditDetail
+                        serviceId={expandedNetworkId}
+                        onSave={handleNetworkSaved}
+                        isInline={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })()
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <Table className="[&_th]:py-3 [&_td]:py-3.5 [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wider [&_th]:text-muted-foreground">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={
+                          selectedNetworks.length === filteredNetworks.length &&
+                          filteredNetworks.length > 0
+                        }
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all networks"
+                      />
+                    </TableHead>
+                    {isOrgScope && siteGroups.length > 1 && (
+                      <TableHead>
+                        <div className="flex items-center gap-1">
+                          <Server className="h-3 w-3" />
+                          <span>Site Group</span>
+                        </div>
+                      </TableHead>
+                    )}
+                    <TableHead>Name</TableHead>
+                    <TableHead>SSID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Clients</TableHead>
+                    <TableHead>Privacy Type</TableHead>
+                    <TableHead>Default VLAN</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredNetworks.map((network) => (
+                    <React.Fragment key={network.id}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => handleToggleExpanded(network.id)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedNetworks.includes(network.id)}
+                            onCheckedChange={(checked) =>
+                              handleSelectNetwork(network.id, !!checked)
+                            }
+                            aria-label={`Select ${network.name}`}
+                          />
+                        </TableCell>
+                        {isOrgScope && siteGroups.length > 1 && (
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className="text-[10px] px-1.5 py-0 font-normal"
+                            >
+                              {(network as any)._siteGroupName || '—'}
+                            </Badge>
+                          </TableCell>
+                        )}
+                        <TableCell className="font-medium">{network.name}</TableCell>
+                        <TableCell>
+                          <span className="font-mono text-sm">{network.ssid}</span>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={network.enabled ? 'default' : 'secondary'}>
+                            {network.enabled ? 'Enabled' : 'Disabled'}
                           </Badge>
                         </TableCell>
+                        <TableCell>
+                          <span className="text-sm font-medium">{network.currentClients ?? 0}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">{network.authType}</span>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm text-muted-foreground">
+                            {(network as any).defaultTopologyName || (network as any).vlanId || '—'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end space-x-1">
+                            {isOrgScope ? (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handlePromoteToTemplate(network)}
+                                  title="Promote to org-level template — assign to other sites & groups"
+                                >
+                                  <ArrowUpFromLine className="h-4 w-4 mr-1" />
+                                  Promote
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setQrCodeWlan(network);
+                                    setIsQrDialogOpen(true);
+                                  }}
+                                  title="Generate QR Code"
+                                >
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleNetwork(network.id, !network.enabled)}
+                                  title={network.enabled ? 'Disable Network' : 'Enable Network'}
+                                >
+                                  {network.enabled ? (
+                                    <EyeOff className="h-4 w-4" />
+                                  ) : (
+                                    <Eye className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleToggleExpanded(network.id)}
+                                  title="Edit WLAN"
+                                >
+                                  {expandedNetworkId === network.id ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <Edit2 className="h-4 w-4" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setQrCodeWlan(network);
+                                    setIsQrDialogOpen(true);
+                                  }}
+                                  title="Generate QR Code"
+                                >
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePromoteToTemplate(network)}
+                                  title="Promote to Global Template"
+                                >
+                                  <ArrowUpFromLine className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDeleteWlan(network)}
+                                  disabled={isDeleting}
+                                  className="text-destructive hover:text-destructive"
+                                  title="Delete WLAN"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+
+                      {/* Expanded Configuration Panel */}
+                      {expandedNetworkId === network.id && (
+                        <TableRow>
+                          <TableCell colSpan={99} className="p-0">
+                            <div className="border-t border-b bg-card shadow-inner">
+                              <NetworkEditDetail
+                                serviceId={network.id}
+                                onSave={handleNetworkSaved}
+                                isInline={true}
+                              />
+                            </div>
+                          </TableCell>
+                        </TableRow>
                       )}
-                      <TableCell className="font-medium">{network.name}</TableCell>
-                      <TableCell>
-                        <span className="font-mono text-sm">{network.ssid}</span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={network.enabled ? 'default' : 'secondary'}>
-                          {network.enabled ? 'Enabled' : 'Disabled'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-medium">{network.currentClients ?? 0}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">{network.authType}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {(network as any).defaultTopologyName || (network as any).vlanId || '—'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end space-x-1">
-                          {isOrgScope ? (
-                            <>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePromoteToTemplate(network)}
-                                title="Promote to org-level template — assign to other sites & groups"
-                              >
-                                <ArrowUpFromLine className="h-4 w-4 mr-1" />
-                                Promote
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setQrCodeWlan(network);
-                                  setIsQrDialogOpen(true);
-                                }}
-                                title="Generate QR Code"
-                              >
-                                <QrCode className="h-4 w-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleNetwork(network.id, !network.enabled)}
-                                title={network.enabled ? 'Disable Network' : 'Enable Network'}
-                              >
-                                {network.enabled ? (
-                                  <EyeOff className="h-4 w-4" />
-                                ) : (
-                                  <Eye className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleToggleExpanded(network.id)}
-                                title="Edit WLAN"
-                              >
-                                {expandedNetworkId === network.id ? (
-                                  <ChevronUp className="h-4 w-4" />
-                                ) : (
-                                  <Edit2 className="h-4 w-4" />
-                                )}
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setQrCodeWlan(network);
-                                  setIsQrDialogOpen(true);
-                                }}
-                                title="Generate QR Code"
-                              >
-                                <QrCode className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handlePromoteToTemplate(network)}
-                                title="Promote to Global Template"
-                              >
-                                <ArrowUpFromLine className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDeleteWlan(network)}
-                                disabled={isDeleting}
-                                className="text-destructive hover:text-destructive"
-                                title="Delete WLAN"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
+                    </React.Fragment>
+                  ))}
+
+                  {filteredNetworks.length === 0 && !loading && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="py-16 text-center">
+                        <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
+                          <Network className="h-10 w-10" />
+                          <span className="text-sm font-medium text-muted-foreground">
+                            {searchTerm
+                              ? 'No networks match your search'
+                              : 'No wireless networks configured'}
+                          </span>
+                          <span className="text-xs">
+                            {searchTerm
+                              ? `No results for "${searchTerm}". Try clearing the search or adjusting filters.`
+                              : 'Create a WLAN to start providing wireless connectivity.'}
+                          </span>
+                          {!searchTerm && !isOrgScope && (
+                            <button
+                              onClick={() => setShowCreateDialog(true)}
+                              className="mt-2 px-4 py-2 rounded-md text-sm border border-border text-high-emphasis hover:bg-accent transition-colors"
+                            >
+                              Create WLAN
+                            </button>
                           )}
                         </div>
                       </TableCell>
                     </TableRow>
-
-                    {/* Expanded Configuration Panel */}
-                    {expandedNetworkId === network.id && (
-                      <TableRow>
-                        <TableCell colSpan={99} className="p-0">
-                          <div className="border-t border-b bg-card shadow-inner">
-                            <NetworkEditDetail
-                              serviceId={network.id}
-                              onSave={handleNetworkSaved}
-                              isInline={true}
-                            />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                ))}
-
-                {filteredNetworks.length === 0 && !loading && (
-                  <TableRow>
-                    <TableCell colSpan={7} className="py-16 text-center">
-                      <div className="flex flex-col items-center gap-2 text-muted-foreground/60">
-                        <Network className="h-10 w-10" />
-                        <span className="text-sm font-medium text-muted-foreground">
-                          {searchTerm
-                            ? 'No networks match your search'
-                            : 'No wireless networks configured'}
-                        </span>
-                        <span className="text-xs">
-                          {searchTerm
-                            ? `No results for "${searchTerm}". Try clearing the search or adjusting filters.`
-                            : 'Create a WLAN to start providing wireless connectivity.'}
-                        </span>
-                        {!searchTerm && !isOrgScope && (
-                          <button
-                            onClick={() => setShowCreateDialog(true)}
-                            className="mt-2 px-4 py-2 rounded-md text-sm border border-border text-high-emphasis hover:bg-accent transition-colors"
-                          >
-                            Create WLAN
-                          </button>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
           {/* Summary Stats */}
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -7,13 +7,13 @@ import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
-import { 
-  AlertTriangle, 
-  Info, 
-  CheckCircle, 
-  XCircle, 
-  Activity, 
-  RefreshCw, 
+import {
+  AlertTriangle,
+  Info,
+  CheckCircle,
+  XCircle,
+  Activity,
+  RefreshCw,
   Search,
   Filter,
   AlertCircle,
@@ -26,13 +26,16 @@ import {
   Users,
   TrendingDown,
   TrendingUp,
-  BarChart3
+  BarChart3,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface Alert {
   id: string;
@@ -70,6 +73,7 @@ export function AlertsEventsEnhanced() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('alerts');
+  const { agGridEnabled } = useGridMode();
 
   // Filter states
   const [severityFilter, setSeverityFilter] = useState('all');
@@ -103,17 +107,17 @@ export function AlertsEventsEnhanced() {
         '1h': 3600000,
         '24h': 86400000,
         '7d': 604800000,
-        '30d': 2592000000
+        '30d': 2592000000,
       };
       const timeAgo = now - (timeRanges[selectedTimeRange] || timeRanges['24h']);
 
       console.log('[AlertsEvents] Fetching alerts and events...');
-      
+
       // Try multiple endpoints for alerts and events
       const [alertsResponse, eventsResponse, notificationsResponse] = await Promise.allSettled([
         apiService.makeAuthenticatedRequest('/v1/alerts', { method: 'GET' }, 10000),
         apiService.makeAuthenticatedRequest('/v1/events?type=all', { method: 'GET' }, 10000),
-        apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000)
+        apiService.makeAuthenticatedRequest('/v1/notifications', { method: 'GET' }, 10000),
       ]);
 
       let loadedAlerts: Alert[] = [];
@@ -123,10 +127,12 @@ export function AlertsEventsEnhanced() {
       if (alertsResponse.status === 'fulfilled' && alertsResponse.value.ok) {
         try {
           const alertsData = await alertsResponse.value.json();
-          const alertsArray = Array.isArray(alertsData) ? alertsData : (alertsData.alerts || alertsData.data || []);
-          
+          const alertsArray = Array.isArray(alertsData)
+            ? alertsData
+            : alertsData.alerts || alertsData.data || [];
+
           console.log('[AlertsEvents] Processing alerts:', alertsArray.length);
-          
+
           loadedAlerts = alertsArray
             .filter((alert: any) => {
               const timestamp = alert.timestamp || alert.time || alert.createdAt || now;
@@ -142,10 +148,10 @@ export function AlertsEventsEnhanced() {
               source: alert.source || alert.deviceName || alert.apName || 'System',
               timestamp: alert.timestamp || alert.time || alert.createdAt || now,
               status: normalizeStatus(alert.status || alert.state),
-              affectedDevices: alert.affectedDevices || (alert.deviceName ? [alert.deviceName] : []),
-              assignedTo: alert.assignedTo || alert.owner
+              affectedDevices:
+                alert.affectedDevices || (alert.deviceName ? [alert.deviceName] : []),
+              assignedTo: alert.assignedTo || alert.owner,
             }));
-          
         } catch (error) {
           console.log('[AlertsEvents] Failed to parse alerts:', error);
         }
@@ -157,10 +163,12 @@ export function AlertsEventsEnhanced() {
       if (eventsResponse.status === 'fulfilled' && eventsResponse.value.ok) {
         try {
           const eventsData = await eventsResponse.value.json();
-          const eventsArray = Array.isArray(eventsData) ? eventsData : (eventsData.events || eventsData.data || []);
-          
+          const eventsArray = Array.isArray(eventsData)
+            ? eventsData
+            : eventsData.events || eventsData.data || [];
+
           console.log('[AlertsEvents] Processing events:', eventsArray.length);
-          
+
           loadedEvents = eventsArray
             .filter((event: any) => {
               const timestamp = event.timestamp || event.time || event.createdAt || now;
@@ -177,9 +185,8 @@ export function AlertsEventsEnhanced() {
               severity: event.severity || event.level,
               user: event.user || event.userName || event.userId,
               device: event.device || event.deviceName || event.apName,
-              details: event.details || event.metadata
+              details: event.details || event.metadata,
             }));
-          
         } catch (error) {
           console.log('[AlertsEvents] Failed to parse events:', error);
         }
@@ -189,10 +196,10 @@ export function AlertsEventsEnhanced() {
       if (notificationsResponse.status === 'fulfilled' && notificationsResponse.value.ok) {
         try {
           const notifData = await notificationsResponse.value.json();
-          const notifsArray = Array.isArray(notifData) ? notifData : (notifData.notifications || []);
-          
+          const notifsArray = Array.isArray(notifData) ? notifData : notifData.notifications || [];
+
           console.log('[AlertsEvents] Processing notifications:', notifsArray.length);
-          
+
           // Convert notifications to events if not already present
           const notifEvents = notifsArray
             .filter((notif: any) => {
@@ -208,17 +215,16 @@ export function AlertsEventsEnhanced() {
               source: notif.source || 'System',
               timestamp: notif.timestamp || notif.time || now,
               severity: notif.severity,
-              details: notif.details
+              details: notif.details,
             }));
-          
+
           // Merge with events (avoid duplicates)
-          const existingIds = new Set(loadedEvents.map(e => e.id));
-          notifEvents.forEach(ne => {
+          const existingIds = new Set(loadedEvents.map((e) => e.id));
+          notifEvents.forEach((ne) => {
             if (!existingIds.has(ne.id)) {
               loadedEvents.push(ne);
             }
           });
-          
         } catch (error) {
           console.log('[AlertsEvents] Failed to parse notifications:', error);
         }
@@ -236,7 +242,7 @@ export function AlertsEventsEnhanced() {
         try {
           const siteAPs = await apiService.getAccessPointsBySite(siteId);
           const siteDeviceIds = new Set<string>();
-          siteAPs.forEach(ap => {
+          siteAPs.forEach((ap) => {
             if (ap.name) siteDeviceIds.add(ap.name.toLowerCase());
             if (ap.serialNumber) siteDeviceIds.add(ap.serialNumber.toLowerCase());
             if ((ap as any).hostname) siteDeviceIds.add((ap as any).hostname.toLowerCase());
@@ -250,14 +256,13 @@ export function AlertsEventsEnhanced() {
           } else {
             // STRICT: only include alerts/events from devices at this site
             // system-wide alerts are EXCLUDED in site-scoped views
-            loadedAlerts = loadedAlerts.filter(alert => {
+            loadedAlerts = loadedAlerts.filter((alert) => {
               const source = alert.source.toLowerCase();
-              const devices = (alert.affectedDevices || []).map(d => d.toLowerCase());
-              return siteDeviceIds.has(source) ||
-                devices.some(d => siteDeviceIds.has(d));
+              const devices = (alert.affectedDevices || []).map((d) => d.toLowerCase());
+              return siteDeviceIds.has(source) || devices.some((d) => siteDeviceIds.has(d));
             });
 
-            loadedEvents = loadedEvents.filter(event => {
+            loadedEvents = loadedEvents.filter((event) => {
               const source = event.source.toLowerCase();
               const device = (event.device || '').toLowerCase();
               return siteDeviceIds.has(source) || siteDeviceIds.has(device);
@@ -265,7 +270,9 @@ export function AlertsEventsEnhanced() {
           }
         } catch (error) {
           // STRICT: on failure, return empty rather than showing unscoped data
-          console.warn('[AlertsEvents] Site device correlation failed, returning empty (strict mode)');
+          console.warn(
+            '[AlertsEvents] Site device correlation failed, returning empty (strict mode)'
+          );
           loadedAlerts = [];
           loadedEvents = [];
         }
@@ -277,7 +284,6 @@ export function AlertsEventsEnhanced() {
       if (showRefreshing) {
         toast.success('Data refreshed');
       }
-
     } catch (error) {
       console.error('[AlertsEvents] Error loading data:', error);
       toast.error('Failed to load alerts and events');
@@ -289,7 +295,8 @@ export function AlertsEventsEnhanced() {
 
   const normalizeSeverity = (severity: any): 'critical' | 'warning' | 'info' | 'low' => {
     const sev = String(severity || '').toLowerCase();
-    if (sev.includes('critical') || sev.includes('high') || sev.includes('error')) return 'critical';
+    if (sev.includes('critical') || sev.includes('high') || sev.includes('error'))
+      return 'critical';
     if (sev.includes('warning') || sev.includes('warn') || sev.includes('medium')) return 'warning';
     if (sev.includes('info') || sev.includes('information')) return 'info';
     return 'low';
@@ -306,7 +313,8 @@ export function AlertsEventsEnhanced() {
   const categorizeAlert = (type: string): string => {
     const t = type.toLowerCase();
     if (t.includes('security') || t.includes('auth') || t.includes('intrusion')) return 'security';
-    if (t.includes('ap') || t.includes('access point') || t.includes('wifi')) return 'infrastructure';
+    if (t.includes('ap') || t.includes('access point') || t.includes('wifi'))
+      return 'infrastructure';
     if (t.includes('client') || t.includes('user') || t.includes('station')) return 'clients';
     if (t.includes('network') || t.includes('connectivity')) return 'network';
     if (t.includes('performance') || t.includes('throughput')) return 'performance';
@@ -324,42 +332,63 @@ export function AlertsEventsEnhanced() {
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'destructive';
-      case 'warning': return 'secondary';
-      case 'info': return 'default';
-      default: return 'outline';
+      case 'critical':
+        return 'destructive';
+      case 'warning':
+        return 'secondary';
+      case 'info':
+        return 'default';
+      default:
+        return 'outline';
     }
   };
 
   const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case 'critical': return <XCircle className="h-4 w-4" />;
-      case 'warning': return <AlertTriangle className="h-4 w-4" />;
-      case 'info': return <Info className="h-4 w-4" />;
-      default: return <CheckCircle className="h-4 w-4" />;
+      case 'critical':
+        return <XCircle className="h-4 w-4" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4" />;
+      case 'info':
+        return <Info className="h-4 w-4" />;
+      default:
+        return <CheckCircle className="h-4 w-4" />;
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'destructive';
-      case 'acknowledged': return 'secondary';
-      case 'resolved': return 'default';
-      case 'cleared': return 'outline';
-      default: return 'outline';
+      case 'active':
+        return 'destructive';
+      case 'acknowledged':
+        return 'secondary';
+      case 'resolved':
+        return 'default';
+      case 'cleared':
+        return 'outline';
+      default:
+        return 'outline';
     }
   };
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'security': return <Shield className="h-4 w-4" />;
-      case 'infrastructure': return <Wifi className="h-4 w-4" />;
-      case 'clients': return <Users className="h-4 w-4" />;
-      case 'network': return <Server className="h-4 w-4" />;
-      case 'performance': return <Activity className="h-4 w-4" />;
-      case 'configuration': return <Server className="h-4 w-4" />;
-      case 'authentication': return <Shield className="h-4 w-4" />;
-      default: return <Info className="h-4 w-4" />;
+      case 'security':
+        return <Shield className="h-4 w-4" />;
+      case 'infrastructure':
+        return <Wifi className="h-4 w-4" />;
+      case 'clients':
+        return <Users className="h-4 w-4" />;
+      case 'network':
+        return <Server className="h-4 w-4" />;
+      case 'performance':
+        return <Activity className="h-4 w-4" />;
+      case 'configuration':
+        return <Server className="h-4 w-4" />;
+      case 'authentication':
+        return <Shield className="h-4 w-4" />;
+      default:
+        return <Info className="h-4 w-4" />;
     }
   };
 
@@ -376,43 +405,51 @@ export function AlertsEventsEnhanced() {
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
     // Less than 7 days
     if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
-    
+
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
   // Filter alerts
-  const filteredAlerts = alerts.filter(alert => {
+  const filteredAlerts = alerts.filter((alert) => {
     const matchesSeverity = severityFilter === 'all' || alert.severity === severityFilter;
     const matchesCategory = categoryFilter === 'all' || alert.category === categoryFilter;
     const matchesStatus = statusFilter === 'all' || alert.status === statusFilter;
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch =
+      searchTerm === '' ||
       alert.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
       alert.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       alert.source.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesSeverity && matchesCategory && matchesStatus && matchesSearch;
   });
 
   // Filter events
-  const filteredEvents = events.filter(event => {
+  const filteredEvents = events.filter((event) => {
     const matchesCategory = categoryFilter === 'all' || event.category === categoryFilter;
-    const matchesSearch = searchTerm === '' ||
+    const matchesSearch =
+      searchTerm === '' ||
       event.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       event.source.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     return matchesCategory && matchesSearch;
   });
 
   // Get unique categories
-  const alertCategories = ['all', ...Array.from(new Set(alerts.map(a => a.category)))];
-  const eventCategories = ['all', ...Array.from(new Set(events.map(e => e.category)))];
+  const alertCategories = ['all', ...Array.from(new Set(alerts.map((a) => a.category)))];
+  const eventCategories = ['all', ...Array.from(new Set(events.map((e) => e.category)))];
 
   // Calculate statistics
-  const criticalCount = alerts.filter(a => a.severity === 'critical' && a.status === 'active').length;
-  const warningCount = alerts.filter(a => a.severity === 'warning' && a.status === 'active').length;
-  const activeCount = alerts.filter(a => a.status === 'active').length;
-  const resolvedCount = alerts.filter(a => a.status === 'resolved' || a.status === 'cleared').length;
+  const criticalCount = alerts.filter(
+    (a) => a.severity === 'critical' && a.status === 'active'
+  ).length;
+  const warningCount = alerts.filter(
+    (a) => a.severity === 'warning' && a.status === 'active'
+  ).length;
+  const activeCount = alerts.filter((a) => a.status === 'active').length;
+  const resolvedCount = alerts.filter(
+    (a) => a.status === 'resolved' || a.status === 'cleared'
+  ).length;
 
   if (loading) {
     return (
@@ -422,7 +459,7 @@ export function AlertsEventsEnhanced() {
           <div className="h-10 w-32 bg-muted rounded animate-pulse" />
         </div>
         <div className="grid gap-4 md:grid-cols-4">
-          {[1,2,3,4].map(i => (
+          {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
               <CardHeader className="pb-3">
                 <div className="h-4 w-20 bg-muted rounded animate-pulse" />
@@ -551,7 +588,7 @@ export function AlertsEventsEnhanced() {
                   />
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 {activeTab === 'alerts' && (
                   <>
@@ -588,9 +625,11 @@ export function AlertsEventsEnhanced() {
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(activeTab === 'alerts' ? alertCategories : eventCategories).map(cat => (
+                    {(activeTab === 'alerts' ? alertCategories : eventCategories).map((cat) => (
                       <SelectItem key={cat} value={cat}>
-                        {cat === 'all' ? 'All Categories' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                        {cat === 'all'
+                          ? 'All Categories'
+                          : cat.charAt(0).toUpperCase() + cat.slice(1)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -625,11 +664,76 @@ export function AlertsEventsEnhanced() {
                   <BellOff className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
                   <h3 className="mt-4 text-lg">No alerts found</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {searchTerm || severityFilter !== 'all' || statusFilter !== 'all' || categoryFilter !== 'all'
+                    {searchTerm ||
+                    severityFilter !== 'all' ||
+                    statusFilter !== 'all' ||
+                    categoryFilter !== 'all'
                       ? 'Try adjusting your filters'
                       : 'All systems operating normally'}
                   </p>
                 </div>
+              ) : agGridEnabled ? (
+                (() => {
+                  const colDefs: ColDef<Alert>[] = [
+                    {
+                      headerName: 'Severity',
+                      field: 'severity',
+                      cellRenderer: (p: any) => (
+                        <Badge
+                          variant={getSeverityColor(p.data.severity)}
+                          className="flex items-center gap-1 w-fit"
+                        >
+                          {getSeverityIcon(p.data.severity)}
+                          {p.data.severity}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      headerName: 'Category',
+                      field: 'category',
+                      cellRenderer: (p: any) => (
+                        <div className="flex items-center gap-2">
+                          {getCategoryIcon(p.data.category)}
+                          <span className="capitalize">{p.data.category}</span>
+                        </div>
+                      ),
+                    },
+                    {
+                      headerName: 'Message',
+                      field: 'message',
+                      flex: 2,
+                      cellRenderer: (p: any) => (
+                        <div>
+                          <div className="font-medium">{p.data.message}</div>
+                          {p.data.description && (
+                            <div className="text-xs text-muted-foreground">
+                              {p.data.description}
+                            </div>
+                          )}
+                        </div>
+                      ),
+                    },
+                    { headerName: 'Source', field: 'source' },
+                    {
+                      headerName: 'Status',
+                      field: 'status',
+                      cellRenderer: (p: any) => (
+                        <Badge variant={getStatusColor(p.data.status)} className="capitalize">
+                          {p.data.status}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      headerName: 'Time',
+                      field: 'timestamp',
+                      valueFormatter: (p) =>
+                        p.data?.timestamp != null ? formatTimestamp(p.data.timestamp) : '',
+                    },
+                  ];
+                  return (
+                    <AGGridWrapper rowData={filteredAlerts} columnDefs={colDefs} height={600} />
+                  );
+                })()
               ) : (
                 <ScrollArea className="h-[600px]">
                   <Table>
@@ -644,10 +748,13 @@ export function AlertsEventsEnhanced() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredAlerts.map(alert => (
+                      {filteredAlerts.map((alert) => (
                         <TableRow key={alert.id}>
                           <TableCell>
-                            <Badge variant={getSeverityColor(alert.severity)} className="flex items-center gap-1 w-fit">
+                            <Badge
+                              variant={getSeverityColor(alert.severity)}
+                              className="flex items-center gap-1 w-fit"
+                            >
                               {getSeverityIcon(alert.severity)}
                               {alert.severity}
                             </Badge>
@@ -662,7 +769,9 @@ export function AlertsEventsEnhanced() {
                             <div>
                               <div className="font-medium">{alert.message}</div>
                               {alert.description && (
-                                <div className="text-sm text-muted-foreground">{alert.description}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {alert.description}
+                                </div>
                               )}
                             </div>
                           </TableCell>
@@ -715,6 +824,58 @@ export function AlertsEventsEnhanced() {
                       : 'No events in selected time range'}
                   </p>
                 </div>
+              ) : agGridEnabled ? (
+                (() => {
+                  const colDefs: ColDef<Event>[] = [
+                    {
+                      headerName: 'Category',
+                      field: 'category',
+                      cellRenderer: (p: any) => (
+                        <div className="flex items-center gap-2">
+                          {getCategoryIcon(p.data.category)}
+                          <span className="capitalize">{p.data.category}</span>
+                        </div>
+                      ),
+                    },
+                    {
+                      headerName: 'Type',
+                      field: 'type',
+                      cellRenderer: (p: any) => (
+                        <Badge variant="outline" className="capitalize">
+                          {p.data.type}
+                        </Badge>
+                      ),
+                    },
+                    {
+                      headerName: 'Message',
+                      field: 'message',
+                      flex: 2,
+                      cellRenderer: (p: any) => (
+                        <div>
+                          <div className="font-medium">{p.data.message}</div>
+                          {p.data.description && (
+                            <div className="text-xs text-muted-foreground">
+                              {p.data.description}
+                            </div>
+                          )}
+                          {p.data.user && (
+                            <div className="text-xs text-muted-foreground">User: {p.data.user}</div>
+                          )}
+                        </div>
+                      ),
+                    },
+                    { headerName: 'Source', field: 'source' },
+                    {
+                      headerName: 'Time',
+                      field: 'timestamp',
+                      valueFormatter: (p) =>
+                        p.data?.timestamp != null ? formatTimestamp(p.data.timestamp) : '',
+                    },
+                  ];
+                  return (
+                    <AGGridWrapper rowData={filteredEvents} columnDefs={colDefs} height={600} />
+                  );
+                })()
               ) : (
                 <ScrollArea className="h-[600px]">
                   <Table>
@@ -728,7 +889,7 @@ export function AlertsEventsEnhanced() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredEvents.map(event => (
+                      {filteredEvents.map((event) => (
                         <TableRow key={event.id}>
                           <TableCell>
                             <div className="flex items-center gap-2">
@@ -745,7 +906,9 @@ export function AlertsEventsEnhanced() {
                             <div>
                               <div className="font-medium">{event.message}</div>
                               {event.description && (
-                                <div className="text-sm text-muted-foreground">{event.description}</div>
+                                <div className="text-sm text-muted-foreground">
+                                  {event.description}
+                                </div>
                               )}
                               {event.user && (
                                 <div className="text-sm text-muted-foreground mt-1">
@@ -777,10 +940,10 @@ export function AlertsEventsEnhanced() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {Array.from(new Set(alerts.map(a => a.category))).map(category => {
-                const count = alerts.filter(a => a.category === category).length;
+              {Array.from(new Set(alerts.map((a) => a.category))).map((category) => {
+                const count = alerts.filter((a) => a.category === category).length;
                 const percentage = Math.round((count / alerts.length) * 100);
-                
+
                 return (
                   <div key={category} className="p-4 rounded-lg border bg-card">
                     <div className="flex items-center gap-2 mb-2">
