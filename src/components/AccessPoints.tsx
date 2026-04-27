@@ -72,6 +72,9 @@ import { useTableCustomization } from '@/hooks/useTableCustomization';
 import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 import { Server, Building } from 'lucide-react';
 
 // Cable health detection utilities
@@ -512,6 +515,7 @@ interface AccessPointsProps {
 
 export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
+  const { agGridEnabled } = useGridMode();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<
@@ -2455,290 +2459,378 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                   </Button>
                 </div>
               )}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox
-                          checked={
-                            selectedSerials.size === sortedAccessPoints.length &&
-                            sortedAccessPoints.length > 0
-                          }
-                          onCheckedChange={(checked) => toggleSelectAll(!!checked)}
-                          aria-label="Select all APs"
-                        />
-                      </TableHead>
-                      {navigationScope === 'global' && siteGroups.length > 1 && (
-                        <TableHead className="text-[10px]">
-                          <div className="flex items-center gap-1">
-                            <Server className="h-3 w-3" />
-                            <span>Site Group</span>
-                          </div>
-                        </TableHead>
-                      )}
-                      {visibleColumns.map((columnKey) => {
-                        const column = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
-                        return (
-                          <TableHead
-                            key={columnKey}
-                            className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
-                            onClick={() => handleSort(columnKey)}
-                          >
-                            {column?.label || columnKey}
-                          </TableHead>
-                        );
-                      })}
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedAccessPoints.map((ap) => (
-                      <TableRow
-                        key={ap.serialNumber}
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => {
-                          if (onShowDetail) {
-                            onShowDetail(ap.serialNumber, getAPName(ap));
-                          } else {
-                            loadAPDetails(ap.serialNumber);
-                          }
-                        }}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={selectedSerials.has(ap.serialNumber)}
-                            onCheckedChange={() => toggleSelectAP(ap.serialNumber)}
-                            aria-label={`Select ${getAPName(ap)}`}
+              {agGridEnabled ? (
+                (() => {
+                  const agColDefs: ColDef<AccessPoint>[] = [
+                    {
+                      headerName: '',
+                      field: 'serialNumber' as any,
+                      width: 48,
+                      sortable: false,
+                      filter: false,
+                      resizable: false,
+                      cellRenderer: (params: any) => (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedSerials.has(params.data.serialNumber)}
+                            onChange={() => toggleSelectAP(params.data.serialNumber)}
+                            aria-label={`Select ${getAPName(params.data)}`}
                           />
-                        </TableCell>
+                        </div>
+                      ),
+                    },
+                    ...(navigationScope === 'global' && siteGroups.length > 1
+                      ? [
+                          {
+                            headerName: 'Site Group',
+                            field: 'serialNumber' as any,
+                            width: 110,
+                            cellRenderer: (params: any) => (
+                              <span className="text-[10px] px-1.5 py-0 border rounded">
+                                {(params.data as any)._siteGroupName || '—'}
+                              </span>
+                            ),
+                          } as ColDef<AccessPoint>,
+                        ]
+                      : []),
+                    ...visibleColumns.map((columnKey): ColDef<AccessPoint> => {
+                      const col = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
+                      return {
+                        headerName: col?.label || columnKey,
+                        field: columnKey as any,
+                        sortable: col?.sortable ?? true,
+                        cellRenderer: (params: any) => renderColumnContent(columnKey, params.data),
+                        comparator: col?.sortable
+                          ? (a: any, b: any, nodeA: any, nodeB: any) => {
+                              const va = getSortValue(nodeA.data, columnKey);
+                              const vb = getSortValue(nodeB.data, columnKey);
+                              if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+                              return String(va).localeCompare(String(vb));
+                            }
+                          : undefined,
+                      };
+                    }),
+                    {
+                      headerName: 'Actions',
+                      sortable: false,
+                      filter: false,
+                      width: 80,
+                      cellRenderer: (params: any) => (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadAPDetails(params.data.serialNumber);
+                          }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Details
+                        </button>
+                      ),
+                    },
+                  ];
+                  return (
+                    <AGGridWrapper
+                      rowData={sortedAccessPoints}
+                      columnDefs={agColDefs}
+                      height={600}
+                      gridOptions={{
+                        onRowClicked: (e) => {
+                          if (!e.data) return;
+                          if (onShowDetail) onShowDetail(e.data.serialNumber, getAPName(e.data));
+                          else loadAPDetails(e.data.serialNumber);
+                        },
+                        rowSelection: { mode: 'multiRow' },
+                      }}
+                    />
+                  );
+                })()
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-10">
+                          <Checkbox
+                            checked={
+                              selectedSerials.size === sortedAccessPoints.length &&
+                              sortedAccessPoints.length > 0
+                            }
+                            onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                            aria-label="Select all APs"
+                          />
+                        </TableHead>
                         {navigationScope === 'global' && siteGroups.length > 1 && (
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0 font-normal"
-                            >
-                              {(ap as any)._siteGroupName || '—'}
-                            </Badge>
-                          </TableCell>
+                          <TableHead className="text-[10px]">
+                            <div className="flex items-center gap-1">
+                              <Server className="h-3 w-3" />
+                              <span>Site Group</span>
+                            </div>
+                          </TableHead>
                         )}
-                        {visibleColumns.map((columnKey) => (
-                          <TableCell key={columnKey}>
-                            {renderColumnContent(columnKey, ap)}
-                          </TableCell>
-                        ))}
-
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              onClick={(e) => e.stopPropagation()}
-                              className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                        {visibleColumns.map((columnKey) => {
+                          const column = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
+                          return (
+                            <TableHead
+                              key={columnKey}
+                              className="cursor-pointer select-none hover:bg-muted/50 transition-colors"
+                              onClick={() => handleSort(columnKey)}
                             >
-                              <MoreVertical className="h-4 w-4" />
-                              <span className="sr-only">Open menu</span>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuLabel>AP Actions</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  loadAPDetails(ap.serialNumber);
-                                }}
+                              {column?.label || columnKey}
+                            </TableHead>
+                          );
+                        })}
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedAccessPoints.map((ap) => (
+                        <TableRow
+                          key={ap.serialNumber}
+                          className="cursor-pointer hover:bg-muted/50"
+                          onClick={() => {
+                            if (onShowDetail) {
+                              onShowDetail(ap.serialNumber, getAPName(ap));
+                            } else {
+                              loadAPDetails(ap.serialNumber);
+                            }
+                          }}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedSerials.has(ap.serialNumber)}
+                              onCheckedChange={() => toggleSelectAP(ap.serialNumber)}
+                              aria-label={`Select ${getAPName(ap)}`}
+                            />
+                          </TableCell>
+                          {navigationScope === 'global' && siteGroups.length > 1 && (
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 font-normal"
                               >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
-                              </DropdownMenuItem>
+                                {(ap as any)._siteGroupName || '—'}
+                              </Badge>
+                            </TableCell>
+                          )}
+                          {visibleColumns.map((columnKey) => (
+                            <TableCell key={columnKey}>
+                              {renderColumnContent(columnKey, ap)}
+                            </TableCell>
+                          ))}
 
-                              <DropdownMenuSeparator />
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Open menu</span>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>AP Actions</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
 
-                              <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                  <Shield className="mr-2 h-4 w-4" />
-                                  Manage Certificate
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuSubContent>
-                                  <DropdownMenuItem
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      try {
-                                        const result = await apiService.generateCSR(
-                                          ap.serialNumber
-                                        );
-                                        toast.success('CSR generated successfully');
-                                        console.log('[AccessPoints] Generated CSR:', result);
-                                      } catch (err) {
-                                        toast.error(
-                                          err instanceof Error
-                                            ? err.message
-                                            : 'Failed to generate CSR'
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    <Key className="mr-2 h-4 w-4" />
-                                    Generate CSR
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toast.info('Certificate upload feature coming soon');
-                                    }}
-                                  >
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    loadAPDetails(ap.serialNumber);
+                                  }}
+                                >
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuSub>
+                                  <DropdownMenuSubTrigger>
                                     <Shield className="mr-2 h-4 w-4" />
-                                    Apply Signed Certificates
-                                  </DropdownMenuItem>
-                                </DropdownMenuSubContent>
-                              </DropdownMenuSub>
+                                    Manage Certificate
+                                  </DropdownMenuSubTrigger>
+                                  <DropdownMenuSubContent>
+                                    <DropdownMenuItem
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        try {
+                                          const result = await apiService.generateCSR(
+                                            ap.serialNumber
+                                          );
+                                          toast.success('CSR generated successfully');
+                                          console.log('[AccessPoints] Generated CSR:', result);
+                                        } catch (err) {
+                                          toast.error(
+                                            err instanceof Error
+                                              ? err.message
+                                              : 'Failed to generate CSR'
+                                          );
+                                        }
+                                      }}
+                                    >
+                                      <Key className="mr-2 h-4 w-4" />
+                                      Generate CSR
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toast.info('Certificate upload feature coming soon');
+                                      }}
+                                    >
+                                      <Shield className="mr-2 h-4 w-4" />
+                                      Apply Signed Certificates
+                                    </DropdownMenuItem>
+                                  </DropdownMenuSubContent>
+                                </DropdownMenuSub>
 
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info('Site assignment dialog coming soon');
-                                }}
-                              >
-                                <MapPin className="mr-2 h-4 w-4" />
-                                Assign to Site
-                              </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast.info('Site assignment dialog coming soon');
+                                  }}
+                                >
+                                  <MapPin className="mr-2 h-4 w-4" />
+                                  Assign to Site
+                                </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info('Adoption preference dialog coming soon');
-                                }}
-                              >
-                                <Settings className="mr-2 h-4 w-4" />
-                                Adoption Preference
-                              </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast.info('Adoption preference dialog coming soon');
+                                  }}
+                                >
+                                  <Settings className="mr-2 h-4 w-4" />
+                                  Adoption Preference
+                                </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toast.info('Event level dialog coming soon');
-                                }}
-                              >
-                                <AlertTriangle className="mr-2 h-4 w-4" />
-                                Event Level
-                              </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toast.info('Event level dialog coming soon');
+                                  }}
+                                >
+                                  <AlertTriangle className="mr-2 h-4 w-4" />
+                                  Event Level
+                                </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await apiService.upgradeAPImage(ap.serialNumber);
-                                    toast.success('Firmware upgrade initiated');
-                                  } catch (err) {
-                                    toast.error(
-                                      err instanceof Error
-                                        ? err.message
-                                        : 'Failed to upgrade firmware'
-                                    );
-                                  }
-                                }}
-                              >
-                                <Download className="mr-2 h-4 w-4" />
-                                Image Upgrade
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (
-                                    confirm(
-                                      `Reset ${getAPName(ap)} to factory defaults? This cannot be undone.`
-                                    )
-                                  ) {
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
                                     try {
-                                      await apiService.resetAPToDefault(ap.serialNumber);
-                                      toast.success('Factory reset initiated');
-                                    } catch (err) {
-                                      toast.error(
-                                        err instanceof Error ? err.message : 'Failed to reset AP'
-                                      );
-                                    }
-                                  }
-                                }}
-                              >
-                                <RotateCcw className="mr-2 h-4 w-4" />
-                                Reset to Default
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  try {
-                                    await apiService.rebootAP(ap.serialNumber);
-                                    toast.success('AP reboot initiated');
-                                  } catch (err) {
-                                    toast.error(
-                                      err instanceof Error ? err.message : 'Failed to reboot AP'
-                                    );
-                                  }
-                                }}
-                              >
-                                <Power className="mr-2 h-4 w-4" />
-                                Reboot
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (confirm(`Release ${getAPName(ap)} to cloud management?`)) {
-                                    try {
-                                      await apiService.releaseToCloud(ap.serialNumber);
-                                      toast.success('AP released to cloud');
+                                      await apiService.upgradeAPImage(ap.serialNumber);
+                                      toast.success('Firmware upgrade initiated');
                                     } catch (err) {
                                       toast.error(
                                         err instanceof Error
                                           ? err.message
-                                          : 'Failed to release to cloud'
+                                          : 'Failed to upgrade firmware'
                                       );
                                     }
-                                  }
-                                }}
-                              >
-                                <Cloud className="mr-2 h-4 w-4" />
-                                Release to Cloud
-                              </DropdownMenuItem>
+                                  }}
+                                >
+                                  <Download className="mr-2 h-4 w-4" />
+                                  Image Upgrade
+                                </DropdownMenuItem>
 
-                              <DropdownMenuItem
-                                onClick={async (e) => {
-                                  e.stopPropagation();
-                                  if (
-                                    confirm(
-                                      `Delete ${getAPName(ap)}? This will remove the AP from the controller.`
-                                    )
-                                  ) {
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      confirm(
+                                        `Reset ${getAPName(ap)} to factory defaults? This cannot be undone.`
+                                      )
+                                    ) {
+                                      try {
+                                        await apiService.resetAPToDefault(ap.serialNumber);
+                                        toast.success('Factory reset initiated');
+                                      } catch (err) {
+                                        toast.error(
+                                          err instanceof Error ? err.message : 'Failed to reset AP'
+                                        );
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <RotateCcw className="mr-2 h-4 w-4" />
+                                  Reset to Default
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
                                     try {
-                                      await apiService.deleteAP(ap.serialNumber);
-                                      toast.success('AP deleted successfully');
-                                      // Refresh AP list
-                                      loadAccessPoints();
+                                      await apiService.rebootAP(ap.serialNumber);
+                                      toast.success('AP reboot initiated');
                                     } catch (err) {
                                       toast.error(
-                                        err instanceof Error ? err.message : 'Failed to delete AP'
+                                        err instanceof Error ? err.message : 'Failed to reboot AP'
                                       );
                                     }
-                                  }
-                                }}
-                                className="text-destructive focus:text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                                  }}
+                                >
+                                  <Power className="mr-2 h-4 w-4" />
+                                  Reboot
+                                </DropdownMenuItem>
+
+                                <DropdownMenuSeparator />
+
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Release ${getAPName(ap)} to cloud management?`)) {
+                                      try {
+                                        await apiService.releaseToCloud(ap.serialNumber);
+                                        toast.success('AP released to cloud');
+                                      } catch (err) {
+                                        toast.error(
+                                          err instanceof Error
+                                            ? err.message
+                                            : 'Failed to release to cloud'
+                                        );
+                                      }
+                                    }
+                                  }}
+                                >
+                                  <Cloud className="mr-2 h-4 w-4" />
+                                  Release to Cloud
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (
+                                      confirm(
+                                        `Delete ${getAPName(ap)}? This will remove the AP from the controller.`
+                                      )
+                                    ) {
+                                      try {
+                                        await apiService.deleteAP(ap.serialNumber);
+                                        toast.success('AP deleted successfully');
+                                        // Refresh AP list
+                                        loadAccessPoints();
+                                      } catch (err) {
+                                        toast.error(
+                                          err instanceof Error ? err.message : 'Failed to delete AP'
+                                        );
+                                      }
+                                    }
+                                  }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
             </>
           )}
         </CardContent>
