@@ -59,12 +59,18 @@ export function AGGridWrapper<TData>({
           filter: true,
           resizable: true,
           minWidth: 100,
-          cellStyle: { display: 'flex', alignItems: 'center' },
+          cellStyle: {
+            display: 'flex',
+            alignItems: 'center',
+            height: '100%',
+            overflow: 'hidden',
+          },
         }}
         animateRows
         pagination
         paginationPageSize={50}
         paginationPageSizeSelector={[25, 50, 100, 250]}
+        popupParent={typeof document !== 'undefined' ? document.body : undefined}
         {...gridOptions}
       />
     </div>
