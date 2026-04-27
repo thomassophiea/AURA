@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import { DevEpicBadge } from './DevEpicBadge';
 import { ProfileEditSheet } from './ProfileEditSheet';
 import type { DeviceProfile } from './ProfileEditSheet';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 export function ConfigureProfiles() {
   const [profiles, setProfiles] = useState<DeviceProfile[]>([]);
@@ -59,6 +62,58 @@ export function ConfigureProfiles() {
     loadProfiles();
   };
 
+  const { agGridEnabled } = useGridMode();
+
+  const agColDefs: ColDef<DeviceProfile>[] = [
+    {
+      field: 'name',
+      headerName: 'Name',
+      flex: 2,
+      cellRenderer: (params: { value: string }) => (
+        <div className="flex items-center gap-2">
+          <Cpu className="h-4 w-4 text-muted-foreground" />
+          {params.value}
+        </div>
+      ),
+    },
+    {
+      field: 'type',
+      headerName: 'Type',
+      flex: 1,
+      cellRenderer: (params: { value: string }) => (
+        <Badge variant={params.value === 'DEFAULT' ? 'default' : 'secondary'}>
+          {params.value === 'DEFAULT' ? 'Site Default' : 'Device'}
+        </Badge>
+      ),
+    },
+    {
+      headerName: 'AP Platform',
+      flex: 1,
+      valueGetter: (params: { data?: DeviceProfile }) =>
+        params.data?.apPlatform || params.data?.deviceType || '—',
+    },
+    {
+      headerName: 'Actions',
+      flex: 1,
+      cellRenderer: (params: { data?: DeviceProfile }) =>
+        params.data ? (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => openEdit(params.data!)}>
+              <Edit2 className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-destructive hover:text-destructive"
+              onClick={() => handleDelete(params.data!.id, params.data!.name)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
+
   const filtered = profiles.filter((p) => p.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
@@ -105,65 +160,69 @@ export function ConfigureProfiles() {
 
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>AP Platform</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
+          {agGridEnabled ? (
+            <AGGridWrapper rowData={filtered} columnDefs={agColDefs} height={500} />
+          ) : (
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    Loading profiles...
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>AP Platform</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                    {searchTerm ? 'No profiles match your search' : 'No profiles configured'}
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filtered.map((profile) => (
-                  <TableRow key={profile.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex items-center gap-2">
-                        <Cpu className="h-4 w-4 text-muted-foreground" />
-                        {profile.name}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={profile.type === 'DEFAULT' ? 'default' : 'secondary'}>
-                        {profile.type === 'DEFAULT' ? 'Site Default' : 'Device'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {profile.apPlatform || profile.deviceType || '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(profile.id, profile.name)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      Loading profiles...
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                      {searchTerm ? 'No profiles match your search' : 'No profiles configured'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((profile) => (
+                    <TableRow key={profile.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-2">
+                          <Cpu className="h-4 w-4 text-muted-foreground" />
+                          {profile.name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={profile.type === 'DEFAULT' ? 'default' : 'secondary'}>
+                          {profile.type === 'DEFAULT' ? 'Site Default' : 'Device'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {profile.apPlatform || profile.deviceType || '—'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(profile)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(profile.id, profile.name)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 

@@ -10,16 +10,12 @@ import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Skeleton } from './ui/skeleton';
 import { Alert, AlertDescription } from './ui/alert';
-import {
-  Users,
-  UserPlus,
-  Edit,
-  Trash2,
-  Shield,
-  AlertTriangle
-} from 'lucide-react';
+import { Users, UserPlus, Edit, Trash2, Shield, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface Administrator {
   id: string;
@@ -33,6 +29,7 @@ interface Administrator {
 }
 
 export function AdministratorsManagement() {
+  const { agGridEnabled } = useGridMode();
   const [administrators, setAdministrators] = useState<Administrator[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -47,7 +44,7 @@ export function AdministratorsManagement() {
     confirmPassword: '',
     role: 'viewer' as Administrator['role'],
     enabled: true,
-    twoFactorEnabled: false
+    twoFactorEnabled: false,
   });
 
   useEffect(() => {
@@ -58,7 +55,7 @@ export function AdministratorsManagement() {
     setLoading(true);
     try {
       const response = await apiService.makeAuthenticatedRequest('/v1/administrators', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (response.ok) {
@@ -100,10 +97,9 @@ export function AdministratorsManagement() {
             enabled: admin.accountState === 'ENABLED' || admin.enabled === true,
             lastLogin: admin.lastLogin || admin.lastLoginTime || undefined,
             createdAt: admin.createdAt || admin.createTime || new Date().toISOString(),
-            twoFactorEnabled: admin.twoFactorEnabled || admin.properties?.twoFactorEnabled || false
+            twoFactorEnabled: admin.twoFactorEnabled || admin.properties?.twoFactorEnabled || false,
           };
         });
-
 
         setAdministrators(adminList);
         setApiNotAvailable(false);
@@ -132,7 +128,7 @@ export function AdministratorsManagement() {
         confirmPassword: '',
         role: admin.role,
         enabled: admin.enabled,
-        twoFactorEnabled: admin.twoFactorEnabled
+        twoFactorEnabled: admin.twoFactorEnabled,
       });
     } else {
       setEditingAdmin(null);
@@ -143,7 +139,7 @@ export function AdministratorsManagement() {
         confirmPassword: '',
         role: 'viewer',
         enabled: true,
-        twoFactorEnabled: false
+        twoFactorEnabled: false,
       });
     }
     setDialogOpen(true);
@@ -159,7 +155,7 @@ export function AdministratorsManagement() {
       confirmPassword: '',
       role: 'viewer',
       enabled: true,
-      twoFactorEnabled: false
+      twoFactorEnabled: false,
     });
   };
 
@@ -213,18 +209,21 @@ export function AdministratorsManagement() {
           email: formData.email,
           role: formData.role,
           enabled: formData.enabled,
-          twoFactorEnabled: formData.twoFactorEnabled
+          twoFactorEnabled: formData.twoFactorEnabled,
         };
 
         if (formData.password) {
           updateData.password = formData.password;
         }
 
-        const response = await apiService.makeAuthenticatedRequest(`/v1/administrators/${editingAdmin.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updateData)
-        });
+        const response = await apiService.makeAuthenticatedRequest(
+          `/v1/administrators/${editingAdmin.id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData),
+          }
+        );
 
         if (response.ok) {
           toast.success('Administrator updated successfully');
@@ -243,8 +242,8 @@ export function AdministratorsManagement() {
             password: formData.password,
             role: formData.role,
             enabled: formData.enabled,
-            twoFactorEnabled: formData.twoFactorEnabled
-          })
+            twoFactorEnabled: formData.twoFactorEnabled,
+          }),
         });
 
         if (response.ok) {
@@ -275,7 +274,7 @@ export function AdministratorsManagement() {
 
     try {
       const response = await apiService.makeAuthenticatedRequest(`/v1/administrators/${admin.id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       if (response.ok) {
@@ -299,7 +298,7 @@ export function AdministratorsManagement() {
       const response = await apiService.makeAuthenticatedRequest(`/v1/administrators/${admin.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled })
+        body: JSON.stringify({ enabled }),
       });
 
       if (response.ok) {
@@ -316,16 +315,18 @@ export function AdministratorsManagement() {
   const getRoleBadge = (role: Administrator['role']) => {
     const colors: Record<Administrator['role'], string> = {
       super_admin: 'bg-purple-500/10 text-purple-600 border-purple-500/20',
-      admin: 'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30',
-      operator: 'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30',
-      viewer: 'bg-muted/50 text-muted-foreground border-border'
+      admin:
+        'bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30',
+      operator:
+        'bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30',
+      viewer: 'bg-muted/50 text-muted-foreground border-border',
     };
 
     const labels: Record<Administrator['role'], string> = {
       super_admin: 'Super Admin',
       admin: 'Admin',
       operator: 'Operator',
-      viewer: 'Viewer'
+      viewer: 'Viewer',
     };
 
     return (
@@ -340,7 +341,7 @@ export function AdministratorsManagement() {
       super_admin: 'Full system access including user management',
       admin: 'Configuration and management access',
       operator: 'Operational access with limited configuration',
-      viewer: 'Read-only access to view system status'
+      viewer: 'Read-only access to view system status',
     };
 
     return descriptions[role];
@@ -364,17 +365,11 @@ export function AdministratorsManagement() {
               <Users className="h-5 w-5" />
               Administrators Management
             </CardTitle>
-            <CardDescription>
-              Configure system-wide user access and permissions
-            </CardDescription>
+            <CardDescription>Configure system-wide user access and permissions</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-end">
-              <Button
-                variant="default"
-                size="sm"
-                disabled={true}
-              >
+              <Button variant="default" size="sm" disabled={true}>
                 <UserPlus className="h-4 w-4 mr-2" />
                 Add Administrator
               </Button>
@@ -383,7 +378,8 @@ export function AdministratorsManagement() {
             <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
               <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
               <AlertDescription className="text-[color:var(--status-warning)]">
-                Administrators management API endpoints are not available on this controller version. This feature requires API v1/administrators support.
+                Administrators management API endpoints are not available on this controller
+                version. This feature requires API v1/administrators support.
               </AlertDescription>
             </Alert>
 
@@ -415,9 +411,7 @@ export function AdministratorsManagement() {
             <Users className="h-6 w-6" />
             Administrators Management
           </h2>
-          <p className="text-muted-foreground">
-            Manage user accounts and permissions
-          </p>
+          <p className="text-muted-foreground">Manage user accounts and permissions</p>
         </div>
         <Button onClick={() => handleOpenDialog()} disabled={apiNotAvailable}>
           <UserPlus className="h-4 w-4 mr-2" />
@@ -443,55 +437,109 @@ export function AdministratorsManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {administrators.map(admin => (
-                <TableRow key={admin.id}>
-                  <TableCell className="font-medium">
+          {agGridEnabled ? (
+            (() => {
+              const agColDefs: ColDef<Administrator>[] = [
+                {
+                  field: 'username',
+                  headerName: 'Username',
+                  cellRenderer: (params: { data: Administrator }) => (
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 text-muted-foreground" />
-                      {admin.username}
+                      {params.data.username}
                     </div>
-                  </TableCell>
-                  <TableCell>{getRoleBadge(admin.role)}</TableCell>
-                  <TableCell>
+                  ),
+                },
+                {
+                  field: 'role',
+                  headerName: 'Role',
+                  cellRenderer: (params: { data: Administrator }) => getRoleBadge(params.data.role),
+                },
+                {
+                  field: 'enabled',
+                  headerName: 'Status',
+                  cellRenderer: (params: { data: Administrator }) => (
                     <Switch
-                      checked={admin.enabled}
-                      onCheckedChange={(checked) => handleToggleEnabled(admin, checked)}
-                      disabled={admin.role === 'super_admin'}
+                      checked={params.data.enabled}
+                      onCheckedChange={(checked) => handleToggleEnabled(params.data, checked)}
+                      disabled={params.data.role === 'super_admin'}
                     />
-                  </TableCell>
-                  <TableCell>
+                  ),
+                },
+                {
+                  headerName: 'Actions',
+                  sortable: false,
+                  filter: false,
+                  cellRenderer: (params: { data: Administrator }) => (
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleOpenDialog(admin)}
+                        onClick={() => handleOpenDialog(params.data)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         size="sm"
                         variant="destructive"
-                        onClick={() => handleDeleteAdministrator(admin)}
-                        disabled={admin.role === 'super_admin'}
+                        onClick={() => handleDeleteAdministrator(params.data)}
+                        disabled={params.data.role === 'super_admin'}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </TableCell>
+                  ),
+                },
+              ];
+              return <AGGridWrapper rowData={administrators} columnDefs={agColDefs} height={500} />;
+            })()
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {administrators.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-muted-foreground" />
+                        {admin.username}
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRoleBadge(admin.role)}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={admin.enabled}
+                        onCheckedChange={(checked) => handleToggleEnabled(admin, checked)}
+                        disabled={admin.role === 'super_admin'}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" onClick={() => handleOpenDialog(admin)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteAdministrator(admin)}
+                          disabled={admin.role === 'super_admin'}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
@@ -500,7 +548,11 @@ export function AdministratorsManagement() {
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
         title={editingAdmin ? 'Edit Administrator' : 'Add Administrator'}
-        description={editingAdmin ? 'Update administrator account details' : 'Create a new administrator account'}
+        description={
+          editingAdmin
+            ? 'Update administrator account details'
+            : 'Create a new administrator account'
+        }
         width="md"
       >
         <div className="space-y-4">
@@ -547,7 +599,9 @@ export function AdministratorsManagement() {
             <Label>Role</Label>
             <Select
               value={formData.role}
-              onValueChange={(value: Administrator['role']) => setFormData({ ...formData, role: value })}
+              onValueChange={(value: Administrator['role']) =>
+                setFormData({ ...formData, role: value })
+              }
             >
               <SelectTrigger>
                 <SelectValue />
@@ -556,48 +610,36 @@ export function AdministratorsManagement() {
                 <SelectItem value="super_admin">
                   <div>
                     <div className="font-medium">Super Admin</div>
-                    <div className="text-xs text-muted-foreground">
-                      Full system access
-                    </div>
+                    <div className="text-xs text-muted-foreground">Full system access</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="admin">
                   <div>
                     <div className="font-medium">Admin</div>
-                    <div className="text-xs text-muted-foreground">
-                      Configuration access
-                    </div>
+                    <div className="text-xs text-muted-foreground">Configuration access</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="operator">
                   <div>
                     <div className="font-medium">Operator</div>
-                    <div className="text-xs text-muted-foreground">
-                      Operational access
-                    </div>
+                    <div className="text-xs text-muted-foreground">Operational access</div>
                   </div>
                 </SelectItem>
                 <SelectItem value="viewer">
                   <div>
                     <div className="font-medium">Viewer</div>
-                    <div className="text-xs text-muted-foreground">
-                      Read-only access
-                    </div>
+                    <div className="text-xs text-muted-foreground">Read-only access</div>
                   </div>
                 </SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              {getRoleDescription(formData.role)}
-            </p>
+            <p className="text-xs text-muted-foreground">{getRoleDescription(formData.role)}</p>
           </div>
 
           <div className="flex items-center justify-between">
             <div>
               <Label>Account Enabled</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow user to log in
-              </p>
+              <p className="text-xs text-muted-foreground">Allow user to log in</p>
             </div>
             <Switch
               checked={formData.enabled}
@@ -608,9 +650,7 @@ export function AdministratorsManagement() {
           <div className="flex items-center justify-between">
             <div>
               <Label>Two-Factor Authentication</Label>
-              <p className="text-xs text-muted-foreground">
-                Require 2FA for login
-              </p>
+              <p className="text-xs text-muted-foreground">Require 2FA for login</p>
             </div>
             <Switch
               checked={formData.twoFactorEnabled}

@@ -8,7 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { Alert, AlertDescription } from './ui/alert';
 import { Loader2 } from 'lucide-react';
 import { Separator } from './ui/separator';
@@ -31,12 +38,15 @@ import {
   Calendar,
   Ticket,
   Save,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server } from 'lucide-react';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface GuestUser {
   id: string;
@@ -74,7 +84,7 @@ export function ConfigureGuest() {
     redirectUrl: '',
     sessionTimeout: 3600,
     idleTimeout: 600,
-    maxDevices: 5
+    maxDevices: 5,
   });
   const [savingPortal, setSavingPortal] = useState(false);
 
@@ -84,9 +94,93 @@ export function ConfigureGuest() {
     username: '',
     email: '',
     accessDuration: 24,
-    network: ''
+    network: '',
   });
   const [savingGuest, setSavingGuest] = useState(false);
+
+  const { agGridEnabled } = useGridMode();
+
+  const guestAccountColDefs: ColDef[] = [
+    {
+      headerName: 'Username',
+      flex: 2,
+      valueGetter: (params: { data?: any }) =>
+        params.data?.username || params.data?.name || params.data?.id || '',
+      cellRenderer: (params: { value: string }) => (
+        <div className="flex items-center gap-2">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          <span>{params.value}</span>
+        </div>
+      ),
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      flex: 2,
+      valueFormatter: (params: { value?: string }) => params.value || '-',
+    },
+    {
+      headerName: 'Status',
+      flex: 1,
+      valueGetter: (params: { data?: any }) =>
+        params.data?.status || params.data?.accountStatus || 'unknown',
+      cellRenderer: (params: { value: string }) => (
+        <Badge
+          variant={
+            params.value === 'active'
+              ? 'default'
+              : params.value === 'expired'
+                ? 'destructive'
+                : 'secondary'
+          }
+        >
+          {params.value}
+        </Badge>
+      ),
+    },
+    {
+      headerName: 'Created',
+      flex: 2,
+      valueGetter: (params: { data?: any }) =>
+        params.data?.createdDate || params.data?.createTime || '',
+      valueFormatter: (params: { value?: string }) =>
+        params.value ? new Date(params.value).toLocaleString() : '-',
+    },
+    {
+      headerName: 'Expires',
+      flex: 2,
+      valueGetter: (params: { data?: any }) =>
+        params.data?.expiryDate || params.data?.expireTime || '',
+      valueFormatter: (params: { value?: string }) =>
+        params.value ? new Date(params.value).toLocaleString() : 'Never',
+    },
+    {
+      headerName: 'Actions',
+      flex: 1,
+      cellRenderer: (params: { data?: any }) =>
+        params.data ? (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleGenerateVoucher(params.data)}
+              title="Generate voucher"
+            >
+              <Ticket className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleDeleteGuest(params.data)}
+              className="text-destructive hover:text-destructive"
+              title="Delete guest"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : null,
+    },
+  ];
 
   useEffect(() => {
     loadGuestData();
@@ -102,16 +196,31 @@ export function ConfigureGuest() {
           apiService.getServices(),
           apiService.getRoles(),
           apiService.getEGuestProfiles(),
-          apiService.getGuests()
+          apiService.getGuests(),
         ]);
 
-        const tag = <T,>(arr: T[]) => sgTag ? arr.map(item => ({ ...item, _siteGroupId: sgTag.id, _siteGroupName: sgTag.name })) : arr;
+        const tag = <T,>(arr: T[]) =>
+          sgTag
+            ? arr.map((item) => ({ ...item, _siteGroupId: sgTag.id, _siteGroupName: sgTag.name }))
+            : arr;
 
         return {
-          services: servicesData.status === 'fulfilled' ? tag(Array.isArray(servicesData.value) ? servicesData.value : []) : [],
-          roles: rolesData.status === 'fulfilled' ? tag(Array.isArray(rolesData.value) ? rolesData.value : []) : [],
-          eGuest: eGuestData.status === 'fulfilled' ? tag(Array.isArray(eGuestData.value) ? eGuestData.value : []) : [],
-          guests: guestsData.status === 'fulfilled' ? tag(Array.isArray(guestsData.value) ? guestsData.value : []) : null,
+          services:
+            servicesData.status === 'fulfilled'
+              ? tag(Array.isArray(servicesData.value) ? servicesData.value : [])
+              : [],
+          roles:
+            rolesData.status === 'fulfilled'
+              ? tag(Array.isArray(rolesData.value) ? rolesData.value : [])
+              : [],
+          eGuest:
+            eGuestData.status === 'fulfilled'
+              ? tag(Array.isArray(eGuestData.value) ? eGuestData.value : [])
+              : [],
+          guests:
+            guestsData.status === 'fulfilled'
+              ? tag(Array.isArray(guestsData.value) ? guestsData.value : [])
+              : null,
         };
       };
 
@@ -143,18 +252,20 @@ export function ConfigureGuest() {
         allGuests = result.guests;
       }
 
-      const guestServices = allServices.filter(service =>
-        service.guestAccess === true ||
-        service.captivePortal === true ||
-        service.enableCaptivePortal === true ||
-        service.serviceName?.toLowerCase().includes('guest')
+      const guestServices = allServices.filter(
+        (service) =>
+          service.guestAccess === true ||
+          service.captivePortal === true ||
+          service.enableCaptivePortal === true ||
+          service.serviceName?.toLowerCase().includes('guest')
       );
       setGuestNetworks(guestServices);
 
-      const guestRolesList = allRoles.filter(role =>
-        role.name?.toLowerCase().includes('guest') ||
-        role.cpTopologyId !== null ||
-        role.cpRedirect !== ''
+      const guestRolesList = allRoles.filter(
+        (role) =>
+          role.name?.toLowerCase().includes('guest') ||
+          role.cpTopologyId !== null ||
+          role.cpRedirect !== ''
       );
       setGuestRoles(guestRolesList);
 
@@ -166,9 +277,9 @@ export function ConfigureGuest() {
       } else {
         setGuestAccountsApiAvailable(false);
       }
-
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to load guest configuration';
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to load guest configuration';
       setError(errorMessage);
       toast.error('Failed to load guest data', { description: errorMessage });
     } finally {
@@ -193,7 +304,7 @@ export function ConfigureGuest() {
       redirectUrl: '',
       sessionTimeout: 3600,
       idleTimeout: 600,
-      maxDevices: 5
+      maxDevices: 5,
     });
     setPortalDialogOpen(true);
   };
@@ -209,7 +320,7 @@ export function ConfigureGuest() {
       redirectUrl: portal.redirectUrl || portal.successRedirectUrl || '',
       sessionTimeout: portal.sessionTimeout || 3600,
       idleTimeout: portal.idleTimeout || 600,
-      maxDevices: portal.maxDevices || portal.maxDevicesPerUser || 5
+      maxDevices: portal.maxDevices || portal.maxDevicesPerUser || 5,
     });
     setPortalDialogOpen(true);
   };
@@ -232,7 +343,7 @@ export function ConfigureGuest() {
         successRedirectUrl: portalForm.redirectUrl,
         sessionTimeout: portalForm.sessionTimeout,
         idleTimeout: portalForm.idleTimeout,
-        maxDevicesPerUser: portalForm.maxDevices
+        maxDevicesPerUser: portalForm.maxDevices,
       };
 
       if (editingPortal) {
@@ -247,7 +358,7 @@ export function ConfigureGuest() {
       await loadGuestData();
     } catch (err) {
       toast.error('Failed to save portal profile', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     } finally {
       setSavingPortal(false);
@@ -255,14 +366,15 @@ export function ConfigureGuest() {
   };
 
   const handleDeletePortal = async (portal: any) => {
-    if (!confirm(`Delete portal "${portal.name || portal.portalName}"? This cannot be undone.`)) return;
+    if (!confirm(`Delete portal "${portal.name || portal.portalName}"? This cannot be undone.`))
+      return;
     try {
       await apiService.deleteEGuestProfile(portal.id);
       toast.success('Portal profile deleted');
       await loadGuestData();
     } catch (err) {
       toast.error('Failed to delete portal', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   };
@@ -285,14 +397,14 @@ export function ConfigureGuest() {
         username: guestForm.username,
         email: guestForm.email || undefined,
         accessDuration: guestForm.accessDuration * 3600,
-        network: guestForm.network || undefined
+        network: guestForm.network || undefined,
       });
       toast.success('Guest account created');
       setGuestDialogOpen(false);
       await loadGuestData();
     } catch (err) {
       toast.error('Failed to create guest account', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     } finally {
       setSavingGuest(false);
@@ -308,7 +420,7 @@ export function ConfigureGuest() {
       await loadGuestData();
     } catch (err) {
       toast.error('Failed to delete guest', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   };
@@ -317,11 +429,11 @@ export function ConfigureGuest() {
     try {
       const voucher = await apiService.generateGuestVoucher(guest.id, 86400);
       toast.success('Voucher generated', {
-        description: `Voucher code: ${voucher?.code || voucher?.voucherCode || 'Generated successfully'}`
+        description: `Voucher code: ${voucher?.code || voucher?.voucherCode || 'Generated successfully'}`,
       });
     } catch (err) {
       toast.error('Failed to generate voucher', {
-        description: err instanceof Error ? err.message : 'Unknown error'
+        description: err instanceof Error ? err.message : 'Unknown error',
       });
     }
   };
@@ -470,14 +582,17 @@ export function ConfigureGuest() {
                       let securityType = 'Open';
                       if (network.WpaPskElement || network.privacy?.WpaPskElement) {
                         securityType = 'WPA/WPA2 PSK';
-                      } else if (network.WpaEnterpriseElement || network.privacy?.WpaEnterpriseElement) {
+                      } else if (
+                        network.WpaEnterpriseElement ||
+                        network.privacy?.WpaEnterpriseElement
+                      ) {
                         securityType = 'WPA Enterprise';
                       } else if (network.WpaSaeElement || network.privacy?.WpaSaeElement) {
                         securityType = 'WPA3 SAE';
                       }
 
                       const portalProfile = network.eGuestPortalId
-                        ? eGuestProfiles.find(p => p.id === network.eGuestPortalId)
+                        ? eGuestProfiles.find((p) => p.id === network.eGuestPortalId)
                         : null;
 
                       return (
@@ -491,9 +606,15 @@ export function ConfigureGuest() {
                           <TableCell>
                             <Badge variant={isEnabled ? 'default' : 'secondary'}>
                               {isEnabled ? (
-                                <><CheckCircle className="mr-1 h-3 w-3" />Enabled</>
+                                <>
+                                  <CheckCircle className="mr-1 h-3 w-3" />
+                                  Enabled
+                                </>
                               ) : (
-                                <><XCircle className="mr-1 h-3 w-3" />Disabled</>
+                                <>
+                                  <XCircle className="mr-1 h-3 w-3" />
+                                  Disabled
+                                </>
                               )}
                             </Badge>
                           </TableCell>
@@ -506,7 +627,8 @@ export function ConfigureGuest() {
                           <TableCell>
                             {hasCaptivePortal ? (
                               <Badge variant="default">
-                                <Globe className="mr-1 h-3 w-3" />Active
+                                <Globe className="mr-1 h-3 w-3" />
+                                Active
                               </Badge>
                             ) : (
                               <Badge variant="secondary">Not configured</Badge>
@@ -580,9 +702,13 @@ export function ConfigureGuest() {
                           <div className="flex items-center gap-2">
                             <Globe className="h-4 w-4 text-muted-foreground" />
                             <div>
-                              <span className="font-medium">{portal.name || portal.portalName || 'Unnamed'}</span>
+                              <span className="font-medium">
+                                {portal.name || portal.portalName || 'Unnamed'}
+                              </span>
                               {portal.description && (
-                                <p className="text-xs text-muted-foreground">{portal.description}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {portal.description}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -593,21 +719,31 @@ export function ConfigureGuest() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {(portal.termsAndConditions || portal.termsEnabled) ? (
-                            <Badge variant="default"><CheckCircle className="mr-1 h-3 w-3" />Enabled</Badge>
+                          {portal.termsAndConditions || portal.termsEnabled ? (
+                            <Badge variant="default">
+                              <CheckCircle className="mr-1 h-3 w-3" />
+                              Enabled
+                            </Badge>
                           ) : (
                             <Badge variant="secondary">Disabled</Badge>
                           )}
                         </TableCell>
                         <TableCell>
-                          {portal.sessionTimeout ? `${Math.floor(portal.sessionTimeout / 60)} min` : 'Default'}
+                          {portal.sessionTimeout
+                            ? `${Math.floor(portal.sessionTimeout / 60)} min`
+                            : 'Default'}
                         </TableCell>
                         <TableCell>
                           {portal.maxDevicesPerUser || portal.maxDevices || 'Unlimited'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEditPortal(portal)} title="Edit portal">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditPortal(portal)}
+                              title="Edit portal"
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button
@@ -653,8 +789,8 @@ export function ConfigureGuest() {
                   <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-70" />
                   <h3 className="mt-4 text-lg">Guest accounts unavailable</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    The guest accounts API (/v1/guests) is not available on this controller.
-                    This endpoint is not part of the standard Swagger specification.
+                    The guest accounts API (/v1/guests) is not available on this controller. This
+                    endpoint is not part of the standard Swagger specification.
                   </p>
                 </div>
               ) : guestAccounts.length === 0 ? (
@@ -669,6 +805,12 @@ export function ConfigureGuest() {
                     Create First Guest
                   </Button>
                 </div>
+              ) : agGridEnabled ? (
+                <AGGridWrapper
+                  rowData={guestAccounts}
+                  columnDefs={guestAccountColDefs}
+                  height={500}
+                />
               ) : (
                 <Table>
                   <TableHeader>
@@ -694,19 +836,36 @@ export function ConfigureGuest() {
                           </TableCell>
                           <TableCell>{guest.email || '-'}</TableCell>
                           <TableCell>
-                            <Badge variant={status === 'active' ? 'default' : status === 'expired' ? 'destructive' : 'secondary'}>
+                            <Badge
+                              variant={
+                                status === 'active'
+                                  ? 'default'
+                                  : status === 'expired'
+                                    ? 'destructive'
+                                    : 'secondary'
+                              }
+                            >
                               {status}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-xs">
-                            {guest.createdDate || guest.createTime ? new Date(guest.createdDate || guest.createTime).toLocaleString() : '-'}
+                            {guest.createdDate || guest.createTime
+                              ? new Date(guest.createdDate || guest.createTime).toLocaleString()
+                              : '-'}
                           </TableCell>
                           <TableCell className="text-xs">
-                            {guest.expiryDate || guest.expireTime ? new Date(guest.expiryDate || guest.expireTime).toLocaleString() : 'Never'}
+                            {guest.expiryDate || guest.expireTime
+                              ? new Date(guest.expiryDate || guest.expireTime).toLocaleString()
+                              : 'Never'}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => handleGenerateVoucher(guest)} title="Generate voucher">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleGenerateVoucher(guest)}
+                                title="Generate voucher"
+                              >
                                 <Ticket className="h-4 w-4" />
                               </Button>
                               <Button
@@ -735,9 +894,7 @@ export function ConfigureGuest() {
           <Card>
             <CardHeader>
               <CardTitle>Guest Access Policies</CardTitle>
-              <CardDescription>
-                Roles and firewall policies for guest users
-              </CardDescription>
+              <CardDescription>Roles and firewall policies for guest users</CardDescription>
             </CardHeader>
             <CardContent>
               {guestRoles.length === 0 ? (
@@ -767,12 +924,16 @@ export function ConfigureGuest() {
                             <Shield className="h-4 w-4 text-muted-foreground" />
                             <span>{role.name}</span>
                             {role.predefined && (
-                              <Badge variant="secondary" className="text-xs">Built-in</Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                Built-in
+                              </Badge>
                             )}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={role.defaultAction === 'allow' ? 'default' : 'destructive'}>
+                          <Badge
+                            variant={role.defaultAction === 'allow' ? 'default' : 'destructive'}
+                          >
                             {role.defaultAction || 'N/A'}
                           </Badge>
                         </TableCell>
@@ -788,10 +949,26 @@ export function ConfigureGuest() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {role.cpHttp && <Badge variant="outline" className="text-xs">HTTP</Badge>}
-                            {role.cpOauthUseGoogle && <Badge variant="outline" className="text-xs">Google OAuth</Badge>}
-                            {role.cpOauthUseFacebook && <Badge variant="outline" className="text-xs">Facebook OAuth</Badge>}
-                            {role.cpOauthUseMicrosoft && <Badge variant="outline" className="text-xs">Microsoft OAuth</Badge>}
+                            {role.cpHttp && (
+                              <Badge variant="outline" className="text-xs">
+                                HTTP
+                              </Badge>
+                            )}
+                            {role.cpOauthUseGoogle && (
+                              <Badge variant="outline" className="text-xs">
+                                Google OAuth
+                              </Badge>
+                            )}
+                            {role.cpOauthUseFacebook && (
+                              <Badge variant="outline" className="text-xs">
+                                Facebook OAuth
+                              </Badge>
+                            )}
+                            {role.cpOauthUseMicrosoft && (
+                              <Badge variant="outline" className="text-xs">
+                                Microsoft OAuth
+                              </Badge>
+                            )}
                             {!role.cpHttp && !role.cpOauthUseGoogle && !role.cpOauthUseFacebook && (
                               <span className="text-xs text-muted-foreground">None</span>
                             )}
@@ -799,8 +976,7 @@ export function ConfigureGuest() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="text-sm text-muted-foreground">
-                            L2: {role.l2Filters?.length || 0} |
-                            L3: {role.l3Filters?.length || 0} |
+                            L2: {role.l2Filters?.length || 0} | L3: {role.l3Filters?.length || 0} |
                             L7: {role.l7Filters?.length || 0}
                           </div>
                         </TableCell>
@@ -818,10 +994,10 @@ export function ConfigureGuest() {
       <Dialog open={portalDialogOpen} onOpenChange={setPortalDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{editingPortal ? 'Edit Portal Profile' : 'Create Portal Profile'}</DialogTitle>
-            <DialogDescription>
-              Configure the eGuest captive portal settings
-            </DialogDescription>
+            <DialogTitle>
+              {editingPortal ? 'Edit Portal Profile' : 'Create Portal Profile'}
+            </DialogTitle>
+            <DialogDescription>Configure the eGuest captive portal settings</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -847,7 +1023,10 @@ export function ConfigureGuest() {
 
             <div className="space-y-2">
               <Label htmlFor="portal-auth">Authentication Type</Label>
-              <Select value={portalForm.authType} onValueChange={(v) => setPortalForm({ ...portalForm, authType: v })}>
+              <Select
+                value={portalForm.authType}
+                onValueChange={(v) => setPortalForm({ ...portalForm, authType: v })}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -905,7 +1084,12 @@ export function ConfigureGuest() {
                   id="portal-session"
                   type="number"
                   value={portalForm.sessionTimeout}
-                  onChange={(e) => setPortalForm({ ...portalForm, sessionTimeout: parseInt(e.target.value) || 3600 })}
+                  onChange={(e) =>
+                    setPortalForm({
+                      ...portalForm,
+                      sessionTimeout: parseInt(e.target.value) || 3600,
+                    })
+                  }
                   min="60"
                 />
               </div>
@@ -915,7 +1099,9 @@ export function ConfigureGuest() {
                   id="portal-idle"
                   type="number"
                   value={portalForm.idleTimeout}
-                  onChange={(e) => setPortalForm({ ...portalForm, idleTimeout: parseInt(e.target.value) || 600 })}
+                  onChange={(e) =>
+                    setPortalForm({ ...portalForm, idleTimeout: parseInt(e.target.value) || 600 })
+                  }
                   min="60"
                 />
               </div>
@@ -925,7 +1111,9 @@ export function ConfigureGuest() {
                   id="portal-devices"
                   type="number"
                   value={portalForm.maxDevices}
-                  onChange={(e) => setPortalForm({ ...portalForm, maxDevices: parseInt(e.target.value) || 5 })}
+                  onChange={(e) =>
+                    setPortalForm({ ...portalForm, maxDevices: parseInt(e.target.value) || 5 })
+                  }
                   min="1"
                 />
               </div>
@@ -933,7 +1121,9 @@ export function ConfigureGuest() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPortalDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPortalDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSavePortal} disabled={savingPortal}>
               <Save className="mr-2 h-4 w-4" />
               {savingPortal ? 'Saving...' : editingPortal ? 'Update Portal' : 'Create Portal'}
@@ -947,9 +1137,7 @@ export function ConfigureGuest() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create Guest Account</DialogTitle>
-            <DialogDescription>
-              Create a new guest user with time-limited access
-            </DialogDescription>
+            <DialogDescription>Create a new guest user with time-limited access</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
@@ -1019,7 +1207,9 @@ export function ConfigureGuest() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setGuestDialogOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setGuestDialogOpen(false)}>
+              Cancel
+            </Button>
             <Button onClick={handleSaveGuest} disabled={savingGuest}>
               <UserPlus className="mr-2 h-4 w-4" />
               {savingGuest ? 'Creating...' : 'Create Guest'}

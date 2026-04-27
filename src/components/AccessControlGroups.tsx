@@ -17,6 +17,9 @@ import { Skeleton } from './ui/skeleton';
 import { Users, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '@/services/api';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 interface AccessGroup {
   id: string;
@@ -28,6 +31,7 @@ interface AccessGroup {
 }
 
 export function AccessControlGroups() {
+  const { agGridEnabled } = useGridMode();
   const [groups, setGroups] = useState<AccessGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -172,37 +176,47 @@ export function AccessControlGroups() {
           <CardDescription>{groups.length} group(s) configured</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>VLAN</TableHead>
-                <TableHead>Bandwidth</TableHead>
-                <TableHead>Members</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {groups.map((group) => (
-                <TableRow key={group.id}>
-                  <TableCell className="font-medium">{group.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {group.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge>VLAN {group.vlan}</Badge>
-                  </TableCell>
-                  <TableCell>{group.bandwidth} Mbps</TableCell>
-                  <TableCell>{group.memberCount} users</TableCell>
-                  <TableCell>
+          {agGridEnabled ? (
+            (() => {
+              const agColDefs: ColDef<AccessGroup>[] = [
+                {
+                  field: 'name',
+                  headerName: 'Name',
+                },
+                {
+                  field: 'description',
+                  headerName: 'Description',
+                },
+                {
+                  field: 'vlan',
+                  headerName: 'VLAN',
+                  cellRenderer: (params: { data: AccessGroup }) => (
+                    <Badge>VLAN {params.data.vlan}</Badge>
+                  ),
+                },
+                {
+                  field: 'bandwidth',
+                  headerName: 'Bandwidth',
+                  cellRenderer: (params: { data: AccessGroup }) => `${params.data.bandwidth} Mbps`,
+                },
+                {
+                  field: 'memberCount',
+                  headerName: 'Members',
+                  cellRenderer: (params: { data: AccessGroup }) =>
+                    `${params.data.memberCount} users`,
+                },
+                {
+                  headerName: 'Actions',
+                  sortable: false,
+                  filter: false,
+                  cellRenderer: (params: { data: AccessGroup }) => (
                     <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => {
-                          setEditingGroup(group);
-                          setFormData(group);
+                          setEditingGroup(params.data);
+                          setFormData(params.data);
                           setDialogOpen(true);
                         }}
                       >
@@ -213,7 +227,7 @@ export function AccessControlGroups() {
                         variant="destructive"
                         onClick={() => {
                           if (window.confirm('Delete group?')) {
-                            setGroups(groups.filter((g) => g.id !== group.id));
+                            setGroups(groups.filter((g) => g.id !== params.data.id));
                             toast.success('Group deleted');
                           }
                         }}
@@ -221,11 +235,67 @@ export function AccessControlGroups() {
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  </TableCell>
+                  ),
+                },
+              ];
+              return <AGGridWrapper rowData={groups} columnDefs={agColDefs} height={500} />;
+            })()
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead>VLAN</TableHead>
+                  <TableHead>Bandwidth</TableHead>
+                  <TableHead>Members</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {groups.map((group) => (
+                  <TableRow key={group.id}>
+                    <TableCell className="font-medium">{group.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {group.description}
+                    </TableCell>
+                    <TableCell>
+                      <Badge>VLAN {group.vlan}</Badge>
+                    </TableCell>
+                    <TableCell>{group.bandwidth} Mbps</TableCell>
+                    <TableCell>{group.memberCount} users</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingGroup(group);
+                            setFormData(group);
+                            setDialogOpen(true);
+                          }}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            if (window.confirm('Delete group?')) {
+                              setGroups(groups.filter((g) => g.id !== group.id));
+                              toast.success('Group deleted');
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

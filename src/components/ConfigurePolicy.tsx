@@ -38,6 +38,9 @@ import { RoleEditDialog } from './RoleEditDialog';
 import { useAppContext } from '@/contexts/AppContext';
 import { Server } from 'lucide-react';
 import { DevEpicBadge } from './DevEpicBadge';
+import { useGridMode } from '@/contexts/GridModeContext';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 
 export function ConfigurePolicy() {
   const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } =
@@ -331,6 +334,107 @@ export function ConfigurePolicy() {
     return !!(role.cpRedirect && role.cpRedirect.trim() !== '');
   };
 
+  const { agGridEnabled } = useGridMode();
+
+  const roleColDefs: ColDef<Role>[] = [
+    {
+      field: 'name',
+      headerName: 'Role Name',
+      flex: 2,
+      cellRenderer: (params: { data?: Role; value: string }) => (
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <span>{params.value}</span>
+          {params.data?.predefined && (
+            <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+              <Lock className="h-3 w-3" />
+              System
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      field: 'defaultAction',
+      headerName: 'Default Action',
+      flex: 1,
+      cellRenderer: (params: { value: string }) => (
+        <Badge variant={params.value === 'allow' ? 'default' : 'destructive'}>
+          {params.value === 'allow' ? (
+            <>
+              <Unlock className="h-3 w-3 mr-1" />
+              Allow
+            </>
+          ) : (
+            <>
+              <Lock className="h-3 w-3 mr-1" />
+              Deny
+            </>
+          )}
+        </Badge>
+      ),
+    },
+    {
+      headerName: 'Captive Portal',
+      flex: 1,
+      valueGetter: (params: { data?: Role }) =>
+        params.data ? hasCaptivePortal(params.data) : false,
+      cellRenderer: (params: { value: boolean }) =>
+        params.value ? (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            Captive Portal
+          </Badge>
+        ) : (
+          <span className="text-xs text-muted-foreground">None</span>
+        ),
+    },
+    {
+      headerName: 'Filter Rules',
+      flex: 1,
+      valueGetter: (params: { data?: Role }) => (params.data ? getFilterCount(params.data) : 0),
+      cellRenderer: (params: { value: number }) =>
+        params.value > 0 ? (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Network className="h-3 w-3" />
+            {params.value} rule(s)
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        ),
+    },
+    {
+      headerName: 'Actions',
+      flex: 1,
+      cellRenderer: (params: { data?: Role }) =>
+        params.data ? (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewRole(params.data!)}
+              className="h-8 w-8 p-0"
+              title="View details"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+            {params.data.canDelete && !params.data.predefined && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteRole(params.data!)}
+                disabled={isDeleting}
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                title="Delete role"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        ) : null,
+    },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -447,6 +551,8 @@ export function ConfigurePolicy() {
                   </Button>
                 ) : undefined
               )
+            ) : agGridEnabled ? (
+              <AGGridWrapper rowData={filteredRoles} columnDefs={roleColDefs} height={500} />
             ) : (
               <div className="space-y-3">
                 {filteredRoles.map((role) => (
