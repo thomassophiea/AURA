@@ -17,10 +17,6 @@ const darkTheme = themeQuartz.withParams({
   headerTextColor: 'hsl(var(--muted-foreground))',
   rowHoverColor: 'hsl(var(--accent))',
   selectedRowBackgroundColor: 'hsl(var(--primary) / 0.15)',
-  panelBackgroundColor: 'hsl(var(--card))',
-  inputBackgroundColor: 'hsl(var(--background))',
-  inputBorder: true,
-  popupShadow: '0 4px 24px rgba(0,0,0,0.5)',
   rowBorder: true,
   fontFamily: 'inherit',
   fontSize: 12,
@@ -55,7 +51,13 @@ export function AGGridWrapper<TData>({
 
   return (
     <div className={className} style={{ height: resolvedHeight }}>
-      <style>{`.ag-body-horizontal-scroll::-webkit-scrollbar{display:none}.ag-body-horizontal-scroll{-ms-overflow-style:none;scrollbar-width:none}`}</style>
+      <style>{`
+        .ag-body-horizontal-scroll::-webkit-scrollbar{display:none}
+        .ag-body-horizontal-scroll{-ms-overflow-style:none;scrollbar-width:none}
+        .ag-filter,.ag-filter-body-wrapper,.ag-simple-filter-body-wrapper{background-color:hsl(var(--card)) !important;border:1px solid hsl(var(--border)) !important;border-radius:6px !important}
+        .ag-popup .ag-popup-child{background-color:hsl(var(--card)) !important;border:1px solid hsl(var(--border)) !important;border-radius:6px !important;box-shadow:0 4px 24px rgba(0,0,0,0.5) !important}
+        .ag-filter-select .ag-picker-field-wrapper,.ag-filter input[type="text"]{background-color:hsl(var(--background)) !important;border:1px solid hsl(var(--border)) !important;color:hsl(var(--foreground)) !important}
+      `}</style>
       <AgGridReact
         theme={darkTheme}
         rowData={rowData}
