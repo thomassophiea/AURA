@@ -1,0 +1,94 @@
+/*
+ * AG-Grid global overrides — applied at document level so body-level popups are covered.
+ * Hardcoded values avoid CSS-variable resolution failures in detached popup DOM nodes.
+ */
+
+/* ── Popup / filter panel container ─────────────────────────── */
+.ag-popup-child,
+.ag-popup .ag-popup-child,
+.ag-menu,
+.ag-filter,
+.ag-filter-body-wrapper,
+.ag-simple-filter-body-wrapper,
+.ag-set-filter,
+.ag-tabs-header,
+.ag-tab {
+  background-color: #1e1e1e !important;
+  background: #1e1e1e !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 6px !important;
+}
+
+.ag-popup > .ag-popup-child,
+.ag-popup-child {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
+}
+
+/* ── Filter condition dropdown list (Contains / Equals / …) ── */
+.ag-select-list,
+.ag-list,
+.ag-virtual-list,
+.ag-menu-list {
+  background-color: #1e1e1e !important;
+  background: #1e1e1e !important;
+  border-radius: 4px !important;
+}
+
+.ag-list-item,
+.ag-select-list-item,
+.ag-virtual-list-item,
+.ag-menu-option {
+  background-color: #1e1e1e !important;
+  color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.ag-list-item:hover,
+.ag-select-list-item:hover,
+.ag-virtual-list-item:hover,
+.ag-menu-option:hover,
+.ag-menu-option-active {
+  background-color: #2a2a2a !important;
+  color: #fff !important;
+}
+
+/* ── Picker field (the "Contains ▼" trigger) ─────────────────── */
+.ag-picker-field-wrapper,
+.ag-select .ag-picker-field-wrapper,
+.ag-picker-field-display {
+  background-color: #1e1e1e !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.87) !important;
+  border-radius: 4px !important;
+}
+
+/* ── Text inputs inside filters ──────────────────────────────── */
+.ag-filter input[type='text'],
+.ag-text-field-input,
+.ag-filter-select .ag-picker-field-wrapper {
+  background-color: #141414 !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.87) !important;
+  border-radius: 4px !important;
+}
+
+.ag-filter input[type='text']::placeholder,
+.ag-text-field-input::placeholder {
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+/* ── Row separators ──────────────────────────────────────────── */
+.ag-row,
+.ag-row-odd,
+.ag-row-even {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-top: none !important;
+}
+
+/* ── Scrollbar suppression ───────────────────────────────────── */
+.ag-body-horizontal-scroll::-webkit-scrollbar {
+  display: none;
+}
+.ag-body-horizontal-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

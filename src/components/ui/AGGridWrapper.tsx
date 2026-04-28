@@ -58,20 +58,7 @@ export function AGGridWrapper<TData>({
         overflow: 'hidden',
       }}
     >
-      <style>{`
-        .ag-body-horizontal-scroll::-webkit-scrollbar{display:none}
-        .ag-body-horizontal-scroll{-ms-overflow-style:none;scrollbar-width:none}
-        .ag-row,.ag-row-odd,.ag-row-even{border-bottom:1px solid rgba(255,255,255,0.09) !important;border-top:none !important}
-        .ag-filter,.ag-filter-body-wrapper,.ag-simple-filter-body-wrapper,.ag-set-filter,.ag-menu{background-color:hsl(var(--card)) !important;background:hsl(var(--card)) !important;border:1px solid rgba(255,255,255,0.12) !important;border-radius:6px !important}
-        .ag-popup-child,.ag-popup .ag-popup-child,.ag-menu-list,.ag-menu-option,.ag-filter-condition{background-color:hsl(var(--card)) !important;background:hsl(var(--card)) !important}
-        .ag-popup>.ag-popup-child,.ag-popup-child{border:1px solid rgba(255,255,255,0.12) !important;border-radius:6px !important;box-shadow:0 4px 24px rgba(0,0,0,0.6) !important}
-        .ag-select-list,.ag-list,.ag-virtual-list,.ag-picker-field-display,.ag-select .ag-picker-field-wrapper{background-color:hsl(var(--card)) !important;background:hsl(var(--card)) !important}
-        .ag-list-item,.ag-select-list-item,.ag-virtual-list-item{background-color:hsl(var(--card)) !important;color:hsl(var(--foreground)) !important}
-        .ag-list-item:hover,.ag-select-list-item:hover,.ag-virtual-list-item:hover{background-color:hsl(var(--accent)) !important}
-        .ag-filter-select .ag-picker-field-wrapper,.ag-filter input[type="text"],.ag-text-field-input{background-color:hsl(var(--background)) !important;border:1px solid rgba(255,255,255,0.12) !important;color:hsl(var(--foreground)) !important}
-        .ag-tab,.ag-tabs-header{background-color:hsl(var(--card)) !important}
-        .ag-header-cell-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-      `}</style>
+      <style>{`.ag-header-cell-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`}</style>
       <AgGridReact
         theme={darkTheme}
         rowData={rowData}
