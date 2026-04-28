@@ -1,6 +1,6 @@
 /*
  * AG-Grid global overrides — applied at document level so body-level popups are covered.
- * Hardcoded values avoid CSS-variable resolution failures in detached popup DOM nodes.
+ * CSS variables resolve from :root so they work in body-level popup nodes.
  */
 
 /* ── Popup / filter panel container ─────────────────────────── */
@@ -13,15 +13,15 @@
 .ag-set-filter,
 .ag-tabs-header,
 .ag-tab {
-  background-color: #1e1e1e !important;
-  background: #1e1e1e !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background-color: var(--card) !important;
+  background: var(--card) !important;
+  border: 1px solid var(--border) !important;
   border-radius: 6px !important;
 }
 
 .ag-popup > .ag-popup-child,
 .ag-popup-child {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* ── Filter condition dropdown list (Contains / Equals / …) ── */
@@ -29,8 +29,8 @@
 .ag-list,
 .ag-virtual-list,
 .ag-menu-list {
-  background-color: #1e1e1e !important;
-  background: #1e1e1e !important;
+  background-color: var(--card) !important;
+  background: var(--card) !important;
   border-radius: 4px !important;
 }
 
@@ -38,8 +38,8 @@
 .ag-select-list-item,
 .ag-virtual-list-item,
 .ag-menu-option {
-  background-color: #1e1e1e !important;
-  color: rgba(255, 255, 255, 0.87) !important;
+  background-color: var(--card) !important;
+  color: var(--foreground) !important;
 }
 
 .ag-list-item:hover,
@@ -47,17 +47,17 @@
 .ag-virtual-list-item:hover,
 .ag-menu-option:hover,
 .ag-menu-option-active {
-  background-color: #2a2a2a !important;
-  color: #fff !important;
+  background-color: var(--accent) !important;
+  color: var(--accent-foreground) !important;
 }
 
 /* ── Picker field (the "Contains ▼" trigger) ─────────────────── */
 .ag-picker-field-wrapper,
 .ag-select .ag-picker-field-wrapper,
 .ag-picker-field-display {
-  background-color: #1e1e1e !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: rgba(255, 255, 255, 0.87) !important;
+  background-color: var(--card) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
   border-radius: 4px !important;
 }
 
@@ -65,22 +65,83 @@
 .ag-filter input[type='text'],
 .ag-text-field-input,
 .ag-filter-select .ag-picker-field-wrapper {
-  background-color: #141414 !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: rgba(255, 255, 255, 0.87) !important;
+  background-color: var(--background) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--foreground) !important;
   border-radius: 4px !important;
 }
 
 .ag-filter input[type='text']::placeholder,
 .ag-text-field-input::placeholder {
-  color: rgba(255, 255, 255, 0.35) !important;
+  color: var(--muted-foreground) !important;
+}
+
+/* ── Checkboxes (row + header select-all) ───────────────────── */
+.ag-checkbox-input-wrapper {
+  width: 16px !important;
+  height: 16px !important;
+  border-radius: 3px !important;
+  border: 1.5px solid var(--muted-foreground) !important;
+  background-color: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  transition:
+    border-color 0.15s,
+    background-color 0.15s !important;
+}
+
+.ag-checkbox-input-wrapper input {
+  opacity: 0 !important;
+  position: absolute !important;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: pointer !important;
+}
+
+.ag-checkbox-input-wrapper::after {
+  content: none !important;
+}
+
+.ag-checkbox-input-wrapper:hover {
+  border-color: var(--primary) !important;
+}
+
+.ag-checkbox-input-wrapper.ag-checked {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.ag-checkbox-input-wrapper.ag-checked::after {
+  content: '' !important;
+  display: block !important;
+  width: 9px !important;
+  height: 5px !important;
+  border-left: 2px solid #fff !important;
+  border-bottom: 2px solid #fff !important;
+  transform: rotate(-45deg) translateY(-1px) !important;
+}
+
+.ag-checkbox-input-wrapper.ag-indeterminate {
+  background-color: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+
+.ag-checkbox-input-wrapper.ag-indeterminate::after {
+  content: '' !important;
+  display: block !important;
+  width: 8px !important;
+  height: 2px !important;
+  background: #fff !important;
+  border-radius: 1px !important;
 }
 
 /* ── Row separators ──────────────────────────────────────────── */
 .ag-row,
 .ag-row-odd,
 .ag-row-even {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-bottom: 1px solid var(--border) !important;
   border-top: none !important;
 }
 
