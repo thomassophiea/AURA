@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -74,7 +74,7 @@ import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
 import { useGridMode } from '@/contexts/GridModeContext';
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
-import type { ColDef } from 'ag-grid-community';
+import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server, Building } from 'lucide-react';
 
 // Cable health detection utilities
@@ -552,6 +552,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
 
   // Bulk selection state
   const [selectedSerials, setSelectedSerials] = useState<Set<string>>(new Set());
+  const [selectedCount, setSelectedCount] = useState(0);
+  const agGridApiRef = useRef<GridApi<AccessPoint> | null>(null);
   const [isBulkActionRunning, setIsBulkActionRunning] = useState(false);
 
   const toggleSelectAP = (serial: string) => {
@@ -571,14 +573,26 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
+  const getAgSelectedSerials = useCallback((): string[] => {
+    if (!agGridApiRef.current) return [...selectedSerials];
+    return agGridApiRef.current.getSelectedRows().map((ap) => ap.serialNumber);
+  }, [selectedSerials]);
+
+  const clearAgSelection = useCallback(() => {
+    agGridApiRef.current?.deselectAll();
+    setSelectedSerials(new Set());
+    setSelectedCount(0);
+  }, []);
+
   const handleBulkReboot = async () => {
-    if (selectedSerials.size === 0) return;
-    if (!confirm(`Reboot ${selectedSerials.size} access point(s)?`)) return;
+    const serials = getAgSelectedSerials();
+    if (serials.length === 0) return;
+    if (!confirm(`Reboot ${serials.length} access point(s)?`)) return;
     setIsBulkActionRunning(true);
     try {
-      await apiService.apBulkReboot([...selectedSerials]);
-      toast.success(`Reboot initiated for ${selectedSerials.size} AP(s)`);
-      setSelectedSerials(new Set());
+      await apiService.apBulkReboot(serials);
+      toast.success(`Reboot initiated for ${serials.length} AP(s)`);
+      clearAgSelection();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Bulk reboot failed');
     } finally {
@@ -587,13 +601,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   };
 
   const handleBulkFirmwareUpgrade = async () => {
-    if (selectedSerials.size === 0) return;
-    if (!confirm(`Upgrade firmware on ${selectedSerials.size} access point(s)?`)) return;
+    const serials = getAgSelectedSerials();
+    if (serials.length === 0) return;
+    if (!confirm(`Upgrade firmware on ${serials.length} access point(s)?`)) return;
     setIsBulkActionRunning(true);
     try {
-      await apiService.apFirmwareUpgrade([...selectedSerials]);
-      toast.success(`Firmware upgrade initiated for ${selectedSerials.size} AP(s)`);
-      setSelectedSerials(new Set());
+      await apiService.apFirmwareUpgrade(serials);
+      toast.success(`Firmware upgrade initiated for ${serials.length} AP(s)`);
+      clearAgSelection();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Bulk firmware upgrade failed');
     } finally {
@@ -602,13 +617,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   };
 
   const handleBulkReleaseToCloud = async () => {
-    if (selectedSerials.size === 0) return;
-    if (!confirm(`Release ${selectedSerials.size} AP(s) to cloud management?`)) return;
+    const serials = getAgSelectedSerials();
+    if (serials.length === 0) return;
+    if (!confirm(`Release ${serials.length} AP(s) to cloud management?`)) return;
     setIsBulkActionRunning(true);
     try {
-      await apiService.apReleaseToCloud([...selectedSerials]);
-      toast.success(`Released ${selectedSerials.size} AP(s) to cloud`);
-      setSelectedSerials(new Set());
+      await apiService.apReleaseToCloud(serials);
+      toast.success(`Released ${serials.length} AP(s) to cloud`);
+      clearAgSelection();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Bulk release to cloud failed');
     } finally {
@@ -616,6 +632,10 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
+  const [contextSlideOut, setContextSlideOut] = useState<{
+    type: 'site' | 'model' | 'ip';
+    value: string;
+  } | null>(null);
   const [selectedAP, setSelectedAP] = useState<APDetails | null>(null);
   const [apStations, setApStations] = useState<APStation[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -2371,8 +2391,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3">
+      <Card className="overflow-visible">
+        <CardHeader className="pb-3 sticky top-0 z-20 bg-card border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <CardTitle className="text-headline-6 text-high-emphasis">Access Points</CardTitle>
             <SaveToWorkspace
@@ -2392,6 +2412,53 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             resultCount={filteredAccessPoints.length}
             totalCount={accessPoints.length}
           />
+          {selectedCount > 0 && (
+            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
+              <span className="text-sm font-medium">{selectedCount} AP(s) selected</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkReboot}
+                disabled={isBulkActionRunning}
+              >
+                {isBulkActionRunning ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Power className="mr-1 h-3 w-3" />
+                )}
+                Reboot
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkFirmwareUpgrade}
+                disabled={isBulkActionRunning}
+              >
+                {isBulkActionRunning ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Download className="mr-1 h-3 w-3" />
+                )}
+                Firmware Upgrade
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleBulkReleaseToCloud}
+                disabled={isBulkActionRunning}
+              >
+                {isBulkActionRunning ? (
+                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                ) : (
+                  <Cloud className="mr-1 h-3 w-3" />
+                )}
+                Release to Cloud
+              </Button>
+              <Button size="sm" variant="ghost" onClick={clearAgSelection} className="ml-auto">
+                Clear selection
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {sortedAccessPoints.length === 0 ? (
@@ -2406,79 +2473,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             </div>
           ) : (
             <>
-              {/* Bulk action toolbar */}
-              {selectedSerials.size > 0 && (
-                <div className="flex items-center gap-3 mb-3 p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                  <span className="text-sm font-medium">{selectedSerials.size} AP(s) selected</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleBulkReboot}
-                    disabled={isBulkActionRunning}
-                  >
-                    {isBulkActionRunning ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Power className="mr-1 h-3 w-3" />
-                    )}
-                    Reboot
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleBulkFirmwareUpgrade}
-                    disabled={isBulkActionRunning}
-                  >
-                    {isBulkActionRunning ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Download className="mr-1 h-3 w-3" />
-                    )}
-                    Firmware Upgrade
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleBulkReleaseToCloud}
-                    disabled={isBulkActionRunning}
-                  >
-                    {isBulkActionRunning ? (
-                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                    ) : (
-                      <Cloud className="mr-1 h-3 w-3" />
-                    )}
-                    Release to Cloud
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setSelectedSerials(new Set())}
-                    className="ml-auto"
-                  >
-                    Clear selection
-                  </Button>
-                </div>
-              )}
               {agGridEnabled ? (
                 (() => {
                   const agColDefs: ColDef<AccessPoint>[] = [
                     {
                       headerName: '',
-                      field: 'serialNumber' as any,
                       width: 48,
                       sortable: false,
                       filter: false,
                       resizable: false,
-                      cellRenderer: (params: any) => (
-                        <div onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={selectedSerials.has(params.data.serialNumber)}
-                            onChange={() => toggleSelectAP(params.data.serialNumber)}
-                            aria-label={`Select ${getAPName(params.data)}`}
-                          />
-                        </div>
-                      ),
+                      checkboxSelection: true,
+                      headerCheckboxSelection: true,
+                      showDisabledCheckboxes: true,
                     },
                     ...(navigationScope === 'global' && siteGroups.length > 1
                       ? [
@@ -2497,33 +2503,70 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                     ...visibleColumns.map((columnKey): ColDef<AccessPoint> => {
                       const col = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
                       const isApName = columnKey === 'apName';
+                      const isContextClickable = ['hostSite', 'model', 'ipAddress'].includes(
+                        columnKey
+                      );
+                      const contextType =
+                        columnKey === 'hostSite' ? 'site' : columnKey === 'model' ? 'model' : 'ip';
                       return {
                         headerName: col?.label || columnKey,
                         field: columnKey as any,
                         sortable: col?.sortable ?? true,
                         cellRenderer: (params: any) => {
                           const content = renderColumnContent(columnKey, params.data);
-                          if (!isApName) return content;
-                          return (
-                            <button
-                              onClick={() => {
-                                if (onShowDetail)
-                                  onShowDetail(params.data.serialNumber, getAPName(params.data));
-                                else loadAPDetails(params.data.serialNumber);
-                              }}
-                              style={{
-                                textDecoration: 'underline',
-                                cursor: 'pointer',
-                                background: 'none',
-                                border: 'none',
-                                padding: 0,
-                                textAlign: 'left',
-                                color: 'inherit',
-                              }}
-                            >
-                              {content}
-                            </button>
-                          );
+                          if (isApName) {
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (onShowDetail)
+                                    onShowDetail(params.data.serialNumber, getAPName(params.data));
+                                  else loadAPDetails(params.data.serialNumber);
+                                }}
+                                style={{
+                                  cursor: 'pointer',
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  textAlign: 'left',
+                                  color: 'inherit',
+                                }}
+                              >
+                                {content}
+                              </button>
+                            );
+                          }
+                          if (isContextClickable) {
+                            const rawValue =
+                              columnKey === 'hostSite'
+                                ? params.data.hostSite || params.data.siteName || ''
+                                : columnKey === 'model'
+                                  ? params.data.model || params.data.hardwareType || ''
+                                  : params.data.ipAddress || '';
+                            if (!rawValue) return content;
+                            return (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setContextSlideOut({
+                                    type: contextType as 'site' | 'model' | 'ip',
+                                    value: rawValue,
+                                  });
+                                }}
+                                style={{
+                                  cursor: 'pointer',
+                                  background: 'none',
+                                  border: 'none',
+                                  padding: 0,
+                                  textAlign: 'left',
+                                  color: 'inherit',
+                                }}
+                                title={`View ${contextType} details`}
+                              >
+                                {content}
+                              </button>
+                            );
+                          }
+                          return content;
                         },
                         comparator: col?.sortable
                           ? (a: any, b: any, nodeA: any, nodeB: any) => {
@@ -2558,7 +2601,15 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       rowData={sortedAccessPoints}
                       columnDefs={agColDefs}
                       height={600}
-                      gridOptions={{ rowSelection: { mode: 'multiRow' } }}
+                      gridOptions={{
+                        rowSelection: { mode: 'multiRow' },
+                        onGridReady: (e) => {
+                          agGridApiRef.current = e.api;
+                        },
+                        onSelectionChanged: (e) => {
+                          setSelectedCount(e.api.getSelectedRows().length);
+                        },
+                      }}
                     />
                   );
                 })()
@@ -2852,6 +2903,190 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Context slide-out: Site / Model / IP */}
+      {contextSlideOut &&
+        (() => {
+          const { type, value } = contextSlideOut;
+          const siteAPs =
+            type === 'site'
+              ? sortedAccessPoints.filter((ap) => (ap.hostSite || ap.siteName) === value)
+              : [];
+          const modelAPs =
+            type === 'model'
+              ? sortedAccessPoints.filter((ap) => (ap.model || ap.hardwareType) === value)
+              : [];
+          const ipAP =
+            type === 'ip'
+              ? (sortedAccessPoints.find((ap) => ap.ipAddress === value) ?? null)
+              : null;
+
+          const onlineCount = (aps: AccessPoint[]) =>
+            aps.filter((a) => a.status === 'connected' || a.status === 'online').length;
+
+          const title =
+            type === 'site'
+              ? `Site: ${value}`
+              : type === 'model'
+                ? `Model: ${value}`
+                : `IP: ${value}`;
+
+          return (
+            <DetailSlideOut
+              isOpen
+              onClose={() => setContextSlideOut(null)}
+              title={title}
+              width="md"
+            >
+              <div className="space-y-4 text-sm">
+                {type === 'site' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-border p-3 space-y-1">
+                        <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                          Total APs
+                        </p>
+                        <p className="text-2xl font-semibold">{siteAPs.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-3 space-y-1">
+                        <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                          Online
+                        </p>
+                        <p className="text-2xl font-semibold text-green-500">
+                          {onlineCount(siteAPs)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
+                        Access Points
+                      </p>
+                      {siteAPs.map((ap) => (
+                        <div
+                          key={ap.serialNumber}
+                          className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                        >
+                          <span className="font-medium truncate flex-1">{getAPName(ap)}</span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            {ap.model || '—'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {type === 'model' && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-border p-3 space-y-1">
+                        <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                          Total
+                        </p>
+                        <p className="text-2xl font-semibold">{modelAPs.length}</p>
+                      </div>
+                      <div className="rounded-lg border border-border p-3 space-y-1">
+                        <p className="text-muted-foreground text-xs uppercase tracking-wide">
+                          Online
+                        </p>
+                        <p className="text-2xl font-semibold text-green-500">
+                          {onlineCount(modelAPs)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
+                        Deployed At
+                      </p>
+                      {Array.from(
+                        new Set(modelAPs.map((ap) => ap.hostSite || ap.siteName || 'Unknown'))
+                      ).map((site) => {
+                        const count = modelAPs.filter(
+                          (ap) => (ap.hostSite || ap.siteName || 'Unknown') === site
+                        ).length;
+                        return (
+                          <div
+                            key={site}
+                            className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                          >
+                            <span className="truncate flex-1">{site}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              {count} AP{count !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
+                        Firmware Versions
+                      </p>
+                      {Array.from(
+                        new Set(
+                          modelAPs.map(
+                            (ap) =>
+                              (ap as any).softwareVersion ||
+                              (ap as any).firmwareVersion ||
+                              'Unknown'
+                          )
+                        )
+                      ).map((fw) => {
+                        const count = modelAPs.filter(
+                          (ap) =>
+                            ((ap as any).softwareVersion ||
+                              (ap as any).firmwareVersion ||
+                              'Unknown') === fw
+                        ).length;
+                        return (
+                          <div
+                            key={fw}
+                            className="flex items-center justify-between py-1.5 border-b border-border last:border-0"
+                          >
+                            <span className="font-mono text-xs truncate flex-1">{fw}</span>
+                            <span className="text-xs text-muted-foreground ml-2">{count}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {type === 'ip' && ipAP && (
+                  <div className="space-y-3">
+                    {[
+                      { label: 'AP Name', val: getAPName(ipAP) },
+                      { label: 'Serial Number', val: ipAP.serialNumber },
+                      { label: 'Model', val: ipAP.model || ipAP.hardwareType || '—' },
+                      { label: 'IP Address', val: ipAP.ipAddress || '—' },
+                      { label: 'MAC Address', val: (ipAP as any).macAddress || '—' },
+                      { label: 'Site', val: ipAP.hostSite || ipAP.siteName || '—' },
+                      { label: 'Status', val: ipAP.status || '—' },
+                      { label: 'Uptime', val: (ipAP as any).uptime || '—' },
+                    ].map(({ label, val }) => (
+                      <div
+                        key={label}
+                        className="flex justify-between py-1.5 border-b border-border last:border-0"
+                      >
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="font-mono text-xs text-right">{val}</span>
+                      </div>
+                    ))}
+                    <button
+                      className="w-full mt-2 text-xs text-primary hover:underline text-left"
+                      onClick={() => {
+                        setContextSlideOut(null);
+                        loadAPDetails(ipAP.serialNumber);
+                      }}
+                    >
+                      Open full AP details →
+                    </button>
+                  </div>
+                )}
+                {type === 'ip' && !ipAP && (
+                  <p className="text-muted-foreground">No AP found with IP {value}.</p>
+                )}
+              </div>
+            </DetailSlideOut>
+          );
+        })()}
 
       {/* AP Details Modal */}
       <DetailSlideOut
