@@ -552,7 +552,12 @@ export function ConfigurePolicy() {
                 ) : undefined
               )
             ) : agGridEnabled ? (
-              <AGGridWrapper rowData={filteredRoles} columnDefs={roleColDefs} height={500} />
+              <AGGridWrapper
+                rowData={filteredRoles}
+                columnDefs={roleColDefs}
+                height={500}
+                storageKey="policy-roles"
+              />
             ) : (
               <div className="space-y-3">
                 {filteredRoles.map((role) => (

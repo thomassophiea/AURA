@@ -73,7 +73,7 @@ import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
 import { useGridMode } from '@/contexts/GridModeContext';
-import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server, Building } from 'lucide-react';
 
@@ -1248,17 +1248,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredAccessPoints, sortColumn, sortDirection]);
 
-  // ── AG Grid state persistence ────────────────────────────────
-  const GRID_STATE_KEY = 'aura.access-points.grid-state.v1';
-  const savedGridStateRef = useRef<any>(null);
-  if (savedGridStateRef.current === null) {
-    try {
-      const raw = localStorage.getItem(GRID_STATE_KEY);
-      savedGridStateRef.current = raw ? JSON.parse(raw) : undefined;
-    } catch {
-      savedGridStateRef.current = undefined;
-    }
-  }
+  // AG Grid state persistence is handled by AGGridWrapper via storageKey="access-points".
+  const agGridHandleRef = useRef<AGGridWrapperHandle | null>(null);
 
   // Refs so colDefs cell renderers always read fresh state without rebuilding colDefs
   const cellHandlersRef = useRef<{
@@ -2324,14 +2315,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                 ...customization,
                 resetColumns: () => {
                   customization.resetColumns();
-                  try {
-                    localStorage.removeItem(GRID_STATE_KEY);
-                  } catch {
-                    /* ignore quota / disabled */
-                  }
-                  savedGridStateRef.current = undefined;
-                  agGridApiRef.current?.resetColumnState();
-                  agGridApiRef.current?.setFilterModel(null);
+                  agGridHandleRef.current?.resetState();
                 },
               } as any
             }
@@ -2687,32 +2671,14 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <>
               {agGridEnabled ? (
                 <AGGridWrapper
+                  ref={agGridHandleRef}
                   rowData={sortedAccessPoints}
                   columnDefs={agColDefs}
                   height={600}
+                  storageKey="access-points"
                   gridOptions={{
                     getRowId: (p) => p.data.serialNumber,
                     rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
-                    selectionColumnDef: {
-                      width: 48,
-                      minWidth: 48,
-                      maxWidth: 48,
-                      pinned: 'left',
-                      resizable: false,
-                      cellStyle: {
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      },
-                    },
-                    initialState: savedGridStateRef.current,
-                    onStateUpdated: (e) => {
-                      try {
-                        localStorage.setItem(GRID_STATE_KEY, JSON.stringify(e.state));
-                      } catch {
-                        /* quota / disabled storage — ignore */
-                      }
-                    },
                     onGridReady: (e) => {
                       agGridApiRef.current = e.api;
                     },

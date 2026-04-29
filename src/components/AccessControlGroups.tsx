@@ -238,7 +238,14 @@ export function AccessControlGroups() {
                   ),
                 },
               ];
-              return <AGGridWrapper rowData={groups} columnDefs={agColDefs} height={500} />;
+              return (
+                <AGGridWrapper
+                  rowData={groups}
+                  columnDefs={agColDefs}
+                  height={500}
+                  storageKey="access-control-groups"
+                />
+              );
             })()
           ) : (
             <Table>

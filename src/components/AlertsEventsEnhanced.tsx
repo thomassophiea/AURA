@@ -731,7 +731,12 @@ export function AlertsEventsEnhanced() {
                     },
                   ];
                   return (
-                    <AGGridWrapper rowData={filteredAlerts} columnDefs={colDefs} height={600} />
+                    <AGGridWrapper
+                      rowData={filteredAlerts}
+                      columnDefs={colDefs}
+                      height={600}
+                      storageKey="alerts"
+                    />
                   );
                 })()
               ) : (
@@ -873,7 +878,12 @@ export function AlertsEventsEnhanced() {
                     },
                   ];
                   return (
-                    <AGGridWrapper rowData={filteredEvents} columnDefs={colDefs} height={600} />
+                    <AGGridWrapper
+                      rowData={filteredEvents}
+                      columnDefs={colDefs}
+                      height={600}
+                      storageKey="events"
+                    />
                   );
                 })()
               ) : (

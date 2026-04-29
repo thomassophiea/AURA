@@ -1059,7 +1059,12 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                 },
               ];
               return (
-                <AGGridWrapper rowData={filteredDevices} columnDefs={agColDefs} height={600} />
+                <AGGridWrapper
+                  rowData={filteredDevices}
+                  columnDefs={agColDefs}
+                  height={600}
+                  storageKey="configure-devices"
+                />
               );
             })()
           ) : (

@@ -491,7 +491,14 @@ export function AdministratorsManagement() {
                   ),
                 },
               ];
-              return <AGGridWrapper rowData={administrators} columnDefs={agColDefs} height={500} />;
+              return (
+                <AGGridWrapper
+                  rowData={administrators}
+                  columnDefs={agColDefs}
+                  height={500}
+                  storageKey="administrators"
+                />
+              );
             })()
           ) : (
             <Table>

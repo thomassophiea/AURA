@@ -994,7 +994,9 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                   rowData={sortedStations}
                   columnDefs={agColDefs}
                   height={600}
+                  storageKey="connected-clients"
                   gridOptions={{
+                    getRowId: (p) => p.data.macAddress,
                     onRowClicked: (e) => {
                       if (!e.data) return;
                       if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);

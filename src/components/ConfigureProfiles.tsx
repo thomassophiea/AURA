@@ -161,7 +161,12 @@ export function ConfigureProfiles() {
       <Card>
         <CardContent className="p-0">
           {agGridEnabled ? (
-            <AGGridWrapper rowData={filtered} columnDefs={agColDefs} height={500} />
+            <AGGridWrapper
+              rowData={filtered}
+              columnDefs={agColDefs}
+              height={500}
+              storageKey="configure-profiles"
+            />
           ) : (
             <Table>
               <TableHeader>

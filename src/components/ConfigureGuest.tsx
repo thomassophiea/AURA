@@ -810,6 +810,7 @@ export function ConfigureGuest() {
                   rowData={guestAccounts}
                   columnDefs={guestAccountColDefs}
                   height={500}
+                  storageKey="guest-accounts"
                 />
               ) : (
                 <Table>

@@ -1762,7 +1762,9 @@ export function ConfigureNetworks() {
                     rowData={filteredNetworks}
                     columnDefs={agColDefs}
                     height={Math.min(600, filteredNetworks.length * 44 + 80)}
+                    storageKey="configure-networks"
                     gridOptions={{
+                      getRowId: (p) => p.data.id,
                       onRowClicked: (e) => {
                         if (e.data) handleToggleExpanded(e.data.id);
                       },
