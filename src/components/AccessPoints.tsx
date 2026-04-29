@@ -2033,61 +2033,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 animate-in fade-in duration-200">
-        {/* Header skeleton */}
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-4 w-72" />
-          <div className="flex gap-2">
-            <Skeleton className="h-8 w-28" />
-            <Skeleton className="h-8 w-24" />
-          </div>
-        </div>
-        {/* Stat cards skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-12 mb-1" />
-                <Skeleton className="h-3 w-20" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        {/* Search/filter bar skeleton */}
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-64" />
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="h-9 w-32" />
-        </div>
-        {/* Table skeleton */}
-        <Card>
-          <CardContent className="p-0">
-            <div className="border-b px-4 py-3 flex gap-6">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-4 w-20" />
-              ))}
-            </div>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="px-4 py-3 flex gap-6 border-b last:border-0">
-                <Skeleton className="h-4 w-4 rounded" />
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-4 w-16" />
-                <Skeleton className="h-4 w-12" />
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-10" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Keep cell renderers reading the freshest closure data without rebuilding colDefs
   cellHandlersRef.current = {
     renderColumnContent,
@@ -2099,7 +2044,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   };
 
   // Memoized AG Grid column definitions — only rebuild when column structure changes
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const agColDefs = useMemo<ColDef<AccessPoint>[]>(() => {
     const colSizing: Record<
       string,
@@ -2266,10 +2210,64 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   }, [visibleColumns, navigationScope, siteGroups.length]);
 
   // Refresh visible cells when polled side-state updates (without swapping colDefs)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     agGridApiRef.current?.refreshCells({ force: true });
   }, [clientCounts, isLoadingClients, apMetrics, cableHealthMap, queryColumns]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-in fade-in duration-200">
+        {/* Header skeleton */}
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-4 w-72" />
+          <div className="flex gap-2">
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </div>
+        {/* Stat cards skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-12 mb-1" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {/* Search/filter bar skeleton */}
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        {/* Table skeleton */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="border-b px-4 py-3 flex gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-4 w-20" />
+              ))}
+            </div>
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="px-4 py-3 flex gap-6 border-b last:border-0">
+                <Skeleton className="h-4 w-4 rounded" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-12" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-10" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
