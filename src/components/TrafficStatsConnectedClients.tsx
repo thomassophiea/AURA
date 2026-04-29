@@ -2,13 +2,57 @@ import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
+import type { ColDef } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { AlertCircle, Users, RefreshCw, Wifi, Activity, Timer, Signal, Download, Upload, Shield, Router, MapPin, User, Clock, Star, Trash2, UserX, RotateCcw, UserPlus, UserMinus, ShieldCheck, ShieldX, Info, Radio, WifiOff, SignalHigh, SignalMedium, SignalLow, SignalZero, Cable, Shuffle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, FileDown, ArrowUpDown, ArrowUp, ArrowDown, Settings2, Columns, Building } from 'lucide-react';
+import {
+  AlertCircle,
+  Users,
+  RefreshCw,
+  Wifi,
+  Activity,
+  Timer,
+  Signal,
+  Download,
+  Upload,
+  Shield,
+  Router,
+  MapPin,
+  User,
+  Clock,
+  Star,
+  Trash2,
+  UserX,
+  RotateCcw,
+  UserPlus,
+  UserMinus,
+  ShieldCheck,
+  ShieldX,
+  Info,
+  Radio,
+  WifiOff,
+  SignalHigh,
+  SignalMedium,
+  SignalLow,
+  SignalZero,
+  Cable,
+  Shuffle,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  FileDown,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Settings2,
+  Columns,
+  Building,
+} from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
@@ -40,24 +84,28 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [sites, setSites] = useState<Site[]>([]);
 
-  const { query: searchQuery, setQuery: setSearchQuery, filterRows: filterBySearch, hasActiveSearch } = useCompoundSearch<Station>({
+  const {
+    query: searchQuery,
+    setQuery: setSearchQuery,
+    filterRows: filterBySearch,
+    hasActiveSearch,
+  } = useCompoundSearch<Station>({
     storageKey: 'client-search',
     fields: [
-      s => s.hostName,
-      s => s.macAddress,
-      s => s.ipAddress,
-      s => s.siteName,
-      s => s.apName || (s as any).apDisplayName || (s as any).apHostname,
-      s => (s as any).deviceType,
-      s => (s as any).manufacturer,
-      s => (s as any).username,
-      s => s.network || (s as any).ssid || (s as any).serviceName,
-      s => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
-      s => s.status,
-      s => (s as any).band || (s as any).frequencyBand,
+      (s) => s.hostName,
+      (s) => s.macAddress,
+      (s) => s.ipAddress,
+      (s) => s.siteName,
+      (s) => s.apName || (s as any).apDisplayName || (s as any).apHostname,
+      (s) => (s as any).deviceType,
+      (s) => (s as any).manufacturer,
+      (s) => (s as any).username,
+      (s) => s.network || (s as any).ssid || (s as any).serviceName,
+      (s) => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
+      (s) => s.status,
+      (s) => (s as any).band || (s as any).frequencyBand,
     ],
   });
-
 
   const [selectedStation, setSelectedStation] = useState<Station | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,7 +130,16 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [totalItems, setTotalItems] = useState(0);
 
   // Sorting state
-  type SortField = 'hostName' | 'macAddress' | 'ipAddress' | 'status' | 'apName' | 'ssid' | 'signalStrength' | 'band' | null;
+  type SortField =
+    | 'hostName'
+    | 'macAddress'
+    | 'ipAddress'
+    | 'status'
+    | 'apName'
+    | 'ssid'
+    | 'signalStrength'
+    | 'band'
+    | null;
   type SortDirection = 'asc' | 'desc';
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -96,14 +153,14 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     columns: DEVICE_MONITORING_COLUMNS,
     storageKey: 'deviceMonitoringVisibleColumns',
     enableViews: false,
-    enablePersistence: true
+    enablePersistence: true,
   });
 
   // Memoize stations with traffic data for column rendering
   const stationsWithTraffic = useMemo(() => {
-    return stations.map(station => ({
+    return stations.map((station) => ({
       ...station,
-      trafficData: stationTrafficData.get(station.macAddress)
+      trafficData: stationTrafficData.get(station.macAddress),
     }));
   }, [stations, stationTrafficData]);
 
@@ -138,8 +195,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       // Normalize name and deduplicate
       const seen = new Set<string>();
       const normalized = allSites
-        .map(s => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
-        .filter(s => {
+        .map((s) => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
+        .filter((s) => {
           if (seen.has(s.name)) return false;
           seen.add(s.name);
           return true;
@@ -178,7 +235,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           try {
             apiService.setBaseUrl(`${sg.controller_url}/management`);
             const sgStations = await apiService.getStationsWithSiteCorrelation();
-            const tagged = (Array.isArray(sgStations) ? sgStations : []).map(s => ({
+            const tagged = (Array.isArray(sgStations) ? sgStations : []).map((s) => ({
               ...s,
               _siteGroupId: sg.id,
               _siteGroupName: sg.name,
@@ -229,11 +286,13 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
       setStationTrafficData(trafficMap);
 
-      console.log(`[TrafficStats] Loaded traffic for page ${currentPage} (${trafficMap.size} stations)`);
+      console.log(
+        `[TrafficStats] Loaded traffic for page ${currentPage} (${trafficMap.size} stations)`
+      );
     } catch (error) {
       console.warn('Error loading traffic statistics:', error);
       toast.error('Failed to load traffic statistics', {
-        description: 'Some traffic data may be unavailable'
+        description: 'Some traffic data may be unavailable',
       });
     } finally {
       setIsLoadingTraffic(false);
@@ -275,11 +334,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const formatDuration = (duration: string | number) => {
     if (!duration) return 'N/A';
     if (typeof duration === 'string') return duration;
-    
+
     const hours = Math.floor(duration / 3600);
     const minutes = Math.floor((duration % 3600) / 60);
     const seconds = duration % 60;
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     } else if (minutes > 0) {
@@ -291,7 +350,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
   const formatLastSeen = (lastSeenTimestamp: string | undefined) => {
     if (!lastSeenTimestamp) return null;
-    
+
     try {
       const lastSeenDate = new Date(lastSeenTimestamp);
       const now = new Date();
@@ -300,7 +359,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       const diffMinutes = Math.floor(diffSeconds / 60);
       const diffHours = Math.floor(diffMinutes / 60);
       const diffDays = Math.floor(diffHours / 24);
-      
+
       if (diffSeconds < 60) {
         return 'Just now';
       } else if (diffMinutes < 60) {
@@ -311,10 +370,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
       } else {
         // For older dates, show the actual date
-        return lastSeenDate.toLocaleDateString('en-US', { 
-          month: 'short', 
+        return lastSeenDate.toLocaleDateString('en-US', {
+          month: 'short',
           day: 'numeric',
-          year: diffDays > 365 ? 'numeric' : undefined
+          year: diffDays > 365 ? 'numeric' : undefined,
         });
       }
     } catch (error) {
@@ -345,7 +404,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-info)]',
         label: 'Wired',
         quality: 'Ethernet',
-        bgColor: 'bg-[color:var(--status-info-bg)]'
+        bgColor: 'bg-[color:var(--status-info-bg)]',
       };
     }
 
@@ -356,7 +415,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-muted-foreground',
         label: 'No Signal',
         quality: 'No Data',
-        bgColor: 'bg-muted/10'
+        bgColor: 'bg-muted/10',
       };
     }
 
@@ -367,7 +426,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-success)]',
         label: `${rss} dBm`,
         quality: 'Excellent',
-        bgColor: 'bg-[color:var(--status-success-bg)]'
+        bgColor: 'bg-[color:var(--status-success-bg)]',
       };
     } else if (rss >= -50) {
       return {
@@ -375,7 +434,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-success)]',
         label: `${rss} dBm`,
         quality: 'Very Good',
-        bgColor: 'bg-[color:var(--status-success-bg)]'
+        bgColor: 'bg-[color:var(--status-success-bg)]',
       };
     } else if (rss >= -60) {
       return {
@@ -383,7 +442,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-warning)]',
         label: `${rss} dBm`,
         quality: 'Good',
-        bgColor: 'bg-[color:var(--status-warning-bg)]'
+        bgColor: 'bg-[color:var(--status-warning-bg)]',
       };
     } else if (rss >= -70) {
       return {
@@ -391,7 +450,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-warning)]',
         label: `${rss} dBm`,
         quality: 'Fair',
-        bgColor: 'bg-[color:var(--status-warning-bg)]'
+        bgColor: 'bg-[color:var(--status-warning-bg)]',
       };
     } else {
       return {
@@ -399,7 +458,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         color: 'text-[color:var(--status-error)]',
         label: `${rss} dBm`,
         quality: 'Poor',
-        bgColor: 'bg-[color:var(--status-error-bg)]'
+        bgColor: 'bg-[color:var(--status-error-bg)]',
       };
     }
   };
@@ -408,9 +467,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const siteGroupFiltered = orgSiteGroupFilter
     ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter)
     : stations;
-  const siteFiltered = selectedSite !== 'all'
-    ? siteGroupFiltered.filter(s => s.siteName === selectedSite)
-    : siteGroupFiltered;
+  const siteFiltered =
+    selectedSite !== 'all'
+      ? siteGroupFiltered.filter((s) => s.siteName === selectedSite)
+      : siteGroupFiltered;
   // Use site-filtered stations for all stat calculations
   const effectiveStations = siteFiltered;
   const filteredStations = filterBySearch(siteFiltered);
@@ -433,8 +493,18 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         break;
       case 'ipAddress':
         // Sort IP addresses numerically
-        aValue = a.ipAddress ? a.ipAddress.split('.').map(n => n.padStart(3, '0')).join('') : '';
-        bValue = b.ipAddress ? b.ipAddress.split('.').map(n => n.padStart(3, '0')).join('') : '';
+        aValue = a.ipAddress
+          ? a.ipAddress
+              .split('.')
+              .map((n) => n.padStart(3, '0'))
+              .join('')
+          : '';
+        bValue = b.ipAddress
+          ? b.ipAddress
+              .split('.')
+              .map((n) => n.padStart(3, '0'))
+              .join('')
+          : '';
         break;
       case 'status':
         aValue = (a.status || '').toLowerCase();
@@ -478,27 +548,31 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   }, [searchQuery]);
 
   const getUniqueStatuses = () => {
-    const statuses = new Set(effectiveStations.map(station => station.status).filter(Boolean));
+    const statuses = new Set(effectiveStations.map((station) => station.status).filter(Boolean));
     return Array.from(statuses);
   };
 
   const getUniqueAPs = () => {
-    const aps = new Set(effectiveStations.map(station => station.apName || station.apSerial).filter(Boolean));
+    const aps = new Set(
+      effectiveStations.map((station) => station.apName || station.apSerial).filter(Boolean)
+    );
     return Array.from(aps);
   };
 
   const getUniqueSites = () => {
-    const sites = new Set(effectiveStations.map(station => station.siteName).filter(Boolean));
+    const sites = new Set(effectiveStations.map((station) => station.siteName).filter(Boolean));
     return Array.from(sites);
   };
 
   const getUniqueDeviceTypes = () => {
-    const deviceTypes = new Set(effectiveStations.map(station => station.deviceType).filter(Boolean));
+    const deviceTypes = new Set(
+      effectiveStations.map((station) => station.deviceType).filter(Boolean)
+    );
     return Array.from(deviceTypes);
   };
 
   const getUniqueNetworks = () => {
-    const networks = new Set(effectiveStations.map(station => station.network).filter(Boolean));
+    const networks = new Set(effectiveStations.map((station) => station.network).filter(Boolean));
     return Array.from(networks);
   };
 
@@ -517,17 +591,19 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   };
 
   const getActiveClientsCount = () => {
-    return effectiveStations.filter(station =>
-      station.status?.toLowerCase() === 'connected' ||
-      station.status?.toLowerCase() === 'associated' ||
-      station.status?.toLowerCase() === 'active'
+    return effectiveStations.filter(
+      (station) =>
+        station.status?.toLowerCase() === 'connected' ||
+        station.status?.toLowerCase() === 'associated' ||
+        station.status?.toLowerCase() === 'active'
     ).length;
   };
 
   const getDisconnectedClientsCount = () => {
-    return effectiveStations.filter(station =>
-      station.status?.toLowerCase() === 'disconnected' ||
-      station.status?.toLowerCase() === 'inactive'
+    return effectiveStations.filter(
+      (station) =>
+        station.status?.toLowerCase() === 'disconnected' ||
+        station.status?.toLowerCase() === 'inactive'
     ).length;
   };
 
@@ -540,11 +616,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   };
 
   const getRandomizedMacCount = () => {
-    return effectiveStations.filter(station => isRandomizedMac(station.macAddress)).length;
+    return effectiveStations.filter((station) => isRandomizedMac(station.macAddress)).length;
   };
 
   const getPermanentMacCount = () => {
-    return effectiveStations.filter(station => !isRandomizedMac(station.macAddress)).length;
+    return effectiveStations.filter((station) => !isRandomizedMac(station.macAddress)).length;
   };
 
   const handleStationSelect = (macAddress: string, checked: boolean) => {
@@ -560,7 +636,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       // Select all stations on current page
-      const allMacAddresses = new Set(paginatedStations.map(station => station.macAddress));
+      const allMacAddresses = new Set(paginatedStations.map((station) => station.macAddress));
       setSelectedStations(allMacAddresses);
     } else {
       setSelectedStations(new Set());
@@ -569,7 +645,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
   // GDPR: Download client data as JSON (supports multiple clients)
   const handleDownloadClientData = () => {
-    const selectedStationsList = stations.filter(s => selectedStations.has(s.macAddress));
+    const selectedStationsList = stations.filter((s) => selectedStations.has(s.macAddress));
     if (selectedStationsList.length === 0) {
       toast.error('No clients selected');
       return;
@@ -581,7 +657,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         gdprDataExport: true,
         exportType: selectedStationsList.length === 1 ? 'single_client' : 'bulk_export',
         totalClients: selectedStationsList.length,
-        clients: selectedStationsList.map(station => {
+        clients: selectedStationsList.map((station) => {
           const trafficData = stationTrafficData.get(station.macAddress);
           return {
             clientIdentifier: station.macAddress,
@@ -628,16 +704,19 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      const filename = selectedStationsList.length === 1
-        ? `client-data-${selectedStationsList[0].macAddress.replace(/:/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
-        : `client-data-export-${selectedStationsList.length}-clients-${new Date().toISOString().split('T')[0]}.json`;
+      const filename =
+        selectedStationsList.length === 1
+          ? `client-data-${selectedStationsList[0].macAddress.replace(/:/g, '-')}-${new Date().toISOString().split('T')[0]}.json`
+          : `client-data-export-${selectedStationsList.length}-clients-${new Date().toISOString().split('T')[0]}.json`;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported data for ${selectedStationsList.length} client${selectedStationsList.length > 1 ? 's' : ''}`);
+      toast.success(
+        `Exported data for ${selectedStationsList.length} client${selectedStationsList.length > 1 ? 's' : ''}`
+      );
     } catch (error) {
       console.error('[TrafficStatsConnectedClients] Error exporting client data:', error);
       toast.error('Failed to export client data');
@@ -656,7 +735,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       const macAddresses = Array.from(selectedStations);
       await apiService.bulkDeleteStations(macAddresses);
 
-      toast.success(`Deleted data for ${macAddresses.length} client${macAddresses.length > 1 ? 's' : ''}`);
+      toast.success(
+        `Deleted data for ${macAddresses.length} client${macAddresses.length > 1 ? 's' : ''}`
+      );
       setIsGdprDeleteDialogOpen(false);
       setSelectedStations(new Set());
 
@@ -675,7 +756,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   if (isLoading && stations.length === 0) {
     return (
       <div className="space-y-6">
-
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i}>
@@ -711,7 +791,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       <div className="flex justify-between items-center">
         <div>
           <p className="text-muted-foreground">
-            Monitor and manage connected wireless client devices across your network with real-time traffic statistics and signal strength (RSSI)
+            Monitor and manage connected wireless client devices across your network with real-time
+            traffic statistics and signal strength (RSSI)
           </p>
         </div>
         <div className="flex items-center space-x-2">
@@ -722,7 +803,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sites</SelectItem>
-              {sites.map(site => (
+              {sites.map((site) => (
                 <SelectItem key={site.id || site.name} value={site.name}>
                   {site.name}
                 </SelectItem>
@@ -742,11 +823,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             <Activity className="mr-2 h-4 w-4" />
             {isLoadingTraffic ? 'Loading...' : 'Refresh Traffic'}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsColumnDialogOpen(true)}
-          >
+          <Button variant="outline" size="sm" onClick={() => setIsColumnDialogOpen(true)}>
             <Columns className="mr-2 h-4 w-4" />
             Customize Columns
           </Button>
@@ -784,8 +861,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         <Alert>
           <Shuffle className="h-4 w-4" />
           <AlertDescription>
-            <strong>{getRandomizedMacCount()} of {effectiveStations.length} clients</strong> are using randomized MAC addresses for privacy. 
-            These addresses change periodically to prevent device tracking across networks.
+            <strong>
+              {getRandomizedMacCount()} of {effectiveStations.length} clients
+            </strong>{' '}
+            are using randomized MAC addresses for privacy. These addresses change periodically to
+            prevent device tracking across networks.
           </AlertDescription>
         </Alert>
       )}
@@ -800,9 +880,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </CardHeader>
           <CardContent className="relative">
             <div className="text-2xl font-bold text-foreground">{effectiveStations.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Connected devices
-            </p>
+            <p className="text-xs text-muted-foreground">Connected devices</p>
           </CardContent>
         </Card>
 
@@ -815,9 +893,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </CardHeader>
           <CardContent className="relative">
             <div className="text-2xl font-bold text-foreground">{getActiveClientsCount()}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently active
-            </p>
+            <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
 
@@ -830,9 +906,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </CardHeader>
           <CardContent className="relative">
             <div className="text-2xl font-bold text-foreground">{getRandomizedMacCount()}</div>
-            <p className="text-xs text-muted-foreground">
-              Privacy-enabled devices
-            </p>
+            <p className="text-xs text-muted-foreground">Privacy-enabled devices</p>
           </CardContent>
         </Card>
 
@@ -844,10 +918,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{getDisconnectedClientsCount()}</div>
-            <p className="text-xs text-muted-foreground">
-              Recently offline
-            </p>
+            <div className="text-2xl font-bold text-foreground">
+              {getDisconnectedClientsCount()}
+            </div>
+            <p className="text-xs text-muted-foreground">Recently offline</p>
           </CardContent>
         </Card>
 
@@ -859,9 +933,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{formatBytes(getTotalTraffic())}</div>
+            <div className="text-2xl font-bold text-foreground">
+              {formatBytes(getTotalTraffic())}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Data transferred {isLoadingTraffic && "(loading...)"}
+              Data transferred {isLoadingTraffic && '(loading...)'}
             </p>
           </CardContent>
         </Card>
@@ -916,22 +992,28 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
             </DialogTitle>
             <DialogDescription className="pt-4 space-y-3">
               <p>
-                You are about to permanently delete all data for <strong>{selectedStations.size} client{selectedStations.size > 1 ? 's' : ''}</strong>.
+                You are about to permanently delete all data for{' '}
+                <strong>
+                  {selectedStations.size} client{selectedStations.size > 1 ? 's' : ''}
+                </strong>
+                .
               </p>
               <div className="bg-muted p-3 rounded-lg font-mono text-xs max-h-32 overflow-y-auto">
-                {Array.from(selectedStations).map(mac => {
-                  const station = stations.find(s => s.macAddress === mac);
+                {Array.from(selectedStations).map((mac) => {
+                  const station = stations.find((s) => s.macAddress === mac);
                   return (
                     <div key={mac} className="py-1 border-b last:border-0">
                       <span className="font-medium">{mac}</span>
-                      {station?.hostName && <span className="text-muted-foreground ml-2">({station.hostName})</span>}
+                      {station?.hostName && (
+                        <span className="text-muted-foreground ml-2">({station.hostName})</span>
+                      )}
                     </div>
                   );
                 })}
               </div>
               <p className="text-[color:var(--status-error)] font-medium">
-                This action cannot be undone. All connection history, events, and statistics
-                for these devices will be permanently removed.
+                This action cannot be undone. All connection history, events, and statistics for
+                these devices will be permanently removed.
               </p>
             </DialogDescription>
           </DialogHeader>
@@ -987,223 +1069,124 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
               </p>
             </div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <Table className="text-[11px]">
-                <TableHeader>
-                  <TableRow className="h-8">
-                    {/* Checkbox column - always visible */}
-                    <TableHead className="w-12 p-2 text-[10px] sticky left-0 bg-background z-10">
-                      <Checkbox
-                        checked={selectedStations.size === paginatedStations.length && paginatedStations.length > 0}
-                        onCheckedChange={handleSelectAll}
-                        className="h-3.5 w-3.5"
-                      />
-                    </TableHead>
-                    {/* Site Group column — only at org scope */}
-                    {navigationScope === 'global' && siteGroups.length > 1 && (
-                      <TableHead className="p-2 text-[10px]">
-                        <div className="flex items-center gap-1">
-                          <Server className="h-3 w-3" />
-                          <span>Site Group</span>
-                        </div>
-                      </TableHead>
-                    )}
-                    {/* Dynamic columns from customization */}
-                    {columnCustomization.visibleColumnConfigs.map((column) => (
-                      <TableHead
-                        key={column.key}
-                        className={`p-2 text-[10px] ${column.sortable ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                        onClick={() => {
-                          if (column.sortable) {
-                            const fieldMap: Record<string, SortField> = {
-                              'status': 'status',
-                              'hostname': 'hostName',
-                              'macAddress': 'macAddress',
-                              'ipAddress': 'ipAddress',
-                              'network': 'ssid',
-                              'apName': 'apName',
-                              'band': 'band',
-                              'rss': 'signalStrength'
-                            };
-                            const mappedField = fieldMap[column.key];
-                            if (mappedField) {
-                              handleSort(mappedField);
-                            }
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span>{column.label}</span>
-                            </TooltipTrigger>
-                            {column.tooltip && (
-                              <TooltipContent>
-                                <p>{column.tooltip}</p>
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                          {column.sortable && (
-                            (() => {
-                              const fieldMap: Record<string, SortField> = {
-                                'status': 'status',
-                                'hostname': 'hostName',
-                                'macAddress': 'macAddress',
-                                'ipAddress': 'ipAddress',
-                                'network': 'ssid',
-                                'apName': 'apName',
-                                'band': 'band',
-                                'rss': 'signalStrength'
-                              };
-                              const mappedField = fieldMap[column.key];
-                              if (sortField === mappedField) {
-                                return sortDirection === 'asc'
-                                  ? <ArrowUp className="h-3 w-3" />
-                                  : <ArrowDown className="h-3 w-3" />;
-                              }
-                              return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />;
-                            })()
-                          )}
-                        </div>
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedStations.map((station, index) => {
-                    // Merge station with traffic data for column rendering
-                    const stationWithTraffic = {
-                      ...station,
-                      trafficData: stationTrafficData.get(station.macAddress)
-                    };
-
-                    return (
-                      <TableRow
-                        key={station.macAddress || index}
-                        className="cursor-pointer hover:bg-muted/50 h-10"
-                        onClick={(e) => {
-                          // Don't trigger row click if clicking on checkbox
-                          if ((e.target as HTMLElement).closest('[data-checkbox]')) {
-                            return;
-                          }
-                          if (onShowDetail) {
-                            onShowDetail(station.macAddress, station.hostName);
-                          } else {
-                            setSelectedStation(station);
-                            setIsModalOpen(true);
-                          }
-                        }}
-                      >
-                        {/* Checkbox cell - always visible */}
-                        <TableCell className="p-1 sticky left-0 bg-background z-10" data-checkbox>
-                          <Checkbox
-                            checked={selectedStations.has(station.macAddress)}
-                            onCheckedChange={(checked) => handleStationSelect(station.macAddress, checked as boolean)}
-                            className="h-3.5 w-3.5"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </TableCell>
-                        {/* Site Group cell — only at org scope */}
-                        {navigationScope === 'global' && siteGroups.length > 1 && (
-                          <TableCell className="p-1">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
-                              {(station as any)._siteGroupName || '—'}
-                            </Badge>
-                          </TableCell>
-                        )}
-                        {/* Dynamic cells from visible columns */}
-                        {columnCustomization.visibleColumnConfigs.map((column) => (
-                          <TableCell key={column.key} className="p-1">
-                            {column.renderCell ? column.renderCell(stationWithTraffic, index) : '-'}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          {/* Pagination Controls */}
-          {totalFilteredItems > 0 && (
-            <div className="flex items-center justify-between px-2 py-4 border-t">
-              <div className="flex items-center gap-2">
-                <p className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1}-{endIndex} of {totalFilteredItems} clients
-                  {isLoadingTraffic && <span className="ml-2 text-xs">(loading traffic...)</span>}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1">
-                  <span className="text-sm text-muted-foreground">Per page:</span>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => {
-                      setItemsPerPage(Number(value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="h-8 w-20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="25">25</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
-                      <SelectItem value="200">200</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-
-                  <div className="flex items-center gap-1 px-2">
-                    <span className="text-sm">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
+            (() => {
+              const colSizing: Record<
+                string,
+                {
+                  width?: number;
+                  minWidth?: number;
+                  flex?: number;
+                  align?: 'center' | 'left' | 'right';
+                }
+              > = {
+                status: { width: 100, align: 'center' },
+                hostname: { flex: 1.5, minWidth: 180 },
+                macAddress: { width: 170 },
+                ipAddress: { width: 150 },
+                ipv6Address: { width: 220 },
+                siteName: { width: 160 },
+                network: { width: 140 },
+                accessPoint: { flex: 1.4, minWidth: 200 },
+                apName: { flex: 1.4, minWidth: 200 },
+                role: { width: 140 },
+                username: { width: 160 },
+                band: { width: 110, align: 'center' },
+                signal: { width: 110, align: 'center' },
+                rssi: { width: 110, align: 'center' },
+                rss: { width: 110, align: 'center' },
+                channel: { width: 90, align: 'right' },
+                protocol: { width: 110 },
+                rxRate: { width: 110, align: 'right' },
+                txRate: { width: 110, align: 'right' },
+                spatialStreams: { width: 110, align: 'right' },
+                capabilities: { width: 200 },
+                traffic: { width: 150 },
+                inBytes: { width: 130, align: 'right' },
+                outBytes: { width: 130, align: 'right' },
+                inPackets: { width: 130, align: 'right' },
+                outPackets: { width: 130, align: 'right' },
+                deviceType: { width: 180 },
+                manufacturer: { width: 150 },
+              };
+              const agColDefs: ColDef[] = [
+                ...(navigationScope === 'global' && siteGroups.length > 1
+                  ? [
+                      {
+                        colId: 'siteGroup',
+                        headerName: 'Site Group',
+                        width: 130,
+                        cellRenderer: (p: any) => (
+                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                            {(p.data as any)._siteGroupName || '—'}
+                          </Badge>
+                        ),
+                      } as ColDef,
+                    ]
+                  : []),
+                ...columnCustomization.visibleColumnConfigs.map((column): ColDef => {
+                  const sizing = colSizing[column.key] || {};
+                  const align = sizing.align || 'left';
+                  const justifyContent =
+                    align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+                  return {
+                    colId: column.key,
+                    headerName: column.label,
+                    field: (column.fieldPath || column.key) as any,
+                    sortable: column.sortable !== false,
+                    width: sizing.width,
+                    minWidth: sizing.minWidth,
+                    flex: sizing.flex,
+                    headerClass:
+                      align === 'center'
+                        ? 'ag-header-center'
+                        : align === 'right'
+                          ? 'ag-header-right'
+                          : undefined,
+                    cellStyle: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent,
+                      height: '100%',
+                      overflow: 'hidden',
+                    },
+                    cellRenderer: column.renderCell
+                      ? (p: any) => {
+                          const stationWithTraffic = {
+                            ...p.data,
+                            trafficData: stationTrafficData.get(p.data.macAddress),
+                          };
+                          return column.renderCell!(stationWithTraffic, p.rowIndex || 0);
+                        }
+                      : undefined,
+                  };
+                }),
+              ];
+              return (
+                <AGGridWrapper
+                  rowData={sortedStations}
+                  columnDefs={agColDefs}
+                  height={620}
+                  storageKey="traffic-stats-clients"
+                  gridOptions={{
+                    getRowId: (p) => p.data.macAddress,
+                    rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+                    onSelectionChanged: (e) => {
+                      const next = new Set<string>();
+                      e.api.getSelectedRows().forEach((s: any) => next.add(s.macAddress));
+                      setSelectedStations(next);
+                    },
+                    onRowClicked: (e) => {
+                      if (!e.data) return;
+                      if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);
+                      else {
+                        setSelectedStation(e.data);
+                        setIsModalOpen(true);
+                      }
+                    },
+                  }}
+                />
+              );
+            })()
           )}
         </CardContent>
       </Card>
@@ -1219,9 +1202,11 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
         <div className="space-y-6">
           {/* Basic Columns */}
           <div>
-            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Basic Information</h3>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">
+              Basic Information
+            </h3>
             <div className="grid grid-cols-2 gap-3">
-              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'basic').map(column => (
+              {DEVICE_MONITORING_COLUMNS.filter((col) => col.category === 'basic').map((column) => (
                 <div key={column.key} className="flex items-center space-x-2">
                   <Checkbox
                     id={`col-${column.key}`}
@@ -1244,65 +1229,75 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           <div>
             <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Network</h3>
             <div className="grid grid-cols-2 gap-3">
-              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'network').map(column => (
-                <div key={column.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`col-${column.key}`}
-                    checked={columnCustomization.visibleColumns.includes(column.key)}
-                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
-                  />
-                  <label
-                    htmlFor={`col-${column.key}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {column.label}
-                  </label>
-                </div>
-              ))}
+              {DEVICE_MONITORING_COLUMNS.filter((col) => col.category === 'network').map(
+                (column) => (
+                  <div key={column.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`col-${column.key}`}
+                      checked={columnCustomization.visibleColumns.includes(column.key)}
+                      onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                    />
+                    <label
+                      htmlFor={`col-${column.key}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {column.label}
+                    </label>
+                  </div>
+                )
+              )}
             </div>
           </div>
 
           {/* Connection Columns */}
           <div>
-            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Connection</h3>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">
+              Connection
+            </h3>
             <div className="grid grid-cols-2 gap-3">
-              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'connection').map(column => (
-                <div key={column.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`col-${column.key}`}
-                    checked={columnCustomization.visibleColumns.includes(column.key)}
-                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
-                  />
-                  <label
-                    htmlFor={`col-${column.key}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {column.label}
-                  </label>
-                </div>
-              ))}
+              {DEVICE_MONITORING_COLUMNS.filter((col) => col.category === 'connection').map(
+                (column) => (
+                  <div key={column.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`col-${column.key}`}
+                      checked={columnCustomization.visibleColumns.includes(column.key)}
+                      onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                    />
+                    <label
+                      htmlFor={`col-${column.key}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {column.label}
+                    </label>
+                  </div>
+                )
+              )}
             </div>
           </div>
 
           {/* Performance Columns */}
           <div>
-            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Performance</h3>
+            <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">
+              Performance
+            </h3>
             <div className="grid grid-cols-2 gap-3">
-              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'performance').map(column => (
-                <div key={column.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`col-${column.key}`}
-                    checked={columnCustomization.visibleColumns.includes(column.key)}
-                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
-                  />
-                  <label
-                    htmlFor={`col-${column.key}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {column.label}
-                  </label>
-                </div>
-              ))}
+              {DEVICE_MONITORING_COLUMNS.filter((col) => col.category === 'performance').map(
+                (column) => (
+                  <div key={column.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`col-${column.key}`}
+                      checked={columnCustomization.visibleColumns.includes(column.key)}
+                      onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                    />
+                    <label
+                      htmlFor={`col-${column.key}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {column.label}
+                    </label>
+                  </div>
+                )
+              )}
             </div>
           </div>
 
@@ -1310,40 +1305,37 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           <div>
             <h3 className="font-semibold mb-3 text-sm uppercase text-muted-foreground">Advanced</h3>
             <div className="grid grid-cols-2 gap-3">
-              {DEVICE_MONITORING_COLUMNS.filter(col => col.category === 'advanced').map(column => (
-                <div key={column.key} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`col-${column.key}`}
-                    checked={columnCustomization.visibleColumns.includes(column.key)}
-                    onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
-                  />
-                  <label
-                    htmlFor={`col-${column.key}`}
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                  >
-                    {column.label}
-                  </label>
-                </div>
-              ))}
+              {DEVICE_MONITORING_COLUMNS.filter((col) => col.category === 'advanced').map(
+                (column) => (
+                  <div key={column.key} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`col-${column.key}`}
+                      checked={columnCustomization.visibleColumns.includes(column.key)}
+                      onCheckedChange={() => columnCustomization.toggleColumn(column.key)}
+                    />
+                    <label
+                      htmlFor={`col-${column.key}`}
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      {column.label}
+                    </label>
+                  </div>
+                )
+              )}
             </div>
           </div>
 
           {/* Footer Actions */}
           <div className="flex items-center justify-between pt-4 border-t">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => columnCustomization.resetColumns()}
-            >
+            <Button variant="outline" size="sm" onClick={() => columnCustomization.resetColumns()}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset to Defaults
             </Button>
             <div className="text-sm text-muted-foreground">
-              {columnCustomization.visibleColumns.length} of {DEVICE_MONITORING_COLUMNS.length} columns selected
+              {columnCustomization.visibleColumns.length} of {DEVICE_MONITORING_COLUMNS.length}{' '}
+              columns selected
             </div>
-            <Button onClick={() => setIsColumnDialogOpen(false)}>
-              Done
-            </Button>
+            <Button onClick={() => setIsColumnDialogOpen(false)}>Done</Button>
           </div>
         </div>
       </DetailSlideOut>
