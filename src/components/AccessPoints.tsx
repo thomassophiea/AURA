@@ -742,11 +742,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     };
   }, []);
 
-  // Force re-render every 10 seconds to update "time ago" text
+  // Refresh "time ago" labels every 60s (was 10s — too disruptive to grid interactions)
   useEffect(() => {
     const intervalId = setInterval(() => {
       setTimeUpdateCounter((prev) => prev + 1);
-    }, 10000);
+    }, 60000);
 
     return () => clearInterval(intervalId);
   }, []);
@@ -1264,6 +1264,28 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filteredAccessPoints, sortColumn, sortDirection]);
+
+  // ── AG Grid state persistence ────────────────────────────────
+  const GRID_STATE_KEY = 'aura.access-points.grid-state.v1';
+  const savedGridStateRef = useRef<any>(null);
+  if (savedGridStateRef.current === null) {
+    try {
+      const raw = localStorage.getItem(GRID_STATE_KEY);
+      savedGridStateRef.current = raw ? JSON.parse(raw) : undefined;
+    } catch {
+      savedGridStateRef.current = undefined;
+    }
+  }
+
+  // Refs so colDefs cell renderers always read fresh state without rebuilding colDefs
+  const cellHandlersRef = useRef<{
+    renderColumnContent: (key: string, ap: AccessPoint) => any;
+    getAPName: (ap: AccessPoint) => string;
+    loadAPDetails: (serial: string) => void;
+    onShowDetail?: (serial: string, name: string) => void;
+    setContextSlideOut: (v: { type: 'site' | 'model' | 'ip'; value: string } | null) => void;
+    getSortValue: (ap: AccessPoint, key: string) => any;
+  } | null>(null);
 
   const getUniqueHardwareTypes = () => {
     const types = new Set(accessPoints.map((ap) => ap.hardwareType).filter(Boolean));
@@ -2066,6 +2088,189 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     );
   }
 
+  // Keep cell renderers reading the freshest closure data without rebuilding colDefs
+  cellHandlersRef.current = {
+    renderColumnContent,
+    getAPName,
+    loadAPDetails,
+    onShowDetail,
+    setContextSlideOut,
+    getSortValue,
+  };
+
+  // Memoized AG Grid column definitions — only rebuild when column structure changes
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const agColDefs = useMemo<ColDef<AccessPoint>[]>(() => {
+    const colSizing: Record<
+      string,
+      { width?: number; minWidth?: number; flex?: number; align?: 'center' | 'left' | 'right' }
+    > = {
+      connection: { width: 88, align: 'center' },
+      apName: { flex: 2, minWidth: 200 },
+      serialNumber: { width: 170 },
+      hostSite: { flex: 1.2, minWidth: 160 },
+      model: { width: 130 },
+      ipAddress: { width: 150 },
+      clients: { width: 130, align: 'center' },
+      macAddress: { width: 160 },
+      uptime: { width: 120 },
+      cpuUsage: { width: 90, align: 'right' },
+      memoryUsage: { width: 100, align: 'right' },
+      pwrUsage: { width: 110, align: 'right' },
+      channelUtilization: { width: 130, align: 'right' },
+      softwareVersion: { width: 150 },
+      status: { width: 110 },
+    };
+    const defs: ColDef<AccessPoint>[] = [];
+    if (navigationScope === 'global' && siteGroups.length > 1) {
+      defs.push({
+        headerName: 'Site Group',
+        field: 'serialNumber' as any,
+        width: 120,
+        cellRenderer: (params: any) => (
+          <span className="text-[10px] px-1.5 py-0.5 border rounded">
+            {(params.data as any)._siteGroupName || '—'}
+          </span>
+        ),
+      } as ColDef<AccessPoint>);
+    }
+    visibleColumns.forEach((columnKey) => {
+      const col = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
+      const isApName = columnKey === 'apName';
+      const isContextClickable = ['hostSite', 'model', 'ipAddress'].includes(columnKey);
+      const contextType =
+        columnKey === 'hostSite' ? 'site' : columnKey === 'model' ? 'model' : 'ip';
+      const sizing = colSizing[columnKey] || {};
+      const align = sizing.align || 'left';
+      const justifyContent =
+        align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+      defs.push({
+        colId: columnKey,
+        headerName: col?.label || columnKey,
+        field: columnKey as any,
+        sortable: col?.sortable ?? true,
+        width: sizing.width,
+        minWidth: sizing.minWidth,
+        flex: sizing.flex,
+        headerClass:
+          align === 'center'
+            ? 'ag-header-center'
+            : align === 'right'
+              ? 'ag-header-right'
+              : undefined,
+        cellStyle: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent,
+          height: '100%',
+          overflow: 'hidden',
+        },
+        cellRenderer: (params: any) => {
+          const handlers = cellHandlersRef.current!;
+          const content = handlers.renderColumnContent(columnKey, params.data);
+          if (isApName) {
+            return (
+              <button
+                onClick={() => {
+                  if (handlers.onShowDetail)
+                    handlers.onShowDetail(
+                      params.data.serialNumber,
+                      handlers.getAPName(params.data)
+                    );
+                  else handlers.loadAPDetails(params.data.serialNumber);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  textAlign: 'left',
+                  color: 'inherit',
+                }}
+              >
+                {content}
+              </button>
+            );
+          }
+          if (isContextClickable) {
+            const rawValue =
+              columnKey === 'hostSite'
+                ? params.data.hostSite || params.data.siteName || ''
+                : columnKey === 'model'
+                  ? params.data.model || params.data.hardwareType || ''
+                  : params.data.ipAddress || '';
+            if (!rawValue) return content;
+            return (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlers.setContextSlideOut({
+                    type: contextType as 'site' | 'model' | 'ip',
+                    value: rawValue,
+                  });
+                }}
+                style={{
+                  cursor: 'pointer',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  textAlign: 'left',
+                  color: 'inherit',
+                }}
+                title={`View ${contextType} details`}
+              >
+                {content}
+              </button>
+            );
+          }
+          return content;
+        },
+        comparator: col?.sortable
+          ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
+              const handlers = cellHandlersRef.current!;
+              const va = handlers.getSortValue(nodeA.data, columnKey);
+              const vb = handlers.getSortValue(nodeB.data, columnKey);
+              if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+              return String(va).localeCompare(String(vb));
+            }
+          : undefined,
+      });
+    });
+    defs.push({
+      colId: '__actions',
+      headerName: '',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      width: 90,
+      pinned: 'right',
+      cellStyle: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      },
+      cellRenderer: (params: any) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            cellHandlersRef.current!.loadAPDetails(params.data.serialNumber);
+          }}
+          className="text-xs font-medium text-primary hover:underline"
+        >
+          Details
+        </button>
+      ),
+    });
+    return defs;
+  }, [visibleColumns, navigationScope, siteGroups.length]);
+
+  // Refresh visible cells when polled side-state updates (without swapping colDefs)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useEffect(() => {
+    agGridApiRef.current?.refreshCells({ force: true });
+  }, [clientCounts, isLoadingClients, apMetrics, cableHealthMap, queryColumns]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Header */}
@@ -2483,205 +2688,41 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           ) : (
             <>
               {agGridEnabled ? (
-                (() => {
-                  const colSizing: Record<
-                    string,
-                    {
-                      width?: number;
-                      minWidth?: number;
-                      flex?: number;
-                      align?: 'center' | 'left' | 'right';
-                    }
-                  > = {
-                    connection: { width: 88, align: 'center' },
-                    apName: { flex: 2, minWidth: 200 },
-                    serialNumber: { width: 170 },
-                    hostSite: { flex: 1.2, minWidth: 160 },
-                    model: { width: 130 },
-                    ipAddress: { width: 150 },
-                    clients: { width: 130, align: 'center' },
-                    macAddress: { width: 160 },
-                    uptime: { width: 120 },
-                    cpuUsage: { width: 90, align: 'right' },
-                    memoryUsage: { width: 100, align: 'right' },
-                    pwrUsage: { width: 110, align: 'right' },
-                    channelUtilization: { width: 130, align: 'right' },
-                    softwareVersion: { width: 150 },
-                    status: { width: 110 },
-                  };
-                  const agColDefs: ColDef<AccessPoint>[] = [
-                    ...(navigationScope === 'global' && siteGroups.length > 1
-                      ? [
-                          {
-                            headerName: 'Site Group',
-                            field: 'serialNumber' as any,
-                            width: 120,
-                            cellRenderer: (params: any) => (
-                              <span className="text-[10px] px-1.5 py-0.5 border rounded">
-                                {(params.data as any)._siteGroupName || '—'}
-                              </span>
-                            ),
-                          } as ColDef<AccessPoint>,
-                        ]
-                      : []),
-                    ...visibleColumns.map((columnKey): ColDef<AccessPoint> => {
-                      const col = AP_TABLE_COLUMNS.find((c) => c.key === columnKey);
-                      const isApName = columnKey === 'apName';
-                      const isContextClickable = ['hostSite', 'model', 'ipAddress'].includes(
-                        columnKey
-                      );
-                      const contextType =
-                        columnKey === 'hostSite' ? 'site' : columnKey === 'model' ? 'model' : 'ip';
-                      const sizing = colSizing[columnKey] || {};
-                      const align = sizing.align || 'left';
-                      const justifyContent =
-                        align === 'center'
-                          ? 'center'
-                          : align === 'right'
-                            ? 'flex-end'
-                            : 'flex-start';
-                      return {
-                        headerName: col?.label || columnKey,
-                        field: columnKey as any,
-                        sortable: col?.sortable ?? true,
-                        width: sizing.width,
-                        minWidth: sizing.minWidth,
-                        flex: sizing.flex,
-                        headerClass:
-                          align === 'center'
-                            ? 'ag-header-center'
-                            : align === 'right'
-                              ? 'ag-header-right'
-                              : undefined,
-                        cellStyle: {
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent,
-                          height: '100%',
-                          overflow: 'hidden',
-                        },
-                        cellRenderer: (params: any) => {
-                          const content = renderColumnContent(columnKey, params.data);
-                          if (isApName) {
-                            return (
-                              <button
-                                onClick={() => {
-                                  if (onShowDetail)
-                                    onShowDetail(params.data.serialNumber, getAPName(params.data));
-                                  else loadAPDetails(params.data.serialNumber);
-                                }}
-                                style={{
-                                  cursor: 'pointer',
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  textAlign: 'left',
-                                  color: 'inherit',
-                                }}
-                              >
-                                {content}
-                              </button>
-                            );
-                          }
-                          if (isContextClickable) {
-                            const rawValue =
-                              columnKey === 'hostSite'
-                                ? params.data.hostSite || params.data.siteName || ''
-                                : columnKey === 'model'
-                                  ? params.data.model || params.data.hardwareType || ''
-                                  : params.data.ipAddress || '';
-                            if (!rawValue) return content;
-                            return (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setContextSlideOut({
-                                    type: contextType as 'site' | 'model' | 'ip',
-                                    value: rawValue,
-                                  });
-                                }}
-                                style={{
-                                  cursor: 'pointer',
-                                  background: 'none',
-                                  border: 'none',
-                                  padding: 0,
-                                  textAlign: 'left',
-                                  color: 'inherit',
-                                }}
-                                title={`View ${contextType} details`}
-                              >
-                                {content}
-                              </button>
-                            );
-                          }
-                          return content;
-                        },
-                        comparator: col?.sortable
-                          ? (a: any, b: any, nodeA: any, nodeB: any) => {
-                              const va = getSortValue(nodeA.data, columnKey);
-                              const vb = getSortValue(nodeB.data, columnKey);
-                              if (typeof va === 'number' && typeof vb === 'number') return va - vb;
-                              return String(va).localeCompare(String(vb));
-                            }
-                          : undefined,
-                      };
-                    }),
-                    {
-                      headerName: '',
-                      sortable: false,
-                      filter: false,
+                <AGGridWrapper
+                  rowData={sortedAccessPoints}
+                  columnDefs={agColDefs}
+                  height={600}
+                  gridOptions={{
+                    getRowId: (p) => p.data.serialNumber,
+                    rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+                    selectionColumnDef: {
+                      width: 48,
+                      minWidth: 48,
+                      maxWidth: 48,
+                      pinned: 'left',
                       resizable: false,
-                      width: 90,
-                      pinned: 'right',
                       cellStyle: {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        height: '100%',
                       },
-                      cellRenderer: (params: any) => (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            loadAPDetails(params.data.serialNumber);
-                          }}
-                          className="text-xs font-medium text-primary hover:underline"
-                        >
-                          Details
-                        </button>
-                      ),
                     },
-                  ];
-                  return (
-                    <AGGridWrapper
-                      rowData={sortedAccessPoints}
-                      columnDefs={agColDefs}
-                      height={600}
-                      gridOptions={{
-                        getRowId: (p) => p.data.serialNumber,
-                        rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
-                        selectionColumnDef: {
-                          width: 48,
-                          minWidth: 48,
-                          maxWidth: 48,
-                          pinned: 'left',
-                          resizable: false,
-                          cellStyle: {
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          },
-                        },
-                        onGridReady: (e) => {
-                          agGridApiRef.current = e.api;
-                        },
-                        onSelectionChanged: (e) => {
-                          setSelectedCount(e.api.getSelectedRows().length);
-                        },
-                      }}
-                    />
-                  );
-                })()
+                    initialState: savedGridStateRef.current,
+                    onStateUpdated: (e) => {
+                      try {
+                        localStorage.setItem(GRID_STATE_KEY, JSON.stringify(e.state));
+                      } catch {
+                        /* quota / disabled storage — ignore */
+                      }
+                    },
+                    onGridReady: (e) => {
+                      agGridApiRef.current = e.api;
+                    },
+                    onSelectionChanged: (e) => {
+                      setSelectedCount(e.api.getSelectedRows().length);
+                    },
+                  }}
+                />
               ) : (
                 <div className="rounded-md border">
                   <Table>
