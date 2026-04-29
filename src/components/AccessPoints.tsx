@@ -2416,8 +2416,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             totalCount={accessPoints.length}
           />
           {effectiveSelectedCount > 0 && (
-            <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
-              <span className="text-sm font-medium">{effectiveSelectedCount} AP(s) selected</span>
+            <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-md bg-primary/10 border border-primary/30">
+              <span className="text-sm font-semibold text-primary">
+                {effectiveSelectedCount} AP{effectiveSelectedCount === 1 ? '' : 's'} selected
+              </span>
+              <span className="text-muted-foreground mx-1">·</span>
               <Button
                 size="sm"
                 variant="outline"
@@ -2478,15 +2481,40 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <>
               {agGridEnabled ? (
                 (() => {
+                  const colSizing: Record<
+                    string,
+                    {
+                      width?: number;
+                      minWidth?: number;
+                      flex?: number;
+                      align?: 'center' | 'left' | 'right';
+                    }
+                  > = {
+                    connection: { width: 88, align: 'center' },
+                    apName: { flex: 2, minWidth: 200 },
+                    serialNumber: { width: 170 },
+                    hostSite: { flex: 1.2, minWidth: 160 },
+                    model: { width: 130 },
+                    ipAddress: { width: 150 },
+                    clients: { width: 130, align: 'center' },
+                    macAddress: { width: 160 },
+                    uptime: { width: 120 },
+                    cpuUsage: { width: 90, align: 'right' },
+                    memoryUsage: { width: 100, align: 'right' },
+                    pwrUsage: { width: 110, align: 'right' },
+                    channelUtilization: { width: 130, align: 'right' },
+                    softwareVersion: { width: 150 },
+                    status: { width: 110 },
+                  };
                   const agColDefs: ColDef<AccessPoint>[] = [
                     ...(navigationScope === 'global' && siteGroups.length > 1
                       ? [
                           {
                             headerName: 'Site Group',
                             field: 'serialNumber' as any,
-                            width: 110,
+                            width: 120,
                             cellRenderer: (params: any) => (
-                              <span className="text-[10px] px-1.5 py-0 border rounded">
+                              <span className="text-[10px] px-1.5 py-0.5 border rounded">
                                 {(params.data as any)._siteGroupName || '—'}
                               </span>
                             ),
@@ -2501,10 +2529,34 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       );
                       const contextType =
                         columnKey === 'hostSite' ? 'site' : columnKey === 'model' ? 'model' : 'ip';
+                      const sizing = colSizing[columnKey] || {};
+                      const align = sizing.align || 'left';
+                      const justifyContent =
+                        align === 'center'
+                          ? 'center'
+                          : align === 'right'
+                            ? 'flex-end'
+                            : 'flex-start';
                       return {
                         headerName: col?.label || columnKey,
                         field: columnKey as any,
                         sortable: col?.sortable ?? true,
+                        width: sizing.width,
+                        minWidth: sizing.minWidth,
+                        flex: sizing.flex,
+                        headerClass:
+                          align === 'center'
+                            ? 'ag-header-center'
+                            : align === 'right'
+                              ? 'ag-header-right'
+                              : undefined,
+                        cellStyle: {
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent,
+                          height: '100%',
+                          overflow: 'hidden',
+                        },
                         cellRenderer: (params: any) => {
                           const content = renderColumnContent(columnKey, params.data);
                           if (isApName) {
@@ -2572,17 +2624,25 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       };
                     }),
                     {
-                      headerName: 'Actions',
+                      headerName: '',
                       sortable: false,
                       filter: false,
-                      width: 80,
+                      resizable: false,
+                      width: 90,
+                      pinned: 'right',
+                      cellStyle: {
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: '100%',
+                      },
                       cellRenderer: (params: any) => (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             loadAPDetails(params.data.serialNumber);
                           }}
-                          className="text-xs text-primary hover:underline"
+                          className="text-xs font-medium text-primary hover:underline"
                         >
                           Details
                         </button>
@@ -2596,6 +2656,18 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       height={600}
                       gridOptions={{
                         rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+                        selectionColumnDef: {
+                          width: 48,
+                          minWidth: 48,
+                          maxWidth: 48,
+                          pinned: 'left',
+                          resizable: false,
+                          cellStyle: {
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          },
+                        },
                         onGridReady: (e) => {
                           agGridApiRef.current = e.api;
                         },

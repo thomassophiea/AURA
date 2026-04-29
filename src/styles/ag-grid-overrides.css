@@ -146,6 +146,37 @@
   border-top: none !important;
 }
 
+/* ── Header alignment helpers ───────────────────────────────── */
+.ag-header-center .ag-header-cell-label {
+  justify-content: center !important;
+}
+.ag-header-right .ag-header-cell-label {
+  justify-content: flex-end !important;
+}
+
+/* ── Header typography polish ───────────────────────────────── */
+.ag-header-cell-text {
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ── Selection column: keep checkboxes centered & compact ──── */
+.ag-cell.ag-selection-checkbox,
+.ag-header-cell.ag-header-select-all-cell,
+.ag-cell[col-id='ag-Grid-SelectionColumn'],
+.ag-header-cell[col-id='ag-Grid-SelectionColumn'] {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+}
+
+/* ── Row hover & selection visual ───────────────────────────── */
+.ag-row-selected,
+.ag-row-selected::before {
+  background-color: hsl(var(--primary) / 0.12) !important;
+}
+
 /* ── Scrollbar suppression ───────────────────────────────────── */
 .ag-body-horizontal-scroll::-webkit-scrollbar {
   display: none;
