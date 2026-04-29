@@ -574,8 +574,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   };
 
   const getAgSelectedSerials = useCallback((): string[] => {
-    if (!agGridApiRef.current) return [...selectedSerials];
-    return agGridApiRef.current.getSelectedRows().map((ap) => ap.serialNumber);
+    if (agGridApiRef.current)
+      return agGridApiRef.current.getSelectedRows().map((ap) => ap.serialNumber);
+    return [...selectedSerials];
   }, [selectedSerials]);
 
   const clearAgSelection = useCallback(() => {
@@ -583,6 +584,8 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     setSelectedSerials(new Set());
     setSelectedCount(0);
   }, []);
+
+  const effectiveSelectedCount = agGridEnabled ? selectedCount : selectedSerials.size;
 
   const handleBulkReboot = async () => {
     const serials = getAgSelectedSerials();
@@ -2412,9 +2415,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             resultCount={filteredAccessPoints.length}
             totalCount={accessPoints.length}
           />
-          {selectedCount > 0 && (
+          {effectiveSelectedCount > 0 && (
             <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border">
-              <span className="text-sm font-medium">{selectedCount} AP(s) selected</span>
+              <span className="text-sm font-medium">{effectiveSelectedCount} AP(s) selected</span>
               <Button
                 size="sm"
                 variant="outline"
@@ -2476,16 +2479,6 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
               {agGridEnabled ? (
                 (() => {
                   const agColDefs: ColDef<AccessPoint>[] = [
-                    {
-                      headerName: '',
-                      width: 48,
-                      sortable: false,
-                      filter: false,
-                      resizable: false,
-                      checkboxSelection: true,
-                      headerCheckboxSelection: true,
-                      showDisabledCheckboxes: true,
-                    },
                     ...(navigationScope === 'global' && siteGroups.length > 1
                       ? [
                           {
@@ -2602,7 +2595,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       columnDefs={agColDefs}
                       height={600}
                       gridOptions={{
-                        rowSelection: { mode: 'multiRow' },
+                        rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
                         onGridReady: (e) => {
                           agGridApiRef.current = e.api;
                         },
