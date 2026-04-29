@@ -2318,7 +2318,24 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
             <Cpu className="mr-2 h-4 w-4" />
             {isLoadingMetrics ? 'Loading...' : 'Refresh Metrics'}
           </Button>
-          <ColumnCustomizationDialog customization={customization as any} />
+          <ColumnCustomizationDialog
+            customization={
+              {
+                ...customization,
+                resetColumns: () => {
+                  customization.resetColumns();
+                  try {
+                    localStorage.removeItem(GRID_STATE_KEY);
+                  } catch {
+                    /* ignore quota / disabled */
+                  }
+                  savedGridStateRef.current = undefined;
+                  agGridApiRef.current?.resetColumnState();
+                  agGridApiRef.current?.setFilterModel(null);
+                },
+              } as any
+            }
+          />
           <ExportButton
             data={sortedAccessPoints}
             columns={[
