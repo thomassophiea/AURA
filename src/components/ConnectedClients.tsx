@@ -950,25 +950,84 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </div>
           ) : agGridEnabled ? (
             (() => {
+              const colSizing: Record<
+                string,
+                {
+                  width?: number;
+                  minWidth?: number;
+                  flex?: number;
+                  align?: 'center' | 'left' | 'right';
+                }
+              > = {
+                status: { width: 100, align: 'center' },
+                hostname: { flex: 1.5, minWidth: 180 },
+                macAddress: { width: 170 },
+                ipAddress: { width: 150 },
+                ipv6Address: { width: 220 },
+                siteName: { width: 160 },
+                network: { width: 140 },
+                accessPoint: { flex: 1.4, minWidth: 200 },
+                role: { width: 140 },
+                username: { width: 160 },
+                band: { width: 110, align: 'center' },
+                signal: { width: 110, align: 'center' },
+                rssi: { width: 110, align: 'center' },
+                channel: { width: 90, align: 'right' },
+                protocol: { width: 110 },
+                rxRate: { width: 110, align: 'right' },
+                txRate: { width: 110, align: 'right' },
+                spatialStreams: { width: 110, align: 'right' },
+                capabilities: { width: 200 },
+                traffic: { width: 150 },
+                inBytes: { width: 130, align: 'right' },
+                outBytes: { width: 130, align: 'right' },
+                inPackets: { width: 130, align: 'right' },
+                outPackets: { width: 130, align: 'right' },
+                dlLostRetriesPackets: { width: 150, align: 'right' },
+                deviceType: { width: 180 },
+                manufacturer: { width: 150 },
+              };
               const agColDefs: ColDef<Station>[] = customization.visibleColumnConfigs.map(
-                (column): ColDef<Station> => ({
-                  colId: column.key,
-                  headerName: column.label,
-                  field: (column.fieldPath || column.key) as any,
-                  sortable: column.sortable !== false,
-                  cellRenderer: column.renderCell
-                    ? (params: any) => column.renderCell!(params.data)
-                    : undefined,
-                  comparator:
-                    column.sortable !== false
-                      ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
-                          const va = getSortValue(nodeA.data, column.key);
-                          const vb = getSortValue(nodeB.data, column.key);
-                          if (typeof va === 'number' && typeof vb === 'number') return va - vb;
-                          return String(va).localeCompare(String(vb));
-                        }
+                (column): ColDef<Station> => {
+                  const sizing = colSizing[column.key] || {};
+                  const align = sizing.align || 'left';
+                  const justifyContent =
+                    align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start';
+                  return {
+                    colId: column.key,
+                    headerName: column.label,
+                    field: (column.fieldPath || column.key) as any,
+                    sortable: column.sortable !== false,
+                    width: sizing.width,
+                    minWidth: sizing.minWidth,
+                    flex: sizing.flex,
+                    headerClass:
+                      align === 'center'
+                        ? 'ag-header-center'
+                        : align === 'right'
+                          ? 'ag-header-right'
+                          : undefined,
+                    cellStyle: {
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent,
+                      height: '100%',
+                      overflow: 'hidden',
+                    },
+                    cellRenderer: column.renderCell
+                      ? (params: any) => column.renderCell!(params.data)
                       : undefined,
-                })
+                    comparator:
+                      column.sortable !== false
+                        ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
+                            const va = getSortValue(nodeA.data, column.key);
+                            const vb = getSortValue(nodeB.data, column.key);
+                            if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+                            return String(va).localeCompare(String(vb));
+                          }
+                        : undefined,
+                  };
+                }
               );
               return (
                 <AGGridWrapper
