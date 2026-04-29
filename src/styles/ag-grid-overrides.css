@@ -79,15 +79,21 @@
 /* ── Checkboxes (row + header select-all) ───────────────────── */
 .ag-checkbox-input-wrapper {
   position: relative !important;
-  width: 16px !important;
-  height: 16px !important;
-  border-radius: 3px !important;
-  border: 1.5px solid var(--muted-foreground) !important;
+  width: 15px !important;
+  height: 15px !important;
+  min-width: 15px !important;
+  min-height: 15px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--muted-foreground) !important;
   background-color: transparent !important;
-  display: flex !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   flex-shrink: 0 !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
   transition:
     border-color 0.15s,
     background-color 0.15s !important;
@@ -96,11 +102,14 @@
 .ag-checkbox-input-wrapper input {
   opacity: 0 !important;
   position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
+  margin: 0 !important;
   cursor: pointer !important;
 }
 
+.ag-checkbox-input-wrapper::before,
 .ag-checkbox-input-wrapper::after {
   content: none !important;
 }
@@ -117,11 +126,12 @@
 .ag-checkbox-input-wrapper.ag-checked::after {
   content: '' !important;
   display: block !important;
-  width: 9px !important;
-  height: 5px !important;
-  border-left: 2px solid #fff !important;
-  border-bottom: 2px solid #fff !important;
-  transform: rotate(-45deg) translateY(-1px) !important;
+  width: 7px !important;
+  height: 3.5px !important;
+  border-left: 1.5px solid #fff !important;
+  border-bottom: 1.5px solid #fff !important;
+  transform: rotate(-45deg) translate(0.5px, -1px) !important;
+  margin-top: -1px !important;
 }
 
 .ag-checkbox-input-wrapper.ag-indeterminate {
@@ -132,8 +142,8 @@
 .ag-checkbox-input-wrapper.ag-indeterminate::after {
   content: '' !important;
   display: block !important;
-  width: 8px !important;
-  height: 2px !important;
+  width: 7px !important;
+  height: 1.5px !important;
   background: #fff !important;
   border-radius: 1px !important;
 }
