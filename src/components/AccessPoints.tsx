@@ -1121,14 +1121,17 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   }, [accessPoints]);
 
   // Apply org-level site group filter, then site filter, then search
-  const siteGroupFilteredAPs = orgSiteGroupFilter
-    ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
-    : accessPoints;
-  const siteFilteredAPs =
-    selectedSite !== 'all'
-      ? siteGroupFilteredAPs.filter((ap) => getAPSite(ap) === selectedSite)
-      : siteGroupFilteredAPs;
-  const filteredAccessPoints = filterBySearch(siteFilteredAPs);
+  const filteredAccessPoints = useMemo(() => {
+    const siteGroupFiltered = orgSiteGroupFilter
+      ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
+      : accessPoints;
+    const siteFiltered =
+      selectedSite !== 'all'
+        ? siteGroupFiltered.filter((ap) => getAPSite(ap) === selectedSite)
+        : siteGroupFiltered;
+    return filterBySearch(siteFiltered);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accessPoints, orgSiteGroupFilter, selectedSite, searchQuery]);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
   const isAfcAnchor = (ap: AccessPoint): boolean => {
@@ -1246,21 +1249,21 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   };
 
   // Sort the filtered access points
-  const sortedAccessPoints = [...filteredAccessPoints].sort((a, b) => {
-    if (!sortColumn) return 0;
-
-    const aValue = getSortValue(a, sortColumn);
-    const bValue = getSortValue(b, sortColumn);
-
-    let comparison = 0;
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      comparison = aValue - bValue;
-    } else {
-      comparison = String(aValue).localeCompare(String(bValue));
-    }
-
-    return sortDirection === 'asc' ? comparison : -comparison;
-  });
+  const sortedAccessPoints = useMemo(() => {
+    if (!sortColumn) return filteredAccessPoints;
+    return [...filteredAccessPoints].sort((a, b) => {
+      const aValue = getSortValue(a, sortColumn);
+      const bValue = getSortValue(b, sortColumn);
+      let comparison = 0;
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        comparison = aValue - bValue;
+      } else {
+        comparison = String(aValue).localeCompare(String(bValue));
+      }
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredAccessPoints, sortColumn, sortDirection]);
 
   const getUniqueHardwareTypes = () => {
     const types = new Set(accessPoints.map((ap) => ap.hardwareType).filter(Boolean));
@@ -2655,6 +2658,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                       columnDefs={agColDefs}
                       height={600}
                       gridOptions={{
+                        getRowId: (p) => p.data.serialNumber,
                         rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
                         selectionColumnDef: {
                           width: 48,

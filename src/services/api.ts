@@ -6162,13 +6162,18 @@ class ApiService {
    * Get all AP interface statistics
    * Endpoint: GET /v1/aps/ifstats
    */
+  private _ifstatsBulkUnsupported = false;
   async getAllAPInterfaceStats(): Promise<any[]> {
+    if (this._ifstatsBulkUnsupported) return [];
     try {
       logger.log('[API] Fetching all AP interface statistics');
       const response = await this.makeAuthenticatedRequest('/v1/aps/ifstats', {}, 15000);
 
       if (!response.ok) {
-        logger.warn(`All AP interface stats API returned ${response.status}`);
+        logger.warn(
+          `All AP interface stats API returned ${response.status} — disabling bulk ifstats for this session`
+        );
+        this._ifstatsBulkUnsupported = true;
         return [];
       }
 
@@ -6177,6 +6182,7 @@ class ApiService {
       return data || [];
     } catch (error) {
       logger.error('[API] Failed to fetch all AP interface stats:', error);
+      this._ifstatsBulkUnsupported = true;
       return [];
     }
   }
