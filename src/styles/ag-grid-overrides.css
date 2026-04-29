@@ -162,6 +162,16 @@
   letter-spacing: 0.04em !important;
 }
 
+/* ── Header bottom border (separator under column headers) ──── */
+.ag-header,
+.ag-header-row {
+  border-bottom: 1px solid var(--border) !important;
+}
+.ag-pinned-left-header,
+.ag-pinned-right-header {
+  border-bottom: 1px solid var(--border) !important;
+}
+
 /* ── Selection column: keep checkboxes centered & compact ──── */
 .ag-cell.ag-selection-checkbox,
 .ag-header-cell.ag-header-select-all-cell,
