@@ -172,14 +172,18 @@
   letter-spacing: 0.04em !important;
 }
 
-/* ── Header bottom border (separator under column headers) ──── */
-.ag-header,
-.ag-header-row {
+/* ── Header bottom border (single, uniform line) ────────────── */
+.ag-header {
   border-bottom: 1px solid var(--border) !important;
+  box-shadow: none !important;
 }
+.ag-header-row,
 .ag-pinned-left-header,
-.ag-pinned-right-header {
-  border-bottom: 1px solid var(--border) !important;
+.ag-pinned-right-header,
+.ag-header-viewport,
+.ag-header-container {
+  border-bottom: 0 !important;
+  box-shadow: none !important;
 }
 
 /* ── Selection column: keep checkboxes centered & compact ──── */
