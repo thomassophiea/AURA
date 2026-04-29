@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -336,104 +336,130 @@ export function ConfigurePolicy() {
 
   const { agGridEnabled } = useGridMode();
 
-  const roleColDefs: ColDef<Role>[] = [
-    {
-      field: 'name',
-      headerName: 'Role Name',
-      flex: 2,
-      cellRenderer: (params: { data?: Role; value: string }) => (
-        <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-muted-foreground" />
-          <span>{params.value}</span>
-          {params.data?.predefined && (
-            <Badge variant="secondary" className="flex items-center gap-1 text-xs">
-              <Lock className="h-3 w-3" />
-              System
-            </Badge>
-          )}
-        </div>
-      ),
-    },
-    {
-      field: 'defaultAction',
-      headerName: 'Default Action',
-      flex: 1,
-      cellRenderer: (params: { value: string }) => (
-        <Badge variant={params.value === 'allow' ? 'default' : 'destructive'}>
-          {params.value === 'allow' ? (
-            <>
-              <Unlock className="h-3 w-3 mr-1" />
-              Allow
-            </>
-          ) : (
-            <>
-              <Lock className="h-3 w-3 mr-1" />
-              Deny
-            </>
-          )}
-        </Badge>
-      ),
-    },
-    {
-      headerName: 'Captive Portal',
-      flex: 1,
-      valueGetter: (params: { data?: Role }) =>
-        params.data ? hasCaptivePortal(params.data) : false,
-      cellRenderer: (params: { value: boolean }) =>
-        params.value ? (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Globe className="h-3 w-3" />
-            Captive Portal
+  const roleColDefs = useMemo<ColDef<Role>[]>(
+    () => [
+      {
+        colId: 'name',
+        field: 'name',
+        headerName: 'Role Name',
+        flex: 2,
+        minWidth: 220,
+        cellRenderer: (params: { data?: Role; value: string }) => (
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-muted-foreground" />
+            <span>{params.value}</span>
+            {params.data?.predefined && (
+              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                <Lock className="h-3 w-3" />
+                System
+              </Badge>
+            )}
+          </div>
+        ),
+      },
+      {
+        colId: 'defaultAction',
+        field: 'defaultAction',
+        headerName: 'Default Action',
+        width: 140,
+        cellRenderer: (params: { value: string }) => (
+          <Badge variant={params.value === 'allow' ? 'default' : 'destructive'}>
+            {params.value === 'allow' ? (
+              <>
+                <Unlock className="h-3 w-3 mr-1" />
+                Allow
+              </>
+            ) : (
+              <>
+                <Lock className="h-3 w-3 mr-1" />
+                Deny
+              </>
+            )}
           </Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">None</span>
         ),
-    },
-    {
-      headerName: 'Filter Rules',
-      flex: 1,
-      valueGetter: (params: { data?: Role }) => (params.data ? getFilterCount(params.data) : 0),
-      cellRenderer: (params: { value: number }) =>
-        params.value > 0 ? (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Network className="h-3 w-3" />
-            {params.value} rule(s)
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">—</span>
-        ),
-    },
-    {
-      headerName: 'Actions',
-      flex: 1,
-      cellRenderer: (params: { data?: Role }) =>
-        params.data ? (
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleViewRole(params.data!)}
-              className="h-8 w-8 p-0"
-              title="View details"
-            >
-              <Search className="h-4 w-4" />
-            </Button>
-            {params.data.canDelete && !params.data.predefined && (
+      },
+      {
+        colId: 'captivePortal',
+        headerName: 'Captive Portal',
+        width: 160,
+        valueGetter: (params: { data?: Role }) =>
+          params.data ? hasCaptivePortal(params.data) : false,
+        cellRenderer: (params: { value: boolean }) =>
+          params.value ? (
+            <Badge variant="outline" className="flex items-center gap-1">
+              <Globe className="h-3 w-3" />
+              Captive Portal
+            </Badge>
+          ) : (
+            <span className="text-xs text-muted-foreground">None</span>
+          ),
+      },
+      {
+        colId: 'filterRules',
+        headerName: 'Filter Rules',
+        width: 130,
+        headerClass: 'ag-header-right',
+        cellStyle: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          height: '100%',
+        },
+        valueGetter: (params: { data?: Role }) => (params.data ? getFilterCount(params.data) : 0),
+        cellRenderer: (params: { value: number }) =>
+          params.value > 0 ? (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Network className="h-3 w-3" />
+              {params.value} rule(s)
+            </span>
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          ),
+      },
+      {
+        colId: '__actions',
+        headerName: '',
+        sortable: false,
+        filter: false,
+        resizable: false,
+        width: 100,
+        pinned: 'right',
+        cellStyle: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+        },
+        cellRenderer: (params: { data?: Role }) =>
+          params.data ? (
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDeleteRole(params.data!)}
-                disabled={isDeleting}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-                title="Delete role"
+                onClick={() => handleViewRole(params.data!)}
+                className="h-8 w-8 p-0"
+                title="View details"
               >
-                <Trash2 className="h-4 w-4" />
+                <Search className="h-4 w-4" />
               </Button>
-            )}
-          </div>
-        ) : null,
-    },
-  ];
+              {params.data.canDelete && !params.data.predefined && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteRole(params.data!)}
+                  disabled={isDeleting}
+                  className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  title="Delete role"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ) : null,
+      },
+    ],
+    [isDeleting]
+  );
 
   return (
     <div className="space-y-6">

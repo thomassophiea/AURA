@@ -441,8 +441,11 @@ export function AdministratorsManagement() {
             (() => {
               const agColDefs: ColDef<Administrator>[] = [
                 {
+                  colId: 'username',
                   field: 'username',
                   headerName: 'Username',
+                  flex: 2,
+                  minWidth: 200,
                   cellRenderer: (params: { data: Administrator }) => (
                     <div className="flex items-center gap-2">
                       <Shield className="h-4 w-4 text-muted-foreground" />
@@ -451,13 +454,24 @@ export function AdministratorsManagement() {
                   ),
                 },
                 {
+                  colId: 'role',
                   field: 'role',
                   headerName: 'Role',
+                  width: 160,
                   cellRenderer: (params: { data: Administrator }) => getRoleBadge(params.data.role),
                 },
                 {
+                  colId: 'enabled',
                   field: 'enabled',
                   headerName: 'Status',
+                  width: 110,
+                  headerClass: 'ag-header-center',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: Administrator }) => (
                     <Switch
                       checked={params.data.enabled}
@@ -467,11 +481,21 @@ export function AdministratorsManagement() {
                   ),
                 },
                 {
-                  headerName: 'Actions',
+                  colId: '__actions',
+                  headerName: '',
                   sortable: false,
                   filter: false,
+                  resizable: false,
+                  width: 110,
+                  pinned: 'right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: Administrator }) => (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="outline"

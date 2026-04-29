@@ -1609,27 +1609,12 @@ export function ConfigureNetworks() {
           {agGridEnabled ? (
             (() => {
               const agColDefs: ColDef<NetworkConfig>[] = [
-                {
-                  headerName: '',
-                  width: 48,
-                  sortable: false,
-                  filter: false,
-                  resizable: false,
-                  cellRenderer: (params: any) => (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedNetworks.includes(params.data.id)}
-                        onChange={(e) => handleSelectNetwork(params.data.id, e.target.checked)}
-                      />
-                    </div>
-                  ),
-                },
                 ...(isOrgScope && siteGroups.length > 1
                   ? [
                       {
+                        colId: 'siteGroup',
                         headerName: 'Site Group',
-                        width: 110,
+                        width: 130,
                         cellRenderer: (p: any) => (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
                             {(p.data as any)._siteGroupName || '—'}
@@ -1639,20 +1624,28 @@ export function ConfigureNetworks() {
                     ]
                   : []),
                 {
+                  colId: 'name',
                   headerName: 'Name',
                   field: 'name',
+                  flex: 1.5,
+                  minWidth: 180,
                   cellRenderer: (p: any) => <span className="font-medium">{p.data.name}</span>,
                 },
                 {
+                  colId: 'ssid',
                   headerName: 'SSID',
                   field: 'ssid',
+                  flex: 1.5,
+                  minWidth: 160,
                   cellRenderer: (p: any) => (
                     <span className="font-mono text-sm">{p.data.ssid}</span>
                   ),
                 },
                 {
+                  colId: 'status',
                   headerName: 'Status',
                   field: 'enabled',
+                  width: 120,
                   cellRenderer: (p: any) => (
                     <Badge variant={p.data.enabled ? 'default' : 'secondary'}>
                       {p.data.enabled ? 'Enabled' : 'Disabled'}
@@ -1660,21 +1653,46 @@ export function ConfigureNetworks() {
                   ),
                 },
                 {
+                  colId: 'clients',
                   headerName: 'Clients',
                   field: 'currentClients',
+                  width: 110,
+                  headerClass: 'ag-header-right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                  },
                   valueGetter: (p) => p.data?.currentClients ?? 0,
                 },
-                { headerName: 'Privacy Type', field: 'authType' },
                 {
+                  colId: 'authType',
+                  headerName: 'Privacy Type',
+                  field: 'authType',
+                  width: 150,
+                },
+                {
+                  colId: 'vlan',
                   headerName: 'Default VLAN',
+                  width: 140,
                   valueGetter: (p) =>
                     (p.data as any)?.defaultTopologyName || (p.data as any)?.vlanId || '—',
                 },
                 {
-                  headerName: 'Actions',
+                  colId: '__actions',
+                  headerName: '',
                   sortable: false,
                   filter: false,
-                  width: 180,
+                  resizable: false,
+                  width: 200,
+                  pinned: 'right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (p: any) => (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       {isOrgScope ? (
@@ -1765,6 +1783,14 @@ export function ConfigureNetworks() {
                     storageKey="configure-networks"
                     gridOptions={{
                       getRowId: (p) => p.data.id,
+                      rowSelection: {
+                        mode: 'multiRow',
+                        checkboxes: true,
+                        headerCheckbox: true,
+                      },
+                      onSelectionChanged: (e) => {
+                        setSelectedNetworks(e.api.getSelectedRows().map((n: any) => n.id));
+                      },
                       onRowClicked: (e) => {
                         if (e.data) handleToggleExpanded(e.data.id);
                       },

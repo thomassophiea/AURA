@@ -950,45 +950,26 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             </div>
           ) : agGridEnabled ? (
             (() => {
-              const agColDefs: ColDef<Station>[] = [
-                {
-                  headerName: '',
-                  width: 48,
-                  sortable: false,
-                  filter: false,
-                  resizable: false,
-                  cellRenderer: (params: any) => (
-                    <div onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selectedStations.has(params.data.macAddress)}
-                        onChange={(e) =>
-                          handleStationSelect(params.data.macAddress, e.target.checked)
+              const agColDefs: ColDef<Station>[] = customization.visibleColumnConfigs.map(
+                (column): ColDef<Station> => ({
+                  colId: column.key,
+                  headerName: column.label,
+                  field: (column.fieldPath || column.key) as any,
+                  sortable: column.sortable !== false,
+                  cellRenderer: column.renderCell
+                    ? (params: any) => column.renderCell!(params.data)
+                    : undefined,
+                  comparator:
+                    column.sortable !== false
+                      ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
+                          const va = getSortValue(nodeA.data, column.key);
+                          const vb = getSortValue(nodeB.data, column.key);
+                          if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+                          return String(va).localeCompare(String(vb));
                         }
-                      />
-                    </div>
-                  ),
-                },
-                ...customization.visibleColumnConfigs.map(
-                  (column): ColDef<Station> => ({
-                    headerName: column.label,
-                    field: (column.fieldPath || column.key) as any,
-                    sortable: column.sortable !== false,
-                    cellRenderer: column.renderCell
-                      ? (params: any) => column.renderCell!(params.data)
                       : undefined,
-                    comparator:
-                      column.sortable !== false
-                        ? (_a: any, _b: any, nodeA: any, nodeB: any) => {
-                            const va = getSortValue(nodeA.data, column.key);
-                            const vb = getSortValue(nodeB.data, column.key);
-                            if (typeof va === 'number' && typeof vb === 'number') return va - vb;
-                            return String(va).localeCompare(String(vb));
-                          }
-                        : undefined,
-                  })
-                ),
-              ];
+                })
+              );
               return (
                 <AGGridWrapper
                   rowData={sortedStations}
@@ -997,6 +978,12 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                   storageKey="connected-clients"
                   gridOptions={{
                     getRowId: (p) => p.data.macAddress,
+                    rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+                    onSelectionChanged: (e) => {
+                      const next = new Set<string>();
+                      e.api.getSelectedRows().forEach((s: any) => next.add(s.macAddress));
+                      setSelectedStations(next);
+                    },
                     onRowClicked: (e) => {
                       if (!e.data) return;
                       if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);

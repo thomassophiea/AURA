@@ -180,37 +180,80 @@ export function AccessControlGroups() {
             (() => {
               const agColDefs: ColDef<AccessGroup>[] = [
                 {
+                  colId: 'name',
                   field: 'name',
                   headerName: 'Name',
+                  flex: 1.5,
+                  minWidth: 180,
                 },
                 {
+                  colId: 'description',
                   field: 'description',
                   headerName: 'Description',
+                  flex: 2,
+                  minWidth: 200,
                 },
                 {
+                  colId: 'vlan',
                   field: 'vlan',
                   headerName: 'VLAN',
+                  width: 110,
+                  headerClass: 'ag-header-center',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: AccessGroup }) => (
                     <Badge>VLAN {params.data.vlan}</Badge>
                   ),
                 },
                 {
+                  colId: 'bandwidth',
                   field: 'bandwidth',
                   headerName: 'Bandwidth',
+                  width: 130,
+                  headerClass: 'ag-header-right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: AccessGroup }) => `${params.data.bandwidth} Mbps`,
                 },
                 {
+                  colId: 'memberCount',
                   field: 'memberCount',
                   headerName: 'Members',
+                  width: 120,
+                  headerClass: 'ag-header-right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: AccessGroup }) =>
                     `${params.data.memberCount} users`,
                 },
                 {
-                  headerName: 'Actions',
+                  colId: '__actions',
+                  headerName: '',
                   sortable: false,
                   filter: false,
+                  resizable: false,
+                  width: 110,
+                  pinned: 'right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (params: { data: AccessGroup }) => (
-                    <div className="flex gap-2">
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="outline"

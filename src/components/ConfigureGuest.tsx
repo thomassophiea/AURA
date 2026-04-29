@@ -102,8 +102,10 @@ export function ConfigureGuest() {
 
   const guestAccountColDefs: ColDef[] = [
     {
+      colId: 'username',
       headerName: 'Username',
-      flex: 2,
+      flex: 1.5,
+      minWidth: 180,
       valueGetter: (params: { data?: any }) =>
         params.data?.username || params.data?.name || params.data?.id || '',
       cellRenderer: (params: { value: string }) => (
@@ -114,14 +116,24 @@ export function ConfigureGuest() {
       ),
     },
     {
+      colId: 'email',
       field: 'email',
       headerName: 'Email',
       flex: 2,
+      minWidth: 200,
       valueFormatter: (params: { value?: string }) => params.value || '-',
     },
     {
+      colId: 'status',
       headerName: 'Status',
-      flex: 1,
+      width: 120,
+      headerClass: 'ag-header-center',
+      cellStyle: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      },
       valueGetter: (params: { data?: any }) =>
         params.data?.status || params.data?.accountStatus || 'unknown',
       cellRenderer: (params: { value: string }) => (
@@ -139,24 +151,37 @@ export function ConfigureGuest() {
       ),
     },
     {
+      colId: 'created',
       headerName: 'Created',
-      flex: 2,
+      width: 180,
       valueGetter: (params: { data?: any }) =>
         params.data?.createdDate || params.data?.createTime || '',
       valueFormatter: (params: { value?: string }) =>
         params.value ? new Date(params.value).toLocaleString() : '-',
     },
     {
+      colId: 'expires',
       headerName: 'Expires',
-      flex: 2,
+      width: 180,
       valueGetter: (params: { data?: any }) =>
         params.data?.expiryDate || params.data?.expireTime || '',
       valueFormatter: (params: { value?: string }) =>
         params.value ? new Date(params.value).toLocaleString() : 'Never',
     },
     {
-      headerName: 'Actions',
-      flex: 1,
+      colId: '__actions',
+      headerName: '',
+      sortable: false,
+      filter: false,
+      resizable: false,
+      width: 110,
+      pinned: 'right',
+      cellStyle: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+      },
       cellRenderer: (params: { data?: any }) =>
         params.data ? (
           <div className="flex items-center gap-1">

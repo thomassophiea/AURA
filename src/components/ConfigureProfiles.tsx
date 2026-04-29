@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -64,55 +64,75 @@ export function ConfigureProfiles() {
 
   const { agGridEnabled } = useGridMode();
 
-  const agColDefs: ColDef<DeviceProfile>[] = [
-    {
-      field: 'name',
-      headerName: 'Name',
-      flex: 2,
-      cellRenderer: (params: { value: string }) => (
-        <div className="flex items-center gap-2">
-          <Cpu className="h-4 w-4 text-muted-foreground" />
-          {params.value}
-        </div>
-      ),
-    },
-    {
-      field: 'type',
-      headerName: 'Type',
-      flex: 1,
-      cellRenderer: (params: { value: string }) => (
-        <Badge variant={params.value === 'DEFAULT' ? 'default' : 'secondary'}>
-          {params.value === 'DEFAULT' ? 'Site Default' : 'Device'}
-        </Badge>
-      ),
-    },
-    {
-      headerName: 'AP Platform',
-      flex: 1,
-      valueGetter: (params: { data?: DeviceProfile }) =>
-        params.data?.apPlatform || params.data?.deviceType || '—',
-    },
-    {
-      headerName: 'Actions',
-      flex: 1,
-      cellRenderer: (params: { data?: DeviceProfile }) =>
-        params.data ? (
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => openEdit(params.data!)}>
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-destructive hover:text-destructive"
-              onClick={() => handleDelete(params.data!.id, params.data!.name)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+  const agColDefs = useMemo<ColDef<DeviceProfile>[]>(
+    () => [
+      {
+        colId: 'name',
+        field: 'name',
+        headerName: 'Name',
+        flex: 2,
+        minWidth: 220,
+        cellRenderer: (params: { value: string }) => (
+          <div className="flex items-center gap-2">
+            <Cpu className="h-4 w-4 text-muted-foreground" />
+            {params.value}
           </div>
-        ) : null,
-    },
-  ];
+        ),
+      },
+      {
+        colId: 'type',
+        field: 'type',
+        headerName: 'Type',
+        width: 130,
+        cellRenderer: (params: { value: string }) => (
+          <Badge variant={params.value === 'DEFAULT' ? 'default' : 'secondary'}>
+            {params.value === 'DEFAULT' ? 'Site Default' : 'Device'}
+          </Badge>
+        ),
+      },
+      {
+        colId: 'apPlatform',
+        headerName: 'AP Platform',
+        flex: 1,
+        minWidth: 140,
+        valueGetter: (params: { data?: DeviceProfile }) =>
+          params.data?.apPlatform || params.data?.deviceType || '—',
+      },
+      {
+        colId: '__actions',
+        headerName: '',
+        sortable: false,
+        filter: false,
+        resizable: false,
+        width: 110,
+        pinned: 'right',
+        cellStyle: {
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+        },
+        cellRenderer: (params: { data?: DeviceProfile }) =>
+          params.data ? (
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" onClick={() => openEdit(params.data!)}>
+                <Edit2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-destructive hover:text-destructive"
+                onClick={() => handleDelete(params.data!.id, params.data!.name)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : null,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const filtered = profiles.filter((p) => p.name?.toLowerCase().includes(searchTerm.toLowerCase()));
 

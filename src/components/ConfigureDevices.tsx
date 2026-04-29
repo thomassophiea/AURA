@@ -953,31 +953,11 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
             (() => {
               const agColDefs: ColDef<Device>[] = [
                 {
-                  headerName: '',
-                  width: 48,
-                  sortable: false,
-                  filter: false,
-                  resizable: false,
-                  cellRenderer: (params: any) => {
-                    const deviceId = params.data.id || params.data.serialNumber || '';
-                    return (
-                      <input
-                        type="checkbox"
-                        checked={selectedDevices.has(deviceId)}
-                        onChange={(e) => {
-                          const next = new Set(selectedDevices);
-                          if (e.target.checked) next.add(deviceId);
-                          else next.delete(deviceId);
-                          setSelectedDevices(next);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    );
-                  },
-                },
-                {
+                  colId: 'device',
                   headerName: 'Device',
                   field: 'deviceName' as any,
+                  flex: 2,
+                  minWidth: 240,
                   cellRenderer: (params: any) => (
                     <div>
                       <div className="flex items-center gap-2">
@@ -992,20 +972,27 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                   ),
                 },
                 {
+                  colId: 'type',
                   headerName: 'Type',
                   field: 'deviceType' as any,
+                  width: 130,
                   cellRenderer: (p: any) => (
                     <Badge variant="outline">{p.data.deviceType || 'Unknown'}</Badge>
                   ),
                 },
                 {
+                  colId: 'site',
                   headerName: 'Site',
                   field: 'siteName' as any,
+                  flex: 1,
+                  minWidth: 140,
                   valueGetter: (p) => p.data?.siteName || 'Unknown Site',
                 },
                 {
+                  colId: 'status',
                   headerName: 'Status',
                   field: 'status' as any,
+                  width: 130,
                   cellRenderer: (p: any) => (
                     <Badge
                       variant={getStatusBadgeVariant(p.data.status || p.data.operationalStatus)}
@@ -1015,25 +1002,40 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                   ),
                 },
                 {
+                  colId: 'ipAddress',
                   headerName: 'IP Address',
                   field: 'ipAddress' as any,
+                  width: 150,
                   valueGetter: (p) => p.data?.ipAddress || 'N/A',
                 },
                 {
+                  colId: 'lastSeen',
                   headerName: 'Last Seen',
                   field: 'lastSeen' as any,
+                  width: 150,
                   valueGetter: (p) => formatLastSeen(p.data?.lastSeen),
                 },
                 {
+                  colId: 'uptime',
                   headerName: 'Uptime',
                   field: 'uptime' as any,
+                  width: 130,
                   valueGetter: (p) => formatUptime(p.data?.uptime),
                 },
                 {
-                  headerName: 'Actions',
+                  colId: '__actions',
+                  headerName: '',
                   sortable: false,
                   filter: false,
-                  width: 120,
+                  resizable: false,
+                  width: 110,
+                  pinned: 'right',
+                  cellStyle: {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    height: '100%',
+                  },
                   cellRenderer: (p: any) => (
                     <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -1064,6 +1066,18 @@ export function ConfigureDevices({ onShowDetail }: ConfigureDevicesProps) {
                   columnDefs={agColDefs}
                   height={600}
                   storageKey="configure-devices"
+                  gridOptions={{
+                    getRowId: (p) => p.data.id || p.data.serialNumber || '',
+                    rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
+                    onSelectionChanged: (e) => {
+                      const ids = new Set<string>();
+                      e.api.getSelectedRows().forEach((d: any) => {
+                        const id = d.id || d.serialNumber || '';
+                        if (id) ids.add(id);
+                      });
+                      setSelectedDevices(ids);
+                    },
+                  }}
                 />
               );
             })()

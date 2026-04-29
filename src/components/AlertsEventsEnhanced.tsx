@@ -676,8 +676,10 @@ export function AlertsEventsEnhanced() {
                 (() => {
                   const colDefs: ColDef<Alert>[] = [
                     {
+                      colId: 'severity',
                       headerName: 'Severity',
                       field: 'severity',
+                      width: 130,
                       cellRenderer: (p: any) => (
                         <Badge
                           variant={getSeverityColor(p.data.severity)}
@@ -689,8 +691,10 @@ export function AlertsEventsEnhanced() {
                       ),
                     },
                     {
+                      colId: 'category',
                       headerName: 'Category',
                       field: 'category',
+                      width: 150,
                       cellRenderer: (p: any) => (
                         <div className="flex items-center gap-2">
                           {getCategoryIcon(p.data.category)}
@@ -699,9 +703,11 @@ export function AlertsEventsEnhanced() {
                       ),
                     },
                     {
+                      colId: 'message',
                       headerName: 'Message',
                       field: 'message',
                       flex: 2,
+                      minWidth: 240,
                       cellRenderer: (p: any) => (
                         <div>
                           <div className="font-medium">{p.data.message}</div>
@@ -713,10 +719,18 @@ export function AlertsEventsEnhanced() {
                         </div>
                       ),
                     },
-                    { headerName: 'Source', field: 'source' },
                     {
+                      colId: 'source',
+                      headerName: 'Source',
+                      field: 'source',
+                      flex: 1,
+                      minWidth: 140,
+                    },
+                    {
+                      colId: 'status',
                       headerName: 'Status',
                       field: 'status',
+                      width: 120,
                       cellRenderer: (p: any) => (
                         <Badge variant={getStatusColor(p.data.status)} className="capitalize">
                           {p.data.status}
@@ -724,8 +738,10 @@ export function AlertsEventsEnhanced() {
                       ),
                     },
                     {
+                      colId: 'timestamp',
                       headerName: 'Time',
                       field: 'timestamp',
+                      width: 180,
                       valueFormatter: (p) =>
                         p.data?.timestamp != null ? formatTimestamp(p.data.timestamp) : '',
                     },
@@ -833,8 +849,10 @@ export function AlertsEventsEnhanced() {
                 (() => {
                   const colDefs: ColDef<Event>[] = [
                     {
+                      colId: 'category',
                       headerName: 'Category',
                       field: 'category',
+                      width: 150,
                       cellRenderer: (p: any) => (
                         <div className="flex items-center gap-2">
                           {getCategoryIcon(p.data.category)}
@@ -843,8 +861,10 @@ export function AlertsEventsEnhanced() {
                       ),
                     },
                     {
+                      colId: 'type',
                       headerName: 'Type',
                       field: 'type',
+                      width: 130,
                       cellRenderer: (p: any) => (
                         <Badge variant="outline" className="capitalize">
                           {p.data.type}
@@ -852,9 +872,11 @@ export function AlertsEventsEnhanced() {
                       ),
                     },
                     {
+                      colId: 'message',
                       headerName: 'Message',
                       field: 'message',
                       flex: 2,
+                      minWidth: 240,
                       cellRenderer: (p: any) => (
                         <div>
                           <div className="font-medium">{p.data.message}</div>
@@ -869,10 +891,18 @@ export function AlertsEventsEnhanced() {
                         </div>
                       ),
                     },
-                    { headerName: 'Source', field: 'source' },
                     {
+                      colId: 'source',
+                      headerName: 'Source',
+                      field: 'source',
+                      flex: 1,
+                      minWidth: 140,
+                    },
+                    {
+                      colId: 'timestamp',
                       headerName: 'Time',
                       field: 'timestamp',
+                      width: 180,
                       valueFormatter: (p) =>
                         p.data?.timestamp != null ? formatTimestamp(p.data.timestamp) : '',
                     },
