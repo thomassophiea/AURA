@@ -707,40 +707,20 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     loadAccessPoints();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-refresh polling
+  // Auto-refresh polling — silent (cell-level updates only, no page skeleton)
   useEffect(() => {
-    const REFRESH_INTERVAL = 60000; // 60 seconds
-
+    const REFRESH_INTERVAL = 120000; // 2 minutes
     const intervalId = setInterval(() => {
-      // Only auto-refresh if the page is visible
       if (document.visibilityState === 'visible') {
-        console.log('Auto-refreshing AP data...');
         setIsAutoRefreshing(true);
-        loadAccessPoints().finally(() => {
-          setIsAutoRefreshing(false);
-        });
+        loadAccessPoints({ silent: true }).finally(() => setIsAutoRefreshing(false));
       }
     }, REFRESH_INTERVAL);
-
-    // Cleanup interval on unmount
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pause polling when tab becomes inactive
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Tab became active, refreshing AP data...');
-        loadAccessPoints();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
+  // No visibility-change auto-reload — user can manually refresh.
 
   // Refresh "time ago" labels every 60s (was 10s — too disruptive to grid interactions)
   useEffect(() => {
@@ -771,8 +751,11 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
     }
   };
 
-  const loadAccessPoints = async () => {
-    setIsLoading(true);
+  const loadAccessPoints = async (opts: { silent?: boolean } = {}) => {
+    const isFirstLoad = accessPoints.length === 0;
+    if (!opts.silent && isFirstLoad) {
+      setIsLoading(true);
+    }
     setError('');
 
     try {
@@ -2306,9 +2289,9 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </Select>
           <Button
             onClick={() => {
-              // Refresh columns metadata and access points
               loadData();
-              loadAccessPoints();
+              setIsAutoRefreshing(true);
+              loadAccessPoints({ silent: true }).finally(() => setIsAutoRefreshing(false));
             }}
             variant="outline"
             size="sm"
@@ -2984,8 +2967,7 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
                                       try {
                                         await apiService.deleteAP(ap.serialNumber);
                                         toast.success('AP deleted successfully');
-                                        // Refresh AP list
-                                        loadAccessPoints();
+                                        loadAccessPoints({ silent: true });
                                       } catch (err) {
                                         toast.error(
                                           err instanceof Error ? err.message : 'Failed to delete AP'
