@@ -6872,3 +6872,9 @@ body.mi5 {
 .aura-btn-disabled-soft:disabled {
   opacity: 0.6 !important;
 }
+
+/* Slightly less aggressive disabled state — Apple uses ~60-70% opacity
+   instead of 50%, keeping disabled buttons clearly readable. */
+button[data-slot='button']:disabled {
+  opacity: 0.65;
+}
