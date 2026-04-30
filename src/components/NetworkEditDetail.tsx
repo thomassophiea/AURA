@@ -1123,11 +1123,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       className={`rounded-lg border border-border/50 bg-card ${className}`}
       style={{ scrollMarginTop: 124 }}
     >
-      <header className="px-6 py-4 border-b border-border/50">
+      <header className="px-5 py-3 border-b border-border/50">
         <h3 className="text-sm font-semibold leading-none">{title}</h3>
-        {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
+        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
       </header>
-      <div className="px-6 py-6">{children}</div>
+      <div className="px-5 py-4">{children}</div>
     </section>
   );
 
@@ -1150,14 +1150,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(180px, 240px) 1fr',
-          gap: '24px',
-          alignItems: 'start',
+          gridTemplateColumns: 'minmax(160px, 220px) 1fr',
+          gap: '20px',
+          alignItems: 'center',
         }}
       >
-        <div className="pt-2">
+        <div>
           <Label className="text-sm font-medium text-foreground">{label}</Label>
-          {helper && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{helper}</p>}
+          {helper && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{helper}</p>}
         </div>
         <div>{children}</div>
       </div>
@@ -1181,14 +1181,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     checked: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <div
-      className="flex items-center justify-between gap-4 py-3 border-b border-border/40 last:border-b-0"
-      style={{ minHeight: 52 }}
-    >
+    <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/40 last:border-b-0">
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-foreground">{label}</p>
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
@@ -1230,7 +1227,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         className="border-b border-border/50 bg-card"
         style={{ position: 'sticky', top: 0, zIndex: 50 }}
       >
-        <div className="mx-auto px-6 py-3" style={{ maxWidth: 1024 }}>
+        <div className="px-5 py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
@@ -1295,10 +1292,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             scrollbarWidth: 'thin',
           }}
         >
-          <div
-            className="mx-auto px-6 py-2 flex items-center gap-1"
-            style={{ maxWidth: 1024, whiteSpace: 'nowrap' }}
-          >
+          <div className="px-5 py-2 flex items-center gap-1" style={{ whiteSpace: 'nowrap' }}>
             {navSections.map((s) => (
               <button
                 key={s.id}
@@ -1318,7 +1312,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       </div>
 
       {/* ═══ PAGE CONTENT ═══ */}
-      <div className="mx-auto px-6 py-6 space-y-6" style={{ maxWidth: 1024 }}>
+      <div className="px-5 py-5 space-y-4">
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -1332,7 +1326,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="SSID"
           description="Identity, broadcast name, and operational status."
         >
-          <div className="space-y-6">
+          <div className="space-y-3">
             <Field label="Network Name" helper="Display name shown in lists and reports.">
               <Input
                 value={formData.name}
@@ -1395,7 +1389,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Security"
           description="Authentication and encryption applied to client associations."
         >
-          <div className="space-y-6">
+          <div className="space-y-3">
             <Field
               label="Auth Type"
               helper="Use Edit Privacy to set passphrase, encryption, and PMF for personal/PSK modes."
@@ -1534,7 +1528,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Role & VLAN"
           description="Default access role and topology for authenticated clients."
         >
-          <div className="space-y-6">
+          <div className="space-y-3">
             <Field
               label="Default Auth Role"
               helper="Role applied to clients after successful authentication."
@@ -1586,7 +1580,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Captive Portal"
           description="Splash page for guest onboarding."
         >
-          <div className="space-y-6">
+          <div className="space-y-3">
             <Toggle
               label="Enable Captive Portal"
               description="Redirect new clients to a splash page before granting access."
@@ -1642,7 +1636,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             title="Enterprise AAA"
             description="RADIUS / 802.1X policy for enterprise authentication."
           >
-            <div className="space-y-6">
+            <div className="space-y-3">
               <Field
                 label="AAA Policy"
                 helper="Required for enterprise authentication. Defines RADIUS servers and behavior."
@@ -1838,7 +1832,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="QoS & Timeouts"
           description="Class of service and idle/session timeouts (seconds)."
         >
-          <div className="space-y-6">
+          <div className="space-y-3">
             <Field label="Class of Service" helper="Default CoS profile applied to clients.">
               <Select
                 value={formData.defaultCoS || 'none'}
