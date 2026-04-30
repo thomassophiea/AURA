@@ -239,7 +239,10 @@ export function Sidebar({
                     <span className="flex items-center gap-2">
                       {item.label}
                       {item.badge && (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide">
+                        <span
+                          className="text-xs px-1.5 py-0.5 rounded bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] font-medium uppercase tracking-wide"
+                          style={{ fontSize: '9px' }}
+                        >
                           {item.badge}
                         </span>
                       )}
