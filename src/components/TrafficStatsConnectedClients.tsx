@@ -1168,6 +1168,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                   height={620}
                   storageKey="traffic-stats-clients"
                   gridOptions={{
+                    rowHeight: 56,
                     getRowId: (p) => p.data.macAddress,
                     rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
                     onSelectionChanged: (e) => {
