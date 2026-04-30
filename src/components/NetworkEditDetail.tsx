@@ -1229,7 +1229,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     <div className={isInline ? 'bg-muted/10' : 'bg-background'}>
       {/* ═══ STICKY HEADER — title + dirty indicator + Cancel/Save ═══ */}
       <div
-        className="border-b border-border/50 bg-card"
+        className="border-b border-border/50 bg-card/85 backdrop-blur-lg"
         style={{ position: 'sticky', top: 0, zIndex: 50 }}
       >
         <div className="px-6 py-4 mx-auto" style={{ maxWidth: 1280 }}>
@@ -1306,10 +1306,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 key={s.id}
                 type="button"
                 onClick={() => scrollToSection(s.id)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                   activeSection === s.id
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    ? 'bg-primary/15 text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                 }`}
               >
                 {s.label}

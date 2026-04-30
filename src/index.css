@@ -6842,3 +6842,33 @@ body.mi5 {
 .aura-switch[data-state='checked'] .aura-switch-thumb {
   transform: translateX(16px);
 }
+
+/* Backdrop blur — Apple-style vibrancy on sticky toolbars */
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.backdrop-blur-xl {
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+/* Translucent surface for sticky toolbars */
+.bg-card\/80 {
+  background-color: color-mix(in oklab, var(--card) 80%, transparent);
+}
+.bg-card\/85 {
+  background-color: color-mix(in oklab, var(--card) 85%, transparent);
+}
+.bg-card\/90 {
+  background-color: color-mix(in oklab, var(--card) 90%, transparent);
+}
+
+/* Polished disabled state */
+.aura-btn-disabled-soft:disabled {
+  opacity: 0.6 !important;
+}
