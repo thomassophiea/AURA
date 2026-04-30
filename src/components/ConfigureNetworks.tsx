@@ -397,18 +397,45 @@ const normalizeVlanId = (value: unknown): number | undefined => {
   return undefined;
 };
 
+// XIQC may return `defaultTopology` as a UUID string OR as an embedded object.
+// Resolve both shapes, falling back to the topologyById map for plain UUIDs.
+// IMPORTANT: `service.dot1dPortNumber` is a service port index (sequential per
+// SSID, defaults near 100) — it is NOT a VLAN ID and must never be displayed
+// as one, even as a fallback.
+const resolveTopologyInfo = (
+  service: Service,
+  topologyById: Record<string, Topology>
+): { vlanId?: number; name?: string } => {
+  const ref = (service as any).defaultTopology;
+
+  if (ref && typeof ref === 'object') {
+    return {
+      vlanId: normalizeVlanId(ref.vlanid ?? ref.vlanId),
+      name: typeof ref.name === 'string' ? ref.name : undefined,
+    };
+  }
+
+  if (typeof ref === 'string' && ref) {
+    const topology = topologyById[ref];
+    if (topology) {
+      return {
+        vlanId: normalizeVlanId(topology.vlanid),
+        name: typeof topology.name === 'string' ? topology.name : undefined,
+      };
+    }
+  }
+
+  return {};
+};
+
 const resolveDefaultVlan = (
   service: Service,
   topologyById: Record<string, Topology>
 ): number | undefined => {
-  const topologyId = typeof service.defaultTopology === 'string' ? service.defaultTopology : '';
-  const topologyVlanId = topologyId ? normalizeVlanId(topologyById[topologyId]?.vlanid) : undefined;
-
   return (
-    topologyVlanId ??
+    resolveTopologyInfo(service, topologyById).vlanId ??
     normalizeVlanId(service.vlan) ??
-    normalizeVlanId(service.vlanId) ??
-    normalizeVlanId(service.dot1dPortNumber)
+    normalizeVlanId(service.vlanId)
   );
 };
 
@@ -416,9 +443,7 @@ const resolveDefaultTopologyName = (
   service: Service,
   topologyById: Record<string, Topology>
 ): string | undefined => {
-  const topologyId = typeof service.defaultTopology === 'string' ? service.defaultTopology : '';
-  const topology = topologyId ? topologyById[topologyId] : undefined;
-  return topology?.name;
+  return resolveTopologyInfo(service, topologyById).name;
 };
 
 // Helper function to transform service data to network config

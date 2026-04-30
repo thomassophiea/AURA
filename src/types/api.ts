@@ -152,15 +152,15 @@ export interface Station {
   channelNumber?: number; // Another channel field variation
   capabilities?: string;
   signalStrength?: number;
-  rssi?: number;           // RSSI in dBm (primary signal strength field)
-  rss?: number;            // Alternative RSSI field name
-  snr?: number;            // Signal-to-noise ratio
-  band?: string;           // Frequency band (2.4GHz, 5GHz, 6GHz)
-  frequencyBand?: string;  // Alternative band field name
+  rssi?: number; // RSSI in dBm (primary signal strength field)
+  rss?: number; // Alternative RSSI field name
+  snr?: number; // Signal-to-noise ratio
+  band?: string; // Frequency band (2.4GHz, 5GHz, 6GHz)
+  frequencyBand?: string; // Alternative band field name
   rxRate?: number | string;
   txRate?: number | string; // Transmission rate (number from API, string in legacy responses)
   transmittedRate?: number; // Alternative Tx rate field
-  receivedRate?: number;    // Alternative Rx rate field
+  receivedRate?: number; // Alternative Rx rate field
   protocol?: string;
 
   // Traffic statistics
@@ -193,7 +193,7 @@ export interface Station {
   vlan?: string | number;
   vlanId?: string | number; // Alternative VLAN field
   vlanTag?: string | number; // VLAN tag field
-  dot1dPortNumber?: number; // VLAN ID from services
+  dot1dPortNumber?: number; // 802.1d bridge port index — NOT a VLAN ID
   apIpAddress?: string;
   authMethod?: string;
   encryption?: string;
@@ -205,31 +205,31 @@ export interface Station {
 }
 
 export interface StationEvent {
-  timestamp: string;           // Unix timestamp in milliseconds as string
-  eventType: string;           // Event type: "Roam", "Associate", "Disassociate", "Authenticate", etc.
-  macAddress: string;          // Client MAC address
-  ipAddress?: string;          // Client IP address
-  ipv6Address?: string;        // Client IPv6 address
-  apName?: string;             // Access Point name
-  apSerial?: string;           // Access Point serial number
-  ssid?: string;               // SSID name
-  details?: string;            // Detailed event description
-  type?: string;               // Event category/type
-  level?: string;              // Event severity level
-  category?: string;           // Event category
-  context?: string;            // Event context
-  id?: string;                 // Event ID
+  timestamp: string; // Unix timestamp in milliseconds as string
+  eventType: string; // Event type: "Roam", "Associate", "Disassociate", "Authenticate", etc.
+  macAddress: string; // Client MAC address
+  ipAddress?: string; // Client IP address
+  ipv6Address?: string; // Client IPv6 address
+  apName?: string; // Access Point name
+  apSerial?: string; // Access Point serial number
+  ssid?: string; // SSID name
+  details?: string; // Detailed event description
+  type?: string; // Event category/type
+  level?: string; // Event severity level
+  category?: string; // Event category
+  context?: string; // Event context
+  id?: string; // Event ID
   // Additional troubleshooting fields
-  channel?: number;            // WiFi channel
-  band?: string;               // Frequency band (2.4GHz, 5GHz, 6GHz)
-  rssi?: number;               // Signal strength in dBm
-  snr?: number;                // Signal-to-noise ratio in dB
-  dataRate?: number;           // PHY data rate in Mbps
-  previousAp?: string;         // Previous AP name (for roaming)
-  previousApSerial?: string;   // Previous AP serial (for roaming)
-  reasonCode?: number;         // 802.11 reason code
-  statusCode?: number;         // 802.11 status code
-  authMethod?: string;         // Authentication method used
+  channel?: number; // WiFi channel
+  band?: string; // Frequency band (2.4GHz, 5GHz, 6GHz)
+  rssi?: number; // Signal strength in dBm
+  snr?: number; // Signal-to-noise ratio in dB
+  dataRate?: number; // PHY data rate in Mbps
+  previousAp?: string; // Previous AP name (for roaming)
+  previousApSerial?: string; // Previous AP serial (for roaming)
+  reasonCode?: number; // 802.11 reason code
+  statusCode?: number; // 802.11 status code
+  authMethod?: string; // Authentication method used
 }
 
 export interface StationTrafficStats {
@@ -245,68 +245,68 @@ export interface StationTrafficStats {
 
 // AP Event - events from the Access Point perspective
 export interface APEvent {
-  timestamp: string;           // Unix timestamp in milliseconds as string
-  eventType: string;           // Event type
-  apName?: string;             // Access Point name
-  apSerial?: string;           // Access Point serial number
-  details?: string;            // Event details
-  type?: string;               // Event category
-  level?: string;              // Severity level
-  category?: string;           // Event category
-  context?: string;            // Event context
-  id?: string;                 // Event ID
+  timestamp: string; // Unix timestamp in milliseconds as string
+  eventType: string; // Event type
+  apName?: string; // Access Point name
+  apSerial?: string; // Access Point serial number
+  details?: string; // Event details
+  type?: string; // Event category
+  level?: string; // Severity level
+  category?: string; // Event category
+  context?: string; // Event context
+  id?: string; // Event ID
 }
 
 // RRM Event (formerly SmartRF) - Radio Resource Management events
 export interface RRMEvent {
-  timestamp: string;           // Unix timestamp in milliseconds as string
-  eventType: string;           // Event type (channel change, power adjustment, etc.)
-  apName?: string;             // Access Point name
-  apSerial?: string;           // Access Point serial number
-  radio?: string;              // Radio identifier
-  channel?: number;            // WiFi channel
-  previousChannel?: number;    // Previous channel (for channel changes)
-  txPower?: number;            // Transmit power
-  previousTxPower?: number;    // Previous transmit power
-  band?: string;               // Frequency band
-  reason?: string;             // Reason for the change
-  details?: string;            // Event details
-  type?: string;               // Event category
-  level?: string;              // Severity level
-  id?: string;                 // Event ID
+  timestamp: string; // Unix timestamp in milliseconds as string
+  eventType: string; // Event type (channel change, power adjustment, etc.)
+  apName?: string; // Access Point name
+  apSerial?: string; // Access Point serial number
+  radio?: string; // Radio identifier
+  channel?: number; // WiFi channel
+  previousChannel?: number; // Previous channel (for channel changes)
+  txPower?: number; // Transmit power
+  previousTxPower?: number; // Previous transmit power
+  band?: string; // Frequency band
+  reason?: string; // Reason for the change
+  details?: string; // Event details
+  type?: string; // Event category
+  level?: string; // Severity level
+  id?: string; // Event ID
 }
 
 // Combined station events response from muEvent widget
 export interface StationEventsResponse {
   stationEvents: StationEvent[];
   apEvents: APEvent[];
-  smartRfEvents: RRMEvent[];  // API returns as smartRfEvents, we display as RRM Events
+  smartRfEvents: RRMEvent[]; // API returns as smartRfEvents, we display as RRM Events
 }
 
 // AP Alarm/Event - individual alarm from the AP alarms endpoint
 export interface APAlarm {
-  log: string;                // Message/description
-  ts: number;                 // Timestamp in milliseconds
-  pos: number;                // Position/order
-  ApSerial: string;           // AP Serial number
-  ApName: string;             // AP Name
-  Id: number;                 // Event ID
-  Context: string;            // Context (ConnectDetails, ChannelChange, etc.)
-  Category: string;           // Category (Discovery, AlarmCleared, etc.)
-  Level: string;              // Severity level (Critical, Major, etc.)
+  log: string; // Message/description
+  ts: number; // Timestamp in milliseconds
+  pos: number; // Position/order
+  ApSerial: string; // AP Serial number
+  ApName: string; // AP Name
+  Id: number; // Event ID
+  Context: string; // Context (ConnectDetails, ChannelChange, etc.)
+  Category: string; // Category (Discovery, AlarmCleared, etc.)
+  Level: string; // Severity level (Critical, Major, etc.)
 }
 
 // AP Alarm Type - groups alarms by type
 export interface APAlarmType {
-  id: string;                 // Alarm type ID (ChannelChange, ConnectDetails, etc.)
-  severity: string;           // Severity level
-  alarms: APAlarm[];          // List of alarms
+  id: string; // Alarm type ID (ChannelChange, ConnectDetails, etc.)
+  severity: string; // Severity level
+  alarms: APAlarm[]; // List of alarms
 }
 
 // AP Alarm Category - groups alarm types by category
 export interface APAlarmCategory {
-  category: string[];         // Category names
-  alarmTypes: APAlarmType[];  // List of alarm types
+  category: string[]; // Category names
+  alarmTypes: APAlarmType[]; // List of alarm types
 }
 
 // AP Insights - Timeseries data point
@@ -463,7 +463,9 @@ export interface Service {
   canDelete?: boolean;
 
   // Network/VLAN Configuration
-  dot1dPortNumber?: number; // VLAN ID / Service ID
+  // 802.1d bridge port index for the SSID (sequential, ~100+). Not a VLAN.
+  // The actual VLAN comes from the topology referenced by `defaultTopology`.
+  dot1dPortNumber?: number;
   defaultTopology?: string; // Topology UUID for VLAN assignment
   proxied?: string; // "Local" or "Centralized" - traffic forwarding mode
 
