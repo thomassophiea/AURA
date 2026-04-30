@@ -1145,7 +1145,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     children,
     inline = true,
   }: {
-    label: string;
+    label: React.ReactNode;
     helper?: string;
     children: React.ReactNode;
     inline?: boolean;
@@ -1232,7 +1232,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         className="border-b border-border/50 bg-card"
         style={{ position: 'sticky', top: 0, zIndex: 50 }}
       >
-        <div className="px-6 py-4">
+        <div className="px-6 py-4 mx-auto" style={{ maxWidth: 1280 }}>
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
@@ -1297,7 +1297,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             scrollbarWidth: 'thin',
           }}
         >
-          <div className="px-6 py-2 flex items-center gap-1" style={{ whiteSpace: 'nowrap' }}>
+          <div
+            className="px-6 py-2 flex items-center gap-1 mx-auto"
+            style={{ whiteSpace: 'nowrap', maxWidth: 1280 }}
+          >
             {navSections.map((s) => (
               <button
                 key={s.id}
@@ -1317,7 +1320,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       </div>
 
       {/* ═══ PAGE CONTENT ═══ */}
-      <div className="px-6 py-6 space-y-6">
+      <div className="px-6 py-6 space-y-6 mx-auto" style={{ maxWidth: 1280 }}>
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -1396,7 +1399,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         >
           <div>
             <Field
-              label="Auth Type"
+              label={
+                <span className="inline-flex items-center gap-2">
+                  Auth Type
+                  {show6eBadge && (
+                    <Badge className="bg-green-500/15 text-green-500 dark:text-green-400 border-0 text-xs font-medium">
+                      Wi-Fi 6E
+                    </Badge>
+                  )}
+                </span>
+              }
               helper="Use Edit Privacy to set passphrase, encryption, and PMF for personal/PSK modes."
             >
               <div className="flex items-center gap-2">
@@ -1511,13 +1523,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 )}
               </div>
             </Field>
-            {show6eBadge && (
-              <Field label="Wi-Fi 6E">
-                <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 text-xs font-medium">
-                  6E WPA Compliance
-                </Badge>
-              </Field>
-            )}
             <Toggle
               label="MAC-based Auth (MBA)"
               description="Authenticate clients by MAC address before applying network access policy."
