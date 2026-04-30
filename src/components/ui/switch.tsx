@@ -10,16 +10,23 @@ function Switch({ className, ...props }: React.ComponentProps<typeof SwitchPrimi
     <SwitchPrimitive.Root
       data-slot="switch"
       className={cn(
-        'peer data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-zinc-600/40 dark:data-[state=unchecked]:bg-zinc-500/30 focus-visible:border-ring focus-visible:ring-ring inline-flex h-6 w-11 shrink-0 items-center rounded-full border-2 border-transparent data-[state=unchecked]:border-zinc-400/50 dark:data-[state=unchecked]:border-zinc-600 transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
+        'peer inline-flex h-5 shrink-0 items-center rounded-full border-2 border-transparent transition-all outline-none cursor-pointer',
+        'focus-visible:border-ring focus-visible:ring-ring focus-visible:ring-[3px]',
+        'disabled:cursor-not-allowed disabled:opacity-50',
+        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-switch-background',
+        'dark:data-[state=unchecked]:bg-input/80',
         className
       )}
+      style={{ width: 36 }}
       {...props}
     >
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
         className={cn(
-          'bg-white shadow-md pointer-events-none block size-5 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-5 data-[state=unchecked]:translate-x-0'
+          'bg-card shadow-md pointer-events-none block rounded-full ring-0 transition-transform',
+          'data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0'
         )}
+        style={{ width: 16, height: 16 }}
       />
     </SwitchPrimitive.Root>
   );

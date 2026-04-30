@@ -1120,14 +1120,16 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   }) => (
     <section
       id={id ? `section-${id}` : undefined}
-      className={`rounded-lg border border-border/50 bg-card ${className}`}
+      className={`rounded-xl border border-border bg-card shadow-sm ${className}`}
       style={{ scrollMarginTop: 124 }}
     >
-      <header className="px-5 py-2.5 border-b border-border/50">
-        <h3 className="text-sm font-semibold leading-none">{title}</h3>
-        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+      <header className="px-6 py-4 border-b border-border/60">
+        <h3 className="text-base font-semibold tracking-tight leading-none">{title}</h3>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-1.5 leading-snug">{description}</p>
+        )}
       </header>
-      <div className="px-5">{children}</div>
+      <div className="px-6">{children}</div>
     </section>
   );
 
@@ -1230,14 +1232,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         className="border-b border-border/50 bg-card"
         style={{ position: 'sticky', top: 0, zIndex: 50 }}
       >
-        <div className="px-5 py-3">
+        <div className="px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <div className="min-w-0">
-                <h2 className="text-base font-semibold truncate">
+                <h2 className="text-lg font-semibold tracking-tight truncate">
                   {formData.name || 'Untitled WLAN'}
                 </h2>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-muted-foreground truncate mt-0.5">
                   SSID: {formData.ssid || '—'}
                 </p>
               </div>
@@ -1295,7 +1297,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             scrollbarWidth: 'thin',
           }}
         >
-          <div className="px-5 py-2 flex items-center gap-1" style={{ whiteSpace: 'nowrap' }}>
+          <div className="px-6 py-2 flex items-center gap-1" style={{ whiteSpace: 'nowrap' }}>
             {navSections.map((s) => (
               <button
                 key={s.id}
@@ -1315,7 +1317,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       </div>
 
       {/* ═══ PAGE CONTENT ═══ */}
-      <div className="px-5 py-5 space-y-4">
+      <div className="px-6 py-6 space-y-6">
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -1729,7 +1731,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         {/* ── SSID Scheduling ── */}
         <section
           id="section-schedule"
-          className="rounded-lg border border-border/50 bg-card"
+          className="rounded-xl border border-border bg-card shadow-sm"
           style={{ scrollMarginTop: 124 }}
         >
           <button
@@ -1740,8 +1742,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground" />
               <div className="text-left">
-                <h3 className="text-sm font-semibold leading-none">SSID Scheduling</h3>
-                <p className="text-xs text-muted-foreground mt-1.5">
+                <h3 className="text-base font-semibold tracking-tight leading-none">
+                  SSID Scheduling
+                </h3>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
                   Define daily availability windows. Set both times to 00:00 to disable a day.
                 </p>
               </div>
@@ -1894,14 +1898,14 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         {/* ── Advanced ── grouped accordions */}
         <section
           id="section-advanced"
-          className="rounded-lg border border-border/50 bg-card"
+          className="rounded-xl border border-border bg-card shadow-sm"
           style={{ scrollMarginTop: 124 }}
         >
-          <header className="px-6 py-4 border-b border-border/50 flex items-center gap-3">
+          <header className="px-6 py-4 border-b border-border/60 flex items-center gap-3">
             <Settings className="h-4 w-4 text-muted-foreground" />
             <div>
-              <h3 className="text-sm font-semibold leading-none">Advanced</h3>
-              <p className="text-xs text-muted-foreground mt-1.5">
+              <h3 className="text-base font-semibold tracking-tight leading-none">Advanced</h3>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-snug">
                 Detailed radio, RADIUS, QoS admission control, and client behavior settings.
               </p>
             </div>

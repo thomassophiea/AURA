@@ -378,7 +378,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     },
     [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups.length]
-  ); // eslint-disable-line react-hooks/exhaustive-deps
+  );
 
   // Initial load + auto-refresh
   useEffect(() => {
@@ -618,7 +618,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
       {/* SLE Threshold Edit Dialog */}
       <Dialog open={thresholdDialogOpen} onOpenChange={setThresholdDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings2 className="h-5 w-5 text-primary" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Zap } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -39,7 +39,10 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
   // Load sites when dialog opens
   useEffect(() => {
     if (!open) return;
-    apiService.getSites().then(setSites).catch(() => setSites([]));
+    apiService
+      .getSites()
+      .then(setSites)
+      .catch(() => setSites([]));
   }, [open]);
 
   // Reset form when dialog closes
@@ -95,7 +98,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
         if (!result.success) throw new Error(result.errors?.[0] ?? 'Creation failed');
         toast.success('WLAN Created', { description: `${ssid} saved globally (not deployed)` });
       } else if (assignmentMode === 'all_sites') {
-        const allSiteIds = sites.map(s => s.id);
+        const allSiteIds = sites.map((s) => s.id);
         const result = await assignmentService.createWLANWithAutoAssignment({
           ...serviceData,
           sites: allSiteIds,
@@ -112,13 +115,15 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
           new Set([
             ...selectedSiteIds,
             ...sitesWithGroup
-              .filter(s => s.site_group_id != null && selectedSiteGroupIds.includes(s.site_group_id))
-              .map(s => s.id),
+              .filter(
+                (s) => s.site_group_id != null && selectedSiteGroupIds.includes(s.site_group_id)
+              )
+              .map((s) => s.id),
           ])
         );
-        const siteAssignments = allTargetSiteIds.map(siteId => ({
+        const siteAssignments = allTargetSiteIds.map((siteId) => ({
           siteId,
-          siteName: sites.find(s => s.id === siteId)?.name ?? siteId,
+          siteName: sites.find((s) => s.id === siteId)?.name ?? siteId,
           deploymentMode: 'ALL_PROFILES_AT_SITE' as const,
           includedProfiles: [],
           excludedProfiles: [],
@@ -146,12 +151,15 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg" style={{ maxWidth: 560 }}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-green-400" />
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold tracking-tight">
+            <Zap className="h-4 w-4 text-emerald-500" />
             Quick WLAN
           </DialogTitle>
+          <DialogDescription className="text-xs">
+            Create a new WLAN with sensible defaults. Use the full editor for advanced settings.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -163,7 +171,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
                 id="qw-ssid"
                 placeholder="Network name"
                 value={ssid}
-                onChange={e => setSsid(e.target.value)}
+                onChange={(e) => setSsid(e.target.value)}
               />
             </div>
             <div className="space-y-1.5">
@@ -172,7 +180,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
                 id="qw-vlan"
                 placeholder="1"
                 value={vlan}
-                onChange={e => setVlan(e.target.value)}
+                onChange={(e) => setVlan(e.target.value)}
                 type="number"
                 min={1}
                 max={4094}
@@ -183,7 +191,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
           {/* Authentication */}
           <div className="space-y-1.5">
             <Label htmlFor="qw-security">Authentication</Label>
-            <Select value={security} onValueChange={v => setSecurity(v as QuickSecurityType)}>
+            <Select value={security} onValueChange={(v) => setSecurity(v as QuickSecurityType)}>
               <SelectTrigger id="qw-security" aria-label="Authentication">
                 <SelectValue />
               </SelectTrigger>
@@ -205,7 +213,7 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
                 placeholder="Passphrase"
                 type="password"
                 value={passphrase}
-                onChange={e => setPassphrase(e.target.value)}
+                onChange={(e) => setPassphrase(e.target.value)}
               />
             </div>
           )}
@@ -229,11 +237,20 @@ export function QuickWLANDialog({ open, onOpenChange, onSuccess }: QuickWLANDial
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+            className="h-9"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!isValid() || submitting}>
+          <Button
+            onClick={handleSubmit}
+            disabled={!isValid() || submitting}
+            className="h-9 px-4 font-medium"
+          >
             {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Create WLAN
           </Button>

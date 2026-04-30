@@ -67,7 +67,7 @@ export function DashboardCustomization({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Customize Dashboard</DialogTitle>
           <DialogDescription>
@@ -102,12 +102,8 @@ export function DashboardCustomization({
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium truncate">
-                    {widget.name}
-                  </span>
-                  {widget.locked && (
-                    <Lock className="h-3 w-3 text-muted-foreground" />
-                  )}
+                  <span className="text-sm font-medium truncate">{widget.name}</span>
+                  {widget.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
                 </div>
               </div>
 
@@ -122,18 +118,11 @@ export function DashboardCustomization({
         </div>
 
         <DialogFooter className="flex-row justify-between sm:justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleReset}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={handleReset} className="gap-2">
             <RotateCcw className="h-4 w-4" />
             Reset to Default
           </Button>
-          <Button onClick={() => onOpenChange(false)}>
-            Done
-          </Button>
+          <Button onClick={() => onOpenChange(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
