@@ -9,13 +9,7 @@
 import { ColumnConfig } from '@/types/table';
 import { Site } from '@/types/domain';
 import { Badge } from '@/components/ui/badge';
-import {
-  CheckCircle,
-  AlertTriangle,
-  Activity,
-  Circle,
-  Clock,
-} from 'lucide-react';
+import { CheckCircle, AlertTriangle, Activity, Circle, Clock } from 'lucide-react';
 
 function getStatusVariant(status?: string): 'default' | 'secondary' | 'destructive' | 'outline' {
   switch (status?.toLowerCase()) {
@@ -34,15 +28,15 @@ function getStatusVariant(status?: string): 'default' | 'secondary' | 'destructi
 function getStatusIcon(status?: string) {
   switch (status?.toLowerCase()) {
     case 'active':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
+      return <CheckCircle className="h-3.5 w-3.5 text-green-500" />;
     case 'provisioning':
-      return <Activity className="h-4 w-4 text-amber-500 animate-pulse" />;
+      return <Activity className="h-3.5 w-3.5 text-amber-500 animate-pulse" />;
     case 'error':
-      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      return <AlertTriangle className="h-3.5 w-3.5 text-red-500" />;
     case 'inactive':
-      return <Circle className="h-4 w-4 text-muted-foreground" />;
+      return <Circle className="h-3.5 w-3.5 text-muted-foreground" />;
     default:
-      return <Clock className="h-4 w-4 text-gray-500" />;
+      return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
   }
 }
 
@@ -58,7 +52,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 220,
     renderCell: (site: Site) => (
-      <div className="font-medium">
+      <div className="text-xs font-medium text-foreground truncate" title={site.name}>
         {site.name || site.siteName || site.displayName || 'Unnamed Site'}
       </div>
     ),
@@ -73,7 +67,12 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: true,
     sortable: true,
     defaultWidth: 180,
-    renderCell: (site: Site) => site.site_group_name || '—',
+    renderCell: (site: Site) =>
+      site.site_group_name ? (
+        <span className="text-xs">{site.site_group_name}</span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Parent site group (controller pair)',
   },
   {
@@ -85,7 +84,14 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: true,
     sortable: true,
     defaultWidth: 180,
-    renderCell: (site: Site) => site.location || '—',
+    renderCell: (site: Site) =>
+      site.location ? (
+        <span className="text-xs truncate" title={site.location}>
+          {site.location}
+        </span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Physical location or address',
   },
   {
@@ -98,9 +104,12 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     sortable: true,
     defaultWidth: 140,
     renderCell: (site: Site) => (
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         {getStatusIcon(site.status)}
-        <Badge variant={getStatusVariant(site.status)}>
+        <Badge
+          variant={getStatusVariant(site.status)}
+          className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+        >
           {site.status ? site.status.charAt(0).toUpperCase() + site.status.slice(1) : 'Unknown'}
         </Badge>
       </div>
@@ -116,11 +125,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: true,
     sortable: true,
     defaultWidth: 110,
-    renderCell: (site: Site) => (
-      <div className="text-center font-medium">
-        {site.ap_count ?? 0}
-      </div>
-    ),
+    renderCell: (site: Site) => <div className="text-xs font-medium">{site.ap_count ?? 0}</div>,
     tooltip: 'Total access points at this site',
   },
   {
@@ -132,11 +137,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: true,
     sortable: true,
     defaultWidth: 120,
-    renderCell: (site: Site) => (
-      <div className="text-center font-medium">
-        {site.client_count ?? 0}
-      </div>
-    ),
+    renderCell: (site: Site) => <div className="text-xs font-medium">{site.client_count ?? 0}</div>,
     tooltip: 'Total connected clients at this site',
   },
   {
@@ -148,7 +149,12 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: false,
     sortable: true,
     defaultWidth: 130,
-    renderCell: (site: Site) => site.country || '—',
+    renderCell: (site: Site) =>
+      site.country ? (
+        <span className="text-xs">{site.country}</span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Country',
   },
   {
@@ -160,7 +166,12 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     defaultVisible: false,
     sortable: true,
     defaultWidth: 160,
-    renderCell: (site: Site) => site.timezone || '—',
+    renderCell: (site: Site) =>
+      site.timezone ? (
+        <span className="text-xs">{site.timezone}</span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Site timezone',
   },
   {
@@ -175,14 +186,14 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
     renderCell: (site: Site) =>
       site.tags && site.tags.length > 0 ? (
         <div className="flex flex-wrap gap-1">
-          {site.tags.map(tag => (
-            <Badge key={tag} variant="secondary" className="text-xs px-1.5 py-0">
+          {site.tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="text-[10px] h-4 px-1.5 py-0">
               {tag}
             </Badge>
           ))}
         </div>
       ) : (
-        <span className="text-muted-foreground">—</span>
+        <span className="text-[11px] text-muted-foreground">—</span>
       ),
     tooltip: 'Site tags',
   },

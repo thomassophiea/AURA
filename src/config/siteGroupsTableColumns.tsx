@@ -34,10 +34,14 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     sortable: true,
     defaultWidth: 260,
     renderCell: (sg: SiteGroup) => (
-      <div className="flex flex-col text-xs">
-        <span className="font-medium">{sg.primary_controller || sg.controller_url}</span>
+      <div className="flex flex-col gap-0.5 leading-snug min-w-0">
+        <span className="text-xs font-medium text-foreground truncate font-mono">
+          {sg.primary_controller || sg.controller_url}
+        </span>
         {sg.secondary_controller && (
-          <span className="text-muted-foreground">{sg.secondary_controller}</span>
+          <span className="text-[11px] text-muted-foreground truncate font-mono">
+            {sg.secondary_controller}
+          </span>
         )}
       </div>
     ),
@@ -65,18 +69,51 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     sortable: true,
     defaultWidth: 140,
     renderCell: (sg: SiteGroup) => {
-      const statusConfig: Record<string, { icon: any; variant: 'default' | 'secondary' | 'destructive' | 'outline'; label: string; className: string }> = {
-        connected:    { icon: Wifi,         variant: 'default',     label: 'Connected',    className: 'text-green-500' },
-        disconnected: { icon: WifiOff,      variant: 'destructive', label: 'Disconnected', className: 'text-red-500' },
-        error:        { icon: AlertTriangle,variant: 'destructive', label: 'Error',        className: 'text-orange-500' },
-        unknown:      { icon: HelpCircle,   variant: 'secondary',   label: 'Unknown',      className: 'text-muted-foreground' },
+      const statusConfig: Record<
+        string,
+        {
+          icon: any;
+          variant: 'default' | 'secondary' | 'destructive' | 'outline';
+          label: string;
+          className: string;
+        }
+      > = {
+        connected: {
+          icon: Wifi,
+          variant: 'default',
+          label: 'Connected',
+          className: 'text-green-500',
+        },
+        disconnected: {
+          icon: WifiOff,
+          variant: 'destructive',
+          label: 'Disconnected',
+          className: 'text-red-500',
+        },
+        error: {
+          icon: AlertTriangle,
+          variant: 'destructive',
+          label: 'Error',
+          className: 'text-orange-500',
+        },
+        unknown: {
+          icon: HelpCircle,
+          variant: 'secondary',
+          label: 'Unknown',
+          className: 'text-muted-foreground',
+        },
       };
       const config = statusConfig[sg.connection_status] || statusConfig.unknown;
       const Icon = config.icon;
       return (
-        <div className="flex items-center gap-2">
-          <Icon className={`h-4 w-4 ${config.className}`} />
-          <Badge variant={config.variant}>{config.label}</Badge>
+        <div className="flex items-center gap-1.5">
+          <Icon className={`h-3.5 w-3.5 ${config.className}`} />
+          <Badge
+            variant={config.variant}
+            className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+          >
+            {config.label}
+          </Badge>
         </div>
       );
     },
@@ -91,7 +128,12 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     defaultVisible: true,
     sortable: true,
     defaultWidth: 130,
-    renderCell: (sg: SiteGroup) => sg.region || '—',
+    renderCell: (sg: SiteGroup) =>
+      sg.region ? (
+        <span className="text-xs">{sg.region}</span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Geographic region',
   },
   {
@@ -103,7 +145,14 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     defaultVisible: false,
     sortable: true,
     defaultWidth: 260,
-    renderCell: (sg: SiteGroup) => sg.description || '—',
+    renderCell: (sg: SiteGroup) =>
+      sg.description ? (
+        <span className="text-xs truncate" title={sg.description}>
+          {sg.description}
+        </span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Group description',
   },
   {
@@ -116,9 +165,11 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
     sortable: true,
     defaultWidth: 170,
     renderCell: (sg: SiteGroup) =>
-      sg.last_connected_at
-        ? new Date(sg.last_connected_at).toLocaleString()
-        : '—',
+      sg.last_connected_at ? (
+        <span className="text-xs">{new Date(sg.last_connected_at).toLocaleString()}</span>
+      ) : (
+        <span className="text-[11px] text-muted-foreground">—</span>
+      ),
     tooltip: 'Last successful connection time',
   },
 ];
