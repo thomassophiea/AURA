@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Separator } from './ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import {
   AlertCircle,
   Save,
@@ -22,6 +23,7 @@ import {
   ChevronUp,
   Clock,
   Settings,
+  X,
 } from 'lucide-react';
 import {
   Dialog,
@@ -321,6 +323,34 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     customProperties: {},
   });
 
+  // Baseline snapshot of formData taken on first load. Used for dirty-state
+  // detection and Cancel/Revert without re-fetching from the API.
+  const baselineFormDataRef = useRef<NetworkFormData | null>(null);
+
+  // Active section anchor for the sticky nav (purely cosmetic).
+  const [activeSection, setActiveSection] = useState<string>('ssid');
+
+  // Dirty when current formData diverges from the baseline snapshot.
+  const isDirty = useMemo(() => {
+    if (!baselineFormDataRef.current) return false;
+    return JSON.stringify(formData) !== JSON.stringify(baselineFormDataRef.current);
+  }, [formData]);
+
+  const handleCancel = () => {
+    if (baselineFormDataRef.current) {
+      setFormData(baselineFormDataRef.current);
+      setError(null);
+    }
+  };
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(`section-${id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      setActiveSection(id);
+    }
+  };
+
   useEffect(() => {
     loadNetworkData();
   }, [serviceId]);
@@ -518,6 +548,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         console.log('Mapped form data:', mappedFormData);
         setFormData(mappedFormData);
+        baselineFormDataRef.current = mappedFormData;
       } else {
         throw new Error('Failed to load service details');
       }
@@ -969,6 +1000,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       // Update local service state with response
       setService(updatedService);
 
+      // Refresh dirty-state baseline so the form is no longer marked dirty.
+      baselineFormDataRef.current = formData;
+
       toast.success('Network configuration saved successfully', {
         description: `Settings for ${formData.name} have been updated with all controller features.`,
       });
@@ -1068,49 +1102,99 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     'wpa23-enterprise',
   ].includes(formData.securityType);
 
-  // ── Reusable Components (Mist-inspired card grid) ───────────────────
+  // ── Reusable Components ─────────────────────────────────────────────
 
-  /** Settings card — rounded, bordered, fills grid cell */
+  /** Settings card — readable header + roomy body. Anchor `id` enables jump nav. */
   const SettingsCard = ({
+    id,
     title,
+    description,
     children,
     className = '',
   }: {
+    id?: string;
     title: string;
+    description?: string;
     children: React.ReactNode;
     className?: string;
   }) => (
-    <div className={`rounded-lg border border-border/50 bg-card ${className}`}>
-      <div className="px-5 py-3 border-b border-border/40">
-        <h3 className="text-[13px] font-semibold">{title}</h3>
+    <section
+      id={id ? `section-${id}` : undefined}
+      className={`rounded-lg border border-border/50 bg-card ${className}`}
+      style={{ scrollMarginTop: 124 }}
+    >
+      <header className="px-6 py-4 border-b border-border/50">
+        <h3 className="text-sm font-semibold leading-none">{title}</h3>
+        {description && <p className="text-xs text-muted-foreground mt-1.5">{description}</p>}
+      </header>
+      <div className="px-6 py-6">{children}</div>
+    </section>
+  );
+
+  /**
+   * Field row — label + optional helper, control on the right at desktop widths.
+   * On a single column (no `inline`), the control sits below the label.
+   */
+  const Field = ({
+    label,
+    helper,
+    children,
+    inline = true,
+  }: {
+    label: string;
+    helper?: string;
+    children: React.ReactNode;
+    inline?: boolean;
+  }) =>
+    inline ? (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'minmax(180px, 240px) 1fr',
+          gap: '24px',
+          alignItems: 'start',
+        }}
+      >
+        <div className="pt-2">
+          <Label className="text-sm font-medium text-foreground">{label}</Label>
+          {helper && <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{helper}</p>}
+        </div>
+        <div>{children}</div>
       </div>
-      <div className="px-5 py-5">{children}</div>
-    </div>
-  );
+    ) : (
+      <div>
+        <Label className="text-sm font-medium text-foreground block mb-2">{label}</Label>
+        {children}
+        {helper && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{helper}</p>}
+      </div>
+    );
 
-  /** Labeled field — label above input with clear gap */
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div>
-      <label className="block text-xs font-medium text-muted-foreground mb-2">{label}</label>
-      {children}
-    </div>
-  );
-
-  /** Toggle field — label left, switch + status right */
+  /** Toggle row — label/description left, status pill + switch right. */
   const Toggle = ({
     label,
+    description,
     checked,
     onChange,
   }: {
     label: string;
+    description?: string;
     checked: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <div className="flex items-center justify-between py-3 px-1">
-      <span className="text-[13px] mr-4">{label}</span>
+    <div
+      className="flex items-center justify-between gap-4 py-3 border-b border-border/40 last:border-b-0"
+      style={{ minHeight: 52 }}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        )}
+      </div>
       <div className="flex items-center gap-3 shrink-0">
         <span
-          className={`text-[11px] font-semibold tracking-wide ${checked ? 'text-emerald-500' : 'text-muted-foreground/50'}`}
+          className={`text-xs font-semibold ${checked ? 'text-emerald-500' : 'text-muted-foreground/60'}`}
+          style={{ minWidth: 28, textAlign: 'right' }}
         >
           {checked ? 'ON' : 'OFF'}
         </span>
@@ -1119,119 +1203,209 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     </div>
   );
 
+  // Section navigation pills — order matches scroll order. Enterprise AAA
+  // appears only when the auth type is enterprise.
+  const navSections: Array<{ id: string; label: string }> = [
+    { id: 'ssid', label: 'SSID' },
+    { id: 'security', label: 'Security' },
+    { id: 'role-vlan', label: 'Role & VLAN' },
+    { id: 'captive', label: 'Captive Portal' },
+    ...(isEnterprise ? [{ id: 'aaa', label: 'Enterprise AAA' }] : []),
+    { id: 'schedule', label: 'Schedule' },
+    { id: 'qos', label: 'QoS & Timeouts' },
+    { id: 'advanced', label: 'Advanced' },
+  ];
+
+  // Determine which Advanced accordion contains a validation error so it can
+  // auto-expand. Today the only enterprise-AAA validation lives in its own
+  // section, but this hook keeps the door open for future Advanced errors.
+  const advancedErrorSection: string | undefined = undefined;
+
   // ── Render ─────────────────────────────────────────────────────────
 
   return (
-    <div className={isInline ? 'py-5 px-4 sm:px-6 bg-muted/10' : 'p-6'}>
-      {error && (
-        <Alert variant="destructive" className="mb-5">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {/* ═══ HEADER BAR ═══ */}
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h2 className="text-base font-semibold">{formData.name || 'Untitled WLAN'}</h2>
-          <p className="text-xs text-muted-foreground">SSID: {formData.ssid || '—'}</p>
+    <div className={isInline ? 'bg-muted/10' : 'bg-background'}>
+      {/* ═══ STICKY HEADER — title + dirty indicator + Cancel/Save ═══ */}
+      <div
+        className="border-b border-border/50 bg-card"
+        style={{ position: 'sticky', top: 0, zIndex: 50 }}
+      >
+        <div className="mx-auto px-6 py-3" style={{ maxWidth: 1024 }}>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold truncate">
+                  {formData.name || 'Untitled WLAN'}
+                </h2>
+                <p className="text-xs text-muted-foreground truncate">
+                  SSID: {formData.ssid || '—'}
+                </p>
+              </div>
+              {isDirty && (
+                <Badge
+                  variant="outline"
+                  className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-xs font-medium shrink-0"
+                >
+                  Unsaved changes
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={saving}
+                className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                title="Delete WLAN"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!isDirty || saving}
+                onClick={handleCancel}
+                className="h-9 px-4"
+              >
+                <X className="h-4 w-4 mr-1.5" />
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSave}
+                disabled={saving || !isDirty}
+                size="sm"
+                className="h-9 px-4 font-medium"
+              >
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-1.5" />
+                )}
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={saving}
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+
+        {/* Section nav pills */}
+        <div
+          className="border-t border-border/30 bg-card/50"
+          style={{
+            overflowX: 'auto',
+            scrollbarWidth: 'thin',
+          }}
+        >
+          <div
+            className="mx-auto px-6 py-2 flex items-center gap-1"
+            style={{ maxWidth: 1024, whiteSpace: 'nowrap' }}
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            size="sm"
-            className="h-8 px-4 text-xs font-medium"
-          >
-            {saving ? (
-              <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-            ) : (
-              <Save className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            {saving ? 'Saving…' : 'Save'}
-          </Button>
+            {navSections.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => scrollToSection(s.id)}
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  activeSection === s.id
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* ═══ CARD GRID — Mist-style multi-column layout ═══ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* ═══ PAGE CONTENT ═══ */}
+      <div className="mx-auto px-6 py-6 space-y-6" style={{ maxWidth: 1024 }}>
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* ── SSID ── */}
-        <SettingsCard title="SSID">
-          <div className="space-y-5">
-            <Field label="Network Name">
+        <SettingsCard
+          id="ssid"
+          title="SSID"
+          description="Identity, broadcast name, and operational status."
+        >
+          <div className="space-y-6">
+            <Field label="Network Name" helper="Display name shown in lists and reports.">
               <Input
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
                 placeholder="e.g. Corporate WiFi"
-                className="h-9 text-sm"
+                className="h-10 text-sm"
               />
             </Field>
-            <Field label="SSID">
+            <Field
+              label="SSID"
+              helper="Broadcast name. Supports variable substitution, e.g. {{site_name}}."
+            >
               <Input
                 value={formData.ssid}
                 onChange={(e) => handleInputChange('ssid', e.target.value)}
                 placeholder="Broadcast name"
-                className="h-9 text-sm"
+                className="h-10 text-sm"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                Supports variable substitution, e.g.{' '}
-                <code className="font-mono bg-muted px-1 rounded">{'{{site_name}}'}</code>
-              </p>
             </Field>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="WLAN Status">
-                <Select
-                  value={formData.enabled ? 'enabled' : 'disabled'}
-                  onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="enabled">Enabled</SelectItem>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field label="Hotspot 2.0">
-                <Select
-                  value={formData.hotspot ? 'enabled' : 'disabled'}
-                  onValueChange={(v) => {
-                    handleInputChange('hotspot', v === 'enabled');
-                    handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled');
-                  }}
-                >
-                  <SelectTrigger className="h-9 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="disabled">Disabled</SelectItem>
-                    <SelectItem value="enabled">Enabled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Field>
-            </div>
+            <Field label="WLAN Status">
+              <Select
+                value={formData.enabled ? 'enabled' : 'disabled'}
+                onValueChange={(v) => handleInputChange('enabled', v === 'enabled')}
+              >
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field
+              label="Hotspot 2.0"
+              helper="Enables Passpoint/Hotspot 2.0 service advertisement."
+            >
+              <Select
+                value={formData.hotspot ? 'enabled' : 'disabled'}
+                onValueChange={(v) => {
+                  handleInputChange('hotspot', v === 'enabled');
+                  handleInputChange('hotspotType', v === 'enabled' ? 'Hotspot20' : 'Disabled');
+                }}
+              >
+                <SelectTrigger className="h-10 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="disabled">Disabled</SelectItem>
+                  <SelectItem value="enabled">Enabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
         </SettingsCard>
 
         {/* ── Security ── */}
-        <SettingsCard title="Security">
-          <div className="space-y-5">
-            <Field label="Auth Type">
+        <SettingsCard
+          id="security"
+          title="Security"
+          description="Authentication and encryption applied to client associations."
+        >
+          <div className="space-y-6">
+            <Field
+              label="Auth Type"
+              helper="Use Edit Privacy to set passphrase, encryption, and PMF for personal/PSK modes."
+            >
               <div className="flex items-center gap-2">
                 <Select
                   value={formData.securityType}
                   onValueChange={(v) => handleInputChange('securityType', v)}
                 >
-                  <SelectTrigger className="h-9 text-sm flex-1">
+                  <SelectTrigger className="h-10 text-sm flex-1">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1249,8 +1423,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 {isPsk && (
                   <Dialog open={privacyDialogOpen} onOpenChange={setPrivacyDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 shrink-0 text-xs">
-                        <Lock className="h-3 w-3 mr-1" />
+                      <Button variant="outline" size="sm" className="h-10 shrink-0 text-xs">
+                        <Lock className="h-3.5 w-3.5 mr-1.5" />
                         Edit Privacy
                       </Button>
                     </DialogTrigger>
@@ -1260,7 +1434,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                         <DialogDescription>Configure encryption and passphrase.</DialogDescription>
                       </DialogHeader>
                       <div className="space-y-4 py-3">
-                        <Field label="Passphrase">
+                        <Field label="Passphrase" inline={false}>
                           <div className="relative">
                             <Input
                               type={showPassphrase ? 'text' : 'password'}
@@ -1287,7 +1461,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                           </div>
                         </Field>
                         <div className="grid grid-cols-2 gap-4">
-                          <Field label="Encryption">
+                          <Field label="Encryption" inline={false}>
                             <Select
                               value={formData.encryption}
                               onValueChange={(v) => handleInputChange('encryption', v)}
@@ -1308,7 +1482,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                               </SelectContent>
                             </Select>
                           </Field>
-                          <Field label="PMF">
+                          <Field label="PMF" inline={false}>
                             <Select
                               value={formData.pmfMode}
                               onValueChange={(v) => handleInputChange('pmfMode', v)}
@@ -1339,12 +1513,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               </div>
             </Field>
             {show6eBadge && (
-              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 text-[10px] font-medium">
-                6E WPA Compliance
-              </Badge>
+              <Field label="Wi-Fi 6E">
+                <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-0 text-xs font-medium">
+                  6E WPA Compliance
+                </Badge>
+              </Field>
             )}
             <Toggle
               label="MAC-based Auth (MBA)"
+              description="Authenticate clients by MAC address before applying network access policy."
               checked={formData.macBasedAuth}
               onChange={(v) => handleInputChange('macBasedAuth', v)}
             />
@@ -1352,14 +1529,21 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </SettingsCard>
 
         {/* ── Role & VLAN ── */}
-        <SettingsCard title="Role & VLAN">
-          <div className="space-y-5">
-            <Field label="Default Auth Role">
+        <SettingsCard
+          id="role-vlan"
+          title="Role & VLAN"
+          description="Default access role and topology for authenticated clients."
+        >
+          <div className="space-y-6">
+            <Field
+              label="Default Auth Role"
+              helper="Role applied to clients after successful authentication."
+            >
               <Select
                 value={formData.authenticatedUserDefaultRoleID || 'none'}
                 onValueChange={(v) => handleInputChange('authenticatedUserDefaultRoleID', v)}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1372,12 +1556,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 </SelectContent>
               </Select>
             </Field>
-            <Field label="Default VLAN / Topology">
+            <Field
+              label="Default VLAN / Topology"
+              helper="Topology determines the VLAN ID used by clients on this WLAN."
+            >
               <Select
                 value={formData.defaultTopology || 'none'}
                 onValueChange={(v) => handleInputChange('defaultTopology', v)}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1394,10 +1581,15 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         </SettingsCard>
 
         {/* ── Captive Portal ── */}
-        <SettingsCard title="Captive Portal">
-          <div className="space-y-5">
+        <SettingsCard
+          id="captive"
+          title="Captive Portal"
+          description="Splash page for guest onboarding."
+        >
+          <div className="space-y-6">
             <Toggle
               label="Enable Captive Portal"
+              description="Redirect new clients to a splash page before granting access."
               checked={formData.captivePortal}
               onChange={(v) => handleInputChange('captivePortal', v)}
             />
@@ -1408,7 +1600,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                     value={formData.captivePortalType || 'none'}
                     onValueChange={(v) => handleInputChange('captivePortalType', v)}
                   >
-                    <SelectTrigger className="h-9 text-sm">
+                    <SelectTrigger className="h-10 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1424,7 +1616,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                       value={formData.eGuestPortalId || 'none'}
                       onValueChange={(v) => handleInputChange('eGuestPortalId', v)}
                     >
-                      <SelectTrigger className="h-9 text-sm">
+                      <SelectTrigger className="h-10 text-sm">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -1445,14 +1637,21 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* ── Enterprise AAA (conditional) ── */}
         {isEnterprise && (
-          <SettingsCard title="Enterprise AAA" className="lg:col-span-2">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Field label="AAA Policy">
+          <SettingsCard
+            id="aaa"
+            title="Enterprise AAA"
+            description="RADIUS / 802.1X policy for enterprise authentication."
+          >
+            <div className="space-y-6">
+              <Field
+                label="AAA Policy"
+                helper="Required for enterprise authentication. Defines RADIUS servers and behavior."
+              >
                 <Select
                   value={formData.aaaPolicyId || 'none'}
                   onValueChange={(v) => handleInputChange('aaaPolicyId', v)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1468,10 +1667,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   (!formData.aaaPolicyId || formData.aaaPolicyId === 'none') && (
                     <p
                       role="alert"
-                      className="text-xs text-destructive flex items-center gap-1 mt-1"
+                      className="text-xs text-destructive flex items-center gap-1.5 mt-2"
                     >
-                      <AlertCircle className="h-3 w-3" aria-hidden="true" />
-                      AAA policy required for enterprise authentication
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                      AAA policy is required for enterprise authentication
                     </p>
                   )}
               </Field>
@@ -1480,7 +1679,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   value={formData.authMethod || 'radius'}
                   onValueChange={(v) => handleInputChange('authMethod', v)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1495,7 +1694,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   value={formData.encryption || 'aes'}
                   onValueChange={(v) => handleInputChange('encryption', v)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1505,12 +1704,12 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   </SelectContent>
                 </Select>
               </Field>
-              <Field label="PMF Mode">
+              <Field label="PMF Mode" helper="Protected Management Frames (802.11w).">
                 <Select
                   value={formData.pmfMode || 'disabled'}
                   onValueChange={(v) => handleInputChange('pmfMode', v)}
                 >
-                  <SelectTrigger className="h-9 text-sm">
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1520,10 +1719,9 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                   </SelectContent>
                 </Select>
               </Field>
-            </div>
-            <div className="mt-3 pt-3 border-t border-border/40">
               <Toggle
                 label="Fast Transition (802.11r)"
+                description="Reduces roaming latency between APs in the same mobility domain."
                 checked={formData.fastTransitionEnabled}
                 onChange={(v) => handleInputChange('fastTransitionEnabled', v)}
               />
@@ -1531,25 +1729,35 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </SettingsCard>
         )}
 
-        {/* ── SSID Scheduling (toggle) ── */}
-        <div className="rounded-lg border border-border/50 bg-card">
+        {/* ── SSID Scheduling ── */}
+        <section
+          id="section-schedule"
+          className="rounded-lg border border-border/50 bg-card"
+          style={{ scrollMarginTop: 124 }}
+        >
           <button
+            type="button"
             onClick={() => setShowSchedulingCard(!showSchedulingCard)}
-            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+            className="w-full flex items-center justify-between px-6 py-4 hover:bg-muted/30 transition-colors"
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">SSID Scheduling</h3>
+              <div className="text-left">
+                <h3 className="text-sm font-semibold leading-none">SSID Scheduling</h3>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  Define daily availability windows. Set both times to 00:00 to disable a day.
+                </p>
+              </div>
             </div>
             {showSchedulingCard ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
             )}
           </button>
           {showSchedulingCard && (
-            <div className="border-t border-border/40 px-5 py-4">
-              <div>
+            <div className="border-t border-border/50 px-6 py-4">
+              <div className="divide-y divide-border/40">
                 {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(
                   (day) => {
                     const schedule = formData.enabledSchedule || {};
@@ -1565,10 +1773,22 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                     return (
                       <div
                         key={day}
-                        className="flex items-center justify-between h-10 border-b border-border/20 last:border-0"
+                        className="flex items-center justify-between py-3"
+                        style={{ minHeight: 48 }}
                       >
-                        <span className="text-xs font-medium capitalize w-20">{day}</span>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`rounded-full ${isOff ? 'bg-muted-foreground/30' : 'bg-emerald-500'}`}
+                            style={{ width: 8, height: 8 }}
+                          />
+                          <span className="text-sm font-medium capitalize" style={{ width: 96 }}>
+                            {day}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {isOff ? 'Off' : 'Active'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
                           <Input
                             type="time"
                             value={`${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`}
@@ -1582,9 +1802,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                                 } as any
                               );
                             }}
-                            className="w-24 h-7 text-xs"
+                            className="h-9 text-sm"
+                            style={{ width: 110 }}
                           />
-                          <span className="text-[10px] text-muted-foreground">→</span>
+                          <span className="text-xs text-muted-foreground">→</span>
                           <Input
                             type="time"
                             value={`${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`}
@@ -1598,10 +1819,8 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                                 } as any
                               );
                             }}
-                            className="w-24 h-7 text-xs"
-                          />
-                          <div
-                            className={`w-1.5 h-1.5 rounded-full ${isOff ? 'bg-muted-foreground/30' : 'bg-emerald-500'}`}
+                            className="h-9 text-sm"
+                            style={{ width: 110 }}
                           />
                         </div>
                       </div>
@@ -1611,17 +1830,21 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
               </div>
             </div>
           )}
-        </div>
+        </section>
 
-        {/* ── QoS Priority ── */}
-        <SettingsCard title="QoS Priority">
-          <div className="space-y-5">
-            <Field label="Class of Service">
+        {/* ── QoS & Timeouts ── */}
+        <SettingsCard
+          id="qos"
+          title="QoS & Timeouts"
+          description="Class of service and idle/session timeouts (seconds)."
+        >
+          <div className="space-y-6">
+            <Field label="Class of Service" helper="Default CoS profile applied to clients.">
               <Select
                 value={formData.defaultCoS || 'none'}
                 onValueChange={(v) => handleInputChange('defaultCoS', v)}
               >
-                <SelectTrigger className="h-9 text-sm">
+                <SelectTrigger className="h-10 text-sm">
                   <SelectValue placeholder="Select CoS" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1634,143 +1857,195 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                 </SelectContent>
               </Select>
             </Field>
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Pre-Auth Timeout">
-                <Input
-                  type="number"
-                  value={formData.preAuthenticatedIdleTimeout}
-                  onChange={(e) =>
-                    handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
-                  }
-                  className="h-9 text-sm"
-                />
-              </Field>
-              <Field label="Post-Auth Timeout">
-                <Input
-                  type="number"
-                  value={formData.postAuthenticatedIdleTimeout}
-                  onChange={(e) =>
-                    handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
-                  }
-                  className="h-9 text-sm"
-                />
-              </Field>
-              <Field label="Max Session">
-                <Input
-                  type="number"
-                  value={formData.sessionTimeout}
-                  onChange={(e) =>
-                    handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)
-                  }
-                  className="h-9 text-sm"
-                />
-              </Field>
-            </div>
+            <Field
+              label="Pre-Auth Idle Timeout"
+              helper="Seconds. Disconnect inactive clients before authentication."
+            >
+              <Input
+                type="number"
+                value={formData.preAuthenticatedIdleTimeout}
+                onChange={(e) =>
+                  handleInputChange('preAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
+                }
+                className="h-10 text-sm"
+              />
+            </Field>
+            <Field
+              label="Post-Auth Idle Timeout"
+              helper="Seconds. Disconnect inactive authenticated clients."
+            >
+              <Input
+                type="number"
+                value={formData.postAuthenticatedIdleTimeout}
+                onChange={(e) =>
+                  handleInputChange('postAuthenticatedIdleTimeout', parseInt(e.target.value) || 0)
+                }
+                className="h-10 text-sm"
+              />
+            </Field>
+            <Field label="Max Session" helper="Seconds. Maximum total session duration.">
+              <Input
+                type="number"
+                value={formData.sessionTimeout}
+                onChange={(e) => handleInputChange('sessionTimeout', parseInt(e.target.value) || 0)}
+                className="h-10 text-sm"
+              />
+            </Field>
           </div>
         </SettingsCard>
 
-        {/* ── Advanced (toggle) ── spans full width */}
-        <div className="rounded-lg border border-border/50 bg-card lg:col-span-2">
-          <button
-            onClick={() => setShowAdvancedCard(!showAdvancedCard)}
-            className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/30 transition-colors"
+        {/* ── Advanced ── grouped accordions */}
+        <section
+          id="section-advanced"
+          className="rounded-lg border border-border/50 bg-card"
+          style={{ scrollMarginTop: 124 }}
+        >
+          <header className="px-6 py-4 border-b border-border/50 flex items-center gap-3">
+            <Settings className="h-4 w-4 text-muted-foreground" />
+            <div>
+              <h3 className="text-sm font-semibold leading-none">Advanced</h3>
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Detailed radio, RADIUS, QoS admission control, and client behavior settings.
+              </p>
+            </div>
+          </header>
+          <Accordion
+            type="multiple"
+            defaultValue={advancedErrorSection ? [advancedErrorSection] : []}
+            className="px-6"
           >
-            <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-semibold">Advanced</h3>
-            </div>
-            {showAdvancedCard ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {showAdvancedCard && (
-            <div className="border-t border-border/40 px-5 py-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10">
-                <Toggle
-                  label="MultiBand Operation"
-                  checked={formData.bandSteering}
-                  onChange={(v) => handleInputChange('bandSteering', v)}
-                />
-                <Toggle
-                  label="RADIUS Accounting"
-                  checked={formData.accountingEnabled}
-                  onChange={(v) => {
-                    handleInputChange('accountingEnabled', v);
-                    handleInputChange('radiusAccounting', v);
-                  }}
-                />
-                <Toggle
-                  label="Hide SSID"
-                  checked={formData.hidden}
-                  onChange={(v) => {
-                    handleInputChange('hidden', v);
-                    handleInputChange('broadcastSSID', !v);
-                  }}
-                />
-                <Toggle
-                  label="Include Hostname"
-                  checked={formData.includeHostname}
-                  onChange={(v) => handleInputChange('includeHostname', v)}
-                />
-                <Toggle
-                  label="FTM (11mc) Responder"
-                  checked={formData.enable11mcSupport}
-                  onChange={(v) => handleInputChange('enable11mcSupport', v)}
-                />
-                <Toggle
-                  label="Radio Mgmt (11k)"
-                  checked={formData.enabled11kSupport}
-                  onChange={(v) => handleInputChange('enabled11kSupport', v)}
-                />
-                <Toggle
-                  label="U-APSD (WMM-PS)"
-                  checked={formData.uapsdEnabled}
-                  onChange={(v) => handleInputChange('uapsdEnabled', v)}
-                />
-                <Toggle
-                  label="Admission Ctrl — Voice"
-                  checked={formData.admissionControlVoice}
-                  onChange={(v) => handleInputChange('admissionControlVoice', v)}
-                />
-                <Toggle
-                  label="Admission Ctrl — Video"
-                  checked={formData.admissionControlVideo}
-                  onChange={(v) => handleInputChange('admissionControlVideo', v)}
-                />
-                <Toggle
-                  label="Admission Ctrl — BE"
-                  checked={formData.admissionControlBestEffort}
-                  onChange={(v) => handleInputChange('admissionControlBestEffort', v)}
-                />
-                <Toggle
-                  label="Admission Ctrl — BK"
-                  checked={formData.admissionControlBackgroundTraffic}
-                  onChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)}
-                />
-                <Toggle
-                  label="Client-to-Client"
-                  checked={formData.clientToClientCommunication}
-                  onChange={(v) => {
-                    handleInputChange('clientToClientCommunication', v);
-                    handleInputChange('isolateClients', !v);
-                  }}
-                />
-                <Toggle
-                  label="Clear on Disconnect"
-                  checked={formData.purgeOnDisconnect}
-                  onChange={(v) => handleInputChange('purgeOnDisconnect', v)}
-                />
-                <Toggle
-                  label="Beacon Protection"
-                  checked={formData.beaconProtection}
-                  onChange={(v) => handleInputChange('beaconProtection', v)}
-                />
-              </div>
-            </div>
-          )}
-        </div>
+            <AccordionItem value="radio">
+              <AccordionTrigger className="text-sm font-medium">
+                Radio &amp; Steering
+              </AccordionTrigger>
+              <AccordionContent>
+                <div>
+                  <Toggle
+                    label="MultiBand Operation"
+                    description="Steer dual-band capable clients to the optimal band."
+                    checked={formData.bandSteering}
+                    onChange={(v) => handleInputChange('bandSteering', v)}
+                  />
+                  <Toggle
+                    label="Hide SSID"
+                    description="Suppress SSID broadcast in beacons."
+                    checked={formData.hidden}
+                    onChange={(v) => {
+                      handleInputChange('hidden', v);
+                      handleInputChange('broadcastSSID', !v);
+                    }}
+                  />
+                  <Toggle
+                    label="FTM (11mc) Responder"
+                    description="Enable Fine Timing Measurement responder for indoor positioning."
+                    checked={formData.enable11mcSupport}
+                    onChange={(v) => handleInputChange('enable11mcSupport', v)}
+                  />
+                  <Toggle
+                    label="Radio Mgmt (11k)"
+                    description="Advertise neighbor reports to assist client roaming decisions."
+                    checked={formData.enabled11kSupport}
+                    onChange={(v) => handleInputChange('enabled11kSupport', v)}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="privacy-radius">
+              <AccordionTrigger className="text-sm font-medium">
+                Privacy &amp; RADIUS
+              </AccordionTrigger>
+              <AccordionContent>
+                <div>
+                  <Toggle
+                    label="Beacon Protection"
+                    description="WPA3 protection of beacon frames against forgery."
+                    checked={formData.beaconProtection}
+                    onChange={(v) => handleInputChange('beaconProtection', v)}
+                  />
+                  <Toggle
+                    label="RADIUS Accounting"
+                    description="Send accounting records (Start/Interim/Stop) to RADIUS."
+                    checked={formData.accountingEnabled}
+                    onChange={(v) => {
+                      handleInputChange('accountingEnabled', v);
+                      handleInputChange('radiusAccounting', v);
+                    }}
+                  />
+                  <Toggle
+                    label="Include Hostname"
+                    description="Include client hostname in RADIUS attributes."
+                    checked={formData.includeHostname}
+                    onChange={(v) => handleInputChange('includeHostname', v)}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="qos-admission">
+              <AccordionTrigger className="text-sm font-medium">
+                QoS Admission Control
+              </AccordionTrigger>
+              <AccordionContent>
+                <div>
+                  <Toggle
+                    label="U-APSD (WMM-PS)"
+                    description="Unscheduled Automatic Power Save Delivery for battery-powered clients."
+                    checked={formData.uapsdEnabled}
+                    onChange={(v) => handleInputChange('uapsdEnabled', v)}
+                  />
+                  <Toggle
+                    label="Admission Control — Voice"
+                    description="Enforce CAC for voice access category."
+                    checked={formData.admissionControlVoice}
+                    onChange={(v) => handleInputChange('admissionControlVoice', v)}
+                  />
+                  <Toggle
+                    label="Admission Control — Video"
+                    description="Enforce CAC for video access category."
+                    checked={formData.admissionControlVideo}
+                    onChange={(v) => handleInputChange('admissionControlVideo', v)}
+                  />
+                  <Toggle
+                    label="Admission Control — Best Effort"
+                    description="Enforce CAC for best-effort access category."
+                    checked={formData.admissionControlBestEffort}
+                    onChange={(v) => handleInputChange('admissionControlBestEffort', v)}
+                  />
+                  <Toggle
+                    label="Admission Control — Background"
+                    description="Enforce CAC for background access category."
+                    checked={formData.admissionControlBackgroundTraffic}
+                    onChange={(v) => handleInputChange('admissionControlBackgroundTraffic', v)}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            <AccordionItem value="client-behavior">
+              <AccordionTrigger className="text-sm font-medium">Client Behavior</AccordionTrigger>
+              <AccordionContent>
+                <div>
+                  <Toggle
+                    label="Client-to-Client"
+                    description="Allow wireless clients to communicate with each other on this WLAN."
+                    checked={formData.clientToClientCommunication}
+                    onChange={(v) => {
+                      handleInputChange('clientToClientCommunication', v);
+                      handleInputChange('isolateClients', !v);
+                    }}
+                  />
+                  <Toggle
+                    label="Clear on Disconnect"
+                    description="Purge cached client data when the client disconnects."
+                    checked={formData.purgeOnDisconnect}
+                    onChange={(v) => handleInputChange('purgeOnDisconnect', v)}
+                  />
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </section>
       </div>
     </div>
   );
