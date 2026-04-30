@@ -50,6 +50,7 @@ import {
   FileDown,
   Cable,
   Loader2,
+  ChevronRight,
 } from 'lucide-react';
 import { Checkbox } from './ui/checkbox';
 import { Label } from './ui/label';
@@ -511,9 +512,10 @@ function getAPSite(ap: AccessPoint): string {
 
 interface AccessPointsProps {
   onShowDetail?: (serialNumber: string, displayName?: string) => void;
+  onShowClientDetail?: (macAddress: string, hostName?: string) => void;
 }
 
-export function AccessPoints({ onShowDetail }: AccessPointsProps) {
+export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { agGridEnabled } = useGridMode();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
@@ -643,6 +645,12 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
   const [apStations, setApStations] = useState<APStation[]>([]);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [clientsSlideOut, setClientsSlideOut] = useState<{
+    ap: AccessPoint;
+    stations: APStation[];
+    isLoading: boolean;
+    error?: string;
+  } | null>(null);
   const [queryColumns, setQueryColumns] = useState<APQueryColumn[]>([]);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [isAutoRefreshing, setIsAutoRefreshing] = useState(false);
@@ -1072,6 +1080,25 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
       setIsLoadingDetails(false);
     }
   };
+
+  const openClientsSlideOut = useCallback(async (ap: AccessPoint) => {
+    setClientsSlideOut({ ap, stations: [], isLoading: true });
+    try {
+      const stations = await apiService.getAccessPointStations(ap.serialNumber);
+      setClientsSlideOut({
+        ap,
+        stations: Array.isArray(stations) ? stations : [],
+        isLoading: false,
+      });
+    } catch (err) {
+      setClientsSlideOut({
+        ap,
+        stations: [],
+        isLoading: false,
+        error: err instanceof Error ? err.message : 'Failed to load connected clients',
+      });
+    }
+  }, []);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -1685,18 +1712,40 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
         return <span>{ap.model || ap.hardwareType || '-'}</span>;
       case 'ipAddress':
         return <span className="font-mono text-sm">{ap.ipAddress || '-'}</span>;
-      case 'clients':
+      case 'clients': {
+        const count = getClientCount(ap);
+        const numericCount = typeof count === 'number' ? count : 0;
+        const disabled = numericCount === 0;
         return (
-          <div className="flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center">
-            <Users className="h-3.5 w-3.5 text-primary" />
-            <span className="text-sm font-semibold text-foreground tabular-nums">
-              {getClientCount(ap)}
-            </span>
-            {isLoadingClients && (
-              <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />
-            )}
-          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (disabled) return;
+                  openClientsSlideOut(ap);
+                }}
+                className={`flex items-center gap-1.5 bg-primary/10 border border-primary/20 rounded-full px-3 py-1 min-w-[52px] justify-center transition-colors ${
+                  disabled
+                    ? 'opacity-60 disabled:cursor-not-allowed'
+                    : 'cursor-pointer hover:bg-primary/20 hover:border-accent/50 focus:outline-none focus:ring-2 focus:ring-ring'
+                }`}
+              >
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm font-semibold text-foreground tabular-nums">{count}</span>
+                {isLoadingClients && (
+                  <Activity className="h-3 w-3 text-muted-foreground animate-pulse" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {disabled ? <p>No connected clients</p> : <p>View connected clients</p>}
+            </TooltipContent>
+          </Tooltip>
         );
+      }
       case 'macAddress':
         return <span className="font-mono text-sm">{ap.macAddress || '-'}</span>;
       case 'ethMode':
@@ -3591,6 +3640,117 @@ export function AccessPoints({ onShowDetail }: AccessPointsProps) {
           </div>
         </div>
       </DetailSlideOut>
+
+      {clientsSlideOut && (
+        <DetailSlideOut
+          isOpen
+          onClose={() => setClientsSlideOut(null)}
+          title={`Connected Clients · ${getAPName(clientsSlideOut.ap)}`}
+          description={`${
+            clientsSlideOut.isLoading
+              ? 'Loading…'
+              : `${clientsSlideOut.stations.length} ${
+                  clientsSlideOut.stations.length === 1 ? 'client' : 'clients'
+                }`
+          } · ${clientsSlideOut.ap.serialNumber}`}
+          width="lg"
+        >
+          {clientsSlideOut.isLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading connected clients…
+            </div>
+          ) : clientsSlideOut.error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{clientsSlideOut.error}</AlertDescription>
+            </Alert>
+          ) : clientsSlideOut.stations.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+              <p className="text-sm font-medium">No connected clients</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This access point currently has no associated stations.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {clientsSlideOut.stations.map((station) => {
+                const stationAny = station as any;
+                const hostName =
+                  station.hostName ||
+                  stationAny.hostname ||
+                  stationAny.name ||
+                  stationAny.deviceName ||
+                  null;
+                const displayName = hostName || station.macAddress || 'Unknown device';
+                const status = station.status || 'connected';
+                const isConnected = status.toLowerCase() === 'connected';
+                return (
+                  <button
+                    key={station.macAddress || stationAny.id}
+                    type="button"
+                    onClick={() => {
+                      if (!station.macAddress) return;
+                      onShowClientDetail?.(station.macAddress, hostName || undefined);
+                      setClientsSlideOut(null);
+                    }}
+                    disabled={!station.macAddress || !onShowClientDetail}
+                    className="group w-full flex items-center gap-3 px-3 py-2 rounded-md border border-border bg-card hover:bg-muted/50 hover:border-accent/50 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <div
+                      className={`h-8 w-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        isConnected ? 'bg-primary/10' : 'bg-muted'
+                      }`}
+                    >
+                      <Wifi
+                        className={`h-4 w-4 ${
+                          isConnected ? 'text-primary' : 'text-muted-foreground'
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span
+                          className={`text-sm font-medium truncate ${
+                            hostName ? 'text-foreground' : 'text-muted-foreground italic'
+                          }`}
+                        >
+                          {displayName}
+                        </span>
+                        <Badge
+                          variant={isConnected ? 'default' : 'secondary'}
+                          className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+                        >
+                          {status}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {station.macAddress && (
+                          <span className="font-mono">{station.macAddress}</span>
+                        )}
+                        {station.ipAddress && <span>{station.ipAddress}</span>}
+                        {station.signalStrength !== undefined && (
+                          <span className="flex items-center gap-1">
+                            <Signal className="h-3 w-3" />
+                            {station.signalStrength} dBm
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {onShowClientDetail && (
+                      <span className="flex items-center gap-1 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                        Insights
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </DetailSlideOut>
+      )}
     </div>
   );
 }

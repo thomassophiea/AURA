@@ -1559,10 +1559,15 @@ class ApiService {
     try {
       logger.log('Fetching stations with site correlation...');
 
-      // Fetch both stations and access points in parallel
-      const [stations, accessPoints] = await Promise.all([
+      // Fetch stations, access points, and services in parallel.
+      // Services are needed to resolve serviceId -> SSID/network name; tolerated to fail.
+      const [stations, accessPoints, services] = await Promise.all([
         this.getAllStations(),
         this.getAccessPoints(),
+        this.getServices().catch((err) => {
+          logger.warn('Failed to load services for network correlation:', err);
+          return [] as Service[];
+        }),
       ]);
 
       // Create a map of AP serial numbers to their site information
@@ -1573,11 +1578,25 @@ class ApiService {
         }
       });
 
+      // Map serviceId -> { ssid, networkName } for station network correlation
+      const serviceMap = new Map<string, { ssid?: string; networkName?: string }>();
+      services.forEach((svc) => {
+        if (svc.id) {
+          serviceMap.set(svc.id, {
+            ssid: svc.ssid,
+            networkName: svc.serviceName || svc.name || svc.ssid,
+          });
+        }
+      });
+
       logger.log(`Found ${accessPoints.length} access points with site mappings`);
+      logger.log(`Found ${services.length} services for network correlation`);
       logger.log(`Processing ${stations.length} stations for site correlation`);
 
-      // Correlate stations with their sites
+      // Correlate stations with their sites and networks
       const stationsWithSites = stations.map((station) => {
+        const stationAny = station as any;
+
         // Try multiple fields for AP serial number correlation
         const apSerial =
           station.apSerial ||
@@ -1592,10 +1611,25 @@ class ApiService {
           correlatedSiteName = apSiteMap.get(apSerial);
         }
 
+        // Resolve network/SSID from serviceId when the station record didn't include them.
+        const serviceId = station.serviceId || stationAny.svcId;
+        const svc = serviceId ? serviceMap.get(serviceId) : undefined;
+        const resolvedSsid = station.ssid || stationAny.essid || svc?.ssid;
+        const resolvedNetwork =
+          station.network ||
+          station.networkName ||
+          station.serviceName ||
+          station.profileName ||
+          svc?.networkName ||
+          svc?.ssid;
+
         // Return the station with updated site information
         return {
           ...station,
           siteName: correlatedSiteName,
+          ssid: resolvedSsid,
+          network: resolvedNetwork,
+          serviceName: station.serviceName || svc?.networkName,
           // Also store the correlated site in a separate field for reference
           correlatedSite: correlatedSiteName,
           // Add debugging info

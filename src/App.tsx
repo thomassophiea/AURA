@@ -1177,7 +1177,12 @@ export default function App() {
       case 'app-insights':
         return <AppInsights api={apiService} />;
       case 'access-points':
-        return <AccessPoints onShowDetail={handleShowAccessPointDetail} />;
+        return (
+          <AccessPoints
+            onShowDetail={handleShowAccessPointDetail}
+            onShowClientDetail={handleShowClientDetail}
+          />
+        );
       case 'connected-clients':
         return <TrafficStatsConnectedClients onShowDetail={handleShowClientDetail} />;
       case 'performance-analytics':
