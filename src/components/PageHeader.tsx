@@ -35,11 +35,9 @@ export function PageHeader({
         <div>
           <h1 className={TYPOGRAPHY.pageTitle}>{title}</h1>
           <div className="flex items-center gap-2">
-            {subtitle && (
-              <p className={TYPOGRAPHY.bodyTextMuted}>{subtitle}</p>
-            )}
+            {subtitle && <p className={TYPOGRAPHY.bodyTextMuted}>{subtitle}</p>}
             {showSgBadge && sgName && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+              <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
                 <Server className="h-2.5 w-2.5" />
                 {sgName}
               </span>
@@ -57,10 +55,7 @@ export function PageHeader({
             disabled={refreshing}
             className={BUTTON_STYLES.iconButtonGap}
           >
-            <RefreshCw className={cn(
-              BUTTON_STYLES.iconSize,
-              refreshing && 'animate-spin'
-            )} />
+            <RefreshCw className={cn(BUTTON_STYLES.iconSize, refreshing && 'animate-spin')} />
             Refresh
           </Button>
         )}

@@ -39,7 +39,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
           {sg.primary_controller || sg.controller_url}
         </span>
         {sg.secondary_controller && (
-          <span className="text-[11px] text-muted-foreground truncate font-mono">
+          <span className="text-xs text-muted-foreground truncate font-mono">
             {sg.secondary_controller}
           </span>
         )}
@@ -110,7 +110,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
           <Icon className={`h-3.5 w-3.5 ${config.className}`} />
           <Badge
             variant={config.variant}
-            className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+            className="text-xs h-4 px-1.5 py-0 uppercase tracking-wide"
           >
             {config.label}
           </Badge>
@@ -132,7 +132,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
       sg.region ? (
         <span className="text-xs">{sg.region}</span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Geographic region',
   },
@@ -151,7 +151,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
           {sg.description}
         </span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Group description',
   },
@@ -168,7 +168,7 @@ export const SITE_GROUPS_TABLE_COLUMNS: ColumnConfig<SiteGroup>[] = [
       sg.last_connected_at ? (
         <span className="text-xs">{new Date(sg.last_connected_at).toLocaleString()}</span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Last successful connection time',
   },

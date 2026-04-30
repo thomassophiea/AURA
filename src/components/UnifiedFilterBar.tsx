@@ -16,8 +16,21 @@ import { Badge } from './ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
-  Search, Brain, Building, Radio, Network, Users, ChevronDown, Check,
-  Settings2, Wifi, Signal, MapPin, Clock, Globe, X
+  Search,
+  Brain,
+  Building,
+  Radio,
+  Network,
+  Users,
+  ChevronDown,
+  Check,
+  Settings2,
+  Wifi,
+  Signal,
+  MapPin,
+  Clock,
+  Globe,
+  X,
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
@@ -77,8 +90,21 @@ export interface UnifiedFilterBarProps {
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
-const TABS: { id: SelectorTab; label: string; shortLabel: string; icon: React.ElementType; beta?: boolean; noSearch?: boolean }[] = [
-  { id: 'ai-insights', label: 'AI Insights', shortLabel: 'AI Insights', icon: Brain, noSearch: true },
+const TABS: {
+  id: SelectorTab;
+  label: string;
+  shortLabel: string;
+  icon: React.ElementType;
+  beta?: boolean;
+  noSearch?: boolean;
+}[] = [
+  {
+    id: 'ai-insights',
+    label: 'AI Insights',
+    shortLabel: 'AI Insights',
+    icon: Brain,
+    noSearch: true,
+  },
   { id: 'site', label: 'Site', shortLabel: 'Site', icon: Building },
   { id: 'access-point', label: 'Access Point', shortLabel: 'AP', icon: Radio },
   { id: 'switch', label: 'Switch', shortLabel: 'Switch', icon: Network, beta: true },
@@ -96,10 +122,10 @@ const TIME_RANGE_OPTIONS = [
 
 const MODE_MAP: Record<SelectorTab, 'AI_INSIGHTS' | 'SITE' | 'AP' | 'CLIENT'> = {
   'ai-insights': 'AI_INSIGHTS',
-  'site': 'SITE',
+  site: 'SITE',
   'access-point': 'AP',
-  'switch': 'SITE',
-  'client': 'CLIENT',
+  switch: 'SITE',
+  client: 'CLIENT',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -189,7 +215,11 @@ export function UnifiedFilterBar({
             { id: 'network-health', name: 'Network Health', subtitle: 'Performance metrics' },
             { id: 'anomaly-detection', name: 'Anomaly Detection', subtitle: 'Unusual patterns' },
             { id: 'capacity-planning', name: 'Capacity Planning', subtitle: 'Utilization trends' },
-            { id: 'predictive-maintenance', name: 'Predictive Maintenance', subtitle: 'Issue forecast' },
+            {
+              id: 'predictive-maintenance',
+              name: 'Predictive Maintenance',
+              subtitle: 'Issue forecast',
+            },
           ]);
           break;
 
@@ -228,11 +258,19 @@ export function UnifiedFilterBar({
           });
 
           const onlineCount = aps.filter((ap: any) =>
-            isDeviceOnline(ap.status || ap.connectionState || ap.operationalState || '', ap.isUp, ap.online)
+            isDeviceOnline(
+              ap.status || ap.connectionState || ap.operationalState || '',
+              ap.isUp,
+              ap.online
+            )
           ).length;
 
           const apItems: SelectorItem[] = [
-            { id: 'all', name: 'All Access Points', subtitle: `${aps.length} APs (${onlineCount} online)` },
+            {
+              id: 'all',
+              name: 'All Access Points',
+              subtitle: `${aps.length} APs (${onlineCount} online)`,
+            },
           ];
 
           aps.forEach((ap: any) => {
@@ -262,7 +300,7 @@ export function UnifiedFilterBar({
 
         case 'switch': {
           try {
-            const switches = await apiService.getSwitches?.() || [];
+            const switches = (await apiService.getSwitches?.()) || [];
             const switchItems: SelectorItem[] = [
               { id: 'all', name: 'All Switches', subtitle: `${switches.length} switches` },
             ];
@@ -382,33 +420,38 @@ export function UnifiedFilterBar({
   const filteredItems = useMemo(() => {
     if (!popoverSearch.trim()) return items;
     const query = popoverSearch.toLowerCase();
-    return items.filter(item =>
-      item.name.toLowerCase().includes(query) ||
-      item.subtitle?.toLowerCase().includes(query) ||
-      item.model?.toLowerCase().includes(query) ||
-      item.ipAddress?.toLowerCase().includes(query) ||
-      item.siteName?.toLowerCase().includes(query) ||
-      item.serialNumber?.toLowerCase().includes(query) ||
-      item.ssid?.toLowerCase().includes(query) ||
-      item.apName?.toLowerCase().includes(query) ||
-      item.vendor?.toLowerCase().includes(query) ||
-      item.macAddress?.toLowerCase().includes(query)
+    return items.filter(
+      (item) =>
+        item.name.toLowerCase().includes(query) ||
+        item.subtitle?.toLowerCase().includes(query) ||
+        item.model?.toLowerCase().includes(query) ||
+        item.ipAddress?.toLowerCase().includes(query) ||
+        item.siteName?.toLowerCase().includes(query) ||
+        item.serialNumber?.toLowerCase().includes(query) ||
+        item.ssid?.toLowerCase().includes(query) ||
+        item.apName?.toLowerCase().includes(query) ||
+        item.vendor?.toLowerCase().includes(query) ||
+        item.macAddress?.toLowerCase().includes(query)
     );
   }, [items, popoverSearch]);
 
-  const currentTabInfo = TABS.find(t => t.id === currentTab);
+  const currentTabInfo = TABS.find((t) => t.id === currentTab);
   const CurrentIcon = currentTabInfo?.icon || Brain;
   const contextDisplayText = selectedItemName || currentTabInfo?.label || 'Select Context';
 
   const totalActiveFilters =
-    (hasActiveFilters ? (filters.site !== 'all' ? 1 : 0) + (filters.environment !== 'all' ? 1 : 0) + (filters.timeRange !== '24h' ? 1 : 0) : 0) +
+    (hasActiveFilters
+      ? (filters.site !== 'all' ? 1 : 0) +
+        (filters.environment !== 'all' ? 1 : 0) +
+        (filters.timeRange !== '24h' ? 1 : 0)
+      : 0) +
     (searchValue ? 1 : 0) +
     activePageFilterCount;
 
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className={cn("flex items-center gap-2 flex-wrap", className)}>
+    <div className={cn('flex items-center gap-2 flex-wrap', className)}>
       {/* Search Input — always visible */}
       <div className="relative w-[280px] shrink min-w-[140px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -422,220 +465,245 @@ export function UnifiedFilterBar({
 
       {/* Context Selector — popover with tabs */}
       <div className="shrink-0">
-      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={popoverOpen}
-            className="h-10 justify-between gap-2 px-3 font-normal min-w-[160px] max-w-[240px]"
-          >
-            <div className="flex items-center gap-2 truncate">
-              <CurrentIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-              <span className="truncate">{contextDisplayText}</span>
-            </div>
-            <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[480px] p-0" align="start">
-          {/* Tabs */}
-          <div className="flex border-b overflow-x-auto">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap",
-                  "hover:bg-muted/50 focus:outline-none focus-visible:bg-muted",
-                  currentTab === tab.id
-                    ? "text-primary border-b-2 border-primary -mb-[1px]"
-                    : "text-muted-foreground"
-                )}
-              >
-                <tab.icon className="h-4 w-4 flex-shrink-0" />
-                <span>{tab.shortLabel}</span>
-                {tab.beta && (
-                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]">
-                    Beta
-                  </Badge>
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Popover Search — not shown for AI Insights */}
-          {currentTab !== 'ai-insights' && (
-            <div className="p-2 border-b">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder={`Search ${currentTabInfo?.label || ''}...`}
-                  value={popoverSearch}
-                  onChange={(e) => setPopoverSearch(e.target.value)}
-                  className="pl-8 h-8 text-sm"
-                />
+        <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={popoverOpen}
+              className="h-10 justify-between gap-2 px-3 font-normal min-w-[160px] max-w-[240px]"
+            >
+              <div className="flex items-center gap-2 truncate">
+                <CurrentIcon className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                <span className="truncate">{contextDisplayText}</span>
               </div>
+              <ChevronDown className="h-4 w-4 flex-shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[480px] p-0" align="start">
+            {/* Tabs */}
+            <div className="flex border-b overflow-x-auto">
+              {TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap',
+                    'hover:bg-muted/50 focus:outline-none focus-visible:bg-muted',
+                    currentTab === tab.id
+                      ? 'text-primary border-b-2 border-primary -mb-[1px]'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  <tab.icon className="h-4 w-4 flex-shrink-0" />
+                  <span>{tab.shortLabel}</span>
+                  {tab.beta && (
+                    <Badge
+                      variant="outline"
+                      className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]"
+                    >
+                      Beta
+                    </Badge>
+                  )}
+                </button>
+              ))}
             </div>
-          )}
 
-          {/* Items List */}
-          {currentTab !== 'ai-insights' && (
-            <ScrollArea className="h-[320px]">
-              <div className="p-1">
-                {loading ? (
-                  <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                      Loading...
+            {/* Popover Search — not shown for AI Insights */}
+            {currentTab !== 'ai-insights' && (
+              <div className="p-2 border-b">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder={`Search ${currentTabInfo?.label || ''}...`}
+                    value={popoverSearch}
+                    onChange={(e) => setPopoverSearch(e.target.value)}
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Items List */}
+            {currentTab !== 'ai-insights' && (
+              <ScrollArea className="h-[320px]">
+                <div className="p-1">
+                  {loading ? (
+                    <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
+                      <div className="flex items-center gap-2">
+                        <div className="h-4 w-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                        Loading...
+                      </div>
                     </div>
-                  </div>
-                ) : filteredItems.length === 0 ? (
-                  <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
-                    {popoverSearch ? 'No matches found' : 'No items available'}
-                  </div>
-                ) : (
-                  filteredItems.map((item) => (
+                  ) : filteredItems.length === 0 ? (
+                    <div className="flex items-center justify-center py-6 text-muted-foreground text-sm">
+                      {popoverSearch ? 'No matches found' : 'No items available'}
+                    </div>
+                  ) : (
+                    filteredItems.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleItemSelect(item)}
+                        className={cn(
+                          'w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3',
+                          'hover:bg-muted focus:outline-none focus-visible:bg-muted',
+                          selectedItemId === item.id && 'bg-primary/5'
+                        )}
+                      >
+                        {/* Status indicator */}
+                        {item.id !== 'all' && (
+                          <div className="pt-1">
+                            <span
+                              className={cn(
+                                'block w-2 h-2 rounded-full flex-shrink-0',
+                                item.status === 'online' && 'bg-[color:var(--status-success)]',
+                                item.status === 'offline' && 'bg-[color:var(--status-error)]',
+                                item.status === 'warning' && 'bg-[color:var(--status-warning)]'
+                              )}
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm truncate">{item.name}</span>
+                            {item.band && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] px-1 py-0 h-4 font-normal"
+                              >
+                                {item.band}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* AP details */}
+                          {currentTab === 'access-point' && item.id !== 'all' && (
+                            <div className="mt-1 space-y-0.5">
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                {item.model && (
+                                  <span className="truncate max-w-[120px]">{item.model}</span>
+                                )}
+                                {item.ipAddress && (
+                                  <span className="font-mono text-xs">{item.ipAddress}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                {item.siteName && (
+                                  <span className="flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    <span className="truncate max-w-[100px]">{item.siteName}</span>
+                                  </span>
+                                )}
+                                {typeof item.clients === 'number' && (
+                                  <span className="flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    {item.clients}
+                                  </span>
+                                )}
+                                {item.uptime && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {item.uptime}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Client details */}
+                          {currentTab === 'client' && item.id !== 'all' && (
+                            <div className="mt-1 space-y-0.5">
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                {item.ssid && (
+                                  <span className="flex items-center gap-1">
+                                    <Wifi className="h-3 w-3" />
+                                    <span className="truncate max-w-[100px]">{item.ssid}</span>
+                                  </span>
+                                )}
+                                {item.rssi !== undefined && (
+                                  <span
+                                    className={cn(
+                                      'flex items-center gap-1',
+                                      item.rssi >= -60
+                                        ? 'text-[color:var(--status-success)]'
+                                        : item.rssi >= -70
+                                          ? 'text-[color:var(--status-warning)]'
+                                          : 'text-[color:var(--status-error)]'
+                                    )}
+                                  >
+                                    <Signal className="h-3 w-3" />
+                                    {item.rssi} dBm
+                                  </span>
+                                )}
+                              </div>
+                              {item.apName && (
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Radio className="h-3 w-3" />
+                                  <span className="truncate max-w-[140px]">{item.apName}</span>
+                                </div>
+                              )}
+                              {item.ipAddress && (
+                                <div className="text-xs font-mono text-muted-foreground/70">
+                                  {item.ipAddress}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Site/Switch/All subtitle */}
+                          {(currentTab === 'site' ||
+                            currentTab === 'switch' ||
+                            item.id === 'all') &&
+                            item.subtitle && (
+                              <div className="text-xs text-muted-foreground truncate mt-0.5">
+                                {item.subtitle}
+                              </div>
+                            )}
+                        </div>
+
+                        {selectedItemId === item.id && (
+                          <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            )}
+
+            {/* AI Insights list (static, no search) */}
+            {currentTab === 'ai-insights' && (
+              <ScrollArea className="h-[240px]">
+                <div className="p-1">
+                  {items.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => handleItemSelect(item)}
                       className={cn(
-                        "w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3",
-                        "hover:bg-muted focus:outline-none focus-visible:bg-muted",
-                        selectedItemId === item.id && "bg-primary/5"
+                        'w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3',
+                        'hover:bg-muted focus:outline-none focus-visible:bg-muted',
+                        selectedItemId === item.id && 'bg-primary/5'
                       )}
                     >
-                      {/* Status indicator */}
-                      {item.id !== 'all' && (
-                        <div className="pt-1">
-                          <span className={cn(
-                            "block w-2 h-2 rounded-full flex-shrink-0",
-                            item.status === 'online' && "bg-[color:var(--status-success)]",
-                            item.status === 'offline' && "bg-[color:var(--status-error)]",
-                            item.status === 'warning' && "bg-[color:var(--status-warning)]"
-                          )} />
-                        </div>
-                      )}
-
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm truncate">{item.name}</span>
-                          {item.band && (
-                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 font-normal">
-                              {item.band}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* AP details */}
-                        {currentTab === 'access-point' && item.id !== 'all' && (
-                          <div className="mt-1 space-y-0.5">
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {item.model && <span className="truncate max-w-[120px]">{item.model}</span>}
-                              {item.ipAddress && <span className="font-mono text-[10px]">{item.ipAddress}</span>}
-                            </div>
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {item.siteName && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="h-3 w-3" />
-                                  <span className="truncate max-w-[100px]">{item.siteName}</span>
-                                </span>
-                              )}
-                              {typeof item.clients === 'number' && (
-                                <span className="flex items-center gap-1">
-                                  <Users className="h-3 w-3" />
-                                  {item.clients}
-                                </span>
-                              )}
-                              {item.uptime && (
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  {item.uptime}
-                                </span>
-                              )}
-                            </div>
+                        <span className="font-medium text-sm">{item.name}</span>
+                        {item.subtitle && (
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {item.subtitle}
                           </div>
-                        )}
-
-                        {/* Client details */}
-                        {currentTab === 'client' && item.id !== 'all' && (
-                          <div className="mt-1 space-y-0.5">
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              {item.ssid && (
-                                <span className="flex items-center gap-1">
-                                  <Wifi className="h-3 w-3" />
-                                  <span className="truncate max-w-[100px]">{item.ssid}</span>
-                                </span>
-                              )}
-                              {item.rssi !== undefined && (
-                                <span className={cn(
-                                  "flex items-center gap-1",
-                                  item.rssi >= -60 ? "text-[color:var(--status-success)]" : item.rssi >= -70 ? "text-[color:var(--status-warning)]" : "text-[color:var(--status-error)]"
-                                )}>
-                                  <Signal className="h-3 w-3" />
-                                  {item.rssi} dBm
-                                </span>
-                              )}
-                            </div>
-                            {item.apName && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Radio className="h-3 w-3" />
-                                <span className="truncate max-w-[140px]">{item.apName}</span>
-                              </div>
-                            )}
-                            {item.ipAddress && (
-                              <div className="text-[10px] font-mono text-muted-foreground/70">
-                                {item.ipAddress}
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Site/Switch/All subtitle */}
-                        {(currentTab === 'site' || currentTab === 'switch' || item.id === 'all') && item.subtitle && (
-                          <div className="text-xs text-muted-foreground truncate mt-0.5">{item.subtitle}</div>
                         )}
                       </div>
-
                       {selectedItemId === item.id && (
                         <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                       )}
                     </button>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          )}
-
-          {/* AI Insights list (static, no search) */}
-          {currentTab === 'ai-insights' && (
-            <ScrollArea className="h-[240px]">
-              <div className="p-1">
-                {items.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleItemSelect(item)}
-                    className={cn(
-                      "w-full text-left px-3 py-2.5 rounded-md transition-colors flex items-start gap-3",
-                      "hover:bg-muted focus:outline-none focus-visible:bg-muted",
-                      selectedItemId === item.id && "bg-primary/5"
-                    )}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">{item.name}</span>
-                      {item.subtitle && (
-                        <div className="text-xs text-muted-foreground mt-0.5">{item.subtitle}</div>
-                      )}
-                    </div>
-                    {selectedItemId === item.id && (
-                      <Check className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </ScrollArea>
-          )}
-        </PopoverContent>
-      </Popover>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Context Settings Button */}
@@ -719,10 +787,7 @@ export function UnifiedFilterBar({
       )}
 
       {/* Context Configuration Modal */}
-      <ContextConfigModal
-        open={isContextModalOpen}
-        onOpenChange={setIsContextModalOpen}
-      />
+      <ContextConfigModal open={isContextModalOpen} onOpenChange={setIsContextModalOpen} />
     </div>
   );
 }

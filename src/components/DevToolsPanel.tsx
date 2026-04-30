@@ -444,17 +444,17 @@ export function DevToolsPanel({
               </div>
               <Badge
                 variant="outline"
-                className="text-[10px] font-mono border-primary/30 text-primary/70"
+                className="text-xs font-mono border-primary/30 text-primary/70"
               >
                 v2.0
               </Badge>
               {apiLogs.some((l) => l.isPending) && (
-                <Badge variant="outline" className="text-[10px] border-blue-500/30 text-blue-400">
+                <Badge variant="outline" className="text-xs border-blue-500/30 text-blue-400">
                   <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                   {apiLogs.filter((l) => l.isPending).length} in-flight
                 </Badge>
               )}
-              <span className="text-[10px] text-muted-foreground font-mono">
+              <span className="text-xs text-muted-foreground font-mono">
                 {perfStats.total} calls &middot; {perfStats.avgLatency}ms avg &middot;{' '}
                 {perfStats.errorRate}% err
               </span>
@@ -545,7 +545,7 @@ export function DevToolsPanel({
                     key={m}
                     onClick={() => setMethodFilter(methodFilter === m ? null : m)}
                     className={cn(
-                      'text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors',
+                      'text-xs font-mono px-1.5 py-0.5 rounded border transition-colors',
                       methodFilter === m
                         ? getMethodColor(m)
                         : 'border-border/30 text-muted-foreground hover:text-card-foreground'
@@ -558,7 +558,7 @@ export function DevToolsPanel({
                 <button
                   onClick={() => setStatusFilter(statusFilter === 'error' ? null : 'error')}
                   className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded border transition-colors',
+                    'text-xs px-1.5 py-0.5 rounded border transition-colors',
                     statusFilter === 'error'
                       ? 'bg-red-500/15 text-red-400 border-red-500/30'
                       : 'border-border/30 text-muted-foreground'
@@ -569,7 +569,7 @@ export function DevToolsPanel({
                 <button
                   onClick={() => setStatusFilter(statusFilter === 'pending' ? null : 'pending')}
                   className={cn(
-                    'text-[10px] px-1.5 py-0.5 rounded border transition-colors',
+                    'text-xs px-1.5 py-0.5 rounded border transition-colors',
                     statusFilter === 'pending'
                       ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
                       : 'border-border/30 text-muted-foreground'
@@ -581,7 +581,7 @@ export function DevToolsPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-[10px]"
+                  className="h-6 px-2 text-xs"
                   onClick={() => setAutoScroll(!autoScroll)}
                 >
                   {autoScroll ? 'Auto ●' : 'Auto ○'}
@@ -626,13 +626,13 @@ export function DevToolsPanel({
                           onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                         >
                           <div className="flex-shrink-0">{getStatusIcon(log)}</div>
-                          <span className="flex-shrink-0 text-muted-foreground w-[85px] text-[10px]">
+                          <span className="flex-shrink-0 text-muted-foreground w-[85px] text-xs">
                             {formatTimestamp(log.timestamp)}
                           </span>
                           <Badge
                             variant="outline"
                             className={cn(
-                              'flex-shrink-0 w-14 justify-center border text-[10px] py-0',
+                              'flex-shrink-0 w-14 justify-center border text-xs py-0',
                               getMethodColor(log.method)
                             )}
                           >
@@ -679,7 +679,7 @@ export function DevToolsPanel({
                             {log.requestBody && (
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
                                     Request
                                   </span>
                                   <Button
@@ -694,7 +694,7 @@ export function DevToolsPanel({
                                     <Copy className="h-2.5 w-2.5" />
                                   </Button>
                                 </div>
-                                <pre className="bg-background border border-border/50 rounded p-2 overflow-x-auto text-[10px] max-h-32">
+                                <pre className="bg-background border border-border/50 rounded p-2 overflow-x-auto text-xs max-h-32">
                                   {JSON.stringify(log.requestBody, null, 2)}
                                 </pre>
                               </div>
@@ -702,7 +702,7 @@ export function DevToolsPanel({
                             {log.responseBody && (
                               <div>
                                 <div className="flex items-center justify-between mb-1">
-                                  <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wider">
                                     Response
                                   </span>
                                   <Button
@@ -717,22 +717,22 @@ export function DevToolsPanel({
                                     <Copy className="h-2.5 w-2.5" />
                                   </Button>
                                 </div>
-                                <pre className="bg-background border border-border/50 rounded p-2 overflow-x-auto text-[10px] max-h-48">
+                                <pre className="bg-background border border-border/50 rounded p-2 overflow-x-auto text-xs max-h-48">
                                   {JSON.stringify(log.responseBody, null, 2)}
                                 </pre>
                               </div>
                             )}
                             {log.error && (
                               <div>
-                                <span className="text-[10px] text-red-400 uppercase tracking-wider">
+                                <span className="text-xs text-red-400 uppercase tracking-wider">
                                   Error
                                 </span>
-                                <pre className="bg-red-500/10 border border-red-500/20 rounded p-2 overflow-x-auto text-[10px] text-red-400 mt-1">
+                                <pre className="bg-red-500/10 border border-red-500/20 rounded p-2 overflow-x-auto text-xs text-red-400 mt-1">
                                   {log.error}
                                 </pre>
                               </div>
                             )}
-                            <div className="flex gap-4 text-[10px] text-muted-foreground/60 pt-1 border-t border-border/20">
+                            <div className="flex gap-4 text-xs text-muted-foreground/60 pt-1 border-t border-border/20">
                               <span>ID: {log.id}</span>
                               <span>{log.timestamp.toISOString()}</span>
                               {log.duration !== undefined && <span>{log.duration}ms</span>}
@@ -806,7 +806,7 @@ export function DevToolsPanel({
                     >
                       <div className="flex items-center gap-2 mb-1">
                         <m.icon className={cn('h-3.5 w-3.5', m.color)} />
-                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">
                           {m.label}
                         </span>
                       </div>
@@ -827,7 +827,7 @@ export function DevToolsPanel({
                         <div key={bucket} className="flex items-center gap-2">
                           <span
                             className={cn(
-                              'text-[10px] font-mono w-8',
+                              'text-xs font-mono w-8',
                               bucket === '2xx'
                                 ? 'text-emerald-400'
                                 : bucket === '4xx'
@@ -859,7 +859,7 @@ export function DevToolsPanel({
                               }}
                             />
                           </div>
-                          <span className="text-[10px] font-mono text-muted-foreground w-8 text-right">
+                          <span className="text-xs font-mono text-muted-foreground w-8 text-right">
                             {count}
                           </span>
                         </div>
@@ -897,7 +897,7 @@ export function DevToolsPanel({
                                 }}
                               />
                             </div>
-                            <span className="text-[10px] font-mono text-muted-foreground w-8 text-right">
+                            <span className="text-xs font-mono text-muted-foreground w-8 text-right">
                               {count}
                             </span>
                           </div>
@@ -913,7 +913,7 @@ export function DevToolsPanel({
                     Hottest Endpoints
                   </h4>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-[10px] font-mono">
+                    <table className="w-full text-xs font-mono">
                       <thead>
                         <tr className="text-muted-foreground border-b border-border/20">
                           <th className="text-left py-1 pr-4">Endpoint</th>
@@ -1037,7 +1037,7 @@ export function DevToolsPanel({
                     </div>
                     <div className="col-span-2">
                       <span className="text-muted-foreground">Allowed Pages:</span>
-                      <span className="ml-2 font-mono text-[10px]">
+                      <span className="ml-2 font-mono text-xs">
                         {personaDef?.allowedPages.length ?? '∞'} pages
                       </span>
                     </div>
@@ -1064,7 +1064,7 @@ export function DevToolsPanel({
                     {Object.entries(stateData).map(([key, value]) => (
                       <div
                         key={key}
-                        className="flex items-start gap-2 text-[10px] font-mono py-0.5 border-b border-border/10 last:border-0"
+                        className="flex items-start gap-2 text-xs font-mono py-0.5 border-b border-border/10 last:border-0"
                       >
                         <span className="text-amber-400 flex-shrink-0 w-44">{key}</span>
                         <span className="text-card-foreground break-all">{value}</span>
@@ -1087,7 +1087,7 @@ export function DevToolsPanel({
                     <Filter className="h-3.5 w-3.5 text-violet-400" />
                     Runtime State
                   </h4>
-                  <div className="space-y-1 text-[10px] font-mono">
+                  <div className="space-y-1 text-xs font-mono">
                     <div className="flex gap-2 py-0.5 border-b border-border/10">
                       <span className="text-violet-400 w-44">window.location</span>
                       <span className="text-card-foreground">{window.location.href}</span>
@@ -1144,7 +1144,7 @@ export function DevToolsPanel({
                       >
                         <qa.icon className="h-5 w-5" />
                       </div>
-                      <span className="text-[11px] text-muted-foreground group-hover:text-card-foreground text-center transition-colors">
+                      <span className="text-xs text-muted-foreground group-hover:text-card-foreground text-center transition-colors">
                         {qa.label}
                       </span>
                     </button>
@@ -1160,7 +1160,7 @@ export function DevToolsPanel({
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-card-foreground font-medium">AG-Grid Mode</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {agGridEnabled
                           ? 'Using AG-Grid Community'
                           : 'Using legacy hand-rolled tables'}
@@ -1189,7 +1189,7 @@ export function DevToolsPanel({
                     <Terminal className="h-3.5 w-3.5 text-primary" />
                     Useful Information
                   </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[10px]">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="flex items-center justify-between p-1.5 rounded bg-muted">
                       <span className="text-muted-foreground">API Base URL</span>
                       <code className="text-primary font-mono">{apiService.getBaseUrl()}</code>
@@ -1231,7 +1231,7 @@ export function DevToolsPanel({
                     <Server className="h-3.5 w-3.5 text-blue-400" />
                     Environment
                   </h4>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] font-mono">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs font-mono">
                     {[
                       ['Platform', navigator.platform],
                       ['User Agent', navigator.userAgent.slice(0, 80) + '...'],
@@ -1258,7 +1258,7 @@ export function DevToolsPanel({
                     <Gauge className="h-3.5 w-3.5 text-emerald-400" />
                     Page Performance
                   </h4>
-                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-[10px] font-mono">
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs font-mono">
                     {(() => {
                       const nav = performance.getEntriesByType('navigation')[0] as
                         | PerformanceNavigationTiming

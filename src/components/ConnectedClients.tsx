@@ -731,11 +731,11 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Total Clients
                 </p>
                 <p className="text-xl font-bold text-foreground">{stations.length}</p>
-                <p className="text-[10px] text-muted-foreground">Connected devices</p>
+                <p className="text-xs text-muted-foreground">Connected devices</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md">
                 <Users className="h-3.5 w-3.5 text-white" />
@@ -748,13 +748,13 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Active
                 </p>
                 <p className="text-xl font-bold" style={{ color: 'var(--status-success)' }}>
                   {getActiveClientsCount()}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Currently active</p>
+                <p className="text-xs text-muted-foreground">Currently active</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-green shadow-md">
                 <Wifi className="h-3.5 w-3.5 text-white" />
@@ -767,11 +767,11 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Sites
                 </p>
                 <p className="text-xl font-bold text-foreground">{getUniqueSiteCount()}</p>
-                <p className="text-[10px] text-muted-foreground">Active sites</p>
+                <p className="text-xs text-muted-foreground">Active sites</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-blue shadow-md">
                 <MapPin className="h-3.5 w-3.5 text-white" />
@@ -784,13 +784,13 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
           <CardContent className="p-3 relative">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                   Total Traffic
                 </p>
                 <p className="text-xl font-bold text-foreground">
                   {formatBytes(getTotalTraffic())}
                 </p>
-                <p className="text-[10px] text-muted-foreground">Data transferred</p>
+                <p className="text-xs text-muted-foreground">Data transferred</p>
               </div>
               <div className="p-1.5 rounded-lg badge-gradient-amber shadow-md">
                 <Activity className="h-3.5 w-3.5 text-white" />
@@ -1057,10 +1057,10 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
             })()
           ) : (
             <div className="rounded-md border overflow-x-auto">
-              <Table className="text-[11px] min-w-[640px]">
+              <Table className="text-xs min-w-[640px]">
                 <TableHeader>
                   <TableRow className="h-9">
-                    <TableHead className="w-10 px-2 py-1 text-[10px]">
+                    <TableHead className="w-10 px-2 py-1 text-xs">
                       <Checkbox
                         checked={
                           selectedStations.size === sortedStations.length &&
@@ -1073,7 +1073,7 @@ function ConnectedClientsComponent({ onShowDetail }: ConnectedClientsProps) {
                     {customization.visibleColumnConfigs.map((column) => (
                       <TableHead
                         key={column.key}
-                        className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wide cursor-pointer select-none hover:bg-muted/50 transition-colors whitespace-nowrap"
+                        className="px-2 py-1 text-xs font-semibold uppercase tracking-wide cursor-pointer select-none hover:bg-muted/50 transition-colors whitespace-nowrap"
                         onClick={() => column.sortable !== false && handleSort(column.key)}
                       >
                         <span className="flex items-center gap-1">

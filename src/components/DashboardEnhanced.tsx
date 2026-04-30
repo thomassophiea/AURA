@@ -2680,7 +2680,7 @@ function DashboardEnhancedComponent() {
                                       <span className="text-sm font-semibold text-[color:var(--status-error)]">
                                         {apStats.offline} AP{apStats.offline > 1 ? 's' : ''} Offline
                                       </span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">
+                                      <span className="px-1.5 py-0.5 text-xs bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] rounded-full font-medium">
                                         CRITICAL
                                       </span>
                                     </div>
@@ -2706,7 +2706,7 @@ function DashboardEnhancedComponent() {
                                         {alertCounts.critical} Critical Alert
                                         {alertCounts.critical > 1 ? 's' : ''}
                                       </span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">
+                                      <span className="px-1.5 py-0.5 text-xs bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded-full font-medium">
                                         ACTION NEEDED
                                       </span>
                                     </div>
@@ -2731,7 +2731,7 @@ function DashboardEnhancedComponent() {
                                       <span className="text-sm font-semibold text-[color:var(--status-info)]">
                                         {clientStats.total - clientStats.authenticated} Pending Auth
                                       </span>
-                                      <span className="px-1.5 py-0.5 text-[10px] bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">
+                                      <span className="px-1.5 py-0.5 text-xs bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] rounded-full font-medium">
                                         INFO
                                       </span>
                                     </div>
@@ -2857,7 +2857,7 @@ function DashboardEnhancedComponent() {
                                 <div className="flex items-center gap-2">
                                   <ArrowUp className="w-3 h-3 text-[color:var(--status-success)]" />
                                   <div className="flex-1">
-                                    <div className="flex justify-between text-[10px] mb-1">
+                                    <div className="flex justify-between text-xs mb-1">
                                       <span className="text-muted-foreground">Upload</span>
                                       <span className="text-[color:var(--status-success)] font-medium">
                                         {formatBps(clientStats.throughputUpload)}
@@ -2871,7 +2871,7 @@ function DashboardEnhancedComponent() {
                                 <div className="flex items-center gap-2">
                                   <ArrowDown className="w-3 h-3 text-[color:var(--status-info)]" />
                                   <div className="flex-1">
-                                    <div className="flex justify-between text-[10px] mb-1">
+                                    <div className="flex justify-between text-xs mb-1">
                                       <span className="text-muted-foreground">Download</span>
                                       <span className="text-[color:var(--status-info)] font-medium">
                                         {formatBps(clientStats.throughputDownload)}
@@ -2895,7 +2895,7 @@ function DashboardEnhancedComponent() {
                                   {Object.keys(apStats.models).length} AP model types deployed
                                 </span>
                               </div>
-                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <span className="px-1.5 py-0.5 bg-primary/10 rounded text-primary">
                                   ~
                                   {apStats.online > 0

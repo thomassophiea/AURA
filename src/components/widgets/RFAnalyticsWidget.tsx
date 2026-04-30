@@ -10,28 +10,28 @@ export function RFAnalyticsWidget() {
   const [loading, setLoading] = useState(true);
   const [activeBand, setActiveBand] = useState<'2.4GHz' | '5GHz' | '6GHz'>('5GHz');
   const [rfData, setRfData] = useState({
-    channelUtilization: [] as Array<{channel: number; utilization: number; clients: number}>,
+    channelUtilization: [] as Array<{ channel: number; utilization: number; clients: number }>,
     interference: { level: 'low' as 'low' | 'medium' | 'high', sources: 0 },
     noiseFloor: -95,
     avgSignalStrength: -55,
-    channelChanges24h: 0
+    channelChanges24h: 0,
   });
 
   const fetchRfData = async () => {
     setLoading(true);
     try {
       const aps = await apiService.getAccessPoints();
-      
-      const channelMap = new Map<number, {utilization: number; clients: number; count: number}>();
-      
-      aps.forEach(ap => {
+
+      const channelMap = new Map<number, { utilization: number; clients: number; count: number }>();
+
+      aps.forEach((ap) => {
         const radios = ap.radios || [];
         radios.forEach((radio: any) => {
           const channel = radio.channel || 0;
           const util = radio.channelUtilization ?? radio.utilization ?? null;
           if (util === null) return; // skip radios with no utilization data
           const clients = radio.clientCount || 0;
-          
+
           if (channelMap.has(channel)) {
             const existing = channelMap.get(channel)!;
             existing.utilization += util;
@@ -42,27 +42,48 @@ export function RFAnalyticsWidget() {
           }
         });
       });
-      
+
       const channelUtilization = Array.from(channelMap.entries())
         .map(([channel, data]) => ({
           channel,
           utilization: Math.round(data.utilization / data.count),
-          clients: data.clients
+          clients: data.clients,
         }))
         .sort((a, b) => a.channel - b.channel);
-      
+
       // Derive aggregate RF metrics from real AP radio data
-      const allNoise = aps.flatMap((ap: any) => (ap.radios || []).map((r: any) => r.noiseFloor ?? r.noise).filter((v: any) => typeof v === 'number'));
-      const allRssi = aps.flatMap((ap: any) => (ap.radios || []).map((r: any) => r.avgRssi ?? r.rssi ?? r.signalStrength).filter((v: any) => typeof v === 'number'));
-      const avgNoise = allNoise.length > 0 ? Math.round(allNoise.reduce((s: number, v: number) => s + v, 0) / allNoise.length) : null;
-      const avgSignal = allRssi.length > 0 ? Math.round(allRssi.reduce((s: number, v: number) => s + v, 0) / allRssi.length) : null;
+      const allNoise = aps.flatMap((ap: any) =>
+        (ap.radios || [])
+          .map((r: any) => r.noiseFloor ?? r.noise)
+          .filter((v: any) => typeof v === 'number')
+      );
+      const allRssi = aps.flatMap((ap: any) =>
+        (ap.radios || [])
+          .map((r: any) => r.avgRssi ?? r.rssi ?? r.signalStrength)
+          .filter((v: any) => typeof v === 'number')
+      );
+      const avgNoise =
+        allNoise.length > 0
+          ? Math.round(allNoise.reduce((s: number, v: number) => s + v, 0) / allNoise.length)
+          : null;
+      const avgSignal =
+        allRssi.length > 0
+          ? Math.round(allRssi.reduce((s: number, v: number) => s + v, 0) / allRssi.length)
+          : null;
 
       setRfData({
         channelUtilization,
-        interference: { level: channelUtilization.some(c => c.utilization > 70) ? 'high' : channelUtilization.some(c => c.utilization > 40) ? 'medium' : 'low', sources: 0 },
+        interference: {
+          level: channelUtilization.some((c) => c.utilization > 70)
+            ? 'high'
+            : channelUtilization.some((c) => c.utilization > 40)
+              ? 'medium'
+              : 'low',
+          sources: 0,
+        },
         noiseFloor: avgNoise ?? -95,
         avgSignalStrength: avgSignal ?? -55,
-        channelChanges24h: 0 // requires event log data not available from current endpoints
+        channelChanges24h: 0, // requires event log data not available from current endpoints
       });
     } catch (error) {
       console.error('Failed to fetch RF data:', error);
@@ -89,36 +110,45 @@ export function RFAnalyticsWidget() {
         </div>
       </CardHeader>
       <CardContent>
-        <Tabs value={activeBand} onValueChange={(v) => setActiveBand(v as '2.4GHz' | '5GHz' | '6GHz')}>
+        <Tabs
+          value={activeBand}
+          onValueChange={(v) => setActiveBand(v as '2.4GHz' | '5GHz' | '6GHz')}
+        >
           <TabsList className="w-full">
-            <TabsTrigger value="2.4GHz" className="flex-1">2.4 GHz</TabsTrigger>
-            <TabsTrigger value="5GHz" className="flex-1">5 GHz</TabsTrigger>
-            <TabsTrigger value="6GHz" className="flex-1">6 GHz</TabsTrigger>
+            <TabsTrigger value="2.4GHz" className="flex-1">
+              2.4 GHz
+            </TabsTrigger>
+            <TabsTrigger value="5GHz" className="flex-1">
+              5 GHz
+            </TabsTrigger>
+            <TabsTrigger value="6GHz" className="flex-1">
+              6 GHz
+            </TabsTrigger>
           </TabsList>
         </Tabs>
-        
+
         <div className="mt-4 space-y-2">
           <div className="text-xs font-medium text-muted-foreground">Channel Utilization</div>
           <div className="flex items-end gap-1 h-24">
             {rfData.channelUtilization
-              .filter(c => {
+              .filter((c) => {
                 if (activeBand === '2.4GHz') return c.channel <= 14;
                 if (activeBand === '5GHz') return c.channel > 14 && c.channel <= 177;
                 return c.channel > 177;
               })
-              .map(c => (
+              .map((c) => (
                 <div key={c.channel} className="flex-1 flex flex-col items-center">
-                  <div 
+                  <div
                     className={`w-full rounded-t ${c.utilization > 70 ? 'bg-red-500' : c.utilization > 40 ? 'bg-yellow-500' : 'bg-green-500'}`}
                     style={{ height: `${c.utilization}%` }}
                     title={`Ch ${c.channel}: ${c.utilization}%`}
                   />
-                  <span className="text-[10px] text-muted-foreground mt-1">{c.channel}</span>
+                  <span className="text-xs text-muted-foreground mt-1">{c.channel}</span>
                 </div>
               ))}
           </div>
         </div>
-        
+
         <div className="grid grid-cols-3 gap-2 mt-4">
           <div className="text-center p-2 bg-muted rounded">
             <div className="text-sm font-medium">{rfData.noiseFloor} dBm</div>
@@ -129,7 +159,15 @@ export function RFAnalyticsWidget() {
             <div className="text-xs text-muted-foreground">Avg Signal</div>
           </div>
           <div className="text-center p-2 bg-muted rounded">
-            <Badge variant={rfData.interference.level === 'low' ? 'default' : rfData.interference.level === 'medium' ? 'secondary' : 'destructive'}>
+            <Badge
+              variant={
+                rfData.interference.level === 'low'
+                  ? 'default'
+                  : rfData.interference.level === 'medium'
+                    ? 'secondary'
+                    : 'destructive'
+              }
+            >
               {rfData.interference.level}
             </Badge>
             <div className="text-xs text-muted-foreground">Interference</div>

@@ -121,7 +121,7 @@ export function MobileHeader({
             >
               <Bell className="h-5 w-5 text-muted-foreground" />
               {unreadCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-[10px] font-medium bg-destructive text-destructive-foreground rounded-full">
+                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 flex items-center justify-center text-xs font-medium bg-destructive text-destructive-foreground rounded-full">
                   {unreadCount > 99 ? '99+' : unreadCount}
                 </span>
               )}
@@ -184,7 +184,7 @@ export function MobileHeader({
                             <p className={`text-sm ${!notification.read ? 'font-medium' : ''}`}>
                               {notification.title}
                             </p>
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                               {formatTimeAgo(notification.timestamp)}
                             </span>
                           </div>

@@ -19,9 +19,17 @@ interface SLEOctopusProps {
 }
 
 /** Evaluate quadratic bezier at parameter t */
-function qbez(p0: [number, number], p1: [number, number], p2: [number, number], t: number): [number, number] {
+function qbez(
+  p0: [number, number],
+  p1: [number, number],
+  p2: [number, number],
+  t: number
+): [number, number] {
   const mt = 1 - t;
-  return [mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0], mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1]];
+  return [
+    mt * mt * p0[0] + 2 * mt * t * p1[0] + t * t * p2[0],
+    mt * mt * p0[1] + 2 * mt * t * p1[1] + t * t * p2[1],
+  ];
 }
 
 const STATUS_DETAIL_BG: Record<string, string> = {
@@ -41,8 +49,9 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(800);
 
-  const selected = sles.find(s => s.id === selectedId) || null;
-  const overallScore = sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
+  const selected = sles.find((s) => s.id === selectedId) || null;
+  const overallScore =
+    sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
   const overallStatus = getSLEStatus(overallScore);
 
   const containerH = Math.max(420, containerW * 0.56);
@@ -54,14 +63,14 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(entries => setContainerW(entries[0].contentRect.width));
+    const obs = new ResizeObserver((entries) => setContainerW(entries[0].contentRect.width));
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
   const tentacles = useMemo(() => {
     return sles.map((sle, i) => {
-      const angle = (i * 2 * Math.PI / sles.length) - Math.PI / 2;
+      const angle = (i * 2 * Math.PI) / sles.length - Math.PI / 2;
       const len = maxLen * (sle.successRate / 100);
       const ex = cx + Math.cos(angle) * len;
       const ey = cy + Math.sin(angle) * len;
@@ -73,7 +82,7 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
       const ghostPerp = maxLen * 0.38;
       const gcpx = cx + Math.cos(angle) * maxLen * 0.5 - Math.sin(angle) * ghostPerp;
       const gcpy = cy + Math.sin(angle) * maxLen * 0.5 + Math.cos(angle) * ghostPerp;
-      const suckers = [0.28, 0.52, 0.76].map(t => ({
+      const suckers = [0.28, 0.52, 0.76].map((t) => ({
         pos: qbez([cx, cy], [cpx, cpy], [ex, ey], t),
         r: Math.max(3.5, 7 * (1 - t * 0.35)),
       }));
@@ -86,15 +95,33 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
 
   return (
     <>
-      <div ref={containerRef} className="relative w-full select-none" style={{ height: containerH }}>
+      <div
+        ref={containerRef}
+        className="relative w-full select-none"
+        style={{ height: containerH }}
+      >
         <svg width={containerW} height={containerH} className="absolute inset-0 overflow-visible">
           <defs>
-            {sles.map(sle => (
-              <filter key={`glow-${sle.id}`} id={`octGlow-${sle.id}`} x="-60%" y="-60%" width="220%" height="220%">
+            {sles.map((sle) => (
+              <filter
+                key={`glow-${sle.id}`}
+                id={`octGlow-${sle.id}`}
+                x="-60%"
+                y="-60%"
+                width="220%"
+                height="220%"
+              >
                 <feGaussianBlur stdDeviation="6" result="blur" />
-                <feFlood floodColor={SLE_STATUS_COLORS[sle.status].hex} floodOpacity="0.5" result="color" />
+                <feFlood
+                  floodColor={SLE_STATUS_COLORS[sle.status].hex}
+                  floodOpacity="0.5"
+                  result="color"
+                />
                 <feComposite in="color" in2="blur" operator="in" result="glow" />
-                <feMerge><feMergeNode in="glow" /><feMergeNode in="SourceGraphic" /></feMerge>
+                <feMerge>
+                  <feMergeNode in="glow" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
               </filter>
             ))}
           </defs>
@@ -193,7 +220,10 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
             boxShadow: `0 0 40px rgba(0,0,0,0.7), 0 0 80px ${SLE_STATUS_COLORS[overallStatus].hex}18`,
           }}
         >
-          <span className="text-xl font-bold leading-none" style={{ color: SLE_STATUS_COLORS[overallStatus].hex }}>
+          <span
+            className="text-xl font-bold leading-none"
+            style={{ color: SLE_STATUS_COLORS[overallStatus].hex }}
+          >
             {overallScore.toFixed(1)}%
           </span>
           <span className="text-[9px] text-white/55 uppercase tracking-widest mt-0.5">Overall</span>
@@ -207,7 +237,7 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
             style={{ left: lx, top: ly, transform: 'translate(-50%, -50%)' }}
           >
             <div
-              className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap px-1.5 py-0.5 rounded"
+              className="text-xs font-semibold uppercase tracking-wider whitespace-nowrap px-1.5 py-0.5 rounded"
               style={{ color: SLE_STATUS_COLORS[sle.status].hex, background: 'rgba(0,0,0,0.55)' }}
             >
               {sle.name}
@@ -219,27 +249,40 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
       {selected && (
         <div
           className="rounded-xl overflow-hidden transition-all duration-300 mt-2"
-          style={{ background: STATUS_DETAIL_BG[selected.status], border: `1px solid ${STATUS_NODE_BORDER[selected.status]}` }}
+          style={{
+            background: STATUS_DETAIL_BG[selected.status],
+            border: `1px solid ${STATUS_NODE_BORDER[selected.status]}`,
+          }}
         >
           <div className="flex items-center gap-2.5 px-5 pt-4 pb-2">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-white">{selected.name}</h3>
-              <p className="text-[11px] text-white/60">{selected.description}</p>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">
+                {selected.name}
+              </h3>
+              <p className="text-xs text-white/60">{selected.description}</p>
             </div>
-            <span className="ml-auto text-xl font-bold" style={{ color: SLE_STATUS_COLORS[selected.status].hex }}>
+            <span
+              className="ml-auto text-xl font-bold"
+              style={{ color: SLE_STATUS_COLORS[selected.status].hex }}
+            >
               {selected.successRate.toFixed(1)}%
             </span>
           </div>
           <div className="px-3 pb-4">
             <SLESankeyFlow
               sle={selected}
-              onClassifierClick={c => setRootCause(buildRootCause(c, selected, stations, aps))}
+              onClassifierClick={(c) => setRootCause(buildRootCause(c, selected, stations, aps))}
             />
           </div>
         </div>
       )}
 
-      <SLERootCausePanel open={rootCause !== null} onClose={() => setRootCause(null)} rootCause={rootCause} onClientClick={onClientClick} />
+      <SLERootCausePanel
+        open={rootCause !== null}
+        onClose={() => setRootCause(null)}
+        rootCause={rootCause}
+        onClientClick={onClientClick}
+      />
     </>
   );
 }

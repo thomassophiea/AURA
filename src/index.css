@@ -6582,3 +6582,140 @@ body.mi5 {
 .badge-gradient-indigo-purple {
   background: linear-gradient(to bottom right, #6366f1, #a855f7);
 }
+
+/* ============================================================
+   AURA polyfills — utility classes the Tailwind v4 prebuilt dump
+   missed. Appended manually so the app renders correctly.
+   Long-term fix: restore the Tailwind build pipeline.
+   ============================================================ */
+
+/* Sizes */
+.h-11 {
+  height: calc(var(--spacing) * 11);
+}
+.w-11 {
+  width: calc(var(--spacing) * 11);
+}
+.size-5 {
+  width: calc(var(--spacing) * 5);
+  height: calc(var(--spacing) * 5);
+}
+
+/* Typography */
+.text-xl {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+}
+
+/* Spacing utilities */
+.space-y-5 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(var(--spacing) * 5 * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(var(--spacing) * 5 * var(--tw-space-y-reverse));
+}
+.space-y-7 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(var(--spacing) * 7 * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(var(--spacing) * 7 * var(--tw-space-y-reverse));
+}
+.space-y-8 > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-y-reverse: 0;
+  margin-top: calc(var(--spacing) * 8 * calc(1 - var(--tw-space-y-reverse)));
+  margin-bottom: calc(var(--spacing) * 8 * var(--tw-space-y-reverse));
+}
+.gap-x-10 {
+  column-gap: calc(var(--spacing) * 10);
+}
+.gap-y-5 {
+  row-gap: calc(var(--spacing) * 5);
+}
+
+/* Translate */
+.translate-x-0 {
+  --tw-translate-x: 0;
+  transform: var(--tw-translate);
+}
+.translate-x-5 {
+  --tw-translate-x: calc(var(--spacing) * 5);
+  transform: translate(var(--tw-translate-x), var(--tw-translate-y, 0));
+}
+
+/* Emerald colors — alias to green which exists in Tailwind palette */
+.bg-emerald-500 {
+  background-color: oklch(0.696 0.17 162.48);
+}
+.bg-emerald-500\/5 {
+  background-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 5%, transparent);
+}
+.bg-emerald-500\/10 {
+  background-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 10%, transparent);
+}
+.bg-emerald-500\/15 {
+  background-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 15%, transparent);
+}
+.bg-emerald-500\/20 {
+  background-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 20%, transparent);
+}
+.bg-emerald-500\/30 {
+  background-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 30%, transparent);
+}
+.text-emerald-400 {
+  color: oklch(0.765 0.177 163.223);
+}
+.text-emerald-500 {
+  color: oklch(0.696 0.17 162.48);
+}
+.text-emerald-600 {
+  color: oklch(0.596 0.145 163.225);
+}
+.dark .dark\:text-emerald-400 {
+  color: oklch(0.765 0.177 163.223);
+}
+.border-emerald-500 {
+  border-color: oklch(0.696 0.17 162.48);
+}
+.border-emerald-500\/30 {
+  border-color: color-mix(in oklab, oklch(0.696 0.17 162.48) 30%, transparent);
+}
+
+/* Position */
+.sticky {
+  position: sticky;
+}
+.z-30 {
+  z-index: 30;
+}
+.z-40 {
+  z-index: 40;
+}
+
+/* Responsive utilities */
+@media (min-width: 640px) {
+  .sm\:max-w-md {
+    max-width: 28rem;
+  }
+  .sm\:px-6 {
+    padding-left: calc(var(--spacing) * 6);
+    padding-right: calc(var(--spacing) * 6);
+  }
+  .sm\:py-6 {
+    padding-top: calc(var(--spacing) * 6);
+    padding-bottom: calc(var(--spacing) * 6);
+  }
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .sm\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+@media (min-width: 768px) {
+  .md\:px-6 {
+    padding-left: calc(var(--spacing) * 6);
+    padding-right: calc(var(--spacing) * 6);
+  }
+  .md\:py-6 {
+    padding-top: calc(var(--spacing) * 6);
+    padding-bottom: calc(var(--spacing) * 6);
+  }
+}

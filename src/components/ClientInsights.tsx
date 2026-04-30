@@ -365,7 +365,7 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
                     <p className="text-xl font-semibold">
                       {formatValue(stats.avgThroughput, 'bps')}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Avg Throughput</p>
+                    <p className="text-xs text-muted-foreground">Avg Throughput</p>
                   </div>
                 )}
               {stats.avgRfQuality !== null &&
@@ -373,7 +373,7 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
                 stats.avgRfQuality > 0 && (
                   <div className="text-center">
                     <p className="text-xl font-semibold">{stats.avgRfQuality.toFixed(0)}%</p>
-                    <p className="text-[10px] text-muted-foreground">RF Quality</p>
+                    <p className="text-xs text-muted-foreground">RF Quality</p>
                   </div>
                 )}
               {stats.topAppGroup && (
@@ -381,7 +381,7 @@ export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: Cli
                   <p className="text-lg font-semibold truncate" title={stats.topAppGroup}>
                     {stats.topAppGroup}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">Top App Group</p>
+                  <p className="text-xs text-muted-foreground">Top App Group</p>
                 </div>
               )}
             </div>
@@ -2044,7 +2044,7 @@ export function ClientInsightsFullScreen({
 
             {/* Attribution */}
             <div className="text-center pt-4 border-t mt-6">
-              <p className="text-[10px] text-muted-foreground opacity-60">
+              <p className="text-xs text-muted-foreground opacity-60">
                 UI Design by Karl Benedict, Mgr of Systems Engineering
               </p>
             </div>

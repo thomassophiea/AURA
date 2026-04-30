@@ -462,7 +462,7 @@ export function ConfigureAdoptionRules() {
                   <TableRow key={rule.id}>
                     {isOrgScope && siteGroups.length > 1 && (
                       <TableCell>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                        <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                           {(rule as any)._siteGroupName || '—'}
                         </Badge>
                       </TableCell>

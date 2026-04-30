@@ -507,14 +507,14 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             <TabsTrigger value="wireless" className="flex items-center gap-1.5">
               <Wifi className="h-3.5 w-3.5" />
               Wireless
-              <Badge variant="secondary" className="text-[10px] ml-1">
+              <Badge variant="secondary" className="text-xs ml-1">
                 {wirelessSLEs.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="wired" className="flex items-center gap-1.5" disabled>
               <Cable className="h-3.5 w-3.5" />
               Wired
-              <Badge variant="outline" className="text-[10px] ml-1">
+              <Badge variant="outline" className="text-xs ml-1">
                 Coming Soon
               </Badge>
             </TabsTrigger>

@@ -16,8 +16,12 @@ interface SLESankeyFlowProps {
 
 /** Create a smooth flowing band path between two vertical segments */
 function bandPath(
-  x1: number, y1Top: number, y1Bot: number,
-  x2: number, y2Top: number, y2Bot: number,
+  x1: number,
+  y1Top: number,
+  y1Bot: number,
+  x2: number,
+  y2Top: number,
+  y2Bot: number
 ): string {
   const mx = (x1 + x2) / 2;
   return [
@@ -37,7 +41,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(entries => {
+    const obs = new ResizeObserver((entries) => {
       setWidth(entries[0].contentRect.width);
     });
     obs.observe(el);
@@ -49,16 +53,19 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
 
   // Column x positions
   const col0 = pad.left;
-  const col1 = width * 0.30;
+  const col1 = width * 0.3;
   const col2 = width * 0.62;
 
   // --- Classifier sizing first ---
-  const activeClassifiers = sle.classifiers.filter(c => c.impactPercent > 0 || c.affectedClients > 0);
+  const activeClassifiers = sle.classifiers.filter(
+    (c) => c.impactPercent > 0 || c.affectedClients > 0
+  );
   const totalImpact = activeClassifiers.reduce((s, c) => s + c.impactPercent, 0) || 1;
 
   const minRowH = 38;
   const classifierGap = 6;
-  const minClassifierH = activeClassifiers.length * minRowH + Math.max(0, activeClassifiers.length - 1) * classifierGap;
+  const minClassifierH =
+    activeClassifiers.length * minRowH + Math.max(0, activeClassifiers.length - 1) * classifierGap;
 
   const baseFlowH = 240;
   const flowH = Math.max(baseFlowH, minClassifierH);
@@ -86,12 +93,12 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
   const totalClassifierGaps = Math.max(0, activeClassifiers.length - 1) * classifierGap;
   const availableClassifierH = flowH - totalClassifierGaps;
 
-  let rawClassifierHeights = activeClassifiers.map(c => {
+  let rawClassifierHeights = activeClassifiers.map((c) => {
     const frac = c.impactPercent / totalImpact;
     return Math.max(minRowH * 0.6, frac * availableClassifierH);
   });
   const rawTotal = rawClassifierHeights.reduce((s, h) => s + h, 0) || 1;
-  rawClassifierHeights = rawClassifierHeights.map(h => (h / rawTotal) * availableClassifierH);
+  rawClassifierHeights = rawClassifierHeights.map((h) => (h / rawTotal) * availableClassifierH);
 
   let classifierRunY = pad.top;
   const classifierBars = activeClassifiers.map((c, i) => {
@@ -106,13 +113,15 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
   const affectedColor = SLE_STATUS_COLORS[sle.status === 'good' ? 'warn' : sle.status].hex;
 
   const classifierColors = activeClassifiers.map((_c, i) => {
-    const opacity = 0.95 - (i * 0.08);
-    return `${affectedColor}${Math.round(Math.max(0.5, opacity) * 255).toString(16).padStart(2, '0')}`;
+    const opacity = 0.95 - i * 0.08;
+    return `${affectedColor}${Math.round(Math.max(0.5, opacity) * 255)
+      .toString(16)
+      .padStart(2, '0')}`;
   });
 
   // Source slices on affected bar
   let affectedRunY = affectedY;
-  const affectedSlices = activeClassifiers.map(c => {
+  const affectedSlices = activeClassifiers.map((c) => {
     const frac = c.impactPercent / totalImpact;
     const h = Math.max(2, frac * normAffectedH);
     const slice = { y: affectedRunY, h };
@@ -131,32 +140,57 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
             <feGaussianBlur stdDeviation="4" result="blur" />
             <feFlood floodColor={successColor} floodOpacity="0.3" />
             <feComposite in2="blur" operator="in" />
-            <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
           <filter id="glowAffected" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur stdDeviation="4" result="blur" />
             <feFlood floodColor={affectedColor} floodOpacity="0.3" />
             <feComposite in2="blur" operator="in" />
-            <feMerge><feMergeNode /><feMergeNode in="SourceGraphic" /></feMerge>
+            <feMerge>
+              <feMergeNode />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
           </filter>
         </defs>
 
         {/* === Column headers === */}
-        <text x={col0 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
+        <text
+          x={col0 + barW / 2}
+          y={24}
+          textAnchor="middle"
+          className="fill-white/80 text-sm font-bold uppercase tracking-[0.25em]"
+        >
           Clients
         </text>
-        <text x={col1 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
+        <text
+          x={col1 + barW / 2}
+          y={24}
+          textAnchor="middle"
+          className="fill-white/80 text-sm font-bold uppercase tracking-[0.25em]"
+        >
           Outcome
         </text>
-        <text x={col2 + barW / 2} y={24} textAnchor="middle" className="fill-white/80 text-[15px] font-bold uppercase tracking-[0.25em]">
+        <text
+          x={col2 + barW / 2}
+          y={24}
+          textAnchor="middle"
+          className="fill-white/80 text-sm font-bold uppercase tracking-[0.25em]"
+        >
           Root Cause
         </text>
 
         {/* === Flow bands: Total → Success === */}
         <path
           d={bandPath(
-            col0 + barW, totalY, totalY + normSuccessH,
-            col1, successY, successY + normSuccessH,
+            col0 + barW,
+            totalY,
+            totalY + normSuccessH,
+            col1,
+            successY,
+            successY + normSuccessH
           )}
           fill={successColor}
           opacity={hovered === null || hovered === '_success' ? 0.45 : 0.15}
@@ -166,8 +200,12 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
         {/* === Flow bands: Total → Affected === */}
         <path
           d={bandPath(
-            col0 + barW, totalY + normSuccessH, totalY + flowH,
-            col1, affectedY, affectedY + normAffectedH,
+            col0 + barW,
+            totalY + normSuccessH,
+            totalY + flowH,
+            col1,
+            affectedY,
+            affectedY + normAffectedH
           )}
           fill={affectedColor}
           opacity={hovered === null || hovered === '_affected' ? 0.45 : 0.15}
@@ -181,10 +219,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
           return (
             <path
               key={bar.classifier.id}
-              d={bandPath(
-                col1 + barW, slice.y, slice.y + slice.h,
-                col2, bar.y, bar.y + bar.h,
-              )}
+              d={bandPath(col1 + barW, slice.y, slice.y + slice.h, col2, bar.y, bar.y + bar.h)}
               fill={classifierColors[i]}
               opacity={hovered === null || isHovered ? 0.5 : 0.1}
               className="transition-opacity duration-200 cursor-pointer"
@@ -199,25 +234,41 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
 
         {/* Total bar */}
         <rect
-          x={col0} y={totalY}
-          width={barW} height={flowH}
+          x={col0}
+          y={totalY}
+          width={barW}
+          height={flowH}
           rx={6}
           fill="rgba(255,255,255,0.15)"
           stroke="rgba(255,255,255,0.35)"
           strokeWidth={1.5}
         />
         {/* Total count — big and bold inside bar */}
-        <text x={col0 + barW / 2} y={totalY + flowH / 2 - 8} textAnchor="middle" dominantBaseline="middle" className="fill-white text-[18px] font-bold">
+        <text
+          x={col0 + barW / 2}
+          y={totalY + flowH / 2 - 8}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className="fill-white text-lg font-bold"
+        >
           {sle.totalUserMinutes}
         </text>
-        <text x={col0 + barW / 2} y={totalY + flowH / 2 + 10} textAnchor="middle" dominantBaseline="middle" className="fill-white/60 text-[9px]">
+        <text
+          x={col0 + barW / 2}
+          y={totalY + flowH / 2 + 10}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className="fill-white/60 text-[9px]"
+        >
           total
         </text>
 
         {/* Success bar */}
         <rect
-          x={col1} y={successY}
-          width={barW} height={normSuccessH}
+          x={col1}
+          y={successY}
+          width={barW}
+          height={normSuccessH}
           rx={6}
           fill={successColor}
           opacity={0.85}
@@ -226,8 +277,10 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
 
         {/* Affected bar */}
         <rect
-          x={col1} y={affectedY}
-          width={barW} height={normAffectedH}
+          x={col1}
+          y={affectedY}
+          width={barW}
+          height={normAffectedH}
           rx={6}
           fill={affectedColor}
           opacity={0.85}
@@ -240,8 +293,10 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
           return (
             <rect
               key={bar.classifier.id}
-              x={col2} y={bar.y}
-              width={barW} height={bar.h}
+              x={col2}
+              y={bar.y}
+              width={barW}
+              height={bar.h}
               rx={6}
               fill={classifierColors[i]}
               opacity={isHovered ? 1 : 0.85}
@@ -258,38 +313,83 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
         {/* === Labels === */}
 
         {/* Success — prominent label block */}
-        <text x={col1 + barW + 14} y={successY + normSuccessH / 2 - 14} dominantBaseline="middle" className="fill-white text-[13px] font-bold">
+        <text
+          x={col1 + barW + 14}
+          y={successY + normSuccessH / 2 - 14}
+          dominantBaseline="middle"
+          className="fill-white text-sm font-bold"
+        >
           Success
         </text>
-        <text x={col1 + barW + 14} y={successY + normSuccessH / 2 + 2} dominantBaseline="middle" style={{ fill: successColor }} className="text-[18px] font-bold">
+        <text
+          x={col1 + barW + 14}
+          y={successY + normSuccessH / 2 + 2}
+          dominantBaseline="middle"
+          style={{ fill: successColor }}
+          className="text-lg font-bold"
+        >
           {successCount}
         </text>
-        <text x={col1 + barW + 14} y={successY + normSuccessH / 2 + 18} dominantBaseline="middle" className="fill-white/50 text-[11px]">
+        <text
+          x={col1 + barW + 14}
+          y={successY + normSuccessH / 2 + 18}
+          dominantBaseline="middle"
+          className="fill-white/50 text-xs"
+        >
           {sle.successRate.toFixed(1)}% of {entityLabel}
         </text>
 
         {/* Affected — prominent label block */}
         {normAffectedH > 30 ? (
           <>
-            <text x={col1 + barW + 14} y={affectedY + normAffectedH / 2 - 14} dominantBaseline="middle" className="fill-white text-[13px] font-bold">
+            <text
+              x={col1 + barW + 14}
+              y={affectedY + normAffectedH / 2 - 14}
+              dominantBaseline="middle"
+              className="fill-white text-sm font-bold"
+            >
               Affected
             </text>
-            <text x={col1 + barW + 14} y={affectedY + normAffectedH / 2 + 2} dominantBaseline="middle" style={{ fill: affectedColor }} className="text-[18px] font-bold">
+            <text
+              x={col1 + barW + 14}
+              y={affectedY + normAffectedH / 2 + 2}
+              dominantBaseline="middle"
+              style={{ fill: affectedColor }}
+              className="text-lg font-bold"
+            >
               {affectedCount}
             </text>
-            <text x={col1 + barW + 14} y={affectedY + normAffectedH / 2 + 18} dominantBaseline="middle" className="fill-white/50 text-[11px]">
+            <text
+              x={col1 + barW + 14}
+              y={affectedY + normAffectedH / 2 + 18}
+              dominantBaseline="middle"
+              className="fill-white/50 text-xs"
+            >
               {(100 - sle.successRate).toFixed(1)}% of {entityLabel}
             </text>
           </>
-        ) : affectedCount > 0 && (
-          <>
-            <text x={col1 + barW + 14} y={affectedY + normAffectedH / 2 - 2} dominantBaseline="middle" className="fill-white text-[12px] font-bold">
-              Affected
-            </text>
-            <text x={col1 + barW + 14 + 70} y={affectedY + normAffectedH / 2 - 2} dominantBaseline="middle" style={{ fill: affectedColor }} className="text-[14px] font-bold">
-              {affectedCount} ({(100 - sle.successRate).toFixed(1)}%)
-            </text>
-          </>
+        ) : (
+          affectedCount > 0 && (
+            <>
+              <text
+                x={col1 + barW + 14}
+                y={affectedY + normAffectedH / 2 - 2}
+                dominantBaseline="middle"
+                className="fill-white text-xs font-bold"
+              >
+                Affected
+              </text>
+              <text
+                x={col1 + barW + 14 + 70}
+                y={affectedY + normAffectedH / 2 - 2}
+                dominantBaseline="middle"
+                style={{ fill: affectedColor }}
+                className="text-sm font-bold"
+              >
+                {affectedCount} ({(100 - sle.successRate).toFixed(1)}%)
+              </text>
+            </>
+          )
         )}
 
         {/* Classifier labels */}
@@ -308,7 +408,7 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
                 x={col2 + barW + 12}
                 y={cy - 8}
                 dominantBaseline="middle"
-                className={`text-[12px] font-semibold transition-all duration-200 ${isHovered ? 'fill-white' : 'fill-white/90'}`}
+                className={`text-xs font-semibold transition-all duration-200 ${isHovered ? 'fill-white' : 'fill-white/90'}`}
               >
                 {bar.classifier.name}
               </text>
@@ -316,9 +416,10 @@ export function SLESankeyFlow({ sle, onClassifierClick }: SLESankeyFlowProps) {
                 x={col2 + barW + 12}
                 y={cy + 8}
                 dominantBaseline="middle"
-                className="fill-white/50 text-[11px]"
+                className="fill-white/50 text-xs"
               >
-                {bar.classifier.impactPercent.toFixed(0)}% · {bar.classifier.affectedClients} {entityLabel}
+                {bar.classifier.impactPercent.toFixed(0)}% · {bar.classifier.affectedClients}{' '}
+                {entityLabel}
               </text>
             </g>
           );

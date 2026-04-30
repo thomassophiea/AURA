@@ -451,7 +451,7 @@ export function Sidebar({
               {/* Site group label */}
               {!isCollapsed && siteGroup && (
                 <div className="px-3 py-1.5 mb-1">
-                  <div className="text-[10px] text-sidebar-foreground/50 uppercase tracking-wider font-medium">
+                  <div className="text-xs text-sidebar-foreground/50 uppercase tracking-wider font-medium">
                     Controller
                   </div>
                   <div className="text-xs text-sidebar-foreground font-medium truncate">

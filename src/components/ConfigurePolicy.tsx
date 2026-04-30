@@ -604,7 +604,7 @@ export function ConfigurePolicy() {
                               (role as any)._siteGroupName && (
                                 <Badge
                                   variant="outline"
-                                  className="text-[10px] px-1.5 py-0 font-normal flex items-center gap-1"
+                                  className="text-xs px-1.5 py-0 font-normal flex items-center gap-1"
                                 >
                                   <Server className="h-2.5 w-2.5" />
                                   {(role as any)._siteGroupName}

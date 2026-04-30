@@ -41,3 +41,4 @@ public/version.json
 # macOS resource fork files
 ._*
 .DS_Store
+.playwright-mcp/

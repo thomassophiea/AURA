@@ -490,7 +490,7 @@ function renderComputedRanking(widget: ReportWidgetConfig, m: ReportMetrics) {
                       <p className="text-muted-foreground mt-1">{bp.detailedDescription}</p>
                     )}
                   </div>
-                  <Badge variant="outline" className="ml-auto flex-shrink-0 text-[10px]">
+                  <Badge variant="outline" className="ml-auto flex-shrink-0 text-xs">
                     {bp.type || 'Config'}
                   </Badge>
                 </div>

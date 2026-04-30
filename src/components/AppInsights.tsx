@@ -457,7 +457,7 @@ export function AppInsights({ api }: AppInsightsProps) {
           <div className="space-y-1.5">
             <div className="flex items-center gap-1.5 mb-1">
               <ChevronUp className="h-3 w-3 text-[color:var(--status-success)]" />
-              <span className="text-[10px] font-medium text-muted-foreground">Top Performers</span>
+              <span className="text-xs font-medium text-muted-foreground">Top Performers</span>
             </div>
             {topData.slice(0, 5).map((item: any, index: number) => {
               const percentage = maxTop > 0 ? (item.value / maxTop) * 100 : 0;
@@ -501,7 +501,7 @@ export function AppInsights({ api }: AppInsightsProps) {
           <div className="space-y-1.5 pt-2 border-t border-border/50">
             <div className="flex items-center gap-1.5 mb-1">
               <ChevronDown className="h-3 w-3 text-[color:var(--warning)]" />
-              <span className="text-[10px] font-medium text-muted-foreground">Low Activity</span>
+              <span className="text-xs font-medium text-muted-foreground">Low Activity</span>
             </div>
             {bottomData.slice(0, 5).map((item: any, index: number) => {
               const percentage = maxBottom > 0 ? (item.value / maxBottom) * 100 : 0;
@@ -654,14 +654,14 @@ export function AppInsights({ api }: AppInsightsProps) {
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     Total Data
                     <TrendingUp className="h-3 w-3 text-[color:var(--status-success)]" />
                   </p>
                   <p className="text-lg font-bold" style={{ color: 'var(--chart-2)' }}>
                     {formatBytes(stats.totalUsage)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {stats.totalCategories} categories
                   </p>
                 </div>
@@ -677,14 +677,14 @@ export function AppInsights({ api }: AppInsightsProps) {
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     Throughput
                     <Activity className="h-3 w-3 text-[color:var(--status-success)] animate-pulse" />
                   </p>
                   <p className="text-lg font-bold" style={{ color: 'var(--chart-5)' }}>
                     {formatThroughput(stats.totalThroughput)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">Avg bandwidth</p>
+                  <p className="text-xs text-muted-foreground">Avg bandwidth</p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-green shadow-md group-hover:scale-110 transition-transform">
                   <Gauge className="h-3.5 w-3.5 text-white" />
@@ -698,14 +698,14 @@ export function AppInsights({ api }: AppInsightsProps) {
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     Active Clients
                     <ArrowUpRight className="h-3 w-3 text-primary" />
                   </p>
                   <p className="text-lg font-bold text-primary">
                     {formatNumber(stats.totalClients)}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">Using apps</p>
+                  <p className="text-xs text-muted-foreground">Using apps</p>
                 </div>
                 <div className="p-1.5 rounded-lg badge-gradient-violet shadow-md group-hover:scale-110 transition-transform">
                   <Users className="h-3.5 w-3.5 text-white" />
@@ -719,14 +719,14 @@ export function AppInsights({ api }: AppInsightsProps) {
             <CardContent className="p-3 relative">
               <div className="flex items-start justify-between">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                     Top Category
                     <Sparkles className="h-3 w-3 text-[color:var(--warning)]" />
                   </p>
                   <p className="text-base font-bold truncate" style={{ color: 'var(--chart-3)' }}>
                     {stats.topCategory}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {stats.topCategoryPercent}% of traffic
                   </p>
                 </div>
@@ -748,7 +748,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                 <Sparkles className="h-3.5 w-3.5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="text-[10px] font-semibold text-primary uppercase tracking-wide mb-0.5">
+                <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-0.5">
                   Quick Insights
                 </p>
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5">
@@ -838,12 +838,12 @@ export function AppInsights({ api }: AppInsightsProps) {
                         style={{ backgroundColor: color }}
                       />
                       <span
-                        className="text-[11px] text-foreground/80 truncate flex-1"
+                        className="text-xs text-foreground/80 truncate flex-1"
                         title={entry.name}
                       >
                         {entry.name}
                       </span>
-                      <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">
+                      <span className="text-xs text-muted-foreground tabular-nums shrink-0">
                         {pct}%
                       </span>
                     </div>

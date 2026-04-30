@@ -1203,14 +1203,14 @@ function OperationalContextSummaryComponent() {
                   <div className="p-3 rounded-lg border bg-card relative">
                     <div className="text-xs text-muted-foreground">Rogue APs</div>
                     <div className="text-2xl font-bold text-muted-foreground/50">—</div>
-                    <div className="text-[10px] text-[color:var(--status-warning)] mt-1">
+                    <div className="text-xs text-[color:var(--status-warning)] mt-1">
                       API not available
                     </div>
                   </div>
                   <div className="p-3 rounded-lg border bg-card relative">
                     <div className="text-xs text-muted-foreground">Violations</div>
                     <div className="text-2xl font-bold text-muted-foreground/50">—</div>
-                    <div className="text-[10px] text-[color:var(--status-warning)] mt-1">
+                    <div className="text-xs text-[color:var(--status-warning)] mt-1">
                       API not available
                     </div>
                   </div>
@@ -1230,7 +1230,7 @@ function OperationalContextSummaryComponent() {
                     ) : (
                       <>
                         <div className="text-2xl font-bold text-muted-foreground/50">—</div>
-                        <div className="text-[10px] text-[color:var(--status-warning)] mt-1">
+                        <div className="text-xs text-[color:var(--status-warning)] mt-1">
                           No data available
                         </div>
                       </>
@@ -1253,7 +1253,7 @@ function OperationalContextSummaryComponent() {
                     ) : (
                       <>
                         <div className="text-2xl font-bold text-muted-foreground/50">—</div>
-                        <div className="text-[10px] text-[color:var(--status-warning)] mt-1">
+                        <div className="text-xs text-[color:var(--status-warning)] mt-1">
                           API not available
                         </div>
                       </>

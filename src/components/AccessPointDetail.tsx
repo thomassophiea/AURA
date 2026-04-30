@@ -1027,21 +1027,21 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   <div className="p-2 bg-muted/30 rounded-lg text-center">
                     <p className="text-lg font-semibold">{eventStats.total}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Total</p>
+                    <p className="text-xs text-muted-foreground uppercase">Total</p>
                   </div>
                   <div className="p-2 bg-destructive/10 rounded-lg text-center">
                     <p className="text-lg font-semibold text-destructive">{eventStats.critical}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Critical</p>
+                    <p className="text-xs text-muted-foreground uppercase">Critical</p>
                   </div>
                   <div className="p-2 bg-[color:var(--status-warning-bg)] rounded-lg text-center">
                     <p className="text-lg font-semibold text-[color:var(--status-warning)]">
                       {eventStats.major}
                     </p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Major</p>
+                    <p className="text-xs text-muted-foreground uppercase">Major</p>
                   </div>
                   <div className="p-2 bg-muted/30 rounded-lg text-center">
                     <p className="text-lg font-semibold">{eventStats.categories}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">Categories</p>
+                    <p className="text-xs text-muted-foreground uppercase">Categories</p>
                   </div>
                 </div>
 
@@ -1084,14 +1084,14 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
                             <div className="flex items-center gap-2 mb-1">
                               <Badge
                                 variant={getEventBadgeVariant(event.Level)}
-                                className="text-[10px] px-1.5 py-0"
+                                className="text-xs px-1.5 py-0"
                               >
                                 {event.Level || 'Info'}
                               </Badge>
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              <Badge variant="outline" className="text-xs px-1.5 py-0">
                                 {event.Category}
                               </Badge>
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-xs text-muted-foreground">
                                 {formatEventTime(event.ts)}
                               </span>
                             </div>

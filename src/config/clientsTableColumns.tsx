@@ -72,8 +72,8 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
             variant={isOnline ? 'default' : 'secondary'}
             className={
               isOnline
-                ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20 text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide'
-                : 'bg-muted text-muted-foreground text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide'
+                ? 'bg-green-500/10 text-green-500 border-green-500/30 hover:bg-green-500/20 text-xs h-4 px-1.5 py-0 uppercase tracking-wide'
+                : 'bg-muted text-muted-foreground text-xs h-4 px-1.5 py-0 uppercase tracking-wide'
             }
           >
             {station.status || 'Unknown'}
@@ -93,7 +93,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       const hostname = station.hostName || (station as any).hostname;
-      if (!hostname) return <span className="text-[11px] text-muted-foreground">—</span>;
+      if (!hostname) return <span className="text-xs text-muted-foreground">—</span>;
       return (
         <div
           className="text-xs font-medium text-foreground max-w-[200px] truncate leading-snug"
@@ -114,7 +114,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: true,
     sortable: true,
     renderCell: (station) => (
-      <code className="font-mono text-[11px] text-foreground tracking-tight">
+      <code className="font-mono text-xs text-foreground tracking-tight">
         {station.macAddress || '—'}
       </code>
     ),
@@ -130,7 +130,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       const label = station.manufacturer || (station as any).deviceType;
-      if (!label) return <span className="text-[11px] text-muted-foreground">—</span>;
+      if (!label) return <span className="text-xs text-muted-foreground">—</span>;
       return (
         <div className="max-w-[200px] truncate text-xs" title={label}>
           {label}
@@ -152,7 +152,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
       const user = station.username;
       const net = (station as any).networkName || (station as any).ssid;
       if (!user && !net) {
-        return <span className="text-[11px] text-muted-foreground">—</span>;
+        return <span className="text-xs text-muted-foreground">—</span>;
       }
       return (
         <div className="flex flex-col gap-0.5 leading-snug max-w-[200px]">
@@ -162,7 +162,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
             </span>
           )}
           {net && (
-            <span className="truncate text-[11px] text-muted-foreground" title={net}>
+            <span className="truncate text-xs text-muted-foreground" title={net}>
               {net}
             </span>
           )}
@@ -181,7 +181,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       const name = station.apName || (station as any).apDisplayName;
-      if (!name) return <span className="text-[11px] text-muted-foreground">—</span>;
+      if (!name) return <span className="text-xs text-muted-foreground">—</span>;
       return (
         <div className="max-w-[200px] truncate text-xs text-foreground" title={name}>
           {name}
@@ -200,7 +200,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       const name = (station as any).siteName;
-      if (!name) return <span className="text-[11px] text-muted-foreground">—</span>;
+      if (!name) return <span className="text-xs text-muted-foreground">—</span>;
       return (
         <div className="max-w-[200px] truncate text-xs" title={name}>
           {name}
@@ -256,7 +256,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     renderCell: (station) => {
       const band = station.band || station.radioBand;
       return (
-        <Badge variant="outline" className="text-[10px] h-4 px-1.5 py-0">
+        <Badge variant="outline" className="text-xs h-4 px-1.5 py-0">
           {band || '—'}
         </Badge>
       );
@@ -377,14 +377,14 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
       const inBytes = station.inBytes || 0;
       const outBytes = station.outBytes || 0;
       if (!inBytes && !outBytes) {
-        return <span className="text-[11px] text-muted-foreground">No data</span>;
+        return <span className="text-xs text-muted-foreground">No data</span>;
       }
       return (
         <div className="flex flex-col justify-center gap-1 leading-none">
-          <div className="flex items-center gap-1.5 text-[11px] text-green-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-green-500 font-medium">
             ↓ {formatBytes(inBytes)}
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] text-blue-500 font-medium">
+          <div className="flex items-center gap-1.5 text-xs text-blue-500 font-medium">
             ↑ {formatBytes(outBytes)}
           </div>
         </div>
@@ -460,9 +460,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     fieldPath: 'macAddress',
     defaultVisible: false,
     sortable: true,
-    renderCell: (station) => (
-      <code className="font-mono text-[11px]">{station.macAddress || '—'}</code>
-    ),
+    renderCell: (station) => <code className="font-mono text-xs">{station.macAddress || '—'}</code>,
   },
 
   {
@@ -473,9 +471,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     fieldPath: 'ipAddress',
     defaultVisible: false,
     sortable: true,
-    renderCell: (station) => (
-      <code className="font-mono text-[11px]">{station.ipAddress || '—'}</code>
-    ),
+    renderCell: (station) => <code className="font-mono text-xs">{station.ipAddress || '—'}</code>,
   },
 
   {
@@ -487,7 +483,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: false,
     sortable: true,
     renderCell: (station) => (
-      <code className="font-mono text-[11px] truncate max-w-[200px] block">
+      <code className="font-mono text-xs truncate max-w-[200px] block">
         {station.ipv6Address || '—'}
       </code>
     ),
@@ -537,9 +533,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     defaultVisible: false,
     sortable: true,
     renderCell: (station) => (
-      <code className="font-mono text-[11px]">
-        {station.apSerial || station.apSerialNumber || '—'}
-      </code>
+      <code className="font-mono text-xs">{station.apSerial || station.apSerialNumber || '—'}</code>
     ),
   },
 
@@ -553,7 +547,7 @@ export const CLIENTS_TABLE_COLUMNS: ColumnConfig<Station>[] = [
     sortable: true,
     renderCell: (station) => {
       if (!station.lastSeen) {
-        return <span className="text-[11px] text-muted-foreground">—</span>;
+        return <span className="text-xs text-muted-foreground">—</span>;
       }
       try {
         return <span className="text-xs">{new Date(station.lastSeen).toLocaleString()}</span>;

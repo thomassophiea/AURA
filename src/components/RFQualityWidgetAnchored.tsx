@@ -425,7 +425,7 @@ export function RFQualityWidgetAnchored() {
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={`text-2xl font-bold ${status.color}`}>{Math.round(percent)}</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Score</span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wide">Score</span>
         </div>
       </div>
     );
@@ -520,7 +520,7 @@ export function RFQualityWidgetAnchored() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                 </span>
-                <span className="text-[10px] font-medium text-[color:var(--status-success)] uppercase tracking-wide">
+                <span className="text-xs font-medium text-[color:var(--status-success)] uppercase tracking-wide">
                   Live
                 </span>
               </div>

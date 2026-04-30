@@ -9,9 +9,7 @@ import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import {
-  Plus, Search, BarChart3, TrendingUp, Hash, Layers, Check,
-} from 'lucide-react';
+import { Plus, Search, BarChart3, TrendingUp, Hash, Layers, Check } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { WIDGET_CATEGORIES } from '../../services/widgetService';
 import type { ReportWidgetConfig, WidgetDisplayType } from '../../types/reportConfig';
@@ -19,10 +17,17 @@ import type { ReportWidgetConfig, WidgetDisplayType } from '../../types/reportCo
 // Infer display type from widget name
 function inferDisplayType(widgetName: string): WidgetDisplayType {
   const lower = widgetName.toLowerCase();
-  if (lower.includes('timeseries') || lower.includes('report') && (lower.includes('throughput') || lower.includes('usage') || lower.includes('unique'))) return 'timeseries';
+  if (
+    lower.includes('timeseries') ||
+    (lower.includes('report') &&
+      (lower.includes('throughput') || lower.includes('usage') || lower.includes('unique')))
+  )
+    return 'timeseries';
   if (lower.includes('scorecard') || lower.includes('peak')) return 'scorecard';
-  if (lower.includes('distribution') || lower.includes('health') || lower.includes('qoe')) return 'distribution';
-  if (lower.includes('top') || lower.includes('worst') || lower.includes('channel')) return 'ranking';
+  if (lower.includes('distribution') || lower.includes('health') || lower.includes('qoe'))
+    return 'distribution';
+  if (lower.includes('top') || lower.includes('worst') || lower.includes('channel'))
+    return 'ranking';
   return 'ranking';
 }
 
@@ -30,7 +35,7 @@ function inferDisplayType(widgetName: string): WidgetDisplayType {
 function formatWidgetName(name: string): string {
   return name
     .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, s => s.toUpperCase())
+    .replace(/^./, (s) => s.toUpperCase())
     .replace(/By/g, 'by')
     .replace(/Of/g, 'of')
     .replace(/Report$/, '')
@@ -61,7 +66,7 @@ export function WidgetPicker({ existingWidgetKeys, onAddWidget }: WidgetPickerPr
     return Object.entries(WIDGET_CATEGORIES).map(([key, cat]) => ({
       key,
       name: (cat as any).name as string,
-      widgets: ((cat as any).widgets as string[]).map(widgetName => ({
+      widgets: ((cat as any).widgets as string[]).map((widgetName) => ({
         name: widgetName,
         displayName: formatWidgetName(widgetName),
         displayType: inferDisplayType(widgetName),
@@ -71,11 +76,13 @@ export function WidgetPicker({ existingWidgetKeys, onAddWidget }: WidgetPickerPr
   }, [existingWidgetKeys]);
 
   const filteredWidgets = useMemo(() => {
-    const cat = categories.find(c => c.key === activeCategory);
+    const cat = categories.find((c) => c.key === activeCategory);
     if (!cat) return [];
     if (!search) return cat.widgets;
     const q = search.toLowerCase();
-    return cat.widgets.filter(w => w.displayName.toLowerCase().includes(q) || w.name.toLowerCase().includes(q));
+    return cat.widgets.filter(
+      (w) => w.displayName.toLowerCase().includes(q) || w.name.toLowerCase().includes(q)
+    );
   }, [categories, activeCategory, search]);
 
   const handleAdd = (widgetName: string, displayType: WidgetDisplayType) => {
@@ -99,7 +106,7 @@ export function WidgetPicker({ existingWidgetKeys, onAddWidget }: WidgetPickerPr
           type="text"
           placeholder="Search widgets..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value)}
           className="w-full pl-8 pr-3 py-1.5 text-xs bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
         />
       </div>
@@ -107,22 +114,24 @@ export function WidgetPicker({ existingWidgetKeys, onAddWidget }: WidgetPickerPr
       {/* Category tabs */}
       <Tabs value={activeCategory} onValueChange={setActiveCategory}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-transparent p-0">
-          {categories.map(cat => (
+          {categories.map((cat) => (
             <TabsTrigger
               key={cat.key}
               value={cat.key}
-              className="text-[10px] px-2 py-1 h-auto data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md"
+              className="text-xs px-2 py-1 h-auto data-[state=active]:bg-primary/10 data-[state=active]:text-primary rounded-md"
             >
               {cat.name}
-              <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">{cat.widgets.length}</Badge>
+              <Badge variant="secondary" className="ml-1 text-[9px] h-4 px-1">
+                {cat.widgets.length}
+              </Badge>
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {categories.map(cat => (
+        {categories.map((cat) => (
           <TabsContent key={cat.key} value={cat.key} className="mt-3">
             <div className="grid grid-cols-1 gap-1.5 max-h-[300px] overflow-y-auto">
-              {(search ? filteredWidgets : cat.widgets).map(w => {
+              {(search ? filteredWidgets : cat.widgets).map((w) => {
                 const typeBadge = TYPE_BADGES[w.displayType];
                 return (
                   <div
@@ -136,24 +145,39 @@ export function WidgetPicker({ existingWidgetKeys, onAddWidget }: WidgetPickerPr
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="font-medium truncate">{w.displayName}</span>
-                      <Badge variant="secondary" className={cn('text-[9px] px-1.5 py-0', typeBadge.color)}>
+                      <Badge
+                        variant="secondary"
+                        className={cn('text-[9px] px-1.5 py-0', typeBadge.color)}
+                      >
                         {typeBadge.label}
                       </Badge>
                     </div>
                     <Button
                       variant={w.isAdded ? 'secondary' : 'outline'}
                       size="sm"
-                      className="h-6 px-2 text-[10px] flex-shrink-0"
+                      className="h-6 px-2 text-xs flex-shrink-0"
                       onClick={() => handleAdd(w.name, w.displayType)}
                       disabled={w.isAdded}
                     >
-                      {w.isAdded ? <><Check className="h-3 w-3 mr-1" />Added</> : <><Plus className="h-3 w-3 mr-1" />Add</>}
+                      {w.isAdded ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Added
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </>
+                      )}
                     </Button>
                   </div>
                 );
               })}
               {filteredWidgets.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">No matching widgets</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No matching widgets
+                </p>
               )}
             </div>
           </TabsContent>

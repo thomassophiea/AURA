@@ -495,7 +495,7 @@ export function NotificationsMenu() {
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-medium text-foreground">Notifications</h3>
                 {scope.isSiteScoped && (
-                  <Badge variant="outline" className="text-[10px] font-normal">
+                  <Badge variant="outline" className="text-xs font-normal">
                     {scope.label}
                   </Badge>
                 )}

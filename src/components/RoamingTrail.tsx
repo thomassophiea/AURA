@@ -822,7 +822,7 @@ export function RoamingTrail({
                 AP Events
               </span>
               {filteredAPEvents.length > 0 && (
-                <span className="text-[10px] text-blue-500">({filteredAPEvents.length})</span>
+                <span className="text-xs text-blue-500">({filteredAPEvents.length})</span>
               )}
             </label>
             <label className="flex items-center gap-1.5 cursor-pointer group">
@@ -836,7 +836,7 @@ export function RoamingTrail({
                 RRM Events
               </span>
               {filteredRRMEvents.length > 0 && (
-                <span className="text-[10px] text-purple-500">({filteredRRMEvents.length})</span>
+                <span className="text-xs text-purple-500">({filteredRRMEvents.length})</span>
               )}
             </label>
           </div>
@@ -1101,7 +1101,7 @@ export function RoamingTrail({
                   />
                 )}
               </div>
-              <div className="flex gap-2 text-[10px]">
+              <div className="flex gap-2 text-xs">
                 <span className="flex items-center gap-0.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   {Math.round((stats.signalQuality.good / stats.totalEvents) * 100)}%
@@ -1213,11 +1213,9 @@ export function RoamingTrail({
                     <Radio className="h-4 w-4 text-primary flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="font-medium text-xs truncate">{ap}</div>
-                      <div className="text-[10px] text-muted-foreground">
-                        {apEvents.length} events
-                      </div>
+                      <div className="text-xs text-muted-foreground">{apEvents.length} events</div>
                       {totalDwell > 0 && (
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           Dwell: {formatDuration(totalDwell)}
                         </div>
                       )}
@@ -1238,7 +1236,7 @@ export function RoamingTrail({
                     style={{ left: `${percent}%` }}
                   >
                     <div
-                      className="text-[10px] text-muted-foreground px-1 py-2 whitespace-nowrap"
+                      className="text-xs text-muted-foreground px-1 py-2 whitespace-nowrap"
                       style={{ height: '40px', display: 'flex', alignItems: 'center' }}
                     >
                       {formatTimeShort(
@@ -1570,13 +1568,13 @@ export function RoamingTrail({
                               {hEvent.eventType}
                             </span>
                             {hEvent.isFailedRoam && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-destructive/10 text-destructive font-medium shrink-0">
                                 Failed
                               </span>
                             )}
                             {hEvent.isLateRoam && !hEvent.isFailedRoam && (
                               <span
-                                className="text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0"
+                                className="text-xs px-1.5 py-0.5 rounded font-medium shrink-0"
                                 style={{
                                   background: 'var(--status-warning-bg)',
                                   color: 'var(--status-warning)',
@@ -1639,7 +1637,7 @@ export function RoamingTrail({
                           {/* Insight */}
                           {insight && (
                             <div
-                              className="text-[10px] px-2 py-1 rounded border-l-2 leading-relaxed"
+                              className="text-xs px-2 py-1 rounded border-l-2 leading-relaxed"
                               style={{
                                 background: hEvent.isFailedRoam
                                   ? 'var(--status-error-bg)'
@@ -1665,7 +1663,7 @@ export function RoamingTrail({
                             </div>
                           )}
 
-                          <div className="mt-2 text-[10px] text-muted-foreground/50">
+                          <div className="mt-2 text-xs text-muted-foreground/50">
                             Click for full details
                           </div>
                         </div>
@@ -2040,14 +2038,14 @@ export function RoamingTrail({
                                       {rssi} dBm
                                     </span>
                                     <span
-                                      className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                      className="text-xs font-medium px-1 py-0.5 rounded text-white"
                                       style={{ background: barColor }}
                                     >
                                       {qualityLabel}
                                     </span>
                                     {delta !== null && (
                                       <span
-                                        className="text-[10px] font-mono font-medium"
+                                        className="text-xs font-mono font-medium"
                                         style={{
                                           color:
                                             delta > 0
@@ -2068,7 +2066,7 @@ export function RoamingTrail({
                                   />
                                 </div>
                                 {selectedEvent.previousRssi !== undefined && (
-                                  <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                                  <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
                                     <span>Previous AP:</span>
                                     <span className="font-mono font-medium">
                                       {selectedEvent.previousRssi} dBm
@@ -2114,7 +2112,7 @@ export function RoamingTrail({
                                       {snr} dB
                                     </span>
                                     <span
-                                      className="text-[10px] font-medium px-1 py-0.5 rounded text-white"
+                                      className="text-xs font-medium px-1 py-0.5 rounded text-white"
                                       style={{ background: snrBarColor }}
                                     >
                                       {snrLabel}
@@ -2184,7 +2182,7 @@ export function RoamingTrail({
                             {selectedEvent.ipAddress}
                           </span>
                           {selectedEvent.ipAddress.startsWith('169.') && (
-                            <span className="text-[10px] px-1.5 py-0.5 bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded font-medium">
+                            <span className="text-xs px-1.5 py-0.5 bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] rounded font-medium">
                               Self-Assigned (DHCP Issue)
                             </span>
                           )}
@@ -2451,7 +2449,7 @@ export function RoamingTrail({
 
       {/* Attribution */}
       <div className="px-4 py-1.5 border-t bg-muted/20 text-center">
-        <p className="text-[10px] text-muted-foreground opacity-60">
+        <p className="text-xs text-muted-foreground opacity-60">
           UI Design by Metka Dragos, Sr Product Manager, Product Experience & Thomas Sophiea,
           Product Manager
         </p>

@@ -1641,7 +1641,7 @@ export function ConfigureNetworks() {
                         headerName: 'Site Group',
                         width: 130,
                         cellRenderer: (p: any) => (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                             {(p.data as any)._siteGroupName || '—'}
                           </Badge>
                         ),
@@ -1883,10 +1883,7 @@ export function ConfigureNetworks() {
                         </TableCell>
                         {isOrgScope && siteGroups.length > 1 && (
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0 font-normal"
-                            >
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                               {(network as any)._siteGroupName || '—'}
                             </Badge>
                           </TableCell>

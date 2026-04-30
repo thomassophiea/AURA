@@ -410,7 +410,7 @@ export function ReportCenter() {
           </Select>
 
           {lastUpdated && (
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {lastUpdated.toLocaleTimeString()}
             </span>
@@ -488,7 +488,7 @@ export function ReportCenter() {
                     key={opt.value}
                     onClick={() => setDuration(opt.value)}
                     className={cn(
-                      'px-2 py-0.5 text-[10px] font-medium transition-colors',
+                      'px-2 py-0.5 text-xs font-medium transition-colors',
                       duration === opt.value
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:bg-muted/50'
@@ -619,7 +619,7 @@ export function ReportCenter() {
       )}
 
       {/* Report Footer */}
-      <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-[10px] text-muted-foreground print:mt-12">
+      <div className="mt-8 pt-4 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground print:mt-12">
         <span>
           Extreme Report Studio &middot; {rc.activeConfig.name} &middot; {currentPage?.title || ''}{' '}
           &middot; {new Date().toLocaleDateString()}

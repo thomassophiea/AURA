@@ -16,7 +16,12 @@ interface SLERootCausePanelProps {
   onClientClick?: (mac: string) => void;
 }
 
-export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: SLERootCausePanelProps) {
+export function SLERootCausePanel({
+  open,
+  onClose,
+  rootCause,
+  onClientClick,
+}: SLERootCausePanelProps) {
   if (!rootCause) return null;
 
   return (
@@ -42,11 +47,11 @@ export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: S
                 <Table className="text-xs">
                   <TableHeader>
                     <TableRow className="h-7">
-                      <TableHead className="text-[10px]">Client</TableHead>
-                      <TableHead className="text-[10px]">MAC Address</TableHead>
-                      <TableHead className="text-[10px]">AP</TableHead>
+                      <TableHead className="text-xs">Client</TableHead>
+                      <TableHead className="text-xs">MAC Address</TableHead>
+                      <TableHead className="text-xs">AP</TableHead>
                       {rootCause.affectedDevices[0]?.rssi !== undefined && (
-                        <TableHead className="text-[10px]">RSSI</TableHead>
+                        <TableHead className="text-xs">RSSI</TableHead>
                       )}
                     </TableRow>
                   </TableHeader>
@@ -65,11 +70,16 @@ export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: S
                             )}
                           </span>
                         </TableCell>
-                        <TableCell className="py-1 font-mono text-[10px]">{dev.mac}</TableCell>
-                        <TableCell className="py-1">{dev.ap && dev.ap !== '-' ? dev.ap : '-'}</TableCell>
+                        <TableCell className="py-1 font-mono text-xs">{dev.mac}</TableCell>
+                        <TableCell className="py-1">
+                          {dev.ap && dev.ap !== '-' ? dev.ap : '-'}
+                        </TableCell>
                         {dev.rssi !== undefined && (
                           <TableCell className="py-1">
-                            <Badge variant={dev.rssi > -70 ? 'outline' : 'destructive'} className="text-[10px]">
+                            <Badge
+                              variant={dev.rssi > -70 ? 'outline' : 'destructive'}
+                              className="text-xs"
+                            >
                               {dev.rssi} dBm
                             </Badge>
                           </TableCell>
@@ -95,9 +105,15 @@ export function SLERootCausePanel({ open, onClose, rootCause, onClientClick }: S
                 </h4>
                 <div className="space-y-1">
                   {rootCause.affectedAPs.map((ap, i) => (
-                    <div key={i} className="flex items-center justify-between text-xs px-2 py-1 bg-muted/30 rounded">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-xs px-2 py-1 bg-muted/30 rounded"
+                    >
                       <span>{ap.name || ap.serial}</span>
-                      <Badge variant={ap.status === 'online' ? 'outline' : 'destructive'} className="text-[10px]">
+                      <Badge
+                        variant={ap.status === 'online' ? 'outline' : 'destructive'}
+                        className="text-xs"
+                      >
                         {ap.status || 'unknown'}
                       </Badge>
                     </div>

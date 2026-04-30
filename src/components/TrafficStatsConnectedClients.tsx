@@ -1116,7 +1116,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         headerName: 'Site Group',
                         width: 130,
                         cellRenderer: (p: any) => (
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                          <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                             {(p.data as any)._siteGroupName || '—'}
                           </Badge>
                         ),

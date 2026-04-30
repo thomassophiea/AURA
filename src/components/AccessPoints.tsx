@@ -2095,7 +2095,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         field: 'serialNumber' as any,
         width: 120,
         cellRenderer: (params: any) => (
-          <span className="text-[10px] px-1.5 py-0.5 border rounded">
+          <span className="text-xs px-1.5 py-0.5 border rounded">
             {(params.data as any)._siteGroupName || '—'}
           </span>
         ),
@@ -2578,7 +2578,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-[color:var(--status-error)]" />
               <span className="font-medium text-sm">E911 BSSID</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border border-[color:var(--status-warning)]/30">
                 Beta
               </span>
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] text-xs font-semibold border border-[color:var(--status-success)]/30">
@@ -2752,7 +2752,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                           />
                         </TableHead>
                         {navigationScope === 'global' && siteGroups.length > 1 && (
-                          <TableHead className="text-[10px]">
+                          <TableHead className="text-xs">
                             <div className="flex items-center gap-1">
                               <Server className="h-3 w-3" />
                               <span>Site Group</span>
@@ -2796,10 +2796,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                           </TableCell>
                           {navigationScope === 'global' && siteGroups.length > 1 && (
                             <TableCell>
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 font-normal"
-                              >
+                              <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                                 {(ap as any)._siteGroupName || '—'}
                               </Badge>
                             </TableCell>
@@ -3720,7 +3717,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                         </span>
                         <Badge
                           variant={isConnected ? 'default' : 'secondary'}
-                          className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+                          className="text-xs h-4 px-1.5 py-0 uppercase tracking-wide"
                         >
                           {status}
                         </Badge>

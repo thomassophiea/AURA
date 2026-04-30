@@ -114,7 +114,7 @@ function SLECard({ sle }: { sle: SLEMetric }) {
               .filter((c) => c.impactPercent > 0)
               .slice(0, 3)
               .map((c, i) => (
-                <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0">
+                <Badge key={i} variant="outline" className="text-xs px-1.5 py-0">
                   {c.name}: {c.impactPercent.toFixed(0)}%
                 </Badge>
               ))}

@@ -667,10 +667,7 @@ export function ConfigureAAAPolicies() {
                       <TableRow key={policy.id}>
                         {isOrgScope && siteGroups.length > 1 && (
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0 font-normal"
-                            >
+                            <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                               {policy._siteGroupName || '—'}
                             </Badge>
                           </TableCell>

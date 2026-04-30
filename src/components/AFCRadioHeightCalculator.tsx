@@ -1343,30 +1343,30 @@ export function AFCRadioHeightCalculator() {
                               </div>
                               <div className="flex items-center gap-1 flex-wrap">
                                 <Badge
-                                  className={`text-[10px] px-1.5 py-0 ${confidenceBadgeClass(b.estimatedSourceConfidence)}`}
+                                  className={`text-xs px-1.5 py-0 ${confidenceBadgeClass(b.estimatedSourceConfidence)}`}
                                 >
                                   {b.estimatedSourceConfidence} confidence
                                 </Badge>
                                 {b.buildingType && (
                                   <Badge
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                                    className="text-xs px-1.5 py-0 text-muted-foreground"
                                   >
                                     {buildingTypeLabel(b.buildingType)}
                                   </Badge>
                                 )}
                                 {committed ? (
-                                  <Badge className="text-[10px] px-1.5 py-0 bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/20">
+                                  <Badge className="text-xs px-1.5 py-0 bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border border-[color:var(--status-success)]/20">
                                     Committed
                                   </Badge>
                                 ) : confirmed ? (
-                                  <Badge className="text-[10px] px-1.5 py-0 bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border border-[color:var(--status-info)]/20">
+                                  <Badge className="text-xs px-1.5 py-0 bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border border-[color:var(--status-info)]/20">
                                     Confirmed
                                   </Badge>
                                 ) : (
                                   <Badge
                                     variant="outline"
-                                    className="text-[10px] px-1.5 py-0 text-muted-foreground"
+                                    className="text-xs px-1.5 py-0 text-muted-foreground"
                                   >
                                     Confirmation required
                                   </Badge>
@@ -1529,7 +1529,7 @@ export function AFCRadioHeightCalculator() {
                             </div>
 
                             {b.notes && (
-                              <p className="text-[11px] text-muted-foreground italic">{b.notes}</p>
+                              <p className="text-xs text-muted-foreground italic">{b.notes}</p>
                             )}
                           </div>
                         )}
@@ -1538,7 +1538,7 @@ export function AFCRadioHeightCalculator() {
                   })}
                 </div>
 
-                <p className="text-[11px] text-muted-foreground italic">
+                <p className="text-xs text-muted-foreground italic">
                   Values are estimated from public information for demonstration purposes. Not for
                   compliance use without validation. User confirmation is required before
                   committing.

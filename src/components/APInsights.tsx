@@ -346,19 +346,19 @@ export function APInsights({ serialNumber, apName, onOpenFullScreen }: APInsight
                     <p className="text-xl font-semibold">
                       {formatValue(stats.avgThroughput, 'bps')}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Avg Throughput</p>
+                    <p className="text-xs text-muted-foreground">Avg Throughput</p>
                   </div>
                 )}
               {stats.peakClients !== null && !isNaN(stats.peakClients) && stats.peakClients > 0 && (
                 <div className="text-center">
                   <p className="text-xl font-semibold">{stats.peakClients}</p>
-                  <p className="text-[10px] text-muted-foreground">Peak Clients</p>
+                  <p className="text-xs text-muted-foreground">Peak Clients</p>
                 </div>
               )}
               {stats.avgPower !== null && !isNaN(stats.avgPower) && stats.avgPower > 0 && (
                 <div className="text-center">
                   <p className="text-xl font-semibold">{stats.avgPower.toFixed(1)}W</p>
-                  <p className="text-[10px] text-muted-foreground">Avg Power</p>
+                  <p className="text-xs text-muted-foreground">Avg Power</p>
                 </div>
               )}
             </div>

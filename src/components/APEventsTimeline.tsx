@@ -26,7 +26,7 @@ import {
   BarChart3,
   RefreshCw,
   Zap,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { APAlarm, APAlarmCategory } from '../services/api';
 
@@ -49,7 +49,7 @@ function formatTimestamp(ts: number): string {
     hour: 'numeric',
     minute: '2-digit',
     second: '2-digit',
-    hour12: true
+    hour12: true,
   });
 }
 
@@ -90,8 +90,10 @@ function getSeverityColor(level?: string): string {
 
 function getSeverityBg(level?: string): string {
   const l = (level || '').toLowerCase();
-  if (l === 'critical' || l === 'error') return 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
-  if (l === 'major' || l === 'warning') return 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
+  if (l === 'critical' || l === 'error')
+    return 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
+  if (l === 'major' || l === 'warning')
+    return 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
   if (l === 'minor') return 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30';
   return 'bg-muted/30 border-muted';
 }
@@ -102,7 +104,7 @@ export function APEventsTimeline({
   apName,
   serialNumber,
   onRefresh,
-  isLoading
+  isLoading,
 }: APEventsTimelineProps) {
   const [selectedEvent, setSelectedEvent] = useState<APAlarm | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
@@ -111,18 +113,18 @@ export function APEventsTimeline({
 
   // Get unique categories and severity levels
   const uniqueCategories = useMemo(() => {
-    const cats = new Set(events.map(e => e.Category));
+    const cats = new Set(events.map((e) => e.Category));
     return ['all', ...Array.from(cats)];
   }, [events]);
 
   const uniqueSeverities = useMemo(() => {
-    const sevs = new Set(events.map(e => e.Level).filter(Boolean));
+    const sevs = new Set(events.map((e) => e.Level).filter(Boolean));
     return ['all', ...Array.from(sevs)];
   }, [events]);
 
   // Filter events
   const filteredEvents = useMemo(() => {
-    return events.filter(event => {
+    return events.filter((event) => {
       if (categoryFilter !== 'all' && event.Category !== categoryFilter) return false;
       if (severityFilter !== 'all' && event.Level !== severityFilter) return false;
       return true;
@@ -135,7 +137,7 @@ export function APEventsTimeline({
     const byCategory: Record<string, number> = {};
     const byContext: Record<string, number> = {};
 
-    events.forEach(event => {
+    events.forEach((event) => {
       const sev = event.Level || 'Unknown';
       const cat = event.Category || 'Unknown';
       const ctx = event.Context || 'Unknown';
@@ -150,10 +152,13 @@ export function APEventsTimeline({
       bySeverity,
       byCategory,
       byContext,
-      timeRange: events.length > 0 ? {
-        oldest: Math.min(...events.map(e => e.ts)),
-        newest: Math.max(...events.map(e => e.ts))
-      } : null
+      timeRange:
+        events.length > 0
+          ? {
+              oldest: Math.min(...events.map((e) => e.ts)),
+              newest: Math.max(...events.map((e) => e.ts)),
+            }
+          : null,
     };
   }, [events]);
 
@@ -170,7 +175,7 @@ export function APEventsTimeline({
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                {uniqueCategories.map(cat => (
+                {uniqueCategories.map((cat) => (
                   <SelectItem key={cat} value={cat}>
                     {cat === 'all' ? 'All Categories' : cat}
                   </SelectItem>
@@ -182,7 +187,7 @@ export function APEventsTimeline({
                 <SelectValue placeholder="Severity" />
               </SelectTrigger>
               <SelectContent>
-                {uniqueSeverities.map(sev => (
+                {uniqueSeverities.map((sev) => (
                   <SelectItem key={sev} value={sev}>
                     {sev === 'all' ? 'All Severities' : sev}
                   </SelectItem>
@@ -234,12 +239,16 @@ export function APEventsTimeline({
               <Card className="border-0 shadow-none bg-transparent">
                 <CardContent className="p-0">
                   <div className="flex items-center gap-3">
-                    {Object.entries(stats.bySeverity).slice(0, 3).map(([sev, count]) => (
-                      <div key={sev} className="text-center">
-                        <div className={`text-xl font-bold ${getSeverityColor(sev)}`}>{count}</div>
-                        <div className="text-[10px] text-muted-foreground">{sev}</div>
-                      </div>
-                    ))}
+                    {Object.entries(stats.bySeverity)
+                      .slice(0, 3)
+                      .map(([sev, count]) => (
+                        <div key={sev} className="text-center">
+                          <div className={`text-xl font-bold ${getSeverityColor(sev)}`}>
+                            {count}
+                          </div>
+                          <div className="text-xs text-muted-foreground">{sev}</div>
+                        </div>
+                      ))}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">By Severity</div>
                 </CardContent>
@@ -249,11 +258,13 @@ export function APEventsTimeline({
               <Card className="border-0 shadow-none bg-transparent">
                 <CardContent className="p-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {Object.entries(stats.byCategory).slice(0, 3).map(([cat, count]) => (
-                      <Badge key={cat} variant="secondary" className="text-xs">
-                        {cat}: {count}
-                      </Badge>
-                    ))}
+                    {Object.entries(stats.byCategory)
+                      .slice(0, 3)
+                      .map(([cat, count]) => (
+                        <Badge key={cat} variant="secondary" className="text-xs">
+                          {cat}: {count}
+                        </Badge>
+                      ))}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Top Categories</div>
                 </CardContent>
@@ -297,7 +308,8 @@ export function APEventsTimeline({
             ) : (
               <div className="space-y-4">
                 {filteredEvents.map((event, index) => {
-                  const isSelected = selectedEvent?.ts === event.ts && selectedEvent?.Id === event.Id;
+                  const isSelected =
+                    selectedEvent?.ts === event.ts && selectedEvent?.Id === event.Id;
 
                   return (
                     <div
@@ -308,54 +320,66 @@ export function APEventsTimeline({
                       onClick={() => setSelectedEvent(isSelected ? null : event)}
                     >
                       {/* Event card */}
-                        <Card className={`transition-all ${isSelected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'}`}>
-                          <CardContent className="p-4">
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant={event.Level?.toLowerCase() === 'critical' ? 'destructive' : event.Level?.toLowerCase() === 'major' ? 'default' : 'secondary'}>
-                                  {event.Level || 'Info'}
+                      <Card
+                        className={`transition-all ${isSelected ? 'ring-2 ring-primary shadow-lg' : 'hover:shadow-md'}`}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <Badge
+                                variant={
+                                  event.Level?.toLowerCase() === 'critical'
+                                    ? 'destructive'
+                                    : event.Level?.toLowerCase() === 'major'
+                                      ? 'default'
+                                      : 'secondary'
+                                }
+                              >
+                                {event.Level || 'Info'}
+                              </Badge>
+                              <Badge variant="outline">{event.Category}</Badge>
+                              {event.Context && event.Context !== event.Category && (
+                                <Badge variant="outline" className="text-xs">
+                                  {event.Context}
                                 </Badge>
-                                <Badge variant="outline">{event.Category}</Badge>
-                                {event.Context && event.Context !== event.Category && (
-                                  <Badge variant="outline" className="text-xs">{event.Context}</Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                {formatTimestamp(event.ts)}
-                              </div>
+                              )}
                             </div>
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatTimestamp(event.ts)}
+                            </div>
+                          </div>
 
-                            <p className="text-sm">{event.log}</p>
+                          <p className="text-sm">{event.log}</p>
 
-                            {/* Expanded details */}
-                            {isSelected && (
-                              <div className="mt-4 pt-4 border-t space-y-2">
-                                <div className="grid grid-cols-2 gap-4 text-xs">
-                                  <div>
-                                    <span className="text-muted-foreground">Event ID:</span>
-                                    <span className="ml-2 font-mono">{event.Id}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">AP Serial:</span>
-                                    <span className="ml-2 font-mono">{event.ApSerial}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">AP Name:</span>
-                                    <span className="ml-2">{event.ApName}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Position:</span>
-                                    <span className="ml-2">{event.pos}</span>
-                                  </div>
+                          {/* Expanded details */}
+                          {isSelected && (
+                            <div className="mt-4 pt-4 border-t space-y-2">
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                <div>
+                                  <span className="text-muted-foreground">Event ID:</span>
+                                  <span className="ml-2 font-mono">{event.Id}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">AP Serial:</span>
+                                  <span className="ml-2 font-mono">{event.ApSerial}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">AP Name:</span>
+                                  <span className="ml-2">{event.ApName}</span>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">Position:</span>
+                                  <span className="ml-2">{event.pos}</span>
                                 </div>
                               </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </div>
-                    );
-                  })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -368,11 +392,21 @@ export function APEventsTimeline({
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold">Event Details</h3>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedEvent(null)} aria-label="Close event details">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedEvent(null)}
+                aria-label="Close event details"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-            <Badge variant={selectedEvent.Level?.toLowerCase() === 'critical' ? 'destructive' : 'secondary'} className="text-xs">
+            <Badge
+              variant={
+                selectedEvent.Level?.toLowerCase() === 'critical' ? 'destructive' : 'secondary'
+              }
+              className="text-xs"
+            >
               {selectedEvent.Level}
             </Badge>
           </div>
@@ -382,32 +416,44 @@ export function APEventsTimeline({
               <div>
                 <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Time</h4>
                 <p className="text-sm">{formatTimestamp(selectedEvent.ts)}</p>
-                <p className="text-xs text-muted-foreground">{formatRelativeTime(selectedEvent.ts)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {formatRelativeTime(selectedEvent.ts)}
+                </p>
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Category</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Category
+                </h4>
                 <p className="text-sm">{selectedEvent.Category}</p>
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Context</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Context
+                </h4>
                 <p className="text-sm">{selectedEvent.Context}</p>
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Access Point</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Access Point
+                </h4>
                 <p className="text-sm">{selectedEvent.ApName}</p>
                 <p className="text-xs font-mono text-muted-foreground">{selectedEvent.ApSerial}</p>
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Event ID</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Event ID
+                </h4>
                 <p className="text-sm font-mono">{selectedEvent.Id}</p>
               </div>
 
               <div>
-                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">Message</h4>
+                <h4 className="text-xs font-medium text-muted-foreground uppercase mb-1">
+                  Message
+                </h4>
                 <p className="text-sm bg-muted/50 p-3 rounded-lg">{selectedEvent.log}</p>
               </div>
             </div>

@@ -55,12 +55,12 @@ export function MobileBottomNav({ activeTab, onTabChange, badges }: MobileBottom
               <div className="relative">
                 <Icon className={`h-5 w-5 ${isActive ? 'stroke-[2.5]' : 'stroke-2'}`} />
                 {tab.badge !== undefined && tab.badge > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 bg-destructive text-destructive-foreground text-xs font-bold rounded-full flex items-center justify-center">
                     {tab.badge > 99 ? '99+' : tab.badge}
                   </span>
                 )}
               </div>
-              <span className={`text-[10px] font-medium ${isActive ? 'font-semibold' : ''}`}>
+              <span className={`text-xs font-medium ${isActive ? 'font-semibold' : ''}`}>
                 {tab.label}
               </span>
             </button>

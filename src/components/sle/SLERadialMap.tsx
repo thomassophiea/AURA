@@ -58,19 +58,18 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(800);
 
-  const selected = sles.find(s => s.id === selectedId) || null;
+  const selected = sles.find((s) => s.id === selectedId) || null;
 
   // Overall score
-  const overallScore = sles.length > 0
-    ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length
-    : 0;
+  const overallScore =
+    sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
   const overallStatus = getSLEStatus(overallScore);
 
   // Responsive: measure container width
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const observer = new ResizeObserver(entries => {
+    const observer = new ResizeObserver((entries) => {
       setContainerW(entries[0].contentRect.width);
     });
     observer.observe(el);
@@ -78,7 +77,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   }, []);
 
   // Derived dimensions
-  const containerH = Math.max(440, containerW * 0.60);
+  const containerH = Math.max(440, containerW * 0.6);
   const centerX = containerW / 2;
   const centerY = containerH / 2;
   const ringRadius = Math.min(containerW * 0.34, containerH * 0.36);
@@ -88,7 +87,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   // Node positions around the ring
   const nodePositions = useMemo(() => {
     return sles.map((_sle, i) => {
-      const angle = (i * 2 * Math.PI / sles.length) - Math.PI / 2;
+      const angle = (i * 2 * Math.PI) / sles.length - Math.PI / 2;
       return {
         x: centerX + Math.cos(angle) * ringRadius,
         y: centerY + Math.sin(angle) * ringRadius,
@@ -99,11 +98,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
   return (
     <>
       {/* Radial map container */}
-      <div
-        ref={containerRef}
-        className="relative w-full"
-        style={{ height: containerH }}
-      >
+      <div ref={containerRef} className="relative w-full" style={{ height: containerH }}>
         {/* SVG connection lines */}
         <svg
           className="absolute inset-0 pointer-events-none"
@@ -154,10 +149,10 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
         {/* SLE nodes */}
         {sles.map((sle, i) => {
           const pos = nodePositions[i];
-          const angle = (i * 2 * Math.PI / sles.length) - Math.PI / 2;
+          const angle = (i * 2 * Math.PI) / sles.length - Math.PI / 2;
           const Icon = SLE_ICONS[sle.id] || Target;
           const isSelected = sle.id === selectedId;
-          const activeCount = sle.classifiers.filter(c => c.affectedClients > 0).length;
+          const activeCount = sle.classifiers.filter((c) => c.affectedClients > 0).length;
 
           // Place text just outside the bubble, radiating away from center
           const labelGap = nodeSize / 2 + 18;
@@ -249,7 +244,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
               <h3 className="text-sm font-bold uppercase tracking-widest text-white">
                 {selected.name}
               </h3>
-              <p className="text-[11px] text-white/60">{selected.description}</p>
+              <p className="text-xs text-white/60">{selected.description}</p>
             </div>
             <span
               className="ml-auto text-xl font-bold"

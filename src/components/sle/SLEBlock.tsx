@@ -5,7 +5,17 @@
 
 import { useState } from 'react';
 import { Badge } from '../ui/badge';
-import { ChevronDown, ChevronUp, Wifi, Signal, Radio, Shield, Clock, Activity, Target } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Wifi,
+  Signal,
+  Radio,
+  Shield,
+  Clock,
+  Activity,
+  Target,
+} from 'lucide-react';
 import { SLEScoreGauge } from './SLEScoreGauge';
 import { SLETimeline } from './SLETimeline';
 import { SLEClassifierTree } from './SLEClassifierTree';
@@ -42,16 +52,21 @@ interface SLEBlockProps {
   aps?: any[];
 }
 
-function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any[], aps: any[]): SLERootCause {
+function buildRootCause(
+  classifier: SLEClassifier,
+  sle: SLEMetric,
+  stations: any[],
+  aps: any[]
+): SLERootCause {
   let affectedDevices: SLERootCause['affectedDevices'] = [];
   let affectedAPs: SLERootCause['affectedAPs'] = [];
   let recommendations: string[] = [];
 
   if (sle.id === 'coverage' && classifier.id === 'weak_signal') {
     affectedDevices = stations
-      .filter(s => (s.rssi ?? s.rss ?? 0) < -70)
+      .filter((s) => (s.rssi ?? s.rss ?? 0) < -70)
       .slice(0, 30)
-      .map(s => ({
+      .map((s) => ({
         mac: s.macAddress || '',
         name: s.hostName || s.hostname || '',
         ap: s.apName || s.apSerial || '',
@@ -64,12 +79,12 @@ function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any
     ];
   } else if (sle.id === 'ap_health' && classifier.id === 'ap_disconnected') {
     affectedAPs = aps
-      .filter(ap => {
+      .filter((ap) => {
         const status = (ap.status || ap.connectionState || '').toLowerCase();
         return status.includes('disconnect') || status.includes('offline');
       })
       .slice(0, 20)
-      .map(ap => ({
+      .map((ap) => ({
         serial: ap.serialNumber || '',
         name: ap.name || ap.hostname || ap.serialNumber || '',
         status: ap.status || ap.connectionState || 'offline',
@@ -80,13 +95,11 @@ function buildRootCause(classifier: SLEClassifier, sle: SLEMetric, stations: any
       'Review switch port status for AP uplinks',
     ];
   } else {
-    affectedDevices = stations
-      .slice(0, 10)
-      .map(s => ({
-        mac: s.macAddress || '',
-        name: s.hostName || s.hostname || '',
-        ap: s.apName || s.apSerial || '',
-      }));
+    affectedDevices = stations.slice(0, 10).map((s) => ({
+      mac: s.macAddress || '',
+      name: s.hostName || s.hostname || '',
+      ap: s.apName || s.apSerial || '',
+    }));
     recommendations = [
       'Monitor this classifier for trends over time',
       'Review network configuration for the affected segment',
@@ -108,7 +121,7 @@ export function SLEBlock({ sle, stations = [], aps = [] }: SLEBlockProps) {
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
 
   const Icon = SLE_ICONS[sle.id] || Target;
-  const activeClassifiers = sle.classifiers.filter(c => c.affectedClients > 0);
+  const activeClassifiers = sle.classifiers.filter((c) => c.affectedClients > 0);
 
   return (
     <>
@@ -129,15 +142,15 @@ export function SLEBlock({ sle, stations = [], aps = [] }: SLEBlockProps) {
               </div>
               <h3 className="text-sm font-bold uppercase tracking-widest text-white">{sle.name}</h3>
             </div>
-            <p className="text-[11px] text-white/70 ml-9">{sle.description}</p>
+            <p className="text-xs text-white/70 ml-9">{sle.description}</p>
 
             {/* Client/AP count badges */}
             <div className="flex items-center gap-2 mt-3 ml-9">
-              <span className="text-[10px] font-medium text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-medium text-white/80 bg-white/10 px-2.5 py-0.5 rounded-full">
                 {sle.totalUserMinutes} {sle.id === 'ap_health' ? 'APs' : 'clients'}
               </span>
               {sle.affectedUserMinutes > 0 && (
-                <span className="text-[10px] font-medium text-red-200 bg-red-500/30 px-2.5 py-0.5 rounded-full">
+                <span className="text-xs font-medium text-red-200 bg-red-500/30 px-2.5 py-0.5 rounded-full">
                   {sle.affectedUserMinutes} affected
                 </span>
               )}
@@ -159,10 +172,14 @@ export function SLEBlock({ sle, stations = [], aps = [] }: SLEBlockProps) {
             onClick={() => setShowClassifiers(!showClassifiers)}
             className="flex items-center gap-1.5 w-full py-1.5 text-xs text-white/60 hover:text-white/90 transition-colors"
           >
-            {showClassifiers ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {showClassifiers ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
             <span className="font-medium">Classifiers</span>
             {activeClassifiers.length > 0 && (
-              <span className="text-[10px] font-medium text-white/80 bg-white/15 px-2 py-0.5 rounded-full ml-1">
+              <span className="text-xs font-medium text-white/80 bg-white/15 px-2 py-0.5 rounded-full ml-1">
                 {activeClassifiers.length} active
               </span>
             )}

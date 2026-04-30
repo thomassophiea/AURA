@@ -234,21 +234,19 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
           {station.status ? (
             <Badge
               variant={getStatusBadgeVariant(station.status)}
-              className="text-[10px] px-1.5 py-0 h-4 font-medium uppercase tracking-wide"
+              className="text-xs px-1.5 py-0 h-4 font-medium uppercase tracking-wide"
             >
               {station.status}
             </Badge>
           ) : (
-            <span className="text-[11px] text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">—</span>
           )}
           {station.status?.toLowerCase() === 'disconnected' && station.lastSeen && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="h-2.5 w-2.5 flex-shrink-0" />
-                  <span className="text-[10px] leading-none">
-                    {formatLastSeen(station.lastSeen)}
-                  </span>
+                  <span className="text-xs leading-none">{formatLastSeen(station.lastSeen)}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -329,7 +327,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
         <div className="flex items-center gap-1.5">
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="font-mono text-[11px] leading-tight cursor-help">
+              <span className="font-mono text-xs leading-tight cursor-help">
                 {station.macAddress || '—'}
               </span>
             </TooltipTrigger>
@@ -366,7 +364,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'IPv4 address',
     renderCell: (station) => (
-      <span className="font-mono text-[11px] leading-tight">{station.ipAddress || '—'}</span>
+      <span className="font-mono text-xs leading-tight">{station.ipAddress || '—'}</span>
     ),
   },
 
@@ -380,7 +378,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'IPv6 address',
     renderCell: (station) => (
-      <span className="font-mono text-[11px] leading-tight truncate max-w-[200px]">
+      <span className="font-mono text-xs leading-tight truncate max-w-[200px]">
         {station.ipv6Address || '—'}
       </span>
     ),
@@ -403,11 +401,11 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
         <TooltipTrigger asChild>
           <div className="flex items-center gap-1.5 min-w-0">
             <MapPin className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className="text-[11px] truncate leading-tight">{station.siteName || '—'}</span>
+            <span className="text-xs truncate leading-tight">{station.siteName || '—'}</span>
             {station.siteRating !== undefined && (
               <span className="flex items-center gap-0.5 flex-shrink-0">
                 <Star className="h-3 w-3 text-amber-500" />
-                <span className="text-[10px] leading-none">{station.siteRating}</span>
+                <span className="text-xs leading-none">{station.siteRating}</span>
               </span>
             )}
           </div>
@@ -431,14 +429,14 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     renderCell: (station) => {
       const networkName = station.ssid || station.network;
       if (!networkName) {
-        return <span className="text-[11px] text-muted-foreground">—</span>;
+        return <span className="text-xs text-muted-foreground">—</span>;
       }
       return (
         <Tooltip>
           <TooltipTrigger asChild>
             <div className="flex items-center gap-1.5 min-w-0">
               <Wifi className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-              <span className="text-[11px] font-medium truncate leading-tight">{networkName}</span>
+              <span className="text-xs font-medium truncate leading-tight">{networkName}</span>
             </div>
           </TooltipTrigger>
           <TooltipContent>
@@ -459,7 +457,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'Authenticated username',
-    renderCell: (station) => <span className="text-[11px]">{station.username || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.username || '—'}</span>,
   },
 
   {
@@ -471,7 +469,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'User/device role',
-    renderCell: (station) => <span className="text-[11px]">{station.role || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.role || '—'}</span>,
   },
 
   {
@@ -495,7 +493,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             </div>
           )}
           {station.apSerial && (
-            <div className="font-mono text-[10px] text-muted-foreground truncate leading-tight">
+            <div className="font-mono text-xs text-muted-foreground truncate leading-tight">
               {station.apSerial}
             </div>
           )}
@@ -504,7 +502,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               <TooltipTrigger asChild>
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="h-2.5 w-2.5 flex-shrink-0" />
-                  <span className="text-[10px] leading-none">{lastSeenLabel}</span>
+                  <span className="text-xs leading-none">{lastSeenLabel}</span>
                 </div>
               </TooltipTrigger>
               <TooltipContent>
@@ -527,9 +525,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'Access Point serial number',
     renderCell: (station) => (
-      <code className="text-[11px] font-mono">
-        {station.apSerial || station.apSerialNumber || '—'}
-      </code>
+      <code className="text-xs font-mono">{station.apSerial || station.apSerialNumber || '—'}</code>
     ),
   },
 
@@ -544,11 +540,11 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Last activity timestamp',
     renderCell: (station) => {
       const label = formatLastSeen(station.lastSeen);
-      if (!label) return <span className="text-[11px] text-muted-foreground">—</span>;
+      if (!label) return <span className="text-xs text-muted-foreground">—</span>;
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="text-[11px] cursor-help">{label}</span>
+            <span className="text-xs cursor-help">{label}</span>
           </TooltipTrigger>
           <TooltipContent>
             <p>{new Date(station.lastSeen!).toLocaleString()}</p>
@@ -579,7 +575,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${bandInfo.bgColor}`}
             >
               <Radio className={`h-3 w-3 ${bandInfo.color}`} />
-              <span className={`text-[11px] font-medium leading-none ${bandInfo.color}`}>
+              <span className={`text-xs font-medium leading-none ${bandInfo.color}`}>
                 {bandInfo.band}
               </span>
             </div>
@@ -614,7 +610,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md ${signalInfo.bgColor}`}
             >
               <SignalIcon className={`h-3 w-3 ${signalInfo.color}`} />
-              <span className={`text-[11px] font-medium leading-none ${signalInfo.color}`}>
+              <span className={`text-xs font-medium leading-none ${signalInfo.color}`}>
                 {radioId === 20 ? signalInfo.label : rssValue !== undefined ? `${rssValue}` : '—'}
               </span>
             </div>
@@ -646,7 +642,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'WiFi channel number',
     renderCell: (station) => (
-      <span className="text-[11px]">{station.channel || station.radioChannel || '—'}</span>
+      <span className="text-xs">{station.channel || station.radioChannel || '—'}</span>
     ),
   },
 
@@ -659,7 +655,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'WiFi protocol (802.11ax, etc.)',
-    renderCell: (station) => <span className="text-[11px]">{station.protocol || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.protocol || '—'}</span>,
   },
 
   {
@@ -672,7 +668,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'Device capabilities (RRM, WPA2, etc.)',
     renderCell: (station) => (
-      <span className="text-[11px] truncate max-w-[200px]">{station.capabilities || '—'}</span>
+      <span className="text-xs truncate max-w-[200px]">{station.capabilities || '—'}</span>
     ),
   },
 
@@ -685,7 +681,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'Receive data rate',
-    renderCell: (station) => <span className="text-[11px]">{station.rxRate || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.rxRate || '—'}</span>,
   },
 
   {
@@ -697,7 +693,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'Transmit data rate',
-    renderCell: (station) => <span className="text-[11px]">{station.txRate || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.txRate || '—'}</span>,
   },
 
   {
@@ -709,7 +705,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     defaultVisible: false,
     sortable: true,
     tooltip: 'MIMO spatial streams (e.g., 2x2)',
-    renderCell: (station) => <span className="text-[11px]">{station.spatialStreams || '—'}</span>,
+    renderCell: (station) => <span className="text-xs">{station.spatialStreams || '—'}</span>,
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -730,7 +726,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
       const outBytes = trafficData?.outBytes || station.outBytes || station.txBytes || 0;
 
       if (!inBytes && !outBytes) {
-        return <span className="text-[11px] text-muted-foreground">No data</span>;
+        return <span className="text-xs text-muted-foreground">No data</span>;
       }
 
       return (
@@ -739,9 +735,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5">
                 <ArrowDown className="h-3 w-3 text-green-500 flex-shrink-0" strokeWidth={2.5} />
-                <span className="text-[11px] text-green-500 font-medium">
-                  {formatBytes(inBytes)}
-                </span>
+                <span className="text-xs text-green-500 font-medium">{formatBytes(inBytes)}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
@@ -752,9 +746,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
             <TooltipTrigger asChild>
               <div className="flex items-center gap-1.5">
                 <ArrowUp className="h-3 w-3 text-blue-500 flex-shrink-0" strokeWidth={2.5} />
-                <span className="text-[11px] text-blue-500 font-medium">
-                  {formatBytes(outBytes)}
-                </span>
+                <span className="text-xs text-blue-500 font-medium">{formatBytes(outBytes)}</span>
               </div>
             </TooltipTrigger>
             <TooltipContent>
@@ -777,7 +769,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Total bytes received',
     renderCell: (station) => {
       const inBytes = station.trafficData?.inBytes || station.inBytes || station.rxBytes || 0;
-      return <span className="text-[11px]">{formatBytes(inBytes)}</span>;
+      return <span className="text-xs">{formatBytes(inBytes)}</span>;
     },
   },
 
@@ -792,7 +784,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Total bytes transmitted',
     renderCell: (station) => {
       const outBytes = station.trafficData?.outBytes || station.outBytes || station.txBytes || 0;
-      return <span className="text-[11px]">{formatBytes(outBytes)}</span>;
+      return <span className="text-xs">{formatBytes(outBytes)}</span>;
     },
   },
 
@@ -807,7 +799,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Total packets received',
     renderCell: (station) => {
       const packets = station.trafficData?.inPackets || station.inPackets || 0;
-      return <span className="text-[11px]">{formatCompactNumber(packets)}</span>;
+      return <span className="text-xs">{formatCompactNumber(packets)}</span>;
     },
   },
 
@@ -822,7 +814,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     tooltip: 'Total packets transmitted',
     renderCell: (station) => {
       const packets = station.trafficData?.outPackets || station.outPackets || 0;
-      return <span className="text-[11px]">{formatCompactNumber(packets)}</span>;
+      return <span className="text-xs">{formatCompactNumber(packets)}</span>;
     },
   },
 
@@ -836,9 +828,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'Downlink lost/retried packets',
     renderCell: (station) => (
-      <span className="text-[11px]">
-        {formatCompactNumber(station.dlLostRetriesPackets) || '0'}
-      </span>
+      <span className="text-xs">{formatCompactNumber(station.dlLostRetriesPackets) || '0'}</span>
     ),
   },
 
@@ -859,7 +849,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Badge variant="outline" className="text-[10px] h-4 px-1.5 py-0 max-w-[200px]">
+              <Badge variant="outline" className="text-xs h-4 px-1.5 py-0 max-w-[200px]">
                 <span className="truncate">{station.deviceType}</span>
               </Badge>
             </TooltipTrigger>
@@ -869,7 +859,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
           </Tooltip>
         );
       }
-      return <span className="text-[11px] text-muted-foreground">—</span>;
+      return <span className="text-xs text-muted-foreground">—</span>;
     },
   },
 
@@ -885,7 +875,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     renderCell: (station) => (
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className="text-[11px] text-muted-foreground leading-tight truncate max-w-[200px] block">
+          <span className="text-xs text-muted-foreground leading-tight truncate max-w-[200px] block">
             {station.manufacturer || '—'}
           </span>
         </TooltipTrigger>
@@ -906,7 +896,7 @@ export const DEVICE_MONITORING_COLUMNS: ColumnConfig<StationWithTraffic>[] = [
     sortable: true,
     tooltip: 'VLAN ID',
     renderCell: (station) => (
-      <span className="text-[11px]">{station.vlan || station.vlanId || '—'}</span>
+      <span className="text-xs">{station.vlan || station.vlanId || '—'}</span>
     ),
   },
 ];

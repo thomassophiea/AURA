@@ -2,7 +2,19 @@ import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent 
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
-import { Loader2, Server, ChevronLeft, Globe, Plus, Trash2, Pencil, CheckCircle, Wifi, WifiOff, AlertCircle } from 'lucide-react';
+import {
+  Loader2,
+  Server,
+  ChevronLeft,
+  Globe,
+  Plus,
+  Trash2,
+  Pencil,
+  CheckCircle,
+  Wifi,
+  WifiOff,
+  AlertCircle,
+} from 'lucide-react';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
@@ -19,11 +31,23 @@ type LoginStep = 'controller' | 'credentials';
 
 /* ---------- Floating-label input (matches XIQ login aesthetic) ---------- */
 function FloatingInput({
-  id, type = 'text', value, onChange, label, disabled, autoComplete, required
+  id,
+  type = 'text',
+  value,
+  onChange,
+  label,
+  disabled,
+  autoComplete,
+  required,
 }: {
-  id: string; type?: string; value: string;
+  id: string;
+  type?: string;
+  value: string;
   onChange: (e: ChangeEvent<HTMLInputElement>) => void;
-  label: string; disabled?: boolean; autoComplete?: string; required?: boolean;
+  label: string;
+  disabled?: boolean;
+  autoComplete?: string;
+  required?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
   const isFloated = focused || Boolean(value);
@@ -82,9 +106,12 @@ function FloatingInput({
   );
 }
 
-
 /* ---------- Main LoginForm ---------- */
-export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle: _onThemeToggle }: LoginFormProps) {
+export function LoginForm({
+  onLoginSuccess,
+  theme: _theme = 'ep1',
+  onThemeToggle: _onThemeToggle,
+}: LoginFormProps) {
   // Login step state
   const [step, setStep] = useState<LoginStep>('controller');
 
@@ -105,7 +132,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-
   // Load controllers on mount
   useEffect(() => {
     loadControllers();
@@ -124,7 +150,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
       let selectedCtrl: Controller | null = null;
 
       if (saved) {
-        const found = data.find(c => c.id === saved.id);
+        const found = data.find((c) => c.id === saved.id);
         if (found) {
           selectedCtrl = found;
         }
@@ -132,7 +158,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
 
       // If no saved controller, use default
       if (!selectedCtrl) {
-        const defaultController = data.find(c => c.is_default);
+        const defaultController = data.find((c) => c.is_default);
         if (defaultController) {
           selectedCtrl = defaultController;
         }
@@ -152,7 +178,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
         if (controllerUrl) {
           apiService.setBaseUrl(controllerUrl);
         }
-
       }
     } catch (error) {
       console.error('Failed to load controllers:', error);
@@ -184,12 +209,9 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
       return;
     }
 
-    const newController = tenantService.addQuickController(
-      controllerForm.name.trim(),
-      url
-    );
+    const newController = tenantService.addQuickController(controllerForm.name.trim(), url);
 
-    setControllers(prev => [...prev, newController]);
+    setControllers((prev) => [...prev, newController]);
     setSelectedController(newController);
     setShowAddForm(false);
     setControllerForm({ name: '', url: '', description: '' });
@@ -214,14 +236,12 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
     await tenantService.updateController(editingController.id, {
       name: controllerForm.name,
       url: controllerForm.url,
-      description: controllerForm.description
+      description: controllerForm.description,
     });
 
-    setControllers(prev => prev.map(c =>
-      c.id === editingController.id
-        ? { ...c, ...controllerForm }
-        : c
-    ));
+    setControllers((prev) =>
+      prev.map((c) => (c.id === editingController.id ? { ...c, ...controllerForm } : c))
+    );
 
     setEditingController(null);
     setControllerForm({ name: '', url: '', description: '' });
@@ -233,7 +253,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
     if (!confirm(`Delete "${controller.name}"?`)) return;
 
     await tenantService.deleteController(controller.id);
-    setControllers(prev => prev.filter(c => c.id !== controller.id));
+    setControllers((prev) => prev.filter((c) => c.id !== controller.id));
 
     if (selectedController?.id === controller.id) {
       setSelectedController(null);
@@ -248,15 +268,17 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
     try {
       const result = await tenantService.testControllerConnection(controller);
 
-      setControllers(prev => prev.map(c =>
-        c.id === controller.id
-          ? { ...c, connection_status: result.success ? 'connected' : 'disconnected' }
-          : c
-      ));
+      setControllers((prev) =>
+        prev.map((c) =>
+          c.id === controller.id
+            ? { ...c, connection_status: result.success ? 'connected' : 'disconnected' }
+            : c
+        )
+      );
 
       if (result.success) {
         toast.success(`Connected to ${controller.name}`, {
-          description: result.latency ? `${result.latency}ms` : undefined
+          description: result.latency ? `${result.latency}ms` : undefined,
         });
       } else {
         toast.error(`Connection failed`, { description: result.message });
@@ -303,9 +325,8 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
         tenantService.saveSiteGroupLogin(selectedController.id, userId.trim(), password);
         tenantService.updateController(selectedController.id, {
           connection_status: 'connected',
-          last_connected_at: new Date().toISOString()
+          last_connected_at: new Date().toISOString(),
         });
-
       }
 
       onLoginSuccess();
@@ -323,7 +344,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
       setIsLoading(false);
     }
   };
-
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -351,7 +371,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
               />
             </div>
             <CardTitle className="text-2xl font-bold tracking-widest">API</CardTitle>
-            <div className="text-[11px] text-muted-foreground text-center mt-1">
+            <div className="text-xs text-muted-foreground text-center mt-1">
               Autonomous Unified Radio Agent
             </div>
             <CardDescription className="text-center mt-2">
@@ -391,14 +411,18 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                       id="ctrl-name"
                       label="Name"
                       value={controllerForm.name}
-                      onChange={(e) => setControllerForm(prev => ({ ...prev, name: e.target.value }))}
+                      onChange={(e) =>
+                        setControllerForm((prev) => ({ ...prev, name: e.target.value }))
+                      }
                     />
 
                     <FloatingInput
                       id="ctrl-url"
                       label="URL"
                       value={controllerForm.url}
-                      onChange={(e) => setControllerForm(prev => ({ ...prev, url: e.target.value }))}
+                      onChange={(e) =>
+                        setControllerForm((prev) => ({ ...prev, url: e.target.value }))
+                      }
                     />
 
                     <Button
@@ -422,7 +446,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                       </div>
                     ) : (
                       <>
-                        {controllers.map(controller => (
+                        {controllers.map((controller) => (
                           <div
                             key={controller.id}
                             className={`p-4 border rounded-lg cursor-pointer transition-all hover:border-primary/50 ${
@@ -434,11 +458,13 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3 min-w-0">
-                                <div className={`p-2 rounded-lg shrink-0 ${
-                                  selectedController?.id === controller.id
-                                    ? 'bg-primary/20'
-                                    : 'bg-muted'
-                                }`}>
+                                <div
+                                  className={`p-2 rounded-lg shrink-0 ${
+                                    selectedController?.id === controller.id
+                                      ? 'bg-primary/20'
+                                      : 'bg-muted'
+                                  }`}
+                                >
                                   <Server className="h-4 w-4" />
                                 </div>
                                 <div className="min-w-0">
@@ -477,7 +503,7 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                                     setControllerForm({
                                       name: controller.name,
                                       url: controller.url,
-                                      description: controller.description || ''
+                                      description: controller.description || '',
                                     });
                                   }}
                                 >
@@ -530,14 +556,12 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                     <div className="flex items-center gap-2 min-w-0">
                       <Server className="h-4 w-4 text-primary shrink-0" />
                       <div className="min-w-0">
-                        <span className="text-sm font-medium truncate block">{selectedController.name}</span>
+                        <span className="text-sm font-medium truncate block">
+                          {selectedController.name}
+                        </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setStep('controller')}
-                    >
+                    <Button variant="ghost" size="sm" onClick={() => setStep('controller')}>
                       Change
                     </Button>
                   </div>
@@ -587,7 +611,6 @@ export function LoginForm({ onLoginSuccess, theme: _theme = 'ep1', onThemeToggle
                 </form>
               </div>
             )}
-
           </CardContent>
         </Card>
       </div>

@@ -1,15 +1,20 @@
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import {
-  RefreshCw, Download, Printer, Share2, Settings, Clock, Pencil,
-  Copy, Plus, Trash2, RotateCcw, Check, X,
+  RefreshCw,
+  Download,
+  Printer,
+  Share2,
+  Settings,
+  Clock,
+  Pencil,
+  Copy,
+  Plus,
+  Trash2,
+  RotateCcw,
+  Check,
+  X,
 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import type { ReportConfig, ReportPageConfig } from '../../types/reportConfig';
@@ -44,10 +49,25 @@ interface ReportHeaderProps {
 }
 
 export function ReportHeader({
-  configs, activeConfig, activePage, duration, lastUpdated, refreshing,
-  isEditing, siteLabel,
-  onSelectConfig, onDurationChange, onRefresh, onExport, onPrint, onShare,
-  onToggleEdit, onDuplicate, onDelete, onReset, onCreateNew,
+  configs,
+  activeConfig,
+  activePage,
+  duration,
+  lastUpdated,
+  refreshing,
+  isEditing,
+  siteLabel,
+  onSelectConfig,
+  onDurationChange,
+  onRefresh,
+  onExport,
+  onPrint,
+  onShare,
+  onToggleEdit,
+  onDuplicate,
+  onDelete,
+  onReset,
+  onCreateNew,
 }: ReportHeaderProps) {
   const pageIcon = activePage ? (
     <div className="p-1.5 rounded-lg bg-primary/10">
@@ -66,7 +86,7 @@ export function ReportHeader({
               <span className="truncate">{activeConfig.name}</span>
             </SelectTrigger>
             <SelectContent>
-              {configs.map(c => (
+              {configs.map((c) => (
                 <SelectItem key={c.id} value={c.id}>
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="truncate">{c.name}</span>
@@ -87,7 +107,9 @@ export function ReportHeader({
           {activePage && (
             <div>
               <h1 className="text-sm font-semibold">{activePage.title}</h1>
-              {activePage.description && <p className="text-[10px] text-muted-foreground">{activePage.description}</p>}
+              {activePage.description && (
+                <p className="text-xs text-muted-foreground">{activePage.description}</p>
+              )}
             </div>
           )}
         </div>
@@ -99,42 +121,73 @@ export function ReportHeader({
             variant={isEditing ? 'default' : 'outline'}
             size="sm"
             onClick={onToggleEdit}
-            className={cn('text-xs', isEditing && 'bg-primary text-primary-foreground hover:bg-primary/90')}
+            className={cn(
+              'text-xs',
+              isEditing && 'bg-primary text-primary-foreground hover:bg-primary/90'
+            )}
           >
-            {isEditing
-              ? <><Check className="h-3.5 w-3.5 mr-1" />Done</>
-              : <><Pencil className="h-3.5 w-3.5 mr-1" />Edit</>
-            }
+            {isEditing ? (
+              <>
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Done
+              </>
+            ) : (
+              <>
+                <Pencil className="h-3.5 w-3.5 mr-1" />
+                Edit
+              </>
+            )}
           </Button>
 
           {isEditing ? (
             <>
               <Button variant="outline" size="sm" className="text-xs" onClick={onCreateNew}>
-                <Plus className="h-3.5 w-3.5 mr-1" />New
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                New
               </Button>
               <Button variant="outline" size="sm" className="text-xs" onClick={onDuplicate}>
-                <Copy className="h-3.5 w-3.5 mr-1" />Duplicate
+                <Copy className="h-3.5 w-3.5 mr-1" />
+                Duplicate
               </Button>
               {!activeConfig.isDefault && (
-                <Button variant="outline" size="sm" className="text-xs text-red-400 hover:text-red-500" onClick={onDelete}>
-                  <Trash2 className="h-3.5 w-3.5 mr-1" />Delete
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs text-red-400 hover:text-red-500"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Delete
                 </Button>
               )}
               <Button variant="outline" size="sm" className="text-xs" onClick={onReset}>
-                <RotateCcw className="h-3.5 w-3.5 mr-1" />Reset
+                <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                Reset
               </Button>
             </>
           ) : (
             <>
               {/* Duration selector */}
-              <div className="flex items-center border border-border/50 rounded-md overflow-hidden" role="group" aria-label="Time range">
-                {DURATION_OPTIONS.map(opt => (
+              <div
+                className="flex items-center border border-border/50 rounded-md overflow-hidden"
+                role="group"
+                aria-label="Time range"
+              >
+                {DURATION_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => onDurationChange(opt.value)}
-                    title={opt.value === '3H' ? '3 Hours' : opt.value === '24H' ? '24 Hours' : opt.value === '7D' ? '7 Days' : '30 Days'}
+                    title={
+                      opt.value === '3H'
+                        ? '3 Hours'
+                        : opt.value === '24H'
+                          ? '24 Hours'
+                          : opt.value === '7D'
+                            ? '7 Days'
+                            : '30 Days'
+                    }
                     className={cn(
-                      'px-2.5 py-1 text-[11px] font-medium transition-colors',
+                      'px-2.5 py-1 text-xs font-medium transition-colors',
                       duration === opt.value
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
@@ -163,7 +216,7 @@ export function ReportHeader({
       </div>
 
       {lastUpdated && !isEditing && (
-        <div className="flex items-center gap-1.5 mt-1 text-[10px] text-muted-foreground">
+        <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
           Updated {lastUpdated.toLocaleTimeString()} &middot; {duration} &middot; {siteLabel}
         </div>

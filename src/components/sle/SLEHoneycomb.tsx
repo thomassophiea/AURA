@@ -44,14 +44,15 @@ export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycom
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(800);
 
-  const selected = sles.find(s => s.id === selectedId) || null;
-  const overallScore = sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
+  const selected = sles.find((s) => s.id === selectedId) || null;
+  const overallScore =
+    sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
   const overallStatus = getSLEStatus(overallScore);
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(entries => setContainerW(entries[0].contentRect.width));
+    const obs = new ResizeObserver((entries) => setContainerW(entries[0].contentRect.width));
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
@@ -85,16 +86,31 @@ export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycom
   return (
     <>
       <div ref={containerRef} className="w-full">
-        <svg width={containerW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="w-full overflow-visible">
+        <svg
+          width={containerW}
+          height={svgH}
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          className="w-full overflow-visible"
+        >
           <defs>
-            {sles.map(sle => {
+            {sles.map((sle) => {
               const color = SLE_STATUS_COLORS[sle.status].hex;
               return (
-                <filter key={`hcGlow-${sle.id}`} id={`hcGlow-${sle.id}`} x="-50%" y="-50%" width="200%" height="200%">
+                <filter
+                  key={`hcGlow-${sle.id}`}
+                  id={`hcGlow-${sle.id}`}
+                  x="-50%"
+                  y="-50%"
+                  width="200%"
+                  height="200%"
+                >
                   <feGaussianBlur stdDeviation="5" result="blur" />
                   <feFlood floodColor={color} floodOpacity="0.5" result="c" />
                   <feComposite in="c" in2="blur" operator="in" result="g" />
-                  <feMerge><feMergeNode in="g" /><feMergeNode in="SourceGraphic" /></feMerge>
+                  <feMerge>
+                    <feMergeNode in="g" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
                 </filter>
               );
             })}
@@ -183,24 +199,40 @@ export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycom
       {selected && (
         <div
           className="rounded-xl overflow-hidden transition-all duration-300"
-          style={{ background: STATUS_DETAIL_BG[selected.status], border: `1px solid ${STATUS_NODE_BORDER[selected.status]}` }}
+          style={{
+            background: STATUS_DETAIL_BG[selected.status],
+            border: `1px solid ${STATUS_NODE_BORDER[selected.status]}`,
+          }}
         >
           <div className="flex items-center gap-2.5 px-5 pt-4 pb-2">
             <div>
-              <h3 className="text-sm font-bold uppercase tracking-widest text-white">{selected.name}</h3>
-              <p className="text-[11px] text-white/60">{selected.description}</p>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">
+                {selected.name}
+              </h3>
+              <p className="text-xs text-white/60">{selected.description}</p>
             </div>
-            <span className="ml-auto text-xl font-bold" style={{ color: SLE_STATUS_COLORS[selected.status].hex }}>
+            <span
+              className="ml-auto text-xl font-bold"
+              style={{ color: SLE_STATUS_COLORS[selected.status].hex }}
+            >
               {selected.successRate.toFixed(1)}%
             </span>
           </div>
           <div className="px-3 pb-4">
-            <SLESankeyFlow sle={selected} onClassifierClick={c => setRootCause(buildRootCause(c, selected, stations, aps))} />
+            <SLESankeyFlow
+              sle={selected}
+              onClassifierClick={(c) => setRootCause(buildRootCause(c, selected, stations, aps))}
+            />
           </div>
         </div>
       )}
 
-      <SLERootCausePanel open={rootCause !== null} onClose={() => setRootCause(null)} rootCause={rootCause} onClientClick={onClientClick} />
+      <SLERootCausePanel
+        open={rootCause !== null}
+        onClose={() => setRootCause(null)}
+        rootCause={rootCause}
+        onClientClick={onClientClick}
+      />
     </>
   );
 }

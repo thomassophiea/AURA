@@ -312,7 +312,7 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
         )}
 
         {/* Stats Summary */}
-        <div className="flex items-center gap-3 text-[11px]">
+        <div className="flex items-center gap-3 text-xs">
           <span className="text-muted-foreground">
             {filteredAPs.length} AP{filteredAPs.length !== 1 ? 's' : ''}
           </span>
@@ -461,7 +461,7 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
                             {radio.adminState === 'disabled' ? 'Off' : 'On'}
                           </Badge>
                         </div>
-                        <div className="flex gap-3 text-[11px] text-muted-foreground">
+                        <div className="flex gap-3 text-xs text-muted-foreground">
                           {(radio.channel || radio.currentChannel) && (
                             <span>Ch {radio.channel ?? radio.currentChannel}</span>
                           )}

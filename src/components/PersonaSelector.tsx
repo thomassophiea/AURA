@@ -15,9 +15,9 @@ import { UserCog } from 'lucide-react';
 export function PersonaSelector() {
   const { activePersona, setActivePersona } = usePersonaContext();
 
-  const groupedPersonas = PERSONA_GROUPS.map(group => ({
+  const groupedPersonas = PERSONA_GROUPS.map((group) => ({
     group,
-    personas: PERSONA_DEFINITIONS.filter(p => p.group === group),
+    personas: PERSONA_DEFINITIONS.filter((p) => p.group === group),
   }));
 
   return (
@@ -34,14 +34,12 @@ export function PersonaSelector() {
           <div key={group}>
             {gi > 0 && <SelectSeparator />}
             <SelectGroup>
-              {group !== 'Super User' && (
-                <SelectLabel>{group}</SelectLabel>
-              )}
-              {personas.map(persona => (
+              {group !== 'Super User' && <SelectLabel>{group}</SelectLabel>}
+              {personas.map((persona) => (
                 <SelectItem key={persona.id} value={persona.id}>
                   <div className="flex flex-col">
                     <span>{persona.label}</span>
-                    <span className="text-[10px] text-muted-foreground leading-tight">
+                    <span className="text-xs text-muted-foreground leading-tight">
                       {persona.description}
                     </span>
                   </div>

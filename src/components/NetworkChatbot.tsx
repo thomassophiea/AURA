@@ -24,9 +24,16 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Database
+  Database,
 } from 'lucide-react';
-import { chatbotService, ChatMessage, ChatAction, AssistantUIContext, CopyableValue, EvidenceTrail } from '../services/chatbot';
+import {
+  chatbotService,
+  ChatMessage,
+  ChatAction,
+  AssistantUIContext,
+  CopyableValue,
+  EvidenceTrail,
+} from '../services/chatbot';
 import { toast } from 'sonner';
 
 // Storage key for chat history persistence
@@ -60,7 +67,7 @@ export function NetworkChatbot({
   context,
   onShowClientDetail,
   onShowAccessPointDetail,
-  onShowSiteDetail
+  onShowSiteDetail,
 }: NetworkChatbotProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -84,7 +91,7 @@ export function NetworkChatbot({
         // Restore timestamps as Date objects
         const restored = parsed.map((msg: any) => ({
           ...msg,
-          timestamp: new Date(msg.timestamp)
+          timestamp: new Date(msg.timestamp),
         }));
         setMessages(restored);
       }
@@ -125,15 +132,15 @@ export function NetworkChatbot({
 
   useEffect(() => {
     initializeChatbot();
-    
+
     // Check if we're on a mobile device
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    
+
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
@@ -151,7 +158,7 @@ export function NetworkChatbot({
     try {
       setIsInitializing(true);
       await chatbotService.initialize();
-      
+
       // Start with empty messages - no welcome message
       setMessages([]);
     } catch (error) {
@@ -173,35 +180,38 @@ export function NetworkChatbot({
       id: `user-${Date.now()}`,
       type: 'user',
       content: inputValue.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    setMessages((prev) => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
 
     try {
       // Convert UI context to service context format
-      const serviceContext: AssistantUIContext | undefined = context ? {
-        type: context.type,
-        entityId: context.entityId,
-        entityName: context.entityName,
-        siteId: context.siteId,
-        siteName: context.siteName,
-        timeRange: context.timeRange
-      } : undefined;
+      const serviceContext: AssistantUIContext | undefined = context
+        ? {
+            type: context.type,
+            entityId: context.entityId,
+            entityName: context.entityName,
+            siteId: context.siteId,
+            siteName: context.siteName,
+            timeRange: context.timeRange,
+          }
+        : undefined;
 
       const botResponse = await chatbotService.processQuery(userMessage.content, serviceContext);
-      setMessages(prev => [...prev, botResponse]);
+      setMessages((prev) => [...prev, botResponse]);
     } catch (error) {
       console.error('Failed to process query:', error);
       const errorMessage: ChatMessage = {
         id: `bot-error-${Date.now()}`,
         type: 'bot',
-        content: "I'm sorry, I encountered an error processing your request. Please try again or contact support if the issue persists.",
-        timestamp: new Date()
+        content:
+          "I'm sorry, I encountered an error processing your request. Please try again or contact support if the issue persists.",
+        timestamp: new Date(),
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
@@ -225,9 +235,10 @@ export function NetworkChatbot({
       return;
     }
 
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const SpeechRecognition =
+      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     const recognition = new SpeechRecognition();
-    
+
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = 'en-US';
@@ -260,15 +271,16 @@ export function NetworkChatbot({
     try {
       await chatbotService.refreshContext();
       toast.success('Network data refreshed');
-      
+
       const refreshMessage: ChatMessage = {
         id: `bot-refresh-${Date.now()}`,
         type: 'bot',
-        content: "✅ **Data refreshed!** I now have the latest information about your network. Feel free to ask me anything!",
-        timestamp: new Date()
+        content:
+          '✅ **Data refreshed!** I now have the latest information about your network. Feel free to ask me anything!',
+        timestamp: new Date(),
       };
-      
-      setMessages(prev => [...prev, refreshMessage]);
+
+      setMessages((prev) => [...prev, refreshMessage]);
     } catch (error) {
       toast.error('Failed to refresh network data');
     }
@@ -278,42 +290,42 @@ export function NetworkChatbot({
     // Context-aware suggested questions
     if (context?.type === 'client') {
       return [
-        "Is this client healthy?",
-        "Why is this client slow?",
-        "Show roaming history",
-        "Is it a Wi-Fi issue or upstream?",
-        "What AP is this client on?",
-        "Show connection details"
+        'Is this client healthy?',
+        'Why is this client slow?',
+        'Show roaming history',
+        'Is it a Wi-Fi issue or upstream?',
+        'What AP is this client on?',
+        'Show connection details',
       ];
     }
     if (context?.type === 'access-point') {
       return [
-        "How is this AP performing?",
-        "Are clients having issues?",
-        "Is any radio overloaded?",
-        "Show connected clients",
-        "Is this an RF or uplink issue?",
-        "Show AP health status"
+        'How is this AP performing?',
+        'Are clients having issues?',
+        'Is any radio overloaded?',
+        'Show connected clients',
+        'Is this an RF or uplink issue?',
+        'Show AP health status',
       ];
     }
     if (context?.type === 'site' || context?.siteId) {
       return [
-        "Show worst clients at this site",
-        "Are any APs unhealthy?",
-        "What changed recently?",
-        "Show offline devices",
-        "Find client by name or MAC",
-        "Show site health status"
+        'Show worst clients at this site',
+        'Are any APs unhealthy?',
+        'What changed recently?',
+        'Show offline devices',
+        'Find client by name or MAC',
+        'Show site health status',
       ];
     }
     // Default questions (no context)
     return [
-      "How many access points are online?",
-      "Show me connected clients",
-      "Find client by name or MAC",
-      "Roaming history of a client",
-      "Are there any offline devices?",
-      "Show me site health status"
+      'How many access points are online?',
+      'Show me connected clients',
+      'Find client by name or MAC',
+      'Roaming history of a client',
+      'Are there any offline devices?',
+      'Show me site health status',
     ];
   };
 
@@ -376,11 +388,13 @@ export function NetworkChatbot({
             key={idx}
             variant="ghost"
             size="sm"
-            className={`${compact ? 'h-5 text-[10px] px-1.5' : 'h-6 text-xs px-2'} font-mono bg-muted/50 hover:bg-muted`}
+            className={`${compact ? 'h-5 text-xs px-1.5' : 'h-6 text-xs px-2'} font-mono bg-muted/50 hover:bg-muted`}
             onClick={() => handleCopyValue(item.value, item.label)}
           >
             {copiedValue === item.value ? (
-              <Check className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1 text-[color:var(--status-success)]`} />
+              <Check
+                className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1 text-[color:var(--status-success)]`}
+              />
             ) : (
               <Copy className={`${compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} mr-1`} />
             )}
@@ -392,7 +406,11 @@ export function NetworkChatbot({
   };
 
   // Render evidence trail
-  const renderEvidenceTrail = (evidence: EvidenceTrail | undefined, messageId: string, compact = false) => {
+  const renderEvidenceTrail = (
+    evidence: EvidenceTrail | undefined,
+    messageId: string,
+    compact = false
+  ) => {
     if (!evidence) return null;
 
     const isExpanded = expandedEvidence === messageId;
@@ -401,7 +419,7 @@ export function NetworkChatbot({
       <div className={`${compact ? 'mt-1' : 'mt-2'} pt-1 border-t border-border/30`}>
         <button
           onClick={() => setExpandedEvidence(isExpanded ? null : messageId)}
-          className={`flex items-center gap-1 text-muted-foreground hover:text-foreground ${compact ? 'text-[10px]' : 'text-xs'}`}
+          className={`flex items-center gap-1 text-muted-foreground hover:text-foreground ${compact ? 'text-xs' : 'text-xs'}`}
         >
           <Database className={compact ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
           <span>Evidence trail</span>
@@ -412,12 +430,16 @@ export function NetworkChatbot({
           )}
         </button>
         {isExpanded && (
-          <div className={`${compact ? 'mt-1 text-[10px]' : 'mt-2 text-xs'} text-muted-foreground space-y-1`}>
+          <div
+            className={`${compact ? 'mt-1 text-xs' : 'mt-2 text-xs'} text-muted-foreground space-y-1`}
+          >
             <div>
               <span className="font-medium">Endpoints:</span>
               <div className="ml-2">
                 {evidence.endpointsCalled.map((ep, i) => (
-                  <div key={i} className="font-mono">{ep}</div>
+                  <div key={i} className="font-mono">
+                    {ep}
+                  </div>
                 ))}
               </div>
             </div>
@@ -441,14 +463,16 @@ export function NetworkChatbot({
 
     return (
       <div className={`${compact ? 'mt-1.5' : 'mt-2'} pt-1.5 border-t border-border/30`}>
-        <div className={`${compact ? 'text-[10px]' : 'text-xs'} text-muted-foreground mb-1`}>Follow-up questions:</div>
+        <div className={`${compact ? 'text-xs' : 'text-xs'} text-muted-foreground mb-1`}>
+          Follow-up questions:
+        </div>
         <div className="flex flex-wrap gap-1">
           {suggestions.slice(0, compact ? 2 : 3).map((suggestion, idx) => (
             <Button
               key={idx}
               variant="outline"
               size="sm"
-              className={`${compact ? 'h-5 text-[10px] px-1.5' : 'h-6 text-xs px-2'}`}
+              className={`${compact ? 'h-5 text-xs px-1.5' : 'h-6 text-xs px-2'}`}
               onClick={() => handleSuggestionClick(suggestion)}
             >
               {suggestion}
@@ -463,10 +487,10 @@ export function NetworkChatbot({
     if (!context?.type) return null;
 
     const contextInfo = {
-      'client': { icon: '👤', label: 'Client', name: context.entityName || context.entityId },
+      client: { icon: '👤', label: 'Client', name: context.entityName || context.entityId },
       'access-point': { icon: '📡', label: 'AP', name: context.entityName || context.entityId },
-      'site': { icon: '🏢', label: 'Site', name: context.siteName || context.entityName },
-      'wlan': { icon: '📶', label: 'WLAN', name: context.entityName }
+      site: { icon: '🏢', label: 'Site', name: context.siteName || context.entityName },
+      wlan: { icon: '📶', label: 'WLAN', name: context.entityName },
     }[context.type];
 
     if (!contextInfo) return null;
@@ -487,15 +511,15 @@ export function NetworkChatbot({
   };
 
   const getContextPrompt = () => {
-    if (!context?.type) return "What would you like to know about your network?";
+    if (!context?.type) return 'What would you like to know about your network?';
 
     const prompts = {
-      'client': `What would you like to know about ${context.entityName || 'this client'}?`,
+      client: `What would you like to know about ${context.entityName || 'this client'}?`,
       'access-point': `What would you like to know about ${context.entityName || 'this AP'}?`,
-      'site': `What would you like to troubleshoot at ${context.siteName || 'this site'}?`,
-      'wlan': `What would you like to know about ${context.entityName || 'this network'}?`
+      site: `What would you like to troubleshoot at ${context.siteName || 'this site'}?`,
+      wlan: `What would you like to know about ${context.entityName || 'this network'}?`,
     };
-    return prompts[context.type] || "What would you like to know?";
+    return prompts[context.type] || 'What would you like to know?';
   };
 
   const formatMessageContent = (content: string) => {
@@ -539,7 +563,11 @@ export function NetworkChatbot({
     return parts.map((part, index) => {
       if (part.startsWith('**') && part.endsWith('**')) {
         const innerText = part.slice(2, -2);
-        return <strong key={index} className="text-foreground">{formatPart(innerText, `strong-${index}`)}</strong>;
+        return (
+          <strong key={index} className="text-foreground">
+            {formatPart(innerText, `strong-${index}`)}
+          </strong>
+        );
       }
       if (part.startsWith('*') && part.endsWith('*') && !part.startsWith('**')) {
         return <em key={index}>{part.slice(1, -1)}</em>;
@@ -558,10 +586,18 @@ export function NetworkChatbot({
             </button>
           );
         }
-        return <code key={index} className="bg-muted px-1 py-0.5 rounded text-xs font-mono">{codeContent}</code>;
+        return (
+          <code key={index} className="bg-muted px-1 py-0.5 rounded text-xs font-mono">
+            {codeContent}
+          </code>
+        );
       }
       if (part.startsWith('• ')) {
-        return <div key={index} className="ml-2">{formatPart(part, `bullet-${index}`)}</div>;
+        return (
+          <div key={index} className="ml-2">
+            {formatPart(part, `bullet-${index}`)}
+          </div>
+        );
       }
 
       // Handle emojis and line breaks
@@ -583,7 +619,7 @@ export function NetworkChatbot({
         right: 'clamp(16px, 4vw, 24px)',
         zIndex: 99999,
         width: 'clamp(56px, 12vw, 64px)',
-        height: 'clamp(56px, 12vw, 64px)'
+        height: 'clamp(56px, 12vw, 64px)',
       }}
     >
       <Button
@@ -601,19 +637,25 @@ export function NetworkChatbot({
           alignItems: 'center',
           justifyContent: 'center',
           cursor: 'pointer',
-          transition: 'all 0.2s ease'
+          transition: 'all 0.2s ease',
         }}
         onMouseEnter={(e) => {
           (e.target as HTMLElement).style.transform = 'scale(1.1)';
-          (e.target as HTMLElement).style.boxShadow = '0 12px 48px rgba(187, 134, 252, 0.6), 0 6px 24px rgba(0, 0, 0, 0.3)';
+          (e.target as HTMLElement).style.boxShadow =
+            '0 12px 48px rgba(187, 134, 252, 0.6), 0 6px 24px rgba(0, 0, 0, 0.3)';
         }}
         onMouseLeave={(e) => {
           (e.target as HTMLElement).style.transform = 'scale(1)';
-          (e.target as HTMLElement).style.boxShadow = '0 8px 32px rgba(187, 134, 252, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2)';
+          (e.target as HTMLElement).style.boxShadow =
+            '0 8px 32px rgba(187, 134, 252, 0.4), 0 4px 16px rgba(0, 0, 0, 0.2)';
         }}
       >
-        <MessageCircle 
-          size={typeof window !== 'undefined' ? Math.min(28, Math.max(20, window.innerWidth * 0.04)) : 24} 
+        <MessageCircle
+          size={
+            typeof window !== 'undefined'
+              ? Math.min(28, Math.max(20, window.innerWidth * 0.04))
+              : 24
+          }
         />
       </Button>
     </div>
@@ -636,7 +678,7 @@ export function NetworkChatbot({
           zIndex: 99999,
           backgroundColor: 'var(--background)',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
         }}
       >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4 px-6 border-b border-border">
@@ -691,105 +733,122 @@ export function NetworkChatbot({
 
         <div className="flex-1 flex overflow-hidden" style={{ minHeight: 0 }}>
           {/* Main chat area */}
-          <div className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4" style={{ minHeight: 0 }}>
+          <div
+            className="flex-1 flex flex-col max-w-4xl mx-auto w-full px-4"
+            style={{ minHeight: 0 }}
+          >
             <ScrollArea className="flex-1" style={{ minHeight: 0 }}>
               <div className="p-6">
-              <div className="space-y-4">
-                {messages.length === 0 && !isLoading && (
-                  <div className="text-center py-12">
-                    <Bot className="h-16 w-16 mx-auto mb-4 text-primary opacity-50" />
-                    <h3 className="text-xl font-semibold mb-2">Network Assistant</h3>
-                    <p className="text-muted-foreground mb-6">
-                      {getContextPrompt()}
-                    </p>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto">
-                      {getSuggestedQuestions().map((question, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          className="h-auto py-3 px-4 text-sm text-left whitespace-normal"
-                          onClick={() => setInputValue(question)}
-                        >
-                          {question}
-                        </Button>
-                      ))}
+                <div className="space-y-4">
+                  {messages.length === 0 && !isLoading && (
+                    <div className="text-center py-12">
+                      <Bot className="h-16 w-16 mx-auto mb-4 text-primary opacity-50" />
+                      <h3 className="text-xl font-semibold mb-2">Network Assistant</h3>
+                      <p className="text-muted-foreground mb-6">{getContextPrompt()}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 max-w-2xl mx-auto">
+                        {getSuggestedQuestions().map((question, index) => (
+                          <Button
+                            key={index}
+                            variant="outline"
+                            className="h-auto py-3 px-4 text-sm text-left whitespace-normal"
+                            onClick={() => setInputValue(question)}
+                          >
+                            {question}
+                          </Button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
+                  {messages.map((message) => (
                     <div
-                      className={`max-w-[70%] rounded-lg px-4 py-3 ${
-                        message.type === 'user'
-                          ? 'bg-primary text-primary-foreground'
-                          : 'border border-border'
-                      }`}
+                      key={message.id}
+                      className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className="flex items-start space-x-3">
-                        {message.type === 'bot' && (
-                          <Bot className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
-                        )}
-                        {message.type === 'user' && (
-                          <User className="h-5 w-5 text-primary-foreground mt-0.5 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 space-y-1">
-                          <div className="whitespace-pre-wrap">
-                            {formatMessageContent(message.content)}
-                          </div>
-                          <div className={`text-xs opacity-70 ${
-                            message.type === 'user' ? 'text-primary-foreground' : 'text-muted-foreground'
-                          }`}>
-                            {message.timestamp.toLocaleTimeString()}
-                          </div>
-                          {/* Action buttons for deep links */}
-                          {message.actions && message.actions.length > 0 && (
-                            <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border/50">
-                              {message.actions.map((action, idx) => (
-                                <Button
-                                  key={idx}
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => handleActionClick(action)}
-                                >
-                                  {action.type === 'client' ? '👤' : action.type === 'access-point' ? '📡' : action.type === 'quick-action' ? '⚡' : '🏢'}
-                                  <span className="ml-1">{action.label}</span>
-                                </Button>
-                              ))}
-                            </div>
+                      <div
+                        className={`max-w-[70%] rounded-lg px-4 py-3 ${
+                          message.type === 'user'
+                            ? 'bg-primary text-primary-foreground'
+                            : 'border border-border'
+                        }`}
+                      >
+                        <div className="flex items-start space-x-3">
+                          {message.type === 'bot' && (
+                            <Bot className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
                           )}
-                          {/* Copyable values (MAC, IP) */}
-                          {renderCopyableValues(message.copyableValues, false)}
-                          {/* Follow-up suggestions */}
-                          {renderSuggestions(message.suggestions, false)}
-                          {/* Evidence trail */}
-                          {renderEvidenceTrail(message.evidence, message.id, false)}
+                          {message.type === 'user' && (
+                            <User className="h-5 w-5 text-primary-foreground mt-0.5 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 space-y-1">
+                            <div className="whitespace-pre-wrap">
+                              {formatMessageContent(message.content)}
+                            </div>
+                            <div
+                              className={`text-xs opacity-70 ${
+                                message.type === 'user'
+                                  ? 'text-primary-foreground'
+                                  : 'text-muted-foreground'
+                              }`}
+                            >
+                              {message.timestamp.toLocaleTimeString()}
+                            </div>
+                            {/* Action buttons for deep links */}
+                            {message.actions && message.actions.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-border/50">
+                                {message.actions.map((action, idx) => (
+                                  <Button
+                                    key={idx}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => handleActionClick(action)}
+                                  >
+                                    {action.type === 'client'
+                                      ? '👤'
+                                      : action.type === 'access-point'
+                                        ? '📡'
+                                        : action.type === 'quick-action'
+                                          ? '⚡'
+                                          : '🏢'}
+                                    <span className="ml-1">{action.label}</span>
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                            {/* Copyable values (MAC, IP) */}
+                            {renderCopyableValues(message.copyableValues, false)}
+                            {/* Follow-up suggestions */}
+                            {renderSuggestions(message.suggestions, false)}
+                            {/* Evidence trail */}
+                            {renderEvidenceTrail(message.evidence, message.id, false)}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
 
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="max-w-[70%] border border-border rounded-lg px-4 py-3">
-                      <div className="flex items-center space-x-3">
-                        <Bot className="h-5 w-5 text-primary" />
-                        <div className="flex space-x-1">
-                          <div className="h-2 w-2 bg-primary rounded-full animate-bounce"></div>
-                          <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[70%] border border-border rounded-lg px-4 py-3">
+                        <div className="flex items-center space-x-3">
+                          <Bot className="h-5 w-5 text-primary" />
+                          <div className="flex space-x-1">
+                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce"></div>
+                            <div
+                              className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                              style={{ animationDelay: '0.1s' }}
+                            ></div>
+                            <div
+                              className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                              style={{ animationDelay: '0.2s' }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
-              <div ref={messagesEndRef} />
+                  )}
+                </div>
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
 
@@ -835,7 +894,8 @@ export function NetworkChatbot({
 
               <div className="flex items-center justify-between mt-3 max-w-3xl mx-auto">
                 <div className="text-sm text-muted-foreground">
-                  Press Enter to send • <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> to toggle
+                  Press Enter to send •{' '}
+                  <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">⌘K</kbd> to toggle
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -880,27 +940,35 @@ export function NetworkChatbot({
           right: isMobile ? '8px' : 'clamp(16px, 4vw, 24px)',
           left: isMobile ? '8px' : 'auto',
           width: isMobile ? 'calc(100vw - 16px)' : 'min(384px, calc(100vw - 32px))',
-          height: isMinimized ? '64px' : (isMobile ? 'min(70vh, calc(100vh - 140px))' : 'min(600px, calc(100vh - 160px))'),
+          height: isMinimized
+            ? '64px'
+            : isMobile
+              ? 'min(70vh, calc(100vh - 140px))'
+              : 'min(600px, calc(100vh - 160px))',
           maxWidth: isMobile ? 'none' : '384px',
           maxHeight: isMinimized ? '64px' : 'calc(100vh - 140px)',
-          minHeight: isMinimized ? '64px' : (isMobile ? '280px' : '320px'),
+          minHeight: isMinimized ? '64px' : isMobile ? '280px' : '320px',
           zIndex: 99998,
           backgroundColor: 'var(--background)',
           border: '1px solid var(--border)',
           borderRadius: isMobile ? '12px 12px 0 0' : '12px',
           boxShadow: '0 20px 64px rgba(0, 0, 0, 0.3), 0 8px 32px rgba(0, 0, 0, 0.15)',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
         }}
       >
-        <CardHeader className={`flex flex-col space-y-2 pb-2 border-b border-border ${isMobile ? 'px-3 py-2' : 'px-4 py-3'}`}>
+        <CardHeader
+          className={`flex flex-col space-y-2 pb-2 border-b border-border ${isMobile ? 'px-3 py-2' : 'px-4 py-3'}`}
+        >
           <div className="flex flex-row items-center justify-between">
             <div className="flex items-center space-x-2">
               <div className="relative">
                 <Bot className="h-5 w-5 text-primary" />
                 <Sparkles className="h-2 w-2 text-secondary absolute -top-1 -right-1" />
               </div>
-              <CardTitle className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>Network Assistant</CardTitle>
+              <CardTitle className={`font-medium ${isMobile ? 'text-xs' : 'text-sm'}`}>
+                Network Assistant
+              </CardTitle>
               {isInitializing && (
                 <Badge variant="secondary" className="text-xs">
                   <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
@@ -908,53 +976,57 @@ export function NetworkChatbot({
                 </Badge>
               )}
             </div>
-          
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleRefreshContext}
-              className="h-6 w-6"
-              title="Refresh network data"
-            >
-              <RefreshCw className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setIsFullScreen(!isFullScreen);
-                setIsMinimized(false);
-              }}
-              className="h-6 w-6"
-              title={isFullScreen ? "Exit full screen" : "Full screen"}
-            >
-              {isFullScreen ? <Shrink className="h-3 w-3" /> : <Expand className="h-3 w-3" />}
-            </Button>
-            {!isFullScreen && (
+
+            <div className="flex items-center space-x-1">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsMinimized(!isMinimized)}
+                onClick={handleRefreshContext}
                 className="h-6 w-6"
-                title={isMinimized ? "Expand" : "Minimize"}
+                title="Refresh network data"
               >
-                {isMinimized ? <Maximize2 className="h-3 w-3" /> : <Minimize2 className="h-3 w-3" />}
+                <RefreshCw className="h-3 w-3" />
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setIsFullScreen(false);
-                onToggle?.();
-              }}
-              className="h-6 w-6"
-              title="Close"
-            >
-              <X className="h-3 w-3" />
-            </Button>
-          </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setIsFullScreen(!isFullScreen);
+                  setIsMinimized(false);
+                }}
+                className="h-6 w-6"
+                title={isFullScreen ? 'Exit full screen' : 'Full screen'}
+              >
+                {isFullScreen ? <Shrink className="h-3 w-3" /> : <Expand className="h-3 w-3" />}
+              </Button>
+              {!isFullScreen && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsMinimized(!isMinimized)}
+                  className="h-6 w-6"
+                  title={isMinimized ? 'Expand' : 'Minimize'}
+                >
+                  {isMinimized ? (
+                    <Maximize2 className="h-3 w-3" />
+                  ) : (
+                    <Minimize2 className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setIsFullScreen(false);
+                  onToggle?.();
+                }}
+                className="h-6 w-6"
+                title="Close"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
           {context?.type && (
             <div className="flex items-center gap-1.5 text-xs">
@@ -996,9 +1068,13 @@ export function NetworkChatbot({
                             <div className="whitespace-pre-wrap">
                               {formatMessageContent(message.content)}
                             </div>
-                            <div className={`text-xs opacity-70 ${
-                              message.type === 'user' ? 'text-primary-foreground' : 'text-muted-foreground'
-                            }`}>
+                            <div
+                              className={`text-xs opacity-70 ${
+                                message.type === 'user'
+                                  ? 'text-primary-foreground'
+                                  : 'text-muted-foreground'
+                              }`}
+                            >
                               {message.timestamp.toLocaleTimeString()}
                             </div>
                             {/* Action buttons for deep links */}
@@ -1012,8 +1088,16 @@ export function NetworkChatbot({
                                     className="h-6 text-xs px-2"
                                     onClick={() => handleActionClick(action)}
                                   >
-                                    {action.type === 'client' ? '👤' : action.type === 'access-point' ? '📡' : action.type === 'quick-action' ? '⚡' : '🏢'}
-                                    <span className="ml-1 truncate max-w-[100px]">{action.label}</span>
+                                    {action.type === 'client'
+                                      ? '👤'
+                                      : action.type === 'access-point'
+                                        ? '📡'
+                                        : action.type === 'quick-action'
+                                          ? '⚡'
+                                          : '🏢'}
+                                    <span className="ml-1 truncate max-w-[100px]">
+                                      {action.label}
+                                    </span>
                                   </Button>
                                 ))}
                                 {message.actions.length > 3 && (
@@ -1042,29 +1126,39 @@ export function NetworkChatbot({
                           <Bot className="h-4 w-4 text-primary" />
                           <div className="flex space-x-1">
                             <div className="h-2 w-2 bg-primary rounded-full animate-bounce"></div>
-                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                            <div className="h-2 w-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                            <div
+                              className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                              style={{ animationDelay: '0.1s' }}
+                            ></div>
+                            <div
+                              className="h-2 w-2 bg-primary rounded-full animate-bounce"
+                              style={{ animationDelay: '0.2s' }}
+                            ></div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
-                  
+
                   {messages.length <= 1 && !isLoading && (
                     <div className="space-y-2">
-                      <div className="text-xs text-muted-foreground font-medium">Suggested questions:</div>
+                      <div className="text-xs text-muted-foreground font-medium">
+                        Suggested questions:
+                      </div>
                       <div className="flex flex-wrap gap-1">
-                        {getSuggestedQuestions().slice(0, isMobile ? 2 : 3).map((question, index) => (
-                          <Button
-                            key={index}
-                            variant="outline"
-                            size="sm"
-                            className={`text-xs h-6 px-2 ${isMobile ? 'flex-1 min-w-0' : ''}`}
-                            onClick={() => setInputValue(question)}
-                          >
-                            <span className={isMobile ? 'truncate' : ''}>{question}</span>
-                          </Button>
-                        ))}
+                        {getSuggestedQuestions()
+                          .slice(0, isMobile ? 2 : 3)
+                          .map((question, index) => (
+                            <Button
+                              key={index}
+                              variant="outline"
+                              size="sm"
+                              className={`text-xs h-6 px-2 ${isMobile ? 'flex-1 min-w-0' : ''}`}
+                              onClick={() => setInputValue(question)}
+                            >
+                              <span className={isMobile ? 'truncate' : ''}>{question}</span>
+                            </Button>
+                          ))}
                       </div>
                     </div>
                   )}
@@ -1072,13 +1166,13 @@ export function NetworkChatbot({
                 <div ref={messagesEndRef} />
               </ScrollArea>
             </CardContent>
-            
+
             <div className={`border-t border-border ${isMobile ? 'p-2' : 'p-3'}`}>
               <div className="flex items-center space-x-2">
                 <div className="flex-1 relative">
                   <Input
                     ref={inputRef}
-                    placeholder={isMobile ? "Ask about network..." : "Ask about your network..."}
+                    placeholder={isMobile ? 'Ask about network...' : 'Ask about your network...'}
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyPress={handleKeyPress}
@@ -1092,7 +1186,7 @@ export function NetworkChatbot({
                     </div>
                   )}
                 </div>
-                
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1103,7 +1197,7 @@ export function NetworkChatbot({
                 >
                   {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
-                
+
                 <Button
                   onClick={handleSendMessage}
                   disabled={!inputValue.trim() || isLoading || isInitializing}
@@ -1113,10 +1207,10 @@ export function NetworkChatbot({
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               <div className={`flex items-center justify-between ${isMobile ? 'mt-1' : 'mt-2'}`}>
                 <div className={`text-xs text-muted-foreground ${isMobile ? 'hidden' : ''}`}>
-                  <kbd className="px-1 py-0.5 bg-muted rounded text-[10px]">⌘K</kbd> to toggle
+                  <kbd className="px-1 py-0.5 bg-muted rounded text-xs">⌘K</kbd> to toggle
                 </div>
 
                 <div className={`flex items-center gap-1 ${isMobile ? 'ml-auto' : ''}`}>
@@ -1138,9 +1232,9 @@ export function NetworkChatbot({
                         id: `user-help-${Date.now()}`,
                         type: 'user',
                         content: 'help',
-                        timestamp: new Date()
+                        timestamp: new Date(),
                       };
-                      setMessages(prev => [...prev, helpMessage]);
+                      setMessages((prev) => [...prev, helpMessage]);
                       handleSendMessage();
                     }}
                     className="text-xs h-6 px-2"

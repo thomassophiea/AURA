@@ -320,7 +320,7 @@ function TopologiesTab() {
               <TableRow key={item.id}>
                 {isOrgScope && siteGroups.length > 1 && (
                   <TableCell>
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                       {item._siteGroupName || '—'}
                     </Badge>
                   </TableCell>
@@ -3013,7 +3013,7 @@ function RFManagementTab() {
             <TableRow key={item.id}>
               {isOrgScope && siteGroups.length > 1 && (
                 <TableCell>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                     {item._siteGroupName || '—'}
                   </Badge>
                 </TableCell>
@@ -3487,7 +3487,7 @@ function ADSPTab() {
             <TableRow key={item.id}>
               {isOrgScope && siteGroups.length > 1 && (
                 <TableCell>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                  <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
                     {item._siteGroupName || '—'}
                   </Badge>
                 </TableCell>

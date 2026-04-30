@@ -251,7 +251,7 @@ export function UserMenu({
                   {item.beta && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30"
+                      className="text-xs px-1.5 py-0 h-4 font-normal text-muted-foreground border-muted-foreground/30"
                     >
                       Beta
                     </Badge>

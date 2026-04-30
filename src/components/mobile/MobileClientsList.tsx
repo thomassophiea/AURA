@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Search, 
-  SlidersHorizontal, 
-  X, 
-  ArrowLeftRight, 
-  LogIn, 
+import {
+  Search,
+  SlidersHorizontal,
+  X,
+  ArrowLeftRight,
+  LogIn,
   LogOut,
   Wifi,
   Clock,
@@ -25,7 +25,7 @@ import {
   Printer,
   HardDrive,
   ChevronRight,
-  Signal
+  Signal,
 } from 'lucide-react';
 import { MobileStatusList } from './MobileStatusList';
 import { MobileBottomSheet } from './MobileBottomSheet';
@@ -110,27 +110,51 @@ function getDeviceIcon(client: any) {
   const deviceType = (client.deviceType || client.device || client.osType || '').toLowerCase();
   const hostname = (client.hostName || client.hostname || '').toLowerCase();
   const manufacturer = (client.manufacturer || client.oui || '').toLowerCase();
-  
+
   // Check device type
-  if (deviceType.includes('phone') || deviceType.includes('mobile') || deviceType.includes('iphone') || deviceType.includes('android')) {
+  if (
+    deviceType.includes('phone') ||
+    deviceType.includes('mobile') ||
+    deviceType.includes('iphone') ||
+    deviceType.includes('android')
+  ) {
     return Smartphone;
   }
   if (deviceType.includes('tablet') || deviceType.includes('ipad')) {
     return Tablet;
   }
-  if (deviceType.includes('laptop') || deviceType.includes('macbook') || deviceType.includes('notebook')) {
+  if (
+    deviceType.includes('laptop') ||
+    deviceType.includes('macbook') ||
+    deviceType.includes('notebook')
+  ) {
     return Laptop;
   }
   if (deviceType.includes('desktop') || deviceType.includes('pc') || deviceType.includes('imac')) {
     return Monitor;
   }
-  if (deviceType.includes('tv') || deviceType.includes('appletv') || deviceType.includes('roku') || deviceType.includes('firetv')) {
+  if (
+    deviceType.includes('tv') ||
+    deviceType.includes('appletv') ||
+    deviceType.includes('roku') ||
+    deviceType.includes('firetv')
+  ) {
     return Tv;
   }
-  if (deviceType.includes('speaker') || deviceType.includes('homepod') || deviceType.includes('echo') || deviceType.includes('sonos')) {
+  if (
+    deviceType.includes('speaker') ||
+    deviceType.includes('homepod') ||
+    deviceType.includes('echo') ||
+    deviceType.includes('sonos')
+  ) {
     return Speaker;
   }
-  if (deviceType.includes('game') || deviceType.includes('playstation') || deviceType.includes('xbox') || deviceType.includes('nintendo')) {
+  if (
+    deviceType.includes('game') ||
+    deviceType.includes('playstation') ||
+    deviceType.includes('xbox') ||
+    deviceType.includes('nintendo')
+  ) {
     return Gamepad2;
   }
   if (deviceType.includes('watch') || deviceType.includes('wearable')) {
@@ -139,12 +163,21 @@ function getDeviceIcon(client: any) {
   if (deviceType.includes('print')) {
     return Printer;
   }
-  if (deviceType.includes('nas') || deviceType.includes('server') || deviceType.includes('storage')) {
+  if (
+    deviceType.includes('nas') ||
+    deviceType.includes('server') ||
+    deviceType.includes('storage')
+  ) {
     return HardDrive;
   }
-  
+
   // Check hostname patterns
-  if (hostname.includes('iphone') || hostname.includes('android') || hostname.includes('pixel') || hostname.includes('galaxy')) {
+  if (
+    hostname.includes('iphone') ||
+    hostname.includes('android') ||
+    hostname.includes('pixel') ||
+    hostname.includes('galaxy')
+  ) {
     return Smartphone;
   }
   if (hostname.includes('ipad')) {
@@ -156,37 +189,63 @@ function getDeviceIcon(client: any) {
   if (hostname.includes('imac') || hostname.includes('desktop') || hostname.includes('-pc')) {
     return Monitor;
   }
-  if (hostname.includes('appletv') || hostname.includes('roku') || hostname.includes('firetv') || hostname.includes('chromecast')) {
+  if (
+    hostname.includes('appletv') ||
+    hostname.includes('roku') ||
+    hostname.includes('firetv') ||
+    hostname.includes('chromecast')
+  ) {
     return Tv;
   }
-  
+
   // Check manufacturer
   if (manufacturer.includes('apple')) {
     // Could be any Apple device, default to laptop
     return Laptop;
   }
-  if (manufacturer.includes('samsung') || manufacturer.includes('google') || manufacturer.includes('oneplus')) {
+  if (
+    manufacturer.includes('samsung') ||
+    manufacturer.includes('google') ||
+    manufacturer.includes('oneplus')
+  ) {
     return Smartphone;
   }
-  
+
   // Default to generic wifi icon
   return Wifi;
 }
 
 // Signal strength bars component (UniFi-style)
-function SignalBars({ rssi, className = '' }: { rssi: number | null | undefined; className?: string }) {
+function SignalBars({
+  rssi,
+  className = '',
+}: {
+  rssi: number | null | undefined;
+  className?: string;
+}) {
   const bars = 4;
   let activeBars = 0;
   let color = 'bg-muted-foreground/30';
-  
+
   if (rssi !== null && rssi !== undefined) {
-    if (rssi >= -50) { activeBars = 4; color = 'bg-green-500'; }
-    else if (rssi >= -60) { activeBars = 3; color = 'bg-green-500'; }
-    else if (rssi >= -70) { activeBars = 2; color = 'bg-yellow-500'; }
-    else if (rssi >= -80) { activeBars = 1; color = 'bg-orange-500'; }
-    else { activeBars = 1; color = 'bg-red-500'; }
+    if (rssi >= -50) {
+      activeBars = 4;
+      color = 'bg-green-500';
+    } else if (rssi >= -60) {
+      activeBars = 3;
+      color = 'bg-green-500';
+    } else if (rssi >= -70) {
+      activeBars = 2;
+      color = 'bg-yellow-500';
+    } else if (rssi >= -80) {
+      activeBars = 1;
+      color = 'bg-orange-500';
+    } else {
+      activeBars = 1;
+      color = 'bg-red-500';
+    }
   }
-  
+
   return (
     <div className={`flex items-end gap-0.5 h-3 ${className}`}>
       {Array.from({ length: bars }).map((_, i) => (
@@ -203,13 +262,7 @@ function SignalBars({ rssi, className = '' }: { rssi: number | null | undefined;
 }
 
 // Custom client row with UniFi-style design
-function ClientRow({ 
-  client, 
-  onClick 
-}: { 
-  client: any; 
-  onClick: () => void;
-}) {
+function ClientRow({ client, onClick }: { client: any; onClick: () => void }) {
   const isOnline =
     client.connectionState?.toLowerCase() === 'connected' ||
     client.status?.toLowerCase() === 'connected' ||
@@ -219,19 +272,25 @@ function ClientRow({
   // Get hostname - prefer hostname over MAC
   const hostname = client.hostName || client.hostname || client.deviceName || null;
   const displayName = hostname || client.macAddress || 'Unknown';
-  
+
   // Get IP address
   const ipAddress = client.ipAddress || client.ip || null;
-  
+
   // Get signal strength (RSSI)
   const rssi = client.rssi ?? client.signalStrength ?? client.rss ?? null;
-  
+
   // Get device icon
   const DeviceIcon = getDeviceIcon(client);
-  
+
   // Get band info
   const band = client.band || client.radioType || client.radio || null;
-  const bandLabel = band?.includes('5') ? '5G' : band?.includes('6') ? '6G' : band?.includes('2') ? '2.4G' : null;
+  const bandLabel = band?.includes('5')
+    ? '5G'
+    : band?.includes('6')
+      ? '6G'
+      : band?.includes('2')
+        ? '2.4G'
+        : null;
 
   return (
     <button
@@ -241,23 +300,29 @@ function ClientRow({
       {/* Device Icon with status indicator */}
       <div className="relative">
         <div className={`p-2 rounded-xl ${isOnline ? 'bg-primary/10' : 'bg-muted'}`}>
-          <DeviceIcon className={`h-5 w-5 ${isOnline ? 'text-primary' : 'text-muted-foreground'}${DeviceIcon === Wifi ? ' rotate-180' : ''}`} />
+          <DeviceIcon
+            className={`h-5 w-5 ${isOnline ? 'text-primary' : 'text-muted-foreground'}${DeviceIcon === Wifi ? ' rotate-180' : ''}`}
+          />
         </div>
         {/* Status dot */}
-        <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${
-          isOnline ? 'bg-green-500' : 'bg-red-500'
-        }`} />
+        <div
+          className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${
+            isOnline ? 'bg-green-500' : 'bg-red-500'
+          }`}
+        />
       </div>
-      
+
       {/* Content */}
       <div className="flex-1 min-w-0 text-left">
         {/* Primary: hostname if known, otherwise MAC (monospace to signal it's a HW id) */}
         <div className="flex items-center gap-2">
-          <span className={`text-sm font-medium truncate ${!hostname ? 'font-mono text-xs tracking-tight' : ''}`}>
+          <span
+            className={`text-sm font-medium truncate ${!hostname ? 'font-mono text-xs tracking-tight' : ''}`}
+          >
             {displayName}
           </span>
           {bandLabel && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium flex-shrink-0">
+            <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium flex-shrink-0">
               {bandLabel}
             </span>
           )}
@@ -265,7 +330,9 @@ function ClientRow({
         {/* Secondary: MAC (when hostname shown) or IP; always dBm */}
         <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
           {hostname && client.macAddress && (
-            <span className="text-[11px] text-muted-foreground/50 font-mono truncate">{client.macAddress}</span>
+            <span className="text-xs text-muted-foreground/50 font-mono truncate">
+              {client.macAddress}
+            </span>
           )}
           {!hostname && ipAddress && (
             <span className="text-xs text-muted-foreground/60 font-mono truncate">{ipAddress}</span>
@@ -275,7 +342,7 @@ function ClientRow({
           )}
         </div>
       </div>
-      
+
       {/* Signal bars + chevron */}
       <div className="flex items-center gap-2">
         {rssi !== null && <SignalBars rssi={rssi} />}
@@ -296,26 +363,31 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
   const [clientEvents, setClientEvents] = useState<StationEvent[]>([]);
   const [eventsLoading, setEventsLoading] = useState(false);
 
-  const { data: clients, loading, refresh } = useOfflineCache(
+  const {
+    data: clients,
+    loading,
+    refresh,
+  } = useOfflineCache(
     `clients_${currentSite}`,
     async () => {
       const data = await apiService.getStations();
       if (currentSite === 'all') return data;
-      
+
       // Get site name for matching (siteName field may contain name, not ID)
       const sitesList = await apiService.getSites();
-      const selectedSite = sitesList.find((s: any) => 
-        s.id === currentSite || s.siteId === currentSite
+      const selectedSite = sitesList.find(
+        (s: any) => s.id === currentSite || s.siteId === currentSite
       );
       const siteNameToMatch = selectedSite?.name || selectedSite?.siteName;
-      
+
       // Filter by site ID or site name
-      return data.filter((c: any) =>
-        c.siteId === currentSite ||
-        c.site === currentSite ||
-        c.siteName === currentSite ||
-        (siteNameToMatch && c.siteName === siteNameToMatch) ||
-        (siteNameToMatch && c.siteName?.toLowerCase() === siteNameToMatch.toLowerCase())
+      return data.filter(
+        (c: any) =>
+          c.siteId === currentSite ||
+          c.site === currentSite ||
+          c.siteName === currentSite ||
+          (siteNameToMatch && c.siteName === siteNameToMatch) ||
+          (siteNameToMatch && c.siteName?.toLowerCase() === siteNameToMatch.toLowerCase())
       );
     },
     30000
@@ -387,7 +459,12 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'history' && selectedClient?.macAddress && clientEvents.length === 0 && !eventsLoading) {
+    if (
+      activeTab === 'history' &&
+      selectedClient?.macAddress &&
+      clientEvents.length === 0 &&
+      !eventsLoading
+    ) {
       fetchClientEvents(selectedClient.macAddress);
     }
   }, [activeTab, selectedClient, clientEvents.length, eventsLoading, fetchClientEvents]);
@@ -400,9 +477,7 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
   };
 
   const activeFilterCount =
-    (filterStatus !== 'all' ? 1 : 0) +
-    (filterSignal !== 'all' ? 1 : 0) +
-    (searchQuery ? 1 : 0);
+    (filterStatus !== 'all' ? 1 : 0) + (filterSignal !== 'all' ? 1 : 0) + (searchQuery ? 1 : 0);
 
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
@@ -460,7 +535,9 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
               className="cursor-pointer text-xs h-6"
               onClick={() => {
                 haptic.light();
-                setFilterStatus(filterStatus === 'all' ? 'online' : filterStatus === 'online' ? 'offline' : 'all');
+                setFilterStatus(
+                  filterStatus === 'all' ? 'online' : filterStatus === 'online' ? 'offline' : 'all'
+                );
               }}
             >
               {filterStatus === 'all' ? 'All' : filterStatus === 'online' ? 'Online' : 'Offline'}
@@ -470,11 +547,20 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
               className="cursor-pointer text-xs h-6"
               onClick={() => {
                 haptic.light();
-                const next = filterSignal === 'all' ? 'good' : filterSignal === 'good' ? 'fair' : filterSignal === 'fair' ? 'poor' : 'all';
+                const next =
+                  filterSignal === 'all'
+                    ? 'good'
+                    : filterSignal === 'good'
+                      ? 'fair'
+                      : filterSignal === 'fair'
+                        ? 'poor'
+                        : 'all';
                 setFilterSignal(next);
               }}
             >
-              {filterSignal === 'all' ? 'Signal' : filterSignal.charAt(0).toUpperCase() + filterSignal.slice(1)}
+              {filterSignal === 'all'
+                ? 'Signal'
+                : filterSignal.charAt(0).toUpperCase() + filterSignal.slice(1)}
             </Badge>
             {activeFilterCount > 0 && (
               <Button
@@ -489,12 +575,11 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
             )}
           </div>
         )}
-
       </div>
 
       {/* Result count — outside sticky header to avoid overlap */}
       <div className="px-4 pt-2 pb-1">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
           {activeFilterCount > 0 && ` (of ${clients?.length || 0})`}
         </p>
@@ -517,7 +602,12 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
       <MobileBottomSheet
         isOpen={!!selectedClient}
         onClose={() => setSelectedClient(null)}
-        title={selectedClient?.hostName || selectedClient?.hostname || selectedClient?.macAddress || 'Client Details'}
+        title={
+          selectedClient?.hostName ||
+          selectedClient?.hostname ||
+          selectedClient?.macAddress ||
+          'Client Details'
+        }
       >
         {selectedClient && (
           <div className="flex flex-col h-full">
@@ -551,11 +641,15 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                 <div className="p-4 space-y-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Hostname</p>
-                    <p className="text-base font-medium">{selectedClient.hostName || selectedClient.hostname || '—'}</p>
+                    <p className="text-base font-medium">
+                      {selectedClient.hostName || selectedClient.hostname || '—'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Device Info</p>
-                    <p className="text-base font-medium">{selectedClient.manufacturer || selectedClient.deviceType || '—'}</p>
+                    <p className="text-base font-medium">
+                      {selectedClient.manufacturer || selectedClient.deviceType || '—'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">MAC Address</p>
@@ -568,15 +662,21 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                   <div>
                     <p className="text-sm text-muted-foreground">User & Network</p>
                     <p className="text-base font-medium">{selectedClient.username || '—'}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{selectedClient.networkName || selectedClient.ssid || '—'}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedClient.networkName || selectedClient.ssid || '—'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Access Point</p>
-                    <p className="text-base font-medium">{selectedClient.apName || selectedClient.apDisplayName || '—'}</p>
+                    <p className="text-base font-medium">
+                      {selectedClient.apName || selectedClient.apDisplayName || '—'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Status</p>
-                    <p className="text-base font-medium">{selectedClient.status || selectedClient.connectionState || '—'}</p>
+                    <p className="text-base font-medium">
+                      {selectedClient.status || selectedClient.connectionState || '—'}
+                    </p>
                   </div>
                 </div>
               )}
@@ -602,7 +702,13 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {selectedClient.rssi >= -60 ? 'Excellent' : selectedClient.rssi >= -75 ? 'Good' : selectedClient.rssi ? 'Poor' : '—'}
+                      {selectedClient.rssi >= -60
+                        ? 'Excellent'
+                        : selectedClient.rssi >= -75
+                          ? 'Good'
+                          : selectedClient.rssi
+                            ? 'Poor'
+                            : '—'}
                     </p>
                   </div>
 
@@ -620,7 +726,10 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">Band</p>
                       <p className="text-base font-medium">
-                        {selectedClient.band || selectedClient.radioBand || selectedClient.frequency || '—'}
+                        {selectedClient.band ||
+                          selectedClient.radioBand ||
+                          selectedClient.frequency ||
+                          '—'}
                       </p>
                     </div>
                   </div>
@@ -630,7 +739,10 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">PHY Rate</p>
                       <p className="text-base font-medium">
-                        {selectedClient.dataRate || selectedClient.phyRate || selectedClient.rxRate || '—'}
+                        {selectedClient.dataRate ||
+                          selectedClient.phyRate ||
+                          selectedClient.rxRate ||
+                          '—'}
                       </p>
                     </div>
                     <div className="flex-1">
@@ -648,10 +760,9 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                       Time Connected
                     </p>
                     <p className="text-base font-medium">
-                      {selectedClient.associationTime 
+                      {selectedClient.associationTime
                         ? formatDuration(selectedClient.associationTime)
-                        : selectedClient.sessionDuration || '—'
-                      }
+                        : selectedClient.sessionDuration || '—'}
                     </p>
                   </div>
 
@@ -659,7 +770,11 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                   <div>
                     <p className="text-sm text-muted-foreground">VLAN</p>
                     <p className="text-base font-medium">
-                      {selectedClient.vlan || selectedClient.vlanId || selectedClient.vlanTag || selectedClient.dot1dPortNumber || '—'}
+                      {selectedClient.vlan ||
+                        selectedClient.vlanId ||
+                        selectedClient.vlanTag ||
+                        selectedClient.dot1dPortNumber ||
+                        '—'}
                     </p>
                   </div>
 
@@ -711,9 +826,7 @@ export function MobileClientsList({ currentSite }: MobileClientsListProps) {
                                 </span>
                               </div>
                               {event.apName && (
-                                <p className="text-sm text-foreground mt-0.5">
-                                  AP: {event.apName}
-                                </p>
+                                <p className="text-sm text-foreground mt-0.5">AP: {event.apName}</p>
                               )}
                               {event.details && (
                                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">

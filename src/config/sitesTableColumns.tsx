@@ -71,7 +71,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
       site.site_group_name ? (
         <span className="text-xs">{site.site_group_name}</span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Parent site group (controller pair)',
   },
@@ -90,7 +90,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
           {site.location}
         </span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Physical location or address',
   },
@@ -108,7 +108,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
         {getStatusIcon(site.status)}
         <Badge
           variant={getStatusVariant(site.status)}
-          className="text-[10px] h-4 px-1.5 py-0 uppercase tracking-wide"
+          className="text-xs h-4 px-1.5 py-0 uppercase tracking-wide"
         >
           {site.status ? site.status.charAt(0).toUpperCase() + site.status.slice(1) : 'Unknown'}
         </Badge>
@@ -153,7 +153,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
       site.country ? (
         <span className="text-xs">{site.country}</span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Country',
   },
@@ -170,7 +170,7 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
       site.timezone ? (
         <span className="text-xs">{site.timezone}</span>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Site timezone',
   },
@@ -187,13 +187,13 @@ export const SITES_TABLE_COLUMNS: ColumnConfig<Site>[] = [
       site.tags && site.tags.length > 0 ? (
         <div className="flex flex-wrap gap-1">
           {site.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] h-4 px-1.5 py-0">
+            <Badge key={tag} variant="secondary" className="text-xs h-4 px-1.5 py-0">
               {tag}
             </Badge>
           ))}
         </div>
       ) : (
-        <span className="text-[11px] text-muted-foreground">—</span>
+        <span className="text-xs text-muted-foreground">—</span>
       ),
     tooltip: 'Site tags',
   },
