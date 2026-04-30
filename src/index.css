@@ -6719,3 +6719,98 @@ body.mi5 {
     padding-bottom: calc(var(--spacing) * 6);
   }
 }
+
+/* Arbitrary sizing polyfills — used by ScrollArea, charts, dialog widths */
+.h-\[300px\] {
+  height: 300px;
+}
+.h-\[350px\] {
+  height: 350px;
+}
+.h-\[400px\] {
+  height: 400px;
+}
+.h-\[500px\] {
+  height: 500px;
+}
+.h-\[600px\] {
+  height: 600px;
+}
+.h-\[700px\] {
+  height: 700px;
+}
+.max-h-\[200px\] {
+  max-height: 200px;
+}
+.max-h-\[300px\] {
+  max-height: 300px;
+}
+.max-h-\[400px\] {
+  max-height: 400px;
+}
+.max-h-\[500px\] {
+  max-height: 500px;
+}
+.max-h-\[600px\] {
+  max-height: 600px;
+}
+.max-h-\[700px\] {
+  max-height: 700px;
+}
+.w-\[100px\] {
+  width: 100px;
+}
+.w-\[110px\] {
+  width: 110px;
+}
+.w-\[120px\] {
+  width: 120px;
+}
+.w-\[140px\] {
+  width: 140px;
+}
+.w-\[145px\] {
+  width: 145px;
+}
+.w-\[150px\] {
+  width: 150px;
+}
+.w-\[180px\] {
+  width: 180px;
+}
+.w-\[200px\] {
+  width: 200px;
+}
+.w-\[480px\] {
+  width: 480px;
+}
+.min-w-\[8rem\] {
+  min-width: 8rem;
+}
+.min-w-\[120px\] {
+  min-width: 120px;
+}
+.min-w-\[140px\] {
+  min-width: 140px;
+}
+.min-h-\[44px\] {
+  min-height: 44px;
+}
+.min-w-\[44px\] {
+  min-width: 44px;
+}
+.max-w-\[100px\] {
+  max-width: 100px;
+}
+.max-w-\[160px\] {
+  max-width: 160px;
+}
+.max-w-\[180px\] {
+  max-width: 180px;
+}
+.max-w-\[200px\] {
+  max-width: 200px;
+}
+.max-w-\[500px\] {
+  max-width: 500px;
+}
