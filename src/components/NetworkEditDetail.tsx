@@ -1123,16 +1123,18 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       className={`rounded-lg border border-border/50 bg-card ${className}`}
       style={{ scrollMarginTop: 124 }}
     >
-      <header className="px-5 py-3 border-b border-border/50">
+      <header className="px-5 py-2.5 border-b border-border/50">
         <h3 className="text-sm font-semibold leading-none">{title}</h3>
         {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
       </header>
-      <div className="px-5 py-4">{children}</div>
+      <div className="px-5">{children}</div>
     </section>
   );
 
   /**
    * Field row — label + optional helper, control on the right at desktop widths.
+   * Each row carries its own vertical padding so wrapping it in `divide-y`
+   * yields clean separator lines without extra margin math.
    * On a single column (no `inline`), the control sits below the label.
    */
   const Field = ({
@@ -1148,6 +1150,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   }) =>
     inline ? (
       <div
+        className="py-2.5 border-b border-border/40 last:border-b-0"
         style={{
           display: 'grid',
           gridTemplateColumns: 'minmax(160px, 220px) 1fr',
@@ -1326,7 +1329,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="SSID"
           description="Identity, broadcast name, and operational status."
         >
-          <div className="space-y-3">
+          <div>
             <Field label="Network Name" helper="Display name shown in lists and reports.">
               <Input
                 value={formData.name}
@@ -1389,7 +1392,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Security"
           description="Authentication and encryption applied to client associations."
         >
-          <div className="space-y-3">
+          <div>
             <Field
               label="Auth Type"
               helper="Use Edit Privacy to set passphrase, encryption, and PMF for personal/PSK modes."
@@ -1528,7 +1531,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Role & VLAN"
           description="Default access role and topology for authenticated clients."
         >
-          <div className="space-y-3">
+          <div>
             <Field
               label="Default Auth Role"
               helper="Role applied to clients after successful authentication."
@@ -1580,7 +1583,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="Captive Portal"
           description="Splash page for guest onboarding."
         >
-          <div className="space-y-3">
+          <div>
             <Toggle
               label="Enable Captive Portal"
               description="Redirect new clients to a splash page before granting access."
@@ -1636,7 +1639,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
             title="Enterprise AAA"
             description="RADIUS / 802.1X policy for enterprise authentication."
           >
-            <div className="space-y-3">
+            <div>
               <Field
                 label="AAA Policy"
                 helper="Required for enterprise authentication. Defines RADIUS servers and behavior."
@@ -1751,7 +1754,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           </button>
           {showSchedulingCard && (
             <div className="border-t border-border/50 px-6 py-4">
-              <div className="divide-y divide-border/40">
+              <div>
                 {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(
                   (day) => {
                     const schedule = formData.enabledSchedule || {};
@@ -1832,7 +1835,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           title="QoS & Timeouts"
           description="Class of service and idle/session timeouts (seconds)."
         >
-          <div className="space-y-3">
+          <div>
             <Field label="Class of Service" helper="Default CoS profile applied to clients.">
               <Select
                 value={formData.defaultCoS || 'none'}
