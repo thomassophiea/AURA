@@ -5,15 +5,11 @@
  * Stores assignment metadata to enable reconciliation and mismatch detection.
  */
 
-import type {
-  WLANSiteAssignment,
-  WLANProfileAssignment,
-  DeploymentMode
-} from '../types/network';
+import type { WLANSiteAssignment, WLANProfileAssignment, DeploymentMode } from '../types/network';
 
 const STORAGE_KEYS = {
   SITE_ASSIGNMENTS: 'wlan_site_assignments',
-  PROFILE_ASSIGNMENTS: 'wlan_profile_assignments'
+  PROFILE_ASSIGNMENTS: 'wlan_profile_assignments',
 } as const;
 
 /**
@@ -103,7 +99,7 @@ class AssignmentStorageService {
 
     allAssignments[key] = {
       ...assignment,
-      lastModified: new Date().toISOString()
+      lastModified: new Date().toISOString(),
     };
 
     this.saveAllSiteAssignments(allAssignments);
@@ -114,37 +110,7 @@ class AssignmentStorageService {
    */
   getWLANSiteAssignments(wlanId: string): WLANSiteAssignment[] {
     const allAssignments = this.getAllSiteAssignments();
-    return Object.values(allAssignments).filter(a => a.wlanId === wlanId);
-  }
-
-  /**
-   * Get a specific site assignment
-   */
-  getSiteAssignment(wlanId: string, siteId: string): WLANSiteAssignment | null {
-    const allAssignments = this.getAllSiteAssignments();
-    const key = this.getSiteAssignmentKey(wlanId, siteId);
-    return allAssignments[key] || null;
-  }
-
-  /**
-   * Delete a site assignment
-   */
-  deleteSiteAssignment(wlanId: string, siteId: string): void {
-    const allAssignments = this.getAllSiteAssignments();
-    const key = this.getSiteAssignmentKey(wlanId, siteId);
-    delete allAssignments[key];
-    this.saveAllSiteAssignments(allAssignments);
-  }
-
-  /**
-   * Delete all site assignments for a WLAN
-   */
-  deleteWLANSiteAssignments(wlanId: string): void {
-    const allAssignments = this.getAllSiteAssignments();
-    const filtered = Object.fromEntries(
-      Object.entries(allAssignments).filter(([_, assignment]) => assignment.wlanId !== wlanId)
-    );
-    this.saveAllSiteAssignments(filtered);
+    return Object.values(allAssignments).filter((a) => a.wlanId === wlanId);
   }
 
   // ============================================
@@ -160,7 +126,7 @@ class AssignmentStorageService {
 
     allAssignments[key] = {
       ...assignment,
-      lastReconciled: assignment.lastReconciled || new Date().toISOString()
+      lastReconciled: assignment.lastReconciled || new Date().toISOString(),
     };
 
     this.saveAllProfileAssignments(allAssignments);
@@ -176,7 +142,7 @@ class AssignmentStorageService {
       const key = this.getProfileAssignmentKey(assignment.wlanId, assignment.profileId);
       allAssignments[key] = {
         ...assignment,
-        lastReconciled: assignment.lastReconciled || new Date().toISOString()
+        lastReconciled: assignment.lastReconciled || new Date().toISOString(),
       };
     }
 
@@ -188,7 +154,7 @@ class AssignmentStorageService {
    */
   getWLANProfileAssignments(wlanId: string): WLANProfileAssignment[] {
     const allAssignments = this.getAllProfileAssignments();
-    return Object.values(allAssignments).filter(a => a.wlanId === wlanId);
+    return Object.values(allAssignments).filter((a) => a.wlanId === wlanId);
   }
 
   /**
@@ -219,7 +185,7 @@ class AssignmentStorageService {
       ...assignment,
       actualState,
       mismatch,
-      lastReconciled: new Date().toISOString()
+      lastReconciled: new Date().toISOString(),
     };
 
     this.saveWLANProfileAssignment(updated);
@@ -244,57 +210,15 @@ class AssignmentStorageService {
       ...assignment,
       syncStatus,
       syncError,
-      lastReconciled: new Date().toISOString()
+      lastReconciled: new Date().toISOString(),
     };
 
     this.saveWLANProfileAssignment(updated);
   }
 
-  /**
-   * Delete a profile assignment
-   */
-  deleteProfileAssignment(wlanId: string, profileId: string): void {
-    const allAssignments = this.getAllProfileAssignments();
-    const key = this.getProfileAssignmentKey(wlanId, profileId);
-    delete allAssignments[key];
-    this.saveAllProfileAssignments(allAssignments);
-  }
-
-  /**
-   * Delete all profile assignments for a WLAN
-   */
-  deleteWLANProfileAssignments(wlanId: string): void {
-    const allAssignments = this.getAllProfileAssignments();
-    const filtered = Object.fromEntries(
-      Object.entries(allAssignments).filter(([_, assignment]) => assignment.wlanId !== wlanId)
-    );
-    this.saveAllProfileAssignments(filtered);
-  }
-
   // ============================================
   // BULK OPERATIONS
   // ============================================
-
-  /**
-   * Get all assignments for a WLAN (both site and profile level)
-   */
-  getAllWLANAssignments(wlanId: string): {
-    siteAssignments: WLANSiteAssignment[];
-    profileAssignments: WLANProfileAssignment[];
-  } {
-    return {
-      siteAssignments: this.getWLANSiteAssignments(wlanId),
-      profileAssignments: this.getWLANProfileAssignments(wlanId)
-    };
-  }
-
-  /**
-   * Delete all assignments for a WLAN (cleanup when WLAN is deleted)
-   */
-  deleteAllWLANAssignments(wlanId: string): void {
-    this.deleteWLANSiteAssignments(wlanId);
-    this.deleteWLANProfileAssignments(wlanId);
-  }
 
   /**
    * Get all tracked WLANs (returns unique WLAN IDs)
@@ -304,8 +228,8 @@ class AssignmentStorageService {
     const profileAssignments = this.getAllProfileAssignments();
 
     const wlanIds = new Set<string>();
-    Object.values(siteAssignments).forEach(a => wlanIds.add(a.wlanId));
-    Object.values(profileAssignments).forEach(a => wlanIds.add(a.wlanId));
+    Object.values(siteAssignments).forEach((a) => wlanIds.add(a.wlanId));
+    Object.values(profileAssignments).forEach((a) => wlanIds.add(a.wlanId));
 
     return Array.from(wlanIds);
   }
@@ -333,7 +257,7 @@ class AssignmentStorageService {
     return {
       siteAssignmentCount: Object.keys(siteAssignments).length,
       profileAssignmentCount: Object.keys(profileAssignments).length,
-      trackedWLANCount: this.getAllTrackedWLANs().length
+      trackedWLANCount: this.getAllTrackedWLANs().length,
     };
   }
 }
