@@ -289,8 +289,6 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('sle-dashboard');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
-  const [justLoggedIn, setJustLoggedIn] = useState(false);
-  const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [theme, setTheme] = useState<'light' | 'ep1' | 'dev'>('ep1');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
@@ -974,10 +972,6 @@ export default function App() {
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setAdminRole(apiService.getAdminRole());
-    setJustLoggedIn(true);
-
-    // Clear the flag after 5 seconds to allow normal session validation
-    setTimeout(() => setJustLoggedIn(false), 5000);
 
     // Prefetch critical components for faster navigation
     prefetchCriticalComponents();
@@ -1077,48 +1071,6 @@ export default function App() {
 
   const handleCloseDetailPanel = () => {
     setDetailPanel({ isOpen: false, type: null, data: null });
-  };
-
-  const handleQuickTest = async () => {
-    setIsTestingConnection(true);
-
-    try {
-      // Test basic connectivity with a simple API call and shorter timeout
-      const response = await apiService.makeAuthenticatedRequest(
-        '/v1/globalsettings',
-        {
-          method: 'GET',
-        },
-        4000
-      ); // 4 second timeout for quick test
-
-      if (response.ok) {
-        toast.success('Connection test successful!', {
-          description: 'Mobility Engine API is reachable and authenticated.',
-        });
-      } else {
-        toast.error('Connection test failed', {
-          description: `API returned status: ${response.status} ${response.statusText}`,
-        });
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Network error';
-      console.warn('Quick test failed:', errorMessage);
-
-      // Only show toast for explicit user-initiated test, not automatic failures
-      if (
-        !errorMessage.includes('SUPPRESSED_ANALYTICS_ERROR') &&
-        !errorMessage.includes('SUPPRESSED_NON_CRITICAL_ERROR')
-      ) {
-        toast.error('Connection test failed', {
-          description: errorMessage.includes('timed out')
-            ? 'Connection test timed out - server may be slow or unreachable'
-            : 'Unable to reach the controller API',
-        });
-      }
-    } finally {
-      setIsTestingConnection(false);
-    }
   };
 
   const handleToggleDevMode = () => {
