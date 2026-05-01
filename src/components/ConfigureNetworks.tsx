@@ -866,39 +866,6 @@ export function ConfigureNetworks() {
     }
   };
 
-  const handleDeleteNetwork = async (networkId: string) => {
-    const network = networks.find((n) => n.id === networkId);
-    if (
-      !confirm(
-        `Are you sure you want to delete the network "${network?.name}"? This action cannot be undone.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      // Delete the service via API
-      await apiService.deleteService(networkId);
-
-      // Update local state
-      setNetworks((prev) => prev.filter((network) => network.id !== networkId));
-      setServices((prev) => prev.filter((service) => service.id !== networkId));
-      setSelectedNetworks((prev) => prev.filter((id) => id !== networkId));
-
-      // Close expanded view if this network was expanded
-      if (expandedNetworkId === networkId) {
-        setExpandedNetworkId(null);
-      }
-
-      toast.success('Network deleted successfully');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete network';
-      toast.error('Failed to delete network', {
-        description: errorMessage,
-      });
-    }
-  };
-
   const handleSelectNetwork = (networkId: string, selected: boolean) => {
     if (selected) {
       setSelectedNetworks((prev) => [...prev, networkId]);
@@ -923,11 +890,6 @@ export function ConfigureNetworks() {
     // Refresh the networks list after a save
     loadNetworks();
     toast.success('Network configuration saved successfully');
-  };
-
-  const handleEditWlan = (wlan: any) => {
-    setEditingWlan(wlan);
-    setIsEditDialogOpen(true);
   };
 
   const handleDeleteWlan = async (wlan: any) => {
@@ -1181,12 +1143,12 @@ export function ConfigureNetworks() {
 
       // Strip internal/UI-only fields, keep the config payload
       const {
-        id,
-        currentClients,
+        id: _id,
+        currentClients: _currentClients,
         _siteGroupId,
         _siteGroupName,
-        createdAt,
-        updatedAt,
+        createdAt: _createdAt,
+        updatedAt: _updatedAt,
         ...configPayload
       } = network as any;
 
