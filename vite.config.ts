@@ -127,6 +127,8 @@ export default defineConfig(({ mode }) => ({
           'vendor-supabase': ['@supabase/supabase-js'],
           'vendor-icons': ['lucide-react'],
           // Feature-specific vendors — only loaded when the relevant section is used
+          'vendor-aggrid': ['ag-grid-community', 'ag-grid-react'],
+          'vendor-pdf': ['jspdf', 'jspdf-autotable'],
           'vendor-crypto': ['tweetnacl', 'tweetnacl-sealedbox-js'],
           'vendor-carousel': ['embla-carousel-react'],
           'vendor-qr': ['qrcode.react'],

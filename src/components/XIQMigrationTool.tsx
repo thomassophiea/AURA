@@ -30,6 +30,7 @@ import {
   fetchAllXIQData,
   fetchControllerProfiles,
   fetchExistingTopologies,
+  fetchExistingServices,
   convertToControllerFormat,
   executeMigration,
   downloadMigrationReport,
@@ -44,6 +45,7 @@ import {
   type LogEntry,
 } from '../services/xiqMigrationService';
 import { useAppContext } from '../contexts/AppContext';
+import { apiService } from '../services/api';
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -137,11 +139,19 @@ export function XIQMigrationTool() {
   // Step 4 — execution
   const [dryRun, setDryRun] = useState(false);
   const [enableAfterMigration, setEnableAfterMigration] = useState(false);
+  const [skipExisting, setSkipExisting] = useState(true);
   const [downloadReportAfter, setDownloadReportAfter] = useState(true);
   const [migrating, setMigrating] = useState(false);
   const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const logRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Post-migration PSK fix-up: SSIDs imported with the "12345678" placeholder
+  // and the new password the user has entered for each.
+  const [placeholderSsids, setPlaceholderSsids] = useState<string[]>([]);
+  const [pskFixups, setPskFixups] = useState<Record<string, string>>({});
+  const [savingPskFixups, setSavingPskFixups] = useState(false);
 
   const addLog = useCallback((msg: string, level: LogEntry['level'] = 'info') => {
     const entry: LogEntry = {
@@ -156,23 +166,67 @@ export function XIQMigrationTool() {
     );
   }, []);
 
-  // Restore session
+  // Restore session — XIQ token + last selections (sessionStorage so reloads keep
+  // state but a fresh tab starts clean)
+  const sessionKey = `xiq-migration:${siteGroupId}`;
   useEffect(() => {
     const existing = xiqService.getToken(siteGroupId);
     if (existing) {
       setToken(existing);
       setFetchingXiq(true);
       fetchAllXIQData(existing)
-        .then(setXiqData)
-        .catch((e: unknown) =>
-          setFetchError(e instanceof Error ? e.message : 'Failed to fetch XIQ data')
-        )
-        .finally(() => {
-          setFetchingXiq(false);
+        .then((data) => {
+          setXiqData(data);
+          // Try to restore selections from sessionStorage
+          try {
+            const raw = sessionStorage.getItem(sessionKey);
+            if (raw) {
+              const saved = JSON.parse(raw) as {
+                step?: Step;
+                ssidIds?: string[];
+                vlanIds?: string[];
+                radiusIds?: string[];
+                profileMode?: ProfileAssignmentMode;
+              };
+              if (saved.ssidIds) setSsidSel(new Set(saved.ssidIds));
+              if (saved.vlanIds) setVlanSel(new Set(saved.vlanIds));
+              if (saved.radiusIds) setRadiusSel(new Set(saved.radiusIds));
+              if (saved.profileMode) setProfileMode(saved.profileMode);
+              if (saved.step && saved.step >= 2 && saved.step <= 4) setStep(saved.step);
+              else setStep(2);
+            } else {
+              setStep(2);
+            }
+          } catch {
+            setStep(2);
+          }
+        })
+        .catch((e: unknown) => {
+          setFetchError(e instanceof Error ? e.message : 'Failed to fetch XIQ data');
           setStep(2);
-        });
+        })
+        .finally(() => setFetchingXiq(false));
     }
-  }, [siteGroupId]);
+  }, [siteGroupId, sessionKey]);
+
+  // Persist selections to sessionStorage so a refresh inside the tool keeps state
+  useEffect(() => {
+    if (!xiqData) return;
+    try {
+      sessionStorage.setItem(
+        sessionKey,
+        JSON.stringify({
+          step,
+          ssidIds: Array.from(ssidSel),
+          vlanIds: Array.from(vlanSel),
+          radiusIds: Array.from(radiusSel),
+          profileMode,
+        })
+      );
+    } catch {
+      /* quota exceeded — skip */
+    }
+  }, [step, ssidSel, vlanSel, radiusSel, profileMode, xiqData, sessionKey]);
 
   // Fetch profiles when entering step 3
   useEffect(() => {
@@ -217,6 +271,11 @@ export function XIQMigrationTool() {
 
   function handleLogout() {
     xiqService.clearToken(siteGroupId);
+    try {
+      sessionStorage.removeItem(sessionKey);
+    } catch {
+      /* ignore */
+    }
     setToken(null);
     setXiqData(null);
     setSsidSel(new Set());
@@ -230,21 +289,38 @@ export function XIQMigrationTool() {
 
   async function handleExecute() {
     if (!xiqData || !token) return;
+    const controller = new AbortController();
+    abortRef.current = controller;
     setMigrating(true);
     setMigrationResult(null);
     setLogs([]);
     try {
-      addLog('Fetching existing topologies from controller...');
-      const existingTopos = await fetchExistingTopologies();
+      addLog('Fetching existing topologies and services from controller...');
+      const [existingTopos, existingServices] = await Promise.all([
+        fetchExistingTopologies(),
+        skipExisting ? fetchExistingServices() : Promise.resolve([]),
+      ]);
       const selections: MigrationSelections = {
         ssidIds: ssidSel,
         vlanIds: vlanSel,
         radiusIds: radiusSel,
       };
       addLog('Converting XIQ config to controller format...');
-      const config = convertToControllerFormat(xiqData, selections, existingTopos);
+      const config = convertToControllerFormat(
+        xiqData,
+        selections,
+        existingTopos,
+        existingServices
+      );
+      // Remember which SSIDs need a real password supplied after migration
+      const allPlaceholders = [...config.pskPlaceholders, ...config.ppskWarnings];
+      setPlaceholderSsids(allPlaceholders);
+      setPskFixups({});
       addLog(
-        `Ready: ${config.topologies.length} topologies, ${config.aaaPolicies.length} AAA policies, ${config.services.length} services`
+        `Ready: ${config.topologies.length} topologies, ${config.aaaPolicies.length} AAA policies, ${config.services.length} new services` +
+          (config.skippedExistingServices.length > 0
+            ? ` (${config.skippedExistingServices.length} already on controller, will skip)`
+            : '')
       );
       const result = await executeMigration(
         config,
@@ -254,14 +330,24 @@ export function XIQMigrationTool() {
           dryRun,
           enableAfterMigration,
           profileAssignmentMode: profileMode,
+          skipExisting,
+          retryAttempts: 2,
+          signal: controller.signal,
         },
         addLog
       );
       setMigrationResult(result);
       const ok = result.services.succeeded.length;
       const fail = result.services.failed.length;
-      if (ok > 0 && fail === 0) toast.success(`${ok} SSID(s) migrated successfully`);
+      const skipped = result.services.skipped.length;
+      if (result.aborted) toast.warning(`Migration aborted — ${ok} of ${ok + fail} applied`);
+      else if (ok > 0 && fail === 0)
+        toast.success(
+          `${ok} SSID(s) migrated successfully${skipped ? ` (${skipped} skipped — already on controller)` : ''}`
+        );
       else if (ok > 0) toast.warning(`${ok} succeeded, ${fail} failed`);
+      else if (skipped > 0 && config.services.length === 0)
+        toast.info(`Nothing to migrate — all ${skipped} SSID(s) already on controller`);
       else toast.error('Migration failed');
       if (downloadReportAfter) downloadMigrationReport(xiqData, result, ssidSel);
     } catch (err) {
@@ -269,6 +355,86 @@ export function XIQMigrationTool() {
       toast.error('Migration error');
     } finally {
       setMigrating(false);
+      abortRef.current = null;
+    }
+  }
+
+  function handleAbort() {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      addLog('Cancelling migration after current step…', 'warn');
+    }
+  }
+
+  /**
+   * Apply real PSK passwords to SSIDs that were imported with the placeholder.
+   * Looks up each SSID by name on the controller, then PUTs an updated `privacy`.
+   */
+  async function handleApplyPskFixups() {
+    const updates = Object.entries(pskFixups).filter(([, pwd]) => pwd && pwd.length >= 8);
+    if (updates.length === 0) {
+      toast.warning('Enter at least one password (minimum 8 characters)');
+      return;
+    }
+    setSavingPskFixups(true);
+    let ok = 0;
+    let fail = 0;
+    try {
+      // Fetch all services once to map name → id
+      const services = await fetchExistingServices();
+      const byName = new Map<string, Record<string, unknown>>();
+      for (const s of services) {
+        const name = (s.serviceName as string) || (s.ssid as string);
+        if (name) byName.set(name.toLowerCase(), s);
+      }
+      for (const [ssidName, password] of updates) {
+        const svc = byName.get(ssidName.toLowerCase());
+        if (!svc?.id) {
+          fail++;
+          addLog(`PSK fix-up: could not find "${ssidName}" on controller`, 'error');
+          continue;
+        }
+        try {
+          // Preserve existing privacy mode; only swap the presharedKey.
+          const existingPrivacy = (svc.privacy ?? {}) as Record<string, unknown>;
+          const wpa = (existingPrivacy.WpaPskElement ?? {}) as Record<string, unknown>;
+          const updated = {
+            ...svc,
+            privacy: {
+              ...existingPrivacy,
+              WpaPskElement: {
+                ...wpa,
+                mode: (wpa.mode as string) ?? 'auto',
+                pmfMode: (wpa.pmfMode as string) ?? 'enabled',
+                keyHexEncoded: false,
+                presharedKey: password,
+              },
+            },
+          };
+          // Cast: Service privacy type is loosely shaped; the controller PUT accepts the merged body verbatim.
+          await apiService.updateService(
+            svc.id as string,
+            updated as unknown as Parameters<typeof apiService.updateService>[1]
+          );
+          ok++;
+          addLog(`PSK updated for "${ssidName}"`);
+        } catch (err) {
+          fail++;
+          addLog(
+            `PSK fix-up failed for "${ssidName}": ${err instanceof Error ? err.message : 'error'}`,
+            'error'
+          );
+        }
+      }
+      if (ok > 0 && fail === 0) toast.success(`Updated ${ok} password(s)`);
+      else if (ok > 0) toast.warning(`${ok} updated, ${fail} failed`);
+      else toast.error('No passwords were updated');
+      // Drop the ones that succeeded so the user sees what's left to do
+      setPlaceholderSsids((prev) =>
+        prev.filter((n) => !(updates.find(([name]) => name === n) && pskFixups[n]))
+      );
+    } finally {
+      setSavingPskFixups(false);
     }
   }
 
@@ -600,6 +766,23 @@ export function XIQMigrationTool() {
                 <span className="font-medium text-sm">Dry Run (no changes will be made)</span>
               </label>
 
+              <label className="flex items-center gap-2 cursor-pointer">
+                <Checkbox
+                  checked={skipExisting}
+                  onCheckedChange={(v) => setSkipExisting(!!v)}
+                  style={{ width: 20, height: 20, flexShrink: 0 }}
+                />
+                <div>
+                  <span className="font-medium text-sm block">
+                    Skip SSIDs already on the controller
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Match by name (case-insensitive). Prevents duplicate services if you re-run a
+                    migration.
+                  </span>
+                </div>
+              </label>
+
               <div className="border-l-2 border-primary pl-4 space-y-2">
                 <p className="text-sm font-semibold">SSID Broadcast Settings</p>
                 <p className="text-xs text-muted-foreground">
@@ -662,6 +845,11 @@ export function XIQMigrationTool() {
                     'Execute Migration'
                   )}
                 </Button>
+                {migrating && (
+                  <Button variant="destructive" onClick={handleAbort}>
+                    Cancel
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -690,6 +878,7 @@ export function XIQMigrationTool() {
                         label: 'Services',
                         ok: migrationResult.services.succeeded.length,
                         fail: migrationResult.services.failed.length,
+                        skipped: migrationResult.services.skipped.length,
                       },
                       {
                         label: 'Topologies',
@@ -707,25 +896,48 @@ export function XIQMigrationTool() {
                         fail: migrationResult.profileAssignments.failed,
                       },
                     ] as const
-                  ).map(({ label, ok, fail }) => (
-                    <div key={label} className="rounded-lg border p-3">
-                      <p className="text-xs text-muted-foreground font-medium">{label}</p>
-                      <div className="flex gap-2 mt-1">
-                        {ok > 0 && (
-                          <span className="text-green-600 dark:text-green-400 font-semibold">
-                            {ok} ✓
-                          </span>
-                        )}
-                        {fail > 0 && (
-                          <span className="text-red-600 dark:text-red-400 font-semibold">
-                            {fail} ✗
-                          </span>
-                        )}
-                        {ok === 0 && fail === 0 && <span className="text-muted-foreground">—</span>}
+                  ).map((entry) => {
+                    const { label, ok, fail } = entry;
+                    const skipped = 'skipped' in entry ? entry.skipped : 0;
+                    return (
+                      <div key={label} className="rounded-lg border p-3">
+                        <p className="text-xs text-muted-foreground font-medium">{label}</p>
+                        <div className="flex gap-2 mt-1 flex-wrap">
+                          {ok > 0 && (
+                            <span className="text-green-600 dark:text-green-400 font-semibold">
+                              {ok} ✓
+                            </span>
+                          )}
+                          {fail > 0 && (
+                            <span className="text-red-600 dark:text-red-400 font-semibold">
+                              {fail} ✗
+                            </span>
+                          )}
+                          {skipped > 0 && (
+                            <span
+                              className="text-amber-600 dark:text-amber-400 font-medium text-xs"
+                              title="Already on controller — skipped to avoid duplicates"
+                            >
+                              {skipped} skipped
+                            </span>
+                          )}
+                          {ok === 0 && fail === 0 && skipped === 0 && (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+                {migrationResult.aborted && (
+                  <Alert variant="destructive">
+                    <AlertDescription>
+                      Migration was cancelled. Objects already created on the controller were not
+                      rolled back — review the controller and re-run with "Skip existing" enabled to
+                      finish.
+                    </AlertDescription>
+                  </Alert>
+                )}
                 {migrationResult.services.failed.length > 0 && (
                   <div className="space-y-1">
                     {migrationResult.services.failed.map(({ name, error }) => (
@@ -768,6 +980,59 @@ export function XIQMigrationTool() {
               </CardContent>
             </Card>
           )}
+
+          {/* PSK Fix-Up — set real passwords for SSIDs that came in with the placeholder */}
+          {migrationResult &&
+            !migrationResult.aborted &&
+            placeholderSsids.length > 0 &&
+            placeholderSsids.some((n) => migrationResult.services.succeeded.includes(n)) && (
+              <Card className="border-amber-300 dark:border-amber-700">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+                    Set passwords for migrated PSK SSIDs
+                  </CardTitle>
+                  <CardDescription>
+                    XIQ does not return PSK keys via API, so these SSIDs were imported with the
+                    placeholder <code className="font-mono">12345678</code>. Enter the real password
+                    for each before enabling the SSID.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {placeholderSsids
+                    .filter((n) => migrationResult.services.succeeded.includes(n))
+                    .map((ssidName) => (
+                      <div key={ssidName} className="flex items-center gap-2">
+                        <Label className="w-1/3 truncate font-mono text-xs" title={ssidName}>
+                          {ssidName}
+                        </Label>
+                        <Input
+                          type="password"
+                          placeholder="New password (min 8 characters)"
+                          value={pskFixups[ssidName] ?? ''}
+                          onChange={(e) =>
+                            setPskFixups((prev) => ({ ...prev, [ssidName]: e.target.value }))
+                          }
+                          minLength={8}
+                          className="flex-1"
+                        />
+                      </div>
+                    ))}
+                  <div className="flex justify-end pt-1">
+                    <Button onClick={handleApplyPskFixups} disabled={savingPskFixups}>
+                      {savingPskFixups ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Applying…
+                        </>
+                      ) : (
+                        'Apply Passwords'
+                      )}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
           {/* Migration Log */}
           {(logs.length > 0 || migrating) && (

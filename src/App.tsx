@@ -1297,12 +1297,12 @@ export default function App() {
       default: {
         const info = pageInfo[currentPage as keyof typeof pageInfo];
         if (!info) {
-          // If page info doesn't exist, redirect to service levels and show placeholder
-          setCurrentPage('workspace');
+          // Defer the redirect: setting state during render breaks React 19. Use a microtask.
+          queueMicrotask(() => setCurrentPage('workspace'));
           return (
             <PlaceholderPage
               title="Page Not Found"
-              description="The requested page is not available. Redirecting to Service Levels."
+              description="The requested page is not available. Redirecting to Workspace."
             />
           );
         }

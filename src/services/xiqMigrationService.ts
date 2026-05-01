@@ -105,6 +105,12 @@ export interface MigrationOptions {
   dryRun: boolean;
   enableAfterMigration: boolean;
   profileAssignmentMode: ProfileAssignmentMode;
+  /** Skip SSIDs whose name already exists on the controller. Default true. */
+  skipExisting?: boolean;
+  /** Retry attempts per object on transient failures. Default 2. */
+  retryAttempts?: number;
+  /** Abort signal for cancelling an in-flight migration between operations. */
+  signal?: AbortSignal;
 }
 
 export interface LogEntry {
@@ -116,8 +122,13 @@ export interface LogEntry {
 export interface MigrationResult {
   topologies: { succeeded: number; skipped: number; failed: number };
   aaaPolicies: { succeeded: number; failed: number };
-  services: { succeeded: string[]; failed: { name: string; error: string }[] };
+  services: {
+    succeeded: string[];
+    failed: { name: string; error: string }[];
+    skipped: string[]; // already existed on controller
+  };
   profileAssignments: { updated: number; failed: number };
+  aborted?: boolean;
 }
 
 export interface ConvertedConfig {
@@ -139,6 +150,8 @@ export interface ConvertedConfig {
    * The AAA policy was created but authentication will fail until the secret is set on the controller.
    */
   radiusSecretWarnings: string[];
+  /** SSIDs filtered out because a service with the same name already exists on the controller. */
+  skippedExistingServices: string[];
 }
 
 // ─── XIQ Proxy Helpers ────────────────────────────────────────────────────────
@@ -345,6 +358,21 @@ export async function fetchExistingTopologies(): Promise<Record<string, unknown>
   }
 }
 
+/**
+ * Fetch all existing controller services so the migration can skip duplicates.
+ * Returns an empty list on failure rather than aborting the migration.
+ */
+export async function fetchExistingServices(): Promise<Record<string, unknown>[]> {
+  try {
+    const res = await apiService.makeAuthenticatedRequest('/v1/services', {}, 12000);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 // ─── Conversion ───────────────────────────────────────────────────────────────
 
 function uuid(): string {
@@ -381,9 +409,29 @@ function convertPrivacy(security: XIQSSIDSecurity): Record<string, unknown> | nu
 export function convertToControllerFormat(
   data: XIQMigrationData,
   selections: MigrationSelections,
-  existingTopologies: Record<string, unknown>[]
+  existingTopologies: Record<string, unknown>[],
+  existingServices: Record<string, unknown>[] = []
 ): ConvertedConfig {
-  const selectedSSIDs = data.ssids.filter((s) => selections.ssidIds.has(s.id));
+  // Skip SSIDs whose name already exists as a service on the controller. The
+  // controller match is case-insensitive and based on `serviceName` or `ssid`.
+  const existingNames = new Set(
+    existingServices.flatMap((s) => {
+      const names: string[] = [];
+      if (typeof s.serviceName === 'string') names.push(s.serviceName.toLowerCase());
+      if (typeof s.ssid === 'string') names.push(s.ssid.toLowerCase());
+      return names;
+    })
+  );
+  const skippedExistingServices: string[] = [];
+  const selectedSSIDs = data.ssids
+    .filter((s) => selections.ssidIds.has(s.id))
+    .filter((s) => {
+      if (existingNames.has(s.name.toLowerCase())) {
+        skippedExistingServices.push(s.name);
+        return false;
+      }
+      return true;
+    });
   const selectedVLANs = data.vlans.filter((v) => selections.vlanIds.has(v.id));
   const selectedRADIUS = data.radius.filter((r) => selections.radiusIds.has(r.id));
 
@@ -539,10 +587,54 @@ export function convertToControllerFormat(
     services.push(service);
   }
 
-  return { topologies, aaaPolicies, services, pskPlaceholders, ppskWarnings, radiusSecretWarnings };
+  return {
+    topologies,
+    aaaPolicies,
+    services,
+    pskPlaceholders,
+    ppskWarnings,
+    radiusSecretWarnings,
+    skippedExistingServices,
+  };
 }
 
 // ─── Migration Execution ──────────────────────────────────────────────────────
+
+class MigrationAbortedError extends Error {
+  constructor() {
+    super('Migration aborted');
+    this.name = 'MigrationAbortedError';
+  }
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new MigrationAbortedError();
+}
+
+/**
+ * Retry a controllerPost on transient failures with exponential backoff.
+ * 4xx responses are not retried; 5xx and network errors are.
+ */
+async function controllerPostWithRetry(
+  endpoint: string,
+  payload: Record<string, unknown>,
+  attempts: number,
+  signal?: AbortSignal
+): Promise<{ ok: boolean; id?: string; error?: string; attemptsUsed: number }> {
+  const max = Math.max(1, attempts);
+  let last: { ok: boolean; id?: string; error?: string } = { ok: false, error: 'No attempts' };
+  for (let i = 0; i < max; i++) {
+    throwIfAborted(signal);
+    last = await controllerPost(endpoint, payload);
+    if (last.ok) return { ...last, attemptsUsed: i + 1 };
+    // 4xx errors look like "POST … failed (4xx)" — don't retry those.
+    const isClientError = /\(4\d{2}\)/.test(last.error ?? '');
+    if (isClientError || i === max - 1) break;
+    const backoff = 250 * 2 ** i; // 250ms, 500ms, 1s, …
+    await new Promise((r) => setTimeout(r, backoff));
+  }
+  return { ...last, attemptsUsed: max };
+}
 
 async function controllerPost(
   endpoint: string,
@@ -593,9 +685,18 @@ export async function executeMigration(
   const result: MigrationResult = {
     topologies: { succeeded: 0, skipped: existingTopologiesCount, failed: 0 },
     aaaPolicies: { succeeded: 0, failed: 0 },
-    services: { succeeded: [], failed: [] },
+    services: { succeeded: [], failed: [], skipped: [...config.skippedExistingServices] },
     profileAssignments: { updated: 0, failed: 0 },
   };
+
+  const retryAttempts = options.retryAttempts ?? 2;
+
+  if (config.skippedExistingServices.length > 0) {
+    log(
+      `Skipping ${config.skippedExistingServices.length} SSID(s) already on controller: ${config.skippedExistingServices.join(', ')}`,
+      'warn'
+    );
+  }
 
   if (config.pskPlaceholders.length > 0) {
     log(
@@ -624,126 +725,165 @@ export async function executeMigration(
     return result;
   }
 
-  // 1. Topologies
-  for (const topology of config.topologies) {
-    log(`Creating topology: ${topology.name} (VLAN ${topology.vlanid})`);
-    const r = await controllerPost('/v1/topologies', topology);
-    if (r.ok) {
-      result.topologies.succeeded++;
-      log(`  ✓ Created`);
-    } else {
-      result.topologies.failed++;
-      log(`  ✗ ${r.error}`, 'error');
-    }
-  }
-  if (result.topologies.skipped > 0)
-    log(`Skipped ${result.topologies.skipped} existing topology/topologies`);
+  try {
+    throwIfAborted(options.signal);
 
-  // 2. AAA Policies
-  for (const policy of config.aaaPolicies) {
-    log(`Creating AAA policy: ${policy.name}`);
-    const r = await controllerPost('/v1/aaapolicy', policy);
-    if (r.ok) {
-      result.aaaPolicies.succeeded++;
-      log(`  ✓ Created`);
-    } else {
-      result.aaaPolicies.failed++;
-      log(`  ✗ ${r.error}`, 'error');
-    }
-  }
-
-  // 3. Services + collect IDs for profile assignment
-  const createdServiceIds: string[] = [];
-  for (const service of config.services) {
-    const name = service.serviceName as string;
-    log(`Creating service: ${name}`);
-    const r = await controllerPost('/v1/services', service);
-    if (r.ok) {
-      result.services.succeeded.push(name);
-      if (r.id) createdServiceIds.push(r.id);
-      log(`  ✓ Created`);
-    } else {
-      result.services.failed.push({ name, error: r.error ?? 'Unknown' });
-      log(`  ✗ ${r.error}`, 'error');
-    }
-  }
-
-  // 4. Profile assignment
-  if (options.profileAssignmentMode !== 'none' && createdServiceIds.length > 0) {
-    const targetProfiles =
-      options.profileAssignmentMode === 'custom' ? profiles.filter((p) => p.isCustom) : profiles;
-    log(`Assigning ${createdServiceIds.length} SSID(s) to ${targetProfiles.length} profile(s)...`);
-    for (const profile of targetProfiles) {
-      try {
-        const getRes = await apiService.makeAuthenticatedRequest(
-          `/v3/profiles/${profile.id}`,
-          {},
-          10000
-        );
-        if (!getRes.ok) {
-          result.profileAssignments.failed++;
-          continue;
-        }
-        const profileData = (await getRes.json()) as Record<string, unknown>;
-        const existing = (profileData.radioIfList ?? []) as { serviceId: string; index: number }[];
-        const existingIds = new Set(existing.map((r) => r.serviceId));
-        const newEntries = createdServiceIds
-          .filter((id) => !existingIds.has(id))
-          .map((id) => ({ serviceId: id, index: 0 }));
-        profileData.radioIfList = [...existing, ...newEntries];
-        const putRes = await apiService.makeAuthenticatedRequest(
-          `/v3/profiles/${profile.id}`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(profileData),
-          },
-          15000
-        );
-        if (putRes.ok) {
-          result.profileAssignments.updated++;
-          log(`  ✓ ${profile.name}`);
-        } else {
-          result.profileAssignments.failed++;
-          log(`  ✗ ${profile.name}`, 'warn');
-        }
-      } catch (err) {
-        result.profileAssignments.failed++;
-        log(`  ✗ ${profile.name}: ${err instanceof Error ? err.message : 'error'}`, 'warn');
+    // 1. Topologies
+    for (const topology of config.topologies) {
+      throwIfAborted(options.signal);
+      log(`Creating topology: ${topology.name} (VLAN ${topology.vlanid})`);
+      const r = await controllerPostWithRetry(
+        '/v1/topologies',
+        topology,
+        retryAttempts,
+        options.signal
+      );
+      if (r.ok) {
+        result.topologies.succeeded++;
+        log(`  ✓ Created${r.attemptsUsed > 1 ? ` (after ${r.attemptsUsed} attempts)` : ''}`);
+      } else {
+        result.topologies.failed++;
+        log(`  ✗ ${r.error}`, 'error');
       }
     }
-  }
+    if (result.topologies.skipped > 0)
+      log(`Skipped ${result.topologies.skipped} existing topology/topologies`);
 
-  // 5. Enable services
-  if (options.enableAfterMigration && createdServiceIds.length > 0) {
-    log('Enabling migrated SSIDs...');
-    try {
-      const getRes = await apiService.makeAuthenticatedRequest('/v1/services', {}, 12000);
-      if (getRes.ok) {
-        const all = (await getRes.json()) as Record<string, unknown>[];
-        const toEnable = all.filter(
-          (s) => createdServiceIds.includes(s.id as string) && s.status === 'disabled'
-        );
-        for (const svc of toEnable) {
-          svc.status = 'enabled';
-          await apiService.makeAuthenticatedRequest(
-            `/v1/services/${svc.id}`,
+    // 2. AAA Policies
+    for (const policy of config.aaaPolicies) {
+      throwIfAborted(options.signal);
+      log(`Creating AAA policy: ${policy.name}`);
+      const r = await controllerPostWithRetry(
+        '/v1/aaapolicy',
+        policy,
+        retryAttempts,
+        options.signal
+      );
+      if (r.ok) {
+        result.aaaPolicies.succeeded++;
+        log(`  ✓ Created${r.attemptsUsed > 1 ? ` (after ${r.attemptsUsed} attempts)` : ''}`);
+      } else {
+        result.aaaPolicies.failed++;
+        log(`  ✗ ${r.error}`, 'error');
+      }
+    }
+
+    // 3. Services + collect IDs for profile assignment
+    const createdServiceIds: string[] = [];
+    for (const service of config.services) {
+      throwIfAborted(options.signal);
+      const name = service.serviceName as string;
+      log(`Creating service: ${name}`);
+      const r = await controllerPostWithRetry(
+        '/v1/services',
+        service,
+        retryAttempts,
+        options.signal
+      );
+      if (r.ok) {
+        result.services.succeeded.push(name);
+        if (r.id) createdServiceIds.push(r.id);
+        log(`  ✓ Created${r.attemptsUsed > 1 ? ` (after ${r.attemptsUsed} attempts)` : ''}`);
+      } else {
+        result.services.failed.push({ name, error: r.error ?? 'Unknown' });
+        log(`  ✗ ${r.error}`, 'error');
+      }
+    }
+
+    // 4. Profile assignment
+    if (options.profileAssignmentMode !== 'none' && createdServiceIds.length > 0) {
+      const targetProfiles =
+        options.profileAssignmentMode === 'custom' ? profiles.filter((p) => p.isCustom) : profiles;
+      log(
+        `Assigning ${createdServiceIds.length} SSID(s) to ${targetProfiles.length} profile(s)...`
+      );
+      for (const profile of targetProfiles) {
+        throwIfAborted(options.signal);
+        try {
+          const getRes = await apiService.makeAuthenticatedRequest(
+            `/v3/profiles/${profile.id}`,
+            {},
+            10000
+          );
+          if (!getRes.ok) {
+            result.profileAssignments.failed++;
+            continue;
+          }
+          const profileData = (await getRes.json()) as Record<string, unknown>;
+          const existing = (profileData.radioIfList ?? []) as {
+            serviceId: string;
+            index: number;
+          }[];
+          const existingIds = new Set(existing.map((r) => r.serviceId));
+          const newEntries = createdServiceIds
+            .filter((id) => !existingIds.has(id))
+            .map((id) => ({ serviceId: id, index: 0 }));
+          profileData.radioIfList = [...existing, ...newEntries];
+          const putRes = await apiService.makeAuthenticatedRequest(
+            `/v3/profiles/${profile.id}`,
             {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(svc),
+              body: JSON.stringify(profileData),
             },
-            10000
+            15000
           );
+          if (putRes.ok) {
+            result.profileAssignments.updated++;
+            log(`  ✓ ${profile.name}`);
+          } else {
+            result.profileAssignments.failed++;
+            log(`  ✗ ${profile.name}`, 'warn');
+          }
+        } catch (err) {
+          if (err instanceof MigrationAbortedError) throw err;
+          result.profileAssignments.failed++;
+          log(`  ✗ ${profile.name}: ${err instanceof Error ? err.message : 'error'}`, 'warn');
         }
-        log(`Enabled ${toEnable.length} service(s)`);
       }
-    } catch (err) {
-      log(
-        `Warning: could not enable services — ${err instanceof Error ? err.message : 'error'}`,
-        'warn'
-      );
     }
+
+    // 5. Enable services
+    if (options.enableAfterMigration && createdServiceIds.length > 0) {
+      throwIfAborted(options.signal);
+      log('Enabling migrated SSIDs...');
+      try {
+        const getRes = await apiService.makeAuthenticatedRequest('/v1/services', {}, 12000);
+        if (getRes.ok) {
+          const all = (await getRes.json()) as Record<string, unknown>[];
+          const toEnable = all.filter(
+            (s) => createdServiceIds.includes(s.id as string) && s.status === 'disabled'
+          );
+          for (const svc of toEnable) {
+            throwIfAborted(options.signal);
+            svc.status = 'enabled';
+            await apiService.makeAuthenticatedRequest(
+              `/v1/services/${svc.id}`,
+              {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(svc),
+              },
+              10000
+            );
+          }
+          log(`Enabled ${toEnable.length} service(s)`);
+        }
+      } catch (err) {
+        if (err instanceof MigrationAbortedError) throw err;
+        log(
+          `Warning: could not enable services — ${err instanceof Error ? err.message : 'error'}`,
+          'warn'
+        );
+      }
+    }
+  } catch (err) {
+    if (err instanceof MigrationAbortedError) {
+      result.aborted = true;
+      log('Migration aborted by user — partial state was applied', 'warn');
+      return result;
+    }
+    throw err;
   }
 
   return result;
