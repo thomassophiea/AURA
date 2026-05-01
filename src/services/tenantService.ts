@@ -79,7 +79,7 @@ const STORAGE_KEYS = {
   CONTROLLERS: 'api_controllers',
   CURRENT_CONTROLLER: 'api_current_controller',
   CURRENT_ORG: 'api_current_org',
-  USER_PROFILE: 'api_user_profile'
+  USER_PROFILE: 'api_user_profile',
 };
 
 // Default site group that is always present
@@ -134,7 +134,10 @@ class TenantService {
   private saveToStorage() {
     try {
       if (this.currentController) {
-        localStorage.setItem(STORAGE_KEYS.CURRENT_CONTROLLER, JSON.stringify(this.currentController));
+        localStorage.setItem(
+          STORAGE_KEYS.CURRENT_CONTROLLER,
+          JSON.stringify(this.currentController)
+        );
       } else {
         localStorage.removeItem(STORAGE_KEYS.CURRENT_CONTROLLER);
       }
@@ -152,10 +155,7 @@ class TenantService {
   // === Organizations ===
 
   async getOrganizations(): Promise<Organization[]> {
-    const { data, error } = await supabase
-      .from('organizations')
-      .select('*')
-      .order('name');
+    const { data, error } = await supabase.from('organizations').select('*').order('name');
 
     if (error) {
       console.error('Failed to fetch organizations:', error);
@@ -168,10 +168,12 @@ class TenantService {
   async getUserOrganizations(userId: string): Promise<UserOrganization[]> {
     const { data, error } = await supabase
       .from('user_organizations')
-      .select(`
+      .select(
+        `
         *,
         organization:organizations(*)
-      `)
+      `
+      )
       .eq('user_id', userId)
       .eq('is_active', true);
 
@@ -183,13 +185,16 @@ class TenantService {
     return data || [];
   }
 
-  async createOrganization(name: string, slug: string, userId: string): Promise<Organization | null> {
-    const { data, error } = await supabase
-      .rpc('create_organization_with_owner', {
-        org_name: name,
-        org_slug: slug,
-        owner_id: userId
-      });
+  async createOrganization(
+    name: string,
+    slug: string,
+    userId: string
+  ): Promise<Organization | null> {
+    const { data, error } = await supabase.rpc('create_organization_with_owner', {
+      org_name: name,
+      org_slug: slug,
+      owner_id: userId,
+    });
 
     if (error) {
       console.error('Failed to create organization:', error);
@@ -197,20 +202,13 @@ class TenantService {
     }
 
     // Fetch the created org
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('*')
-      .eq('id', data)
-      .single();
+    const { data: org } = await supabase.from('organizations').select('*').eq('id', data).single();
 
     return org;
   }
 
   async updateOrganization(orgId: string, updates: Partial<Organization>): Promise<void> {
-    const { error } = await supabase
-      .from('organizations')
-      .update(updates)
-      .eq('id', orgId);
+    const { error } = await supabase.from('organizations').update(updates).eq('id', orgId);
 
     if (error) {
       throw new Error(error.message);
@@ -231,7 +229,7 @@ class TenantService {
   async getControllers(orgId?: string): Promise<Controller[]> {
     // First get local controllers (instant)
     const localControllers = this.getLocalControllers();
-    
+
     // If we have local controllers, return them immediately
     // This provides instant loading - no network delay
     if (localControllers.length > 0) {
@@ -239,7 +237,7 @@ class TenantService {
       this.syncControllersFromSupabase(orgId).catch(() => {});
       return localControllers;
     }
-    
+
     // No local controllers - try Supabase with short timeout (only if configured)
     if (this._isSupabaseConfigured()) {
       try {
@@ -252,15 +250,12 @@ class TenantService {
           query = query.eq('org_id', orgId);
         }
 
-        const result = await Promise.race([
-          query.order('name'),
-          timeoutPromise
-        ]);
+        const result = await Promise.race([query.order('name'), timeoutPromise]);
 
         const { data, error } = result as { data: Controller[] | null; error: any };
         if (!error && data && data.length > 0) {
           // Save to local storage for next time
-          data.forEach(c => this.saveControllerLocally(c));
+          data.forEach((c) => this.saveControllerLocally(c));
           return data;
         }
       } catch (error) {
@@ -271,7 +266,7 @@ class TenantService {
     // No controllers found — return empty so the UI can show an appropriate empty state
     return this.getLocalControllers();
   }
-  
+
   // Background sync without blocking UI
   private async syncControllersFromSupabase(orgId?: string): Promise<void> {
     if (!this._isSupabaseConfigured()) return;
@@ -283,7 +278,7 @@ class TenantService {
 
       const { data, error } = await query.order('name');
       if (!error && data) {
-        data.forEach(c => this.saveControllerLocally(c));
+        data.forEach((c) => this.saveControllerLocally(c));
       }
     } catch {
       // Silently fail - local data is good enough
@@ -293,7 +288,7 @@ class TenantService {
   async getController(controllerId: string): Promise<Controller | null> {
     if (!this._isSupabaseConfigured()) {
       const controllers = this.getLocalControllers();
-      return controllers.find(c => c.id === controllerId) || null;
+      return controllers.find((c) => c.id === controllerId) || null;
     }
     const { data, error } = await supabase
       .from('controllers')
@@ -303,19 +298,21 @@ class TenantService {
 
     if (error) {
       const controllers = this.getLocalControllers();
-      return controllers.find(c => c.id === controllerId) || null;
+      return controllers.find((c) => c.id === controllerId) || null;
     }
 
     return data;
   }
 
-  async createController(controller: Omit<Controller, 'id' | 'created_at' | 'connection_status'>): Promise<Controller> {
+  async createController(
+    controller: Omit<Controller, 'id' | 'created_at' | 'connection_status'>
+  ): Promise<Controller> {
     const localId = crypto.randomUUID();
     const localController: Controller = {
       ...controller,
       id: localId,
       connection_status: 'unknown',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     if (!this._isSupabaseConfigured()) {
@@ -342,10 +339,7 @@ class TenantService {
   async updateController(controllerId: string, updates: Partial<Controller>): Promise<void> {
     if (this._isSupabaseConfigured()) {
       try {
-        const { error } = await supabase
-          .from('controllers')
-          .update(updates)
-          .eq('id', controllerId);
+        const { error } = await supabase.from('controllers').update(updates).eq('id', controllerId);
         if (error) throw error;
       } catch {
         // Fall through to local update
@@ -353,7 +347,7 @@ class TenantService {
     }
     // Always update locally
     const controllers = this.getLocalControllers();
-    const index = controllers.findIndex(c => c.id === controllerId);
+    const index = controllers.findIndex((c) => c.id === controllerId);
     if (index >= 0) {
       controllers[index] = { ...controllers[index], ...updates };
       localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(controllers));
@@ -377,7 +371,7 @@ class TenantService {
 
     // Always remove locally
     const controllers = this.getLocalControllers();
-    const filtered = controllers.filter(c => c.id !== controllerId);
+    const filtered = controllers.filter((c) => c.id !== controllerId);
     localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(filtered));
 
     // Clear current if deleted
@@ -393,7 +387,7 @@ class TenantService {
       const saved = localStorage.getItem(STORAGE_KEYS.CONTROLLERS);
       const controllers: Controller[] = saved ? JSON.parse(saved) : [];
       // Ensure the default SouthEast site group is always present
-      if (!controllers.some(c => c.id === DEFAULT_CONTROLLER.id)) {
+      if (!controllers.some((c) => c.id === DEFAULT_CONTROLLER.id)) {
         controllers.unshift({ ...DEFAULT_CONTROLLER });
         localStorage.setItem(STORAGE_KEYS.CONTROLLERS, JSON.stringify(controllers));
       }
@@ -405,7 +399,7 @@ class TenantService {
 
   private saveControllerLocally(controller: Controller) {
     const controllers = this.getLocalControllers();
-    const index = controllers.findIndex(c => c.id === controller.id);
+    const index = controllers.findIndex((c) => c.id === controller.id);
     if (index >= 0) {
       controllers[index] = controller;
     } else {
@@ -431,9 +425,11 @@ class TenantService {
     this.saveToStorage();
 
     // Dispatch event for other components to react
-    window.dispatchEvent(new CustomEvent('controllerChanged', {
-      detail: controller
-    }));
+    window.dispatchEvent(
+      new CustomEvent('controllerChanged', {
+        detail: controller,
+      })
+    );
   }
 
   getCurrentController(): Controller | null {
@@ -442,16 +438,20 @@ class TenantService {
 
   getControllerUrl(): string | null {
     if (!this.currentController) return null;
-    
+
     const url = this.currentController.url;
     const port = this.currentController.port || 443;
-    
+
     // Ensure URL has protocol
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       return `https://${url}:${port}`;
     }
-    
-    return url.includes(':') ? url : `${url}:${port}`;
+
+    // The URL already has a scheme. Only the trailing :NNN counts as a port —
+    // checking `url.includes(':')` previously matched the protocol's colon and
+    // skipped appending the configured port.
+    const hasPort = /:\d+$/.test(url);
+    return hasPort ? url : `${url}:${port}`;
   }
 
   // === Per-Site-Group Login Cache ===
@@ -496,15 +496,13 @@ class TenantService {
     // are persisted to Supabase. Storing plaintext passwords in the database or
     // localStorage is a security risk — use Supabase Vault (or omit passwords
     // entirely and re-prompt the user each session) before shipping to production.
-    const { error } = await supabase
-      .from('controller_credentials')
-      .upsert({
-        controller_id: controllerId,
-        credential_type: credentials.credential_type,
-        username: credentials.username,
-        // Do NOT persist the password — column is misleadingly named; leave null
-        encrypted_password: null
-      });
+    const { error } = await supabase.from('controller_credentials').upsert({
+      controller_id: controllerId,
+      credential_type: credentials.credential_type,
+      username: credentials.username,
+      // Do NOT persist the password — column is misleadingly named; leave null
+      encrypted_password: null,
+    });
 
     if (error) {
       // Supabase unavailable — skip localStorage fallback to avoid storing
@@ -527,7 +525,7 @@ class TenantService {
         controller_id: data.controller_id,
         credential_type: data.credential_type,
         username: data.username,
-        password: '' // Password is never persisted — caller must re-prompt the user
+        password: '', // Password is never persisted — caller must re-prompt the user
       };
     } catch {
       return null;
@@ -542,16 +540,14 @@ class TenantService {
     latency?: number;
   }> {
     const startTime = Date.now();
-    
+
     try {
-      const url = controller.url.startsWith('http') 
-        ? controller.url 
-        : `https://${controller.url}`;
-      
+      const url = controller.url.startsWith('http') ? controller.url : `https://${controller.url}`;
+
       // Try to reach the controller's API
       const response = await fetch(`${url}/management/v1/aps`, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(10000),
       });
 
       const latency = Date.now() - startTime;
@@ -559,22 +555,22 @@ class TenantService {
       // Update controller status
       await this.updateController(controller.id, {
         connection_status: response.ok ? 'connected' : 'error',
-        last_connected_at: new Date().toISOString()
+        last_connected_at: new Date().toISOString(),
       });
 
       return {
         success: response.ok || response.status === 401, // 401 means reachable but needs auth
         message: response.ok ? 'Connected' : `HTTP ${response.status}`,
-        latency
+        latency,
       };
     } catch (error) {
       await this.updateController(controller.id, {
-        connection_status: 'disconnected'
+        connection_status: 'disconnected',
       });
 
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Connection failed'
+        message: error instanceof Error ? error.message : 'Connection failed',
       };
     }
   }
@@ -594,7 +590,7 @@ class TenantService {
         action,
         resource_type: resourceType,
         resource_id: resourceId,
-        details
+        details,
       });
     } catch (error) {
       console.error('Failed to log action:', error);
@@ -612,7 +608,7 @@ class TenantService {
       is_active: true,
       is_default: false,
       connection_status: 'unknown',
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
 
     this.saveControllerLocally(controller);
@@ -625,7 +621,7 @@ class TenantService {
 
   async getSiteGroups(orgId?: string): Promise<SiteGroup[]> {
     const controllers = await this.getControllers(orgId);
-    return controllers.map(c => this.controllerToSiteGroup(c));
+    return controllers.map((c) => this.controllerToSiteGroup(c));
   }
 
   private controllerToSiteGroup(c: Controller): SiteGroup {
