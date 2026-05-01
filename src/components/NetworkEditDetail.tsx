@@ -1123,13 +1123,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       className={`rounded-xl border border-border/60 bg-card overflow-hidden ${className}`}
       style={{ scrollMarginTop: 124 }}
     >
-      <header className="px-5 py-3 bg-muted/30">
+      <header className="px-6 py-4 bg-muted/30 border-b border-border/40">
         <h3 className="text-sm font-semibold tracking-tight leading-none">{title}</h3>
         {description && (
-          <p className="text-xs text-muted-foreground mt-1 leading-snug">{description}</p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
         )}
       </header>
-      <div className="px-5 py-1">{children}</div>
+      <div className="px-6 py-2">{children}</div>
     </section>
   );
 
@@ -1152,23 +1152,25 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   }) =>
     inline ? (
       <div
-        className="py-2.5 border-b border-border/40 last:border-b-0"
+        className="py-4 border-b border-border/40 last:border-b-0"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'minmax(160px, 220px) 1fr',
-          gap: '20px',
+          gridTemplateColumns: 'minmax(180px, 240px) 1fr',
+          gap: '28px',
           alignItems: 'center',
         }}
       >
-        <div>
-          <Label className="text-sm font-medium text-foreground">{label}</Label>
-          {helper && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{helper}</p>}
+        <div className="pr-2">
+          <Label className="text-sm font-medium text-foreground leading-snug">{label}</Label>
+          {helper && (
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{helper}</p>
+          )}
         </div>
         <div>{children}</div>
       </div>
     ) : (
-      <div>
-        <Label className="text-sm font-medium text-foreground block mb-2">{label}</Label>
+      <div className="py-2">
+        <Label className="text-sm font-medium text-foreground block mb-2.5">{label}</Label>
         {children}
         {helper && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{helper}</p>}
       </div>
@@ -1186,11 +1188,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     checked: boolean;
     onChange: (v: boolean) => void;
   }) => (
-    <div className="flex items-center justify-between gap-4 py-2.5 border-b border-border/40 last:border-b-0">
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+    <div className="flex items-center justify-between gap-6 py-4 border-b border-border/40 last:border-b-0">
+      <div className="flex-1 min-w-0 pr-2">
+        <p className="text-sm font-medium text-foreground leading-snug">{label}</p>
         {description && (
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
         )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
@@ -1330,7 +1332,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
         {/* Two-column grid for the main configuration cards. AAA spans both
             columns when shown. Advanced lives outside the grid below. */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* ── SSID ── */}
           <SettingsCard
             id="ssid"
