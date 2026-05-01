@@ -16,18 +16,21 @@ const localStorageMock = (() => {
     },
     clear: () => {
       store = {};
-    }
+    },
   };
 })();
 
 Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock
+  value: localStorageMock,
 });
 
 describe('useGlobalFilters Hook', () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.useFakeTimers();
+    // shouldAdvanceTime keeps real-time microtask queues running so React
+    // Testing Library's `waitFor` poll interval still fires while user-space
+    // timers are controlled by `vi.advanceTimersByTime`.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
   });
 
   afterEach(() => {
@@ -38,11 +41,11 @@ describe('useGlobalFilters Hook', () => {
   describe('initial state', () => {
     it('should return default filters', () => {
       const { result } = renderHook(() => useGlobalFilters());
-      
+
       expect(result.current.filters).toEqual({
         site: 'all',
         timeRange: '24h',
-        environment: 'all'
+        environment: 'all',
       });
     });
 
@@ -55,15 +58,15 @@ describe('useGlobalFilters Hook', () => {
       const persistedFilters = {
         site: 'site-1',
         timeRange: '7d',
-        environment: 'production'
+        environment: 'production',
       };
       localStorage.setItem('aura_global_filters', JSON.stringify(persistedFilters));
 
       // Re-import to test initialization
       const { result } = renderHook(() => useGlobalFilters());
-      
+
       // Note: This test may not work as expected because the global state
-      // is already initialized before the hook is called. 
+      // is already initialized before the hook is called.
       // This is a limitation of the current implementation.
     });
   });
@@ -76,7 +79,9 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilter('site', 'site-123');
       });
 
-      vi.advanceTimersByTime(300); // Debounce delay
+      act(() => {
+        vi.advanceTimersByTime(300); // Debounce delay
+      });
 
       await waitFor(() => {
         expect(result.current.filters.site).toBe('site-123');
@@ -90,7 +95,9 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilter('timeRange', '7d');
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(result.current.filters.timeRange).toBe('7d');
@@ -104,7 +111,9 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilter('environment', 'lab');
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(result.current.filters.environment).toBe('lab');
@@ -118,7 +127,9 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilter('site', 'new-site');
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         const stored = localStorage.getItem('aura_global_filters');
@@ -137,11 +148,13 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilters({
           site: 'multi-site',
           timeRange: '30d',
-          environment: 'staging'
+          environment: 'staging',
         });
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(result.current.filters.site).toBe('multi-site');
@@ -157,7 +170,9 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilter('site', 'active-site');
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(result.current.hasActiveFilters).toBe(true);
@@ -173,7 +188,7 @@ describe('useGlobalFilters Hook', () => {
         result.current.updateFilters({
           site: 'site-1',
           timeRange: '7d',
-          environment: 'prod'
+          environment: 'prod',
         });
       });
 
@@ -187,7 +202,7 @@ describe('useGlobalFilters Hook', () => {
         expect(result.current.filters).toEqual({
           site: 'all',
           timeRange: '24h',
-          environment: 'all'
+          environment: 'all',
         });
       });
     });
@@ -218,7 +233,7 @@ describe('useGlobalFilters Hook', () => {
       act(() => {
         result.current.updateFilters({
           site: 'site-1',
-          timeRange: '7d'
+          timeRange: '7d',
         });
       });
 
@@ -265,11 +280,13 @@ describe('useGlobalFilters Hook', () => {
       act(() => {
         setGlobalFilters({
           site: 'non-hook-site',
-          timeRange: '30d'
+          timeRange: '30d',
         });
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(result.current.filters.site).toBe('non-hook-site');
@@ -312,7 +329,9 @@ describe('useGlobalFilters Hook', () => {
         hook1.current.updateFilter('site', 'shared-site');
       });
 
-      vi.advanceTimersByTime(300);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
 
       await waitFor(() => {
         expect(hook2.current.filters.site).toBe('shared-site');

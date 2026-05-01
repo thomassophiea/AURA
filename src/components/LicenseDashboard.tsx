@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { Loader2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 import {
   Key,
@@ -16,17 +14,10 @@ import {
   TrendingUp,
   Plus,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
 import { TouchButton } from './TouchButton';
 import { ResponsiveDialog } from './ResponsiveDialog';
 import { DesktopOnly } from './MobileOptimized';

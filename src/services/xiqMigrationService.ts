@@ -622,13 +622,17 @@ async function controllerPostWithRetry(
   signal?: AbortSignal
 ): Promise<{ ok: boolean; id?: string; error?: string; attemptsUsed: number }> {
   const max = Math.max(1, attempts);
-  let last: { ok: boolean; id?: string; error?: string } = { ok: false, error: 'No attempts' };
+  let last: { ok: boolean; id?: string; error?: string; status?: number } = {
+    ok: false,
+    error: 'No attempts',
+  };
   for (let i = 0; i < max; i++) {
     throwIfAborted(signal);
     last = await controllerPost(endpoint, payload);
     if (last.ok) return { ...last, attemptsUsed: i + 1 };
-    // 4xx errors look like "POST … failed (4xx)" — don't retry those.
-    const isClientError = /\(4\d{2}\)/.test(last.error ?? '');
+    // Don't retry 4xx — those are the caller's fault and won't change.
+    const isClientError =
+      typeof last.status === 'number' && last.status >= 400 && last.status < 500;
     if (isClientError || i === max - 1) break;
     const backoff = 250 * 2 ** i; // 250ms, 500ms, 1s, …
     await new Promise((r) => setTimeout(r, backoff));
@@ -639,7 +643,7 @@ async function controllerPostWithRetry(
 async function controllerPost(
   endpoint: string,
   payload: Record<string, unknown>
-): Promise<{ ok: boolean; id?: string; error?: string }> {
+): Promise<{ ok: boolean; id?: string; error?: string; status?: number }> {
   try {
     const res = await apiService.makeAuthenticatedRequest(
       endpoint,
@@ -669,7 +673,7 @@ async function controllerPost(
     } catch {
       /* ignore */
     }
-    return { ok: false, error: errMsg };
+    return { ok: false, error: errMsg, status: res.status };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }

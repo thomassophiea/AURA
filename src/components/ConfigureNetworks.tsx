@@ -12,36 +12,24 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from './ui/dialog';
 import { Label } from './ui/label';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Checkbox } from './ui/checkbox';
 import { Progress } from './ui/progress';
 import {
   AlertCircle,
-  Wifi,
   Search,
   RefreshCw,
-  Filter,
   Plus,
-  Edit,
   Edit2,
   Trash2,
   Eye,
   EyeOff,
   Shield,
-  Radio,
-  Settings,
   Network,
   Users,
-  Globe,
   Building,
-  Lock,
-  Unlock,
-  ChevronDown,
   ChevronUp,
-  Info,
   QrCode,
   X,
   Link2,

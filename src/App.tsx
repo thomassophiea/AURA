@@ -30,14 +30,8 @@ const prefetchCriticalComponents = () => {
   prefetchOnIdle(() => import('./components/ReportWidgets'));
   prefetchOnIdle(() => import('./components/ConfigureNetworks'));
 };
-const ServiceLevelsEnhanced = lazy(() =>
-  import('./components/ServiceLevelsEnhanced').then((m) => ({ default: m.ServiceLevelsEnhanced }))
-);
 const SLEDashboard = lazy(() =>
   import('./components/sle/SLEDashboard').then((m) => ({ default: m.SLEDashboard }))
-);
-const AlertsEventsEnhanced = lazy(() =>
-  import('./components/AlertsEventsEnhanced').then((m) => ({ default: m.AlertsEventsEnhanced }))
 );
 const ReportWidgets = lazy(() =>
   import('./components/ReportWidgets').then((m) => ({ default: m.ReportWidgets }))
@@ -126,9 +120,6 @@ const GuestManagement = lazy(() =>
 const ApiDocumentation = lazy(() =>
   import('./components/ApiDocumentation').then((m) => ({ default: m.ApiDocumentation }))
 );
-const Workspace = lazy(() =>
-  import('./components/Workspace').then((m) => ({ default: m.Workspace }))
-);
 const ReportCenter = lazy(() =>
   import('./components/ReportCenter').then((m) => ({ default: m.ReportCenter }))
 );
@@ -146,17 +137,7 @@ import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
 import { Button } from './components/ui/button';
-import {
-  Activity,
-  Sun,
-  Moon,
-  Braces,
-  Github,
-  FlaskConical,
-  BarChart3,
-  Bell,
-  LayoutGrid,
-} from 'lucide-react';
+import { Braces, Github, FlaskConical } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
 import { NotificationsMenu } from './components/NotificationsMenu';

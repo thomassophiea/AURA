@@ -1,10 +1,8 @@
 import {
   Users,
   Wifi,
-  MapPin,
   Settings,
   Brain,
-  LogOut,
   Menu,
   ChevronDown,
   ChevronRight,
@@ -14,9 +12,6 @@ import {
   Shield,
   UserCheck,
   UserPlus,
-  Sun,
-  Moon,
-  Monitor,
   Braces,
   Zap,
   Layers,
@@ -32,8 +27,6 @@ import {
   Bell,
   HardDrive,
   LayoutDashboard,
-  HelpCircle,
-  Target,
   TrendingUp,
   CircuitBoard,
   Building2,
@@ -41,8 +34,6 @@ import {
   Cpu,
   Radio,
 } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import extremeNetworksLogo from 'figma:asset/cc372b1d703a0b056a9f8c590da6c8e1cb4947fd.png';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
 import { useState } from 'react';
@@ -83,6 +74,11 @@ const configureItems = [
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
   { id: 'configure-advanced', label: 'Advanced', icon: Settings },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
+];
+
+// Templates, variables, and assignments form an intent-based config layer that
+// is conceptually separate from the live controller config under Configure.
+const globalElementsItems = [
   { id: 'global-templates', label: 'Templates', icon: Layers },
   { id: 'global-variables', label: 'Variables', icon: Braces },
   { id: 'global-assignments', label: 'Assignments', icon: Link2 },
@@ -124,18 +120,23 @@ export function Sidebar({
   // Filter nav items by active persona
   const filteredMonitoringItems = filterItems(monitoringItems);
   const filteredConfigureItems = filterItems(configureItems);
+  const filteredGlobalElementsItems = filterItems(globalElementsItems);
   const filteredOperationsItems = filterItems(operationsItems);
   const filteredControllerItems = filterItems(controllerItems);
 
   // Check if any section sub-item is currently active
   const isMonitoringActive = filteredMonitoringItems.some((item) => currentPage === item.id);
   const isConfigureActive = filteredConfigureItems.some((item) => currentPage === item.id);
+  const isGlobalElementsActive = filteredGlobalElementsItems.some(
+    (item) => currentPage === item.id
+  );
   const isOperationsActive = filteredOperationsItems.some((item) => currentPage === item.id);
   const isControllerActive = filteredControllerItems.some((item) => currentPage === item.id);
 
   // Auto-expand sections if an item is active
   const [isMonitoringExpanded, setIsMonitoringExpanded] = useState(true);
   const [isConfigureExpanded, setIsConfigureExpanded] = useState(isConfigureActive);
+  const [isGlobalElementsExpanded, setIsGlobalElementsExpanded] = useState(isGlobalElementsActive);
   const [isOperationsExpanded, setIsOperationsExpanded] = useState(isOperationsActive);
 
   // Close mobile sidebar when page changes
@@ -355,6 +356,17 @@ export function Sidebar({
                   isActive: isConfigureActive,
                   isExpanded: isConfigureExpanded,
                   onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
+                })}
+
+              {/* Global Elements Section — intent-based config */}
+              {filteredGlobalElementsItems.length > 0 &&
+                renderCollapsibleSection({
+                  label: 'Global Elements',
+                  icon: Globe,
+                  items: filteredGlobalElementsItems,
+                  isActive: isGlobalElementsActive,
+                  isExpanded: isGlobalElementsExpanded,
+                  onToggle: () => setIsGlobalElementsExpanded(!isGlobalElementsExpanded),
                 })}
 
               {/* Report Studio — top-level item */}
