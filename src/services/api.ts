@@ -1142,69 +1142,6 @@ class ApiService {
   }
 
   // Test basic connectivity to Extreme Platform ONE
-  async testConnectivity(): Promise<{ success: boolean; message: string; details?: any }> {
-    try {
-      logger.log('Testing connectivity to Extreme Platform ONE...');
-
-      // Test basic HTTPS connectivity with shorter timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
-
-      const response = await fetch(`${getBaseUrl()}/v1/oauth2/token`, {
-        method: 'OPTIONS',
-        headers: {
-          Accept: 'application/json',
-        },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (response.ok || response.status === 405) {
-        // 405 Method Not Allowed is expected for OPTIONS, but means the endpoint exists
-        return {
-          success: true,
-          message: 'Extreme Platform ONE is reachable',
-          details: {
-            status: response.status,
-            statusText: response.statusText,
-            headers: Object.fromEntries(response.headers.entries()),
-          },
-        };
-      } else {
-        return {
-          success: false,
-          message: `Server responded with ${response.status}: ${response.statusText}`,
-          details: {
-            status: response.status,
-            statusText: response.statusText,
-          },
-        };
-      }
-    } catch (error) {
-      let message = 'Cannot reach Extreme Platform ONE';
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          message = 'Connection test timed out - server may be unreachable';
-        } else if (error.message.includes('CORS')) {
-          message = 'CORS policy blocking request - check server configuration';
-        } else if (error.message.includes('network')) {
-          message = 'Network error - check internet connection';
-        } else if (error.message.includes('certificate') || error.message.includes('SSL')) {
-          message = 'SSL/Certificate error - check HTTPS configuration';
-        } else {
-          message = error.message;
-        }
-      }
-
-      return {
-        success: false,
-        message,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' },
-      };
-    }
-  }
-
   // Access Points API methods
   async getAccessPoints(options?: QueryOptions): Promise<AccessPoint[]> {
     return this.makeRequestWithRetry(async () => {
@@ -1246,32 +1183,6 @@ class ApiService {
       return columns;
     } catch (error) {
       return [];
-    }
-  }
-
-  async queryAccessPoints(query?: any): Promise<AccessPoint[]> {
-    // If no specific query is provided, use the basic endpoint
-    if (!query || Object.keys(query).length === 0) {
-      return this.getAccessPoints();
-    }
-
-    // Try the query endpoint for advanced filtering
-    try {
-      const response = await this.makeAuthenticatedRequest('/v1/aps/query', {
-        method: 'POST',
-        body: JSON.stringify(query),
-      });
-      if (!response.ok) {
-        // If query endpoint fails, fall back to basic endpoint
-        return this.getAccessPoints();
-      }
-      const result = await response.json();
-      return Array.isArray(result)
-        ? result
-        : result?.aps || result?.data || result?.accessPoints || [];
-    } catch (error) {
-      // If query endpoint fails, fall back to basic endpoint
-      return this.getAccessPoints();
     }
   }
 
@@ -1492,33 +1403,6 @@ class ApiService {
       throw new Error(
         `Failed to update AP: ${response.status} ${response.statusText} - ${errorText}`
       );
-    }
-    return await response.json();
-  }
-
-  async getAPPlatforms(): Promise<APPlatform[]> {
-    const response = await this.makeAuthenticatedRequest('/v1/aps/platforms');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AP platforms: ${response.status}`);
-    }
-    return await response.json();
-  }
-
-  async getAPHardwareTypes(): Promise<APHardwareType[]> {
-    const response = await this.makeAuthenticatedRequest('/v1/aps/hardwaretypes');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AP hardware types: ${response.status}`);
-    }
-    return await response.json();
-  }
-
-  async getAPDefaults(hardwareType?: string): Promise<any> {
-    const endpoint = hardwareType
-      ? `/v1/aps/default?hardwareType=${encodeURIComponent(hardwareType)}`
-      : '/v1/aps/default';
-    const response = await this.makeAuthenticatedRequest(endpoint);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch AP defaults: ${response.status}`);
     }
     return await response.json();
   }
@@ -2237,15 +2121,6 @@ class ApiService {
       logger.error('Delete role error:', errorText);
       throw new Error(`Failed to delete role: ${response.status} ${response.statusText}`);
     }
-  }
-
-  // Get default role template for creating new roles
-  async getRoleDefaultTemplate(): Promise<Role> {
-    const response = await this.makeAuthenticatedRequest('/v3/roles/default');
-    if (!response.ok) {
-      throw new Error(`Failed to fetch role template: ${response.status} ${response.statusText}`);
-    }
-    return await response.json();
   }
 
   // Get Class of Service (CoS) options
