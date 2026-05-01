@@ -9,16 +9,21 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     css: true,
+    // Default Vitest excludes plus macOS resource-fork files (`._*`) that
+    // appear when the project lives on a network/macOS-formatted volume.
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/cypress/**',
+      '**/.{idea,git,cache,output,temp}/**',
+      '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
+      '**/._*',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: [
-        'node_modules/',
-        'src/test/',
-        '**/*.config.ts',
-        '**/*.d.ts',
-        '**/types/',
-      ],
+      exclude: ['node_modules/', 'src/test/', '**/*.config.ts', '**/*.d.ts', '**/types/'],
     },
   },
   resolve: {

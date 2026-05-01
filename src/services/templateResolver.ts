@@ -158,7 +158,7 @@ class TemplateResolverService {
     resolvedVars: Map<string, ResolvedVariable>,
     definitions: PersistedVariableDefinition[]
   ): { resolved: Record<string, unknown>; unresolvedTokens: string[] } {
-    const defByToken = new Map(definitions.map(d => [d.token, d]));
+    const defByToken = new Map(definitions.map((d) => [d.token, d]));
     const unresolvedTokens = new Set<string>();
     const resolved = this._walkAndSubstitute(payload, resolvedVars, defByToken, unresolvedTokens);
     return {
@@ -178,7 +178,7 @@ class TemplateResolverService {
     }
 
     if (Array.isArray(value)) {
-      return value.map(item =>
+      return value.map((item) =>
         this._walkAndSubstitute(item, resolvedVars, defByToken, unresolvedTokens)
       );
     }
@@ -229,10 +229,7 @@ class TemplateResolverService {
    * Coerce a string value based on the variable's declared type.
    * Returns a number for numeric types, otherwise returns the string.
    */
-  private _coerceValue(
-    value: string,
-    def?: PersistedVariableDefinition
-  ): string | number {
+  private _coerceValue(value: string, def?: PersistedVariableDefinition): string | number {
     if (!def) return value;
 
     if (def.type === 'number' || def.type === 'vlan') {
@@ -266,7 +263,7 @@ class TemplateResolverService {
     // Only include variables that are actually used in this template
     const usedTokens = this.extractTokens(template.config_payload);
     const usedVariables = usedTokens
-      .map(t => resolvedVars.get(t))
+      .map((t) => resolvedVars.get(t))
       .filter((v): v is ResolvedVariable => v !== undefined);
 
     return {
@@ -291,7 +288,7 @@ class TemplateResolverService {
     definitions: PersistedVariableDefinition[]
   ): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
-    const defByToken = new Map(definitions.map(d => [d.token, d]));
+    const defByToken = new Map(definitions.map((d) => [d.token, d]));
 
     for (const rv of resolved.variables) {
       const def = defByToken.get(rv.token);
@@ -314,10 +311,14 @@ class TemplateResolverService {
             errors.push(`Variable {{${rv.token}}}: expected a number, got "${val}"`);
           }
           if (def.validation_rules?.min !== undefined && num < def.validation_rules.min) {
-            errors.push(`Variable {{${rv.token}}}: value ${num} below minimum ${def.validation_rules.min}`);
+            errors.push(
+              `Variable {{${rv.token}}}: value ${num} below minimum ${def.validation_rules.min}`
+            );
           }
           if (def.validation_rules?.max !== undefined && num > def.validation_rules.max) {
-            errors.push(`Variable {{${rv.token}}}: value ${num} above maximum ${def.validation_rules.max}`);
+            errors.push(
+              `Variable {{${rv.token}}}: value ${num} above maximum ${def.validation_rules.max}`
+            );
           }
           break;
         }
@@ -329,12 +330,18 @@ class TemplateResolverService {
         }
         case 'subnet': {
           if (!/^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/.test(val)) {
-            errors.push(`Variable {{${rv.token}}}: invalid subnet "${val}" (expected CIDR notation)`);
+            errors.push(
+              `Variable {{${rv.token}}}: invalid subnet "${val}" (expected CIDR notation)`
+            );
           }
           break;
         }
         case 'hostname': {
-          if (!/^[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]*[a-zA-Z0-9])?)*$/.test(val)) {
+          if (
+            !/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/.test(
+              val
+            )
+          ) {
             errors.push(`Variable {{${rv.token}}}: invalid hostname "${val}"`);
           }
           break;
@@ -346,7 +353,9 @@ class TemplateResolverService {
         try {
           const re = new RegExp(def.validation_rules.pattern);
           if (!re.test(val)) {
-            errors.push(`Variable {{${rv.token}}}: value "${val}" does not match pattern ${def.validation_rules.pattern}`);
+            errors.push(
+              `Variable {{${rv.token}}}: value "${val}" does not match pattern ${def.validation_rules.pattern}`
+            );
           }
         } catch {
           // Invalid regex in definition — skip

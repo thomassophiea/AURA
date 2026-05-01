@@ -49,7 +49,7 @@ export interface SLEThresholds {
   successfulConnects: { minSuccessRate: number }; // default 95%
   timeToConnect: { maxSeconds: number }; // default 5s
   roaming: { maxLatencyMs: number }; // default 500ms
-  apHealth: { /* status-based, no threshold */ };
+  apHealth: Record<string, never>; // status-based, no threshold
 }
 
 export const DEFAULT_SLE_THRESHOLDS: SLEThresholds = {

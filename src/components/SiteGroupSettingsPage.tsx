@@ -13,9 +13,7 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Switch } from './ui/switch';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from './ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { VariableScopeEditor } from './global-elements/VariableScopeEditor';
 import { useAppContext } from '../contexts/AppContext';
 import { useSiteGroupSettings } from '../hooks/useSiteGroupSettings';
@@ -32,6 +30,7 @@ export function SiteGroupSettingsPage() {
 
   const [activeTab, setActiveTab] = useState('connection');
   const [saving, setSaving] = useState(false);
+  const [selectedVarId, setSelectedVarId] = useState<string | null>(null);
 
   if (!siteGroup) {
     return (
@@ -61,11 +60,8 @@ export function SiteGroupSettingsPage() {
     }
   };
 
-  // Filter variable values to only those for this site group
-  const sgValues = values.filter(v => v.scope_type === 'site_group' && v.scope_id === sgId);
-  // Find a variable to select by default
-  const [selectedVarId, setSelectedVarId] = useState<string | null>(null);
-  const selectedVar = definitions.find(d => d.id === selectedVarId) ?? null;
+  const sgValues = values.filter((v) => v.scope_type === 'site_group' && v.scope_id === sgId);
+  const selectedVar = definitions.find((d) => d.id === selectedVarId) ?? null;
 
   return (
     <div className="space-y-6">
@@ -114,7 +110,9 @@ export function SiteGroupSettingsPage() {
               <div className="space-y-2">
                 <Label>Controller URL</Label>
                 <Input value={siteGroup.controller_url} disabled className="font-mono text-sm" />
-                <p className="text-xs text-muted-foreground">Read-only — managed in Site Groups configuration</p>
+                <p className="text-xs text-muted-foreground">
+                  Read-only — managed in Site Groups configuration
+                </p>
               </div>
 
               <div className="space-y-2">
@@ -123,8 +121,11 @@ export function SiteGroupSettingsPage() {
                   id="timeout"
                   type="number"
                   value={settings.connection.timeout_ms}
-                  onChange={e => {
-                    const conn = { ...settings.connection, timeout_ms: Number(e.target.value) || 10000 };
+                  onChange={(e) => {
+                    const conn = {
+                      ...settings.connection,
+                      timeout_ms: Number(e.target.value) || 10000,
+                    };
                     updateSettings({ connection: conn });
                   }}
                   min={1000}
@@ -139,8 +140,11 @@ export function SiteGroupSettingsPage() {
                   id="retries"
                   type="number"
                   value={settings.connection.retry_count}
-                  onChange={e => {
-                    const conn = { ...settings.connection, retry_count: Number(e.target.value) || 3 };
+                  onChange={(e) => {
+                    const conn = {
+                      ...settings.connection,
+                      retry_count: Number(e.target.value) || 3,
+                    };
                     updateSettings({ connection: conn });
                   }}
                   min={0}
@@ -153,7 +157,10 @@ export function SiteGroupSettingsPage() {
                 <Select
                   value={settings.connection.preferred_protocol}
                   onValueChange={(v) => {
-                    const conn = { ...settings.connection, preferred_protocol: v as 'https' | 'http' };
+                    const conn = {
+                      ...settings.connection,
+                      preferred_protocol: v as 'https' | 'http',
+                    };
                     updateSettings({ connection: conn });
                   }}
                 >
@@ -180,14 +187,17 @@ export function SiteGroupSettingsPage() {
             <CardHeader>
               <CardTitle className="text-base">Variable Overrides</CardTitle>
               <CardDescription>
-                Set variable values specific to this site group. These override organization-level defaults.
+                Set variable values specific to this site group. These override organization-level
+                defaults.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {definitions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <p className="text-sm">No variables defined yet</p>
-                  <p className="text-xs mt-1">Create variables in Global Elements → Variables tab</p>
+                  <p className="text-xs mt-1">
+                    Create variables in Global Elements → Variables tab
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -197,7 +207,7 @@ export function SiteGroupSettingsPage() {
                       <SelectValue placeholder="Select a variable to configure..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {definitions.map(d => (
+                      {definitions.map((d) => (
                         <SelectItem key={d.id} value={d.id}>
                           {d.name} ({`{{${d.token}}}`})
                         </SelectItem>
@@ -208,7 +218,7 @@ export function SiteGroupSettingsPage() {
                   {selectedVar && (
                     <VariableScopeEditor
                       variable={selectedVar}
-                      values={values.filter(v => v.variable_id === selectedVar.id)}
+                      values={values.filter((v) => v.variable_id === selectedVar.id)}
                       orgId={orgId!}
                       orgName={organization?.name ?? 'Organization'}
                       siteGroups={[siteGroup]}
@@ -228,13 +238,17 @@ export function SiteGroupSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Deployment Preferences</CardTitle>
-              <CardDescription>Configure how templates are deployed to this controller</CardDescription>
+              <CardDescription>
+                Configure how templates are deployed to this controller
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Auto Deploy</Label>
-                  <p className="text-xs text-muted-foreground">Automatically deploy when template changes</p>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically deploy when template changes
+                  </p>
                 </div>
                 <Switch
                   checked={settings.deployment.auto_deploy}
@@ -250,7 +264,10 @@ export function SiteGroupSettingsPage() {
                 <Select
                   value={settings.deployment.deployment_mode}
                   onValueChange={(v) => {
-                    const dep = { ...settings.deployment, deployment_mode: v as 'create_only' | 'create_or_update' };
+                    const dep = {
+                      ...settings.deployment,
+                      deployment_mode: v as 'create_only' | 'create_or_update',
+                    };
                     updateSettings({ deployment: dep });
                   }}
                 >
@@ -267,7 +284,9 @@ export function SiteGroupSettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Notify on Failure</Label>
-                  <p className="text-xs text-muted-foreground">Show notification when deployment fails</p>
+                  <p className="text-xs text-muted-foreground">
+                    Show notification when deployment fails
+                  </p>
                 </div>
                 <Switch
                   checked={settings.deployment.notify_on_failure}
@@ -296,15 +315,36 @@ export function SiteGroupSettingsPage() {
                 <InfoRow label="Name" value={siteGroup.name} />
                 <InfoRow label="ID" value={siteGroup.id} mono />
                 <InfoRow label="Controller URL" value={siteGroup.controller_url} mono />
-                {siteGroup.controller_port && <InfoRow label="Port" value={String(siteGroup.controller_port)} />}
+                {siteGroup.controller_port && (
+                  <InfoRow label="Port" value={String(siteGroup.controller_port)} />
+                )}
                 <InfoRow label="Connection Status" value={siteGroup.connection_status} badge />
-                {siteGroup.last_connected_at && <InfoRow label="Last Connected" value={new Date(siteGroup.last_connected_at).toLocaleString()} />}
+                {siteGroup.last_connected_at && (
+                  <InfoRow
+                    label="Last Connected"
+                    value={new Date(siteGroup.last_connected_at).toLocaleString()}
+                  />
+                )}
                 <InfoRow label="Default" value={siteGroup.is_default ? 'Yes' : 'No'} />
                 {siteGroup.region && <InfoRow label="Region" value={siteGroup.region} />}
-                {siteGroup.xiq_authenticated !== undefined && <InfoRow label="XIQ Connected" value={siteGroup.xiq_authenticated ? 'Yes' : 'No'} />}
-                {siteGroup.xiq_region && <InfoRow label="XIQ Region" value={siteGroup.xiq_region} />}
-                {siteGroup.site_count !== undefined && <InfoRow label="Sites" value={String(siteGroup.site_count)} />}
-                {siteGroup.created_at && <InfoRow label="Created" value={new Date(siteGroup.created_at).toLocaleString()} />}
+                {siteGroup.xiq_authenticated !== undefined && (
+                  <InfoRow
+                    label="XIQ Connected"
+                    value={siteGroup.xiq_authenticated ? 'Yes' : 'No'}
+                  />
+                )}
+                {siteGroup.xiq_region && (
+                  <InfoRow label="XIQ Region" value={siteGroup.xiq_region} />
+                )}
+                {siteGroup.site_count !== undefined && (
+                  <InfoRow label="Sites" value={String(siteGroup.site_count)} />
+                )}
+                {siteGroup.created_at && (
+                  <InfoRow
+                    label="Created"
+                    value={new Date(siteGroup.created_at).toLocaleString()}
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -314,7 +354,17 @@ export function SiteGroupSettingsPage() {
   );
 }
 
-function InfoRow({ label, value, mono, badge }: { label: string; value: string; mono?: boolean; badge?: boolean }) {
+function InfoRow({
+  label,
+  value,
+  mono,
+  badge,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  badge?: boolean;
+}) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>

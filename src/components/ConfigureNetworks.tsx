@@ -1213,7 +1213,16 @@ export function ConfigureNetworks() {
       });
 
       toast.success('Network promoted to template', {
-        description: `"${network.ssid}" is now available in Global Elements → Templates. Assign it to other sites/groups from there.`,
+        description: `"${network.ssid}" is now a Global Element. Open Assignments to attach it to sites or site groups.`,
+        action: {
+          label: 'Assign to sites',
+          onClick: () => {
+            window.dispatchEvent(
+              new CustomEvent('aura:navigate', { detail: { page: 'global-assignments' } })
+            );
+          },
+        },
+        duration: 8000,
       });
     } catch (err) {
       toast.error('Failed to promote', {

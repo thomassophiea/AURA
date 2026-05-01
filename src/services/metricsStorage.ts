@@ -22,22 +22,21 @@ export class MetricsStorageService {
   /**
    * Save a service metrics snapshot
    */
-  async saveServiceMetrics(snapshot: Omit<ServiceMetricsSnapshot, 'id' | 'created_at'>): Promise<void> {
+  async saveServiceMetrics(
+    snapshot: Omit<ServiceMetricsSnapshot, 'id' | 'created_at'>
+  ): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('service_metrics_snapshots')
-        .insert({
-          service_id: snapshot.service_id,
-          service_name: snapshot.service_name,
-          timestamp: snapshot.timestamp,
-          metrics: snapshot.metrics
-        });
+      const { error } = await supabase.from('service_metrics_snapshots').insert({
+        service_id: snapshot.service_id,
+        service_name: snapshot.service_name,
+        timestamp: snapshot.timestamp,
+        metrics: snapshot.metrics,
+      });
 
       if (error) {
         console.error('[MetricsStorage] Error saving service metrics:', error);
         throw error;
       }
-
     } catch (error) {
       console.error('[MetricsStorage] Failed to save service metrics:', error);
       // Don't throw - we don't want to break the app if storage fails
@@ -49,23 +48,20 @@ export class MetricsStorageService {
    */
   async saveNetworkSnapshot(snapshot: Omit<NetworkSnapshot, 'id' | 'created_at'>): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('network_snapshots')
-        .insert({
-          timestamp: snapshot.timestamp,
-          site_id: snapshot.site_id,
-          site_name: snapshot.site_name,
-          total_services: snapshot.total_services,
-          total_clients: snapshot.total_clients,
-          total_throughput: snapshot.total_throughput,
-          average_reliability: snapshot.average_reliability
-        });
+      const { error } = await supabase.from('network_snapshots').insert({
+        timestamp: snapshot.timestamp,
+        site_id: snapshot.site_id,
+        site_name: snapshot.site_name,
+        total_services: snapshot.total_services,
+        total_clients: snapshot.total_clients,
+        total_throughput: snapshot.total_throughput,
+        average_reliability: snapshot.average_reliability,
+      });
 
       if (error) {
         console.error('[MetricsStorage] Error saving network snapshot:', error);
         throw error;
       }
-
     } catch (error) {
       console.error('[MetricsStorage] Failed to save network snapshot:', error);
     }
@@ -136,10 +132,7 @@ export class MetricsStorageService {
   /**
    * Get network snapshots for a time range
    */
-  async getNetworkSnapshots(
-    startTime: Date,
-    endTime: Date
-  ): Promise<NetworkSnapshot[]> {
+  async getNetworkSnapshots(startTime: Date, endTime: Date): Promise<NetworkSnapshot[]> {
     try {
       const { data, error } = await supabase
         .from('network_snapshots')
@@ -163,7 +156,9 @@ export class MetricsStorageService {
   /**
    * Get available time range for historical data
    */
-  async getAvailableTimeRange(serviceId?: string): Promise<{ earliest: Date | null; latest: Date | null }> {
+  async getAvailableTimeRange(
+    serviceId?: string
+  ): Promise<{ earliest: Date | null; latest: Date | null }> {
     try {
       const table = serviceId ? 'service_metrics_snapshots' : 'network_snapshots';
       let query = supabase.from(table).select('timestamp').order('timestamp', { ascending: true });
@@ -174,7 +169,10 @@ export class MetricsStorageService {
 
       const { data: earliestData } = await query.limit(1);
 
-      let queryLatest = supabase.from(table).select('timestamp').order('timestamp', { ascending: false });
+      let queryLatest = supabase
+        .from(table)
+        .select('timestamp')
+        .order('timestamp', { ascending: false });
       if (serviceId) {
         queryLatest = queryLatest.eq('service_id', serviceId);
       }
@@ -182,8 +180,9 @@ export class MetricsStorageService {
       const { data: latestData } = await queryLatest.limit(1);
 
       return {
-        earliest: earliestData && earliestData.length > 0 ? new Date(earliestData[0].timestamp) : null,
-        latest: latestData && latestData.length > 0 ? new Date(latestData[0].timestamp) : null
+        earliest:
+          earliestData && earliestData.length > 0 ? new Date(earliestData[0].timestamp) : null,
+        latest: latestData && latestData.length > 0 ? new Date(latestData[0].timestamp) : null,
       };
     } catch (error) {
       console.error('[MetricsStorage] Failed to get available time range:', error);
@@ -211,7 +210,6 @@ export class MetricsStorageService {
 
       if (serviceError || networkError) {
         console.error('[MetricsStorage] Error cleaning up old data:', serviceError || networkError);
-      } else {
       }
     } catch (error) {
       console.error('[MetricsStorage] Failed to cleanup old data:', error);
@@ -222,7 +220,10 @@ export class MetricsStorageService {
    * Start periodic metrics collection
    * @param intervalMinutes - How often to collect metrics (default: 15 minutes)
    */
-  startPeriodicCollection(intervalMinutes: number = 15, collectCallback: () => Promise<void>): void {
+  startPeriodicCollection(
+    intervalMinutes: number = 15,
+    collectCallback: () => Promise<void>
+  ): void {
     if (this.isCollecting) {
       console.warn('[MetricsStorage] Periodic collection already running');
       return;
@@ -231,16 +232,19 @@ export class MetricsStorageService {
     this.isCollecting = true;
 
     // Collect immediately
-    collectCallback().catch(err =>
+    collectCallback().catch((err) =>
       console.error('[MetricsStorage] Error in initial collection:', err)
     );
 
     // Then set up interval
-    this.collectionInterval = setInterval(() => {
-      collectCallback().catch(err =>
-        console.error('[MetricsStorage] Error in periodic collection:', err)
-      );
-    }, intervalMinutes * 60 * 1000);
+    this.collectionInterval = setInterval(
+      () => {
+        collectCallback().catch((err) =>
+          console.error('[MetricsStorage] Error in periodic collection:', err)
+        );
+      },
+      intervalMinutes * 60 * 1000
+    );
   }
 
   /**

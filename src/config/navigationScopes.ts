@@ -31,6 +31,7 @@ export const ORG_PAGES = new Set([
   // Templates & Variables
   'global-templates',
   'global-variables',
+  'global-assignments',
   // Operations
   'event-alarm-dashboard',
   'security-dashboard',

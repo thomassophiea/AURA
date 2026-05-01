@@ -18,15 +18,15 @@ const vendorCache: VendorCache = {};
  */
 function extractOUI(mac: string): string {
   // Remove common separators and convert to uppercase
-  const normalized = mac.replace(/[:\-\.]/g, '').toUpperCase();
-  
+  const normalized = mac.replace(/[:\-.]/g, '').toUpperCase();
+
   // Extract first 6 characters (3 octets)
   if (normalized.length >= 6) {
     const oui = normalized.substring(0, 6);
     // Format as XX:XX:XX for consistency
     return `${oui.substring(0, 2)}:${oui.substring(2, 4)}:${oui.substring(4, 6)}`;
   }
-  
+
   return '';
 }
 
@@ -39,22 +39,22 @@ async function lookupVendorAPI(mac: string): Promise<string> {
   try {
     const url = `${SERVER_URL}/oui/lookup?mac=${encodeURIComponent(mac)}`;
     console.log('[OUI Lookup] Fetching from:', url);
-    
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     });
-    
+
     console.log('[OUI Lookup] Response status:', response.status, response.statusText);
-    
+
     if (response.ok) {
       const data = await response.json();
       console.log('[OUI Lookup] Response data:', data);
       return data.vendor || 'Unknown Vendor';
     }
-    
+
     // Try to get error details
     const errorText = await response.text().catch(() => 'Unable to read error');
     console.warn('[OUI Lookup] API error:', response.status, response.statusText, errorText);
@@ -72,18 +72,18 @@ async function lookupVendorAPI(mac: string): Promise<string> {
  */
 export async function getVendor(mac: string): Promise<string> {
   if (!mac) return 'Unknown Vendor';
-  
+
   const oui = extractOUI(mac);
   if (!oui) return 'Unknown Vendor';
-  
+
   // Check cache first
   if (vendorCache[oui]) {
     return vendorCache[oui];
   }
-  
+
   // Lookup via backend API
   const vendor = await lookupVendorAPI(mac);
-  
+
   // Cache the result
   vendorCache[oui] = vendor;
   return vendor;
@@ -96,7 +96,7 @@ export async function getVendor(mac: string): Promise<string> {
  */
 export function getVendorIcon(vendor: string): string {
   const vendorLower = vendor.toLowerCase();
-  
+
   // Map common vendors to icons
   if (vendorLower.includes('apple')) return '🍎';
   if (vendorLower.includes('samsung')) return '📱';
@@ -120,7 +120,7 @@ export function getVendorIcon(vendor: string): string {
   if (vendorLower.includes('huawei')) return '📱';
   if (vendorLower.includes('motorola')) return '📱';
   if (vendorLower.includes('nintendo')) return '🎮';
-  
+
   // Default icon for unknown
   return '📟';
 }
@@ -149,7 +149,7 @@ export async function batchLookupVendors(macs: string[]): Promise<Map<string, st
  */
 export function getShortVendor(vendor: string): string {
   if (vendor === 'Unknown Vendor') return 'Unknown';
-  
+
   // Common abbreviations and overrides
   const abbreviations: { [key: string]: string } = {
     'Apple, Inc.': 'Apple',
@@ -161,18 +161,18 @@ export function getShortVendor(vendor: string): string {
     'Google, Inc.': 'Google',
     'Amazon Technologies Inc.': 'Amazon',
     'TP-Link Corporation Limited': 'TP-Link',
-    'NETGEAR': 'Netgear',
+    NETGEAR: 'Netgear',
     'Ubiquiti Networks Inc.': 'Ubiquiti',
     'Raspberry Pi Trading Ltd': 'Raspberry Pi',
-    'Espressif Inc.': 'Espressif'
+    'Espressif Inc.': 'Espressif',
   };
-  
+
   // Check for exact match
   if (abbreviations[vendor]) {
     return abbreviations[vendor];
   }
-  
+
   // Otherwise, take the first word or up to first comma
-  const shortened = vendor.split(/[,\(]/)[0].trim();
+  const shortened = vendor.split(/[,(]/)[0].trim();
   return shortened.split(' ')[0];
 }

@@ -4,21 +4,15 @@
  * Shows all assignments for the org with create/delete/toggle controls.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Plus, Trash2, Link2, Building2, Server, MapPin } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Switch } from '../ui/switch';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '../ui/table';
-import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
-} from '../ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Label } from '../ui/label';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useTemplateAssignments, useTemplates } from '../../hooks/useGlobalElements';
 import { useAppContext } from '../../contexts/AppContext';
 import { apiService } from '../../services/api';
@@ -43,28 +37,40 @@ export function AssignmentManager() {
   const [scopeId, setScopeId] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  // When scope is 'organization', the only valid scopeId is the org id.
+  useEffect(() => {
+    if (scopeType === 'organization' && orgId && scopeId !== orgId) {
+      setScopeId(orgId);
+    }
+  }, [scopeType, orgId, scopeId]);
+
   // Sites fetched on demand when scope is 'site'
   const [sites, setSites] = useState<{ id: string; name: string; site_group_id: string }[]>([]);
   const [selectedSgForSites, setSelectedSgForSites] = useState('');
 
-  const loadSitesForSg = useCallback(async (sgId: string) => {
-    setSelectedSgForSites(sgId);
-    setScopeId('');
-    try {
-      const sg = siteGroups.find(g => g.id === sgId);
-      if (sg) {
-        apiService.setBaseUrl(`${sg.controller_url}/management`);
-        const data = await apiService.getSites();
-        setSites((data || []).map((s: Record<string, unknown>) => ({
-          id: String(s.id ?? s.siteId ?? ''),
-          name: String(s.name ?? s.siteName ?? ''),
-          site_group_id: sgId,
-        })));
+  const loadSitesForSg = useCallback(
+    async (sgId: string) => {
+      setSelectedSgForSites(sgId);
+      setScopeId('');
+      try {
+        const sg = siteGroups.find((g) => g.id === sgId);
+        if (sg) {
+          apiService.setBaseUrl(`${sg.controller_url}/management`);
+          const data = await apiService.getSites();
+          setSites(
+            (data || []).map((s: Record<string, unknown>) => ({
+              id: String(s.id ?? s.siteId ?? ''),
+              name: String(s.name ?? s.siteName ?? ''),
+              site_group_id: sgId,
+            }))
+          );
+        }
+      } catch {
+        setSites([]);
       }
-    } catch {
-      setSites([]);
-    }
-  }, [siteGroups]);
+    },
+    [siteGroups]
+  );
 
   const handleCreate = async () => {
     if (!orgId || !selectedTemplateId || !scopeId) return;
@@ -93,8 +99,8 @@ export function AssignmentManager() {
 
   const getScopeName = (type: string, id: string): string => {
     if (type === 'organization') return organization?.name ?? id;
-    if (type === 'site_group') return siteGroups.find(g => g.id === id)?.name ?? id;
-    if (type === 'site') return sites.find(s => s.id === id)?.name ?? id;
+    if (type === 'site_group') return siteGroups.find((g) => g.id === id)?.name ?? id;
+    if (type === 'site') return sites.find((s) => s.id === id)?.name ?? id;
     return id;
   };
 
@@ -133,7 +139,7 @@ export function AssignmentManager() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {assignments.map(a => {
+            {assignments.map((a) => {
               const Icon = SCOPE_ICONS[a.scope_type] ?? Building2;
               return (
                 <TableRow key={a.id}>
@@ -141,12 +147,16 @@ export function AssignmentManager() {
                   <TableCell>
                     {a.element_type && (
                       <Badge variant="secondary">
-                        {GLOBAL_ELEMENT_TYPE_LABELS[a.element_type as keyof typeof GLOBAL_ELEMENT_TYPE_LABELS] ?? a.element_type}
+                        {GLOBAL_ELEMENT_TYPE_LABELS[
+                          a.element_type as keyof typeof GLOBAL_ELEMENT_TYPE_LABELS
+                        ] ?? a.element_type}
                       </Badge>
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{a.scope_type.replace('_', ' ')}</Badge>
+                    <Badge variant="outline" className="capitalize">
+                      {a.scope_type.replace('_', ' ')}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -162,7 +172,9 @@ export function AssignmentManager() {
                   </TableCell>
                   <TableCell>
                     <Button
-                      variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive"
                       onClick={() => handleDelete(a.id)}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -190,7 +202,7 @@ export function AssignmentManager() {
                   <SelectValue placeholder="Select template..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map(t => (
+                  {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name} ({GLOBAL_ELEMENT_TYPE_LABELS[t.element_type]})
                     </SelectItem>
@@ -201,7 +213,13 @@ export function AssignmentManager() {
 
             <div className="space-y-2">
               <Label>Scope Level</Label>
-              <Select value={scopeType} onValueChange={(v) => { setScopeType(v as VariableScope); setScopeId(''); }}>
+              <Select
+                value={scopeType}
+                onValueChange={(v) => {
+                  setScopeType(v as VariableScope);
+                  setScopeId('');
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -216,7 +234,6 @@ export function AssignmentManager() {
             {scopeType === 'organization' && orgId && (
               <div className="text-sm text-muted-foreground">
                 Scope: <strong>{organization?.name}</strong>
-                {!scopeId && setScopeId(orgId) === undefined && null}
               </div>
             )}
 
@@ -228,8 +245,10 @@ export function AssignmentManager() {
                     <SelectValue placeholder="Select site group..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {siteGroups.map(sg => (
-                      <SelectItem key={sg.id} value={sg.id}>{sg.name}</SelectItem>
+                    {siteGroups.map((sg) => (
+                      <SelectItem key={sg.id} value={sg.id}>
+                        {sg.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -245,8 +264,10 @@ export function AssignmentManager() {
                       <SelectValue placeholder="Select site group first..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {siteGroups.map(sg => (
-                        <SelectItem key={sg.id} value={sg.id}>{sg.name}</SelectItem>
+                      {siteGroups.map((sg) => (
+                        <SelectItem key={sg.id} value={sg.id}>
+                          {sg.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -259,8 +280,10 @@ export function AssignmentManager() {
                         <SelectValue placeholder="Select site..." />
                       </SelectTrigger>
                       <SelectContent>
-                        {sites.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        {sites.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

@@ -286,6 +286,10 @@ const pageInfo = {
     title: 'Global Variables',
     description: 'Define and manage variables for template resolution',
   },
+  'global-assignments': {
+    title: 'Template Assignments',
+    description: 'Assign templates to organizations, site groups, and sites',
+  },
   'site-group-settings': {
     title: 'Site Group Settings',
     description: 'Configure site group connection, variables, and deployment preferences',
@@ -500,6 +504,15 @@ export default function App() {
       apiService.cancelAllRequests();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
+
+    // Cross-component navigation channel — dispatched from toast actions etc.
+    const handleNavigate = (event: Event) => {
+      const detail = (event as CustomEvent<{ page?: string }>).detail;
+      if (detail?.page) {
+        startTransition(() => setCurrentPage(detail.page!));
+      }
+    };
+    window.addEventListener('aura:navigate', handleNavigate);
 
     // Enhanced error handling for API calls throughout the app
     // Global error handler for script errors and reference errors
@@ -912,6 +925,7 @@ export default function App() {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('aura:navigate', handleNavigate);
       // Restore original console methods
       console.error = originalConsoleError;
       console.warn = originalConsoleWarn;
@@ -1259,6 +1273,8 @@ export default function App() {
         );
       case 'global-variables':
         return <GlobalElementsPage initialTab="variables" />;
+      case 'global-assignments':
+        return <GlobalElementsPage initialTab="assignments" />;
       case 'site-group-settings':
         return <SiteGroupSettingsPage />;
       case 'configure-sites-groups':

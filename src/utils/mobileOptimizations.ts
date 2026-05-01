@@ -36,7 +36,7 @@ export function isTouchDevice(): boolean {
   return (
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-ignore - legacy IE
+    // @ts-expect-error - legacy IE
     (navigator.msMaxTouchPoints || 0) > 0
   );
 }
@@ -47,8 +47,7 @@ export function isTouchDevice(): boolean {
 export function getImageQuality(): 'low' | 'medium' | 'high' {
   const isMobile = window.innerWidth < 768;
   const isSlowConnection =
-    'connection' in navigator &&
-    (navigator as any).connection?.effectiveType === '2g';
+    'connection' in navigator && (navigator as any).connection?.effectiveType === '2g';
 
   if (isMobile || isSlowConnection) {
     return 'low';
@@ -139,9 +138,7 @@ export async function isLowBattery(): Promise<boolean> {
 /**
  * Get refresh interval based on battery status
  */
-export async function getAdaptiveRefreshInterval(
-  defaultInterval: number
-): Promise<number> {
+export async function getAdaptiveRefreshInterval(defaultInterval: number): Promise<number> {
   const lowBattery = await isLowBattery();
   const isMobile = window.innerWidth < 768;
 

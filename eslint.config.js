@@ -11,6 +11,8 @@ export default [
       'build',
       'node_modules',
       '.claude',
+      '.remember',
+      '.superpowers',
       '**/._*',          // macOS resource fork files
       '*.config.js',
       '*.config.ts',

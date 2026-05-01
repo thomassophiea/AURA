@@ -69,7 +69,7 @@ function detectDevice(): DeviceInfo {
   const isTouchDevice =
     'ontouchstart' in window ||
     navigator.maxTouchPoints > 0 ||
-    // @ts-ignore - legacy IE
+    // @ts-expect-error - legacy IE
     (navigator.msMaxTouchPoints || 0) > 0;
 
   // Determine screen size
@@ -86,8 +86,7 @@ function detectDevice(): DeviceInfo {
   const isDesktop = width >= BREAKPOINTS.lg; // >= 1024px
 
   // Determine orientation
-  const orientation: DeviceInfo['orientation'] =
-    width > height ? 'landscape' : 'portrait';
+  const orientation: DeviceInfo['orientation'] = width > height ? 'landscape' : 'portrait';
 
   return {
     isMobile,

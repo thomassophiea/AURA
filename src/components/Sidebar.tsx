@@ -20,6 +20,7 @@ import {
   Braces,
   Zap,
   Layers,
+  Link2,
   BarChart3,
   Wrench,
   AppWindow,
@@ -84,6 +85,7 @@ const configureItems = [
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
   { id: 'global-templates', label: 'Templates', icon: Layers },
   { id: 'global-variables', label: 'Variables', icon: Braces },
+  { id: 'global-assignments', label: 'Assignments', icon: Link2 },
 ];
 
 const operationsItems = [

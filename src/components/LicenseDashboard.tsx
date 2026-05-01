@@ -15,7 +15,7 @@ import {
   Clock,
   TrendingUp,
   Plus,
-  RefreshCw
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
@@ -68,7 +68,7 @@ export function LicenseDashboard() {
     try {
       const [info, usage] = await Promise.all([
         apiService.getLicenseInfo(),
-        apiService.getLicenseUsage()
+        apiService.getLicenseUsage(),
       ]);
       setLicenseInfo(info);
       setLicenseUsage(usage);
@@ -82,7 +82,7 @@ export function LicenseDashboard() {
 
   const validateLicenseKey = (key: string): boolean => {
     // Basic validation: should contain alphanumeric characters and dashes
-    const licenseKeyRegex = /^[A-Z0-9\-]+$/i;
+    const licenseKeyRegex = /^[A-Z0-9-]+$/i;
     return key.trim().length >= 10 && licenseKeyRegex.test(key);
   };
 
@@ -157,10 +157,24 @@ export function LicenseDashboard() {
       return <Badge variant="destructive">Expired</Badge>;
     }
     if (isExpiringSoon(expirationDate)) {
-      return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Expiring Soon</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+        >
+          Expiring Soon
+        </Badge>
+      );
     }
     if (status === 'active') {
-      return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Active</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+        >
+          Active
+        </Badge>
+      );
     }
     return <Badge variant="outline">{status}</Badge>;
   };
@@ -214,7 +228,11 @@ export function LicenseDashboard() {
       {/* Platform Manager dependency notice */}
       <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>License features require Platform Manager API access. These endpoints (/platformmanager/v1/license/*) are not part of the standard Swagger specification and may not be available on all controller versions.</span>
+        <span>
+          License features require Platform Manager API access. These endpoints
+          (/platformmanager/v1/license/*) are not part of the standard Swagger specification and may
+          not be available on all controller versions.
+        </span>
       </div>
 
       {/* License Overview */}
@@ -275,9 +293,7 @@ export function LicenseDashboard() {
 
         <Card className="border-2 hover:shadow-lg transition-all duration-300 hover:border-[color:var(--status-info)]/50 bg-gradient-to-br from-blue-50/30 to-transparent">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Utilization
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Utilization</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
@@ -313,14 +329,21 @@ export function LicenseDashboard() {
                     {licenseUsage.licensedDevices} / {licenseUsage.totalDevices}
                   </span>
                 </div>
-                <div className="w-full bg-muted/50 rounded-full h-4 overflow-hidden shadow-inner border border-muted" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={licenseUsage.utilizationPercentage} aria-label="License utilization percentage">
+                <div
+                  className="w-full bg-muted/50 rounded-full h-4 overflow-hidden shadow-inner border border-muted"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={licenseUsage.utilizationPercentage}
+                  aria-label="License utilization percentage"
+                >
                   <div
                     className={`h-4 rounded-full transition-all duration-700 ease-out shadow-sm ${
                       licenseUsage.utilizationPercentage > 90
                         ? 'bg-gradient-to-r from-red-500 via-red-600 to-red-700'
                         : licenseUsage.utilizationPercentage > 70
-                        ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-orange-600'
-                        : 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-600'
+                          ? 'bg-gradient-to-r from-yellow-500 via-orange-500 to-orange-600'
+                          : 'bg-gradient-to-r from-green-500 via-emerald-500 to-green-600'
                     }`}
                     style={{ width: `${licenseUsage.utilizationPercentage}%` }}
                   />
@@ -337,16 +360,28 @@ export function LicenseDashboard() {
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="text-center p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-muted hover:border-muted-foreground/30 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-foreground">{licenseUsage.totalDevices}</div>
-                  <div className="text-sm font-medium text-muted-foreground mt-1">Total Devices</div>
+                  <div className="text-3xl font-bold text-foreground">
+                    {licenseUsage.totalDevices}
+                  </div>
+                  <div className="text-sm font-medium text-muted-foreground mt-1">
+                    Total Devices
+                  </div>
                 </div>
                 <div className="text-center p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border-2 border-[color:var(--status-success)]/30 hover:border-[color:var(--status-success)]/50 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-[color:var(--status-success)]">{licenseUsage.licensedDevices}</div>
-                  <div className="text-sm font-medium text-[color:var(--status-success)] mt-1">Licensed</div>
+                  <div className="text-3xl font-bold text-[color:var(--status-success)]">
+                    {licenseUsage.licensedDevices}
+                  </div>
+                  <div className="text-sm font-medium text-[color:var(--status-success)] mt-1">
+                    Licensed
+                  </div>
                 </div>
                 <div className="text-center p-5 bg-gradient-to-br from-red-50 to-rose-50 rounded-xl border-2 border-[color:var(--status-error)]/30 hover:border-[color:var(--status-error)]/50 transition-all shadow-sm hover:shadow-md">
-                  <div className="text-3xl font-bold text-[color:var(--status-error)]">{licenseUsage.unlicensedDevices}</div>
-                  <div className="text-sm font-medium text-[color:var(--status-error)] mt-1">Unlicensed</div>
+                  <div className="text-3xl font-bold text-[color:var(--status-error)]">
+                    {licenseUsage.unlicensedDevices}
+                  </div>
+                  <div className="text-sm font-medium text-[color:var(--status-error)] mt-1">
+                    Unlicensed
+                  </div>
                 </div>
               </div>
 
@@ -367,9 +402,7 @@ export function LicenseDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Installed Licenses</CardTitle>
-          <CardDescription>
-            Detailed information about installed licenses
-          </CardDescription>
+          <CardDescription>Detailed information about installed licenses</CardDescription>
         </CardHeader>
         <CardContent>
           {!licenseInfo || licenseInfo.licenses.length === 0 ? (
