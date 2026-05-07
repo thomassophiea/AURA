@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import tailwindcss from '@tailwindcss/vite';
+import { visualizer } from 'rollup-plugin-visualizer';
 import path from 'path';
 import { readFileSync, existsSync } from 'fs';
 
@@ -28,7 +29,20 @@ const { version, cacheVersion } = getVersionInfo();
 console.log(`Building with APP_VERSION=${version}, CACHE_VERSION=${cacheVersion}`);
 
 export default defineConfig(({ mode }) => ({
-  plugins: [tailwindcss(), react()],
+  plugins: [
+    tailwindcss(),
+    react(),
+    // Bundle analyzer — only when ANALYZE=1 is set. Run:
+    //   ANALYZE=1 npm run build
+    // and open build/bundle-analysis.html. See Wave 4C in the roadmap.
+    process.env.ANALYZE === '1' &&
+      visualizer({
+        filename: 'build/bundle-analysis.html',
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap',
+      }),
+  ].filter(Boolean),
   // Strip console.* calls and debugger statements in production builds only.
   // This removes all 500+ raw console.log calls without touching source files.
   esbuild: {

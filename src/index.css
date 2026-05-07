@@ -2629,15 +2629,21 @@ body.mi5 {
   --aura-mono: 'IBM Plex Mono', 'Roboto Mono', ui-monospace, Menlo, monospace;
 }
 
+/* Light theme Observatory tokens — Wave 4D refinements:
+   - Amber deepened to a true tobacco (#945614) for better legibility on
+     warm-paper background and stronger contrast against ink-black text.
+   - Hairlines doubled in opacity so corner ticks stay visible on white.
+   - Panel edge bumped to 12% black for a real card boundary.
+   - Tungsten warmer to lift muted areas off pure white. */
 .light {
-  --aura-amber: #b8741a;
-  --aura-amber-soft: rgba(184, 116, 26, 0.12);
-  --aura-amber-hairline: rgba(184, 116, 26, 0.18);
-  --aura-tungsten: rgba(120, 80, 30, 0.05);
-  --aura-ink: #faf7f2;
-  --aura-panel: #ffffff;
-  --aura-panel-edge: rgba(0, 0, 0, 0.08);
-  --aura-grid: rgba(120, 80, 30, 0.06);
+  --aura-amber: #945614;
+  --aura-amber-soft: rgba(148, 86, 20, 0.1);
+  --aura-amber-hairline: rgba(148, 86, 20, 0.32);
+  --aura-tungsten: rgba(148, 86, 20, 0.06);
+  --aura-ink: #fbf8f1;
+  --aura-panel: #fffdf8;
+  --aura-panel-edge: rgba(20, 12, 4, 0.12);
+  --aura-grid: rgba(148, 86, 20, 0.08);
 }
 
 /* ----- Hero header ----- */
