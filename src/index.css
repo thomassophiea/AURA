@@ -2996,7 +2996,8 @@ body.mi5 {
 @media (prefers-reduced-motion: reduce) {
   .aura-hero-title-block,
   .aura-hero-meta,
-  .aura-kpi {
+  .aura-kpi,
+  .aura-section {
     animation: none !important;
     opacity: 1;
     transform: none;
@@ -3004,6 +3005,101 @@ body.mi5 {
   .aura-live-dot {
     animation: none;
   }
+}
+
+/* ============================================================
+   Observatory section card — applied to feature-rich Card components
+   (Network Health, Capacity Planning, Anomaly Detection, etc.) that
+   have too much inner structure to convert into pure InstrumentPanels.
+   This restyles the chrome (border, header typography, corner ticks)
+   while preserving inner CardContent structure.
+   Specificity boosted via doubled selectors to override Card defaults.
+   ============================================================ */
+.aura-section.aura-section {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 70%), var(--aura-panel);
+  border: 1px solid var(--aura-panel-edge);
+  border-radius: 4px;
+  overflow: hidden;
+  opacity: 0;
+  animation: aura-rise 700ms cubic-bezier(0.2, 0.7, 0.15, 1) forwards;
+  transition:
+    border-color 280ms ease,
+    background 280ms ease;
+}
+.aura-section:hover {
+  border-color: var(--aura-amber-hairline);
+}
+.aura-section::before {
+  content: '';
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 10px;
+  height: 10px;
+  border-top: 1px solid var(--aura-amber);
+  border-left: 1px solid var(--aura-amber);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+.aura-section::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 1px solid var(--aura-amber);
+  border-right: 1px solid var(--aura-amber);
+  opacity: 0.3;
+  pointer-events: none;
+  z-index: 1;
+}
+.aura-section [data-slot='card-title'] {
+  font-family: var(--aura-display);
+  font-optical-sizing: auto;
+  font-variation-settings:
+    'opsz' 144,
+    'SOFT' 20,
+    'WONK' 0;
+  font-weight: 380;
+  font-size: 17px;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  color: var(--foreground);
+}
+.aura-section [data-slot='card-description'] {
+  font-family: var(--aura-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--aura-amber);
+  opacity: 0.85;
+  margin-top: 4px;
+}
+.aura-section [data-slot='card-header'] {
+  border-bottom: 1px solid var(--aura-amber-hairline);
+  padding-bottom: 14px;
+}
+.aura-section [data-slot='card-content'] {
+  padding-top: 18px;
+}
+
+/* Stagger delays for a 4-card grid below the hero KPIs.
+   Continues the cascade started by .aura-kpi (120-300ms). */
+.aura-section:nth-of-type(1) {
+  animation-delay: 360ms;
+}
+.aura-section:nth-of-type(2) {
+  animation-delay: 420ms;
+}
+.aura-section:nth-of-type(3) {
+  animation-delay: 480ms;
+}
+.aura-section:nth-of-type(4) {
+  animation-delay: 540ms;
 }
 
 /* Slightly less aggressive disabled state — Apple uses ~60-70% opacity

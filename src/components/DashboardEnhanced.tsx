@@ -2088,8 +2088,8 @@ function DashboardEnhancedComponent() {
 
           {/* Insight Cards Grid */}
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Network Health */}
-            <Card>
+            {/* Network Health — Observatory section */}
+            <Card className="aura-section">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-[color:var(--status-success-bg)]">
@@ -2178,8 +2178,8 @@ function DashboardEnhancedComponent() {
               </CardContent>
             </Card>
 
-            {/* Capacity Planning */}
-            <Card>
+            {/* Capacity Planning — Observatory section */}
+            <Card className="aura-section">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-blue-500/10">
@@ -2261,8 +2261,8 @@ function DashboardEnhancedComponent() {
               </CardContent>
             </Card>
 
-            {/* Anomaly Detection */}
-            <Card>
+            {/* Anomaly Detection — Observatory section */}
+            <Card className="aura-section">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-[color:var(--status-warning-bg)]">
@@ -2320,8 +2320,8 @@ function DashboardEnhancedComponent() {
               </CardContent>
             </Card>
 
-            {/* Predictive Maintenance */}
-            <Card>
+            {/* Predictive Maintenance — Observatory section */}
+            <Card className="aura-section">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-2 rounded-lg bg-purple-500/10">
