@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { readFileSync, existsSync } from 'fs';
 
@@ -27,7 +28,7 @@ const { version, cacheVersion } = getVersionInfo();
 console.log(`Building with APP_VERSION=${version}, CACHE_VERSION=${cacheVersion}`);
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   // Strip console.* calls and debugger statements in production builds only.
   // This removes all 500+ raw console.log calls without touching source files.
   esbuild: {
