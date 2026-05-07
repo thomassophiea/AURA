@@ -81,6 +81,8 @@ import {
 } from 'recharts';
 import { OperationalContextSummary } from './OperationalContextSummary';
 import { NoData } from './ui/NoData';
+import { RelativeTime } from './ui/RelativeTime';
+import { ConnectionState } from './ui/ConnectionState';
 import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -1901,18 +1903,11 @@ function DashboardEnhancedComponent() {
           )}
         </div>
         <div className="aura-hero-meta">
+          <ConnectionState />
           {lastUpdate && (
             <div className="aura-hero-meta-row">
               <span className="aura-hero-meta-key">SYNC</span>
-              <span>
-                {lastUpdate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit',
-                  hour12: false,
-                })}{' '}
-                UTC
-              </span>
+              <RelativeTime date={lastUpdate} />
             </div>
           )}
           <Button
