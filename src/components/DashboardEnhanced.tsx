@@ -80,6 +80,7 @@ import {
   Radar,
 } from 'recharts';
 import { OperationalContextSummary } from './OperationalContextSummary';
+import { NoData } from './ui/NoData';
 import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -1626,11 +1627,19 @@ function DashboardEnhancedComponent() {
           const reportData = await reportResponse.json();
           reports.set(service.id, reportData);
 
-          // Check if service has poor metrics
-          const reliability = reportData.metrics?.reliability || service.reliability || 100;
-          const uptime = reportData.metrics?.uptime || service.uptime || 100;
+          // Check if service has poor metrics. If both reliability and uptime are
+          // unreported, do NOT silently mark the service as healthy — leave it out
+          // of the poor list (we don't know) and let the dashboard surface the
+          // gap separately if needed.
+          const reliability = reportData.metrics?.reliability ?? service.reliability;
+          const uptime = reportData.metrics?.uptime ?? service.uptime;
+          const reliabilityKnown = Number.isFinite(reliability);
+          const uptimeKnown = Number.isFinite(uptime);
 
-          if (reliability < 95 || uptime < 95) {
+          if (
+            (reliabilityKnown && (reliability as number) < 95) ||
+            (uptimeKnown && (uptime as number) < 95)
+          ) {
             poor.push(service);
           }
         }
@@ -1761,8 +1770,16 @@ function DashboardEnhancedComponent() {
   const calculatePerformanceMetrics = () => {
     if (stations.length === 0) return null;
 
-    const avgRssi = stations.reduce((sum, s) => sum + (s.rssi || -70), 0) / stations.length;
-    const avgSnr = stations.reduce((sum, s) => sum + (s.snr || 20), 0) / stations.length;
+    const stationsWithRssi = stations.filter((s) => Number.isFinite(s.rssi) && s.rssi !== 0);
+    const avgRssi =
+      stationsWithRssi.length > 0
+        ? stationsWithRssi.reduce((sum, s) => sum + (s.rssi as number), 0) / stationsWithRssi.length
+        : NaN;
+    const stationsWithSnr = stations.filter((s) => Number.isFinite(s.snr) && (s.snr as number) > 0);
+    const avgSnr =
+      stationsWithSnr.length > 0
+        ? stationsWithSnr.reduce((sum, s) => sum + (s.snr as number), 0) / stationsWithSnr.length
+        : NaN;
     const authenticatedRate = (clientStats.authenticated / Math.max(clientStats.total, 1)) * 100;
     const apUptime = apStats.total > 0 ? (apStats.online / apStats.total) * 100 : 100;
     const channelUtil = apStats.avgChannelUtil;
@@ -2120,19 +2137,41 @@ function DashboardEnhancedComponent() {
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">RFQI</span>
                         <span className="text-lg font-bold text-[color:var(--status-success)]">
-                          {clientStats.avgRfqi || 85}%
+                          {Number.isFinite(clientStats.avgRfqi) && clientStats.avgRfqi > 0 ? (
+                            `${clientStats.avgRfqi}%`
+                          ) : (
+                            <NoData field="clientStats.avgRfqi" />
+                          )}
                         </span>
                       </div>
-                      <Progress value={clientStats.avgRfqi || 85} className="h-1.5" />
+                      <Progress
+                        value={
+                          Number.isFinite(clientStats.avgRfqi) && clientStats.avgRfqi > 0
+                            ? clientStats.avgRfqi
+                            : 0
+                        }
+                        className="h-1.5"
+                      />
                     </div>
                     <div className="p-3 rounded-lg bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-[color:var(--status-warning)]/20">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs text-muted-foreground">Ch. Util</span>
                         <span className="text-lg font-bold text-[color:var(--status-warning)]">
-                          {apStats.avgChannelUtil || 23}%
+                          {Number.isFinite(apStats.avgChannelUtil) && apStats.avgChannelUtil > 0 ? (
+                            `${apStats.avgChannelUtil}%`
+                          ) : (
+                            <NoData field="apStats.avgChannelUtil" />
+                          )}
                         </span>
                       </div>
-                      <Progress value={apStats.avgChannelUtil || 23} className="h-1.5" />
+                      <Progress
+                        value={
+                          Number.isFinite(apStats.avgChannelUtil) && apStats.avgChannelUtil > 0
+                            ? apStats.avgChannelUtil
+                            : 0
+                        }
+                        className="h-1.5"
+                      />
                     </div>
                   </div>
                 </div>

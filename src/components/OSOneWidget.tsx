@@ -26,7 +26,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Wifi,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { apiService, OSOneInfo, OSOneSystemInfo, OSOneManufacturingInfo } from '../services/api';
 
@@ -43,7 +43,7 @@ export function OSOneWidget({
   siteName,
   compact = false,
   showManufacturing = true,
-  className = ''
+  className = '',
 }: OSOneWidgetProps) {
   const [osOneInfo, setOsOneInfo] = useState<OSOneInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,7 +96,14 @@ export function OSOneWidget({
   const getServiceStatusBadge = (status: string) => {
     const statusLower = status.toLowerCase();
     if (statusLower === 'available' || statusLower === 'onboarded' || statusLower === 'connected') {
-      return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">{status}</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+        >
+          {status}
+        </Badge>
+      );
     } else if (statusLower === 'unavailable' || statusLower === 'error') {
       return <Badge variant="destructive">{status}</Badge>;
     }
@@ -146,7 +153,12 @@ export function OSOneWidget({
               <Server className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">OS ONE</CardTitle>
             </div>
-            <Button variant="ghost" size="sm" onClick={handleRefresh} aria-label="Refresh OS ONE data">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefresh}
+              aria-label="Refresh OS ONE data"
+            >
               <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
@@ -168,7 +180,9 @@ export function OSOneWidget({
   // Compact view for dashboard cards
   if (compact) {
     return (
-      <Card className={`relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group ${className}`}>
+      <Card
+        className={`relative overflow-hidden hover:shadow-xl hover:scale-[1.02] transition-all duration-300 group ${className}`}
+      >
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
           <CardTitle className="text-sm font-semibold">OS ONE Control</CardTitle>
           <div className="p-1.5 rounded-lg badge-gradient-indigo-purple shadow-md group-hover:scale-110 transition-transform">
@@ -179,22 +193,24 @@ export function OSOneWidget({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">CPU</span>
-              <span className={`text-sm font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
+              <span
+                className={`text-sm font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}
+              >
                 {cpuUsage.toFixed(1)}%
               </span>
             </div>
             <Progress value={cpuUsage} className="h-1.5" />
             <div className="flex items-center justify-between pt-1">
               <span className="text-xs text-muted-foreground">Memory</span>
-              <span className={`text-sm font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}>
+              <span
+                className={`text-sm font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}
+              >
                 {memoryUsed.toFixed(0)}% used
               </span>
             </div>
             <Progress value={memoryUsed} className="h-1.5" />
             {manufacturing?.model && (
-              <p className="text-xs text-muted-foreground pt-1">
-                {manufacturing.model}
-              </p>
+              <p className="text-xs text-muted-foreground pt-1">{manufacturing.model}</p>
             )}
           </div>
         </CardContent>
@@ -214,19 +230,16 @@ export function OSOneWidget({
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
                 OS ONE
-                {siteName && <Badge variant="outline" className="ml-2">{siteName}</Badge>}
+                {siteName && (
+                  <Badge variant="outline" className="ml-2">
+                    {siteName}
+                  </Badge>
+                )}
               </CardTitle>
-              <CardDescription>
-                {manufacturing?.model || 'System Information'}
-              </CardDescription>
+              <CardDescription>{manufacturing?.model || 'System Information'}</CardDescription>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
+          <Button variant="ghost" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
         </div>
@@ -244,7 +257,9 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Usage</span>
-                <span className={`font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}>
+                <span
+                  className={`font-bold ${cpuUsage > 80 ? 'text-[color:var(--status-error)]' : cpuUsage > 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-success)]'}`}
+                >
                   {cpuUsage.toFixed(1)}%
                 </span>
               </div>
@@ -266,13 +281,19 @@ export function OSOneWidget({
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Used</span>
-                <span className={`font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}>
+                <span
+                  className={`font-bold ${memoryUsed > 85 ? 'text-[color:var(--status-error)]' : memoryUsed > 70 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-info)]'}`}
+                >
                   {memoryUsed.toFixed(0)}%
                 </span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className={`h-full transition-all ${getMemoryColor(system?.memoryFreePercent || 100)}`}
+                  className={`h-full transition-all ${
+                    Number.isFinite(system?.memoryFreePercent)
+                      ? getMemoryColor(system!.memoryFreePercent)
+                      : 'bg-muted-foreground/30'
+                  }`}
                   style={{ width: `${memoryUsed}%` }}
                 />
               </div>
@@ -308,7 +329,9 @@ export function OSOneWidget({
                     </Badge>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Port {port.port}: {port.state}, {port.speed} Mbps</p>
+                    <p>
+                      Port {port.port}: {port.state}, {port.speed} Mbps
+                    </p>
                   </TooltipContent>
                 </Tooltip>
               ))}
@@ -335,9 +358,13 @@ export function OSOneWidget({
                   className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
                 >
                   <div className="flex items-center gap-2">
-                    {service.service === 'Cloud' && <Cloud className="h-4 w-4 text-[color:var(--status-info)]" />}
+                    {service.service === 'Cloud' && (
+                      <Cloud className="h-4 w-4 text-[color:var(--status-info)]" />
+                    )}
                     {service.service === 'Afc' && <Wifi className="h-4 w-4 text-purple-500" />}
-                    {service.service === 'Licensing' && <Key className="h-4 w-4 text-[color:var(--status-warning)]" />}
+                    {service.service === 'Licensing' && (
+                      <Key className="h-4 w-4 text-[color:var(--status-warning)]" />
+                    )}
                     <span className="text-sm">{service.service}</span>
                   </div>
                   {getServiceStatusBadge(service.status)}
@@ -356,7 +383,11 @@ export function OSOneWidget({
                   <HardDrive className="h-4 w-4" />
                   Disk Usage ({system.diskPartitions.length} partitions)
                 </span>
-                {showDiskDetails ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {showDiskDetails ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">
@@ -365,7 +396,11 @@ export function OSOneWidget({
                   <div key={partition.name} className="space-y-1">
                     <div className="flex justify-between text-sm">
                       <span className="font-mono text-xs">{partition.name}</span>
-                      <span className={partition.usePercent > 80 ? 'text-[color:var(--status-error)]' : ''}>
+                      <span
+                        className={
+                          partition.usePercent > 80 ? 'text-[color:var(--status-error)]' : ''
+                        }
+                      >
                         {partition.usePercent}%
                       </span>
                     </div>
@@ -386,7 +421,11 @@ export function OSOneWidget({
                   <Info className="h-4 w-4" />
                   Hardware Details
                 </span>
-                {showDetails ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                {showDetails ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="pt-2">

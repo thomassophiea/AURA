@@ -450,7 +450,11 @@ export function AFCPlanningTool() {
                 <div className="grid grid-cols-4 gap-4 p-4 bg-muted/30 rounded-lg">
                   <div>
                     <p className="text-xs text-muted-foreground">Height</p>
-                    <p className="text-sm font-semibold">{selectedPlan.height || 10} meters</p>
+                    <p className="text-sm font-semibold">
+                      {Number.isFinite(selectedPlan.height) && selectedPlan.height! > 0
+                        ? `${selectedPlan.height} meters`
+                        : '—'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Country</p>
