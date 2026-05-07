@@ -1866,33 +1866,47 @@ function DashboardEnhancedComponent() {
 
   return (
     <div className="space-y-4">
-      {/* Compact Header with Context Selector */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-purple-500" />
-            <h2 className="text-xl font-semibold">AI-Powered Network Insights</h2>
-            {activePersona !== 'super-user' && personaConfig && (
-              <Badge className={`text-xs border ${personaConfig.accentClass}`}>
-                {personaConfig.dashboardLabel}
-              </Badge>
-            )}
+      {/* Observatory Hero — see .aura-hero in index.css */}
+      <div className="aura-hero">
+        <div className="aura-hero-title-block">
+          <div className="aura-eyebrow">
+            <span className="aura-live-dot" aria-hidden="true" />
+            <span>Network Intelligence — Live Telemetry</span>
+            <span className="aura-eyebrow-rule" aria-hidden="true" />
           </div>
-          {lastUpdate && (
-            <span className="text-sm text-muted-foreground">
-              Updated {lastUpdate.toLocaleTimeString()}
-            </span>
+          <h2 className="aura-hero-title">
+            AURA
+            <span className="aura-divider-glyph"> · </span>
+            <em>Observatory</em>
+          </h2>
+          {activePersona !== 'super-user' && personaConfig && (
+            <span className="aura-hero-coord">{personaConfig.dashboardLabel}</span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="aura-hero-meta">
+          {lastUpdate && (
+            <div className="aura-hero-meta-row">
+              <span className="aura-hero-meta-key">SYNC</span>
+              <span>
+                {lastUpdate.toLocaleTimeString([], {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit',
+                  hour12: false,
+                })}{' '}
+                UTC
+              </span>
+            </div>
+          )}
           <Button
             onClick={() => loadDashboardData(true)}
             variant="outline"
             size="sm"
             disabled={refreshing}
+            className="aura-refresh"
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            <RefreshCw className={`mr-2 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Syncing' : 'Refresh'}
           </Button>
         </div>
       </div>
@@ -1920,13 +1934,11 @@ function DashboardEnhancedComponent() {
       {/* UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line */}
       {selectorTab === 'ai-insights' && (
         <div className="space-y-4">
-          {/* Quick Stats Overview - Always at top */}
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card
-              className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/20 hover:shadow-lg transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
-              onClick={() => {
-                setSelectorTab('access-point');
-              }}
+          {/* Observatory Instrument Panels — see .aura-kpi in index.css */}
+          <div className="aura-kpi-grid">
+            <div
+              className="aura-kpi"
+              onClick={() => setSelectorTab('access-point')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -1937,24 +1949,29 @@ function DashboardEnhancedComponent() {
               tabIndex={0}
               aria-label="View Access Points details"
             >
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Access Points</p>
-                    <p className="text-2xl font-bold">{apStats.total}</p>
-                    <p className="text-xs text-[color:var(--status-success)]">
-                      {apStats.online} online
-                    </p>
-                  </div>
-                  <Wifi className="h-8 w-8 text-blue-500/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card
-              className="bg-gradient-to-br from-violet-500/10 to-purple-500/10 border-violet-500/20 hover:shadow-lg transition-shadow cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50"
-              onClick={() => {
-                setSelectorTab('client');
-              }}
+              <div className="aura-kpi-eyebrow">
+                <span>
+                  <span className="aura-kpi-eyebrow-channel">CH-01</span> · Access Points
+                </span>
+                <Wifi className="aura-kpi-icon" />
+              </div>
+              <div className="aura-kpi-figure">
+                {apStats.total}
+                <span className="aura-kpi-figure-unit">AP</span>
+              </div>
+              <div className="aura-kpi-foot">
+                <span className="aura-kpi-foot-good">
+                  <span className="aura-kpi-foot-mark">●</span>
+                  {apStats.online} online
+                </span>
+                <span>{apStats.total - apStats.online} offline</span>
+              </div>
+              <span className="aura-kpi-corner-br" aria-hidden="true" />
+            </div>
+
+            <div
+              className="aura-kpi"
+              onClick={() => setSelectorTab('client')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
@@ -1965,59 +1982,77 @@ function DashboardEnhancedComponent() {
               tabIndex={0}
               aria-label="View Connected Clients details"
             >
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Connected Clients</p>
-                    <p className="text-2xl font-bold">{clientStats.total}</p>
-                    <p className="text-xs text-[color:var(--status-success)]">
-                      {clientStats.authenticated} authenticated
-                    </p>
+              <div className="aura-kpi-eyebrow">
+                <span>
+                  <span className="aura-kpi-eyebrow-channel">CH-02</span> · Clients
+                </span>
+                <Users className="aura-kpi-icon" />
+              </div>
+              <div className="aura-kpi-figure">
+                {clientStats.total}
+                <span className="aura-kpi-figure-unit">CLNT</span>
+              </div>
+              <div className="aura-kpi-foot">
+                <span className="aura-kpi-foot-good">
+                  <span className="aura-kpi-foot-mark">●</span>
+                  {clientStats.authenticated} authenticated
+                </span>
+                <span>{Math.max(0, clientStats.total - clientStats.authenticated)} pending</span>
+              </div>
+              <span className="aura-kpi-corner-br" aria-hidden="true" />
+            </div>
+
+            {(() => {
+              const total = formatBps(
+                clientStats.throughputUpload + clientStats.throughputDownload
+              );
+              const [tpNum, ...tpUnit] = total.split(' ');
+              return (
+                <div className="aura-kpi" tabIndex={-1}>
+                  <div className="aura-kpi-eyebrow">
+                    <span>
+                      <span className="aura-kpi-eyebrow-channel">CH-03</span> · Throughput
+                    </span>
+                    <Activity className="aura-kpi-icon" />
                   </div>
-                  <Users className="h-8 w-8 text-violet-500/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-emerald-500/10 to-green-500/10 border-[color:var(--status-success)]/20">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Network Throughput</p>
-                    <p className="text-2xl font-bold">
-                      {formatBps(clientStats.throughputUpload + clientStats.throughputDownload)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      ↑{formatBps(clientStats.throughputUpload)} ↓
-                      {formatBps(clientStats.throughputDownload)}
-                    </p>
+                  <div className="aura-kpi-figure">
+                    {tpNum}
+                    <span className="aura-kpi-figure-unit">{tpUnit.join(' ')}</span>
                   </div>
-                  <Activity className="h-8 w-8 text-[color:var(--status-success)]/50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-[color:var(--status-warning)]/20">
-              <CardContent className="pt-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Active Alerts</p>
-                    <p className="text-2xl font-bold">
-                      {alertCounts.critical + alertCounts.warning}
-                    </p>
-                    <p className="text-xs">
-                      <span className="text-[color:var(--status-error)]">
-                        {alertCounts.critical} critical
-                      </span>
-                      {alertCounts.warning > 0 && (
-                        <span className="text-[color:var(--status-warning)] ml-2">
-                          {alertCounts.warning} warning
-                        </span>
-                      )}
-                    </p>
+                  <div className="aura-kpi-foot">
+                    <span>↑ {formatBps(clientStats.throughputUpload)}</span>
+                    <span>↓ {formatBps(clientStats.throughputDownload)}</span>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-[color:var(--status-warning)]/50" />
+                  <span className="aura-kpi-corner-br" aria-hidden="true" />
                 </div>
-              </CardContent>
-            </Card>
+              );
+            })()}
+
+            <div className="aura-kpi" tabIndex={-1}>
+              <div className="aura-kpi-eyebrow">
+                <span>
+                  <span className="aura-kpi-eyebrow-channel">CH-04</span> · Alerts
+                </span>
+                <AlertTriangle className="aura-kpi-icon" />
+              </div>
+              <div className="aura-kpi-figure">
+                {alertCounts.critical + alertCounts.warning}
+                <span className="aura-kpi-figure-unit">EVT</span>
+              </div>
+              <div className="aura-kpi-foot">
+                <span className="aura-kpi-foot-bad">
+                  <span className="aura-kpi-foot-mark">●</span>
+                  {alertCounts.critical} critical
+                </span>
+                {alertCounts.warning > 0 && (
+                  <span className="aura-kpi-foot-warn">
+                    <span className="aura-kpi-foot-mark">●</span>
+                    {alertCounts.warning} warning
+                  </span>
+                )}
+              </div>
+              <span className="aura-kpi-corner-br" aria-hidden="true" />
+            </div>
           </div>
 
           {/* Peer Benchmarking */}
