@@ -1,7 +1,8 @@
 import React, { Component, type ReactNode } from 'react';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, ClipboardCheck, Clipboard } from 'lucide-react';
 import { Button } from './button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './card';
+import { apiService } from '../../services/api';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -19,6 +20,47 @@ interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
   errorInfo: React.ErrorInfo | null;
+  reportCopied: boolean;
+}
+
+function buildReport(error: Error, errorInfo: React.ErrorInfo | null): string {
+  const lines: string[] = [];
+  lines.push('=== AURA Error Report ===');
+  lines.push(`Time: ${new Date().toISOString()}`);
+  lines.push(`URL: ${typeof window !== 'undefined' ? window.location.href : '(no window)'}`);
+  lines.push(`User-Agent: ${typeof navigator !== 'undefined' ? navigator.userAgent : '(no nav)'}`);
+  lines.push('');
+  lines.push('--- Error ---');
+  lines.push(`Name: ${error.name}`);
+  lines.push(`Message: ${error.message}`);
+  if (error.stack) {
+    lines.push('');
+    lines.push('--- Stack ---');
+    lines.push(error.stack);
+  }
+  if (errorInfo?.componentStack) {
+    lines.push('');
+    lines.push('--- Component Stack ---');
+    lines.push(errorInfo.componentStack);
+  }
+  try {
+    const recentLogs = apiService.getApiLogs().slice(-50);
+    if (recentLogs.length > 0) {
+      lines.push('');
+      lines.push(`--- Last ${recentLogs.length} API calls ---`);
+      for (const log of recentLogs) {
+        const ts =
+          log.timestamp instanceof Date ? log.timestamp.toISOString() : String(log.timestamp);
+        const status = log.status ?? (log.isPending ? 'pending' : 'no-status');
+        const dur = log.duration ? `${log.duration}ms` : '—';
+        const err = log.error ? ` err=${log.error}` : '';
+        lines.push(`[${ts}] ${log.method} ${log.endpoint} ${status} ${dur}${err}`);
+      }
+    }
+  } catch {
+    /* swallow — diagnostics shouldn't itself break */
+  }
+  return lines.join('\n');
 }
 
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -28,6 +70,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       hasError: false,
       error: null,
       errorInfo: null,
+      reportCopied: false,
     };
   }
 
@@ -51,10 +94,36 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       hasError: false,
       error: null,
       errorInfo: null,
+      reportCopied: false,
     });
 
     if (this.props.onReset) {
       this.props.onReset();
+    }
+  };
+
+  handleCopyReport = async (): Promise<void> => {
+    if (!this.state.error) return;
+    const report = buildReport(this.state.error, this.state.errorInfo);
+    try {
+      if (navigator?.clipboard) {
+        await navigator.clipboard.writeText(report);
+      } else {
+        // Fallback for environments without Clipboard API.
+        const ta = document.createElement('textarea');
+        ta.value = report;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'absolute';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      this.setState({ reportCopied: true });
+      setTimeout(() => this.setState({ reportCopied: false }), 2500);
+    } catch (err) {
+      console.error('[ErrorBoundary] Failed to copy report:', err);
     }
   };
 
@@ -93,13 +162,32 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               </details>
             )}
           </CardContent>
-          <CardFooter className="gap-2">
+          <CardFooter className="gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={this.handleReset} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
             <Button size="sm" onClick={() => window.location.reload()}>
               Refresh Page
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={this.handleCopyReport}
+              className="gap-2 ml-auto"
+              title="Copy a diagnostic report (error + component stack + last 50 API calls) to your clipboard."
+            >
+              {this.state.reportCopied ? (
+                <>
+                  <ClipboardCheck className="h-4 w-4" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Clipboard className="h-4 w-4" />
+                  Copy report
+                </>
+              )}
             </Button>
           </CardFooter>
         </Card>
