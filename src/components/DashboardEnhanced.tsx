@@ -86,6 +86,7 @@ import { ConnectionState } from './ui/ConnectionState';
 import { RecentEventsSummary } from './dashboard/RecentEventsSummary';
 import { InsightCardsGrid } from './dashboard/InsightCardsGrid';
 import { OrgSiteHealthOverview } from './dashboard/OrgSiteHealthOverview';
+import { EntityDetailView } from './dashboard/EntityDetailView';
 import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -2945,102 +2946,42 @@ function DashboardEnhancedComponent() {
 
       {/* ACCESS POINT DETAIL VIEW */}
       {selectorTab === 'access-point' && selectedEntityId && (
-        <div className="space-y-4">
-          <div className="border-b pb-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setOperationalMode('AI_INSIGHTS');
-                  setSelectedEntityId(null);
-                  setSelectedEntityName(null);
-                }}
-                className="h-8 px-2"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
-                Back
-              </Button>
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {selectedEntityName || 'Access Point Details'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Detailed AP information and connected clients
-                </p>
-              </div>
-            </div>
-          </div>
-          <AccessPointDetail serialNumber={selectedEntityId} />
-        </div>
+        <EntityDetailView
+          kind="access-point"
+          entityId={selectedEntityId}
+          entityName={selectedEntityName}
+          onBack={() => {
+            setOperationalMode('AI_INSIGHTS');
+            setSelectedEntityId(null);
+            setSelectedEntityName(null);
+          }}
+        />
       )}
 
-      {/* CLIENT DETAIL VIEW */}
       {selectorTab === 'client' && selectedEntityId && (
-        <div className="space-y-4">
-          <div className="border-b pb-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setOperationalMode('AI_INSIGHTS');
-                  setSelectedEntityId(null);
-                  setSelectedEntityName(null);
-                }}
-                className="h-8 px-2"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
-                Back
-              </Button>
-              <div>
-                <h3 className="text-lg font-semibold">{selectedEntityName || 'Client Details'}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Client connection and performance details
-                </p>
-              </div>
-            </div>
-          </div>
-          <ClientDetail macAddress={selectedEntityId} />
-        </div>
+        <EntityDetailView
+          kind="client"
+          entityId={selectedEntityId}
+          entityName={selectedEntityName}
+          onBack={() => {
+            setOperationalMode('AI_INSIGHTS');
+            setSelectedEntityId(null);
+            setSelectedEntityName(null);
+          }}
+        />
       )}
 
-      {/* SWITCH DETAIL VIEW */}
       {selectorTab === 'switch' && selectedEntityId && (
-        <div className="space-y-4">
-          <div className="border-b pb-2">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setOperationalMode('AI_INSIGHTS');
-                  setSelectedEntityId(null);
-                  setSelectedEntityName(null);
-                }}
-                className="h-8 px-2"
-              >
-                <ArrowRight className="h-4 w-4 rotate-180 mr-1" />
-                Back
-              </Button>
-              <div>
-                <h3 className="text-lg font-semibold">{selectedEntityName || 'Switch Details'}</h3>
-                <p className="text-sm text-muted-foreground">
-                  Switch configuration and port status
-                </p>
-              </div>
-            </div>
-          </div>
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Network className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h4 className="text-lg font-medium mb-2">Switch Details</h4>
-              <p className="text-sm text-muted-foreground">
-                Switch detail view for {selectedEntityName || selectedEntityId}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <EntityDetailView
+          kind="switch"
+          entityId={selectedEntityId}
+          entityName={selectedEntityName}
+          onBack={() => {
+            setOperationalMode('AI_INSIGHTS');
+            setSelectedEntityId(null);
+            setSelectedEntityName(null);
+          }}
+        />
       )}
 
       {/* NETWORK DASHBOARD VIEW - Shows for Site tab or when no specific entity selected */}
