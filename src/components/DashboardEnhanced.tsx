@@ -40,6 +40,7 @@ import { DetailPanel } from './dashboard/DetailPanel';
 import { TopClientsSection } from './dashboard/TopClientsSection';
 import { ServicesHealthSection } from './dashboard/ServicesHealthSection';
 import { RecentAlertsSection } from './dashboard/RecentAlertsSection';
+import { DriftStrip } from './dashboard/DriftStrip';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
@@ -1897,6 +1898,9 @@ function DashboardEnhancedComponent() {
       {/* UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line */}
       {selectorTab === 'ai-insights' && (
         <div className="space-y-4">
+          {/* Drift Detection Strip — Wave 4A */}
+          <DriftStrip />
+
           {/* Observatory Instrument Panels — see .aura-kpi in index.css */}
           <div className="aura-kpi-grid">
             <div
