@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Progress } from './ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { DetailSlideOut } from './DetailSlideOut';
 import { ScrollArea } from './ui/scroll-area';
@@ -12,75 +11,23 @@ import {
   AlertTriangle,
   CheckCircle,
   Activity,
-  Server,
-  TrendingUp,
-  TrendingDown,
   Wifi,
   Users,
-  Gauge,
   Network,
-  Zap,
-  WifiOff,
-  AlertCircle,
   Clock,
-  BarChart3,
-  ArrowRight,
   Signal,
   Download,
   Upload,
-  ArrowUp,
-  ArrowDown,
-  MapPin,
   Router,
-  Shield,
   Timer,
-  Info,
-  ChevronDown,
-  ChevronUp,
-  Maximize2,
-  Target,
-  Radio,
   Brain,
-  Eye,
-  X,
-  Send,
-  CheckCircle2,
 } from 'lucide-react';
 import { apiService, type StationEvent } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { toast } from 'sonner';
-import { getVendor, getVendorIcon, getShortVendor } from '../services/oui-lookup';
-import {
-  formatBitsPerSecond,
-  formatBytes as formatBytesUnit,
-  formatThroughput,
-  formatDataVolume,
-  TOOLTIPS,
-} from '../lib/units';
-import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  PieChart,
-  Pie,
-  Cell,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Radar,
-} from 'recharts';
+import { getVendor, getVendorIcon } from '../services/oui-lookup';
+import { formatBitsPerSecond, formatBytes as formatBytesUnit } from '../lib/units';
 import { OperationalContextSummary } from './OperationalContextSummary';
-import { NoData } from './ui/NoData';
 import { RelativeTime } from './ui/RelativeTime';
 import { ConnectionState } from './ui/ConnectionState';
 import { RecentEventsSummary } from './dashboard/RecentEventsSummary';
@@ -93,22 +40,16 @@ import { DetailPanel } from './dashboard/DetailPanel';
 import { TopClientsSection } from './dashboard/TopClientsSection';
 import { ServicesHealthSection } from './dashboard/ServicesHealthSection';
 import { RecentAlertsSection } from './dashboard/RecentAlertsSection';
-import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
-import { RFQualityWidgetAnchored } from './RFQualityWidgetAnchored';
-import { AIInsightsPanel } from './AIInsightsPanel';
 import { TimelineCursorControls } from './TimelineCursorControls';
-import { AnimatedValue } from './ui/animated-value';
 import { VenueStatisticsWidget } from './VenueStatisticsWidget';
 import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
 import { AuditLogsWidget } from './AuditLogsWidget';
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { OSOneWidget } from './OSOneWidget';
-import { AccessPointDetail } from './AccessPointDetail';
 import { PeerBenchmarking } from './PeerBenchmarking';
-import { ClientDetail } from './ClientDetail';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { usePersonaContext } from '../contexts/PersonaContext';
 import {
