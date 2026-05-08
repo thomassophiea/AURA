@@ -135,6 +135,7 @@ import { ORG_PAGES, SITE_GROUP_PAGES } from './config/navigationScopes';
 import type { GlobalElementType } from './types/globalElements';
 import { sleDataCollectionService } from './services/sleDataCollection';
 import { Toaster } from './components/ui/sonner';
+import { CommandPalette } from './components/CommandPalette';
 import { PageSkeleton, getSkeletonVariant } from './components/ui/PageSkeleton';
 import { Button } from './components/ui/button';
 import { Braces, Github, FlaskConical } from 'lucide-react';
@@ -1539,6 +1540,14 @@ export default function App() {
                 onHeightChange={setDevPanelHeight}
               />
             )}
+            {/* Command palette — ⌘⇧P / ctrl+shift+P (cmd+K is bound to chatbot). */}
+            <CommandPalette
+              onNavigate={(page) => startTransition(() => setCurrentPage(page))}
+              onRefresh={() => {
+                window.dispatchEvent(new CustomEvent('aura:dashboard-refresh'));
+              }}
+            />
+
             {/* Version Display - Fixed to bottom-left */}
             <VersionDisplay position="bottom-left" />
           </>

@@ -371,6 +371,12 @@ function DashboardEnhancedComponent() {
     loadDashboardData();
     loadHistoricalThroughput();
 
+    // Listen for the global "aura:dashboard-refresh" event dispatched by
+    // the CommandPalette (Wave 4B) so cmd+shift+P → "Refresh dashboard"
+    // actually reloads here.
+    const onCommandRefresh = () => loadDashboardData(true);
+    window.addEventListener('aura:dashboard-refresh', onCommandRefresh);
+
     // Auto-refresh every 60 seconds (optimized for performance)
     const interval = setInterval(() => {
       loadDashboardData(true);
@@ -384,6 +390,7 @@ function DashboardEnhancedComponent() {
     return () => {
       clearInterval(interval);
       clearInterval(historyInterval);
+      window.removeEventListener('aura:dashboard-refresh', onCommandRefresh);
     };
   }, [filters.site, operationalCtx.siteId, operationalCtx.mode]); // Reload when site filter or operational context changes
 
