@@ -91,6 +91,8 @@ import { CoreActivitySection } from './dashboard/CoreActivitySection';
 import { PerformanceSection } from './dashboard/PerformanceSection';
 import { DetailPanel } from './dashboard/DetailPanel';
 import { TopClientsSection } from './dashboard/TopClientsSection';
+import { ServicesHealthSection } from './dashboard/ServicesHealthSection';
+import { RecentAlertsSection } from './dashboard/RecentAlertsSection';
 import { VersionBadge } from './VersionBadge';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -2302,97 +2304,12 @@ function DashboardEnhancedComponent() {
 
           {/* Poor Services Alert */}
           {showSection('services-health') && poorServices.length > 0 && (
-            <Card className="border-[color:var(--status-warning)]">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
-                  Services Requiring Attention
-                </CardTitle>
-                <CardDescription>Services with degraded performance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {poorServices.map((service) => (
-                    <div
-                      key={service.id}
-                      className="flex items-center justify-between p-3 rounded-lg border border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]"
-                    >
-                      <div>
-                        <div className="font-medium">{service.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          {service.reliability && service.reliability < 95 && (
-                            <span className="mr-3">Reliability: {service.reliability}%</span>
-                          )}
-                          {service.uptime && service.uptime < 95 && (
-                            <span>Uptime: {service.uptime}%</span>
-                          )}
-                        </div>
-                      </div>
-                      <Badge
-                        variant="outline"
-                        className="border-[color:var(--status-warning)] text-[color:var(--status-warning)]"
-                      >
-                        Degraded
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <ServicesHealthSection poorServices={poorServices} />
           )}
 
           {/* Recent Alerts Preview */}
           {showSection('alerts') && notifications.length > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Recent Alerts</CardTitle>
-                    <CardDescription>Last 24 hours</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View All
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {notifications.slice(0, 5).map((notif) => {
-                    const severity = (notif.severity || notif.level || '').toLowerCase();
-                    const isCritical = severity.includes('critical') || severity.includes('error');
-                    const isWarning = severity.includes('warning') || severity.includes('warn');
-
-                    return (
-                      <div
-                        key={notif.id}
-                        className={`flex items-start gap-3 p-3 rounded-lg border ${
-                          isCritical
-                            ? 'border-[color:var(--status-error)]/50 bg-[color:var(--status-error-bg)]'
-                            : isWarning
-                              ? 'border-[color:var(--status-warning)]/50 bg-[color:var(--status-warning-bg)]'
-                              : 'border-border'
-                        }`}
-                      >
-                        {isCritical ? (
-                          <AlertCircle className="h-4 w-4 text-[color:var(--status-error)] mt-0.5 flex-shrink-0" />
-                        ) : isWarning ? (
-                          <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)] mt-0.5 flex-shrink-0" />
-                        ) : (
-                          <Activity className="h-4 w-4 text-[color:var(--status-info)] mt-0.5 flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium">{notif.message}</div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {new Date(notif.timestamp).toLocaleString()}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+            <RecentAlertsSection notifications={notifications} />
           )}
 
           {/* Phase 1 Widgets: Venue Statistics */}
