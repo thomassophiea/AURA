@@ -7,11 +7,13 @@ interface AuditHistoryViewProps {
   entries: AuditEntry[];
 }
 
-const STATUS_ICON = {
-  completed: <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />,
-  rejected: <XCircle className="h-4 w-4 text-red-400 shrink-0" />,
-  rolledback: <RotateCcw className="h-4 w-4 text-orange-400 shrink-0" />,
-};
+function statusIcon(status: AuditEntry['status']) {
+  if (status === 'completed')
+    return <CheckCircle2 aria-label="Completed" className="h-4 w-4 text-green-400 shrink-0" />;
+  if (status === 'rejected')
+    return <XCircle aria-label="Rejected" className="h-4 w-4 text-red-400 shrink-0" />;
+  return <RotateCcw aria-label="Rolled back" className="h-4 w-4 text-orange-400 shrink-0" />;
+}
 
 const STATUS_LABEL = {
   completed: 'text-green-400',
@@ -28,7 +30,7 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
       >
-        {STATUS_ICON[entry.status]}
+        {statusIcon(entry.status)}
         <div className="flex-1 min-w-0">
           <p className="text-sm text-white/85 truncate">{entry.action}</p>
           <p className="text-[10px] text-white/35">

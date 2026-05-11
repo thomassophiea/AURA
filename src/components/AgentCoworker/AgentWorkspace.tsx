@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { ConversationStream } from './panels/ConversationStream';
@@ -70,6 +70,7 @@ export function AgentWorkspace({
   onClose,
   onMinimize,
   onPin,
+  onDismiss,
   onSetSize,
   onSetActivePanel,
   onInput,
@@ -87,6 +88,18 @@ export function AgentWorkspace({
   // Drag-to-resize
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
+  const activeHandlersRef = useRef<{ onMove: (ev: MouseEvent) => void; onUp: () => void } | null>(
+    null
+  );
+
+  useEffect(() => {
+    return () => {
+      if (activeHandlersRef.current) {
+        window.removeEventListener('mousemove', activeHandlersRef.current.onMove);
+        window.removeEventListener('mouseup', activeHandlersRef.current.onUp);
+      }
+    };
+  }, []);
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -101,9 +114,11 @@ export function AgentWorkspace({
       };
       const onUp = () => {
         dragRef.current = null;
+        activeHandlersRef.current = null;
         window.removeEventListener('mousemove', onMove);
         window.removeEventListener('mouseup', onUp);
       };
+      activeHandlersRef.current = { onMove, onUp };
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     },
@@ -124,8 +139,7 @@ export function AgentWorkspace({
         <img
           src="/logo.svg"
           alt="Agent"
-          className="h-5 w-5 opacity-70"
-          style={{ filter: 'hue-rotate(260deg) saturate(1.5) brightness(1.2)' }}
+          className="h-5 w-5 opacity-70 [filter:hue-rotate(260deg)_saturate(1.5)_brightness(1.2)]"
         />
       </button>
     );
@@ -136,7 +150,7 @@ export function AgentWorkspace({
       {isVisible && !isPinned && (
         <div
           className="fixed inset-0 bg-black/30 backdrop-blur-[2px] z-[99996]"
-          onClick={onClose}
+          onClick={onDismiss}
         />
       )}
 
@@ -162,8 +176,7 @@ export function AgentWorkspace({
           <img
             src="/logo.svg"
             alt="AURA"
-            className="h-5 w-5 opacity-90 shrink-0"
-            style={{ filter: 'hue-rotate(260deg) saturate(1.5) brightness(1.2)' }}
+            className="h-5 w-5 opacity-90 shrink-0 [filter:hue-rotate(260deg)_saturate(1.5)_brightness(1.2)]"
           />
           <span className="text-sm font-semibold text-white/90">Agent ONE</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
@@ -206,11 +219,11 @@ export function AgentWorkspace({
         </div>
 
         {/* Panel tabs */}
-        <div className="shrink-0 flex border-b border-white/8 px-1">
+        <div role="tablist" className="shrink-0 flex border-b border-white/8 px-1">
           {TABS.map((tab) => (
             <button
               key={tab.id}
-              role="button"
+              role="tab"
               aria-selected={activePanel === tab.id}
               onClick={() => onSetActivePanel(tab.id)}
               className={cn(

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentWorkspace } from './AgentWorkspace';
 
@@ -31,6 +31,8 @@ const baseProps = {
 };
 
 describe('AgentWorkspace', () => {
+  beforeEach(() => vi.clearAllMocks());
+
   it('renders panel when mode is open', () => {
     render(<AgentWorkspace {...baseProps} />);
     expect(screen.getByText('Agent ONE')).toBeInTheDocument();
@@ -51,7 +53,7 @@ describe('AgentWorkspace', () => {
 
   it('shows conversation tab as selected by default', () => {
     render(<AgentWorkspace {...baseProps} />);
-    const tab = screen.getByRole('button', { name: /conversation/i });
+    const tab = screen.getByRole('tab', { name: /conversation/i });
     expect(tab).toHaveAttribute('aria-selected', 'true');
   });
 
