@@ -13,6 +13,33 @@ import type {
 
 const AUDIT_KEY = 'agent-audit-history';
 
+const WRITE_PATTERNS: Array<{
+  pattern: RegExp;
+  action: string;
+  targetType: ImpactedObject['type'];
+}> = [
+  {
+    pattern: /change.*password|update.*psk|set.*psk|new.*password/i,
+    action: 'update-ssid-psk',
+    targetType: 'ssid',
+  },
+  { pattern: /disable.*ap|turn off.*ap|deactivate.*ap/i, action: 'disable-ap', targetType: 'ap' },
+  { pattern: /enable.*ap|turn on.*ap|activate.*ap/i, action: 'enable-ap', targetType: 'ap' },
+  { pattern: /reboot.*ap|restart.*ap|reset.*ap/i, action: 'reboot-ap', targetType: 'ap' },
+  {
+    pattern: /change.*ssid|rename.*ssid|update.*ssid/i,
+    action: 'update-ssid-name',
+    targetType: 'ssid',
+  },
+  {
+    pattern: /disable.*ssid|hide.*ssid|turn off.*ssid/i,
+    action: 'disable-ssid',
+    targetType: 'ssid',
+  },
+];
+
+const READ_KEYWORDS = /^(how|what|show|list|get|status|count|who|where|which|is|are|tell|explain)/i;
+
 export class AgentService {
   private messages: AgentMessage[] = [];
   private auditHistory: AuditEntry[] = [];
@@ -131,12 +158,121 @@ export class AgentService {
     }
   }
 
-  // Stubs — implemented in Tasks 3 & 4
-  async parseIntent(_input: string): Promise<OperationIntent | null> {
+  async parseIntent(input: string): Promise<OperationIntent | null> {
+    if (READ_KEYWORDS.test(input.trim())) return null;
+
+    for (const { pattern, action, targetType } of WRITE_PATTERNS) {
+      if (pattern.test(input)) {
+        const quoted = input.match(/["']([^"']+)["']/g)?.map((s) => s.replace(/["']/g, '')) ?? [];
+        const apNames = input.match(/AP[-\s]\S+/gi) ?? [];
+        const targetIds = [...new Set([...quoted, ...apNames])];
+
+        return {
+          action,
+          targetType,
+          targetIds: targetIds.length ? targetIds : ['(from context)'],
+          parameters: {},
+          requiresApproval: true,
+        };
+      }
+    }
     return null;
   }
-  async buildExecutionPlan(_intent: OperationIntent): Promise<ExecutionPlan> {
-    throw new Error('not implemented');
+
+  async buildExecutionPlan(intent: OperationIntent): Promise<ExecutionPlan> {
+    const id = `plan-${Date.now()}`;
+    const steps = this.planStepsFor(intent);
+    const plan: ExecutionPlan = {
+      id,
+      title: this.planTitle(intent),
+      description: `Performing ${intent.action} on ${intent.targetIds.join(', ')}`,
+      status: 'pending',
+      steps,
+      impactedObjects: intent.targetIds.map((tid) => ({
+        type: intent.targetType,
+        id: tid,
+        name: tid,
+      })),
+      createdAt: new Date(),
+    };
+    this.plans.set(id, plan);
+    return plan;
+  }
+
+  private planTitle(intent: OperationIntent): string {
+    const titles: Record<string, string> = {
+      'update-ssid-psk': 'Update SSID Password',
+      'disable-ap': 'Disable Access Point',
+      'enable-ap': 'Enable Access Point',
+      'reboot-ap': 'Reboot Access Point',
+      'update-ssid-name': 'Rename SSID',
+      'disable-ssid': 'Disable SSID',
+    };
+    return titles[intent.action] ?? intent.action;
+  }
+
+  private planStepsFor(intent: OperationIntent): PlanStep[] {
+    const base = (label: string, description: string, endpoint: string): PlanStep => ({
+      id: `step-${Math.random().toString(36).slice(2)}`,
+      label,
+      description,
+      status: 'pending',
+      apiEndpoint: endpoint,
+    });
+
+    switch (intent.action) {
+      case 'update-ssid-psk':
+        return [
+          base(
+            'Fetch current SSID config',
+            'Read existing SSID settings for diff',
+            'GET /v1/services/{id}'
+          ),
+          base(
+            'Validate new PSK',
+            'Check password meets complexity requirements',
+            '(local validation)'
+          ),
+          base('Apply new PSK', 'Write updated PSK to controller', 'PUT /v1/services/{id}'),
+          base(
+            'Verify change',
+            'Read back config to confirm write succeeded',
+            'GET /v1/services/{id}'
+          ),
+        ];
+      case 'disable-ap':
+        return [
+          base('Fetch AP status', 'Read current AP state', 'GET /v1/aps/{serial}'),
+          base('Disable AP', 'Set AP admin state to disabled', 'PUT /v1/aps/{serial}'),
+        ];
+      case 'enable-ap':
+        return [
+          base('Fetch AP status', 'Read current AP state', 'GET /v1/aps/{serial}'),
+          base('Enable AP', 'Set AP admin state to enabled', 'PUT /v1/aps/{serial}'),
+        ];
+      case 'reboot-ap':
+        return [
+          base(
+            'Verify AP is reachable',
+            'Confirm AP is connected before rebooting',
+            'GET /v1/aps/{serial}'
+          ),
+          base(
+            'Send reboot command',
+            'Issue reboot instruction to AP',
+            'POST /v1/aps/{serial}/reboot'
+          ),
+        ];
+      case 'disable-ssid':
+        return [
+          base('Fetch SSID config', 'Read current SSID state', 'GET /v1/services/{id}'),
+          base('Disable SSID', 'Set SSID enabled flag to false', 'PUT /v1/services/{id}'),
+        ];
+      default:
+        return [
+          base('Execute operation', `Run ${intent.action}`, `PUT /v1/${intent.targetType}s/{id}`),
+        ];
+    }
   }
   async executeApprovedPlan(_planId: string): Promise<ExecutionResult> {
     throw new Error('not implemented');
