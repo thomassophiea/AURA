@@ -116,7 +116,8 @@ export function AgentWorkspace({
   if (mode === 'minimized') {
     return (
       <button
-        className="fixed top-1/2 -translate-y-1/2 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-12 h-24 bg-[hsl(268_20%_8%)] border border-white/10 rounded-l-xl hover:bg-[hsl(268_20%_12%)] transition-colors"
+        data-testid="agent-workspace"
+        className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-12 h-screen bg-[hsl(268_20%_8%)] border-l border-white/10 hover:bg-[hsl(268_20%_12%)] transition-colors"
         onClick={onPin}
         title="Expand Agent Workspace"
       >

@@ -60,6 +60,10 @@ describe('AgentWorkspace', () => {
     expect(container.querySelector('[data-testid="agent-workspace"]')).toHaveStyle({
       width: '400px',
     });
+    rerender(<AgentWorkspace {...baseProps} size="standard" />);
+    expect(container.querySelector('[data-testid="agent-workspace"]')).toHaveStyle({
+      width: '520px',
+    });
     rerender(<AgentWorkspace {...baseProps} size="expanded" />);
     expect(container.querySelector('[data-testid="agent-workspace"]')).toHaveStyle({
       width: '720px',
