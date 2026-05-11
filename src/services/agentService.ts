@@ -274,14 +274,103 @@ export class AgentService {
         ];
     }
   }
-  async executeApprovedPlan(_planId: string): Promise<ExecutionResult> {
-    throw new Error('not implemented');
+  async executeApprovedPlan(planId: string): Promise<ExecutionResult> {
+    const plan = this.plans.get(planId);
+    if (!plan) throw new Error('Plan not found');
+
+    plan.status = 'executing';
+    plan.approvedAt = new Date();
+    let completedSteps = 0;
+
+    for (const step of plan.steps) {
+      step.status = 'running';
+      const start = Date.now();
+      try {
+        await this.executeStep(step, plan);
+        step.duration = Date.now() - start;
+        step.status = 'completed';
+        completedSteps++;
+      } catch (err) {
+        step.status = 'failed';
+        plan.status = 'failed';
+        this.addAuditEntry(plan, 'completed');
+        return {
+          planId,
+          success: false,
+          completedSteps,
+          failedStep: step.id,
+          error: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
+
+    plan.status = 'completed';
+    plan.completedAt = new Date();
+    this.addAuditEntry(plan, 'completed');
+
+    return { planId, success: true, completedSteps };
   }
-  async rollbackOperation(_planId: string): Promise<void> {
-    throw new Error('not implemented');
+
+  async rollbackOperation(planId: string): Promise<void> {
+    const plan = this.plans.get(planId);
+    if (!plan) throw new Error('Plan not found');
+    plan.status = 'rolledback';
+    this.addAuditEntry(plan, 'rolledback');
   }
-  rejectPlan(_planId: string): void {
-    throw new Error('not implemented');
+
+  rejectPlan(planId: string): void {
+    const plan = this.plans.get(planId);
+    if (!plan) throw new Error('Plan not found');
+    plan.status = 'rejected';
+    this.addAuditEntry(plan, 'rejected');
+  }
+
+  private async executeStep(step: PlanStep, _plan: ExecutionPlan): Promise<void> {
+    if (step.apiEndpoint?.startsWith('(')) return; // local validation steps, no HTTP
+
+    const [method, path] = (step.apiEndpoint ?? 'GET /').split(' ');
+    const start = Date.now();
+
+    const response = await apiService.makeAuthenticatedRequest(
+      path.replace(/\{[^}]+\}/g, 'unknown'),
+      { method: method as 'GET' | 'PUT' | 'POST' | 'PATCH' | 'DELETE' }
+    );
+
+    this.logAPICall({
+      method: method as APITimelineEntry['method'],
+      endpoint: path,
+      status: response.status,
+      duration: Date.now() - start,
+      planStepId: step.id,
+    });
+
+    if (!response.ok) {
+      throw new Error(`${method} ${path} failed: ${response.status} ${response.statusText}`);
+    }
+  }
+
+  private addAuditEntry(plan: ExecutionPlan, status: AuditEntry['status']): void {
+    let user = 'unknown';
+    try {
+      user = localStorage.getItem('user_email') ?? 'unknown';
+    } catch {
+      // localStorage unavailable (e.g., test environment)
+    }
+    const entry: AuditEntry = {
+      id: `audit-${Date.now()}`,
+      timestamp: new Date(),
+      action: plan.title,
+      operator: user,
+      planId: plan.id,
+      status,
+      impactedObjects: plan.impactedObjects,
+    };
+    this.auditHistory.push(entry);
+    try {
+      localStorage.setItem(AUDIT_KEY, JSON.stringify(this.auditHistory.slice(-100)));
+    } catch {
+      // ignore quota errors or unavailable storage
+    }
   }
 }
 

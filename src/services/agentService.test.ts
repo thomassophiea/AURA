@@ -114,3 +114,81 @@ describe('AgentService — buildExecutionPlan', () => {
     expect(writeCalls).toHaveLength(0);
   });
 });
+
+describe('AgentService — executeApprovedPlan', () => {
+  let service: AgentService;
+
+  beforeEach(() => {
+    service = new AgentService();
+  });
+
+  it('throws if planId is unknown', async () => {
+    await expect(service.executeApprovedPlan('nonexistent')).rejects.toThrow('Plan not found');
+  });
+
+  it('marks plan as completed on success', async () => {
+    const { apiService: mockApi } = await import('./api');
+    vi.mocked(mockApi.makeAuthenticatedRequest).mockResolvedValue(
+      new Response(JSON.stringify({ id: 'ssid-1', enabled: false }), { status: 200 })
+    );
+
+    const intent: OperationIntent = {
+      action: 'disable-ssid',
+      targetType: 'ssid',
+      targetIds: ['ssid-1'],
+      parameters: {},
+      requiresApproval: true,
+    };
+    const plan = await service.buildExecutionPlan(intent);
+    const result = await service.executeApprovedPlan(plan.id);
+
+    expect(result.success).toBe(true);
+    expect(result.planId).toBe(plan.id);
+  });
+
+  it('adds an entry to audit history after completion', async () => {
+    const { apiService: mockApi } = await import('./api');
+    vi.mocked(mockApi.makeAuthenticatedRequest).mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 })
+    );
+
+    const intent: OperationIntent = {
+      action: 'disable-ap',
+      targetType: 'ap',
+      targetIds: ['AP-001'],
+      parameters: {},
+      requiresApproval: true,
+    };
+    const plan = await service.buildExecutionPlan(intent);
+    await service.executeApprovedPlan(plan.id);
+
+    const audit = service.getAuditHistory();
+    expect(audit.length).toBe(1);
+    expect(audit[0].planId).toBe(plan.id);
+    expect(audit[0].status).toBe('completed');
+  });
+
+  it('rejectPlan marks plan rejected without API write calls', async () => {
+    const { apiService: mockApi } = await import('./api');
+    const writeSpy = vi.spyOn(mockApi, 'makeAuthenticatedRequest');
+
+    const intent: OperationIntent = {
+      action: 'reboot-ap',
+      targetType: 'ap',
+      targetIds: ['AP-002'],
+      parameters: {},
+      requiresApproval: true,
+    };
+    const plan = await service.buildExecutionPlan(intent);
+    service.rejectPlan(plan.id);
+
+    const writeCalls = writeSpy.mock.calls.filter(
+      ([, opts]) =>
+        opts?.method && !['GET', undefined].includes((opts.method as string).toUpperCase())
+    );
+    expect(writeCalls).toHaveLength(0);
+
+    const audit = service.getAuditHistory();
+    expect(audit[0].status).toBe('rejected');
+  });
+});
