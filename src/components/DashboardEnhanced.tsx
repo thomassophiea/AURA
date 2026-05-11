@@ -40,7 +40,6 @@ function DashboardEnhancedComponent() {
     throughputTrend,
     topClients,
     clientDistribution,
-    networkThroughput,
     vendorLookupsInProgress,
     serviceIdToNameMap,
     poorServices,

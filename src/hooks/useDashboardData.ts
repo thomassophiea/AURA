@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { getVendor, getVendorIcon } from '../services/oui-lookup';
-import { formatBitsPerSecond, formatBytes as formatBytesUnit } from '../lib/units';
+import { formatBytes as formatBytesUnit } from '../lib/units';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { useGlobalFilters } from './useGlobalFilters';
 import { useOperationalContext } from './useOperationalContext';
@@ -244,7 +244,6 @@ export function useDashboardData(): DashboardData {
   const [avgRssi, setAvgRssi] = useState<number>(0);
 
   const formatBytes = formatBytesUnit;
-  const formatBps = formatBitsPerSecond;
 
   const getActiveSiteFilter = useCallback((): string | undefined => {
     if (operationalCtx.mode === 'SITE' && operationalCtx.siteId) {
