@@ -328,7 +328,9 @@ export class AgentService {
   private async executeStep(step: PlanStep, _plan: ExecutionPlan): Promise<void> {
     if (step.apiEndpoint?.startsWith('(')) return; // local validation steps, no HTTP
 
-    const [method, path] = (step.apiEndpoint ?? 'GET /').split(' ');
+    const parts = (step.apiEndpoint ?? 'GET /').split(' ');
+    const method = parts[0] ?? 'GET';
+    const path = parts.slice(1).join(' ') || '/';
     const start = Date.now();
 
     const response = await apiService.makeAuthenticatedRequest(
