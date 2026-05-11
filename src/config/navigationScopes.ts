@@ -5,7 +5,7 @@
  * - Organization scope (primary): monitoring, configuration, templates, operations, admin
  * - Site Group scope (controller drill-down): firmware, backup, diagnostics, system config
  *
- * The org level is the primary working level (Mist-style enterprise model).
+ * The org level is the primary working level.
  * Users only enter a site group for controller-specific management.
  */
 

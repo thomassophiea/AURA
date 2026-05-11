@@ -2041,13 +2041,6 @@ export function ClientInsightsFullScreen({
                 {chartConfigs.map((config) => renderChart(config))}
               </div>
             )}
-
-            {/* Attribution */}
-            <div className="text-center pt-4 border-t mt-6">
-              <p className="text-xs text-muted-foreground opacity-60">
-                UI Design by Karl Benedict, Mgr of Systems Engineering
-              </p>
-            </div>
           </div>
         </div>
       </div>

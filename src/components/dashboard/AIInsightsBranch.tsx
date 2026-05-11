@@ -327,9 +327,6 @@ function AIInsightsBranchComponent({
                 , or <strong>Client</strong> above to drill into specific details
               </span>
             </div>
-            <p className="text-xs opacity-60 mt-2">
-              UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line
-            </p>
           </div>
         </CardContent>
       </Card>

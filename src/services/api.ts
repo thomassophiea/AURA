@@ -122,6 +122,8 @@ class ApiService {
   private requestCounter = 0;
   private sessionExpiredHandler: (() => void) | null = null;
   private loginPromise: Promise<AuthResponse> | null = null; // Store ongoing login promise
+  private rateLimitedUntil: number = 0;
+  private inflightRequests = new Map<string, Promise<Response>>();
 
   // Developer mode API logging
   private apiCallLogs: ApiCallLog[] = [];
@@ -424,6 +426,31 @@ class ApiService {
       throw new Error('No access token available');
     }
 
+    if (Date.now() < this.rateLimitedUntil) {
+      throw new Error('RATE_LIMITED: Controller is rate-limiting requests, backing off');
+    }
+
+    // Deduplicate concurrent identical GET requests — collapse burst from multiple mounts
+    const isGet = !options.method || options.method.toUpperCase() === 'GET';
+    if (isGet) {
+      const inflightKey = endpoint;
+      const existing = this.inflightRequests.get(inflightKey);
+      if (existing) return existing;
+
+      const promise = this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
+      this.inflightRequests.set(inflightKey, promise);
+      promise.finally(() => this.inflightRequests.delete(inflightKey));
+      return promise;
+    }
+
+    return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
+  }
+
+  private async _executeAuthenticatedRequest(
+    endpoint: string,
+    options: RequestInit = {},
+    timeoutMs: number = 6000
+  ): Promise<Response> {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.accessToken}`,
       Accept: 'application/json',
@@ -512,6 +539,11 @@ class ApiService {
       clearTimeout(timeoutId);
       this.pendingRequests.delete(controller);
 
+      if (response.status === 429) {
+        this.rateLimitedUntil = Date.now() + 60_000;
+        throw new Error('RATE_LIMITED: Controller is rate-limiting requests, backing off');
+      }
+
       if (response.status === 401) {
         // Define non-critical endpoints that should NOT trigger logout on 401
         // These are typically analytics, reporting, or optional features
@@ -530,9 +562,14 @@ class ApiService {
           // Attempt refresh for critical endpoints
           try {
             await this.refreshAccessToken();
-            // Retry the request with new token
-            return this.makeAuthenticatedRequest(endpoint, options, timeoutMs);
+            // Retry directly — bypass inflight dedup so we don't return the stale promise
+            return this._executeAuthenticatedRequest(endpoint, options, timeoutMs);
           } catch (refreshError) {
+            const isRateLimited =
+              refreshError instanceof Error && refreshError.message.includes('RATE_LIMITED');
+            if (isRateLimited) {
+              throw new Error('RATE_LIMITED: Token refresh rate-limited');
+            }
             // Refresh failed, user needs to login again
             logger.log('Token refresh failed, clearing authentication state');
             await this.logout();
@@ -642,6 +679,11 @@ class ApiService {
 
       clearTimeout(timeoutId);
 
+      if (response.status === 429) {
+        this.rateLimitedUntil = Date.now() + 60_000;
+        throw new Error('RATE_LIMITED: Token refresh rate-limited');
+      }
+
       if (!response.ok) {
         throw new Error('Token refresh failed');
       }
@@ -748,10 +790,11 @@ class ApiService {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
 
-        // Don't retry for authentication errors or client errors (4xx)
+        // Don't retry for authentication errors, client errors (4xx), or rate limits
         if (
           lastError.message.includes('Session expired') ||
           lastError.message.includes('Authentication required') ||
+          lastError.message.includes('RATE_LIMITED') ||
           lastError.message.includes('403') ||
           lastError.message.includes('404') ||
           lastError.message.includes('422')
@@ -818,9 +861,9 @@ class ApiService {
             continue;
           }
 
-          throw new Error(
-            `Failed to fetch sites from ${endpoint}: ${response.status} ${response.statusText}`
-          );
+          // Fall through to next endpoint on any non-ok response, not just 404
+          logger.log(`Endpoint ${endpoint} returned ${response.status}, trying next...`);
+          continue;
         }
 
         const sites = await response.json();

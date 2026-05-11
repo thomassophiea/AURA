@@ -2617,14 +2617,14 @@ body.mi5 {
    ============================================================ */
 
 :root {
-  --aura-amber: #ffb648;
-  --aura-amber-soft: rgba(255, 182, 72, 0.16);
-  --aura-amber-hairline: rgba(255, 200, 90, 0.14);
-  --aura-tungsten: rgba(255, 220, 170, 0.06);
+  --aura-amber: #bb86fc;
+  --aura-amber-soft: rgba(187, 134, 252, 0.16);
+  --aura-amber-hairline: rgba(187, 134, 252, 0.14);
+  --aura-tungsten: rgba(187, 134, 252, 0.06);
   --aura-ink: #0c0d0f;
   --aura-panel: #131418;
   --aura-panel-edge: rgba(255, 255, 255, 0.06);
-  --aura-grid: rgba(255, 200, 90, 0.05);
+  --aura-grid: rgba(187, 134, 252, 0.05);
   --aura-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
   --aura-mono: 'IBM Plex Mono', 'Roboto Mono', ui-monospace, Menlo, monospace;
 }
@@ -2636,10 +2636,10 @@ body.mi5 {
    - Panel edge bumped to 12% black for a real card boundary.
    - Tungsten warmer to lift muted areas off pure white. */
 .light {
-  --aura-amber: #945614;
-  --aura-amber-soft: rgba(148, 86, 20, 0.1);
-  --aura-amber-hairline: rgba(148, 86, 20, 0.32);
-  --aura-tungsten: rgba(148, 86, 20, 0.06);
+  --aura-amber: #6200ee;
+  --aura-amber-soft: rgba(98, 0, 238, 0.1);
+  --aura-amber-hairline: rgba(98, 0, 238, 0.32);
+  --aura-tungsten: rgba(98, 0, 238, 0.06);
   --aura-ink: #fbf8f1;
   --aura-panel: #fffdf8;
   --aura-panel-edge: rgba(20, 12, 4, 0.12);

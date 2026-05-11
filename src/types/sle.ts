@@ -1,6 +1,5 @@
 /**
  * Service Level Expectations (SLE) Type Definitions
- * Inspired by Juniper Mist SLE architecture
  */
 
 export interface SLEMetric {

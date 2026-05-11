@@ -1,5 +1,5 @@
 /**
- * SLE Dashboard - Mist-style Service Level Expectations page
+ * SLE Dashboard - Service Level Expectations page
  * Shows wireless SLE blocks with success rates, timelines, and classifier drill-down
  */
 
