@@ -1,56 +1,21 @@
-import { useState, useEffect, useMemo, memo, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { useState, useEffect, memo, useCallback } from 'react';
+import { Card, CardContent, CardHeader } from './ui/card';
 import { Skeleton } from './ui/skeleton';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { DetailSlideOut } from './DetailSlideOut';
-import { ScrollArea } from './ui/scroll-area';
-import {
-  RefreshCw,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  Wifi,
-  Users,
-  Network,
-  Clock,
-  Signal,
-  Download,
-  Upload,
-  Router,
-  Timer,
-  Brain,
-} from 'lucide-react';
-import { apiService, type StationEvent } from '../services/api';
+import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { toast } from 'sonner';
 import { getVendor, getVendorIcon } from '../services/oui-lookup';
 import { formatBitsPerSecond, formatBytes as formatBytesUnit } from '../lib/units';
-import { OperationalContextSummary } from './OperationalContextSummary';
-import { RelativeTime } from './ui/RelativeTime';
-import { ConnectionState } from './ui/ConnectionState';
-import { RecentEventsSummary } from './dashboard/RecentEventsSummary';
-import { InsightCardsGrid } from './dashboard/InsightCardsGrid';
-import { OrgSiteHealthOverview } from './dashboard/OrgSiteHealthOverview';
 import { EntityDetailView } from './dashboard/EntityDetailView';
-import { CoreActivitySection } from './dashboard/CoreActivitySection';
-import { PerformanceSection } from './dashboard/PerformanceSection';
-import { DetailPanel } from './dashboard/DetailPanel';
-import { TopClientsSection } from './dashboard/TopClientsSection';
-import { ServicesHealthSection } from './dashboard/ServicesHealthSection';
-import { RecentAlertsSection } from './dashboard/RecentAlertsSection';
-import { DriftStrip } from './dashboard/DriftStrip';
+import { DashboardHero } from './dashboard/DashboardHero';
+import { AIInsightsBranch } from './dashboard/AIInsightsBranch';
+import { ClientDetailDialog } from './dashboard/ClientDetailDialog';
+import { ServiceClientsDialog } from './dashboard/ServiceClientsDialog';
+import { NetworkDashboardView } from './dashboard/NetworkDashboardView';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
 import { TimelineCursorControls } from './TimelineCursorControls';
-import { VenueStatisticsWidget } from './VenueStatisticsWidget';
-import { ConfigurationProfilesWidget } from './ConfigurationProfilesWidget';
-import { AuditLogsWidget } from './AuditLogsWidget';
-import { BestPracticesWidget } from './BestPracticesWidget';
-import { OSOneWidget } from './OSOneWidget';
-import { PeerBenchmarking } from './PeerBenchmarking';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { usePersonaContext } from '../contexts/PersonaContext';
 import {
@@ -240,14 +205,9 @@ function DashboardEnhancedComponent() {
     info: 0,
   });
 
-  // Client Detail Dialog
+  // Client Detail Dialog (events state is managed inside ClientDetailDialog).
   const [selectedClient, setSelectedClient] = useState<Station | null>(null);
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false);
-
-  // Station Events
-  const [stationEvents, setStationEvents] = useState<StationEvent[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-  const [eventTypeFilter, setEventTypeFilter] = useState<string>('all');
 
   // Service Filter Dialog
   const [selectedService, setSelectedService] = useState<string | null>(null);
@@ -408,45 +368,7 @@ function DashboardEnhancedComponent() {
     }
   }, [apStats.online, clientStats.total, rfqiData, filters.site]);
 
-  // Load station events when client is selected
-  useEffect(() => {
-    const loadStationEvents = async () => {
-      if (selectedClient && isClientDialogOpen) {
-        console.log(`[Dashboard] Loading station events for client:`, selectedClient.macAddress);
-        setIsLoadingEvents(true);
-        try {
-          const events = await apiService.fetchStationEvents(selectedClient.macAddress);
-          console.log(`[Dashboard] Received ${events.length} events:`, events.slice(0, 3));
-          setStationEvents(events);
-        } catch (error) {
-          console.error('[Dashboard] Failed to load station events:', error);
-          toast.error('Failed to load station events');
-        } finally {
-          setIsLoadingEvents(false);
-        }
-      } else {
-        // Reset events when dialog closes
-        setStationEvents([]);
-        setEventTypeFilter('all');
-      }
-    };
-
-    loadStationEvents();
-  }, [selectedClient, isClientDialogOpen]);
-
-  // Filter events by type
-  const filteredEvents = useMemo(() => {
-    if (eventTypeFilter === 'all') {
-      return stationEvents;
-    }
-    return stationEvents.filter((event) => event.eventType === eventTypeFilter);
-  }, [stationEvents, eventTypeFilter]);
-
-  // Get unique event types for filter
-  const eventTypes = useMemo(() => {
-    const types = new Set(stationEvents.map((event) => event.eventType));
-    return Array.from(types).sort();
-  }, [stationEvents]);
+  // Station events: loaded inside ClientDetailDialog when it opens.
 
   const loadDashboardData = async (isRefresh = false) => {
     try {
@@ -1675,20 +1597,6 @@ function DashboardEnhancedComponent() {
   const formatBytes = formatBytesUnit;
   const formatBps = formatBitsPerSecond;
 
-  // Helper function to format Tx/Rx rates with smart unit detection
-  // API may return bps or Mbps depending on controller version
-  // Real data analysis: Extreme Platform ONE returns bps (values like 149610, 28375512)
-  // Threshold: > 1000 = bps, ≤ 1000 = Mbps
-  const formatTxRxRate = (rate: number | undefined): string => {
-    if (rate === undefined || rate === null || rate === 0) {
-      return 'N/A';
-    }
-    // If value > 1000, assume it's already in bps (e.g., 612612 bps)
-    // If value ≤ 1000, assume it's in Mbps and convert (e.g., 28.4 Mbps)
-    const bps = rate > 1000 ? rate : rate * 1000000;
-    return formatBps(bps);
-  };
-
   // Helper function to get service name for a station (must match logic in processStations)
   const getServiceNameForStation = (station: Station): string => {
     let serviceName =
@@ -1844,43 +1752,13 @@ function DashboardEnhancedComponent() {
 
   return (
     <div className="space-y-4">
-      {/* Observatory Hero — see .aura-hero in index.css */}
-      <div className="aura-hero">
-        <div className="aura-hero-title-block">
-          <div className="aura-eyebrow">
-            <span className="aura-live-dot" aria-hidden="true" />
-            <span>Network Intelligence — Live Telemetry</span>
-            <span className="aura-eyebrow-rule" aria-hidden="true" />
-          </div>
-          <h2 className="aura-hero-title">
-            AURA
-            <span className="aura-divider-glyph"> · </span>
-            <em>Observatory</em>
-          </h2>
-          {activePersona !== 'super-user' && personaConfig && (
-            <span className="aura-hero-coord">{personaConfig.dashboardLabel}</span>
-          )}
-        </div>
-        <div className="aura-hero-meta">
-          <ConnectionState />
-          {lastUpdate && (
-            <div className="aura-hero-meta-row">
-              <span className="aura-hero-meta-key">SYNC</span>
-              <RelativeTime date={lastUpdate} />
-            </div>
-          )}
-          <Button
-            onClick={() => loadDashboardData(true)}
-            variant="outline"
-            size="sm"
-            disabled={refreshing}
-            className="aura-refresh"
-          >
-            <RefreshCw className={`mr-2 h-3 w-3 ${refreshing ? 'animate-spin' : ''}`} />
-            {refreshing ? 'Syncing' : 'Refresh'}
-          </Button>
-        </div>
-      </div>
+      <DashboardHero
+        activePersona={activePersona}
+        personaConfig={personaConfig}
+        lastUpdate={lastUpdate}
+        refreshing={refreshing}
+        onRefresh={() => loadDashboardData(true)}
+      />
 
       {/* Filter Bar with Context Selector */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1902,225 +1780,27 @@ function DashboardEnhancedComponent() {
           ======================================== */}
 
       {/* AI INSIGHTS VIEW - Bird's Eye Network Overview */}
-      {/* UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line */}
       {selectorTab === 'ai-insights' && (
-        <div className="space-y-4">
-          {/* Drift Detection Strip — Wave 4A */}
-          <DriftStrip />
-
-          {/* Observatory Instrument Panels — see .aura-kpi in index.css */}
-          <div className="aura-kpi-grid">
-            <div
-              className="aura-kpi"
-              onClick={() => setSelectorTab('access-point')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setSelectorTab('access-point');
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="View Access Points details"
-            >
-              <div className="aura-kpi-eyebrow">
-                <span>
-                  <span className="aura-kpi-eyebrow-channel">CH-01</span> · Access Points
-                </span>
-                <Wifi className="aura-kpi-icon" />
-              </div>
-              <div className="aura-kpi-figure">
-                {apStats.total}
-                <span className="aura-kpi-figure-unit">AP</span>
-              </div>
-              <div className="aura-kpi-foot">
-                <span className="aura-kpi-foot-good">
-                  <span className="aura-kpi-foot-mark">●</span>
-                  {apStats.online} online
-                </span>
-                <span>{apStats.total - apStats.online} offline</span>
-              </div>
-              <span className="aura-kpi-corner-br" aria-hidden="true" />
-            </div>
-
-            <div
-              className="aura-kpi"
-              onClick={() => setSelectorTab('client')}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setSelectorTab('client');
-                }
-              }}
-              role="button"
-              tabIndex={0}
-              aria-label="View Connected Clients details"
-            >
-              <div className="aura-kpi-eyebrow">
-                <span>
-                  <span className="aura-kpi-eyebrow-channel">CH-02</span> · Clients
-                </span>
-                <Users className="aura-kpi-icon" />
-              </div>
-              <div className="aura-kpi-figure">
-                {clientStats.total}
-                <span className="aura-kpi-figure-unit">CLNT</span>
-              </div>
-              <div className="aura-kpi-foot">
-                <span className="aura-kpi-foot-good">
-                  <span className="aura-kpi-foot-mark">●</span>
-                  {clientStats.authenticated} authenticated
-                </span>
-                <span>{Math.max(0, clientStats.total - clientStats.authenticated)} pending</span>
-              </div>
-              <span className="aura-kpi-corner-br" aria-hidden="true" />
-            </div>
-
-            {(() => {
-              const total = formatBps(
-                clientStats.throughputUpload + clientStats.throughputDownload
-              );
-              const [tpNum, ...tpUnit] = total.split(' ');
-              return (
-                <div className="aura-kpi" tabIndex={-1}>
-                  <div className="aura-kpi-eyebrow">
-                    <span>
-                      <span className="aura-kpi-eyebrow-channel">CH-03</span> · Throughput
-                    </span>
-                    <Activity className="aura-kpi-icon" />
-                  </div>
-                  <div className="aura-kpi-figure">
-                    {tpNum}
-                    <span className="aura-kpi-figure-unit">{tpUnit.join(' ')}</span>
-                  </div>
-                  <div className="aura-kpi-foot">
-                    <span>↑ {formatBps(clientStats.throughputUpload)}</span>
-                    <span>↓ {formatBps(clientStats.throughputDownload)}</span>
-                  </div>
-                  <span className="aura-kpi-corner-br" aria-hidden="true" />
-                </div>
-              );
-            })()}
-
-            <div className="aura-kpi" tabIndex={-1}>
-              <div className="aura-kpi-eyebrow">
-                <span>
-                  <span className="aura-kpi-eyebrow-channel">CH-04</span> · Alerts
-                </span>
-                <AlertTriangle className="aura-kpi-icon" />
-              </div>
-              <div className="aura-kpi-figure">
-                {alertCounts.critical + alertCounts.warning}
-                <span className="aura-kpi-figure-unit">EVT</span>
-              </div>
-              <div className="aura-kpi-foot">
-                <span className="aura-kpi-foot-bad">
-                  <span className="aura-kpi-foot-mark">●</span>
-                  {alertCounts.critical} critical
-                </span>
-                {alertCounts.warning > 0 && (
-                  <span className="aura-kpi-foot-warn">
-                    <span className="aura-kpi-foot-mark">●</span>
-                    {alertCounts.warning} warning
-                  </span>
-                )}
-              </div>
-              <span className="aura-kpi-corner-br" aria-hidden="true" />
-            </div>
-          </div>
-
-          {/* Peer Benchmarking */}
-          <PeerBenchmarking />
-
-          {/* Best Practice Evaluation — real data from /v1/bestpractices/evaluate */}
-          <div className="space-y-4">
-            <div className="border-b pb-2">
-              <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
-              <p className="text-sm text-muted-foreground">
-                Network configuration and optimization recommendations
-              </p>
-            </div>
-            <BestPracticesWidget />
-          </div>
-
-          {/* Insight Cards Grid — extracted to dashboard/InsightCardsGrid */}
-          <InsightCardsGrid
-            apStats={apStats}
-            clientStats={clientStats}
-            alertCounts={alertCounts}
-            poorServices={poorServices}
-            lastUpdate={lastUpdate}
-          />
-
-          {/* Recent Events Summary — extracted to dashboard/RecentEventsSummary */}
-          <RecentEventsSummary
-            offlineApCount={apStats.offline}
-            criticalCount={alertCounts.critical}
-            warningCount={alertCounts.warning}
-          />
-
-          {/* Org/Site Health Overview — extracted to dashboard/OrgSiteHealthOverview */}
-          <OrgSiteHealthOverview
-            siteScope={filters.site}
-            rfqiData={rfqiData}
-            avgRssi={avgRssi}
-            avgSnr={avgSnr}
-            totalClients={clientStats.total}
-            bandDistribution={bandDistribution}
-            snrDistribution={snrDistribution}
-          />
-
-          {/* Detail Panel - Health Category Tabs & Events */}
-          {aiInsightsDetailPanel && (
-            <DetailPanel
-              aiActiveHealthTab={aiActiveHealthTab}
-              setAiActiveHealthTab={setAiActiveHealthTab}
-              selectedNetworkEvent={selectedNetworkEvent}
-              setSelectedNetworkEvent={setSelectedNetworkEvent}
-              onClose={() => setAiInsightsDetailPanel(false)}
-              apStats={apStats}
-              clientStats={clientStats}
-              alertCounts={alertCounts}
-              setSelectorTab={setSelectorTab}
-              lastUpdate={lastUpdate}
-            />
-          )}
-
-          {/* Audit Logs — real data from /v1/auditlogs */}
-          <div className="space-y-4">
-            <div className="border-b pb-2">
-              <h3 className="text-lg font-semibold">Audit Logs</h3>
-              <p className="text-sm text-muted-foreground">
-                Recent configuration and operational changes
-              </p>
-            </div>
-            <AuditLogsWidget />
-          </div>
-
-          {/* Drill-down hint & Attribution */}
-          <Card className="bg-muted/30 border-dashed">
-            <CardContent className="py-4">
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-4">
-                  <Brain className="h-4 w-4" />
-                  <span>
-                    Select <strong>Site</strong>, <strong>AP</strong>, <strong>Switch</strong>{' '}
-                    <Badge
-                      variant="outline"
-                      className="text-[9px] px-1.5 py-0 h-4 border-[color:var(--status-warning)]/50 text-[color:var(--status-warning)]"
-                    >
-                      Beta
-                    </Badge>
-                    , or <strong>Client</strong> above to drill into specific details
-                  </span>
-                </div>
-                <p className="text-xs opacity-60 mt-2">
-                  UI Design inspired by Sunil Jose Kodiyan, Analytics Director Product Line
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <AIInsightsBranch
+          apStats={apStats}
+          clientStats={clientStats}
+          alertCounts={alertCounts}
+          poorServices={poorServices}
+          lastUpdate={lastUpdate}
+          siteScope={filters.site}
+          rfqiData={rfqiData}
+          avgRssi={avgRssi}
+          avgSnr={avgSnr}
+          bandDistribution={bandDistribution}
+          snrDistribution={snrDistribution}
+          aiInsightsDetailPanel={aiInsightsDetailPanel}
+          aiActiveHealthTab={aiActiveHealthTab}
+          setAiActiveHealthTab={setAiActiveHealthTab}
+          selectedNetworkEvent={selectedNetworkEvent}
+          setSelectedNetworkEvent={setSelectedNetworkEvent}
+          onCloseDetailPanel={() => setAiInsightsDetailPanel(false)}
+          setSelectorTab={setSelectorTab}
+        />
       )}
 
       {/* ACCESS POINT DETAIL VIEW */}
@@ -2163,668 +1843,65 @@ function DashboardEnhancedComponent() {
         />
       )}
 
-      {/* NETWORK DASHBOARD VIEW - Shows for Site tab or when no specific entity selected */}
       {(selectorTab === 'site' ||
         (selectorTab === 'access-point' && !selectedEntityId) ||
         (selectorTab === 'client' && !selectedEntityId) ||
         (selectorTab === 'switch' && !selectedEntityId)) && (
-        <>
-          {/* SECTION 1: OPERATIONAL CONTEXT SUMMARY */}
-          {showSection('operational-context') && (
-            <div className="space-y-4">
-              <div className="border-b pb-2">
-                <h3 className="text-lg font-semibold">
-                  {selectedEntityId && selectorTab === 'site'
-                    ? `Site Overview: ${selectedEntityName}`
-                    : 'Network Overview'}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {selectedEntityId && selectorTab === 'site'
-                    ? 'Site-specific context and performance metrics'
-                    : 'Intelligent context-aware network insights'}
-                </p>
-              </div>
-              <OperationalContextSummary />
-            </div>
-          )}
-
-          {/* ========================================
-          SECTION 2: CORE OPERATIONAL ACTIVITY
-          ======================================== */}
-          {showSection('core-activity') && (
-            <CoreActivitySection
-              apStats={apStats}
-              clientStats={clientStats}
-              alertCounts={alertCounts}
-              throughputTrend={throughputTrend}
-            />
-          )}
-
-          {/* ========================================
-          SECTION 3: PERFORMANCE AND QUALITY
-          ======================================== */}
-          {showSection('performance') && (
-            <PerformanceSection
-              performanceMetrics={performanceMetrics}
-              radarData={radarData}
-              apStats={apStats}
-              clientStats={clientStats}
-              clientDistribution={clientDistribution}
-              colors={COLORS}
-              onServiceClick={handleServiceClick}
-            />
-          )}
-
-          {/* ========================================
-          SECTION 4: BEST PRACTICE EVALUATION
-          ======================================== */}
-          {showSection('best-practices') && (
-            <div className="space-y-4">
-              <div className="border-b pb-2">
-                <h3 className="text-lg font-semibold">Best Practice Evaluation</h3>
-                <p className="text-sm text-muted-foreground">
-                  Network configuration and optimization recommendations
-                </p>
-              </div>
-              <BestPracticesWidget />
-            </div>
-          )}
-
-          {/* Top Clients */}
-          {showSection('top-clients') && topClients.length > 0 && (
-            <TopClientsSection
-              topClients={topClients}
-              collapsed={isTopClientsCollapsed}
-              onToggleCollapse={() => setIsTopClientsCollapsed(!isTopClientsCollapsed)}
-              vendorLookupsInProgress={vendorLookupsInProgress}
-              onClientClick={async (client) => {
-                try {
-                  const stationDetails = await apiService.fetchStationDetails(client.mac);
-                  const fullStation = stations.find((s) => s.macAddress === client.mac);
-                  setSelectedClient({ ...fullStation, ...stationDetails, ...client });
-                  setIsClientDialogOpen(true);
-                } catch (error) {
-                  console.error('[Dashboard] Failed to fetch client details:', error);
-                  const fullStation = stations.find((s) => s.macAddress === client.mac);
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  setSelectedClient(fullStation || (client as any));
-                  setIsClientDialogOpen(true);
-                }
-              }}
-            />
-          )}
-
-          {/* Poor Services Alert */}
-          {showSection('services-health') && poorServices.length > 0 && (
-            <ServicesHealthSection poorServices={poorServices} />
-          )}
-
-          {/* Recent Alerts Preview */}
-          {showSection('alerts') && notifications.length > 0 && (
-            <RecentAlertsSection notifications={notifications} />
-          )}
-
-          {/* Phase 1 Widgets: Venue Statistics */}
-          {showSection('venue-stats') && getActiveSiteFilter() && (
-            <VenueStatisticsWidget
-              siteId={getActiveSiteFilter()!}
-              duration={
-                filters.timeRange === '15m'
-                  ? '15M'
-                  : filters.timeRange === '1h'
-                    ? '1H'
-                    : filters.timeRange === '7d'
-                      ? '7D'
-                      : filters.timeRange === '30d'
-                        ? '30D'
-                        : '24H'
-              }
-            />
-          )}
-
-          {/* Phase 5+ Widgets: Configuration Profiles and Audit Logs */}
-          {(showSection('config-profiles') || showSection('audit-logs')) && (
-            <div className="grid gap-4 md:grid-cols-2">
-              {showSection('config-profiles') && <ConfigurationProfilesWidget />}
-              {showSection('audit-logs') && <AuditLogsWidget />}
-            </div>
-          )}
-
-          {/* OS ONE Control - System Information */}
-          {showSection('os-one') && <OSOneWidget compact={true} />}
-        </>
+        <NetworkDashboardView
+          showSection={showSection}
+          selectorTab={selectorTab}
+          selectedEntityId={selectedEntityId}
+          selectedEntityName={selectedEntityName}
+          apStats={apStats}
+          clientStats={clientStats}
+          alertCounts={alertCounts}
+          throughputTrend={throughputTrend}
+          performanceMetrics={performanceMetrics}
+          radarData={radarData}
+          clientDistribution={clientDistribution}
+          colors={COLORS}
+          onServiceClick={handleServiceClick}
+          topClients={topClients}
+          stations={stations}
+          isTopClientsCollapsed={isTopClientsCollapsed}
+          onToggleTopClientsCollapsed={() => setIsTopClientsCollapsed(!isTopClientsCollapsed)}
+          vendorLookupsInProgress={vendorLookupsInProgress}
+          setSelectedClient={setSelectedClient}
+          setIsClientDialogOpen={setIsClientDialogOpen}
+          poorServices={poorServices}
+          notifications={notifications}
+          activeSiteId={getActiveSiteFilter() ?? null}
+          venueDuration={
+            filters.timeRange === '15m'
+              ? '15M'
+              : filters.timeRange === '1h'
+                ? '1H'
+                : filters.timeRange === '7d'
+                  ? '7D'
+                  : filters.timeRange === '30d'
+                    ? '30D'
+                    : '24H'
+          }
+        />
       )}
 
-      {/* Client Detail Dialog */}
-      <DetailSlideOut
+      <ClientDetailDialog
         isOpen={isClientDialogOpen}
         onClose={() => setIsClientDialogOpen(false)}
-        title="Client Details"
-        description={`Detailed information for ${selectedClient?.hostName || selectedClient?.macAddress}`}
-        width="xl"
-      >
-        {selectedClient && (
-          <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="events">Station Events</TabsTrigger>
-            </TabsList>
+        selectedClient={selectedClient}
+      />
 
-            <TabsContent value="details" className="space-y-4">
-              {/* Basic Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">MAC Address</p>
-                  <p className="font-mono text-sm">{selectedClient.macAddress}</p>
-                </div>
-                {selectedClient.hostName && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">Hostname</p>
-                    <p className="text-sm">{selectedClient.hostName}</p>
-                  </div>
-                )}
-                {selectedClient.ipAddress && (
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">IP Address</p>
-                    <p className="font-mono text-sm">{selectedClient.ipAddress}</p>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Authentication</p>
-                  <Badge variant={selectedClient.authenticated !== false ? 'default' : 'secondary'}>
-                    {selectedClient.authenticated !== false ? 'Authenticated' : 'Not Authenticated'}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Connection Details */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Connection Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="grid grid-cols-2 gap-4">
-                    {(selectedClient.ssid || selectedClient.serviceName) && (
-                      <div className="flex items-center gap-2">
-                        <Network className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">SSID/Service</p>
-                          <p className="text-sm">
-                            {selectedClient.ssid || selectedClient.serviceName}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    {(selectedClient.apName || selectedClient.apSerialNumber) && (
-                      <div className="flex items-center gap-2">
-                        <Router className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Access Point</p>
-                          <p className="text-sm">
-                            {selectedClient.apName || selectedClient.apSerialNumber}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Signal Quality */}
-              {(selectedClient.rssi !== undefined || selectedClient.snr !== undefined) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Signal Quality</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedClient.rssi !== undefined && (
-                        <div className="flex items-center gap-2">
-                          <Signal
-                            className={`h-4 w-4 ${
-                              selectedClient.rssi >= -50
-                                ? 'text-[color:var(--status-success)]'
-                                : selectedClient.rssi >= -60
-                                  ? 'text-[color:var(--status-info)]'
-                                  : selectedClient.rssi >= -70
-                                    ? 'text-[color:var(--status-warning)]'
-                                    : 'text-[color:var(--status-error)]'
-                            }`}
-                          />
-                          <div>
-                            <p className="text-xs text-muted-foreground">RSSI</p>
-                            <p className="text-sm font-medium">{selectedClient.rssi} dBm</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedClient.snr !== undefined && (
-                        <div className="flex items-center gap-2">
-                          <Activity className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">SNR</p>
-                            <p className="text-sm font-medium">{selectedClient.snr} dB</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Throughput */}
-              {(selectedClient.txRate !== undefined ||
-                selectedClient.rxRate !== undefined ||
-                selectedClient.txBytes !== undefined ||
-                selectedClient.rxBytes !== undefined ||
-                selectedClient.outBytes !== undefined ||
-                selectedClient.inBytes !== undefined) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Throughput</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      {(selectedClient.txRate !== undefined ||
-                        selectedClient.txBytes !== undefined ||
-                        selectedClient.outBytes !== undefined) && (
-                        <div className="flex items-center gap-2">
-                          <Upload className="h-4 w-4 text-[color:var(--status-info)]" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Upload</p>
-                            <p className="text-sm font-medium">
-                              {selectedClient.txRate !== undefined
-                                ? formatBps(selectedClient.txRate * 1000000)
-                                : formatBytes(
-                                    selectedClient.outBytes || selectedClient.txBytes || 0
-                                  )}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {(selectedClient.rxRate !== undefined ||
-                        selectedClient.rxBytes !== undefined ||
-                        selectedClient.inBytes !== undefined) && (
-                        <div className="flex items-center gap-2">
-                          <Download className="h-4 w-4 text-[color:var(--status-success)]" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Download</p>
-                            <p className="text-sm font-medium">
-                              {selectedClient.rxRate !== undefined
-                                ? formatBps(selectedClient.rxRate * 1000000)
-                                : formatBytes(
-                                    selectedClient.inBytes || selectedClient.rxBytes || 0
-                                  )}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Session Info */}
-              {(selectedClient.uptime !== undefined ||
-                selectedClient.connectionTime !== undefined) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Session Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedClient.uptime !== undefined && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Uptime</p>
-                            <p className="text-sm font-medium">
-                              {Math.floor(selectedClient.uptime / 3600)}h{' '}
-                              {Math.floor((selectedClient.uptime % 3600) / 60)}m
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedClient.connectionTime !== undefined && (
-                        <div className="flex items-center gap-2">
-                          <Timer className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Connected At</p>
-                            <p className="text-sm font-medium">
-                              {new Date(selectedClient.connectionTime).toLocaleTimeString()}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Radio & Protocol Information */}
-              {(selectedClient.protocol || selectedClient.channel || selectedClient.radioId) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Radio & Protocol</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedClient.protocol && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Protocol</p>
-                          <Badge variant="outline">{selectedClient.protocol}</Badge>
-                        </div>
-                      )}
-                      {selectedClient.channel !== undefined && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Channel</p>
-                          <p className="text-sm font-medium">Channel {selectedClient.channel}</p>
-                        </div>
-                      )}
-                      {selectedClient.radioId !== undefined && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Radio Band</p>
-                          <p className="text-sm font-medium">
-                            {selectedClient.radioId === 1
-                              ? '2.4 GHz'
-                              : selectedClient.radioId === 2
-                                ? '5 GHz'
-                                : `Radio ${selectedClient.radioId}`}
-                          </p>
-                        </div>
-                      )}
-                      {selectedClient.transmittedRate !== undefined && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Tx Rate</p>
-                          <p className="text-sm font-medium">
-                            {formatTxRxRate(selectedClient.transmittedRate)}
-                          </p>
-                        </div>
-                      )}
-                      {selectedClient.receivedRate !== undefined && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Rx Rate</p>
-                          <p className="text-sm font-medium">
-                            {formatTxRxRate(selectedClient.receivedRate)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Role & Device Information */}
-              {(selectedClient.role || selectedClient.manufacturer || selectedClient.lastSeen) && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-sm">Device Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedClient.role && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Role</p>
-                          <Badge variant="secondary">{selectedClient.role}</Badge>
-                        </div>
-                      )}
-                      {selectedClient.manufacturer && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Manufacturer</p>
-                          <p className="text-sm font-medium">{selectedClient.manufacturer}</p>
-                        </div>
-                      )}
-                      {selectedClient.lastSeen !== undefined && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Last Seen</p>
-                          <p className="text-sm font-medium">
-                            {new Date(selectedClient.lastSeen).toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                      {selectedClient.accessPointName && (
-                        <div className="space-y-1">
-                          <p className="text-xs text-muted-foreground">Access Point</p>
-                          <p className="text-sm font-medium">{selectedClient.accessPointName}</p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="events" className="space-y-4">
-              {isLoadingEvents ? (
-                <div className="flex items-center justify-center py-12">
-                  <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : filteredEvents.length === 0 ? (
-                <div className="text-center py-12">
-                  <Activity className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground font-medium mb-2">
-                    No station events available
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Station {selectedClient?.macAddress}
-                  </p>
-                  <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
-                    <p>Station events may be unavailable if:</p>
-                    <p>• Your controller doesn't support the station events API</p>
-                    <p>• No events have been logged for this station in the last 30 days</p>
-                    <p>• Audit logging is not enabled on your controller</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                    onClick={() => {
-                      if (selectedClient) {
-                        console.log('[Dashboard] Manually retrying station events load...');
-                        setIsLoadingEvents(true);
-                        apiService
-                          .fetchStationEvents(selectedClient.macAddress)
-                          .then((events) => {
-                            console.log('[Dashboard] Manual retry received:', events);
-                            setStationEvents(events);
-                          })
-                          .finally(() => {
-                            setIsLoadingEvents(false);
-                          });
-                      }
-                    }}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  {/* Event Type Filter */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={eventTypeFilter === 'all' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setEventTypeFilter('all')}
-                    >
-                      All Events ({stationEvents.length})
-                    </Button>
-                    {eventTypes.map((type) => (
-                      <Button
-                        key={type}
-                        variant={eventTypeFilter === type ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setEventTypeFilter(type)}
-                      >
-                        {type} ({stationEvents.filter((e) => e.eventType === type).length})
-                      </Button>
-                    ))}
-                  </div>
-
-                  {/* Event Timeline */}
-                  <ScrollArea className="h-[500px]">
-                    <div className="space-y-3">
-                      {filteredEvents.map((event, idx) => {
-                        const eventDate = new Date(parseInt(event.timestamp));
-                        const eventColor =
-                          event.eventType === 'Roam'
-                            ? 'blue'
-                            : event.eventType === 'Associate'
-                              ? 'green'
-                              : event.eventType === 'Disassociate'
-                                ? 'red'
-                                : event.eventType === 'Authenticate'
-                                  ? 'purple'
-                                  : 'gray';
-
-                        return (
-                          <Card key={event.id || idx} className="relative pl-8">
-                            {/* Timeline dot */}
-                            <div
-                              className={`absolute left-3 top-6 w-2 h-2 rounded-full bg-${eventColor}-500`}
-                            />
-                            {idx !== filteredEvents.length - 1 && (
-                              <div className="absolute left-3.5 top-8 w-0.5 h-full bg-border" />
-                            )}
-
-                            <CardContent className="pt-4 pb-4">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge
-                                      variant={
-                                        event.eventType === 'Associate' ||
-                                        event.eventType === 'Authenticate'
-                                          ? 'default'
-                                          : event.eventType === 'Disassociate'
-                                            ? 'destructive'
-                                            : 'secondary'
-                                      }
-                                    >
-                                      {event.eventType}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                      {eventDate.toLocaleString()}
-                                    </span>
-                                  </div>
-
-                                  {event.details && (
-                                    <p className="text-sm text-foreground mb-2">{event.details}</p>
-                                  )}
-
-                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                                    {event.apName && (
-                                      <div>
-                                        <span className="text-muted-foreground">AP: </span>
-                                        <span className="font-medium">{event.apName}</span>
-                                      </div>
-                                    )}
-                                    {event.ssid && (
-                                      <div>
-                                        <span className="text-muted-foreground">SSID: </span>
-                                        <span className="font-medium">{event.ssid}</span>
-                                      </div>
-                                    )}
-                                    {event.ipAddress && (
-                                      <div>
-                                        <span className="text-muted-foreground">IP: </span>
-                                        <span className="font-mono font-medium">
-                                          {event.ipAddress}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {event.level && (
-                                      <div>
-                                        <span className="text-muted-foreground">Level: </span>
-                                        <span className="font-medium">{event.level}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </ScrollArea>
-                </>
-              )}
-            </TabsContent>
-          </Tabs>
-        )}
-      </DetailSlideOut>
-
-      {/* Service Clients Dialog */}
-      <DetailSlideOut
+      <ServiceClientsDialog
         isOpen={isServiceClientsDialogOpen}
         onClose={() => setIsServiceClientsDialogOpen(false)}
-        title={`Clients on ${selectedService}`}
-        description={`${getClientsForService().length} client(s) connected to this service`}
-        width="xl"
-      >
-        <div className="space-y-2">
-          {getClientsForService().length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No clients found for this service</p>
-            </div>
-          ) : (
-            getClientsForService().map((client, idx) => (
-              <Card
-                key={client.macAddress || idx}
-                className="cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => {
-                  setSelectedClient(client);
-                  setIsServiceClientsDialogOpen(false);
-                  setIsClientDialogOpen(true);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {client.vendorIcon && <div className="text-2xl">{client.vendorIcon}</div>}
-                      <div>
-                        <p className="font-medium">{client.hostName || client.macAddress}</p>
-                        <p className="text-xs text-muted-foreground">{client.macAddress}</p>
-                        {client.ipAddress && (
-                          <p className="text-xs text-muted-foreground">{client.ipAddress}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                      {client.rssi !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <Signal
-                            className={`h-4 w-4 ${
-                              client.rssi >= -50
-                                ? 'text-[color:var(--status-success)]'
-                                : client.rssi >= -60
-                                  ? 'text-[color:var(--status-info)]'
-                                  : client.rssi >= -70
-                                    ? 'text-[color:var(--status-warning)]'
-                                    : 'text-[color:var(--status-error)]'
-                            }`}
-                          />
-                          <span className="text-muted-foreground">{client.rssi} dBm</span>
-                        </div>
-                      )}
-                      {client.authenticated !== false && (
-                        <Badge
-                          variant="outline"
-                          className="text-[color:var(--status-success)] border-[color:var(--status-success)]"
-                        >
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Authenticated
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-      </DetailSlideOut>
+        selectedService={selectedService}
+        clients={getClientsForService()}
+        onSelectClient={(client) => {
+          setSelectedClient(client);
+          setIsServiceClientsDialogOpen(false);
+          setIsClientDialogOpen(true);
+        }}
+      />
     </div>
   );
 }
