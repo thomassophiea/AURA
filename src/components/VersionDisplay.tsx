@@ -3,6 +3,13 @@ import { GitBranch, GitCommit, Calendar, ChevronUp, ChevronDown } from 'lucide-r
 import { cn } from './ui/utils';
 import { APP_VERSION } from '@/lib/versionGate';
 
+declare const __GIT_COMMIT__: string;
+declare const __GIT_BRANCH__: string;
+declare const __BUILD_DATE__: string;
+declare const __COMMIT_COUNT__: string;
+declare const __BUILD_MESSAGE__: string;
+declare const __BUILD_FEATURES__: string[];
+
 interface VersionDisplayProps {
   className?: string;
   position?: 'bottom-left' | 'bottom-right';
@@ -16,16 +23,16 @@ export function VersionDisplay({
 }: VersionDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // APP_VERSION is injected at build time via __APP_VERSION__ define in vite.config.ts.
-  // VITE_APP_* vars are not set by the build; fall back gracefully.
-  const version = APP_VERSION !== '0.0.0' ? APP_VERSION : import.meta.env.DEV ? 'dev' : APP_VERSION;
-  const commitHash = import.meta.env.VITE_APP_COMMIT_HASH || (import.meta.env.DEV ? 'local' : '—');
-  const commitCount = import.meta.env.VITE_APP_COMMIT_COUNT || '—';
-  const branch = import.meta.env.VITE_APP_BRANCH || (import.meta.env.DEV ? 'dev' : '—');
-  const buildDate = import.meta.env.VITE_APP_BUILD_DATE
-    ? new Date(import.meta.env.VITE_APP_BUILD_DATE).toLocaleString()
-    : import.meta.env.DEV
-      ? 'Local build'
+  const version = APP_VERSION !== '0.0.0' ? APP_VERSION : 'dev';
+  const commitHash = (typeof __GIT_COMMIT__ !== 'undefined' && __GIT_COMMIT__) || '—';
+  const commitCount = (typeof __COMMIT_COUNT__ !== 'undefined' && __COMMIT_COUNT__) || '—';
+  const branch = (typeof __GIT_BRANCH__ !== 'undefined' && __GIT_BRANCH__) || '—';
+  const buildMessage = (typeof __BUILD_MESSAGE__ !== 'undefined' && __BUILD_MESSAGE__) || '';
+  const buildFeatures: string[] =
+    (typeof __BUILD_FEATURES__ !== 'undefined' && __BUILD_FEATURES__) || [];
+  const buildDate =
+    typeof __BUILD_DATE__ !== 'undefined' && __BUILD_DATE__
+      ? new Date(__BUILD_DATE__).toLocaleString()
       : 'Unknown';
 
   const positionClasses = {
@@ -67,18 +74,37 @@ export function VersionDisplay({
         {isExpanded && expandable && (
           <div className="space-y-1.5 pt-1 border-t border-sidebar-border">
             <div className="flex items-center gap-2 text-muted-foreground">
-              <GitCommit className="h-3 w-3" />
+              <GitCommit className="h-3 w-3 shrink-0" />
               <span className="font-mono">{commitHash}</span>
+              <span className="text-muted-foreground/50 ml-auto">#{commitCount}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
-              <GitBranch className="h-3 w-3" />
+              <GitBranch className="h-3 w-3 shrink-0" />
               <span>{branch}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
-              <Calendar className="h-3 w-3" />
+              <Calendar className="h-3 w-3 shrink-0" />
               <span className="text-xs">{buildDate}</span>
             </div>
-            <div className="text-xs text-muted-foreground/70 pt-1">Build #{commitCount}</div>
+            {buildMessage && (
+              <div className="pt-1 border-t border-sidebar-border">
+                <p className="text-xs font-medium text-sidebar-foreground truncate">
+                  {buildMessage}
+                </p>
+              </div>
+            )}
+            {buildFeatures.length > 0 && (
+              <div className="pt-1 border-t border-sidebar-border space-y-0.5">
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground/60 mb-1">
+                  Recent commits
+                </p>
+                {buildFeatures.map((f, i) => (
+                  <p key={i} className="text-xs text-muted-foreground leading-tight truncate">
+                    • {f}
+                  </p>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>

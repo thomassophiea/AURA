@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import {
+  Bot,
   ThumbsUp,
   ThumbsDown,
   Copy,
@@ -82,18 +83,11 @@ export function ConversationStream({
 
         {messages.map((msg) => (
           <div key={msg.id} className={cn('flex gap-3', msg.role === 'user' && 'justify-end')}>
-            {msg.role === 'agent' && (
-              <img
-                src="/logo.svg"
-                alt="Agent"
-                className="h-6 w-6 shrink-0 mt-0.5 opacity-80"
-                style={{ filter: 'hue-rotate(260deg) saturate(1.5) brightness(1.2)' }}
-              />
-            )}
+            {msg.role === 'agent' && <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />}
             <div className={cn('max-w-[85%] space-y-2', msg.role === 'user' && 'items-end')}>
               {msg.role === 'agent' && (
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white/80">Agent ONE</span>
+                  <span className="text-xs font-semibold text-white/80">Ultr0n</span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
                     Coworker
                   </span>
@@ -175,12 +169,7 @@ export function ConversationStream({
 
         {isThinking && (
           <div className="flex gap-3">
-            <img
-              src="/logo.svg"
-              alt="Agent"
-              className="h-6 w-6 shrink-0 mt-0.5 opacity-80"
-              style={{ filter: 'hue-rotate(260deg) saturate(1.5) brightness(1.2)' }}
-            />
+            <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />
             <div className="flex items-center gap-1.5 py-1">
               {[0, 1, 2].map((i) => (
                 <div

@@ -11,21 +11,36 @@ function getVersionInfo() {
   if (existsSync(versionPath)) {
     try {
       const versionData = JSON.parse(readFileSync(versionPath, 'utf-8'));
-      // Use cacheVersion if available, otherwise calculate from commitCount
       const cacheVersion =
         versionData.cacheVersion || parseInt(versionData.commitCount, 10) + 500 || 1;
       return {
         version: versionData.version || '0.0.0',
-        cacheVersion: cacheVersion,
+        cacheVersion,
+        commit: versionData.commit || '',
+        branch: versionData.branch || 'main',
+        buildDate: versionData.buildDate || new Date().toISOString(),
+        commitCount: versionData.commitCount || '0',
+        message: versionData.message || '',
+        features: versionData.features || [],
       };
     } catch (e) {
       console.warn('Failed to read version.json:', e);
     }
   }
-  return { version: '0.0.0', cacheVersion: 1 };
+  return {
+    version: '0.0.0',
+    cacheVersion: 1,
+    commit: '',
+    branch: 'main',
+    buildDate: '',
+    commitCount: '0',
+    message: '',
+    features: [],
+  };
 }
 
-const { version, cacheVersion } = getVersionInfo();
+const versionInfo = getVersionInfo();
+const { version, cacheVersion } = versionInfo;
 console.log(`Building with APP_VERSION=${version}, CACHE_VERSION=${cacheVersion}`);
 
 export default defineConfig(({ mode }) => ({
@@ -49,9 +64,14 @@ export default defineConfig(({ mode }) => ({
     drop: mode === 'production' ? (['console', 'debugger'] as ('console' | 'debugger')[]) : [],
   },
   define: {
-    // Inject version constants at build time
     __APP_VERSION__: JSON.stringify(version),
     __CACHE_VERSION__: cacheVersion,
+    __GIT_COMMIT__: JSON.stringify(versionInfo.commit),
+    __GIT_BRANCH__: JSON.stringify(versionInfo.branch),
+    __BUILD_DATE__: JSON.stringify(versionInfo.buildDate),
+    __COMMIT_COUNT__: JSON.stringify(versionInfo.commitCount),
+    __BUILD_MESSAGE__: JSON.stringify(versionInfo.message),
+    __BUILD_FEATURES__: JSON.stringify(versionInfo.features),
   },
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],

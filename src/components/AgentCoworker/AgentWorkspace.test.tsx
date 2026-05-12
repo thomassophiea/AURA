@@ -35,7 +35,7 @@ describe('AgentWorkspace', () => {
 
   it('renders panel when mode is open', () => {
     render(<AgentWorkspace {...baseProps} />);
-    expect(screen.getByText('Agent ONE')).toBeInTheDocument();
+    expect(screen.getByText('Ultr0n')).toBeInTheDocument();
   });
 
   it('is visually hidden (translate-x-full) when mode is idle', () => {

@@ -170,7 +170,7 @@ export function AgentWorkspace({
         {/* Header */}
         <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/8">
           <Bot className="h-5 w-5 shrink-0 text-violet-400" />
-          <span className="text-sm font-semibold text-white/90">Agent ONE</span>
+          <span className="text-sm font-semibold text-white/90">Ultr0n</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
             Coworker
           </span>
