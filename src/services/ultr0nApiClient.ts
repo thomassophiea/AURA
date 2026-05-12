@@ -1,79 +1,94 @@
 /**
  * Ultr0n API Client
- * Phase 2 stubs for backend LLM routes (/api/ultr0n/*)
- * Phase 1: minimal implementations for local demo mode
+ * Phase 2: real fetch calls to /api/ultr0n/* backend routes.
  */
 
 import type { UltronPageContext } from '@/types/ultron';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 
-/**
- * Create a new Ultr0n conversation session.
- * Phase 2: POST /api/ultr0n/session with context body.
- */
+function getAuthHeader(): string {
+  try {
+    const token = localStorage.getItem('access_token') ?? '';
+    return token ? `Bearer ${token}` : '';
+  } catch {
+    return '';
+  }
+}
+
+async function ultr0nFetch<T>(path: string, body: unknown): Promise<T> {
+  const resp = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: getAuthHeader(),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!resp.ok) {
+    const msg = await resp.text().catch(() => resp.statusText);
+    throw new Error(`Ultr0n API error ${resp.status}: ${msg}`);
+  }
+
+  return resp.json() as Promise<T>;
+}
+
+/** Create a new Ultr0n conversation session on the backend. */
 export async function createUltr0nSession(
-  _context: UltronPageContext
+  context: UltronPageContext
 ): Promise<{ sessionId: string }> {
-  // Phase 1: generate local session ID
-  return { sessionId: crypto.randomUUID() };
+  return ultr0nFetch('/api/ultr0n/session', { context });
 }
 
-/**
- * Send a message within an existing session.
- * Phase 2: POST /api/ultr0n/message
- */
+/** Send a message to an existing session; returns the LLM's AgentMessage reply. */
 export async function sendUltr0nMessage(
-  _sessionId: string,
-  _message: string,
-  _context: UltronPageContext
+  sessionId: string,
+  message: string,
+  context: UltronPageContext
 ): Promise<AgentMessage> {
-  throw new Error(
-    'ultr0nApiClient.sendUltr0nMessage: not yet implemented — use agentService in Phase 1'
-  );
+  const raw = await ultr0nFetch<{
+    id: string;
+    role: string;
+    content: string;
+    timestamp: string;
+    reasoning?: string;
+  }>('/api/ultr0n/message', { sessionId, message, context });
+
+  return { ...raw, role: 'agent', timestamp: new Date(raw.timestamp) } as AgentMessage;
 }
 
-/**
- * Refresh the backend session's page context.
- * Phase 2: POST /api/ultr0n/context
- */
+/** Refresh the backend session's page context (no-op response). */
 export async function refreshUltr0nContext(
-  _sessionId: string,
-  _context: UltronPageContext
+  sessionId: string,
+  context: UltronPageContext
 ): Promise<void> {
-  // Phase 1: no-op
+  await ultr0nFetch('/api/ultr0n/context', { sessionId, context });
 }
 
-/**
- * Execute a named tool call within a session.
- * Phase 2: POST /api/ultr0n/tool-call
- */
+/** Execute a named tool call within a session (Phase 3). */
 export async function executeUltr0nToolCall(
-  _sessionId: string,
+  sessionId: string,
   toolName: string,
-  _args: Record<string, unknown>
+  args: Record<string, unknown>
 ): Promise<unknown> {
-  throw new Error(`ultr0nApiClient.executeUltr0nToolCall: not yet implemented (tool: ${toolName})`);
+  return ultr0nFetch('/api/ultr0n/tool-call', { sessionId, toolName, args });
 }
 
-/**
- * Generate a preview diff for a proposed config change.
- * Phase 2: POST /api/ultr0n/config/preview
- */
+/** Generate a config change preview diff (Phase 3). */
 export async function previewUltr0nConfigChange(
-  _sessionId: string,
-  _changePlan: unknown
+  sessionId: string,
+  changePlan: unknown
 ): Promise<unknown> {
-  throw new Error('ultr0nApiClient.previewUltr0nConfigChange: not yet implemented');
+  return ultr0nFetch('/api/ultr0n/config/preview', { sessionId, changePlan });
 }
 
 /**
- * Commit an approved config change.
- * Phase 2: POST /api/ultr0n/config/commit
+ * Commit an approved config change (Phase 3).
  * IMPORTANT: Only call after explicit human approval in the UI.
  */
 export async function commitUltr0nConfigChange(
-  _sessionId: string,
-  _approvedChangeId: string
+  sessionId: string,
+  approvedChangeId: string
 ): Promise<unknown> {
-  throw new Error('ultr0nApiClient.commitUltr0nConfigChange: not yet implemented');
+  return ultr0nFetch('/api/ultr0n/config/commit', { sessionId, approvedChangeId });
 }
