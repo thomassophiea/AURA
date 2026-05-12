@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { ExternalLink, LayoutGrid, Mic, MicOff } from 'lucide-react';
+import { Bot, ExternalLink, LayoutGrid, Mic, MicOff } from 'lucide-react';
 import { cn } from '../ui/utils';
 
 interface AgentCommandBarProps {
@@ -37,12 +37,7 @@ export function AgentCommandBar({
             'shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_0_1px_rgba(187,134,252,0.25),0_0_32px_rgba(187,134,252,0.12)]'
         )}
       >
-        <img
-          src="/logo.svg"
-          alt="AURA"
-          className="h-5 w-5 shrink-0 opacity-90"
-          style={{ filter: 'hue-rotate(260deg) saturate(1.5) brightness(1.2)' }}
-        />
+        <Bot className="h-5 w-5 shrink-0 text-violet-400" />
 
         <input
           ref={inputRef}

@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { X, Minus, Pin, Maximize2 } from 'lucide-react';
+import { Bot, X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { ConversationStream } from './panels/ConversationStream';
 import { ExecutionPlanView } from './panels/ExecutionPlanView';
@@ -136,11 +136,7 @@ export function AgentWorkspace({
         onClick={onPin}
         title="Expand Agent Workspace"
       >
-        <img
-          src="/logo.svg"
-          alt="Agent"
-          className="h-5 w-5 opacity-70 [filter:hue-rotate(260deg)_saturate(1.5)_brightness(1.2)]"
-        />
+        <Bot className="h-5 w-5 text-violet-400/70" />
       </button>
     );
   }
@@ -173,11 +169,7 @@ export function AgentWorkspace({
 
         {/* Header */}
         <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/8">
-          <img
-            src="/logo.svg"
-            alt="AURA"
-            className="h-5 w-5 opacity-90 shrink-0 [filter:hue-rotate(260deg)_saturate(1.5)_brightness(1.2)]"
-          />
+          <Bot className="h-5 w-5 shrink-0 text-violet-400" />
           <span className="text-sm font-semibold text-white/90">Agent ONE</span>
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
             Coworker

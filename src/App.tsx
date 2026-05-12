@@ -296,8 +296,8 @@ export default function App() {
   });
   const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [networkAssistantEnabled, setNetworkAssistantEnabled] = useState(() => {
-    // Default to false - hidden by default
-    return localStorage.getItem('networkAssistantEnabled') === 'true';
+    const stored = localStorage.getItem('networkAssistantEnabled');
+    return stored === null ? true : stored === 'true';
   });
   const [isDevModeOpen, setIsDevModeOpen] = useState(false);
   const [activePersona, setActivePersonaRaw] = useState<PersonaId>(readStoredPersona);
