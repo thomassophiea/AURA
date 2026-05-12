@@ -19,13 +19,13 @@ import React, {
 } from 'react';
 import { useAppContext } from './AppContext';
 import { agentService } from '../services/agentService';
+import { createUltr0nSession, sendUltr0nMessage } from '../services/ultr0nApiClient';
 import type {
   AgentMessage,
   AuditEntry,
   APITimelineEntry,
   ExecutionPlan,
 } from '../components/AgentCoworker/agentTypes';
-import type { AssistantUIContext } from '../components/AgentCoworker/agentTypes';
 import type { UltronAvailableAction, UltronInsight, UltronPageContext } from '../types/ultron';
 import { ULTR0N_SUGGESTED_PROMPTS } from '../types/ultron';
 
@@ -108,9 +108,11 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   const [isOpen, setIsOpen] = useState(false);
 
   // ---- Session / conversation ----
-  const [sessionId, setSessionId] = useState<string | null>(() =>
-    typeof crypto !== 'undefined' ? crypto.randomUUID() : null
-  );
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    sessionIdRef.current = sessionId;
+  }, [sessionId]);
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [pendingPlan, setPendingPlan] = useState<ExecutionPlan | null>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -221,18 +223,51 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   // ============================================
 
   const sendMessage = useCallback(async (message: string) => {
+    const userMsg: AgentMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMsg]);
     setIsThinking(true);
+
     try {
-      const reply = await agentService.sendMessage(
-        message,
-        // Cast: agentService expects AssistantUIContext but UltronPageContext is compatible enough
-        // for Phase 1. Task 6 will update the signature.
-        ultronContextRef.current as unknown as AssistantUIContext
-      );
-      setMessages(agentService.getMessages());
-      if (reply.executionPlan) {
-        setPendingPlan(reply.executionPlan);
+      const intent = await agentService.parseIntent(message);
+
+      if (intent) {
+        const plan = await agentService.buildExecutionPlan(intent);
+        const agentMsg: AgentMessage = {
+          id: `agent-${Date.now()}`,
+          role: 'agent',
+          content: `I've built an execution plan for: **${plan.title}**\n\nThis will affect ${plan.impactedObjects.map((o) => o.name).join(', ')}. Review the plan and approve to proceed.`,
+          timestamp: new Date(),
+          executionPlan: plan,
+          reasoning: `Detected write intent: "${intent.action}" targeting ${intent.targetType}. Built ${plan.steps.length}-step plan.`,
+        };
+        setMessages((prev) => [...prev, agentMsg]);
+        setPendingPlan(plan);
+        return;
       }
+
+      let sid = sessionIdRef.current;
+      if (!sid) {
+        const { sessionId: newId } = await createUltr0nSession(ultronContextRef.current);
+        sid = newId;
+        setSessionId(newId);
+        sessionIdRef.current = newId;
+      }
+
+      const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
+      setMessages((prev) => [...prev, reply]);
+    } catch {
+      const errorMsg: AgentMessage = {
+        id: `agent-${Date.now()}`,
+        role: 'agent',
+        content: 'Unable to get a response. Please check your connection and try again.',
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsThinking(false);
     }
@@ -246,7 +281,8 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
     agentService.clearHistory();
     setMessages([]);
     setPendingPlan(null);
-    setSessionId(typeof crypto !== 'undefined' ? crypto.randomUUID() : null);
+    setSessionId(null);
+    sessionIdRef.current = null;
   }, []);
 
   // ============================================
