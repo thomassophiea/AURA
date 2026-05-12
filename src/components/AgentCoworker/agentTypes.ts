@@ -19,14 +19,8 @@ export type PlanStatus =
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
-export interface AssistantUIContext {
-  type: 'site' | 'client' | 'access-point' | 'wlan' | null;
-  entityId?: string;
-  entityName?: string;
-  siteId?: string;
-  siteName?: string;
-  timeRange?: string;
-}
+// Re-export UltronPageContext as AssistantUIContext for backward compatibility
+export type { UltronPageContext as AssistantUIContext } from '@/types/ultron';
 
 export interface AgentMessage {
   id: string;

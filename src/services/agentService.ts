@@ -8,8 +8,8 @@ import type {
   ImpactedObject,
   OperationIntent,
   PlanStep,
-  AssistantUIContext,
 } from '../components/AgentCoworker/agentTypes';
+import type { UltronPageContext, UltronPageType, UltronInsight } from '@/types/ultron';
 
 const AUDIT_KEY = 'agent-audit-history';
 
@@ -76,7 +76,7 @@ export class AgentService {
     return [...this.apiTimeline];
   }
 
-  async sendMessage(content: string, context?: AssistantUIContext): Promise<AgentMessage> {
+  async sendMessage(content: string, context?: UltronPageContext): Promise<AgentMessage> {
     const userMsg: AgentMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -106,7 +106,7 @@ export class AgentService {
     return agentMsg;
   }
 
-  private async handleQuery(content: string, _context?: AssistantUIContext): Promise<AgentMessage> {
+  private async handleQuery(content: string, context?: UltronPageContext): Promise<AgentMessage> {
     try {
       const [sites, aps, stations] = await Promise.all([
         apiService.getSites().catch(() => []),
@@ -130,10 +130,12 @@ export class AgentService {
         responseContent = `There are **${sites.length}** sites configured.`;
       }
 
+      const prefix = context?.pageName ? `On the **${context.pageName}** page: ` : '';
+
       return {
         id: `agent-${Date.now()}`,
         role: 'agent',
-        content: responseContent,
+        content: prefix + responseContent,
         timestamp: new Date(),
         reasoning: `Fetched live data: ${sites.length} sites, ${aps.length} APs, ${stations.length} stations. Matched query pattern to provide targeted response.`,
       };
@@ -373,6 +375,10 @@ export class AgentService {
     } catch {
       // ignore quota errors or unavailable storage
     }
+  }
+
+  getPageInsights(_pageType: UltronPageType): UltronInsight[] {
+    return [];
   }
 }
 

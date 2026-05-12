@@ -1,0 +1,718 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <title>Code coverage report for AURA/src/lib/wifi-codes.ts</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="../../../prettify.css" />
+    <link rel="stylesheet" href="../../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../../favicon.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style type='text/css'>
+        .coverage-summary .sorter {
+            background-image: url(../../../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+    
+<body>
+<div class='wrapper'>
+    <div class='pad1'>
+        <h1><a href="../../../index.html">All files</a> / <a href="index.html">AURA/src/lib</a> wifi-codes.ts</h1>
+        <div class='clearfix'>
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Statements</span>
+                <span class='fraction'>188/188</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>19/19</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Functions</span>
+                <span class='fraction'>4/4</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">100% </span>
+                <span class="quiet">Lines</span>
+                <span class='fraction'>188/188</span>
+            </div>
+        
+            
+        </div>
+        <p class="quiet">
+            Press <em>n</em> or <em>j</em> to go to the next uncovered block, <em>b</em>, <em>p</em> or <em>k</em> for the previous block.
+        </p>
+        <template id="filterTemplate">
+            <div class="quiet">
+                Filter:
+                <input type="search" id="fileSearch">
+            </div>
+        </template>
+    </div>
+    <div class='status-line high'></div>
+    <pre><table class="coverage">
+<tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
+<a name='L2'></a><a href='#L2'>2</a>
+<a name='L3'></a><a href='#L3'>3</a>
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a>
+<a name='L22'></a><a href='#L22'>22</a>
+<a name='L23'></a><a href='#L23'>23</a>
+<a name='L24'></a><a href='#L24'>24</a>
+<a name='L25'></a><a href='#L25'>25</a>
+<a name='L26'></a><a href='#L26'>26</a>
+<a name='L27'></a><a href='#L27'>27</a>
+<a name='L28'></a><a href='#L28'>28</a>
+<a name='L29'></a><a href='#L29'>29</a>
+<a name='L30'></a><a href='#L30'>30</a>
+<a name='L31'></a><a href='#L31'>31</a>
+<a name='L32'></a><a href='#L32'>32</a>
+<a name='L33'></a><a href='#L33'>33</a>
+<a name='L34'></a><a href='#L34'>34</a>
+<a name='L35'></a><a href='#L35'>35</a>
+<a name='L36'></a><a href='#L36'>36</a>
+<a name='L37'></a><a href='#L37'>37</a>
+<a name='L38'></a><a href='#L38'>38</a>
+<a name='L39'></a><a href='#L39'>39</a>
+<a name='L40'></a><a href='#L40'>40</a>
+<a name='L41'></a><a href='#L41'>41</a>
+<a name='L42'></a><a href='#L42'>42</a>
+<a name='L43'></a><a href='#L43'>43</a>
+<a name='L44'></a><a href='#L44'>44</a>
+<a name='L45'></a><a href='#L45'>45</a>
+<a name='L46'></a><a href='#L46'>46</a>
+<a name='L47'></a><a href='#L47'>47</a>
+<a name='L48'></a><a href='#L48'>48</a>
+<a name='L49'></a><a href='#L49'>49</a>
+<a name='L50'></a><a href='#L50'>50</a>
+<a name='L51'></a><a href='#L51'>51</a>
+<a name='L52'></a><a href='#L52'>52</a>
+<a name='L53'></a><a href='#L53'>53</a>
+<a name='L54'></a><a href='#L54'>54</a>
+<a name='L55'></a><a href='#L55'>55</a>
+<a name='L56'></a><a href='#L56'>56</a>
+<a name='L57'></a><a href='#L57'>57</a>
+<a name='L58'></a><a href='#L58'>58</a>
+<a name='L59'></a><a href='#L59'>59</a>
+<a name='L60'></a><a href='#L60'>60</a>
+<a name='L61'></a><a href='#L61'>61</a>
+<a name='L62'></a><a href='#L62'>62</a>
+<a name='L63'></a><a href='#L63'>63</a>
+<a name='L64'></a><a href='#L64'>64</a>
+<a name='L65'></a><a href='#L65'>65</a>
+<a name='L66'></a><a href='#L66'>66</a>
+<a name='L67'></a><a href='#L67'>67</a>
+<a name='L68'></a><a href='#L68'>68</a>
+<a name='L69'></a><a href='#L69'>69</a>
+<a name='L70'></a><a href='#L70'>70</a>
+<a name='L71'></a><a href='#L71'>71</a>
+<a name='L72'></a><a href='#L72'>72</a>
+<a name='L73'></a><a href='#L73'>73</a>
+<a name='L74'></a><a href='#L74'>74</a>
+<a name='L75'></a><a href='#L75'>75</a>
+<a name='L76'></a><a href='#L76'>76</a>
+<a name='L77'></a><a href='#L77'>77</a>
+<a name='L78'></a><a href='#L78'>78</a>
+<a name='L79'></a><a href='#L79'>79</a>
+<a name='L80'></a><a href='#L80'>80</a>
+<a name='L81'></a><a href='#L81'>81</a>
+<a name='L82'></a><a href='#L82'>82</a>
+<a name='L83'></a><a href='#L83'>83</a>
+<a name='L84'></a><a href='#L84'>84</a>
+<a name='L85'></a><a href='#L85'>85</a>
+<a name='L86'></a><a href='#L86'>86</a>
+<a name='L87'></a><a href='#L87'>87</a>
+<a name='L88'></a><a href='#L88'>88</a>
+<a name='L89'></a><a href='#L89'>89</a>
+<a name='L90'></a><a href='#L90'>90</a>
+<a name='L91'></a><a href='#L91'>91</a>
+<a name='L92'></a><a href='#L92'>92</a>
+<a name='L93'></a><a href='#L93'>93</a>
+<a name='L94'></a><a href='#L94'>94</a>
+<a name='L95'></a><a href='#L95'>95</a>
+<a name='L96'></a><a href='#L96'>96</a>
+<a name='L97'></a><a href='#L97'>97</a>
+<a name='L98'></a><a href='#L98'>98</a>
+<a name='L99'></a><a href='#L99'>99</a>
+<a name='L100'></a><a href='#L100'>100</a>
+<a name='L101'></a><a href='#L101'>101</a>
+<a name='L102'></a><a href='#L102'>102</a>
+<a name='L103'></a><a href='#L103'>103</a>
+<a name='L104'></a><a href='#L104'>104</a>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a>
+<a name='L123'></a><a href='#L123'>123</a>
+<a name='L124'></a><a href='#L124'>124</a>
+<a name='L125'></a><a href='#L125'>125</a>
+<a name='L126'></a><a href='#L126'>126</a>
+<a name='L127'></a><a href='#L127'>127</a>
+<a name='L128'></a><a href='#L128'>128</a>
+<a name='L129'></a><a href='#L129'>129</a>
+<a name='L130'></a><a href='#L130'>130</a>
+<a name='L131'></a><a href='#L131'>131</a>
+<a name='L132'></a><a href='#L132'>132</a>
+<a name='L133'></a><a href='#L133'>133</a>
+<a name='L134'></a><a href='#L134'>134</a>
+<a name='L135'></a><a href='#L135'>135</a>
+<a name='L136'></a><a href='#L136'>136</a>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a>
+<a name='L152'></a><a href='#L152'>152</a>
+<a name='L153'></a><a href='#L153'>153</a>
+<a name='L154'></a><a href='#L154'>154</a>
+<a name='L155'></a><a href='#L155'>155</a>
+<a name='L156'></a><a href='#L156'>156</a>
+<a name='L157'></a><a href='#L157'>157</a>
+<a name='L158'></a><a href='#L158'>158</a>
+<a name='L159'></a><a href='#L159'>159</a>
+<a name='L160'></a><a href='#L160'>160</a>
+<a name='L161'></a><a href='#L161'>161</a>
+<a name='L162'></a><a href='#L162'>162</a>
+<a name='L163'></a><a href='#L163'>163</a>
+<a name='L164'></a><a href='#L164'>164</a>
+<a name='L165'></a><a href='#L165'>165</a>
+<a name='L166'></a><a href='#L166'>166</a>
+<a name='L167'></a><a href='#L167'>167</a>
+<a name='L168'></a><a href='#L168'>168</a>
+<a name='L169'></a><a href='#L169'>169</a>
+<a name='L170'></a><a href='#L170'>170</a>
+<a name='L171'></a><a href='#L171'>171</a>
+<a name='L172'></a><a href='#L172'>172</a>
+<a name='L173'></a><a href='#L173'>173</a>
+<a name='L174'></a><a href='#L174'>174</a>
+<a name='L175'></a><a href='#L175'>175</a>
+<a name='L176'></a><a href='#L176'>176</a>
+<a name='L177'></a><a href='#L177'>177</a>
+<a name='L178'></a><a href='#L178'>178</a>
+<a name='L179'></a><a href='#L179'>179</a>
+<a name='L180'></a><a href='#L180'>180</a>
+<a name='L181'></a><a href='#L181'>181</a>
+<a name='L182'></a><a href='#L182'>182</a>
+<a name='L183'></a><a href='#L183'>183</a>
+<a name='L184'></a><a href='#L184'>184</a>
+<a name='L185'></a><a href='#L185'>185</a>
+<a name='L186'></a><a href='#L186'>186</a>
+<a name='L187'></a><a href='#L187'>187</a>
+<a name='L188'></a><a href='#L188'>188</a>
+<a name='L189'></a><a href='#L189'>189</a>
+<a name='L190'></a><a href='#L190'>190</a>
+<a name='L191'></a><a href='#L191'>191</a>
+<a name='L192'></a><a href='#L192'>192</a>
+<a name='L193'></a><a href='#L193'>193</a>
+<a name='L194'></a><a href='#L194'>194</a>
+<a name='L195'></a><a href='#L195'>195</a>
+<a name='L196'></a><a href='#L196'>196</a>
+<a name='L197'></a><a href='#L197'>197</a>
+<a name='L198'></a><a href='#L198'>198</a>
+<a name='L199'></a><a href='#L199'>199</a>
+<a name='L200'></a><a href='#L200'>200</a>
+<a name='L201'></a><a href='#L201'>201</a>
+<a name='L202'></a><a href='#L202'>202</a>
+<a name='L203'></a><a href='#L203'>203</a>
+<a name='L204'></a><a href='#L204'>204</a>
+<a name='L205'></a><a href='#L205'>205</a>
+<a name='L206'></a><a href='#L206'>206</a>
+<a name='L207'></a><a href='#L207'>207</a>
+<a name='L208'></a><a href='#L208'>208</a>
+<a name='L209'></a><a href='#L209'>209</a>
+<a name='L210'></a><a href='#L210'>210</a>
+<a name='L211'></a><a href='#L211'>211</a>
+<a name='L212'></a><a href='#L212'>212</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
+ * 802.11 Reason and Status Code Interpretations
+ *
+ * These codes are defined in IEEE 802.11 standard and are used
+ * by wireless clients and APs to communicate disconnection reasons
+ * and association status.
+ */
+&nbsp;
+/**
+ * 802.11 Reason Codes (used in Deauthentication and Disassociation frames)
+ */
+export const REASON_CODES: Record&lt;number, { short: string; description: string; severity: 'info' | 'warning' | 'error' }&gt; = {
+  0: { short: 'Reserved', description: 'Reserved reason code', severity: 'info' },
+  1: { short: 'Unspecified', description: 'Unspecified reason', severity: 'warning' },
+  2: { short: 'Auth Invalid', description: 'Previous authentication no longer valid', severity: 'warning' },
+  3: { short: 'Leaving BSS', description: 'Station is leaving (or has left) the BSS', severity: 'info' },
+  4: { short: 'Inactivity', description: 'Disassociated due to inactivity', severity: 'info' },
+  5: { short: 'AP Overloaded', description: 'AP is unable to handle all associated stations', severity: 'warning' },
+  6: { short: 'Class 2 Error', description: 'Class 2 frame received from non-authenticated station', severity: 'error' },
+  7: { short: 'Class 3 Error', description: 'Class 3 frame received from non-associated station', severity: 'error' },
+  8: { short: 'Left BSS', description: 'Disassociated because station is leaving BSS', severity: 'info' },
+  9: { short: 'Not Authenticated', description: 'Station not authenticated with responding station', severity: 'warning' },
+  10: { short: 'Power Cap Invalid', description: 'Disassociated - power capability unacceptable', severity: 'warning' },
+  11: { short: 'Channel Invalid', description: 'Disassociated - supported channels unacceptable', severity: 'warning' },
+  12: { short: 'Reserved', description: 'Reserved', severity: 'info' },
+  13: { short: 'Invalid IE', description: 'Invalid information element', severity: 'error' },
+  14: { short: 'MIC Failure', description: 'Message integrity code (MIC) failure', severity: 'error' },
+  15: { short: '4-Way Timeout', description: '4-way handshake timeout', severity: 'error' },
+  16: { short: 'Group Key Timeout', description: 'Group key handshake timeout', severity: 'error' },
+  17: { short: 'IE Mismatch', description: 'Information element in 4-way handshake different from association', severity: 'error' },
+  18: { short: 'Group Cipher Invalid', description: 'Invalid group cipher', severity: 'error' },
+  19: { short: 'Pairwise Cipher Invalid', description: 'Invalid pairwise cipher', severity: 'error' },
+  20: { short: 'AKMP Invalid', description: 'Invalid AKMP (authentication and key management protocol)', severity: 'error' },
+  21: { short: 'RSN Version Unsupported', description: 'Unsupported RSN information element version', severity: 'error' },
+  22: { short: 'RSN Cap Invalid', description: 'Invalid RSN information element capabilities', severity: 'error' },
+  23: { short: '802.1X Auth Failed', description: 'IEEE 802.1X authentication failed', severity: 'error' },
+  24: { short: 'Cipher Rejected', description: 'Cipher suite rejected due to security policy', severity: 'error' },
+  25: { short: 'TDLS Teardown Unreachable', description: 'TDLS direct-link teardown - unreachable', severity: 'info' },
+  26: { short: 'TDLS Teardown Unspecified', description: 'TDLS direct-link teardown - unspecified', severity: 'info' },
+  27: { short: 'SSP Requested', description: 'Disassociated - SSP requested', severity: 'info' },
+  28: { short: 'No SSP RSNIE', description: 'No SSP roaming agreement RSNIE', severity: 'warning' },
+  29: { short: 'Bad SSP Cipher', description: 'Bad SSP cipher or AKMP', severity: 'error' },
+  30: { short: 'Not Authorized', description: 'Station not authorized on this location', severity: 'warning' },
+  31: { short: 'Service Change Precluded', description: 'Service change precludes TS', severity: 'warning' },
+  32: { short: 'Unspecified QoS', description: 'Unspecified QoS-related reason', severity: 'warning' },
+  33: { short: 'Insufficient Bandwidth', description: 'QAP lacks sufficient bandwidth for this QSTA', severity: 'warning' },
+  34: { short: 'Excessive Missing ACKs', description: 'Too many frames lost due to poor channel conditions', severity: 'error' },
+  35: { short: 'TXOP Limit Exceeded', description: 'QSTA is transmitting outside TXOPs', severity: 'warning' },
+  36: { short: 'STA Leaving', description: 'Requested from peer QSTA - leaving QBSS', severity: 'info' },
+  37: { short: 'STA No Longer Using', description: 'Requested from peer QSTA - mechanism no longer used', severity: 'info' },
+  38: { short: 'Setup Required', description: 'Requested from peer - setup required', severity: 'info' },
+  39: { short: 'Timeout', description: 'Requested from peer - timeout', severity: 'warning' },
+  40: { short: 'Cipher Unsupported', description: 'Peer QSTA does not support cipher suite', severity: 'error' },
+  45: { short: 'PMK R0 Rejected', description: 'Peerkey handshake rejected - PMK R0 not available', severity: 'error' },
+  46: { short: 'TDLS Channel Switch', description: 'TDLS channel switch prohibited', severity: 'info' },
+  47: { short: 'Not Authorized', description: 'Station not authorized to perform operation', severity: 'warning' },
+  52: { short: 'Session Timeout', description: '802.1X session timeout', severity: 'info' },
+  65535: { short: 'Vendor Specific', description: 'Vendor-specific reason code', severity: 'info' },
+};
+&nbsp;
+/**
+ * 802.11 Status Codes (used in Authentication and Association response frames)
+ */
+export const STATUS_CODES: Record&lt;number, { short: string; description: string; severity: 'success' | 'warning' | 'error' }&gt; = {
+  0: { short: 'Success', description: 'Successful', severity: 'success' },
+  1: { short: 'Unspecified Failure', description: 'Unspecified failure', severity: 'error' },
+  2: { short: 'TDLS Wakeup Rejected', description: 'TDLS wakeup schedule rejected', severity: 'warning' },
+  3: { short: 'TDLS Wakeup Alternate', description: 'TDLS wakeup schedule rejected - alternate provided', severity: 'warning' },
+  5: { short: 'Security Disabled', description: 'Security disabled', severity: 'warning' },
+  6: { short: 'Lifetime Unacceptable', description: 'Unacceptable lifetime', severity: 'warning' },
+  7: { short: 'Not Same BSS', description: 'Not in same BSS', severity: 'warning' },
+  10: { short: 'Capabilities Mismatch', description: 'Cannot support all requested capabilities', severity: 'warning' },
+  11: { short: 'Reassoc Denied', description: 'Reassociation denied - unable to confirm association exists', severity: 'error' },
+  12: { short: 'Assoc Denied', description: 'Association denied - reason outside scope of standard', severity: 'error' },
+  13: { short: 'Auth Algorithm', description: 'Responding station does not support authentication algorithm', severity: 'error' },
+  14: { short: 'Auth Sequence', description: 'Authentication rejected - unexpected auth transaction sequence', severity: 'error' },
+  15: { short: 'Auth Challenge', description: 'Authentication rejected - challenge failure', severity: 'error' },
+  16: { short: 'Auth Timeout', description: 'Authentication rejected - timeout waiting for next frame', severity: 'error' },
+  17: { short: 'Assoc AP Full', description: 'Association denied - AP unable to handle more stations', severity: 'warning' },
+  18: { short: 'Rate Mismatch', description: 'Association denied - station does not support required rates', severity: 'error' },
+  19: { short: 'Short Preamble', description: 'Association denied - station does not support short preamble', severity: 'warning' },
+  20: { short: 'PBCC', description: 'Association denied - station does not support PBCC modulation', severity: 'warning' },
+  21: { short: 'Channel Agility', description: 'Association denied - station does not support Channel Agility', severity: 'warning' },
+  22: { short: 'Spectrum Mgmt', description: 'Association rejected - Spectrum Management required', severity: 'warning' },
+  23: { short: 'Power Cap', description: 'Association rejected - power capability unacceptable', severity: 'warning' },
+  24: { short: 'Channels', description: 'Association rejected - supported channels unacceptable', severity: 'warning' },
+  25: { short: 'Short Slot', description: 'Association denied - station does not support short slot time', severity: 'warning' },
+  26: { short: 'DSSS-OFDM', description: 'Association denied - station does not support DSSS-OFDM', severity: 'warning' },
+  27: { short: 'No HT Support', description: 'Association denied - station does not support HT', severity: 'warning' },
+  28: { short: 'PCO Transition', description: 'R0KH unreachable', severity: 'error' },
+  29: { short: 'PCO Required', description: 'Association denied - PCO transition time not supported', severity: 'warning' },
+  30: { short: 'Rejected Temporarily', description: 'Association denied temporarily - try again later', severity: 'warning' },
+  31: { short: 'MFP Violation', description: 'Robust Management frame policy violation', severity: 'error' },
+  32: { short: 'Unspecified QoS', description: 'Unspecified QoS failure', severity: 'error' },
+  33: { short: 'Insufficient Bandwidth', description: 'Association denied - insufficient bandwidth for QoS', severity: 'warning' },
+  34: { short: 'Poor Channel', description: 'Association denied - poor channel conditions', severity: 'warning' },
+  35: { short: 'QoS Not Supported', description: 'Association denied - station does not support QoS', severity: 'warning' },
+  37: { short: 'Request Declined', description: 'Request has been declined', severity: 'error' },
+  38: { short: 'Invalid Parameters', description: 'Request unsuccessful - invalid parameters', severity: 'error' },
+  39: { short: 'TS Rejected', description: 'TS not created - request cannot be honored', severity: 'error' },
+  40: { short: 'Invalid IE', description: 'Invalid information element', severity: 'error' },
+  41: { short: 'Group Cipher Invalid', description: 'Invalid group cipher', severity: 'error' },
+  42: { short: 'Pairwise Cipher Invalid', description: 'Invalid pairwise cipher', severity: 'error' },
+  43: { short: 'AKMP Invalid', description: 'Invalid AKMP', severity: 'error' },
+  44: { short: 'RSN Version', description: 'Unsupported RSN version', severity: 'error' },
+  45: { short: 'RSN Capabilities', description: 'Invalid RSN capabilities', severity: 'error' },
+  46: { short: 'Cipher Rejected', description: 'Cipher suite rejected - security policy', severity: 'error' },
+  47: { short: 'TS Pending', description: 'TS schedule conflict', severity: 'warning' },
+  48: { short: 'DLS Not Allowed', description: 'Direct link not allowed in BSS', severity: 'warning' },
+  49: { short: 'Dest Not Present', description: 'Destination STA not present in BSS', severity: 'warning' },
+  50: { short: 'Dest Not QoS', description: 'Destination STA is not a QoS STA', severity: 'warning' },
+  51: { short: 'Listen Interval', description: 'Association denied - listen interval too large', severity: 'warning' },
+  52: { short: 'FT Invalid', description: 'Invalid FT action frame count', severity: 'error' },
+  53: { short: 'PMKID Invalid', description: 'Invalid PMKID', severity: 'error' },
+  54: { short: 'MDE Invalid', description: 'Invalid MDE', severity: 'error' },
+  55: { short: 'FTE Invalid', description: 'Invalid FTE', severity: 'error' },
+  72: { short: 'No VHT Support', description: 'Association denied - station does not support VHT', severity: 'warning' },
+  77: { short: 'Denied PSK', description: 'Denied due to external password failure', severity: 'error' },
+  92: { short: 'No HE Support', description: 'Association denied - station does not support HE (Wi-Fi 6)', severity: 'warning' },
+};
+&nbsp;
+/**
+ * Get human-readable reason code interpretation
+ */
+export function getReasonCodeInfo(code: number | undefined | null): { short: string; description: string; severity: 'info' | 'warning' | 'error' } | null {
+  if (code === undefined || code === null) return null;
+  return REASON_CODES[code] || { short: `Code ${code}`, description: `Unknown reason code: ${code}`, severity: 'warning' };
+}
+&nbsp;
+/**
+ * Get human-readable status code interpretation
+ */
+export function getStatusCodeInfo(code: number | undefined | null): { short: string; description: string; severity: 'success' | 'warning' | 'error' } | null {
+  if (code === undefined || code === null) return null;
+  return STATUS_CODES[code] || { short: `Code ${code}`, description: `Unknown status code: ${code}`, severity: 'warning' };
+}
+&nbsp;
+/**
+ * Determine if a reason code indicates a failure/error condition
+ */
+export function isFailureReasonCode(code: number | undefined | null): boolean {
+  if (code === undefined || code === null) return false;
+  const info = REASON_CODES[code];
+  if (!info) return false;
+  return info.severity === 'error';
+}
+&nbsp;
+/**
+ * Determine if a status code indicates a failure/error condition
+ */
+export function isFailureStatusCode(code: number | undefined | null): boolean {
+  if (code === undefined || code === null) return false;
+  // Status code 0 is success, anything else is a failure
+  return code !== 0;
+}
+&nbsp;
+/**
+ * Common roaming issue patterns
+ */
+export const ROAMING_ISSUES = {
+  PING_PONG: 'ping-pong',
+  STICKY_CLIENT: 'sticky-client',
+  LATE_ROAM: 'late-roam',
+  AUTH_FAILURE: 'auth-failure',
+  POOR_HANDOFF: 'poor-handoff',
+  BAND_BOUNCE: 'band-bounce',
+  INTERBAND_ROAM: 'interband-roam',
+} as const;
+&nbsp;
+export type RoamingIssue = typeof ROAMING_ISSUES[keyof typeof ROAMING_ISSUES];
+&nbsp;
+/**
+ * Issue descriptions for display
+ */
+export const ISSUE_DESCRIPTIONS: Record&lt;RoamingIssue, { title: string; description: string; severity: 'info' | 'warning' | 'error' }&gt; = {
+  [ROAMING_ISSUES.PING_PONG]: {
+    title: 'Ping-Pong Roaming',
+    description: 'Client is rapidly switching between APs, indicating coverage overlap issues or misconfigured roaming thresholds',
+    severity: 'warning',
+  },
+  [ROAMING_ISSUES.STICKY_CLIENT]: {
+    title: 'Sticky Client',
+    description: 'Client stayed connected to AP with poor signal instead of roaming to a better AP',
+    severity: 'warning',
+  },
+  [ROAMING_ISSUES.LATE_ROAM]: {
+    title: 'Late Roaming',
+    description: 'Client roamed at very weak signal level (below -75 dBm), indicating delayed roaming decision',
+    severity: 'warning',
+  },
+  [ROAMING_ISSUES.AUTH_FAILURE]: {
+    title: 'Authentication Failure',
+    description: 'Client failed to authenticate during roaming attempt',
+    severity: 'error',
+  },
+  [ROAMING_ISSUES.POOR_HANDOFF]: {
+    title: 'Poor Handoff',
+    description: 'Roaming completed but signal quality degraded significantly',
+    severity: 'warning',
+  },
+  [ROAMING_ISSUES.BAND_BOUNCE]: {
+    title: 'Band Bounce',
+    description: 'Client is frequently switching between frequency bands (2.4/5/6 GHz)',
+    severity: 'info',
+  },
+  [ROAMING_ISSUES.INTERBAND_ROAM]: {
+    title: 'Interband Roaming',
+    description: 'Client changed frequency bands on the same access point. This indicates band steering issues, poor 5GHz coverage, or interference causing the client to fall back to a less optimal band.',
+    severity: 'error',
+  },
+};
+&nbsp;</pre></td></tr></table></pre>
+
+                <div class='push'></div><!-- for sticky footer -->
+            </div><!-- /wrapper -->
+            <div class='footer quiet pad2 space-top1 center small'>
+                Code coverage generated by
+                <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
+                at 2026-05-08T02:19:31.207Z
+            </div>
+        <script src="../../../prettify.js"></script>
+        <script>
+            window.onload = function () {
+                prettyPrint();
+            };
+        </script>
+        <script src="../../../sorter.js"></script>
+        <script src="../../../block-navigation.js"></script>
+    </body>
+</html>
+    
