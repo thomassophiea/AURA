@@ -1,7 +1,9 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import { AgentCoworker } from './components/AgentCoworker';
-import type { AssistantUIContext as AssistantContext } from './components/AgentCoworker/agentTypes';
+import { UltronContextProvider } from './contexts/UltronContext';
+import { ULTR0N_PAGE_NAMES, ULTR0N_PAGE_TYPES } from './types/ultron';
+import type { UltronPageContext } from './types/ultron';
 import { LoginForm } from './components/LoginForm';
 import { SharedReportViewer } from './components/SharedReportViewer';
 import { Sidebar } from './components/Sidebar';
@@ -332,53 +334,23 @@ export default function App() {
   // Device detection for responsive design
   const device = useDeviceDetection();
 
-  // Compute assistant context based on current state
-  const assistantContext = useMemo((): AssistantContext | undefined => {
-    // If a detail panel is open, use that as context
-    if (detailPanel.isOpen && detailPanel.type && detailPanel.data) {
-      if (detailPanel.type === 'client') {
-        return {
-          type: 'client',
-          entityId: detailPanel.data.macAddress,
-          entityName: detailPanel.data.hostName || detailPanel.data.macAddress,
-          siteId: filters.site !== 'all' ? filters.site : undefined,
-          siteName: siteName || undefined,
-          timeRange: filters.timeRange,
-        };
-      }
-      if (detailPanel.type === 'access-point') {
-        return {
-          type: 'access-point',
-          entityId: detailPanel.data.serialNumber,
-          entityName: detailPanel.data.displayName || detailPanel.data.serialNumber,
-          siteId: filters.site !== 'all' ? filters.site : undefined,
-          siteName: siteName || undefined,
-          timeRange: filters.timeRange,
-        };
-      }
-      if (detailPanel.type === 'site') {
-        return {
-          type: 'site',
-          entityId: detailPanel.data.siteId,
-          entityName: detailPanel.data.siteName,
-          siteId: detailPanel.data.siteId,
-          siteName: detailPanel.data.siteName,
-          timeRange: filters.timeRange,
-        };
-      }
-    }
-    // If a site is selected in global filters, use site context
-    if (filters.site && filters.site !== 'all') {
-      return {
-        type: 'site',
-        siteId: filters.site,
-        siteName: siteName || undefined,
-        timeRange: filters.timeRange,
-      };
-    }
-    // No specific context
-    return undefined;
-  }, [detailPanel, filters, siteName]);
+  const ultr0nBaseContext = useMemo(
+    (): Partial<UltronPageContext> => ({
+      route: currentPage,
+      pageName: ULTR0N_PAGE_NAMES[currentPage] ?? currentPage,
+      pageType: ULTR0N_PAGE_TYPES[currentPage] ?? 'unknown',
+      siteId: filters.site !== 'all' ? filters.site : undefined,
+      siteName: siteName || undefined,
+      userRole: activePersona,
+      timeRange: {
+        label: filters.timeRange,
+        start: filters.dateFrom?.toISOString() ?? '',
+        end: filters.dateTo?.toISOString() ?? new Date().toISOString(),
+      },
+      filters: { site: filters.site, timeRange: filters.timeRange },
+    }),
+    [currentPage, filters, siteName, activePersona]
+  );
 
   useEffect(() => {
     // Initialize theme from localStorage or system preference
@@ -1341,214 +1313,215 @@ export default function App() {
         onPageChange={handlePageChange}
         onTemplateCreation={handleTemplateCreation}
       >
-        <PersonaProvider
-          theme={theme}
-          activePersona={activePersona}
-          setActivePersona={setActivePersona}
-        >
-          <>
-            {/* Unified floating-card layout — all themes */}
-            <div
-              className="flex flex-col bg-background"
-              style={{ height: '100vh', padding: 16, gap: 16, position: 'relative', zIndex: 1 }}
-            >
-              {/* Universal top bar card */}
+        <UltronContextProvider pageContext={ultr0nBaseContext}>
+          <PersonaProvider
+            theme={theme}
+            activePersona={activePersona}
+            setActivePersona={setActivePersona}
+          >
+            <>
+              {/* Unified floating-card layout — all themes */}
               <div
-                className="bg-sidebar shrink-0 flex items-center gap-3 rounded-[8px]"
-                style={{
-                  height: 52,
-                  padding: '0 16px',
-                  boxShadow:
-                    theme === 'ep1'
-                      ? '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)'
-                      : '0 2px 8px rgba(0,0,0,0.12)',
-                }}
+                className="flex flex-col bg-background"
+                style={{ height: '100vh', padding: 16, gap: 16, position: 'relative', zIndex: 1 }}
               >
-                {/* Left side — persistent brand across all themes */}
-                <img
-                  src="/branding/extreme-e.png"
-                  alt="Extreme Networks"
-                  style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }}
-                />
-                <span
-                  className="text-sm font-semibold text-foreground"
-                  style={{ flexShrink: 0, letterSpacing: '-0.01em' }}
-                >
-                  <span style={{ fontWeight: 700 }}>Extreme</span>{' '}
-                  <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
-                    Platform ONE™ | Integration
-                  </span>
-                </span>
-                <div style={{ flex: 1 }} />
-                {navigationScope === 'global' && <SiteGroupFilterDropdown />}
-                {(() => {
-                  const controller = tenantService.getCurrentController();
-                  const org = tenantService.getCurrentOrganization();
-                  if (navigationScope === 'global') {
-                    return (
-                      <span
-                        className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5"
-                        style={{ letterSpacing: '0.08em', flexShrink: 0 }}
-                      >
-                        {(org?.name || 'AURA').toUpperCase()}
-                      </span>
-                    );
-                  }
-                  const siteLabel = (
-                    controller?.name ||
-                    org?.name ||
-                    'Extreme Networks'
-                  ).toUpperCase();
-                  return (
-                    <span
-                      className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5"
-                      style={{ letterSpacing: '0.08em', flexShrink: 0 }}
-                    >
-                      {siteLabel}
-                    </span>
-                  );
-                })()}
-
-                {/* Right side — controls for all themes */}
-                <div className="flex items-center gap-1 ml-auto">
-                  {!device.isMobile && theme === 'dev' && (
-                    <>
-                      <PersonaSelector />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleToggleDevMode}
-                        title="Developer Mode - API Monitor"
-                        style={
-                          isDevModeOpen
-                            ? {
-                                color: 'var(--primary)',
-                                backgroundColor:
-                                  'color-mix(in srgb, var(--primary) 20%, transparent)',
-                                boxShadow:
-                                  '0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent)',
-                              }
-                            : undefined
-                        }
-                      >
-                        <Braces className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setCurrentPage('api-test')}
-                        title="API Test Tool"
-                        style={
-                          currentPage === 'api-test'
-                            ? {
-                                color: 'var(--primary)',
-                                backgroundColor:
-                                  'color-mix(in srgb, var(--primary) 20%, transparent)',
-                                boxShadow:
-                                  '0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent)',
-                              }
-                            : undefined
-                        }
-                      >
-                        <FlaskConical className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          window.open(
-                            'https://github.com/thomassophiea/EDGE',
-                            '_blank',
-                            'noopener,noreferrer'
-                          )
-                        }
-                        title="GitHub"
-                      >
-                        <Github className="h-4 w-4" />
-                      </Button>
-                    </>
-                  )}
-                  {!device.isMobile && <NotificationsMenu />}
-                  {!device.isMobile && <AppsMenu />}
-                  <UserMenu
-                    onLogout={handleLogout}
-                    theme={theme}
-                    onThemeToggle={toggleTheme}
-                    userEmail={localStorage.getItem('user_email') || undefined}
-                    onNavigateTo={handlePageChange}
-                  />
-                </div>
-              </div>
-
-              {/* Sidebar + Content row */}
-              <div style={{ flex: 1, display: 'flex', gap: 16, overflow: 'hidden' }}>
-                <Sidebar
-                  onLogout={handleLogout}
-                  adminRole={adminRole}
-                  currentPage={currentPage}
-                  onPageChange={handlePageChange}
-                  theme={theme}
-                  onThemeToggle={toggleTheme}
-                />
-                <main
-                  className="flex-1 overflow-auto bg-sidebar rounded-[8px] transition-all duration-200"
+                {/* Universal top bar card */}
+                <div
+                  className="bg-sidebar shrink-0 flex items-center gap-3 rounded-[8px]"
                   style={{
-                    paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0',
+                    height: 52,
+                    padding: '0 16px',
                     boxShadow:
                       theme === 'ep1'
                         ? '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)'
                         : '0 2px 8px rgba(0,0,0,0.12)',
                   }}
                 >
-                  <div className="p-4 sm:p-6">
-                    <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
-                      <Suspense
-                        fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}
+                  {/* Left side — persistent brand across all themes */}
+                  <img
+                    src="/branding/extreme-e.png"
+                    alt="Extreme Networks"
+                    style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }}
+                  />
+                  <span
+                    className="text-sm font-semibold text-foreground"
+                    style={{ flexShrink: 0, letterSpacing: '-0.01em' }}
+                  >
+                    <span style={{ fontWeight: 700 }}>Extreme</span>{' '}
+                    <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
+                      Platform ONE™ | Integration
+                    </span>
+                  </span>
+                  <div style={{ flex: 1 }} />
+                  {navigationScope === 'global' && <SiteGroupFilterDropdown />}
+                  {(() => {
+                    const controller = tenantService.getCurrentController();
+                    const org = tenantService.getCurrentOrganization();
+                    if (navigationScope === 'global') {
+                      return (
+                        <span
+                          className="text-muted-foreground text-xs font-semibold bg-background border border-border rounded px-2 py-0.5"
+                          style={{ letterSpacing: '0.08em', flexShrink: 0 }}
+                        >
+                          {(org?.name || 'AURA').toUpperCase()}
+                        </span>
+                      );
+                    }
+                    const siteLabel = (
+                      controller?.name ||
+                      org?.name ||
+                      'Extreme Networks'
+                    ).toUpperCase();
+                    return (
+                      <span
+                        className="text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded px-2 py-0.5"
+                        style={{ letterSpacing: '0.08em', flexShrink: 0 }}
                       >
-                        <div className="animate-in fade-in duration-300">{renderPage()}</div>
-                      </Suspense>
-                    </ErrorBoundary>
+                        {siteLabel}
+                      </span>
+                    );
+                  })()}
+
+                  {/* Right side — controls for all themes */}
+                  <div className="flex items-center gap-1 ml-auto">
+                    {!device.isMobile && theme === 'dev' && (
+                      <>
+                        <PersonaSelector />
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleToggleDevMode}
+                          title="Developer Mode - API Monitor"
+                          style={
+                            isDevModeOpen
+                              ? {
+                                  color: 'var(--primary)',
+                                  backgroundColor:
+                                    'color-mix(in srgb, var(--primary) 20%, transparent)',
+                                  boxShadow:
+                                    '0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent)',
+                                }
+                              : undefined
+                          }
+                        >
+                          <Braces className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setCurrentPage('api-test')}
+                          title="API Test Tool"
+                          style={
+                            currentPage === 'api-test'
+                              ? {
+                                  color: 'var(--primary)',
+                                  backgroundColor:
+                                    'color-mix(in srgb, var(--primary) 20%, transparent)',
+                                  boxShadow:
+                                    '0 0 0 1px color-mix(in srgb, var(--primary) 50%, transparent)',
+                                }
+                              : undefined
+                          }
+                        >
+                          <FlaskConical className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            window.open(
+                              'https://github.com/thomassophiea/EDGE',
+                              '_blank',
+                              'noopener,noreferrer'
+                            )
+                          }
+                          title="GitHub"
+                        >
+                          <Github className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
+                    {!device.isMobile && <NotificationsMenu />}
+                    {!device.isMobile && <AppsMenu />}
+                    <UserMenu
+                      onLogout={handleLogout}
+                      theme={theme}
+                      onThemeToggle={toggleTheme}
+                      userEmail={localStorage.getItem('user_email') || undefined}
+                      onNavigateTo={handlePageChange}
+                    />
                   </div>
-                </main>
+                </div>
+
+                {/* Sidebar + Content row */}
+                <div style={{ flex: 1, display: 'flex', gap: 16, overflow: 'hidden' }}>
+                  <Sidebar
+                    onLogout={handleLogout}
+                    adminRole={adminRole}
+                    currentPage={currentPage}
+                    onPageChange={handlePageChange}
+                    theme={theme}
+                    onThemeToggle={toggleTheme}
+                  />
+                  <main
+                    className="flex-1 overflow-auto bg-sidebar rounded-[8px] transition-all duration-200"
+                    style={{
+                      paddingBottom: isDevModeOpen ? `${devPanelHeight}px` : '0',
+                      boxShadow:
+                        theme === 'ep1'
+                          ? '0px 16px 16px 0px rgba(30,31,42,0.24),0px 8px 8px 0px rgba(30,31,42,0.24),0px 4px 4px 0px rgba(30,31,42,0.24),0px 2px 2px 0px rgba(30,31,42,0.24)'
+                          : '0 2px 8px rgba(0,0,0,0.12)',
+                    }}
+                  >
+                    <div className="p-4 sm:p-6">
+                      <ErrorBoundary key={currentPage} fallbackTitle="Page Error">
+                        <Suspense
+                          fallback={<PageSkeleton variant={getSkeletonVariant(currentPage)} />}
+                        >
+                          <div className="animate-in fade-in duration-300">{renderPage()}</div>
+                        </Suspense>
+                      </ErrorBoundary>
+                    </div>
+                  </main>
+                </div>
+
+                {!device.isMobile && <Toaster />}
+                {renderDetailPanel()}
               </div>
 
-              {!device.isMobile && <Toaster />}
-              {renderDetailPanel()}
-            </div>
+              {networkAssistantEnabled && (
+                <AgentCoworker
+                  isOpen={isAgentOpen}
+                  onToggle={() => setIsAgentOpen((v) => !v)}
+                  onShowClientDetail={handleShowClientDetail}
+                  onShowAccessPointDetail={handleShowAccessPointDetail}
+                  onShowSiteDetail={handleShowSiteDetail}
+                />
+              )}
 
-            {networkAssistantEnabled && (
-              <AgentCoworker
-                isOpen={isAgentOpen}
-                onToggle={() => setIsAgentOpen((v) => !v)}
-                context={assistantContext}
-                onShowClientDetail={handleShowClientDetail}
-                onShowAccessPointDetail={handleShowAccessPointDetail}
-                onShowSiteDetail={handleShowSiteDetail}
+              {/* Developer Tools Panel - Desktop only */}
+              {!device.isMobile && (
+                <DevToolsPanel
+                  isOpen={isDevModeOpen}
+                  onClose={() => setIsDevModeOpen(false)}
+                  apiLogs={apiLogs}
+                  onClearLogs={handleClearApiLogs}
+                  onHeightChange={setDevPanelHeight}
+                />
+              )}
+              {/* Command palette — ⌘⇧P / ctrl+shift+P (⌘K opens Agent Coworker). */}
+              <CommandPalette
+                onNavigate={(page) => startTransition(() => setCurrentPage(page))}
+                onRefresh={() => {
+                  window.dispatchEvent(new CustomEvent('aura:dashboard-refresh'));
+                }}
               />
-            )}
 
-            {/* Developer Tools Panel - Desktop only */}
-            {!device.isMobile && (
-              <DevToolsPanel
-                isOpen={isDevModeOpen}
-                onClose={() => setIsDevModeOpen(false)}
-                apiLogs={apiLogs}
-                onClearLogs={handleClearApiLogs}
-                onHeightChange={setDevPanelHeight}
-              />
-            )}
-            {/* Command palette — ⌘⇧P / ctrl+shift+P (⌘K opens Agent Coworker). */}
-            <CommandPalette
-              onNavigate={(page) => startTransition(() => setCurrentPage(page))}
-              onRefresh={() => {
-                window.dispatchEvent(new CustomEvent('aura:dashboard-refresh'));
-              }}
-            />
-
-            {/* Version Display - Fixed to bottom-left */}
-            <VersionDisplay position="bottom-left" />
-          </>
-        </PersonaProvider>
+              {/* Version Display - Fixed to bottom-left */}
+              <VersionDisplay position="bottom-left" />
+            </>
+          </PersonaProvider>
+        </UltronContextProvider>
       </AppContextProvider>
     </GridModeProvider>
   );
