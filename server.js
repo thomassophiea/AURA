@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import expressRateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -196,6 +197,9 @@ app.get('/api/version', async (req, res) => {
 // the request body stream, preventing http-proxy-middleware from forwarding
 // POST/PUT bodies to the controller (breaks login and all write operations)
 const jsonParser = express.json();
+
+// Ultr0n LLM endpoints — rate limited separately (LLM calls are expensive)
+const ultr0nRateLimit = rateLimit({ windowMs: 60_000, max: 30 });
 
 // ==================== Simple in-memory rate limiter ====================
 // Limits per-IP requests on expensive/unauthenticated server-side endpoints.
@@ -1351,6 +1355,66 @@ app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
   });
   xiqReq.end();
 });
+
+// ==================== Ultr0n AI Copilot Routes ====================
+// These must appear before the /api proxy middleware so they are
+// handled server-side rather than forwarded to the controller.
+
+app.post('/api/ultr0n/session', requireAuth, ultr0nRateLimit, jsonParser, (req, res) => {
+  try {
+    const context = req.body?.context ?? {};
+    const result = ultr0nOrchestrator.createSession(context);
+    res.json(result);
+  } catch (err) {
+    console.error('[Ultr0n] createSession error:', err.message);
+    res.status(500).json({ error: 'Failed to create Ultr0n session' });
+  }
+});
+
+app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
+  try {
+    const { sessionId, message, context } = req.body ?? {};
+    if (!sessionId || !message) {
+      return res.status(400).json({ error: 'sessionId and message are required' });
+    }
+    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+    const reply = await ultr0nOrchestrator.processMessage(sessionId, message, context ?? {});
+    res.json(reply);
+  } catch (err) {
+    console.error('[Ultr0n] processMessage error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to process message' });
+  }
+});
+
+app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
+  try {
+    const { sessionId, context } = req.body ?? {};
+    if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
+    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+      return res.status(404).json({ error: 'Session not found or expired' });
+    }
+    ultr0nOrchestrator.updateContext(sessionId, context ?? {});
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Ultr0n] updateContext error:', err.message);
+    res.status(500).json({ error: 'Failed to update context' });
+  }
+});
+
+app.post('/api/ultr0n/tool-call', requireAuth, jsonParser, (_req, res) => {
+  res.status(501).json({ error: 'Tool calling not yet implemented (Phase 3)' });
+});
+
+app.post('/api/ultr0n/config/preview', requireAuth, jsonParser, (_req, res) => {
+  res.status(501).json({ error: 'Config preview not yet implemented (Phase 3)' });
+});
+
+app.post('/api/ultr0n/config/commit', requireAuth, jsonParser, (_req, res) => {
+  res.status(501).json({ error: 'Config commit not yet implemented (Phase 3)' });
+});
+// ==================== End Ultr0n Routes ====================
 
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
 console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
