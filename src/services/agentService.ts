@@ -293,7 +293,7 @@ export class AgentService {
       } catch (err) {
         step.status = 'failed';
         plan.status = 'failed';
-        this.addAuditEntry(plan, 'completed');
+        this.addAuditEntry(plan, 'failed');
         return {
           planId,
           success: false,

@@ -81,7 +81,7 @@ export interface AuditEntry {
   action: string;
   operator: string;
   planId: string;
-  status: 'completed' | 'rejected' | 'rolledback';
+  status: 'completed' | 'failed' | 'rejected' | 'rolledback';
   impactedObjects: ImpactedObject[];
 }
 

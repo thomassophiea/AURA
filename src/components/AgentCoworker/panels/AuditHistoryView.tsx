@@ -1,4 +1,11 @@
-import { CheckCircle2, XCircle, RotateCcw, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  CheckCircle2,
+  XCircle,
+  RotateCcw,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../../ui/utils';
 import type { AuditEntry } from '../agentTypes';
@@ -10,14 +17,17 @@ interface AuditHistoryViewProps {
 function statusIcon(status: AuditEntry['status']) {
   if (status === 'completed')
     return <CheckCircle2 aria-label="Completed" className="h-4 w-4 text-green-400 shrink-0" />;
+  if (status === 'failed')
+    return <AlertCircle aria-label="Failed" className="h-4 w-4 text-red-400 shrink-0" />;
   if (status === 'rejected')
-    return <XCircle aria-label="Rejected" className="h-4 w-4 text-red-400 shrink-0" />;
+    return <XCircle aria-label="Rejected" className="h-4 w-4 text-red-400/70 shrink-0" />;
   return <RotateCcw aria-label="Rolled back" className="h-4 w-4 text-orange-400 shrink-0" />;
 }
 
-const STATUS_LABEL = {
+const STATUS_LABEL: Record<AuditEntry['status'], string> = {
   completed: 'text-green-400',
-  rejected: 'text-red-400',
+  failed: 'text-red-400',
+  rejected: 'text-red-400/70',
   rolledback: 'text-orange-400',
 };
 

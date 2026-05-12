@@ -26,7 +26,7 @@ export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps)
   useEffect(() => {
     if (isOpen !== undefined) {
       if (isOpen && ws.mode === 'idle') ws.open();
-      else if (!isOpen && ws.mode === 'open') ws.dismiss();
+      else if (!isOpen && (ws.mode === 'open' || ws.mode === 'pinned')) ws.dismiss();
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 

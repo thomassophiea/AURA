@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import { AgentCoworker } from './components/AgentCoworker';
-import type { AssistantContext } from './components/NetworkChatbot';
+import type { AssistantUIContext as AssistantContext } from './components/AgentCoworker/agentTypes';
 import { LoginForm } from './components/LoginForm';
 import { SharedReportViewer } from './components/SharedReportViewer';
 import { Sidebar } from './components/Sidebar';
@@ -1062,7 +1062,7 @@ export default function App() {
   const handleToggleNetworkAssistant = (enabled: boolean) => {
     setNetworkAssistantEnabled(enabled);
     localStorage.setItem('networkAssistantEnabled', String(enabled));
-    // Close the chatbot if disabling
+    // Close the agent if disabling
     if (!enabled) {
       setIsAgentOpen(false);
     }
@@ -1537,7 +1537,7 @@ export default function App() {
                 onHeightChange={setDevPanelHeight}
               />
             )}
-            {/* Command palette — ⌘⇧P / ctrl+shift+P (cmd+K is bound to chatbot). */}
+            {/* Command palette — ⌘⇧P / ctrl+shift+P (⌘K opens Agent Coworker). */}
             <CommandPalette
               onNavigate={(page) => startTransition(() => setCurrentPage(page))}
               onRefresh={() => {
