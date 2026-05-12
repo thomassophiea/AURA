@@ -197,9 +197,9 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
     setAvailableActionsState([]);
     setPageInsights([]);
 
-    const newPageType = pageContext.pageType ?? 'unknown';
-    setSuggestedPrompts(ULTR0N_SUGGESTED_PROMPTS[newPageType] ?? []);
-  }, [pageContext.route, pageContext.pageType]);
+    // Clear prompts now; refreshPageAnalysis (triggered below) will populate them.
+    setSuggestedPrompts([]);
+  }, [pageContext.route]);
 
   // ============================================
   // refreshPageAnalysis (Phase 1)
@@ -254,10 +254,22 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   // ============================================
 
   const approvePlan = useCallback(async (planId: string) => {
-    await agentService.executeApprovedPlan(planId);
-    setPendingPlan(null);
-    setAuditEntries(agentService.getAuditHistory());
-    setApiTimeline(agentService.getAPITimeline());
+    try {
+      const result = await agentService.executeApprovedPlan(planId);
+      setAuditEntries(agentService.getAuditHistory());
+      setApiTimeline(agentService.getAPITimeline());
+      if (result.success) {
+        setPendingPlan(null);
+      } else {
+        setPendingPlan((prev) =>
+          prev?.id === planId ? { ...prev, status: 'failed' as const } : prev
+        );
+      }
+    } catch {
+      setPendingPlan((prev) =>
+        prev?.id === planId ? { ...prev, status: 'failed' as const } : prev
+      );
+    }
   }, []);
 
   const rejectPlan = useCallback((planId: string) => {
@@ -320,13 +332,12 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
     // pageContext prop fields are controlled by App.tsx (passed as prop),
     // so only internal fields can be mutated via this updater.
     // Individual setters are preferred; this method handles future extensibility.
-    if (_partial.selectedObject !== undefined) setSelectedObjectState(_partial.selectedObject);
-    if (_partial.selectedRows !== undefined) setSelectedRowsState(_partial.selectedRows);
-    if (_partial.visibleRowsSummary !== undefined)
-      setVisibleRowsSummaryState(_partial.visibleRowsSummary);
-    if (_partial.pageMetadata !== undefined) setPageMetadataState(_partial.pageMetadata);
-    if (_partial.availableActions !== undefined)
-      setAvailableActionsState(_partial.availableActions);
+    // Use `in` checks (not `!== undefined`) so null-clears are respected.
+    if ('selectedObject' in _partial) setSelectedObjectState(_partial.selectedObject);
+    if ('selectedRows' in _partial) setSelectedRowsState(_partial.selectedRows ?? []);
+    if ('visibleRowsSummary' in _partial) setVisibleRowsSummaryState(_partial.visibleRowsSummary);
+    if ('pageMetadata' in _partial) setPageMetadataState(_partial.pageMetadata ?? {});
+    if ('availableActions' in _partial) setAvailableActionsState(_partial.availableActions ?? []);
   }, []);
 
   // ============================================
