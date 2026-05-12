@@ -1,0 +1,464 @@
+/**
+ * UltronContext — Central React context for the Ultr0n AI copilot
+ *
+ * Manages:
+ * - Full page-aware context merging (App.tsx base context + internal state)
+ * - Conversation state (messages, isThinking, pendingPlan)
+ * - Workspace open/close state (isOpen)
+ * - Page analysis state (suggestedPrompts, pageInsights)
+ */
+
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useAppContext } from './AppContext';
+import { agentService } from '../services/agentService';
+import type {
+  AgentMessage,
+  AuditEntry,
+  APITimelineEntry,
+  ExecutionPlan,
+} from '../components/AgentCoworker/agentTypes';
+import type { AssistantUIContext } from '../components/AgentCoworker/agentTypes';
+import type { UltronAvailableAction, UltronInsight, UltronPageContext } from '../types/ultron';
+import { ULTR0N_SUGGESTED_PROMPTS } from '../types/ultron';
+
+// ============================================
+// Provider Props
+// ============================================
+
+export interface UltronContextProviderProps {
+  /** Built by App.tsx — route/siteId/siteName/timeRange/filters/userRole */
+  pageContext: Partial<UltronPageContext>;
+  children: React.ReactNode;
+}
+
+// ============================================
+// Context Value Shape
+// ============================================
+
+export interface UltronContextValue {
+  // Full merged context
+  ultronContext: UltronPageContext;
+
+  // Context updaters (for page components to call)
+  updateUltronContext: (partial: Partial<UltronPageContext>) => void;
+  setSelectedObject: (obj: unknown) => void;
+  setSelectedRows: (rows: unknown[]) => void;
+  setVisibleRows: (summary: UltronPageContext['visibleRowsSummary']) => void;
+  setPageMetadata: (meta: Record<string, unknown>) => void;
+  setAvailableActions: (actions: UltronAvailableAction[]) => void;
+  resetUltronContext: () => void;
+
+  // UI/workspace state
+  isOpen: boolean;
+  openUltr0n: () => void;
+  closeUltr0n: () => void;
+  toggleUltr0n: () => void;
+
+  // Session/conversation state
+  sessionId: string | null;
+  messages: AgentMessage[];
+  pendingPlan: ExecutionPlan | null;
+  suggestedPrompts: string[];
+  pageInsights: UltronInsight[];
+  isThinking: boolean;
+  auditEntries: AuditEntry[];
+  apiTimeline: APITimelineEntry[];
+
+  // Actions
+  sendMessage: (message: string) => Promise<void>;
+  refreshPageAnalysis: () => Promise<void>;
+  clearConversation: () => void;
+  approvePlan: (planId: string) => Promise<void>;
+  rejectPlan: (planId: string) => void;
+  rollbackPlan: (planId: string) => Promise<void>;
+  refreshAuditAndTimeline: () => void;
+}
+
+// ============================================
+// Context Creation
+// ============================================
+
+const UltronContext = createContext<UltronContextValue | null>(null);
+
+// ============================================
+// Provider
+// ============================================
+
+export function UltronContextProvider({ pageContext, children }: UltronContextProviderProps) {
+  const { organization } = useAppContext();
+
+  // ---- Internal page-level state ----
+  const [selectedObject, setSelectedObjectState] = useState<unknown>(undefined);
+  const [selectedRows, setSelectedRowsState] = useState<unknown[]>([]);
+  const [visibleRowsSummary, setVisibleRowsSummaryState] = useState<
+    UltronPageContext['visibleRowsSummary'] | undefined
+  >(undefined);
+  const [pageMetadata, setPageMetadataState] = useState<Record<string, unknown>>({});
+  const [availableActions, setAvailableActionsState] = useState<UltronAvailableAction[]>([]);
+
+  // ---- Workspace open/close ----
+  const [isOpen, setIsOpen] = useState(false);
+
+  // ---- Session / conversation ----
+  const [sessionId, setSessionId] = useState<string | null>(() =>
+    typeof crypto !== 'undefined' ? crypto.randomUUID() : null
+  );
+  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [pendingPlan, setPendingPlan] = useState<ExecutionPlan | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
+
+  // ---- Page analysis ----
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const [pageInsights, setPageInsights] = useState<UltronInsight[]>([]);
+
+  // ---- Audit / timeline (derived from agentService) ----
+  const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([]);
+  const [apiTimeline, setApiTimeline] = useState<APITimelineEntry[]>([]);
+
+  // ============================================
+  // Merged full context
+  // ============================================
+
+  const ultronContext = useMemo<UltronPageContext>(
+    () => ({
+      route: pageContext.route ?? '',
+      pageName: pageContext.pageName ?? '',
+      pageType: pageContext.pageType ?? 'unknown',
+      orgId: organization?.id,
+      orgName: organization?.name,
+      siteId: pageContext.siteId,
+      siteName: pageContext.siteName,
+      userRole: pageContext.userRole,
+      permissions: pageContext.permissions,
+      timeRange: pageContext.timeRange,
+      filters: pageContext.filters,
+      sorting: pageContext.sorting,
+      selectedObject,
+      selectedRows,
+      visibleRowsSummary,
+      pageMetadata,
+      availableActions,
+    }),
+    [
+      pageContext.route,
+      pageContext.pageName,
+      pageContext.pageType,
+      pageContext.siteId,
+      pageContext.siteName,
+      pageContext.userRole,
+      pageContext.permissions,
+      pageContext.timeRange,
+      pageContext.filters,
+      pageContext.sorting,
+      organization,
+      selectedObject,
+      selectedRows,
+      visibleRowsSummary,
+      pageMetadata,
+      availableActions,
+    ]
+  );
+
+  // Stable refs to avoid stale closures in async callbacks
+  const ultronContextRef = useRef<UltronPageContext>(ultronContext);
+  useEffect(() => {
+    ultronContextRef.current = ultronContext;
+  }, [ultronContext]);
+
+  const pageContextRef = useRef(pageContext);
+  useEffect(() => {
+    pageContextRef.current = pageContext;
+  }, [pageContext]);
+
+  // ============================================
+  // Auto-reset on route change
+  // ============================================
+
+  const prevRouteRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const newRoute = pageContext.route;
+    if (newRoute === prevRouteRef.current) return;
+    prevRouteRef.current = newRoute;
+
+    // Reset all page-scoped state
+    setSelectedObjectState(undefined);
+    setSelectedRowsState([]);
+    setVisibleRowsSummaryState(undefined);
+    setPageMetadataState({});
+    setAvailableActionsState([]);
+    setPageInsights([]);
+
+    const newPageType = pageContext.pageType ?? 'unknown';
+    setSuggestedPrompts(ULTR0N_SUGGESTED_PROMPTS[newPageType] ?? []);
+  }, [pageContext.route, pageContext.pageType]);
+
+  // ============================================
+  // refreshPageAnalysis (Phase 1)
+  // ============================================
+
+  const refreshPageAnalysis = useCallback(async () => {
+    const pageType = pageContextRef.current.pageType ?? 'unknown';
+    setSuggestedPrompts(ULTR0N_SUGGESTED_PROMPTS[pageType] ?? []);
+    setPageInsights([]); // Phase 3 will call backend enrichment here
+  }, []);
+
+  // Run once on mount and whenever route changes
+  useEffect(() => {
+    void refreshPageAnalysis();
+  }, [pageContext.route, refreshPageAnalysis]);
+
+  // ============================================
+  // sendMessage (Phase 1)
+  // ============================================
+
+  const sendMessage = useCallback(async (message: string) => {
+    setIsThinking(true);
+    try {
+      const reply = await agentService.sendMessage(
+        message,
+        // Cast: agentService expects AssistantUIContext but UltronPageContext is compatible enough
+        // for Phase 1. Task 6 will update the signature.
+        ultronContextRef.current as unknown as AssistantUIContext
+      );
+      setMessages(agentService.getMessages());
+      if (reply.executionPlan) {
+        setPendingPlan(reply.executionPlan);
+      }
+    } finally {
+      setIsThinking(false);
+    }
+  }, []);
+
+  // ============================================
+  // clearConversation
+  // ============================================
+
+  const clearConversation = useCallback(() => {
+    agentService.clearHistory();
+    setMessages([]);
+    setPendingPlan(null);
+    setSessionId(typeof crypto !== 'undefined' ? crypto.randomUUID() : null);
+  }, []);
+
+  // ============================================
+  // Plan actions
+  // ============================================
+
+  const approvePlan = useCallback(async (planId: string) => {
+    await agentService.executeApprovedPlan(planId);
+    setPendingPlan(null);
+    setAuditEntries(agentService.getAuditHistory());
+    setApiTimeline(agentService.getAPITimeline());
+  }, []);
+
+  const rejectPlan = useCallback((planId: string) => {
+    agentService.rejectPlan(planId);
+    setPendingPlan(null);
+    setAuditEntries(agentService.getAuditHistory());
+  }, []);
+
+  const rollbackPlan = useCallback(async (planId: string) => {
+    await agentService.rollbackOperation(planId);
+    setPendingPlan(null);
+    setAuditEntries(agentService.getAuditHistory());
+  }, []);
+
+  // ============================================
+  // Audit / timeline refresh
+  // ============================================
+
+  const refreshAuditAndTimeline = useCallback(() => {
+    setAuditEntries(agentService.getAuditHistory());
+    setApiTimeline(agentService.getAPITimeline());
+  }, []);
+
+  // ============================================
+  // Workspace controls
+  // ============================================
+
+  const openUltr0n = useCallback(() => setIsOpen(true), []);
+  const closeUltr0n = useCallback(() => setIsOpen(false), []);
+  const toggleUltr0n = useCallback(() => setIsOpen((prev) => !prev), []);
+
+  // ============================================
+  // Context updaters
+  // ============================================
+
+  const setSelectedObject = useCallback((obj: unknown) => setSelectedObjectState(obj), []);
+  const setSelectedRows = useCallback((rows: unknown[]) => setSelectedRowsState(rows), []);
+  const setVisibleRows = useCallback(
+    (summary: UltronPageContext['visibleRowsSummary']) => setVisibleRowsSummaryState(summary),
+    []
+  );
+  const setPageMetadata = useCallback(
+    (meta: Record<string, unknown>) => setPageMetadataState(meta),
+    []
+  );
+  const setAvailableActions = useCallback(
+    (actions: UltronAvailableAction[]) => setAvailableActionsState(actions),
+    []
+  );
+
+  const resetUltronContext = useCallback(() => {
+    setSelectedObjectState(undefined);
+    setSelectedRowsState([]);
+    setVisibleRowsSummaryState(undefined);
+    setPageMetadataState({});
+    setAvailableActionsState([]);
+  }, []);
+
+  const updateUltronContext = useCallback((_partial: Partial<UltronPageContext>) => {
+    // pageContext prop fields are controlled by App.tsx (passed as prop),
+    // so only internal fields can be mutated via this updater.
+    // Individual setters are preferred; this method handles future extensibility.
+    if (_partial.selectedObject !== undefined) setSelectedObjectState(_partial.selectedObject);
+    if (_partial.selectedRows !== undefined) setSelectedRowsState(_partial.selectedRows);
+    if (_partial.visibleRowsSummary !== undefined)
+      setVisibleRowsSummaryState(_partial.visibleRowsSummary);
+    if (_partial.pageMetadata !== undefined) setPageMetadataState(_partial.pageMetadata);
+    if (_partial.availableActions !== undefined)
+      setAvailableActionsState(_partial.availableActions);
+  }, []);
+
+  // ============================================
+  // Stable context value
+  // ============================================
+
+  const value = useMemo<UltronContextValue>(
+    () => ({
+      ultronContext,
+      updateUltronContext,
+      setSelectedObject,
+      setSelectedRows,
+      setVisibleRows,
+      setPageMetadata,
+      setAvailableActions,
+      resetUltronContext,
+      isOpen,
+      openUltr0n,
+      closeUltr0n,
+      toggleUltr0n,
+      sessionId,
+      messages,
+      pendingPlan,
+      suggestedPrompts,
+      pageInsights,
+      isThinking,
+      auditEntries,
+      apiTimeline,
+      sendMessage,
+      refreshPageAnalysis,
+      clearConversation,
+      approvePlan,
+      rejectPlan,
+      rollbackPlan,
+      refreshAuditAndTimeline,
+    }),
+    [
+      ultronContext,
+      updateUltronContext,
+      setSelectedObject,
+      setSelectedRows,
+      setVisibleRows,
+      setPageMetadata,
+      setAvailableActions,
+      resetUltronContext,
+      isOpen,
+      openUltr0n,
+      closeUltr0n,
+      toggleUltr0n,
+      sessionId,
+      messages,
+      pendingPlan,
+      suggestedPrompts,
+      pageInsights,
+      isThinking,
+      auditEntries,
+      apiTimeline,
+      sendMessage,
+      refreshPageAnalysis,
+      clearConversation,
+      approvePlan,
+      rejectPlan,
+      rollbackPlan,
+      refreshAuditAndTimeline,
+    ]
+  );
+
+  return <UltronContext.Provider value={value}>{children}</UltronContext.Provider>;
+}
+
+// ============================================
+// Hooks
+// ============================================
+
+/**
+ * Full access to UltronContext — for copilot components that need everything.
+ * Must be used within UltronContextProvider.
+ */
+export function useUltronContext(): UltronContextValue {
+  const ctx = useContext(UltronContext);
+  if (!ctx) {
+    throw new Error('useUltronContext must be used within UltronContextProvider');
+  }
+  return ctx;
+}
+
+/**
+ * Lightweight hook — exposes only the fields needed by the Ultr0n workspace UI
+ * (bar + conversation). Avoids re-rendering on unrelated state changes.
+ */
+export function useUltr0n(): Pick<
+  UltronContextValue,
+  | 'isOpen'
+  | 'openUltr0n'
+  | 'closeUltr0n'
+  | 'toggleUltr0n'
+  | 'sessionId'
+  | 'messages'
+  | 'suggestedPrompts'
+  | 'pageInsights'
+  | 'isThinking'
+  | 'sendMessage'
+  | 'refreshPageAnalysis'
+  | 'clearConversation'
+> {
+  const {
+    isOpen,
+    openUltr0n,
+    closeUltr0n,
+    toggleUltr0n,
+    sessionId,
+    messages,
+    suggestedPrompts,
+    pageInsights,
+    isThinking,
+    sendMessage,
+    refreshPageAnalysis,
+    clearConversation,
+  } = useUltronContext();
+
+  return {
+    isOpen,
+    openUltr0n,
+    closeUltr0n,
+    toggleUltr0n,
+    sessionId,
+    messages,
+    suggestedPrompts,
+    pageInsights,
+    isThinking,
+    sendMessage,
+    refreshPageAnalysis,
+    clearConversation,
+  };
+}
