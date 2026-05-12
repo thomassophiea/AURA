@@ -296,7 +296,6 @@ export default function App() {
     type: null,
     data: null,
   });
-  const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [networkAssistantEnabled, setNetworkAssistantEnabled] = useState(() => {
     const stored = localStorage.getItem('networkAssistantEnabled');
     return stored === null ? true : stored === 'true';
@@ -1034,10 +1033,6 @@ export default function App() {
   const handleToggleNetworkAssistant = (enabled: boolean) => {
     setNetworkAssistantEnabled(enabled);
     localStorage.setItem('networkAssistantEnabled', String(enabled));
-    // Close the agent if disabling
-    if (!enabled) {
-      setIsAgentOpen(false);
-    }
   };
 
   const handleCloseDetailPanel = () => {
@@ -1491,8 +1486,6 @@ export default function App() {
 
               {networkAssistantEnabled && (
                 <AgentCoworker
-                  isOpen={isAgentOpen}
-                  onToggle={() => setIsAgentOpen((v) => !v)}
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}
                   onShowSiteDetail={handleShowSiteDetail}

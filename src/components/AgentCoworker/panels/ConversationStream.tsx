@@ -24,6 +24,7 @@ interface ConversationStreamProps {
   onMicToggle: () => void;
   onFeedback: (msgId: string, feedback: 'up' | 'down') => void;
   onToggleReasoning: (msgId: string) => void;
+  suggestedPrompts?: string[];
 }
 
 const SUGGESTED = [
@@ -43,7 +44,10 @@ export function ConversationStream({
   onMicToggle,
   onFeedback,
   onToggleReasoning,
+  suggestedPrompts,
 }: ConversationStreamProps) {
+  const promptsToShow =
+    suggestedPrompts && suggestedPrompts.length > 0 ? suggestedPrompts : SUGGESTED;
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -65,7 +69,7 @@ export function ConversationStream({
           <div className="space-y-3 pt-2">
             <p className="text-xs text-white/30 font-medium uppercase tracking-wider">Suggested</p>
             <div className="flex flex-col gap-2">
-              {SUGGESTED.map((q) => (
+              {promptsToShow.map((q) => (
                 <button
                   key={q}
                   onClick={() => {

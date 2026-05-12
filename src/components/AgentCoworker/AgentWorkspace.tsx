@@ -53,6 +53,7 @@ interface AgentWorkspaceProps {
   onApprove: (planId: string) => void;
   onReject: (planId: string) => void;
   onRollback: (planId: string) => void;
+  suggestedPrompts?: string[];
 }
 
 export function AgentWorkspace({
@@ -81,6 +82,7 @@ export function AgentWorkspace({
   onApprove,
   onReject,
   onRollback,
+  suggestedPrompts,
 }: AgentWorkspaceProps) {
   const isVisible = mode === 'open' || mode === 'pinned';
   const isPinned = mode === 'pinned';
@@ -259,6 +261,7 @@ export function AgentWorkspace({
               onMicToggle={onMicToggle}
               onFeedback={onFeedback}
               onToggleReasoning={onToggleReasoning}
+              suggestedPrompts={suggestedPrompts}
             />
           )}
           {activePanel === 'execution' && <ExecutionPlanView plan={pendingPlan} />}

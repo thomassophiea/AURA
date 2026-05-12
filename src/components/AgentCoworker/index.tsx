@@ -1,113 +1,104 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { AgentCommandBar } from './AgentCommandBar';
 import { AgentWorkspace } from './AgentWorkspace';
 import { useAgentWorkspace } from './useAgentWorkspace';
-import { agentService } from '../../services/agentService';
-import type { AgentMessage, ExecutionPlan, AssistantUIContext } from './agentTypes';
+import { useUltronContext } from '../../contexts/UltronContext';
+import type { AgentMessage } from './agentTypes';
 
 interface AgentCoworkerProps {
-  isOpen?: boolean;
-  onToggle?: () => void;
-  context?: AssistantUIContext;
   onShowClientDetail?: (mac: string, name?: string) => void;
   onShowAccessPointDetail?: (serial: string, name?: string) => void;
   onShowSiteDetail?: (siteId: string, siteName: string) => void;
 }
 
-export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps) {
+export function AgentCoworker(_props: AgentCoworkerProps) {
   const ws = useAgentWorkspace();
-  const [messages, setMessages] = useState<AgentMessage[]>(() => agentService.getMessages());
-  const [isThinking, setIsThinking] = useState(false);
-  const [pendingPlan, setPendingPlan] = useState<ExecutionPlan | null>(null);
-  const [auditEntries, setAuditEntries] = useState(() => agentService.getAuditHistory());
-  const [apiTimeline, setApiTimeline] = useState(() => agentService.getAPITimeline());
+  const ctx = useUltronContext();
 
-  // Sync external isOpen prop with workspace state
+  // Local UI-only overlays for feedback and reasoning toggles
+  // (UltronContext owns conversation data; these are ephemeral view tweaks)
+  const [feedbackOverrides, setFeedbackOverrides] = useState<
+    Record<string, 'up' | 'down' | undefined>
+  >({});
+  const [reasoningOverrides, setReasoningOverrides] = useState<Record<string, boolean>>({});
+
+  // Sync workspace open/close with ctx.isOpen
+  const prevIsOpen = useRef<boolean>(ctx.isOpen);
   useEffect(() => {
-    if (isOpen !== undefined) {
-      if (isOpen && ws.mode === 'idle') ws.open();
-      else if (!isOpen && (ws.mode === 'open' || ws.mode === 'pinned')) ws.dismiss();
+    if (prevIsOpen.current === ctx.isOpen) return;
+    prevIsOpen.current = ctx.isOpen;
+    if (ctx.isOpen && ws.mode === 'idle') ws.open();
+    else if (!ctx.isOpen && (ws.mode === 'open' || ws.mode === 'pinned')) ws.dismiss();
+  }, [ctx.isOpen, ws]);
+
+  // Sync workspace panel when a pendingPlan appears
+  useEffect(() => {
+    if (ctx.pendingPlan) {
+      ws.setPendingPlan(ctx.pendingPlan.id);
+      ws.setActivePanel('execution');
+    } else {
+      ws.setPendingPlan(null);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ctx.pendingPlan, ws]);
 
   // ⌘K / Escape shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        if (ws.mode === 'idle' || ws.mode === 'minimized') {
-          ws.open();
-          onToggle?.();
-        } else {
+        if (ctx.isOpen) {
+          ctx.closeUltr0n();
           ws.dismiss();
-          onToggle?.();
+        } else {
+          ctx.openUltr0n();
+          ws.open();
         }
       }
       if (e.key === 'Escape' && ws.mode === 'open') {
+        ctx.closeUltr0n();
         ws.dismiss();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [ws, onToggle]);
+  }, [ctx, ws]);
 
   const handleSubmit = useCallback(async () => {
     const text = ws.inputValue.trim();
-    if (!text || isThinking) return;
+    if (!text || ctx.isThinking) return;
     ws.setInput('');
-    setIsThinking(true);
-    try {
-      const reply = await agentService.sendMessage(text, context);
-      setMessages(agentService.getMessages());
-      if (reply.executionPlan) {
-        setPendingPlan(reply.executionPlan);
-        ws.setPendingPlan(reply.executionPlan.id);
-        ws.setActivePanel('execution');
-      }
-    } finally {
-      setIsThinking(false);
-    }
-  }, [ws, isThinking, context]);
+    await ctx.sendMessage(text);
+  }, [ws, ctx]);
 
-  const handleApprove = useCallback(async (planId: string) => {
-    try {
-      await agentService.executeApprovedPlan(planId);
-      setAuditEntries(agentService.getAuditHistory());
-      setApiTimeline(agentService.getAPITimeline());
-      setPendingPlan((prev) => (prev?.id === planId ? { ...prev, status: 'completed' } : prev));
-    } catch {
-      setPendingPlan((prev) => (prev?.id === planId ? { ...prev, status: 'failed' } : prev));
-    }
-  }, []);
+  const handleApprove = useCallback(
+    async (planId: string) => {
+      await ctx.approvePlan(planId);
+    },
+    [ctx]
+  );
 
   const handleReject = useCallback(
     (planId: string) => {
-      agentService.rejectPlan(planId);
-      setPendingPlan((prev) => (prev?.id === planId ? { ...prev, status: 'rejected' } : prev));
-      setAuditEntries(agentService.getAuditHistory());
+      ctx.rejectPlan(planId);
       ws.setPendingPlan(null);
     },
-    [ws]
+    [ctx, ws]
   );
 
   const handleRollback = useCallback(
     async (planId: string) => {
-      await agentService.rollbackOperation(planId);
-      setPendingPlan((prev) => (prev?.id === planId ? { ...prev, status: 'rolledback' } : prev));
-      setAuditEntries(agentService.getAuditHistory());
+      await ctx.rollbackPlan(planId);
       ws.setPendingPlan(null);
     },
-    [ws]
+    [ctx, ws]
   );
 
   const handleFeedback = useCallback((msgId: string, feedback: 'up' | 'down') => {
-    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, feedback } : m)));
+    setFeedbackOverrides((prev) => ({ ...prev, [msgId]: feedback }));
   }, []);
 
   const handleToggleReasoning = useCallback((msgId: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (m.id === msgId ? { ...m, showReasoning: !m.showReasoning } : m))
-    );
+    setReasoningOverrides((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
   }, []);
 
   const handleMicToggle = useCallback(() => {
@@ -115,8 +106,15 @@ export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps)
     else ws.startListening();
   }, [ws]);
 
-  const diff = pendingPlan
-    ? pendingPlan.impactedObjects.map((obj) => ({
+  // Merge ctx.messages with ephemeral UI overlays
+  const messages: AgentMessage[] = ctx.messages.map((m) => ({
+    ...m,
+    feedback: feedbackOverrides[m.id] ?? m.feedback,
+    showReasoning: reasoningOverrides[m.id] ?? m.showReasoning,
+  }));
+
+  const diff = ctx.pendingPlan
+    ? ctx.pendingPlan.impactedObjects.map((obj) => ({
         field: 'enabled',
         scope: `${obj.type}: ${obj.name}`,
         before: true,
@@ -131,10 +129,13 @@ export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps)
           value={ws.inputValue}
           onChange={ws.setInput}
           onSubmit={handleSubmit}
-          onOpen={ws.open}
+          onOpen={() => {
+            ctx.openUltr0n();
+            ws.open();
+          }}
           isListening={ws.isListening}
           onMicToggle={handleMicToggle}
-          isThinking={isThinking}
+          isThinking={ctx.isThinking}
         />
       )}
 
@@ -143,17 +144,23 @@ export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps)
         size={ws.size}
         activePanel={ws.activePanel}
         messages={messages}
-        isThinking={isThinking}
+        isThinking={ctx.isThinking}
         inputValue={ws.inputValue}
         isListening={ws.isListening}
-        pendingPlan={pendingPlan}
-        auditEntries={auditEntries}
-        apiTimelineEntries={apiTimeline}
+        pendingPlan={ctx.pendingPlan}
+        auditEntries={ctx.auditEntries}
+        apiTimelineEntries={ctx.apiTimeline}
         diff={diff}
-        onClose={ws.dismiss}
+        onClose={() => {
+          ws.dismiss();
+          ctx.closeUltr0n();
+        }}
         onMinimize={ws.minimize}
         onPin={ws.pin}
-        onDismiss={ws.dismiss}
+        onDismiss={() => {
+          ws.dismiss();
+          ctx.closeUltr0n();
+        }}
         onSetSize={ws.setSize}
         onSetActivePanel={ws.setActivePanel}
         onInput={ws.setInput}
@@ -164,6 +171,7 @@ export function AgentCoworker({ isOpen, onToggle, context }: AgentCoworkerProps)
         onApprove={handleApprove}
         onReject={handleReject}
         onRollback={handleRollback}
+        suggestedPrompts={ctx.suggestedPrompts}
       />
     </>
   );
