@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
+import { AgentCoworker } from './components/AgentCoworker';
 import type { AssistantContext } from './components/NetworkChatbot';
 import { LoginForm } from './components/LoginForm';
 import { SharedReportViewer } from './components/SharedReportViewer';
@@ -86,9 +87,6 @@ const ClientDetail = lazy(() =>
 );
 const SiteDetail = lazy(() =>
   import('./components/SiteDetail').then((m) => ({ default: m.SiteDetail }))
-);
-const NetworkChatbot = lazy(() =>
-  import('./components/NetworkChatbot').then((m) => ({ default: m.NetworkChatbot }))
 );
 const AppInsights = lazy(() =>
   import('./components/AppInsights').then((m) => ({ default: m.AppInsights }))
@@ -296,7 +294,7 @@ export default function App() {
     type: null,
     data: null,
   });
-  const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isAgentOpen, setIsAgentOpen] = useState(false);
   const [networkAssistantEnabled, setNetworkAssistantEnabled] = useState(() => {
     // Default to false - hidden by default
     return localStorage.getItem('networkAssistantEnabled') === 'true';
@@ -1066,7 +1064,7 @@ export default function App() {
     localStorage.setItem('networkAssistantEnabled', String(enabled));
     // Close the chatbot if disabling
     if (!enabled) {
-      setIsChatbotOpen(false);
+      setIsAgentOpen(false);
     }
   };
 
@@ -1518,11 +1516,10 @@ export default function App() {
               {renderDetailPanel()}
             </div>
 
-            {/* Network Assistant Chatbot - Only render if enabled in preferences */}
             {networkAssistantEnabled && (
-              <NetworkChatbot
-                isOpen={isChatbotOpen}
-                onToggle={() => setIsChatbotOpen(!isChatbotOpen)}
+              <AgentCoworker
+                isOpen={isAgentOpen}
+                onToggle={() => setIsAgentOpen((v) => !v)}
                 context={assistantContext}
                 onShowClientDetail={handleShowClientDetail}
                 onShowAccessPointDetail={handleShowAccessPointDetail}
