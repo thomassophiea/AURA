@@ -229,11 +229,17 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
 
   const runWirelessQuery = useCallback(
     async (message: string, confirmationToken?: string): Promise<boolean> => {
-      const wirelessAnswer = await queryUltr0nWireless(
-        message,
-        ultronContextRef.current,
-        confirmationToken
-      );
+      let wirelessAnswer;
+      try {
+        wirelessAnswer = await queryUltr0nWireless(
+          message,
+          ultronContextRef.current,
+          confirmationToken
+        );
+      } catch (err) {
+        console.warn('[Ultr0n] wireless query failed, falling back to generic path:', err);
+        return false;
+      }
       if (wirelessAnswer === null) return false;
 
       const agentMsg: AgentMessage = {
