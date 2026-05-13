@@ -79,4 +79,26 @@ describe('Ultr0nOrchestrator', () => {
     orchestrator.pruneExpiredSessions();
     expect(orchestrator.hasSession(sessionId)).toBe(false);
   });
+
+  it('processMessage forwards the per-call model override to the provider', async () => {
+    const seen = [];
+    const fakeProvider = {
+      async generateResponse({ model }) {
+        seen.push(model);
+        return { message: 'ok' };
+      },
+    };
+    const orch = new Ultr0nOrchestrator({ llmProvider: fakeProvider, model: 'baseline-model' });
+    const { sessionId } = orch.createSession(makeContext());
+
+    await orch.processMessage(sessionId, 'hi', makeContext());
+    await orch.processMessage(sessionId, 'hello', makeContext(), { model: 'override-model' });
+
+    expect(seen).toEqual(['baseline-model', 'override-model']);
+  });
+
+  it('exposes defaultModel via getter', () => {
+    const orch = new Ultr0nOrchestrator({ llmProvider: new MockLlmProvider(), model: 'pinned' });
+    expect(orch.defaultModel).toBe('pinned');
+  });
 });

@@ -85,6 +85,10 @@ export class Ultr0nOrchestrator {
     return { sessionId };
   }
 
+  get defaultModel() {
+    return this.#model;
+  }
+
   hasSession(sessionId) {
     return this.#sessions.has(sessionId);
   }
@@ -101,7 +105,7 @@ export class Ultr0nOrchestrator {
     session.lastActiveAt = new Date();
   }
 
-  async processMessage(sessionId, message, context) {
+  async processMessage(sessionId, message, context, options = {}) {
     const session = this.#sessions.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
@@ -113,10 +117,12 @@ export class Ultr0nOrchestrator {
     const userMsg = { role: 'user', content: message };
     session.messages.push(userMsg);
 
+    const modelToUse = options.model ?? this.#model;
+
     let llmResponse;
     try {
       llmResponse = await this.#llmProvider.generateResponse({
-        model: this.#model,
+        model: modelToUse,
         messages: session.messages,
         temperature: 0.3,
         maxTokens: 1024,

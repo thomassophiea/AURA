@@ -33,6 +33,15 @@ import type {
 import type { UltronAvailableAction, UltronInsight, UltronPageContext } from '../types/ultron';
 import { ULTR0N_SUGGESTED_PROMPTS } from '../types/ultron';
 
+/** Read the user-selected Ultr0n model from localStorage (set via ModelSelector). */
+function getSelectedUltr0nModel(): string | undefined {
+  try {
+    return localStorage.getItem('ultr0n_model') ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ============================================
 // Provider Props
 // ============================================
@@ -261,7 +270,8 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
         wirelessAnswer = await queryUltr0nWireless(
           message,
           ultronContextRef.current,
-          confirmationToken
+          confirmationToken,
+          getSelectedUltr0nModel()
         );
       } catch (err) {
         clearTimeout(stageTimer);
@@ -329,7 +339,12 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
           sessionIdRef.current = newId;
         }
 
-        const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
+        const reply = await sendUltr0nMessage(
+          sid,
+          message,
+          ultronContextRef.current,
+          getSelectedUltr0nModel()
+        );
         setMessages((prev) => [...prev, reply]);
       } catch {
         const errorMsg: AgentMessage = {

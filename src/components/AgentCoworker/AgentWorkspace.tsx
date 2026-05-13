@@ -1,6 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Bot, X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
+import { useUltr0nModel } from '../../hooks/useUltr0nModel';
+import { ModelSelector } from './ModelSelector';
 import { ConversationStream } from './panels/ConversationStream';
 import { ExecutionPlanView } from './panels/ExecutionPlanView';
 import { ConfigDiffView } from './panels/ConfigDiffView';
@@ -135,6 +137,14 @@ export function AgentWorkspace({
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
 
+  const {
+    provider,
+    models,
+    selectedModel,
+    setSelectedModel,
+    loading: modelsLoading,
+  } = useUltr0nModel();
+
   // Minimized tab strip
   if (mode === 'minimized') {
     return (
@@ -183,38 +193,48 @@ export function AgentWorkspace({
             Coworker
           </span>
 
-          <div className="ml-auto flex items-center gap-1">
-            <button
-              onClick={onMinimize}
-              title="Minimize"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onPin}
-              title={isPinned ? 'Unpin' : 'Pin open'}
-              className={cn(
-                'p-1.5 rounded hover:bg-white/8 transition-colors',
-                isPinned ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
-              )}
-            >
-              <Pin className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
-              title="Toggle expanded"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onClose}
-              title="Close"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+          <div className="ml-auto flex items-center gap-2">
+            <ModelSelector
+              provider={provider}
+              models={models}
+              selectedModel={selectedModel}
+              onSelect={setSelectedModel}
+              loading={modelsLoading}
+            />
+            <div className="w-px h-4 bg-white/10" />
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onMinimize}
+                title="Minimize"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onPin}
+                title={isPinned ? 'Unpin' : 'Pin open'}
+                className={cn(
+                  'p-1.5 rounded hover:bg-white/8 transition-colors',
+                  isPinned ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
+                )}
+              >
+                <Pin className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
+                title="Toggle expanded"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onClose}
+                title="Close"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 

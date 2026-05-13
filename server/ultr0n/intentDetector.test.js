@@ -17,8 +17,17 @@ describe('isWirelessQuestion', () => {
   it('identifies AP overload question', () => {
     expect(isWirelessQuestion('Which APs are overloaded?')).toBe(true);
   });
+  it('identifies site health question via intent pattern', () => {
+    expect(isWirelessQuestion('How is this site doing?')).toBe(true);
+  });
+  it('identifies what-to-fix question via intent pattern', () => {
+    expect(isWirelessQuestion('What should I fix first?')).toBe(true);
+  });
   it('does not flag generic config question', () => {
     expect(isWirelessQuestion('How do I update my password?')).toBe(false);
+  });
+  it('does not flag generic network health question', () => {
+    expect(isWirelessQuestion('Summarize the current network health.')).toBe(false);
   });
 });
 

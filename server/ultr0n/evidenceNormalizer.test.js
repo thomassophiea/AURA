@@ -52,4 +52,23 @@ describe('normalizeEvidence', () => {
     const ev = normalizeEvidence(raw, 'client-disconnect', {});
     expect(ev.missingData).toContain('/v1/stations/{mac}');
   });
+
+  it('reports dataPoints=0 for empty raw payload', () => {
+    const ev = normalizeEvidence({}, 'client-disconnect', {});
+    expect(ev.dataPoints).toBe(0);
+  });
+
+  it('counts dataPoints across populated evidence buckets', () => {
+    const raw = {
+      '/v1/stations/{macaddress}': { macAddress: 'aa:bb', rssi: -70 },
+      '/v1/aps/ifstats/{apSerialNumber}': { radio0: { channelUtilization: 50 } },
+      '/v1/stations/events/{macaddress}': [
+        { timestamp: 't1', eventType: 'DEAUTH' },
+        { timestamp: 't2', eventType: 'REAUTH' },
+      ],
+    };
+    const ev = normalizeEvidence(raw, 'client-disconnect', {});
+    // 1 client + 1 ap + 2 events = 4
+    expect(ev.dataPoints).toBe(4);
+  });
 });

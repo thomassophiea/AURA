@@ -45,7 +45,8 @@ export async function createUltr0nSession(
 export async function sendUltr0nMessage(
   sessionId: string,
   message: string,
-  context: UltronPageContext
+  context: UltronPageContext,
+  model?: string
 ): Promise<AgentMessage> {
   const raw = await ultr0nFetch<{
     id: string;
@@ -53,7 +54,7 @@ export async function sendUltr0nMessage(
     content: string;
     timestamp: string;
     reasoning?: string;
-  }>('/api/ultr0n/message', { sessionId, message, context });
+  }>('/api/ultr0n/message', { sessionId, message, context, model });
 
   return { ...raw, role: 'agent', timestamp: new Date(raw.timestamp) } as AgentMessage;
 }
@@ -98,13 +99,15 @@ export async function commitUltr0nConfigChange(
 export async function queryUltr0nWireless(
   question: string,
   pageContext: UltronPageContext,
-  confirmationToken?: string
+  confirmationToken?: string,
+  model?: string
 ): Promise<UltronWirelessAnswer | null> {
   try {
     return await ultr0nFetch<UltronWirelessAnswer>('/api/ultr0n/wireless/query', {
       question,
       pageContext,
       confirmationToken,
+      model,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

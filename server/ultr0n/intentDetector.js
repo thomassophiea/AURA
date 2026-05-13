@@ -51,7 +51,9 @@ const INTENT_PATTERNS = [
 
 export function isWirelessQuestion(question) {
   const q = question.toLowerCase();
-  return WIRELESS_TERMS.some(t => q.includes(t));
+  if (WIRELESS_TERMS.some(t => q.includes(t))) return true;
+  // Any question matching a known intent pattern is wireless by definition
+  return INTENT_PATTERNS.some(({ re }) => re.test(question));
 }
 
 export function detectIntent(question, pageContext = {}) {

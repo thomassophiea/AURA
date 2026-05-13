@@ -144,7 +144,7 @@ export class AnthropicLlmProvider {
  * @returns {{ provider: object, defaultModel: string }}
  */
 export function createLlmProvider(config = {}) {
-  const providerName = config.provider || process.env.ULTR0N_LLM_PROVIDER || 'mock';
+  let providerName = config.provider || process.env.ULTR0N_LLM_PROVIDER || 'mock';
 
   if (providerName === 'openai') {
     const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
@@ -161,24 +161,32 @@ export function createLlmProvider(config = {}) {
     };
   }
 
-  if (providerName === 'grok') {
-    const apiKey = config.apiKey || process.env.GROK_API_KEY;
+  if (providerName === 'grok' || providerName === 'groq') {
+    const apiKey =
+      config.apiKey ||
+      process.env.GROK_API_KEY ||
+      process.env.GROQ_API_KEY;
     if (!apiKey) {
-      console.warn('[Ultr0n] GROK_API_KEY not set — falling back to MockLlmProvider');
+      console.warn(`[Ultr0n] ${providerName.toUpperCase()}_API_KEY not set — falling back to MockLlmProvider`);
       return { provider: new MockLlmProvider(), defaultModel: 'mock' };
     }
-    return {
-      provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.x.ai/v1' }),
-      defaultModel: 'grok-3',
-    };
-  }
 
-  // Groq (groq.com) — OpenAI-compatible, keys start with gsk_
-  if (providerName === 'groq') {
-    const apiKey = config.apiKey || process.env.GROK_API_KEY || process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      console.warn('[Ultr0n] GROQ_API_KEY not set — falling back to MockLlmProvider');
-      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+    // gsk_ → Groq Cloud (groq.com); xai- → xAI Grok (x.ai). Auto-correct mismatched provider.
+    const looksLikeGroq = apiKey.startsWith('gsk_');
+    const looksLikeXaiGrok = apiKey.startsWith('xai-');
+    if (providerName === 'grok' && looksLikeGroq) {
+      console.warn('[Ultr0n] API key has gsk_ prefix (Groq Cloud) but provider=grok (xAI). Routing to Groq Cloud.');
+      providerName = 'groq';
+    } else if (providerName === 'groq' && looksLikeXaiGrok) {
+      console.warn('[Ultr0n] API key has xai- prefix (xAI Grok) but provider=groq (Groq Cloud). Routing to xAI Grok.');
+      providerName = 'grok';
+    }
+
+    if (providerName === 'grok') {
+      return {
+        provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.x.ai/v1' }),
+        defaultModel: 'grok-3',
+      };
     }
     return {
       provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.groq.com/openai/v1' }),

@@ -9,6 +9,11 @@ import { fileURLToPath } from 'url';
 import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
 import { createLlmProvider } from './server/ultr0nLlmProvider.js';
 import { runWirelessQuery } from './server/ultr0n/wirelessQueryPipeline.js';
+import {
+  getAllowedModels,
+  isModelAllowed,
+  resolveActiveProvider,
+} from './server/ultr0nModelRegistry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1373,16 +1378,33 @@ app.post('/api/ultr0n/session', requireAuth, ultr0nRateLimit, jsonParser, (req, 
   }
 });
 
+app.get('/api/ultr0n/models', requireAuth, (_req, res) => {
+  const provider = resolveActiveProvider();
+  res.json({
+    provider,
+    defaultModel: ultr0nOrchestrator.defaultModel,
+    models: getAllowedModels(provider),
+  });
+});
+
 app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
   try {
-    const { sessionId, message, context } = req.body ?? {};
+    const { sessionId, message, context, model } = req.body ?? {};
     if (!sessionId || !message) {
       return res.status(400).json({ error: 'sessionId and message are required' });
     }
     if (!ultr0nOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    const reply = await ultr0nOrchestrator.processMessage(sessionId, message, context ?? {});
+    if (model && !isModelAllowed(resolveActiveProvider(), model)) {
+      return res.status(400).json({ error: `Model '${model}' is not in the allowlist for this provider` });
+    }
+    const reply = await ultr0nOrchestrator.processMessage(
+      sessionId,
+      message,
+      context ?? {},
+      { model: model ?? undefined }
+    );
     res.json(reply);
   } catch (err) {
     console.error('[Ultr0n] processMessage error:', err.message);
@@ -1407,14 +1429,18 @@ app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
 
 app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
   try {
-    const { question, pageContext, confirmationToken } = req.body ?? {};
+    const { question, pageContext, confirmationToken, model: requestedModel } = req.body ?? {};
     if (!question) return res.status(400).json({ error: 'question is required' });
 
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
 
+    if (requestedModel && !isModelAllowed(resolveActiveProvider(), requestedModel)) {
+      return res.status(400).json({ error: `Model '${requestedModel}' is not in the allowlist for this provider` });
+    }
+
     const { provider: llmProvider, defaultModel } = createLlmProvider({});
-    const model = process.env.ULTR0N_LLM_MODEL ?? defaultModel;
+    const model = requestedModel ?? process.env.ULTR0N_LLM_MODEL ?? defaultModel;
     const llmFn = async ({ systemMsg, userMsg }) => {
       const response = await llmProvider.generateResponse({
         model,

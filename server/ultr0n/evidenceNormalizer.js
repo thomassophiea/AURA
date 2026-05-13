@@ -97,14 +97,32 @@ function extractAuditLogs(raw) {
 }
 
 export function normalizeEvidence(raw, intent, resolved) {
+  const client = extractClient(raw);
+  const ap = extractAp(raw);
+  const wlan = extractWlan(raw);
+  const site = extractSite(raw);
+  const events = extractEvents(raw);
+  const smartRf = extractSmartRf(raw);
+  const auditLogs = extractAuditLogs(raw);
+
+  const dataPoints =
+    (client ? 1 : 0) +
+    (ap ? 1 : 0) +
+    (wlan ? 1 : 0) +
+    (site ? 1 : 0) +
+    events.length +
+    (smartRf ? 1 : 0) +
+    auditLogs.length;
+
   return {
-    client: extractClient(raw),
-    ap: extractAp(raw),
-    wlan: extractWlan(raw),
-    site: extractSite(raw),
-    events: extractEvents(raw),
-    smartRf: extractSmartRf(raw),
-    auditLogs: extractAuditLogs(raw),
+    client,
+    ap,
+    wlan,
+    site,
+    events,
+    smartRf,
+    auditLogs,
+    dataPoints,
     missingData: raw.__missingData__ ?? [],
     intent,
     resolved,

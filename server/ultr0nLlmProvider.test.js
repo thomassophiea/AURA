@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MockLlmProvider, createLlmProvider } from './ultr0nLlmProvider.js';
+import { MockLlmProvider, OpenAiLlmProvider, createLlmProvider } from './ultr0nLlmProvider.js';
 
 describe('MockLlmProvider', () => {
   it('returns a response with a message string', async () => {
@@ -54,6 +54,40 @@ describe('createLlmProvider', () => {
     const { provider, defaultModel } = createLlmProvider({ provider: 'groq' });
     expect(provider).toBeInstanceOf(MockLlmProvider);
     expect(defaultModel).toBe('mock');
+  });
+
+  it('routes provider=grok to Groq Cloud when key has gsk_ prefix', () => {
+    const { provider, defaultModel } = createLlmProvider({
+      provider: 'grok',
+      apiKey: 'gsk_TESTKEY123',
+    });
+    expect(provider).toBeInstanceOf(OpenAiLlmProvider);
+    expect(defaultModel).toBe('llama-3.3-70b-versatile');
+  });
+
+  it('routes provider=groq to xAI Grok when key has xai- prefix', () => {
+    const { provider, defaultModel } = createLlmProvider({
+      provider: 'groq',
+      apiKey: 'xai-TESTKEY123',
+    });
+    expect(provider).toBeInstanceOf(OpenAiLlmProvider);
+    expect(defaultModel).toBe('grok-3');
+  });
+
+  it('keeps provider=grok with non-gsk_ key (assumes xAI)', () => {
+    const { defaultModel } = createLlmProvider({
+      provider: 'grok',
+      apiKey: 'xai-TESTKEY123',
+    });
+    expect(defaultModel).toBe('grok-3');
+  });
+
+  it('keeps provider=groq with gsk_ key', () => {
+    const { defaultModel } = createLlmProvider({
+      provider: 'groq',
+      apiKey: 'gsk_TESTKEY123',
+    });
+    expect(defaultModel).toBe('llama-3.3-70b-versatile');
   });
 });
 
