@@ -140,35 +140,54 @@ export class AnthropicLlmProvider {
  *
  * @param {{ provider?: string, apiKey?: string, baseUrl?: string }} config
  */
+/**
+ * @returns {{ provider: object, defaultModel: string }}
+ */
 export function createLlmProvider(config = {}) {
-  const provider = config.provider || process.env.ULTR0N_LLM_PROVIDER || 'mock';
+  const providerName = config.provider || process.env.ULTR0N_LLM_PROVIDER || 'mock';
 
-  if (provider === 'openai') {
+  if (providerName === 'openai') {
     const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       console.warn('[Ultr0n] OPENAI_API_KEY not set — falling back to MockLlmProvider');
-      return new MockLlmProvider();
+      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
     }
-    return new OpenAiLlmProvider({
-      apiKey,
-      baseUrl: config.baseUrl || process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
-    });
+    return {
+      provider: new OpenAiLlmProvider({
+        apiKey,
+        baseUrl: config.baseUrl || process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
+      }),
+      defaultModel: 'gpt-4o-mini',
+    };
   }
 
-  if (provider === 'grok') {
+  if (providerName === 'grok') {
     const apiKey = config.apiKey || process.env.GROK_API_KEY;
     if (!apiKey) {
       console.warn('[Ultr0n] GROK_API_KEY not set — falling back to MockLlmProvider');
-      return new MockLlmProvider();
+      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
     }
-    return new OpenAiLlmProvider({
-      apiKey,
-      baseUrl: 'https://api.x.ai/v1',
-    });
+    return {
+      provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.x.ai/v1' }),
+      defaultModel: 'grok-3',
+    };
   }
 
-  if (provider === 'azure') return new AzureOpenAiLlmProvider();
-  if (provider === 'anthropic') return new AnthropicLlmProvider();
+  // Groq (groq.com) — OpenAI-compatible, keys start with gsk_
+  if (providerName === 'groq') {
+    const apiKey = config.apiKey || process.env.GROK_API_KEY || process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      console.warn('[Ultr0n] GROQ_API_KEY not set — falling back to MockLlmProvider');
+      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+    }
+    return {
+      provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.groq.com/openai/v1' }),
+      defaultModel: 'llama-3.3-70b-versatile',
+    };
+  }
 
-  return new MockLlmProvider();
+  if (providerName === 'azure') return { provider: new AzureOpenAiLlmProvider(), defaultModel: 'gpt-4o' };
+  if (providerName === 'anthropic') return { provider: new AnthropicLlmProvider(), defaultModel: 'claude-3-5-sonnet-20241022' };
+
+  return { provider: new MockLlmProvider(), defaultModel: 'mock' };
 }

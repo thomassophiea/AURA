@@ -66,8 +66,9 @@ export class Ultr0nOrchestrator {
   #model;
 
   constructor({ llmProvider, model } = {}) {
-    this.#llmProvider = llmProvider ?? createLlmProvider({});
-    this.#model = model ?? process.env.ULTR0N_LLM_MODEL ?? 'grok-3';
+    const { provider, defaultModel } = llmProvider ? { provider: llmProvider, defaultModel: 'mock' } : createLlmProvider({});
+    this.#llmProvider = provider;
+    this.#model = model ?? process.env.ULTR0N_LLM_MODEL ?? defaultModel;
   }
 
   createSession(context) {

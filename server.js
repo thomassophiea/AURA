@@ -1413,8 +1413,8 @@ app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser,
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
 
-    const llmProvider = createLlmProvider({});
-    const model = process.env.ULTR0N_LLM_MODEL ?? 'grok-3';
+    const { provider: llmProvider, defaultModel } = createLlmProvider({});
+    const model = process.env.ULTR0N_LLM_MODEL ?? defaultModel;
     const llmFn = async ({ systemMsg, userMsg }) => {
       const response = await llmProvider.generateResponse({
         model,

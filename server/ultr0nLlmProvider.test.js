@@ -36,13 +36,24 @@ describe('MockLlmProvider', () => {
 
 describe('createLlmProvider', () => {
   it('returns MockLlmProvider when provider is "mock"', () => {
-    const provider = createLlmProvider({ provider: 'mock' });
+    const { provider } = createLlmProvider({ provider: 'mock' });
     expect(provider).toBeInstanceOf(MockLlmProvider);
   });
 
   it('returns MockLlmProvider when no config provided', () => {
-    const provider = createLlmProvider({});
+    const { provider } = createLlmProvider({});
     expect(provider).toBeInstanceOf(MockLlmProvider);
+  });
+
+  it('returns defaultModel "mock" for mock provider', () => {
+    const { defaultModel } = createLlmProvider({ provider: 'mock' });
+    expect(defaultModel).toBe('mock');
+  });
+
+  it('returns defaultModel "llama-3.3-70b-versatile" for groq provider without key', () => {
+    const { provider, defaultModel } = createLlmProvider({ provider: 'groq' });
+    expect(provider).toBeInstanceOf(MockLlmProvider);
+    expect(defaultModel).toBe('mock');
   });
 });
 
