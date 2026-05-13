@@ -36,12 +36,14 @@ import { simpleServiceMapping } from '../services/simpleServiceMapping';
 import { toast } from 'sonner';
 import { formatCompactNumber } from '../lib/units';
 import { resolveClientIdentity } from '../lib/clientIdentity';
+import { useUltronContext } from '../contexts/UltronContext';
 
 interface ClientDetailProps {
   macAddress: string;
 }
 
 export function ClientDetail({ macAddress }: ClientDetailProps) {
+  const { setWirelessContext } = useUltronContext();
   const [clientDetails, setClientDetails] = useState<Station | null>(null);
   const [trafficStats, setTrafficStats] = useState<StationTrafficStats | null>(null);
   const [resolvedSiteName, setResolvedSiteName] = useState<string | null>(null);
@@ -72,6 +74,12 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       setIsLoading(true);
       const details = await apiService.getStation(macAddress);
       setClientDetails(details);
+      setWirelessContext({
+        clientMac: details.macAddress,
+        apSerial: details.apSerial ?? details.apSerialNumber,
+        apName: details.apName,
+        ssid: details.ssid ?? details.essid,
+      });
 
       // Debug logging to see what fields are available
       console.log('Station details for', macAddress, ':', {

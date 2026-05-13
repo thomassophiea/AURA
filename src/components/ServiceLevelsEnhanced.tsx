@@ -39,6 +39,7 @@ import { apiService, Site } from '../services/api';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
+import { useUltronContext } from '../contexts/UltronContext';
 import {
   LineChart,
   Line,
@@ -151,6 +152,7 @@ export function ServiceLevelsEnhanced() {
   // Sync with global site filter for consistent context scoping
   const { filters, updateFilter } = useGlobalFilters();
   const scope = useContextScope();
+  const { setWirelessContext } = useUltronContext();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1498,6 +1500,12 @@ export function ServiceLevelsEnhanced() {
                           onClick={() => {
                             setSelectedClient(station);
                             setIsClientDialogOpen(true);
+                            setWirelessContext({
+                              clientMac: station.macAddress,
+                              apSerial: station.apSerialNumber,
+                              apName: station.apName,
+                              ssid: station.ssid,
+                            });
                           }}
                           className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"
                         >

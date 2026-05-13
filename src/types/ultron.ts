@@ -15,7 +15,9 @@ export type UltronPageType =
   | 'insights'
   | 'service-levels'
   | 'clients'
+  | 'client-detail'
   | 'devices'
+  | 'ap-detail'
   | 'configuration'
   | 'roles'
   | 'wlans'
@@ -229,6 +231,8 @@ export const ULTR0N_PAGE_TYPES: Record<string, UltronPageType> = {
   'app-insights': 'insights',
   'access-points': 'devices',
   'connected-clients': 'clients',
+  'client-detail': 'client-detail',
+  'ap-detail': 'ap-detail',
   'performance-analytics': 'insights',
   'report-widgets': 'dashboard',
   'pci-report': 'unknown',
@@ -286,11 +290,23 @@ export const ULTR0N_SUGGESTED_PROMPTS: Record<UltronPageType, string[]> = {
     'What is the blast radius?',
     'Create an action plan for these insights.',
   ],
+  'client-detail': [
+    'Why did this client disconnect?',
+    'Why is Wi-Fi so slow for this client?',
+    'Is authentication failing for this client?',
+    'Which AP should this client be on?',
+  ],
   devices: [
     'Which APs are offline right now?',
-    'Show me APs with the most client complaints.',
-    'Which firmware versions are running in my network?',
+    'Which APs are overloaded?',
+    'Are there any APs with high channel utilization?',
     'Are there any APs with persistent failures?',
+  ],
+  'ap-detail': [
+    'Why is this AP overloaded?',
+    'Are there interference issues on this AP?',
+    'Which clients are having poor Wi-Fi on this AP?',
+    'Reboot this AP',
   ],
   configuration: [
     'Explain this configuration.',
