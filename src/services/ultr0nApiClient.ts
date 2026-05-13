@@ -5,6 +5,7 @@
 
 import type { UltronPageContext } from '@/types/ultron';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
+import type { UltronWirelessAnswer } from '@/ultr0n/types';
 
 function getAuthHeader(): string {
   try {
@@ -91,4 +92,23 @@ export async function commitUltr0nConfigChange(
   approvedChangeId: string
 ): Promise<unknown> {
   return ultr0nFetch('/api/ultr0n/config/commit', { sessionId, approvedChangeId });
+}
+
+/** Run the wireless query pipeline; returns null if not a wireless question. */
+export async function queryUltr0nWireless(
+  question: string,
+  pageContext: UltronPageContext,
+  confirmationToken?: string
+): Promise<UltronWirelessAnswer | null> {
+  try {
+    return await ultr0nFetch<UltronWirelessAnswer>('/api/ultr0n/wireless/query', {
+      question,
+      pageContext,
+      confirmationToken,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('422')) return null;
+    throw err;
+  }
 }

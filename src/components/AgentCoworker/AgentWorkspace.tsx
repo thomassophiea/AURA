@@ -50,6 +50,8 @@ interface AgentWorkspaceProps {
   onMicToggle: () => void;
   onFeedback: (msgId: string, f: 'up' | 'down') => void;
   onToggleReasoning: (msgId: string) => void;
+  onFollowUp: (chip: string) => void;
+  onConfirmWireless: (question: string, token: string) => void;
   onApprove: (planId: string) => void;
   onReject: (planId: string) => void;
   onRollback: (planId: string) => void;
@@ -79,6 +81,8 @@ export function AgentWorkspace({
   onMicToggle,
   onFeedback,
   onToggleReasoning,
+  onFollowUp,
+  onConfirmWireless,
   onApprove,
   onReject,
   onRollback,
@@ -261,6 +265,8 @@ export function AgentWorkspace({
               onMicToggle={onMicToggle}
               onFeedback={onFeedback}
               onToggleReasoning={onToggleReasoning}
+              onFollowUp={onFollowUp}
+              onConfirmWireless={onConfirmWireless}
               suggestedPrompts={suggestedPrompts}
             />
           )}

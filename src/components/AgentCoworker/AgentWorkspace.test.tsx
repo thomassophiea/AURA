@@ -25,6 +25,8 @@ const baseProps = {
   onMicToggle: noop,
   onFeedback: noop,
   onToggleReasoning: noop,
+  onFollowUp: noop,
+  onConfirmWireless: noop,
   onApprove: noop,
   onReject: noop,
   onRollback: noop,

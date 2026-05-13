@@ -1,5 +1,7 @@
 // src/components/AgentCoworker/agentTypes.ts
 
+import type { UltronWirelessAnswer } from '@/ultr0n/types';
+
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 // pixel widths:            400         520           720
 
@@ -32,6 +34,7 @@ export interface AgentMessage {
   executionPlan?: ExecutionPlan;
   diff?: DiffEntry[];
   feedback?: 'up' | 'down' | null;
+  wirelessAnswer?: UltronWirelessAnswer;
 }
 
 export interface ExecutionPlan {

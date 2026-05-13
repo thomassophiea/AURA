@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import type { AgentMessage } from '../agentTypes';
+import { UltronAnswerCard } from '@/ultr0n/components/UltronAnswerCard';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -24,6 +25,8 @@ interface ConversationStreamProps {
   onMicToggle: () => void;
   onFeedback: (msgId: string, feedback: 'up' | 'down') => void;
   onToggleReasoning: (msgId: string) => void;
+  onFollowUp: (chip: string) => void;
+  onConfirmWireless: (question: string, token: string) => void;
   suggestedPrompts?: string[];
 }
 
@@ -44,6 +47,8 @@ export function ConversationStream({
   onMicToggle,
   onFeedback,
   onToggleReasoning,
+  onFollowUp,
+  onConfirmWireless,
   suggestedPrompts,
 }: ConversationStreamProps) {
   const promptsToShow =
@@ -98,16 +103,24 @@ export function ConversationStream({
                 </div>
               )}
 
-              <div
-                className={cn(
-                  'text-sm leading-relaxed',
-                  msg.role === 'user'
-                    ? 'bg-primary/90 text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5'
-                    : 'text-white/85'
-                )}
-              >
-                {msg.content}
-              </div>
+              {msg.role === 'agent' && msg.wirelessAnswer ? (
+                <UltronAnswerCard
+                  answer={msg.wirelessAnswer}
+                  onFollowUp={onFollowUp}
+                  onConfirm={(token) => onConfirmWireless(msg.wirelessAnswer!.question, token)}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    'text-sm leading-relaxed',
+                    msg.role === 'user'
+                      ? 'bg-primary/90 text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5'
+                      : 'text-white/85'
+                  )}
+                >
+                  {msg.content}
+                </div>
+              )}
 
               {msg.role === 'agent' && msg.reasoning && (
                 <button

@@ -106,6 +106,21 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
     else ws.startListening();
   }, [ws]);
 
+  const handleFollowUp = useCallback(
+    (chip: string) => {
+      ws.setInput(chip);
+      void ctx.sendMessage(chip);
+    },
+    [ws, ctx]
+  );
+
+  const handleConfirmWireless = useCallback(
+    (question: string, token: string) => {
+      void ctx.confirmWirelessAction(question, token);
+    },
+    [ctx]
+  );
+
   // Merge ctx.messages with ephemeral UI overlays
   const messages: AgentMessage[] = ctx.messages.map((m) => ({
     ...m,
@@ -168,6 +183,8 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         onMicToggle={handleMicToggle}
         onFeedback={handleFeedback}
         onToggleReasoning={handleToggleReasoning}
+        onFollowUp={handleFollowUp}
+        onConfirmWireless={handleConfirmWireless}
         onApprove={handleApprove}
         onReject={handleReject}
         onRollback={handleRollback}

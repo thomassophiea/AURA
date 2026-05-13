@@ -19,7 +19,11 @@ import React, {
 } from 'react';
 import { useAppContext } from './AppContext';
 import { agentService } from '../services/agentService';
-import { createUltr0nSession, sendUltr0nMessage } from '../services/ultr0nApiClient';
+import {
+  createUltr0nSession,
+  sendUltr0nMessage,
+  queryUltr0nWireless,
+} from '../services/ultr0nApiClient';
 import type {
   AgentMessage,
   AuditEntry,
@@ -74,6 +78,7 @@ export interface UltronContextValue {
 
   // Actions
   sendMessage: (message: string) => Promise<void>;
+  confirmWirelessAction: (question: string, confirmationToken: string) => Promise<void>;
   refreshPageAnalysis: () => Promise<void>;
   clearConversation: () => void;
   approvePlan: (planId: string) => Promise<void>;
@@ -222,56 +227,105 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   // sendMessage (Phase 1)
   // ============================================
 
-  const sendMessage = useCallback(async (message: string) => {
-    const userMsg: AgentMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setIsThinking(true);
+  const runWirelessQuery = useCallback(
+    async (message: string, confirmationToken?: string): Promise<boolean> => {
+      const wirelessAnswer = await queryUltr0nWireless(
+        message,
+        ultronContextRef.current,
+        confirmationToken
+      );
+      if (wirelessAnswer === null) return false;
 
-    try {
-      const intent = await agentService.parseIntent(message);
-
-      if (intent) {
-        const plan = await agentService.buildExecutionPlan(intent);
-        const agentMsg: AgentMessage = {
-          id: `agent-${Date.now()}`,
-          role: 'agent',
-          content: `I've built an execution plan for: **${plan.title}**\n\nThis will affect ${plan.impactedObjects.map((o) => o.name).join(', ')}. Review the plan and approve to proceed.`,
-          timestamp: new Date(),
-          executionPlan: plan,
-          reasoning: `Detected write intent: "${intent.action}" targeting ${intent.targetType}. Built ${plan.steps.length}-step plan.`,
-        };
-        setMessages((prev) => [...prev, agentMsg]);
-        setPendingPlan(plan);
-        return;
-      }
-
-      let sid = sessionIdRef.current;
-      if (!sid) {
-        const { sessionId: newId } = await createUltr0nSession(ultronContextRef.current);
-        sid = newId;
-        setSessionId(newId);
-        sessionIdRef.current = newId;
-      }
-
-      const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
-      setMessages((prev) => [...prev, reply]);
-    } catch {
-      const errorMsg: AgentMessage = {
+      const agentMsg: AgentMessage = {
         id: `agent-${Date.now()}`,
         role: 'agent',
-        content: 'Unable to get a response. Please check your connection and try again.',
+        content: wirelessAnswer.narrative || '',
+        timestamp: new Date(),
+        wirelessAnswer,
+      };
+      setMessages((prev) => [...prev, agentMsg]);
+      return true;
+    },
+    []
+  );
+
+  const sendMessage = useCallback(
+    async (message: string) => {
+      const userMsg: AgentMessage = {
+        id: `user-${Date.now()}`,
+        role: 'user',
+        content: message,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMsg]);
-    } finally {
-      setIsThinking(false);
-    }
-  }, []);
+      setMessages((prev) => [...prev, userMsg]);
+      setIsThinking(true);
+
+      try {
+        // Try wireless pipeline first
+        const handled = await runWirelessQuery(message);
+        if (handled) return;
+
+        const intent = await agentService.parseIntent(message);
+
+        if (intent) {
+          const plan = await agentService.buildExecutionPlan(intent);
+          const agentMsg: AgentMessage = {
+            id: `agent-${Date.now()}`,
+            role: 'agent',
+            content: `I've built an execution plan for: **${plan.title}**\n\nThis will affect ${plan.impactedObjects.map((o) => o.name).join(', ')}. Review the plan and approve to proceed.`,
+            timestamp: new Date(),
+            executionPlan: plan,
+            reasoning: `Detected write intent: "${intent.action}" targeting ${intent.targetType}. Built ${plan.steps.length}-step plan.`,
+          };
+          setMessages((prev) => [...prev, agentMsg]);
+          setPendingPlan(plan);
+          return;
+        }
+
+        let sid = sessionIdRef.current;
+        if (!sid) {
+          const { sessionId: newId } = await createUltr0nSession(ultronContextRef.current);
+          sid = newId;
+          setSessionId(newId);
+          sessionIdRef.current = newId;
+        }
+
+        const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
+        setMessages((prev) => [...prev, reply]);
+      } catch {
+        const errorMsg: AgentMessage = {
+          id: `agent-${Date.now()}`,
+          role: 'agent',
+          content: 'Unable to get a response. Please check your connection and try again.',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+      } finally {
+        setIsThinking(false);
+      }
+    },
+    [runWirelessQuery]
+  );
+
+  const confirmWirelessAction = useCallback(
+    async (question: string, confirmationToken: string) => {
+      setIsThinking(true);
+      try {
+        await runWirelessQuery(question, confirmationToken);
+      } catch {
+        const errorMsg: AgentMessage = {
+          id: `agent-${Date.now()}`,
+          role: 'agent',
+          content: 'Unable to execute the action. Please check your connection and try again.',
+          timestamp: new Date(),
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+      } finally {
+        setIsThinking(false);
+      }
+    },
+    [runWirelessQuery]
+  );
 
   // ============================================
   // clearConversation
@@ -403,6 +457,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       auditEntries,
       apiTimeline,
       sendMessage,
+      confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
       approvePlan,
@@ -432,6 +487,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       auditEntries,
       apiTimeline,
       sendMessage,
+      confirmWirelessAction,
       refreshPageAnalysis,
       clearConversation,
       approvePlan,

@@ -87,6 +87,12 @@ export interface UltronPageContext {
     aggregateStats?: Record<string, unknown>;
   };
 
+  /** Wireless context — populated when viewing a specific client, AP, or SSID */
+  clientMac?: string;
+  apSerial?: string;
+  apName?: string;
+  ssid?: string;
+
   /** Page-specific metadata (e.g., active tab, expanded sections, UI state) */
   pageMetadata?: Record<string, unknown>;
 

@@ -7,6 +7,8 @@ import expressRateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
+import { createLlmProvider } from './server/ultr0nLlmProvider.js';
+import { runWirelessQuery } from './server/ultr0n/wirelessQueryPipeline.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1400,6 +1402,46 @@ app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
   } catch (err) {
     console.error('[Ultr0n] updateContext error:', err.message);
     res.status(500).json({ error: 'Failed to update context' });
+  }
+});
+
+app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
+  try {
+    const { question, pageContext, confirmationToken } = req.body ?? {};
+    if (!question) return res.status(400).json({ error: 'question is required' });
+
+    const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
+    const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
+
+    const llmProvider = createLlmProvider({});
+    const model = process.env.ULTR0N_LLM_MODEL ?? 'grok-3';
+    const llmFn = async ({ systemMsg, userMsg }) => {
+      const response = await llmProvider.generateResponse({
+        model,
+        messages: [systemMsg, userMsg],
+        temperature: 0.2,
+        maxTokens: 1024,
+      });
+      return response.message;
+    };
+
+    const answer = await runWirelessQuery({
+      question,
+      pageContext: pageContext ?? {},
+      authToken,
+      controllerUrl,
+      confirmationToken,
+      llmFn,
+    });
+
+    if (answer === null) {
+      return res.status(422).json({ error: 'Not a wireless question' });
+    }
+
+    res.json(answer);
+  } catch (err) {
+    console.error('[Ultr0n] wireless/query error:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to process wireless query' });
   }
 });
 
