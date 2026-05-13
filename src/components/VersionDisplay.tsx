@@ -76,7 +76,7 @@ export function VersionDisplay({
             <div className="flex items-center gap-2 text-muted-foreground">
               <GitCommit className="h-3 w-3 shrink-0" />
               <span className="font-mono">{commitHash}</span>
-              <span className="text-muted-foreground/50 ml-auto">#{commitCount}</span>
+              <span className="text-muted-foreground/50 ml-auto">Build #{commitCount}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <GitBranch className="h-3 w-3 shrink-0" />

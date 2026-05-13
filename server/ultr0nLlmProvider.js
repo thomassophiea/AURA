@@ -15,6 +15,30 @@ export class MockLlmProvider {
     const question = lastUser?.content?.toLowerCase() ?? '';
     const system = messages.find(m => m.role === 'system')?.content ?? '';
 
+    // Wireless pipeline path — return structured narrative mock
+    if (system.includes('You are Ultr0n') && system.includes('wireless')) {
+      return {
+        message: [
+          'Short answer:',
+          'This is a mock Ultr0n response — connect a real LLM provider (GROK_API_KEY or OPENAI_API_KEY) for live AI analysis.',
+          '',
+          'What I found:',
+          '- Client: N/A (mock mode)',
+          '- AP: N/A (mock mode)',
+          '- WLAN: N/A (mock mode)',
+          '- Site: N/A (mock mode)',
+          '- Time window: last 24 hours',
+          '- Key events: none (mock mode)',
+          '- RF indicators: none (mock mode)',
+          '- AP indicators: none (mock mode)',
+          '- WLAN/auth indicators: none (mock mode)',
+          '',
+          'Likely root cause:',
+          'Unable to determine — no real API data available in mock mode. Set GROK_API_KEY to enable live wireless diagnostics.',
+        ].join('\n'),
+      };
+    }
+
     const pageMatch = system.match(/current page:\s*([^\n.]+)/i);
     const pageName = pageMatch?.[1]?.trim() ?? 'this page';
 
