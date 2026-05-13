@@ -67,7 +67,7 @@ export class Ultr0nOrchestrator {
 
   constructor({ llmProvider, model } = {}) {
     this.#llmProvider = llmProvider ?? createLlmProvider({});
-    this.#model = model ?? process.env.ULTR0N_LLM_MODEL ?? 'gpt-4.1';
+    this.#model = model ?? process.env.ULTR0N_LLM_MODEL ?? 'grok-3';
   }
 
   createSession(context) {

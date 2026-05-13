@@ -131,6 +131,18 @@ export function createLlmProvider(config = {}) {
     });
   }
 
+  if (provider === 'grok') {
+    const apiKey = config.apiKey || process.env.GROK_API_KEY;
+    if (!apiKey) {
+      console.warn('[Ultr0n] GROK_API_KEY not set — falling back to MockLlmProvider');
+      return new MockLlmProvider();
+    }
+    return new OpenAiLlmProvider({
+      apiKey,
+      baseUrl: 'https://api.x.ai/v1',
+    });
+  }
+
   if (provider === 'azure') return new AzureOpenAiLlmProvider();
   if (provider === 'anthropic') return new AnthropicLlmProvider();
 
