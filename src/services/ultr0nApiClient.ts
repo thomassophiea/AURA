@@ -4,8 +4,9 @@
  */
 
 import type { UltronPageContext } from '@/types/ultron';
-import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
+import type { AgentMessage, AgentToolCall } from '../components/AgentCoworker/agentTypes';
 import type { UltronWirelessAnswer } from '@/ultr0n/types';
+import { getDynamicControllerUrl } from './api';
 
 function getAuthHeader(): string {
   try {
@@ -16,13 +17,19 @@ function getAuthHeader(): string {
   }
 }
 
+function buildHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const auth = getAuthHeader();
+  if (auth) headers.Authorization = auth;
+  const controllerUrl = getDynamicControllerUrl();
+  if (controllerUrl) headers['X-Controller-URL'] = controllerUrl;
+  return headers;
+}
+
 async function ultr0nFetch<T>(path: string, body: unknown): Promise<T> {
   const resp = await fetch(path, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(getAuthHeader() ? { Authorization: getAuthHeader() } : {}),
-    },
+    headers: buildHeaders(),
     body: JSON.stringify(body),
   });
 
@@ -54,6 +61,7 @@ export async function sendUltr0nMessage(
     content: string;
     timestamp: string;
     reasoning?: string;
+    toolCalls?: AgentToolCall[];
   }>('/api/ultr0n/message', { sessionId, message, context, model });
 
   return { ...raw, role: 'agent', timestamp: new Date(raw.timestamp) } as AgentMessage;

@@ -1,25 +1,29 @@
 import crypto from 'crypto';
 import { sanitizeUltr0nContext } from './ultr0nContextSanitizer.js';
 import { createLlmProvider } from './ultr0nLlmProvider.js';
+import { getToolSpecs } from './ultr0n/toolCatalog.js';
+import { executeTool } from './ultr0n/toolDispatcher.js';
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+const MAX_TOOL_ROUNDS = 5;
 
-const SYSTEM_PROMPT = `You are Ultr0n, an AI network operations and configuration copilot embedded in Extreme Platform ONE.
-You are page-aware. You know the current page, selected objects, filters, visible data, site context, org context, and available actions.
-Your job is to:
-- summarize what the user is viewing
-- identify important issues
-- predict likely user intent
-- recommend useful next actions
-- answer questions conversationally
+const SYSTEM_PROMPT = `You are Ultr0n, an AI network operations copilot for Extreme Platform ONE.
+
+You can investigate ANY part of the network — not just the page the user is viewing. You have direct access to controller APIs through the tools provided. Use them aggressively to gather evidence before answering.
+
+When the user asks a question:
+1. Plan: identify what data you need to answer well.
+2. Investigate: call tools to gather it. Chain multiple calls when needed (e.g., listSites → getSiteHealth → listAps → getApRfStats).
+3. Cross-reference: don't stop at one data point. If you see a problem in one place, check related places (recent audit logs, smart RF events, client events) before concluding.
+4. Synthesize: write a concise, evidence-based answer that names the specific siteIds / APs / clients / SSIDs involved.
 
 Rules:
-- Do not invent data. Only use the provided page context and conversation history.
-- If data is missing, say exactly what data is missing.
-- Do not commit configuration changes automatically. For write actions, explain what would need to happen and ask for confirmation.
-- Keep responses concise, operational, and useful.
-- Prefer specific findings over generic advice.
-- When on a page, make your response relevant to that page.`;
+- Never invent data. If a tool returns nothing, say so.
+- Prefer concrete findings ("AP serial 22-xx on site HQ-East shows 87% channel utilization on 5GHz") over generic advice.
+- When data is truncated (large arrays), summarize what was returned and call again with a tighter filter if needed.
+- For write/destructive actions, do NOT execute. Describe what would be needed and ask the user to confirm.
+- Keep the final answer short and operational. Show your work briefly (which tools, which evidence).
+- The current page context below is a HINT, not a constraint — investigate beyond it whenever the question warrants.`;
 
 function buildSystemMessage(context) {
   const sanitized = sanitizeUltr0nContext(context);
@@ -118,37 +122,101 @@ export class Ultr0nOrchestrator {
     session.messages.push(userMsg);
 
     const modelToUse = options.model ?? this.#model;
+    const tools = options.disableTools ? undefined : getToolSpecs();
+    const toolsEnabled = Boolean(tools && options.authToken && options.controllerUrl);
+    const toolCallsAggregated = [];
 
-    let llmResponse;
+    let finalText = '';
+    let lastReasoning;
+    let round = 0;
+
     try {
-      llmResponse = await this.#llmProvider.generateResponse({
-        model: modelToUse,
-        messages: session.messages,
-        temperature: 0.3,
-        maxTokens: 1024,
-      });
-    } catch (err) {
-      session.messages.pop();
-      console.warn('[Ultr0n] LLM call failed, returning fallback response:', err.message);
-      const fallback = '[Ultr0n] The AI backend is currently unavailable. Check that GROK_API_KEY or OPENAI_API_KEY is set and valid.';
-      return {
-        id: `agent-${crypto.randomUUID()}`,
-        role: 'agent',
-        content: fallback,
-        timestamp: new Date(),
-      };
-    }
+      while (round < MAX_TOOL_ROUNDS) {
+        round += 1;
+        const llmResponse = await this.#llmProvider.generateResponse({
+          model: modelToUse,
+          messages: session.messages,
+          tools: toolsEnabled ? tools : undefined,
+          temperature: 0.3,
+          maxTokens: 1024,
+        });
 
-    session.messages.push({ role: 'assistant', content: llmResponse.message });
+        const toolCalls = llmResponse.toolCalls ?? [];
+
+        // Always record the assistant turn so the LLM context stays consistent.
+        const assistantMsg = {
+          role: 'assistant',
+          content: llmResponse.message ?? '',
+        };
+        if (toolCalls.length) {
+          assistantMsg.tool_calls = toolCalls.map((tc) => ({
+            id: tc.id,
+            type: 'function',
+            function: { name: tc.name, arguments: JSON.stringify(tc.arguments ?? {}) },
+          }));
+        }
+        session.messages.push(assistantMsg);
+
+        if (!toolsEnabled || toolCalls.length === 0) {
+          finalText = llmResponse.message ?? '';
+          if (toolCallsAggregated.length) {
+            lastReasoning = `Investigated via ${toolCallsAggregated.length} tool call(s) across ${round} round(s)`;
+          }
+          break;
+        }
+
+        // Execute each requested tool in parallel
+        const results = await Promise.all(
+          toolCalls.map((tc) =>
+            executeTool(tc.name, tc.arguments, {
+              authToken: options.authToken,
+              controllerUrl: options.controllerUrl,
+            }).then((res) => ({ tc, res }))
+          )
+        );
+
+        for (const { tc, res } of results) {
+          toolCallsAggregated.push({
+            id: tc.id,
+            tool: tc.name,
+            args: tc.arguments,
+            ok: res.ok,
+            error: res.ok ? undefined : res.error,
+            durationMs: res.callMeta?.durationMs,
+            status: res.callMeta?.status,
+            path: res.callMeta?.path,
+          });
+          const content = res.ok
+            ? JSON.stringify(res.data).slice(0, 8000)
+            : JSON.stringify({ error: res.error });
+          session.messages.push({
+            role: 'tool',
+            tool_call_id: tc.id,
+            name: tc.name,
+            content,
+          });
+        }
+        // Loop back so the LLM can synthesize using the tool results.
+      }
+
+      if (!finalText) {
+        finalText = `[Ultr0n] Hit the ${MAX_TOOL_ROUNDS}-round tool-use cap without producing a final answer. Tools attempted: ${toolCallsAggregated.map((t) => t.tool).join(', ')}`;
+      }
+    } catch (err) {
+      // Roll back the user turn so a retry doesn't double-record it.
+      // We keep tool turns appended for visibility but the conversation now ends
+      // without a successful assistant turn.
+      console.warn('[Ultr0n] LLM/tool loop failed:', err.message);
+      finalText = `[Ultr0n] The AI backend hit an error: ${err.message}. Check GROK_API_KEY / GROQ_API_KEY / OPENAI_API_KEY and the controller URL.`;
+    }
 
     return {
       id: `agent-${crypto.randomUUID()}`,
       role: 'agent',
-      content: llmResponse.message,
+      content: finalText,
       timestamp: new Date(),
-      reasoning: llmResponse.toolCalls?.length
-        ? `Used ${llmResponse.toolCalls.length} tool call(s)`
-        : undefined,
+      reasoning: lastReasoning,
+      toolCalls: toolCallsAggregated.length ? toolCallsAggregated : undefined,
     };
   }
 

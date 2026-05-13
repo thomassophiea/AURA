@@ -57,6 +57,11 @@ logger.log(
 );
 logger.log('[API Service] BASE_URL:', BASE_URL);
 
+/** Read the currently-active dynamic controller origin (null = use default). */
+export function getDynamicControllerUrl(): string | null {
+  return DYNAMIC_CONTROLLER_URL;
+}
+
 // Function to get current base URL (supports dynamic controller switching)
 export function getBaseUrl(): string {
   // In production, always use the proxy - the X-Controller-URL header handles routing

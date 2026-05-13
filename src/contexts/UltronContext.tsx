@@ -346,6 +346,21 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
           getSelectedUltr0nModel()
         );
         setMessages((prev) => [...prev, reply]);
+
+        // Surface tool calls in the API timeline so the user can see
+        // exactly which controller endpoints Ultr0n investigated.
+        if (reply.toolCalls?.length) {
+          const ts = new Date();
+          const entries: APITimelineEntry[] = reply.toolCalls.map((tc) => ({
+            id: tc.id,
+            timestamp: ts,
+            method: 'GET',
+            endpoint: tc.path ?? tc.tool,
+            status: tc.status ?? (tc.ok ? 200 : 0),
+            duration: tc.durationMs ?? 0,
+          }));
+          setApiTimeline((prev) => [...entries, ...prev].slice(0, 50));
+        }
       } catch {
         const errorMsg: AgentMessage = {
           id: `agent-${Date.now()}`,

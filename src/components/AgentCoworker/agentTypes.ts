@@ -24,6 +24,17 @@ export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipp
 // Re-export UltronPageContext as AssistantUIContext for backward compatibility
 export type { UltronPageContext as AssistantUIContext } from '@/types/ultron';
 
+export interface AgentToolCall {
+  id: string;
+  tool: string;
+  args?: Record<string, unknown>;
+  ok: boolean;
+  error?: string;
+  status?: number;
+  durationMs?: number;
+  path?: string;
+}
+
 export interface AgentMessage {
   id: string;
   role: 'user' | 'agent';
@@ -35,6 +46,7 @@ export interface AgentMessage {
   diff?: DiffEntry[];
   feedback?: 'up' | 'down' | null;
   wirelessAnswer?: UltronWirelessAnswer;
+  toolCalls?: AgentToolCall[];
 }
 
 export interface ExecutionPlan {

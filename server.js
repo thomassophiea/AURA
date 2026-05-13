@@ -1399,11 +1399,17 @@ app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async 
     if (model && !isModelAllowed(resolveActiveProvider(), model)) {
       return res.status(400).json({ error: `Model '${model}' is not in the allowlist for this provider` });
     }
+    const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
+    const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
     const reply = await ultr0nOrchestrator.processMessage(
       sessionId,
       message,
       context ?? {},
-      { model: model ?? undefined }
+      {
+        model: model ?? undefined,
+        authToken,
+        controllerUrl,
+      }
     );
     res.json(reply);
   } catch (err) {
