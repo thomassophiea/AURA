@@ -24,6 +24,7 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 # Copy built frontend assets and server files
 COPY --from=builder /app/build ./build
 COPY server.js ./
+COPY --from=builder /app/server ./server
 
 # Non-root user for security
 RUN addgroup -S aura && adduser -S aura -G aura
