@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Bot, X, Minus, Pin, Maximize2 } from 'lucide-react';
+import { X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
+import { useUltronContext } from '../../contexts/UltronContext';
 import { ModelSelector } from './ModelSelector';
 import { ConversationStream } from './panels/ConversationStream';
 import { ExecutionPlanView } from './panels/ExecutionPlanView';
@@ -22,11 +23,11 @@ import type {
 } from './agentTypes';
 
 const TABS: Array<{ id: ActivePanel; label: string }> = [
-  { id: 'conversation', label: 'Conversation' },
+  { id: 'conversation', label: 'Observe' },
   { id: 'execution', label: 'Plan' },
-  { id: 'diff', label: 'Diff' },
-  { id: 'timeline', label: 'API' },
+  { id: 'diff', label: 'Apply' },
   { id: 'audit', label: 'Audit' },
+  { id: 'timeline', label: 'API' },
 ];
 
 interface AgentWorkspaceProps {
@@ -145,16 +146,29 @@ export function AgentWorkspace({
     loading: modelsLoading,
   } = useUltr0nModel();
 
-  // Minimized tab strip
+  const { ultronContext } = useUltronContext();
+  const headerTitle = ultronContext.pageName?.trim() || 'AURA';
+  const headerChips: string[] = [];
+  if (ultronContext.timeRange?.label) headerChips.push(ultronContext.timeRange.label);
+  if (ultronContext.siteName) headerChips.push(ultronContext.siteName);
+  const rowCount = ultronContext.visibleRowsSummary?.rowCount;
+  if (typeof rowCount === 'number') {
+    headerChips.push(
+      rowCount >= 1000 ? `${(rowCount / 1000).toFixed(1)}k rows` : `${rowCount} rows`
+    );
+  }
+
+  // Minimized tab strip — a slim violet edge with a single accent dot, no bot icon
   if (mode === 'minimized') {
     return (
       <button
         data-testid="agent-workspace"
-        className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-12 h-screen bg-[hsl(268_20%_8%)] border-l border-white/10 hover:bg-[hsl(268_20%_12%)] transition-colors"
+        className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-[hsl(268_22%_7%)] hover:bg-[hsl(268_22%_10%)] transition-colors group"
         onClick={onPin}
-        title="Expand Agent Workspace"
+        title="Expand Ultr0n workspace"
       >
-        <Bot className="h-5 w-5 text-violet-400/70" />
+        <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-violet-400/40 to-transparent group-hover:via-violet-400/80 transition-colors" />
+        <span className="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]" />
       </button>
     );
   }
@@ -172,68 +186,92 @@ export function AgentWorkspace({
         data-testid="agent-workspace"
         className={cn(
           'fixed top-0 right-0 h-screen flex flex-col z-[99997]',
-          'bg-[hsl(268_20%_8%)] border-l border-[hsl(268_15%_16%)]',
+          'bg-[hsl(268_22%_7%)] border-l border-[hsl(268_15%_14%)]',
           'shadow-[-24px_0_64px_rgba(0,0,0,0.5),-8px_0_24px_rgba(0,0,0,0.3)]',
           'transition-transform duration-[320ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]',
           isVisible ? 'translate-x-0' : 'translate-x-full'
         )}
         style={{ width: panelWidth }}
       >
+        {/* Violet edge — the only brand mark */}
+        <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-violet-400/70 via-violet-400/15 to-transparent pointer-events-none" />
+
         {/* Resize handle */}
         <div
-          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-violet-500/30 transition-colors"
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-violet-500/30 transition-colors z-10"
           onMouseDown={onMouseDown}
         />
 
-        {/* Header */}
-        <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/8">
-          <Bot className="h-5 w-5 shrink-0 text-violet-400" />
-          <span className="text-sm font-semibold text-white/90">Ultr0n</span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
-            Coworker
-          </span>
+        {/* Header — page context as title, no Ultr0n branding */}
+        <div className="shrink-0 px-5 pt-4 pb-3 border-b border-white/8">
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-violet-400 shadow-[0_0_8px_rgba(167,139,250,0.6)] shrink-0" />
+                <h2
+                  className="text-[15px] font-semibold tracking-tight text-white/95 truncate"
+                  title={headerTitle}
+                >
+                  {headerTitle}
+                </h2>
+              </div>
+              {headerChips.length > 0 && (
+                <div className="mt-1.5 ml-3.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {headerChips.map((chip) => (
+                    <span
+                      key={chip}
+                      className="text-[10px] uppercase tracking-[0.08em] text-white/45 font-medium"
+                    >
+                      <span className="text-violet-400/70 mr-1">◆</span>
+                      {chip}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          <div className="ml-auto flex items-center gap-2">
-            <ModelSelector
-              provider={provider}
-              models={models}
-              selectedModel={selectedModel}
-              onSelect={setSelectedModel}
-              loading={modelsLoading}
-            />
-            <div className="w-px h-4 bg-white/10" />
-            <div className="flex items-center gap-1">
-              <button
-                onClick={onMinimize}
-                title="Minimize"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={onPin}
-                title={isPinned ? 'Unpin' : 'Pin open'}
-                className={cn(
-                  'p-1.5 rounded hover:bg-white/8 transition-colors',
-                  isPinned ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
-                )}
-              >
-                <Pin className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
-                title="Toggle expanded"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-              >
-                <Maximize2 className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={onClose}
-                title="Close"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
+            <div className="flex items-center gap-2 shrink-0">
+              <ModelSelector
+                provider={provider}
+                models={models}
+                selectedModel={selectedModel}
+                onSelect={setSelectedModel}
+                loading={modelsLoading}
+              />
+              <div className="w-px h-4 bg-white/10" />
+              <div className="flex items-center gap-0.5">
+                <button
+                  onClick={onMinimize}
+                  title="Minimize"
+                  className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={onPin}
+                  title={isPinned ? 'Unpin' : 'Pin open'}
+                  className={cn(
+                    'p-1.5 rounded hover:bg-white/8 transition-colors',
+                    isPinned ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
+                  )}
+                >
+                  <Pin className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
+                  title="Toggle expanded"
+                  className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  <Maximize2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={onClose}
+                  title="Close"
+                  className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
