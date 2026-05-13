@@ -63,7 +63,12 @@ export async function runWirelessQuery({
 
   let narrative = '';
   if (llmFn) {
-    narrative = await llmFn({ systemMsg, userMsg });
+    try {
+      narrative = await llmFn({ systemMsg, userMsg });
+    } catch (err) {
+      console.warn('[Ultr0n] wireless LLM call failed, using evidence summary:', err.message);
+      narrative = `[AI backend unavailable] Evidence collected: ${evidence.dataPoints} data point(s). Root cause category: ${rootCause.category}. Check GROK_API_KEY or OPENAI_API_KEY.`;
+    }
   }
 
   return {

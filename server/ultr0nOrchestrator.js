@@ -122,7 +122,14 @@ export class Ultr0nOrchestrator {
       });
     } catch (err) {
       session.messages.pop();
-      throw err;
+      console.warn('[Ultr0n] LLM call failed, returning fallback response:', err.message);
+      const fallback = '[Ultr0n] The AI backend is currently unavailable. Check that GROK_API_KEY or OPENAI_API_KEY is set and valid.';
+      return {
+        id: `agent-${crypto.randomUUID()}`,
+        role: 'agent',
+        content: fallback,
+        timestamp: new Date(),
+      };
     }
 
     session.messages.push({ role: 'assistant', content: llmResponse.message });
