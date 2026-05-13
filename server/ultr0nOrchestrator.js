@@ -104,7 +104,7 @@ export class Ultr0nOrchestrator {
     const session = this.#sessions.get(sessionId);
     if (!session) throw new Error(`Session not found: ${sessionId}`);
 
-    if (context?.route && context.route !== session.context?.route) {
+    if (context?.route) {
       this.updateContext(sessionId, context);
     }
     session.lastActiveAt = new Date();

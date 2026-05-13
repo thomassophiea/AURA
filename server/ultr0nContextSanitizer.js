@@ -13,17 +13,19 @@ const SENSITIVE_KEYS = new Set([
   'secretKey', 'secret_key', 'authKey', 'auth_key',
 ]);
 
-function redactObject(obj) {
+function redactObject(obj, seen = new WeakSet()) {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(redactObject);
+  if (seen.has(obj)) return '[Circular]';
+  seen.add(obj);
+  if (Array.isArray(obj)) return obj.map((item) => redactObject(item, seen));
 
   const result = {};
   for (const [key, value] of Object.entries(obj)) {
     if (SENSITIVE_KEYS.has(key) && typeof value === 'string') {
       result[key] = REDACTED;
     } else if (typeof value === 'object' && value !== null) {
-      result[key] = redactObject(value);
+      result[key] = redactObject(value, seen);
     } else {
       result[key] = value;
     }
