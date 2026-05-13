@@ -52,6 +52,7 @@ interface AgentWorkspaceProps {
   onToggleReasoning: (msgId: string) => void;
   onFollowUp: (chip: string) => void;
   onConfirmWireless: (question: string, token: string) => void;
+  wirelessStage?: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
   onApprove: (planId: string) => void;
   onReject: (planId: string) => void;
   onRollback: (planId: string) => void;
@@ -83,6 +84,7 @@ export function AgentWorkspace({
   onToggleReasoning,
   onFollowUp,
   onConfirmWireless,
+  wirelessStage,
   onApprove,
   onReject,
   onRollback,
@@ -267,6 +269,7 @@ export function AgentWorkspace({
               onToggleReasoning={onToggleReasoning}
               onFollowUp={onFollowUp}
               onConfirmWireless={onConfirmWireless}
+              wirelessStage={wirelessStage}
               suggestedPrompts={suggestedPrompts}
             />
           )}

@@ -58,6 +58,12 @@ export interface UltronContextValue {
   setVisibleRows: (summary: UltronPageContext['visibleRowsSummary']) => void;
   setPageMetadata: (meta: Record<string, unknown>) => void;
   setAvailableActions: (actions: UltronAvailableAction[]) => void;
+  setWirelessContext: (ctx: {
+    clientMac?: string;
+    apSerial?: string;
+    apName?: string;
+    ssid?: string;
+  }) => void;
   resetUltronContext: () => void;
 
   // UI/workspace state
@@ -73,6 +79,7 @@ export interface UltronContextValue {
   suggestedPrompts: string[];
   pageInsights: UltronInsight[];
   isThinking: boolean;
+  wirelessStage: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
   auditEntries: AuditEntry[];
   apiTimeline: APITimelineEntry[];
 
@@ -109,6 +116,12 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   const [pageMetadata, setPageMetadataState] = useState<Record<string, unknown>>({});
   const [availableActions, setAvailableActionsState] = useState<UltronAvailableAction[]>([]);
 
+  // ---- Wireless entity context ----
+  const [wirelessClientMac, setWirelessClientMac] = useState<string | undefined>(undefined);
+  const [wirelessApSerial, setWirelessApSerial] = useState<string | undefined>(undefined);
+  const [wirelessApName, setWirelessApName] = useState<string | undefined>(undefined);
+  const [wirelessSsid, setWirelessSsid] = useState<string | undefined>(undefined);
+
   // ---- Workspace open/close ----
   const [isOpen, setIsOpen] = useState(false);
 
@@ -121,6 +134,9 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [pendingPlan, setPendingPlan] = useState<ExecutionPlan | null>(null);
   const [isThinking, setIsThinking] = useState(false);
+  const [wirelessStage, setWirelessStage] = useState<
+    'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null
+  >(null);
 
   // ---- Page analysis ----
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
@@ -153,6 +169,10 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       visibleRowsSummary,
       pageMetadata,
       availableActions,
+      clientMac: wirelessClientMac,
+      apSerial: wirelessApSerial,
+      apName: wirelessApName,
+      ssid: wirelessSsid,
     }),
     [
       pageContext.route,
@@ -171,6 +191,10 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       visibleRowsSummary,
       pageMetadata,
       availableActions,
+      wirelessClientMac,
+      wirelessApSerial,
+      wirelessApName,
+      wirelessSsid,
     ]
   );
 
@@ -229,6 +253,9 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
 
   const runWirelessQuery = useCallback(
     async (message: string, confirmationToken?: string): Promise<boolean> => {
+      setWirelessStage('detecting');
+      const stageTimer = setTimeout(() => setWirelessStage('fetching'), 600);
+
       let wirelessAnswer;
       try {
         wirelessAnswer = await queryUltr0nWireless(
@@ -237,9 +264,15 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
           confirmationToken
         );
       } catch (err) {
+        clearTimeout(stageTimer);
+        setWirelessStage(null);
         console.warn('[Ultr0n] wireless query failed, falling back to generic path:', err);
         return false;
       }
+
+      clearTimeout(stageTimer);
+      setWirelessStage(null);
+
       if (wirelessAnswer === null) return false;
 
       const agentMsg: AgentMessage = {
@@ -416,24 +449,38 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
     []
   );
 
+  const setWirelessContext = useCallback(
+    (ctx: { clientMac?: string; apSerial?: string; apName?: string; ssid?: string }) => {
+      if ('clientMac' in ctx) setWirelessClientMac(ctx.clientMac);
+      if ('apSerial' in ctx) setWirelessApSerial(ctx.apSerial);
+      if ('apName' in ctx) setWirelessApName(ctx.apName);
+      if ('ssid' in ctx) setWirelessSsid(ctx.ssid);
+    },
+    []
+  );
+
   const resetUltronContext = useCallback(() => {
     setSelectedObjectState(undefined);
     setSelectedRowsState([]);
     setVisibleRowsSummaryState(undefined);
     setPageMetadataState({});
     setAvailableActionsState([]);
+    setWirelessClientMac(undefined);
+    setWirelessApSerial(undefined);
+    setWirelessApName(undefined);
+    setWirelessSsid(undefined);
   }, []);
 
   const updateUltronContext = useCallback((_partial: Partial<UltronPageContext>) => {
-    // pageContext prop fields are controlled by App.tsx (passed as prop),
-    // so only internal fields can be mutated via this updater.
-    // Individual setters are preferred; this method handles future extensibility.
-    // Use `in` checks (not `!== undefined`) so null-clears are respected.
     if ('selectedObject' in _partial) setSelectedObjectState(_partial.selectedObject);
     if ('selectedRows' in _partial) setSelectedRowsState(_partial.selectedRows ?? []);
     if ('visibleRowsSummary' in _partial) setVisibleRowsSummaryState(_partial.visibleRowsSummary);
     if ('pageMetadata' in _partial) setPageMetadataState(_partial.pageMetadata ?? {});
     if ('availableActions' in _partial) setAvailableActionsState(_partial.availableActions ?? []);
+    if ('clientMac' in _partial) setWirelessClientMac(_partial.clientMac);
+    if ('apSerial' in _partial) setWirelessApSerial(_partial.apSerial);
+    if ('apName' in _partial) setWirelessApName(_partial.apName);
+    if ('ssid' in _partial) setWirelessSsid(_partial.ssid);
   }, []);
 
   // ============================================
@@ -449,6 +496,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       setVisibleRows,
       setPageMetadata,
       setAvailableActions,
+      setWirelessContext,
       resetUltronContext,
       isOpen,
       openUltr0n,
@@ -460,6 +508,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       suggestedPrompts,
       pageInsights,
       isThinking,
+      wirelessStage,
       auditEntries,
       apiTimeline,
       sendMessage,
@@ -479,6 +528,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       setVisibleRows,
       setPageMetadata,
       setAvailableActions,
+      setWirelessContext,
       resetUltronContext,
       isOpen,
       openUltr0n,
@@ -490,6 +540,7 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       suggestedPrompts,
       pageInsights,
       isThinking,
+      wirelessStage,
       auditEntries,
       apiTimeline,
       sendMessage,

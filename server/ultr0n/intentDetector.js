@@ -58,7 +58,7 @@ export function detectIntent(question, pageContext = {}) {
   const resolved = {
     mac: pageContext.clientMac,
     stationId: pageContext.stationId,
-    apSerialNumber: pageContext.apSerialNumber,
+    apSerialNumber: pageContext.apSerial ?? pageContext.apSerialNumber,
     apName: pageContext.apName,
     siteId: pageContext.siteId,
     siteName: pageContext.siteName,

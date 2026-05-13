@@ -74,6 +74,7 @@ import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
 import { useGridMode } from '@/contexts/GridModeContext';
+import { useUltronContext } from '@/contexts/UltronContext';
 import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server, Building } from 'lucide-react';
@@ -518,6 +519,7 @@ interface AccessPointsProps {
 export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { agGridEnabled } = useGridMode();
+  const { setWirelessContext } = useUltronContext();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<
@@ -1073,6 +1075,10 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       setSelectedAP(apDetails);
       setApStations(stations);
       setIsModalOpen(true);
+      setWirelessContext({
+        apSerial: apDetails.serialNumber,
+        apName: apDetails.name ?? apDetails.displayName ?? apDetails.hostname,
+      });
     } catch (err) {
       console.error('Error loading AP details:', err);
       setError(err instanceof Error ? err.message : 'Failed to load AP details');

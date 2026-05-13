@@ -185,6 +185,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         onToggleReasoning={handleToggleReasoning}
         onFollowUp={handleFollowUp}
         onConfirmWireless={handleConfirmWireless}
+        wirelessStage={ctx.wirelessStage}
         onApprove={handleApprove}
         onReject={handleReject}
         onRollback={handleRollback}

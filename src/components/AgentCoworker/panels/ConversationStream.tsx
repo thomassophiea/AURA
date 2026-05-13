@@ -14,6 +14,7 @@ import {
 import { cn } from '../../ui/utils';
 import type { AgentMessage } from '../agentTypes';
 import { UltronAnswerCard } from '@/ultr0n/components/UltronAnswerCard';
+import { UltronProgress } from '@/ultr0n/components/UltronProgress';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -27,6 +28,7 @@ interface ConversationStreamProps {
   onToggleReasoning: (msgId: string) => void;
   onFollowUp: (chip: string) => void;
   onConfirmWireless: (question: string, token: string) => void;
+  wirelessStage?: 'detecting' | 'planning' | 'fetching' | 'classifying' | 'generating' | null;
   suggestedPrompts?: string[];
 }
 
@@ -49,6 +51,7 @@ export function ConversationStream({
   onToggleReasoning,
   onFollowUp,
   onConfirmWireless,
+  wirelessStage,
   suggestedPrompts,
 }: ConversationStreamProps) {
   const promptsToShow =
@@ -187,15 +190,19 @@ export function ConversationStream({
         {isThinking && (
           <div className="flex gap-3">
             <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />
-            <div className="flex items-center gap-1.5 py-1">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                />
-              ))}
-            </div>
+            {wirelessStage ? (
+              <UltronProgress stage={wirelessStage} />
+            ) : (
+              <div className="flex items-center gap-1.5 py-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="h-1.5 w-1.5 rounded-full bg-violet-400 animate-bounce"
+                    style={{ animationDelay: `${i * 100}ms` }}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div ref={bottomRef} />

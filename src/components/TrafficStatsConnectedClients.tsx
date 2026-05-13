@@ -70,6 +70,7 @@ import { useTableCustomization } from '../hooks/useTableCustomization';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
 import { useAppContext } from '@/contexts/AppContext';
+import { useUltronContext } from '@/contexts/UltronContext';
 import { Server } from 'lucide-react';
 
 interface ConnectedClientsProps {
@@ -78,6 +79,7 @@ interface ConnectedClientsProps {
 
 export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
+  const { setWirelessContext } = useUltronContext();
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -1178,6 +1180,12 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                     },
                     onRowClicked: (e) => {
                       if (!e.data) return;
+                      setWirelessContext({
+                        clientMac: e.data.macAddress,
+                        apSerial: e.data.apSerial || e.data.apSerialNumber,
+                        apName: e.data.apName,
+                        ssid: e.data.ssid,
+                      });
                       if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);
                       else {
                         setSelectedStation(e.data);
