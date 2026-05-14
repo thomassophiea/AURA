@@ -3,24 +3,58 @@ import { getTool, isKnownTool } from './toolCatalog.js';
 
 const insecureAgent = new https.Agent({ rejectUnauthorized: false });
 
+// Maximum sample size for any array we forward to the LLM. Picked so that a
+// typical org-wide listAps response stays under ~3 KB after JSON serialisation.
+const SAMPLE_CAP = 20;
+
+// Field names that take up a lot of tokens but rarely help the LLM reason. We
+// strip them before forwarding so the agent sees a useful shape, not a firehose.
+const NOISY_FIELD_PATTERN = /^(rxBytes|txBytes|rxPackets|txPackets|totalBytes|raw|description|tags|uuid|reserved)$/i;
+
+function compactItem(item) {
+  if (item == null || typeof item !== 'object' || Array.isArray(item)) return item;
+  const out = {};
+  for (const [k, v] of Object.entries(item)) {
+    if (NOISY_FIELD_PATTERN.test(k)) continue;
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      // Drop nested objects deeper than 1 level — agents almost never need them
+      // and they are the biggest single token sink.
+      out[k] = '<object>';
+    } else if (Array.isArray(v) && v.length > 5) {
+      out[k] = { __truncated__: true, totalCount: v.length, sample: v.slice(0, 5) };
+    } else {
+      out[k] = v;
+    }
+  }
+  return out;
+}
+
 /**
  * Truncate large JSON responses so the LLM context window doesn't explode.
- * Most callers want a few hundred rows max for reasoning purposes.
+ * Strips noisy fields, caps arrays at SAMPLE_CAP items, flattens nested objects.
  */
 function truncateResult(data) {
   if (Array.isArray(data)) {
-    if (data.length > 50) {
-      return { __truncated__: true, totalCount: data.length, sample: data.slice(0, 50) };
+    const sample = data.slice(0, SAMPLE_CAP).map(compactItem);
+    if (data.length > SAMPLE_CAP) {
+      return { __truncated__: true, totalCount: data.length, sample };
     }
-    return data;
+    return sample;
   }
   if (data && typeof data === 'object') {
-    for (const key of Object.keys(data)) {
-      const v = data[key];
-      if (Array.isArray(v) && v.length > 50) {
-        data[key] = { __truncated__: true, totalCount: v.length, sample: v.slice(0, 50) };
+    const out = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (NOISY_FIELD_PATTERN.test(k)) continue;
+      if (Array.isArray(v)) {
+        out[k] =
+          v.length > SAMPLE_CAP
+            ? { __truncated__: true, totalCount: v.length, sample: v.slice(0, SAMPLE_CAP).map(compactItem) }
+            : v.map(compactItem);
+      } else {
+        out[k] = v;
       }
     }
+    return out;
   }
   return data;
 }

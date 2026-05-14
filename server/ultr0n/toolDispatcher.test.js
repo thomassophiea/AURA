@@ -88,7 +88,31 @@ describe('executeTool', () => {
     expect(res.ok).toBe(true);
     expect(res.data.__truncated__).toBe(true);
     expect(res.data.totalCount).toBe(200);
-    expect(res.data.sample.length).toBe(50);
+    expect(res.data.sample.length).toBe(20);
+  });
+
+  it('strips noisy fields and flattens nested objects from sampled rows', async () => {
+    const fetchFn = mockFetchOk(
+      Array.from({ length: 25 }, (_, i) => ({
+        id: i,
+        name: `ap-${i}`,
+        rxBytes: 12345678,
+        txBytes: 98765432,
+        radio0: { channelUtilization: 50, noise: -90 },
+      }))
+    );
+    const res = await executeTool(
+      'listAps',
+      {},
+      { authToken: '', controllerUrl: 'https://ctrl', fetchFn }
+    );
+    expect(res.ok).toBe(true);
+    const row = res.data.sample[0];
+    expect(row.id).toBe(0);
+    expect(row.name).toBe('ap-0');
+    expect(row.rxBytes).toBeUndefined();
+    expect(row.txBytes).toBeUndefined();
+    expect(row.radio0).toBe('<object>');
   });
 
   it('builds parameterised paths from args', async () => {

@@ -59,6 +59,29 @@ export class MockLlmProvider {
 
 // ── OpenAI Provider ──────────────────────────────────────────────────────────
 
+/**
+ * Best-effort parse of "Please try again in 14.295s" out of a Groq/OpenAI 429
+ * error body so we can sleep the suggested duration before retrying.
+ * Returns ms, capped at 30s so we never block a request for an absurd time.
+ */
+function parseRetryDelayMs(body, headers) {
+  const headerVal = headers?.get?.('retry-after');
+  if (headerVal) {
+    const seconds = Number(headerVal);
+    if (Number.isFinite(seconds)) return Math.min(seconds * 1000, 30_000);
+  }
+  const match = typeof body === 'string' && body.match(/try again in ([\d.]+)\s*s/i);
+  if (match) {
+    const seconds = Number(match[1]);
+    if (Number.isFinite(seconds)) return Math.min(seconds * 1000, 30_000);
+  }
+  return 1500; // sensible default
+}
+
+function isGroqLike(baseUrl) {
+  return baseUrl?.includes('groq.com');
+}
+
 export class OpenAiLlmProvider {
   #apiKey;
   #baseUrl;
@@ -84,14 +107,33 @@ export class OpenAiLlmProvider {
       body.tool_choice = 'auto';
     }
 
-    const resp = await fetch(`${this.#baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.#apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    const doFetch = () =>
+      fetch(`${this.#baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.#apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+    let resp = await doFetch();
+
+    // Single retry on 429, respecting the server-suggested delay. Helps when a
+    // small-tier Groq model briefly trips its tokens-per-minute cap mid-loop.
+    if (resp.status === 429) {
+      const errBody = await resp.text().catch(() => '');
+      const delay = parseRetryDelayMs(errBody, resp.headers);
+      await new Promise((r) => setTimeout(r, delay));
+      resp = await doFetch();
+      if (resp.status === 429) {
+        const hint = isGroqLike(this.#baseUrl)
+          ? ' (Groq tier rate-limited — try llama-3.3-70b-versatile or llama-3.1-8b-instant which have larger TPM caps)'
+          : '';
+        const finalBody = await resp.text().catch(() => resp.statusText);
+        throw new Error(`OpenAI API error 429${hint}: ${finalBody}`);
+      }
+    }
 
     if (!resp.ok) {
       const err = await resp.text().catch(() => resp.statusText);

@@ -5,7 +5,8 @@ import { getToolSpecs } from './ultr0n/toolCatalog.js';
 import { executeTool } from './ultr0n/toolDispatcher.js';
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
-const MAX_TOOL_ROUNDS = 5;
+const MAX_TOOL_ROUNDS = 3;
+const MAX_TOOL_CONTENT_CHARS = 3000;
 
 const SYSTEM_PROMPT = `You are Ultr0n, an AI network operations copilot for Extreme Platform ONE.
 
@@ -187,7 +188,7 @@ export class Ultr0nOrchestrator {
             path: res.callMeta?.path,
           });
           const content = res.ok
-            ? JSON.stringify(res.data).slice(0, 8000)
+            ? JSON.stringify(res.data).slice(0, MAX_TOOL_CONTENT_CHARS)
             : JSON.stringify({ error: res.error });
           session.messages.push({
             role: 'tool',
