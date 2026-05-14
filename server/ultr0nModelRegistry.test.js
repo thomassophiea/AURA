@@ -15,6 +15,13 @@ describe('MODEL_REGISTRY', () => {
     expect(ids).toContain('openai/gpt-oss-120b');
   });
 
+  it('exposes the current Anthropic models', () => {
+    const ids = MODEL_REGISTRY.anthropic.map((m) => m.id);
+    expect(ids).toContain('claude-opus-4-7');
+    expect(ids).toContain('claude-sonnet-4-6');
+    expect(ids).toContain('claude-haiku-4-5');
+  });
+
   it('every model entry has the required shape', () => {
     for (const list of Object.values(MODEL_REGISTRY)) {
       for (const m of list) {
@@ -90,5 +97,27 @@ describe('resolveActiveProvider', () => {
     process.env.ULTR0N_LLM_PROVIDER = 'groq';
     process.env.GROQ_API_KEY = 'gsk_FAKE';
     expect(resolveActiveProvider()).toBe('groq');
+  });
+
+  it('routes to anthropic when ANTHROPIC_API_KEY is set', () => {
+    process.env.ULTR0N_LLM_PROVIDER = 'groq';
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-FAKE';
+    expect(resolveActiveProvider()).toBe('anthropic');
+  });
+
+  it('routes to anthropic when CLAUDE_API_KEY is set', () => {
+    process.env.CLAUDE_API_KEY = 'sk-ant-FAKE';
+    expect(resolveActiveProvider()).toBe('anthropic');
+  });
+
+  it('routes to anthropic when GROK_API_KEY holds an sk-ant key', () => {
+    process.env.ULTR0N_LLM_PROVIDER = 'grok';
+    process.env.GROK_API_KEY = 'sk-ant-FAKE';
+    expect(resolveActiveProvider()).toBe('anthropic');
+  });
+
+  it('accepts the claude alias on the provider env', () => {
+    process.env.ULTR0N_LLM_PROVIDER = 'claude';
+    expect(resolveActiveProvider()).toBe('anthropic');
   });
 });

@@ -1,5 +1,10 @@
-import { describe, it, expect } from 'vitest';
-import { MockLlmProvider, OpenAiLlmProvider, createLlmProvider } from './ultr0nLlmProvider.js';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import {
+  MockLlmProvider,
+  OpenAiLlmProvider,
+  AnthropicLlmProvider,
+  createLlmProvider,
+} from './ultr0nLlmProvider.js';
 
 describe('MockLlmProvider', () => {
   it('returns a response with a message string', async () => {
@@ -88,6 +93,155 @@ describe('createLlmProvider', () => {
       apiKey: 'gsk_TESTKEY123',
     });
     expect(defaultModel).toBe('llama-3.3-70b-versatile');
+  });
+
+  it('returns AnthropicLlmProvider for provider=anthropic with sk-ant key', () => {
+    const { provider, defaultModel } = createLlmProvider({
+      provider: 'anthropic',
+      apiKey: 'sk-ant-FAKE',
+    });
+    expect(provider).toBeInstanceOf(AnthropicLlmProvider);
+    expect(defaultModel).toBe('claude-sonnet-4-6');
+  });
+
+  it('accepts provider=claude alias', () => {
+    const { provider } = createLlmProvider({
+      provider: 'claude',
+      apiKey: 'sk-ant-FAKE',
+    });
+    expect(provider).toBeInstanceOf(AnthropicLlmProvider);
+  });
+
+  it('falls back to mock when anthropic is selected but no key is set', () => {
+    const { provider, defaultModel } = createLlmProvider({ provider: 'anthropic' });
+    expect(provider).toBeInstanceOf(MockLlmProvider);
+    expect(defaultModel).toBe('mock');
+  });
+
+  it('auto-routes sk-ant key to Anthropic even when provider=grok', () => {
+    const { provider, defaultModel } = createLlmProvider({
+      provider: 'grok',
+      apiKey: 'sk-ant-FAKE',
+    });
+    expect(provider).toBeInstanceOf(AnthropicLlmProvider);
+    expect(defaultModel).toBe('claude-sonnet-4-6');
+  });
+});
+
+describe('AnthropicLlmProvider message translation', () => {
+  // Use a fake fetch so we can inspect what the SDK posts to /v1/messages
+  // without actually hitting Anthropic.
+  let originalFetch;
+  let lastBody;
+
+  beforeEach(() => {
+    originalFetch = globalThis.fetch;
+    lastBody = null;
+    globalThis.fetch = async (_url, init) => {
+      lastBody = JSON.parse(init?.body ?? '{}');
+      return new Response(
+        JSON.stringify({
+          id: 'msg_test',
+          type: 'message',
+          role: 'assistant',
+          model: 'claude-sonnet-4-6',
+          content: [{ type: 'text', text: 'ok' }],
+          stop_reason: 'end_turn',
+          usage: { input_tokens: 1, output_tokens: 1 },
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } }
+      );
+    };
+  });
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('extracts the system prompt as a top-level cached system field', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-sonnet-4-6',
+      messages: [
+        { role: 'system', content: 'You are Ultr0n.' },
+        { role: 'user', content: 'hi' },
+      ],
+    });
+    expect(Array.isArray(lastBody.system)).toBe(true);
+    expect(lastBody.system[0].text).toBe('You are Ultr0n.');
+    expect(lastBody.system[0].cache_control).toEqual({ type: 'ephemeral' });
+    expect(lastBody.messages).toEqual([{ role: 'user', content: 'hi' }]);
+  });
+
+  it('omits temperature on Opus 4.7 (sampling params removed)', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-opus-4-7',
+      messages: [{ role: 'user', content: 'hi' }],
+      temperature: 0.5,
+    });
+    expect(lastBody.temperature).toBeUndefined();
+  });
+
+  it('keeps temperature on Sonnet 4.6', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'hi' }],
+      temperature: 0.5,
+    });
+    expect(lastBody.temperature).toBe(0.5);
+  });
+
+  it('translates assistant tool_calls and tool messages into tool_use / tool_result blocks', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-sonnet-4-6',
+      messages: [
+        { role: 'user', content: 'which sites are unhealthy?' },
+        {
+          role: 'assistant',
+          content: '',
+          tool_calls: [
+            {
+              id: 'call-1',
+              type: 'function',
+              function: { name: 'listSites', arguments: '{}' },
+            },
+          ],
+        },
+        { role: 'tool', tool_call_id: 'call-1', name: 'listSites', content: '[{"id":"s-1"}]' },
+        { role: 'tool', tool_call_id: 'call-1', name: 'listSites', content: 'extra' },
+      ],
+    });
+    // user turn, assistant turn with tool_use, then ONE user turn with both tool_results merged
+    expect(lastBody.messages).toHaveLength(3);
+    expect(lastBody.messages[1].content[0]).toMatchObject({ type: 'tool_use', name: 'listSites' });
+    expect(lastBody.messages[2].role).toBe('user');
+    expect(lastBody.messages[2].content).toHaveLength(2);
+    expect(lastBody.messages[2].content[0].type).toBe('tool_result');
+  });
+
+  it('converts tools[*].parameters → tools[*].input_schema', async () => {
+    const p = new AnthropicLlmProvider({ apiKey: 'sk-ant-FAKE' });
+    await p.generateResponse({
+      model: 'claude-sonnet-4-6',
+      messages: [{ role: 'user', content: 'hi' }],
+      tools: [
+        {
+          name: 'listSites',
+          description: 'list sites',
+          parameters: { type: 'object', properties: {} },
+        },
+      ],
+    });
+    expect(lastBody.tools).toEqual([
+      {
+        name: 'listSites',
+        description: 'list sites',
+        input_schema: { type: 'object', properties: {} },
+      },
+    ]);
   });
 });
 

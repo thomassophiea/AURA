@@ -166,11 +166,139 @@ export class AzureOpenAiLlmProvider {
   }
 }
 
-// ── Anthropic stub ───────────────────────────────────────────────────────────
+// ── Anthropic provider ───────────────────────────────────────────────────────
+
+import Anthropic from '@anthropic-ai/sdk';
+
+/**
+ * Translate our internal OpenAI-shape conversation into Claude's Messages API
+ * shape: top-level `system`, `tool_use` / `tool_result` content blocks, and
+ * consecutive tool results merged into one user turn.
+ */
+function toClaudeMessages(messages) {
+  const out = [];
+  let pendingToolResults = [];
+
+  const flushPending = () => {
+    if (pendingToolResults.length) {
+      out.push({ role: 'user', content: pendingToolResults });
+      pendingToolResults = [];
+    }
+  };
+
+  for (const m of messages) {
+    if (m.role === 'system') continue; // handled separately
+    if (m.role === 'tool') {
+      pendingToolResults.push({
+        type: 'tool_result',
+        tool_use_id: m.tool_call_id,
+        content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+      });
+      continue;
+    }
+
+    flushPending();
+
+    if (m.role === 'assistant' && Array.isArray(m.tool_calls) && m.tool_calls.length) {
+      const blocks = [];
+      if (m.content && String(m.content).trim().length) {
+        blocks.push({ type: 'text', text: String(m.content) });
+      }
+      for (const tc of m.tool_calls) {
+        let input = {};
+        try {
+          input = typeof tc.function.arguments === 'string'
+            ? JSON.parse(tc.function.arguments || '{}')
+            : (tc.function.arguments ?? {});
+        } catch {
+          input = {};
+        }
+        blocks.push({
+          type: 'tool_use',
+          id: tc.id,
+          name: tc.function.name,
+          input,
+        });
+      }
+      out.push({ role: 'assistant', content: blocks });
+    } else {
+      out.push({ role: m.role, content: String(m.content ?? '') });
+    }
+  }
+  flushPending();
+  return out;
+}
+
+function extractSystemPrompt(messages) {
+  return messages
+    .filter((m) => m.role === 'system')
+    .map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content)))
+    .filter(Boolean)
+    .join('\n\n');
+}
 
 export class AnthropicLlmProvider {
-  async generateResponse() {
-    throw new Error('AnthropicLlmProvider: not yet implemented');
+  #client;
+
+  constructor({ apiKey }) {
+    if (!apiKey) throw new Error('AnthropicLlmProvider: apiKey is required');
+    // The SDK blocks instantiation when it detects a browser global (jsdom
+    // unit tests trip this even though we only ever run server-side in Node).
+    this.#client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true });
+  }
+
+  async generateResponse({ model, messages, tools, temperature = 0.3, maxTokens = 1024 }) {
+    const systemText = extractSystemPrompt(messages);
+    const claudeMessages = toClaudeMessages(messages);
+
+    // Tools translate name/description as-is; OpenAI's `parameters` is `input_schema` for Claude.
+    const claudeTools = tools?.length
+      ? tools.map((t) => ({
+          name: t.name,
+          description: t.description,
+          input_schema: t.parameters,
+        }))
+      : undefined;
+
+    // Cache the (stable) system prompt + tools as a prefix so multi-round tool
+    // loops re-read instead of re-paying full price each call.
+    const system = systemText
+      ? [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }]
+      : undefined;
+
+    const params = {
+      model,
+      max_tokens: maxTokens,
+      messages: claudeMessages,
+    };
+    if (system) params.system = system;
+    if (claudeTools) params.tools = claudeTools;
+
+    // Opus 4.7 removed temperature/top_p/top_k (400 if sent). Other Claude
+    // models still accept temperature.
+    if (!model.startsWith('claude-opus-4-7')) {
+      params.temperature = temperature;
+    }
+
+    const response = await this.#client.messages.create(params);
+
+    let text = '';
+    const toolCalls = [];
+    for (const block of response.content ?? []) {
+      if (block.type === 'text') {
+        text += block.text;
+      } else if (block.type === 'tool_use') {
+        toolCalls.push({
+          id: block.id,
+          name: block.name,
+          arguments: block.input ?? {},
+        });
+      }
+    }
+
+    const result = { message: text, raw: response };
+    if (toolCalls.length) result.toolCalls = toolCalls;
+    return result;
   }
 }
 
@@ -187,6 +315,32 @@ export class AnthropicLlmProvider {
  */
 export function createLlmProvider(config = {}) {
   let providerName = config.provider || process.env.ULTR0N_LLM_PROVIDER || 'mock';
+
+  // If a sk-ant-* key is present anywhere and the provider isn't already
+  // anthropic/mock, auto-route to Anthropic. Covers the case where the key
+  // landed in GROK_API_KEY or GROQ_API_KEY by mistake.
+  const possibleKeys = [
+    typeof config.apiKey === 'string' ? config.apiKey : undefined,
+    process.env.ANTHROPIC_API_KEY,
+    process.env.CLAUDE_API_KEY,
+    process.env.GROK_API_KEY,
+    process.env.GROQ_API_KEY,
+  ];
+  const anthropicKey = possibleKeys.find(
+    (k) => typeof k === 'string' && k.startsWith('sk-ant-')
+  );
+  if (
+    anthropicKey &&
+    providerName !== 'mock' &&
+    providerName !== 'anthropic' &&
+    providerName !== 'claude'
+  ) {
+    console.warn(
+      `[Ultr0n] sk-ant-* key found but provider=${providerName}. Routing to Anthropic.`
+    );
+    providerName = 'anthropic';
+    config = { ...config, apiKey: anthropicKey };
+  }
 
   if (providerName === 'openai') {
     const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
@@ -237,7 +391,21 @@ export function createLlmProvider(config = {}) {
   }
 
   if (providerName === 'azure') return { provider: new AzureOpenAiLlmProvider(), defaultModel: 'gpt-4o' };
-  if (providerName === 'anthropic') return { provider: new AnthropicLlmProvider(), defaultModel: 'claude-3-5-sonnet-20241022' };
+
+  if (providerName === 'anthropic' || providerName === 'claude') {
+    const apiKey =
+      config.apiKey ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.CLAUDE_API_KEY;
+    if (!apiKey) {
+      console.warn('[Ultr0n] ANTHROPIC_API_KEY not set — falling back to MockLlmProvider');
+      return { provider: new MockLlmProvider(), defaultModel: 'mock' };
+    }
+    return {
+      provider: new AnthropicLlmProvider({ apiKey }),
+      defaultModel: 'claude-sonnet-4-6',
+    };
+  }
 
   return { provider: new MockLlmProvider(), defaultModel: 'mock' };
 }

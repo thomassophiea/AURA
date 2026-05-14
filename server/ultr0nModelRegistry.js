@@ -45,6 +45,27 @@ export const MODEL_REGISTRY = {
     { id: 'gpt-4o-mini', label: 'GPT-4o Mini', contextWindow: 128000, notes: 'Default' },
     { id: 'gpt-4o', label: 'GPT-4o', contextWindow: 128000, notes: 'Higher quality' },
   ],
+  anthropic: [
+    {
+      id: 'claude-sonnet-4-6',
+      label: 'Claude Sonnet 4.6',
+      contextWindow: 1_000_000,
+      notes: 'Default — best speed/intelligence balance, recommended for tool-use',
+    },
+    {
+      id: 'claude-opus-4-7',
+      label: 'Claude Opus 4.7',
+      contextWindow: 1_000_000,
+      notes: 'Most capable — best for long-horizon agentic work',
+    },
+    {
+      id: 'claude-haiku-4-5',
+      label: 'Claude Haiku 4.5',
+      contextWindow: 200_000,
+      notes: 'Fastest and cheapest Claude model',
+    },
+  ],
+
   mock: [{ id: 'mock', label: 'Mock', contextWindow: 0, notes: 'No backend' }],
 };
 
@@ -64,6 +85,16 @@ export function isModelAllowed(providerName, modelId) {
  */
 export function resolveActiveProvider() {
   const raw = process.env.ULTR0N_LLM_PROVIDER || 'mock';
+
+  // sk-ant-* keys always route to Anthropic regardless of declared provider
+  const anthropicKey =
+    process.env.ANTHROPIC_API_KEY ||
+    process.env.CLAUDE_API_KEY ||
+    (process.env.GROK_API_KEY?.startsWith?.('sk-ant-') ? process.env.GROK_API_KEY : '') ||
+    (process.env.GROQ_API_KEY?.startsWith?.('sk-ant-') ? process.env.GROQ_API_KEY : '');
+  if (anthropicKey) return 'anthropic';
+  if (raw === 'anthropic' || raw === 'claude') return 'anthropic';
+
   if (raw !== 'grok' && raw !== 'groq') return raw;
 
   const apiKey = process.env.GROK_API_KEY || process.env.GROQ_API_KEY || '';
