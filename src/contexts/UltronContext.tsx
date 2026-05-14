@@ -310,9 +310,17 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       setIsThinking(true);
 
       try {
-        // Try wireless pipeline first
-        const handled = await runWirelessQuery(message);
-        if (handled) return;
+        // The wireless pipeline is a scoped diagnostic path — only run it
+        // when the user has a concrete client MAC or AP serial in scope
+        // (i.e. we're on a client-detail or ap-detail page). For broad
+        // questions, fall through to the tool-use loop which can hit any
+        // controller endpoint via the read-only tool catalog.
+        const ctx = ultronContextRef.current;
+        const hasScopedTarget = Boolean(ctx?.clientMac || ctx?.apSerial);
+        if (hasScopedTarget) {
+          const handled = await runWirelessQuery(message);
+          if (handled) return;
+        }
 
         const intent = await agentService.parseIntent(message);
 

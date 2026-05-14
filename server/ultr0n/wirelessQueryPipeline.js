@@ -57,6 +57,16 @@ export async function runWirelessQuery({
 
   const raw = await executeApiPlan(plan, { authToken, controllerUrl, fetchFn });
   const evidence = normalizeEvidence(raw, intent, resolved);
+
+  // If this was a diagnostic plan (i.e. has non-disruptive read calls) and we
+  // got back no evidence at all, bail out so the caller falls back to the
+  // open-ended tool-use loop. The N/A template narrative is worse than letting
+  // the agent investigate via its full tool catalog.
+  const planHasReadCalls = plan.some((c) => !c.disruptive);
+  if (planHasReadCalls && (!evidence.dataPoints || evidence.dataPoints === 0)) {
+    return null;
+  }
+
   const rootCause = classifyRootCause(evidence, intent);
   const confidence = scoreConfidence(evidence, rootCause);
   const { systemMsg, userMsg } = buildWirelessPrompt({ question, pageContext, evidence, rootCause, confidence });

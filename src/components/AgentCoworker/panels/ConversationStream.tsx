@@ -1,6 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
 import {
-  Bot,
   ThumbsUp,
   ThumbsDown,
   Copy,
@@ -95,17 +94,10 @@ export function ConversationStream({
 
         {messages.map((msg) => (
           <div key={msg.id} className={cn('flex gap-3', msg.role === 'user' && 'justify-end')}>
-            {msg.role === 'agent' && <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />}
-            <div className={cn('max-w-[85%] space-y-2', msg.role === 'user' && 'items-end')}>
-              {msg.role === 'agent' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-white/80">Ultr0n</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-900/60 text-violet-300 font-medium">
-                    Coworker
-                  </span>
-                </div>
-              )}
-
+            {msg.role === 'agent' && (
+              <span className="h-2 w-2 rounded-full bg-violet-400 shrink-0 mt-2 shadow-[0_0_8px_rgba(167,139,250,0.7)]" />
+            )}
+            <div className={cn('max-w-[88%] space-y-2', msg.role === 'user' && 'items-end')}>
               {msg.role === 'agent' && msg.wirelessAnswer ? (
                 <UltronAnswerCard
                   answer={msg.wirelessAnswer}
@@ -189,7 +181,7 @@ export function ConversationStream({
 
         {isThinking && (
           <div className="flex gap-3">
-            <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />
+            <span className="h-2 w-2 rounded-full bg-violet-400 shrink-0 mt-2 shadow-[0_0_8px_rgba(167,139,250,0.7)]" />
             {wirelessStage ? (
               <UltronProgress stage={wirelessStage} />
             ) : (
