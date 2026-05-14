@@ -271,77 +271,68 @@ export const ULTR0N_PAGE_TYPES: Record<string, UltronPageType> = {
  * Context-aware suggested prompts for each page type
  * Shown in the Ultr0n copilot panel to help users ask relevant questions
  */
+/**
+ * Suggested prompts shown in the empty conversation state.
+ *
+ * RULES (see memory: "Ultr0n suggestion discipline"):
+ * - Every prompt here must be answerable by the read-only tool catalog in
+ *   server/ultr0n/toolCatalog.js (sites, APs, clients, services, smart RF,
+ *   audit logs, client events).
+ * - Do not advertise capabilities that don't exist yet: reboot/locate/capture,
+ *   AAA/role/profile/drift introspection, multi-window time-series compare,
+ *   change-plan generation.
+ */
 export const ULTR0N_SUGGESTED_PROMPTS: Record<UltronPageType, string[]> = {
   clients: [
-    'Why are these clients having poor experience?',
-    'Which APs are causing the most client issues?',
-    'Show me authentication failures in the last hour.',
-    'Which clients are roaming too often?',
+    'Which clients have the worst RSSI right now?',
+    'Show clients seeing authentication failures.',
+    'Which AP is each impacted client connected to?',
   ],
   'service-levels': [
-    'Why is this service level degraded?',
-    'Which site is contributing most to the failure?',
-    'What changed in the last 24 hours?',
-    'Which clients are impacted?',
+    'Which sites are unhealthy right now?',
+    'Which APs at this site are overloaded?',
+    'What config changed in the last 24 hours?',
   ],
   insights: [
-    'Which insight should I fix first?',
-    'Are these issues related?',
-    'What is the blast radius?',
-    'Create an action plan for these insights.',
+    'Which sites are unhealthy and why?',
+    'Which APs have the highest channel utilization?',
+    'What config changes happened recently?',
   ],
   'client-detail': [
-    'Why did this client disconnect?',
-    'Why is Wi-Fi so slow for this client?',
-    'Is authentication failing for this client?',
-    'Which AP should this client be on?',
+    'Show the recent connection events for this client.',
+    'Which AP is this client on, and what is its RF state?',
+    'What SSID is this client using and how is it configured?',
   ],
   devices: [
     'Which APs are offline right now?',
-    'Which APs are overloaded?',
-    'Are there any APs with high channel utilization?',
-    'Are there any APs with persistent failures?',
+    'Which APs have the highest channel utilization?',
+    'Show recent smart RF events across the site.',
   ],
   'ap-detail': [
-    'Why is this AP overloaded?',
-    'Are there interference issues on this AP?',
-    'Which clients are having poor Wi-Fi on this AP?',
-    'Reboot this AP',
+    'Show this AP’s channel utilization and noise.',
+    'Show recent smart RF events for this AP.',
+    'Which clients are connected to this AP right now?',
   ],
   configuration: [
-    'Explain this configuration.',
-    'Show me inherited settings and overrides.',
-    'Generate a safe change plan.',
-    'Show me the diff before applying this.',
+    'What WLAN services are configured on the controller?',
+    'Show the configuration for this WLAN.',
+    'What config changes happened in the last 24 hours?',
   ],
   dashboard: [
-    'Summarize the current network health.',
-    'What are the top issues right now?',
-    'Which sites need attention?',
-    'Show me trends for the last 7 days.',
+    'Summarize current site health across the org.',
+    'Which APs are offline or overloaded right now?',
+    'What config changes happened in the last 24 hours?',
   ],
   wlans: [
-    'What WLANs are configured?',
-    'Which WLAN has the most clients?',
-    'Show me WLAN security settings.',
-    'Are any WLANs misconfigured?',
+    'What WLAN services are configured?',
+    'Show the security and AAA settings for this WLAN.',
+    'Which clients are currently on this WLAN?',
   ],
-  roles: [
-    'What roles are configured?',
-    'Which role has the broadest access?',
-    'Are there any role conflicts?',
-    'Explain the access policy for this role.',
-  ],
-  profiles: [
-    'What profiles are assigned here?',
-    'Show me profile inheritance.',
-    'Are there conflicting profile settings?',
-    'Which devices use this profile?',
-  ],
+  roles: [],
+  profiles: [],
   unknown: [
-    'What can you help me with on this page?',
-    'Summarize what I am looking at.',
-    'What actions are available here?',
-    'Are there any issues I should know about?',
+    'Summarize current site health across the org.',
+    'Which APs are offline or overloaded right now?',
+    'What config changes happened in the last 24 hours?',
   ],
 };

@@ -29,44 +29,45 @@ function disruptiveCall(method, pathTpl, resolved, description) {
   return { method, path, disruptive: true, description, label: pathTpl };
 }
 
+// Follow-up chips must map to a real backing tool in server/ultr0n/toolCatalog.js
+// or to an existing read-only API path. Removed: Locate AP, Reboot AP, Download
+// logs, Run packet capture, Compare previous 24 hours, Check AAA policy — none
+// of those have implementations today.
 const FOLLOW_UP_CHIPS_BY_INTENT = {
-  'client-poor-wifi': ['Show client timeline', 'Show AP RF stats', 'Show Smart RF history', 'Check WLAN config', 'Compare previous 24 hours'],
-  'client-disconnect': ['Show client timeline', 'Show AP RF stats', 'Check WLAN config', 'Check AAA policy', 'Compare previous 24 hours'],
+  'client-poor-wifi': ['Show client timeline', 'Show AP RF stats', 'Show Smart RF history', 'Check WLAN config'],
+  'client-disconnect': ['Show client timeline', 'Show AP RF stats', 'Check WLAN config'],
   'client-roaming': ['Show client timeline', 'Show AP RF stats', 'Show Smart RF history', 'Check WLAN config'],
-  'client-slow': ['Show client timeline', 'Show AP RF stats', 'Show impacted clients', 'Compare previous 24 hours'],
+  'client-slow': ['Show client timeline', 'Show AP RF stats', 'Show impacted clients'],
   'client-band-stuck': ['Show AP RF stats', 'Check WLAN config', 'Show client timeline'],
-  'client-auth-fail': ['Show client timeline', 'Check WLAN config', 'Check AAA policy', 'Show impacted clients'],
+  'client-auth-fail': ['Show client timeline', 'Check WLAN config', 'Show impacted clients'],
   'client-dhcp-fail': ['Show client timeline', 'Check WLAN config', 'Show impacted clients'],
-  'client-ppsk-fail': ['Show client timeline', 'Check WLAN config', 'Check AAA policy'],
+  'client-ppsk-fail': ['Show client timeline', 'Check WLAN config'],
   'client-captive-fail': ['Show client timeline', 'Check WLAN config'],
   'clients-low-rssi': ['Show AP RF stats', 'Show impacted clients', 'Show Smart RF history'],
   'clients-high-retry': ['Show AP RF stats', 'Show impacted clients', 'Show Smart RF history'],
-  'clients-auth-failed': ['Check WLAN config', 'Check AAA policy', 'Show impacted clients'],
+  'clients-auth-failed': ['Check WLAN config', 'Show impacted clients'],
   'clients-sticky': ['Show client timeline', 'Show AP RF stats', 'Show Smart RF history'],
-  'ap-overloaded': ['Show AP RF stats', 'Show impacted clients', 'Locate AP', 'Compare previous 24 hours'],
+  'ap-overloaded': ['Show AP RF stats', 'Show impacted clients'],
   'ap-high-utilization': ['Show AP RF stats', 'Show Smart RF history', 'Show impacted clients'],
   'ap-cci': ['Show AP RF stats', 'Show Smart RF history'],
   'ap-channel-power-change': ['Show Smart RF history', 'Show AP RF stats'],
   'ap-dfs': ['Show Smart RF history', 'Show AP RF stats'],
-  'ap-offline': ['Locate AP', 'Reboot AP', 'Show AP RF stats'],
-  'ap-bad-uplink': ['Locate AP', 'Show AP RF stats'],
-  'ap-underpowered': ['Locate AP', 'Show AP RF stats'],
+  'ap-offline': ['Show AP RF stats'],
+  'ap-bad-uplink': ['Show AP RF stats'],
+  'ap-underpowered': ['Show AP RF stats'],
   'ap-client-history': ['Show impacted clients', 'Show AP RF stats'],
   'ap-radio-stats': ['Show Smart RF history', 'Show impacted clients'],
   'ap-rf-context': ['Show Smart RF history', 'Show AP RF stats'],
-  'wlan-most-failures': ['Check WLAN config', 'Check AAA policy', 'Show impacted clients'],
+  'wlan-most-failures': ['Check WLAN config', 'Show impacted clients'],
   'wlan-client-count': ['Show impacted clients', 'Check WLAN config'],
-  'wlan-auth-issues': ['Check WLAN config', 'Check AAA policy', 'Show impacted clients'],
+  'wlan-auth-issues': ['Check WLAN config', 'Show impacted clients'],
   'wlan-deployed-where': ['Check WLAN config'],
   'wlan-compare': ['Check WLAN config', 'Show impacted clients'],
-  'site-health': ['Show AP RF stats', 'Show Smart RF history', 'Show impacted clients', 'Compare previous 24 hours'],
+  'site-health': ['Show AP RF stats', 'Show Smart RF history', 'Show impacted clients'],
   'sites-poor': ['Show AP RF stats', 'Show Smart RF history'],
-  'site-ap-impact': ['Show AP RF stats', 'Locate AP', 'Reboot AP'],
-  'config-change-before-issue': ['Compare previous 24 hours', 'Show AP RF stats'],
+  'site-ap-impact': ['Show AP RF stats'],
+  'config-change-before-issue': ['Show AP RF stats'],
   'what-to-fix': ['Show AP RF stats', 'Show impacted clients', 'Show Smart RF history'],
-  'action-packet-capture': ['Download logs'],
-  'action-download-logs': ['Run packet capture'],
-  'action-reboot-ap': ['Locate AP', 'Show AP RF stats'],
 };
 
 const PLANS = {
@@ -264,5 +265,5 @@ export function planApiCalls(intent, resolved) {
 }
 
 export function getFollowUpChips(intent) {
-  return FOLLOW_UP_CHIPS_BY_INTENT[intent] ?? ['Show AP RF stats', 'Show impacted clients', 'Compare previous 24 hours'];
+  return FOLLOW_UP_CHIPS_BY_INTENT[intent] ?? ['Show AP RF stats', 'Show impacted clients', 'Show Smart RF history'];
 }
