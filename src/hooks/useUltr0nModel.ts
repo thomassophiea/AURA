@@ -5,11 +5,13 @@ export interface Ultr0nModel {
   label: string;
   contextWindow: number;
   notes: string;
+  kind?: 'llm' | 'shell';
 }
 
 interface ModelsResponse {
   provider: string;
   defaultModel: string;
+  llmDefaultModel?: string;
   models: Ultr0nModel[];
 }
 

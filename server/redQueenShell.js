@@ -1,0 +1,192 @@
+/**
+ * Red Queen Shell — WebSocket ↔ SSH PTY bridge.
+ *
+ * Each incoming WebSocket opens a brand-new SSH connection to the configured
+ * host, requests an interactive PTY shell, and pipes bytes both directions
+ * verbatim. Messages from the client may be either:
+ *   - raw text/binary frames (treated as stdin and written to the PTY)
+ *   - JSON control frames matching { type: 'resize', cols, rows }
+ *
+ * ⚠️ The default credentials below are hardcoded per user direction. Rotate
+ *    them and move to key-based auth (or at least a server-side env var)
+ *    before this ships beyond the local lab.
+ */
+
+import { Client as SSHClient } from 'ssh2';
+import { WebSocketServer } from 'ws';
+
+const DEFAULT_HOST = process.env.RED_QUEEN_HOST || '192.168.100.177';
+const DEFAULT_PORT = Number(process.env.RED_QUEEN_PORT || 22);
+// SSH username is lowercase on the box (verified live); accept env override.
+const DEFAULT_USER = process.env.RED_QUEEN_USER || 'redq';
+// ⚠ hardcoded — rotate / move to key auth
+const DEFAULT_PASSWORD = process.env.RED_QUEEN_PASSWORD || 'Annabelladmin7';
+
+// On connect, drop the user directly into `claude` with permissions bypassed,
+// running inside the AURA repo. Override via RED_QUEEN_LAUNCH_CMD or set to
+// empty string for a plain shell.
+const DEFAULT_LAUNCH_CMD =
+  process.env.RED_QUEEN_LAUNCH_CMD ??
+  "cd /home/redq/Documents/NobaraShare/GitHub/AURA && exec /home/redq/.local/bin/claude --dangerously-skip-permissions";
+
+const READY_TIMEOUT_MS = 15_000;
+const KEEPALIVE_INTERVAL_MS = 20_000;
+
+function safeSend(ws, payload) {
+  if (ws.readyState !== ws.OPEN) return;
+  try {
+    ws.send(payload);
+  } catch {
+    /* socket closed mid-write */
+  }
+}
+
+function bridgeOne(ws, opts = {}) {
+  const host = opts.host || DEFAULT_HOST;
+  const port = opts.port || DEFAULT_PORT;
+  const username = opts.username || DEFAULT_USER;
+  const password = opts.password || DEFAULT_PASSWORD;
+  const launchCmd = opts.launchCmd ?? DEFAULT_LAUNCH_CMD;
+
+  const ssh = new SSHClient();
+  let shell = null;
+  let closed = false;
+
+  const closeAll = (reason) => {
+    if (closed) return;
+    closed = true;
+    try { shell?.end(); } catch { /* ignore */ }
+    try { ssh.end(); } catch { /* ignore */ }
+    if (ws.readyState === ws.OPEN || ws.readyState === ws.CONNECTING) {
+      try { ws.close(1000, reason || 'closed'); } catch { /* ignore */ }
+    }
+  };
+
+  const onStream = (err, stream) => {
+    if (err) {
+      safeSend(ws, `\r\n\x1b[31mssh stream error: ${err.message}\x1b[0m\r\n`);
+      return closeAll('stream-error');
+    }
+    shell = stream;
+    stream.on('data', (chunk) => safeSend(ws, chunk));
+    stream.stderr.on('data', (chunk) => safeSend(ws, chunk));
+    stream.on('close', () => closeAll('stream-closed'));
+  };
+
+  ssh.on('ready', () => {
+    safeSend(ws, `\x1b[2J\x1b[H\x1b[35m● Red Queen connected (${username}@${host})\x1b[0m\r\n`);
+    const ptyOpts = { term: 'xterm-256color', cols: 120, rows: 32 };
+    if (launchCmd && launchCmd.trim()) {
+      // ssh2's protocol-level remote-exec (NOT child_process.exec) — runs the
+      // command on the remote SSH server inside an allocated PTY. Wrapped in
+      // `bash -lc` so PATH / rc files are loaded regardless of the user's
+      // login shell (the box has fish/zsh under starship).
+      const wrapped = `bash -lc ${JSON.stringify(launchCmd)}`;
+      const runRemote = ssh.exec.bind(ssh);
+      runRemote(wrapped, { pty: ptyOpts }, onStream);
+    } else {
+      ssh.shell(ptyOpts, onStream);
+    }
+  });
+
+  ssh.on('error', (err) => {
+    safeSend(ws, `\r\n\x1b[31mssh error: ${err.message}\x1b[0m\r\n`);
+    closeAll('ssh-error');
+  });
+
+  ssh.on('end', () => closeAll('ssh-end'));
+  ssh.on('close', () => closeAll('ssh-close'));
+  ssh.on('keyboard-interactive', (_name, _instructions, _lang, _prompts, finish) => {
+    finish([password]);
+  });
+
+  ws.on('message', (raw, isBinary) => {
+    if (!shell) return;
+    if (!isBinary) {
+      const text = raw.toString();
+      // try control frame first
+      if (text.startsWith('{')) {
+        try {
+          const msg = JSON.parse(text);
+          if (msg && msg.type === 'resize') {
+            const cols = Number(msg.cols) || 80;
+            const rows = Number(msg.rows) || 24;
+            try { shell.setWindow(rows, cols, 0, 0); } catch { /* ignore */ }
+            return;
+          }
+        } catch {
+          /* not JSON — treat as raw input */
+        }
+      }
+      shell.write(text);
+      return;
+    }
+    shell.write(raw);
+  });
+
+  ws.on('close', () => closeAll('ws-close'));
+  ws.on('error', () => closeAll('ws-error'));
+
+  const keepalive = setInterval(() => {
+    if (ws.readyState === ws.OPEN) {
+      try { ws.ping(); } catch { /* ignore */ }
+    } else {
+      clearInterval(keepalive);
+    }
+  }, KEEPALIVE_INTERVAL_MS);
+  ws.once('close', () => clearInterval(keepalive));
+
+  try {
+    ssh.connect({
+      host,
+      port,
+      username,
+      password,
+      tryKeyboard: true,
+      readyTimeout: READY_TIMEOUT_MS,
+      keepaliveInterval: 15_000,
+      // Red Queen is a lab box on the LAN — accept whatever host key it offers.
+      // Lock this down before going beyond the lab.
+      algorithms: undefined,
+    });
+  } catch (err) {
+    safeSend(ws, `\r\n\x1b[31mssh connect threw: ${err.message}\x1b[0m\r\n`);
+    closeAll('ssh-throw');
+  }
+}
+
+/**
+ * Attach a WebSocket server to an existing HTTP server.
+ * Auth: a ?token=<bearer> query param is required and must be non-empty.
+ * The same trust assumption as requireAuth() — token validity is delegated
+ * to the controller for the real management paths; here we just refuse
+ * fully-anonymous connects.
+ */
+export function attachRedQueenShell(httpServer, { path = '/api/ultr0n/shell/ws' } = {}) {
+  const wss = new WebSocketServer({ noServer: true });
+
+  httpServer.on('upgrade', (req, socket, head) => {
+    let url;
+    try {
+      url = new URL(req.url, 'http://placeholder');
+    } catch {
+      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    if (url.pathname !== path) return;
+
+    const token = url.searchParams.get('token') || '';
+    if (!token || token.length < 10) {
+      socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      bridgeOne(ws);
+    });
+  });
+
+  return wss;
+}

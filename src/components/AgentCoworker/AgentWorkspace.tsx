@@ -10,6 +10,7 @@ import { ConfigDiffView } from './panels/ConfigDiffView';
 import { ApprovalControls } from './panels/ApprovalControls';
 import { APITimelineView } from './panels/APITimelineView';
 import { AuditHistoryView } from './panels/AuditHistoryView';
+import { RedQueenShell } from './panels/RedQueenShell';
 import { WORKSPACE_WIDTHS } from './agentTypes';
 import type {
   WorkspaceMode,
@@ -145,6 +146,9 @@ export function AgentWorkspace({
     setSelectedModel,
     loading: modelsLoading,
   } = useUltr0nModel();
+
+  const activeModel = models.find((m) => m.id === selectedModel);
+  const isShellMode = activeModel?.kind === 'shell';
 
   const { ultronContext } = useUltronContext();
   const headerTitle = ultronContext.pageName?.trim() || 'AURA';
@@ -314,7 +318,8 @@ export function AgentWorkspace({
 
         {/* Panel content */}
         <div className="flex-1 min-h-0 overflow-hidden">
-          {activePanel === 'conversation' && (
+          {activePanel === 'conversation' && isShellMode && <RedQueenShell />}
+          {activePanel === 'conversation' && !isShellMode && (
             <ConversationStream
               messages={messages}
               isThinking={isThinking}

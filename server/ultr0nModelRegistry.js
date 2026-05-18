@@ -69,6 +69,25 @@ export const MODEL_REGISTRY = {
   mock: [{ id: 'mock', label: 'Mock', contextWindow: 0, notes: 'No backend' }],
 };
 
+/**
+ * Non-LLM "models" surfaced in the picker. These are not LLM endpoints; the
+ * frontend renders a custom panel for them (e.g. an embedded SSH terminal).
+ * They are returned by /api/ultr0n/models alongside the active provider's
+ * models, but are NOT accepted by /api/ultr0n/message (isModelAllowed below
+ * stays LLM-only on purpose).
+ */
+export const SHELL_MODELS = [
+  {
+    id: 'redq-shell',
+    label: 'Red Queen Shell',
+    kind: 'shell',
+    contextWindow: 0,
+    notes: 'iTerm-style SSH session to redQ@192.168.100.177',
+  },
+];
+
+export const DEFAULT_PICKER_MODEL = 'redq-shell';
+
 export function getAllowedModels(providerName) {
   return MODEL_REGISTRY[providerName] ?? MODEL_REGISTRY.mock;
 }

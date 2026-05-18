@@ -1,5 +1,6 @@
 // Version: Kroger Alignment & Logo Fix - Dec 29 2025 v8 - 20:15
 import express from 'express';
+import http from 'http';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,7 +14,10 @@ import {
   getAllowedModels,
   isModelAllowed,
   resolveActiveProvider,
+  SHELL_MODELS,
+  DEFAULT_PICKER_MODEL,
 } from './server/ultr0nModelRegistry.js';
+import { attachRedQueenShell } from './server/redQueenShell.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1382,8 +1386,9 @@ app.get('/api/ultr0n/models', requireAuth, (_req, res) => {
   const provider = resolveActiveProvider();
   res.json({
     provider,
-    defaultModel: ultr0nOrchestrator.defaultModel,
-    models: getAllowedModels(provider),
+    defaultModel: DEFAULT_PICKER_MODEL,
+    llmDefaultModel: ultr0nOrchestrator.defaultModel,
+    models: [...SHELL_MODELS, ...getAllowedModels(provider)],
   });
 });
 
@@ -1536,9 +1541,13 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(buildPath, 'index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const httpServer = http.createServer(app);
+attachRedQueenShell(httpServer);
+
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
   console.log(`[Proxy Server] Proxying /api/* to ${DEFAULT_CONTROLLER_URL} (with dynamic routing)`);
+  console.log(`[Proxy Server] Red Queen shell WS: ws://0.0.0.0:${PORT}/api/ultr0n/shell/ws`);
   console.log(`[Proxy Server] Health check available at http://localhost:${PORT}/health`);
 });
 
