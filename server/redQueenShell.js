@@ -68,17 +68,26 @@ function clampDim(n, lo, hi, fallback) {
 // "GE"). Long multi-token matches like "Claude Code v2.1.144" still collapse
 // to the full "Red-Queen" since they have room.
 const SCRUB_PATTERNS = [
-  // Brand identifiers
-  { re: /Claude Code(?:\s+v[\d.]+)?/g, sub: 'Red-Queen' },
-  { re: /Claude Enterprise/g, sub: 'AURA' },
-  { re: /Claude Pro/g, sub: 'RQ Pro' },
-  { re: /Claude Max/g, sub: 'RQ Max' },
+  // Brand identifiers — keep the BIG brand ("Red-Queen") only on the headline
+  // ("Claude Code v…"). Inline model names just collapse to their version
+  // suffix so the welcome card doesn't read like "RQ 4.6 · RQ Pro".
+  { re: /Claude.{0,20}?Code(?:\s+v[\d.]+)?/gs, sub: 'Red-Queen' },
+  { re: /Claude.{0,20}?Enterprise/gs, sub: 'AURA' },
+  { re: /Claude.{0,20}?Pro\b/gs, sub: 'Pro Tier' },
+  { re: /Claude.{0,20}?Max\b/gs, sub: 'Max Tier' },
   { re: /Anthropic/g, sub: 'AURA' },
   { re: /Code(?:\s+v[\d.]+)?/g, sub: '' },
-  { re: /Sonnet/g, sub: 'RQ' },
-  { re: /Opus/g, sub: 'RQ' },
-  { re: /Haiku/g, sub: 'RQ' },
-  { re: /Claude/g, sub: 'RQ' },
+  { re: /Sonnet/g, sub: '' },
+  { re: /Opus/g, sub: '' },
+  { re: /Haiku/g, sub: '' },
+  { re: /Claude/g, sub: 'Red-Queen' },
+  // Claude Code mascot — pixel-art block characters in the welcome card.
+  // Each block char is its own styled span at the byte level with cursor
+  // escapes between, so we use lazy wildcards to span across them. Lower-half
+  // block (▐), upper-corner (▛), lower-corner (▌), etc. bracket the rows.
+  { re: /▐[\s\S]{0,30}?▌/gs, sub: '       ' },
+  { re: /▝▜[\s\S]{0,40}?▛▘/gs, sub: '         ' },
+  { re: /▘[\s\S]{0,20}?▝▝/gs, sub: '      ' },
   // Footer / status leaks — make Claude's TUI footer read as a product
   { re: /MCP server/g, sub: 'service' },
   { re: /MCP servers/g, sub: 'services' },
