@@ -141,6 +141,8 @@ import { Button } from './components/ui/button';
 import { Braces, Github, FlaskConical } from 'lucide-react';
 import { AppsMenu } from './components/AppsMenu';
 import { UserMenu } from './components/UserMenu';
+import { DevModePinDialog } from './components/DevModePinDialog';
+import { useDevModeUnlock } from './hooks/useDevModeUnlock';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { tenantService } from './services/tenantService';
 import { DevToolsPanel } from './components/DevToolsPanel';
@@ -301,6 +303,7 @@ export default function App() {
     return stored === null ? true : stored === 'true';
   });
   const [isDevModeOpen, setIsDevModeOpen] = useState(false);
+  const devMode = useDevModeUnlock();
   const [activePersona, setActivePersonaRaw] = useState<PersonaId>(readStoredPersona);
   const setActivePersona = useCallback((id: PersonaId) => {
     setActivePersonaRaw(id);
@@ -352,11 +355,18 @@ export default function App() {
   );
 
   useEffect(() => {
-    // Initialize theme from localStorage or system preference
+    // Initialize theme from localStorage or system preference.
+    // Dev theme is gated: if it was saved but the unlock flag is gone (cleared
+    // localStorage, signed-out machine, fresh browser), fall back to ep1 so
+    // a customer can't land on dev tooling by reloading.
     const initializeTheme = () => {
       const saved = localStorage.getItem('theme');
-      const initialTheme: 'light' | 'ep1' | 'dev' =
+      let initialTheme: 'light' | 'ep1' | 'dev' =
         saved === 'light' || saved === 'ep1' || saved === 'dev' ? saved : 'ep1';
+      if (initialTheme === 'dev' && !devMode.isUnlocked) {
+        initialTheme = 'ep1';
+        localStorage.setItem('theme', 'ep1');
+      }
 
       setTheme(initialTheme);
       applyThemeForMode(initialTheme);
@@ -887,6 +897,7 @@ export default function App() {
       // Unsubscribe from API logs
       unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper function to apply theme to document
@@ -916,20 +927,22 @@ export default function App() {
   };
 
   const toggleTheme = () => {
-    const cycle: Record<'light' | 'ep1' | 'dev', 'light' | 'ep1' | 'dev'> = {
-      ep1: 'dev',
-      dev: 'light',
+    // Dev theme is intentionally NOT in the user-facing cycle. Entry path is
+    // the brand-logo tap counter + PIN dialog (see useDevModeUnlock); exit is
+    // the "Lock dev mode" item in UserMenu.
+    const cycle: Record<'light' | 'ep1' | 'dev', 'light' | 'ep1'> = {
+      ep1: 'light',
       light: 'ep1',
+      dev: 'ep1',
     };
     const newTheme = cycle[theme];
     setTheme(newTheme);
     applyTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
-    const labels = { ep1: 'Dark', dev: 'Dev', light: 'Light' };
-    const descriptions = {
+    const labels: Record<'light' | 'ep1', string> = { ep1: 'Dark', light: 'Light' };
+    const descriptions: Record<'light' | 'ep1', string> = {
       ep1: 'Dark mode activated.',
-      dev: 'Dev mode activated — Red Queen shell unlocked.',
       light: 'Light mode activated.',
     };
 
@@ -938,6 +951,25 @@ export default function App() {
       duration: 2000,
     });
   };
+
+  // React to dev-mode unlock/lock transitions. Unlock flips the theme to dev
+  // (and persists it); lock falls back to ep1 if we were in dev.
+  useEffect(() => {
+    if (devMode.isUnlocked && theme !== 'dev') {
+      setTheme('dev');
+      applyTheme('dev');
+      localStorage.setItem('theme', 'dev');
+      toast.success('Dev mode unlocked', {
+        description: 'Red Queen shell available.',
+        duration: 2000,
+      });
+    } else if (!devMode.isUnlocked && theme === 'dev') {
+      setTheme('ep1');
+      applyTheme('ep1');
+      localStorage.setItem('theme', 'ep1');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [devMode.isUnlocked]);
 
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
@@ -970,6 +1002,7 @@ export default function App() {
     sleDataCollectionService.stopCollection();
 
     await apiService.logout();
+    devMode.lock();
     setIsAuthenticated(false);
     setAdminRole(null);
     setCurrentPage('workspace');
@@ -1332,11 +1365,21 @@ export default function App() {
                         : '0 2px 8px rgba(0,0,0,0.12)',
                   }}
                 >
-                  {/* Left side — persistent brand across all themes */}
+                  {/* Left side — persistent brand across all themes.
+                      Doubles as the hidden dev-mode trigger: 7 taps in 3
+                      seconds opens the PIN dialog (see useDevModeUnlock). */}
                   <img
                     src="/branding/extreme-e.png"
                     alt="Extreme Networks"
-                    style={{ height: 36, width: 36, objectFit: 'contain', flexShrink: 0 }}
+                    onClick={devMode.registerBrandTap}
+                    style={{
+                      height: 36,
+                      width: 36,
+                      objectFit: 'contain',
+                      flexShrink: 0,
+                      cursor: 'default',
+                      userSelect: 'none',
+                    }}
                   />
                   <span
                     className="text-sm font-semibold text-foreground"
@@ -1442,6 +1485,14 @@ export default function App() {
                       onLogout={handleLogout}
                       theme={theme}
                       onThemeToggle={toggleTheme}
+                      onDevLock={
+                        devMode.isUnlocked
+                          ? () => {
+                              devMode.lock();
+                              toast.success('Dev mode locked', { duration: 1500 });
+                            }
+                          : undefined
+                      }
                       userEmail={localStorage.getItem('user_email') || undefined}
                       onNavigateTo={handlePageChange}
                     />
@@ -1513,6 +1564,12 @@ export default function App() {
 
               {/* Version Display - Fixed to bottom-left */}
               <VersionDisplay position="bottom-left" />
+
+              <DevModePinDialog
+                open={devMode.pinPromptOpen}
+                onClose={devMode.closePinPrompt}
+                onSubmit={devMode.attemptUnlock}
+              />
             </>
           </PersonaProvider>
         </UltronContextProvider>

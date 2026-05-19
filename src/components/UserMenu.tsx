@@ -11,7 +11,7 @@ import {
   Building2,
   Moon,
   Sun,
-  Braces,
+  Lock,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
@@ -23,6 +23,9 @@ interface UserMenuProps {
   onLogout: () => void;
   theme: string;
   onThemeToggle: () => void;
+  // Provided only when dev mode is currently unlocked. Renders a "Lock dev
+  // mode" item that calls back to clear the unlock flag.
+  onDevLock?: () => void;
   userEmail?: string;
   onNavigateTo?: (page: string) => void;
 }
@@ -31,6 +34,7 @@ export function UserMenu({
   onLogout,
   theme,
   onThemeToggle,
+  onDevLock,
   userEmail,
   onNavigateTo,
 }: UserMenuProps) {
@@ -153,11 +157,21 @@ export function UserMenu({
     },
     {
       type: 'item',
-      label: `Theme: ${theme === 'ep1' ? 'Dark' : theme === 'dev' ? 'Dev' : 'Light'}`,
-      icon: theme === 'ep1' ? Moon : theme === 'dev' ? Braces : Sun,
+      label: `Theme: ${theme === 'ep1' || theme === 'dev' ? 'Dark' : 'Light'}`,
+      icon: theme === 'light' ? Sun : Moon,
       action: onThemeToggle,
       keepOpen: true,
     },
+    ...(onDevLock
+      ? [
+          {
+            type: 'item' as const,
+            label: 'Lock dev mode',
+            icon: Lock,
+            action: onDevLock,
+          },
+        ]
+      : []),
     {
       type: 'separator',
     },
