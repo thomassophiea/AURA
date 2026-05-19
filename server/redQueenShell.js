@@ -86,7 +86,7 @@ function bridgeOne(ws, opts = {}) {
   ssh.on('ready', () => {
     // Customer-facing banner — never expose SSH host / user.
     void username; void host;
-    safeSend(ws, `\x1b[2J\x1b[H\x1b[35m● AURA Copilot online\x1b[0m\r\n`);
+    safeSend(ws, `\x1b[2J\x1b[H\x1b[31m● Red-Queen online\x1b[0m\r\n`);
     const ptyOpts = { term: 'xterm-256color', cols: initialCols, rows: initialRows };
     if (launchCmd && launchCmd.trim()) {
       // ssh2's protocol-level remote-exec (NOT child_process.exec) — runs the

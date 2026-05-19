@@ -1,4 +1,3 @@
-import { Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { ModelSelector } from './ModelSelector';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
@@ -9,7 +8,7 @@ interface AgentCommandBarProps {
 }
 
 /**
- * Floating AURA Copilot widget: model picker + open-workspace hotkey hint.
+ * Floating Red-Queen widget: model picker + open-workspace hotkey hint.
  * No chat input, no mic, no context badge — the workspace panel owns input.
  */
 export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
@@ -30,10 +29,14 @@ export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
         <button
           onClick={onOpen}
           className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-white/70 hover:text-white/95 hover:bg-white/8 transition-colors"
-          title="Open AURA Copilot"
+          title="Open Red-Queen"
         >
-          <Sparkles className="h-3.5 w-3.5 text-violet-400/90" />
-          <span className="font-medium">Copilot</span>
+          <img
+            src="/red-queen-icon.webp"
+            alt=""
+            className="h-4 w-4 object-contain drop-shadow-[0_0_4px_rgba(239,68,68,0.35)]"
+          />
+          <span className="font-medium">Red-Queen</span>
         </button>
 
         <div className="w-px h-5 bg-white/10" />

@@ -213,7 +213,8 @@ export function RedQueenShell({ className }: { className?: string }) {
     <div className={cn('flex flex-col h-full bg-[#0d0b14]', className)}>
       <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-white/50 border-b border-white/8 bg-black/30">
         <span className={cn('h-1.5 w-1.5 rounded-full', statusDot)} />
-        <span className="font-mono">AURA COPILOT</span>
+        <img src="/red-queen-icon.webp" alt="" className="h-3 w-3 object-contain" />
+        <span className="font-mono">RED-QUEEN</span>
         <span className="text-white/25">·</span>
         <span>{statusLabel}</span>
       </div>

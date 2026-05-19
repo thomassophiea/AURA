@@ -18,7 +18,7 @@ interface AgentWorkspaceProps {
 }
 
 /**
- * Dev-mode AURA Copilot slideout: header (model picker + window controls)
+ * Dev-mode Red-Queen slideout: header (model picker + window controls)
  * + agent body. No tabs, no chat, no approval flow.
  */
 export function AgentWorkspace({
@@ -82,7 +82,7 @@ export function AgentWorkspace({
         data-testid="agent-workspace"
         className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-[hsl(268_22%_7%)] hover:bg-[hsl(268_22%_10%)] transition-colors group"
         onClick={onPin}
-        title="Expand AURA Copilot"
+        title="Expand Red-Queen"
       >
         <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-violet-400/40 to-transparent group-hover:via-violet-400/80 transition-colors" />
         <span className="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]" />

@@ -79,7 +79,7 @@ export const MODEL_REGISTRY = {
 export const SHELL_MODELS = [
   {
     id: 'redq-shell',
-    label: 'AURA Copilot',
+    label: 'Red-Queen',
     kind: 'shell',
     contextWindow: 0,
     notes: 'Network operations agent · default',
