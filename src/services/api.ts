@@ -676,8 +676,10 @@ class ApiService {
           'Content-Type': 'application/json',
           Accept: 'application/json',
         },
+        // XCC expects camelCase here even though the *response* is snake_case.
+        // Sending `refresh_token` returns 404 NOT_FOUND with no further hint.
         body: JSON.stringify({
-          refresh_token: this.refreshToken,
+          refreshToken: this.refreshToken,
         }),
         signal: controller.signal,
       });
