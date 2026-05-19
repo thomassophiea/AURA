@@ -121,7 +121,7 @@ export interface ExecutionResult {
 }
 
 export const WORKSPACE_WIDTHS: Record<WorkspaceSize, number> = {
-  compact: 400,
-  standard: 520,
-  expanded: 720,
+  compact: 480,
+  standard: 640,
+  expanded: 860,
 };

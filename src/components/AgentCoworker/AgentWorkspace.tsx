@@ -3,7 +3,7 @@ import { X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 import { useAppContext } from '../../contexts/AppContext';
-import { getGlobalFilters } from '../../hooks/useGlobalFilters';
+import { writeAgentContext } from '../../services/agentContextService';
 import { ModelSelector } from './ModelSelector';
 import { RedQueenShell } from './panels/RedQueenShell';
 import { WORKSPACE_WIDTHS } from './agentTypes';
@@ -37,21 +37,16 @@ export function AgentWorkspace({
 
   const { siteGroup, navigationScope } = useAppContext();
 
-  const buildContext = useCallback((): string => {
-    const f = getGlobalFilters();
-    const parts: string[] = [
-      '# AURA screen context',
-      `url: ${window.location.pathname}`,
-      `scope: ${navigationScope}`,
-      siteGroup
-        ? `site-group: ${siteGroup.name} (${siteGroup.controller_url})`
-        : 'site-group: none',
-      `time-range: ${f.timeRange}`,
-    ];
-    if (f.site && f.site !== 'all') parts.push(`site: ${f.site}`);
-    if (f.environment && f.environment !== 'all') parts.push(`environment: ${f.environment}`);
-    return parts.join('\n');
-  }, [siteGroup, navigationScope]);
+  // Write context to .aura-session.md (read by CLAUDE.md @import) whenever
+  // the workspace is visible or the active site/scope changes.
+  useEffect(() => {
+    if (!isVisible) return;
+    writeAgentContext({
+      navigationScope,
+      siteGroupName: siteGroup?.name,
+      controllerUrl: siteGroup?.controller_url,
+    });
+  }, [isVisible, navigationScope, siteGroup]);
 
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
@@ -187,7 +182,7 @@ export function AgentWorkspace({
         </div>
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          <RedQueenShell getContext={buildContext} />
+          <RedQueenShell />
         </div>
       </div>
     </>

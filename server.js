@@ -6,6 +6,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import expressRateLimit from 'express-rate-limit';
 import path from 'path';
+import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
 import { createLlmProvider } from './server/ultr0nLlmProvider.js';
@@ -1442,6 +1443,22 @@ app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
   } catch (err) {
     console.error('[Ultr0n] updateContext error:', err.message);
     res.status(500).json({ error: 'Failed to update context' });
+  }
+});
+
+// Write live session context to .aura-session.md so Claude reads it silently
+// via the @.aura-session.md import in CLAUDE.md at startup.
+app.post('/api/ultr0n/shell/context', requireAuth, jsonParser, (req, res) => {
+  const { markdown } = req.body ?? {};
+  if (!markdown || typeof markdown !== 'string') {
+    return res.status(400).json({ error: 'markdown string required' });
+  }
+  try {
+    writeFileSync(path.join(__dirname, '.aura-session.md'), markdown, 'utf8');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[Shell] context write error:', err.message);
+    res.status(500).json({ error: 'Failed to write context file' });
   }
 });
 

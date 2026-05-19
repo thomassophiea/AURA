@@ -2,6 +2,9 @@
 
 Enterprise network monitoring platform for Extreme Networks Campus Controller.
 
+@.aura-session.md
+
+
 ## Stack
 
 - **Frontend:** React 19, TypeScript 5.7 (strict), Vite 7, Tailwind CSS, Radix UI, Lucide React icons
