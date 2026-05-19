@@ -6,6 +6,7 @@ interface VersionInfo {
   version: string;
   commit: string;
   commitFull?: string;
+  commitCount?: string;
   branch: string;
   buildDate: string;
   message?: string;
@@ -18,9 +19,10 @@ interface VersionDisplayProps {
   expandable?: boolean;
 }
 
-// Build number is derived from the build date as YYYYMMDD — monotonic,
-// recognizable as a date, and meaningful without needing the git commit
-// count (which isn't available at runtime on Railway's stripped-.git build).
+// Build number: prefer the real commit count from /api/version (computed
+// at build time via git locally, or the GitHub API on Railway). Fall back
+// to the build date as YYYYMMDD when the count is missing — still
+// monotonic and meaningful, just less precise than the push number.
 function buildNumberFromDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
@@ -59,7 +61,12 @@ export function VersionDisplay({
   const buildMessage = info?.message ?? '';
   const buildFeatures: string[] = info?.features ?? [];
   const buildDate = info?.buildDate ? new Date(info.buildDate).toLocaleString() : 'Unknown';
-  const buildNumber = info?.buildDate ? buildNumberFromDate(info.buildDate) : '—';
+  const buildNumber =
+    info?.commitCount && info.commitCount !== '0'
+      ? info.commitCount
+      : info?.buildDate
+        ? buildNumberFromDate(info.buildDate)
+        : '—';
 
   const positionClasses = {
     'bottom-left': 'bottom-4 left-4',
