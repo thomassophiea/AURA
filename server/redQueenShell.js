@@ -82,6 +82,14 @@ const SCRUB_PATTERNS = [
   { re: /Opus/g, sub: '' },
   { re: /Haiku/g, sub: '' },
   { re: /Claude/g, sub: 'AURA' },
+  // Project / session label rewrites — Claude Code stores the project label
+  // from the original `--name` invocation and keeps using it after rename.
+  // Catch every casing of the legacy "Red Queen" / "Red-Queen" pill before
+  // the bare "Code" / "AURA" passes run, so the bottom-of-screen status
+  // reads as the product.
+  { re: /RED[- ]QUEEN/g, sub: 'AURA' },
+  { re: /Red[- ]Queen/g, sub: 'AURA' },
+  { re: /red[- ]queen/g, sub: 'AURA' },
   // Claude Code mascot — pixel-art block characters in the welcome card.
   // Each block char is its own styled span at the byte level with cursor
   // escapes between, so we use lazy wildcards to span across them. Lower-half

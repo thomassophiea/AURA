@@ -10,61 +10,62 @@
  *   notes         - short tag (speed / quality / context)
  */
 
-// Customer-facing labels rebrand every upstream model into the AURA family
-// — IDs stay original since they're how the backend routes requests.
+// Picker labels show the real upstream model names — honest and customer-
+// recognizable. The product brand ("AURA Agent") is reserved for the shell
+// entry below. IDs stay original because they're how the backend routes.
 export const MODEL_REGISTRY = {
   groq: [
     {
       id: 'llama-3.3-70b-versatile',
-      label: 'AURA Standard',
+      label: 'Llama 3.3 70B',
       contextWindow: 128000,
       notes: 'Default · balanced reasoning',
     },
     {
       id: 'llama-3.1-8b-instant',
-      label: 'AURA Lite',
+      label: 'Llama 3.1 8B',
       contextWindow: 128000,
       notes: 'Fastest · low-latency lookups',
     },
     {
       id: 'mixtral-8x7b-32768',
-      label: 'AURA Mixtral',
+      label: 'Mixtral 8×7B',
       contextWindow: 32768,
       notes: 'Wide-context analysis',
     },
     {
       id: 'openai/gpt-oss-120b',
-      label: 'AURA Heavy',
+      label: 'GPT-OSS 120B',
       contextWindow: 131072,
       notes: 'Deep reasoning · rate-limited tier',
     },
   ],
   grok: [
-    { id: 'grok-3', label: 'AURA X', contextWindow: 131072, notes: 'Default' },
-    { id: 'grok-3-mini', label: 'AURA X Lite', contextWindow: 131072, notes: 'Faster' },
+    { id: 'grok-3', label: 'Grok 3', contextWindow: 131072, notes: 'Default' },
+    { id: 'grok-3-mini', label: 'Grok 3 Mini', contextWindow: 131072, notes: 'Faster' },
   ],
   openai: [
-    { id: 'gpt-4o-mini', label: 'AURA Atlas Lite', contextWindow: 128000, notes: 'Default' },
-    { id: 'gpt-4o', label: 'AURA Atlas', contextWindow: 128000, notes: 'Higher quality' },
+    { id: 'gpt-4o-mini', label: 'GPT-4o Mini', contextWindow: 128000, notes: 'Default' },
+    { id: 'gpt-4o', label: 'GPT-4o', contextWindow: 128000, notes: 'Higher quality' },
   ],
   anthropic: [
     {
       id: 'claude-sonnet-4-6',
-      label: 'AURA Sentinel',
+      label: 'Claude Sonnet 4.6',
       contextWindow: 1_000_000,
       notes: 'Default · agentic tool-use',
     },
     {
       id: 'claude-opus-4-7',
-      label: 'AURA Sentinel Pro',
+      label: 'Claude Opus 4.7',
       contextWindow: 1_000_000,
       notes: 'Most capable · long-horizon work',
     },
     {
       id: 'claude-haiku-4-5',
-      label: 'AURA Sentinel Lite',
+      label: 'Claude Haiku 4.5',
       contextWindow: 200_000,
-      notes: 'Fastest Sentinel tier',
+      notes: 'Fastest tier',
     },
   ],
 
