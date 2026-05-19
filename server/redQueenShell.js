@@ -15,7 +15,9 @@
 import { Client as SSHClient } from 'ssh2';
 import { WebSocketServer } from 'ws';
 
-const DEFAULT_HOST = process.env.RED_QUEEN_HOST || '192.168.100.177';
+// Public DDNS hostname forwarded to Red Queen's port 22. Use this (not the
+// LAN 192.168.100.177) so the bridge works from cloud-deployed AURA too.
+const DEFAULT_HOST = process.env.RED_QUEEN_HOST || 'tsophiea.ddns.net';
 const DEFAULT_PORT = Number(process.env.RED_QUEEN_PORT || 22);
 // SSH username is lowercase on the box (verified live); accept env override.
 const DEFAULT_USER = process.env.RED_QUEEN_USER || 'redq';
