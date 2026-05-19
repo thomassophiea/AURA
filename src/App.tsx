@@ -1562,8 +1562,10 @@ export default function App() {
                 }}
               />
 
-              {/* Version Display - Fixed to bottom-left */}
-              <VersionDisplay position="bottom-left" />
+              {/* Version Display — dev-mode only. Fetches /api/version at
+                  runtime; hidden outside dev to keep deploy metadata off the
+                  customer-facing screen. */}
+              {theme === 'dev' && <VersionDisplay position="bottom-left" />}
 
               <DevModePinDialog
                 open={devMode.pinPromptOpen}

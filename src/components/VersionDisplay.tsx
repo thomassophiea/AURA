@@ -1,19 +1,33 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { GitBranch, GitCommit, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from './ui/utils';
-import { APP_VERSION } from '@/lib/versionGate';
 
-declare const __GIT_COMMIT__: string;
-declare const __GIT_BRANCH__: string;
-declare const __BUILD_DATE__: string;
-declare const __COMMIT_COUNT__: string;
-declare const __BUILD_MESSAGE__: string;
-declare const __BUILD_FEATURES__: string[];
+interface VersionInfo {
+  version: string;
+  commit: string;
+  commitFull?: string;
+  branch: string;
+  buildDate: string;
+  message?: string;
+  features?: string[];
+}
 
 interface VersionDisplayProps {
   className?: string;
   position?: 'bottom-left' | 'bottom-right';
   expandable?: boolean;
+}
+
+// Build number is derived from the build date as YYYYMMDD — monotonic,
+// recognizable as a date, and meaningful without needing the git commit
+// count (which isn't available at runtime on Railway's stripped-.git build).
+function buildNumberFromDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}`;
 }
 
 export function VersionDisplay({
@@ -22,18 +36,30 @@ export function VersionDisplay({
   expandable = true,
 }: VersionDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [info, setInfo] = useState<VersionInfo | null>(null);
 
-  const version = APP_VERSION !== '0.0.0' ? APP_VERSION : 'dev';
-  const commitHash = (typeof __GIT_COMMIT__ !== 'undefined' && __GIT_COMMIT__) || '—';
-  const commitCount = (typeof __COMMIT_COUNT__ !== 'undefined' && __COMMIT_COUNT__) || '—';
-  const branch = (typeof __GIT_BRANCH__ !== 'undefined' && __GIT_BRANCH__) || '—';
-  const buildMessage = (typeof __BUILD_MESSAGE__ !== 'undefined' && __BUILD_MESSAGE__) || '';
-  const buildFeatures: string[] =
-    (typeof __BUILD_FEATURES__ !== 'undefined' && __BUILD_FEATURES__) || [];
-  const buildDate =
-    typeof __BUILD_DATE__ !== 'undefined' && __BUILD_DATE__
-      ? new Date(__BUILD_DATE__).toLocaleString()
-      : 'Unknown';
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/version')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: VersionInfo | null) => {
+        if (!cancelled && data) setInfo(data);
+      })
+      .catch(() => {
+        /* leave info null — UI shows fallback "dev" */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const version = info?.version && info.version !== 'unknown' ? info.version : 'dev';
+  const commitHash = info?.commit && info.commit !== 'unknown' ? info.commit : '—';
+  const branch = info?.branch && info.branch !== 'unknown' ? info.branch : '—';
+  const buildMessage = info?.message ?? '';
+  const buildFeatures: string[] = info?.features ?? [];
+  const buildDate = info?.buildDate ? new Date(info.buildDate).toLocaleString() : 'Unknown';
+  const buildNumber = info?.buildDate ? buildNumberFromDate(info.buildDate) : '—';
 
   const positionClasses = {
     'bottom-left': 'bottom-4 left-4',
@@ -52,7 +78,6 @@ export function VersionDisplay({
           isExpanded ? 'p-3 space-y-2 min-w-[240px]' : 'px-3 py-1.5'
         )}
       >
-        {/* Compact View */}
         <div
           className={cn(
             'flex items-center gap-2 cursor-pointer select-none',
@@ -70,13 +95,12 @@ export function VersionDisplay({
             ))}
         </div>
 
-        {/* Expanded View */}
         {isExpanded && expandable && (
           <div className="space-y-1.5 pt-1 border-t border-sidebar-border">
             <div className="flex items-center gap-2 text-muted-foreground">
               <GitCommit className="h-3 w-3 shrink-0" />
               <span className="font-mono">{commitHash}</span>
-              <span className="text-muted-foreground/50 ml-auto">Build #{commitCount}</span>
+              <span className="text-muted-foreground/50 ml-auto">Build #{buildNumber}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <GitBranch className="h-3 w-3 shrink-0" />
