@@ -52,7 +52,7 @@ export function ModelSelector({
         className="z-[99999] min-w-[260px] bg-[hsl(268_20%_10%)] border-white/10"
       >
         <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-white/40">
-          {provider} · Model
+          Red-Queen · Engine
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-white/8" />
         {models.map((m) => {

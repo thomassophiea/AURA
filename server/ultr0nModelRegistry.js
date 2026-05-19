@@ -10,59 +10,61 @@
  *   notes         - short tag (speed / quality / context)
  */
 
+// Customer-facing labels rebrand every upstream model into the Red-Queen
+// family — IDs stay original since they're how the backend routes requests.
 export const MODEL_REGISTRY = {
   groq: [
     {
       id: 'llama-3.3-70b-versatile',
-      label: 'Llama 3.3 70B Versatile',
+      label: 'Red-Queen Standard',
       contextWindow: 128000,
-      notes: 'Default — best balance, recommended for tool-use',
+      notes: 'Default · balanced reasoning',
     },
     {
       id: 'llama-3.1-8b-instant',
-      label: 'Llama 3.1 8B Instant',
+      label: 'Red-Queen Lite',
       contextWindow: 128000,
-      notes: 'Fastest, cheapest — large TPM',
+      notes: 'Fastest · low-latency lookups',
     },
     {
       id: 'mixtral-8x7b-32768',
-      label: 'Mixtral 8x7B',
+      label: 'Red-Queen Mixtral',
       contextWindow: 32768,
-      notes: 'Larger context window',
+      notes: 'Wide-context analysis',
     },
     {
       id: 'openai/gpt-oss-120b',
-      label: 'GPT-OSS 120B',
+      label: 'Red-Queen Heavy',
       contextWindow: 131072,
-      notes: 'Heaviest reasoning — tight free-tier TPM, may rate-limit',
+      notes: 'Deep reasoning · rate-limited tier',
     },
   ],
   grok: [
-    { id: 'grok-3', label: 'Grok 3', contextWindow: 131072, notes: 'Default' },
-    { id: 'grok-3-mini', label: 'Grok 3 Mini', contextWindow: 131072, notes: 'Faster' },
+    { id: 'grok-3', label: 'Red-Queen X', contextWindow: 131072, notes: 'Default' },
+    { id: 'grok-3-mini', label: 'Red-Queen X Lite', contextWindow: 131072, notes: 'Faster' },
   ],
   openai: [
-    { id: 'gpt-4o-mini', label: 'GPT-4o Mini', contextWindow: 128000, notes: 'Default' },
-    { id: 'gpt-4o', label: 'GPT-4o', contextWindow: 128000, notes: 'Higher quality' },
+    { id: 'gpt-4o-mini', label: 'Red-Queen Atlas Lite', contextWindow: 128000, notes: 'Default' },
+    { id: 'gpt-4o', label: 'Red-Queen Atlas', contextWindow: 128000, notes: 'Higher quality' },
   ],
   anthropic: [
     {
       id: 'claude-sonnet-4-6',
-      label: 'Claude Sonnet 4.6',
+      label: 'Red-Queen Sentinel',
       contextWindow: 1_000_000,
-      notes: 'Default — best speed/intelligence balance, recommended for tool-use',
+      notes: 'Default · agentic tool-use',
     },
     {
       id: 'claude-opus-4-7',
-      label: 'Claude Opus 4.7',
+      label: 'Red-Queen Sentinel Pro',
       contextWindow: 1_000_000,
-      notes: 'Most capable — best for long-horizon agentic work',
+      notes: 'Most capable · long-horizon work',
     },
     {
       id: 'claude-haiku-4-5',
-      label: 'Claude Haiku 4.5',
+      label: 'Red-Queen Sentinel Lite',
       contextWindow: 200_000,
-      notes: 'Fastest and cheapest Claude model',
+      notes: 'Fastest Sentinel tier',
     },
   ],
 

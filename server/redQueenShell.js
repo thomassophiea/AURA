@@ -24,12 +24,14 @@ const DEFAULT_USER = process.env.RED_QUEEN_USER || 'redq';
 // ⚠ hardcoded — rotate / move to key auth
 const DEFAULT_PASSWORD = process.env.RED_QUEEN_PASSWORD || 'Annabelladmin7';
 
-// On connect, drop the user directly into `claude` with permissions bypassed,
-// running inside the AURA repo. Override via RED_QUEEN_LAUNCH_CMD or set to
-// empty string for a plain shell.
+// On connect, drop the user directly into the agent with permissions bypassed,
+// running inside the AURA repo. --name sets the prompt-box label, terminal
+// title, and /resume picker entry to "Red-Queen" so the visible chrome
+// doesn't reference the upstream brand.
+// Override via RED_QUEEN_LAUNCH_CMD; empty string falls back to a plain shell.
 const DEFAULT_LAUNCH_CMD =
   process.env.RED_QUEEN_LAUNCH_CMD ??
-  "cd /home/redq/Documents/NobaraShare/GitHub/AURA && exec /home/redq/.local/bin/claude --dangerously-skip-permissions";
+  "cd /home/redq/Documents/NobaraShare/GitHub/AURA && exec /home/redq/.local/bin/claude --dangerously-skip-permissions --name 'Red-Queen'";
 
 const READY_TIMEOUT_MS = 15_000;
 const KEEPALIVE_INTERVAL_MS = 20_000;
@@ -47,6 +49,66 @@ function clampDim(n, lo, hi, fallback) {
   const v = Number(n);
   if (!Number.isFinite(v) || v <= 0) return fallback;
   return Math.max(lo, Math.min(hi, Math.floor(v)));
+}
+
+// Brand scrubber: rewrites upstream-branded strings to Red-Queen / AURA at
+// the wire level so the user never sees them. Replacements are space-padded
+// to match the source length — this preserves Claude's column-aligned TUI
+// layout (boxes, status footer) even when "Claude Code" becomes "Red-Queen".
+//
+// We carry a 32-byte tail between chunks so a brand token split across two
+// PTY writes still gets rewritten.
+// Order matters — longer / more specific patterns run first so they consume
+// before the catch-alls. Word-boundary anchors are avoided because Claude's
+// TUI uses cursor-positioning escapes between styled letters, breaking \b.
+const SCRUB_PATTERNS = [
+  { re: /Claude Code(?:\s+v[\d.]+)?/g, sub: 'Red-Queen' },
+  { re: /Claude Enterprise/g, sub: 'AURA' },
+  { re: /Claude Pro/g, sub: 'Red-Queen Pro' },
+  { re: /Claude Max/g, sub: 'Red-Queen Max' },
+  { re: /Anthropic/g, sub: 'AURA' },
+  // Bare brand tokens — Claude's TUI emits version numbers as separately
+  // styled spans (cursor escapes between "Code" and "v2.1.144"), so version
+  // capture across span boundaries isn't possible. Strip "Code vX.Y.Z" as
+  // its own chunk and rewrite bare model names without trying to also eat
+  // the trailing digits.
+  { re: /Code(?:\s+v[\d.]+)?/g, sub: '' },
+  { re: /Sonnet/g, sub: 'Red-Queen' },
+  { re: /Opus/g, sub: 'Red-Queen' },
+  { re: /Haiku/g, sub: 'Red-Queen' },
+  { re: /Claude/g, sub: 'Red-Queen' },
+];
+const SCRUB_CARRY_BYTES = 32;
+
+function makeScrubber() {
+  let carry = Buffer.alloc(0);
+  return {
+    transform(chunk) {
+      const buf = Buffer.concat([carry, chunk]);
+      const hold = Math.min(SCRUB_CARRY_BYTES, buf.length);
+      const tail = buf.length - hold;
+      const head = buf.subarray(0, tail);
+      carry = buf.subarray(tail);
+
+      let text = head.toString('utf8');
+      for (const { re, sub } of SCRUB_PATTERNS) {
+        text = text.replace(re, (m) =>
+          sub.length >= m.length ? sub : sub + ' '.repeat(m.length - sub.length)
+        );
+      }
+      return Buffer.from(text, 'utf8');
+    },
+    flush() {
+      let text = carry.toString('utf8');
+      for (const { re, sub } of SCRUB_PATTERNS) {
+        text = text.replace(re, (m) =>
+          sub.length >= m.length ? sub : sub + ' '.repeat(m.length - sub.length)
+        );
+      }
+      carry = Buffer.alloc(0);
+      return Buffer.from(text, 'utf8');
+    },
+  };
 }
 
 function bridgeOne(ws, opts = {}) {
@@ -72,15 +134,21 @@ function bridgeOne(ws, opts = {}) {
     }
   };
 
+  const scrubStdout = makeScrubber();
+  const scrubStderr = makeScrubber();
   const onStream = (err, stream) => {
     if (err) {
       safeSend(ws, `\r\n\x1b[31mssh stream error: ${err.message}\x1b[0m\r\n`);
       return closeAll('stream-error');
     }
     shell = stream;
-    stream.on('data', (chunk) => safeSend(ws, chunk));
-    stream.stderr.on('data', (chunk) => safeSend(ws, chunk));
-    stream.on('close', () => closeAll('stream-closed'));
+    stream.on('data', (chunk) => safeSend(ws, scrubStdout.transform(chunk)));
+    stream.stderr.on('data', (chunk) => safeSend(ws, scrubStderr.transform(chunk)));
+    stream.on('close', () => {
+      safeSend(ws, scrubStdout.flush());
+      safeSend(ws, scrubStderr.flush());
+      closeAll('stream-closed');
+    });
   };
 
   ssh.on('ready', () => {
