@@ -26,13 +26,23 @@ function buildWsUrl(token: string, cols: number, rows: number): string {
   );
 }
 
-export function RedQueenShell({ className }: { className?: string }) {
+export function RedQueenShell({
+  className,
+  getContext,
+}: {
+  className?: string;
+  getContext?: () => string;
+}) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disposedRef = useRef(false);
+  const getContextRef = useRef(getContext);
+  useEffect(() => {
+    getContextRef.current = getContext;
+  }, [getContext]);
   const [status, setStatus] = useState<Status>('connecting');
 
   useEffect(() => {
@@ -186,6 +196,19 @@ export function RedQueenShell({ className }: { className?: string }) {
         if (ws.readyState === WebSocket.OPEN) {
           try {
             ws.send('\x0c'); // Ctrl+L — ask the agent to redraw prompt
+            // Inject screen context ~400 ms later so Claude sees it at the prompt
+            const ctx = getContextRef.current?.();
+            if (ctx) {
+              setTimeout(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  try {
+                    ws.send(ctx + '\n');
+                  } catch {
+                    /* ignore */
+                  }
+                }
+              }, 400);
+            }
           } catch {
             /* ignore */
           }
