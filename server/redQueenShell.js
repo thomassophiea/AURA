@@ -102,33 +102,67 @@ const SCRUB_PATTERNS = [
   // strip wherever they appear, not only after whitespace.
   { re: /v\d+\.\d+\.\d+/g, sub: '' },
 ];
-const SCRUB_CARRY_BYTES = 32;
+// Brand-token keywords. After applyPatterns runs, the only way a brand can
+// leak is if its bytes were split across two PTY chunks — i.e. the buffer
+// ENDS with a prefix of one of these. We hold just that suffix and emit
+// everything before. This is the latency-critical bit: a blanket 32-byte
+// carry stalls every keystroke echo in an interactive TUI; the original
+// implementation held back any chunk under 32 bytes, causing visible lag.
+// Compound patterns (e.g. `Claude.{0,20}?Code`) need no special handling
+// here because the catch-all `/Claude/g` rule scrubs the leading token,
+// and the trailing token (`Code`) is scrubbed when its chunk arrives.
+const BRAND_KEYWORDS = [
+  'Claude', 'Anthropic', 'Code', 'Sonnet', 'Opus', 'Haiku',
+  'MCP server', 'MCP servers', 'bypass',
+  '/mcp', '/release-notes', '/model', '/effort', '/resume', '/help',
+  '(', '←', '▐', '▝', '▘',
+];
+const SCRUB_MAX_CARRY = 32;
+
+function findCarryStart(text) {
+  let earliest = text.length;
+  const maxScan = Math.min(SCRUB_MAX_CARRY, text.length);
+  for (const kw of BRAND_KEYWORDS) {
+    const maxPrefix = Math.min(kw.length - 1, maxScan);
+    if (maxPrefix === 0) {
+      if (text.endsWith(kw)) {
+        const startIdx = text.length - kw.length;
+        if (startIdx < earliest) earliest = startIdx;
+      }
+      continue;
+    }
+    for (let len = maxPrefix; len >= 1; len--) {
+      if (text.endsWith(kw.slice(0, len))) {
+        const startIdx = text.length - len;
+        if (startIdx < earliest) earliest = startIdx;
+        break;
+      }
+    }
+  }
+  return earliest;
+}
 
 function makeScrubber() {
   let carry = Buffer.alloc(0);
+  const applyPatterns = (text) => {
+    for (const { re, sub } of SCRUB_PATTERNS) {
+      text = text.replace(re, (m) =>
+        sub.length >= m.length ? sub : sub + ' '.repeat(m.length - sub.length)
+      );
+    }
+    return text;
+  };
   return {
     transform(chunk) {
       const buf = Buffer.concat([carry, chunk]);
-      const hold = Math.min(SCRUB_CARRY_BYTES, buf.length);
-      const tail = buf.length - hold;
-      const head = buf.subarray(0, tail);
-      carry = buf.subarray(tail);
-
-      let text = head.toString('utf8');
-      for (const { re, sub } of SCRUB_PATTERNS) {
-        text = text.replace(re, (m) =>
-          sub.length >= m.length ? sub : sub + ' '.repeat(m.length - sub.length)
-        );
-      }
-      return Buffer.from(text, 'utf8');
+      const text = applyPatterns(buf.toString('utf8'));
+      const cut = findCarryStart(text);
+      const head = text.slice(0, cut);
+      carry = Buffer.from(text.slice(cut), 'utf8');
+      return Buffer.from(head, 'utf8');
     },
     flush() {
-      let text = carry.toString('utf8');
-      for (const { re, sub } of SCRUB_PATTERNS) {
-        text = text.replace(re, (m) =>
-          sub.length >= m.length ? sub : sub + ' '.repeat(m.length - sub.length)
-        );
-      }
+      const text = applyPatterns(carry.toString('utf8'));
       carry = Buffer.alloc(0);
       return Buffer.from(text, 'utf8');
     },
