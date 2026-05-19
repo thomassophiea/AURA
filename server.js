@@ -129,13 +129,20 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Controller-URL']
 }));
 
-// Rate limiting for API endpoints (created once at startup)
+// Rate limiting for API endpoints (created once at startup).
+// Defaults sized for a small enterprise UI: a single fresh load fires
+// dozens of /api calls (sites, configs, status polls, token refresh),
+// so 100/15min trips on normal use. Skip entirely in dev — the limiter
+// exists to deflect abuse on a public deployment, not to throttle the
+// developer at their own laptop.
+const RATE_LIMIT_DISABLED = process.env.NODE_ENV !== 'production';
 const apiLimiter = expressRateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // Default: 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10), // Default: 100 requests
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10), // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '2000', 10), // 2000 req / 15min ≈ 2.2 rps
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => RATE_LIMIT_DISABLED,
 });
 
 // Apply rate limiting to all /api/* routes

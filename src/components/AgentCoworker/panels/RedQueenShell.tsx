@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Terminal } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
+import { Radar } from 'lucide-react';
 import '@xterm/xterm/css/xterm.css';
 import { cn } from '../../ui/utils';
 
@@ -49,32 +50,32 @@ export function RedQueenShell({ className }: { className?: string }) {
       convertEol: true,
       scrollback: 5000,
       allowProposedApi: true,
-      // AURA palette — derived from the EP1 dashboard tokens so the
-      // terminal reads as part of the product, not a separate console.
-      // Background matches `--background` (#1e1f2a), cursor + accents
-      // use the brand purple, status colors come from EP1 success/warn/error.
+      // Match the AURA dark palette exactly — background = --card (#161618)
+      // so the terminal sits flush with the slideout chrome (also bg-card).
+      // Accents pull from the live theme tokens (--primary, --success,
+      // --warning, --destructive, --secondary).
       theme: {
-        background: '#1e1f2a',
-        foreground: '#f8f8fb',
-        cursor: '#8981e5',
-        cursorAccent: '#1e1f2a',
-        selectionBackground: 'rgba(137,129,229,0.30)',
-        black: '#1e1f2a',
-        red: '#ed5f56',
-        green: '#75bf63',
-        yellow: '#E5B85C',
-        blue: '#8981e5',
-        magenta: '#aba3fb',
-        cyan: '#7eb8c9',
-        white: '#D7D9E6',
-        brightBlack: '#4d4f63',
-        brightRed: '#f47a72',
-        brightGreen: '#9bd685',
-        brightYellow: '#f0c878',
-        brightBlue: '#aba3fb',
-        brightMagenta: '#c4beff',
-        brightCyan: '#a4d4e0',
-        brightWhite: '#f8f8fb',
+        background: '#161618',
+        foreground: '#ffffffde',
+        cursor: '#bb86fc',
+        cursorAccent: '#161618',
+        selectionBackground: 'rgba(187,134,252,0.28)',
+        black: '#161618',
+        red: '#cf6679',
+        green: '#81c784',
+        yellow: '#ffb74d',
+        blue: '#bb86fc',
+        magenta: '#d0a3ff',
+        cyan: '#03dac5',
+        white: '#d6d6da',
+        brightBlack: '#4a4a52',
+        brightRed: '#e08597',
+        brightGreen: '#9bd99e',
+        brightYellow: '#ffce80',
+        brightBlue: '#d0a3ff',
+        brightMagenta: '#e6c6ff',
+        brightCyan: '#5be6d6',
+        brightWhite: '#ffffff',
       },
     });
     const fit = new FitAddon();
@@ -240,14 +241,23 @@ export function RedQueenShell({ className }: { className?: string }) {
   const statusDot = status === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400';
 
   return (
-    <div className={cn('flex flex-col h-full bg-[#1e1f2a]', className)}>
+    <div className={cn('flex flex-col h-full bg-card', className)}>
       {showStatus && (
-        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55 border-b border-white/[0.06] bg-black/40">
+        <div className="shrink-0 flex items-center gap-2 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground border-b border-border/60">
           <span className={cn('h-1.5 w-1.5 rounded-full', statusDot)} />
           <span>{statusLabel}</span>
         </div>
       )}
-      <div ref={containerRef} className="flex-1 min-h-0 px-2 pt-2" />
+      <div className="relative flex-1 min-h-0">
+        <div ref={containerRef} className="absolute inset-0" />
+        {/* Brand watermark — radar glyph (ties to AURA = Autonomous Unified
+            Radio Agent) centered behind the PTY. Very low opacity + no
+            pointer events so it reads as ambient chrome; PTY content draws
+            over it naturally. */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center select-none">
+          <Radar className="h-16 w-16 text-primary/15" strokeWidth={1.25} aria-hidden="true" />
+        </div>
+      </div>
     </div>
   );
 }

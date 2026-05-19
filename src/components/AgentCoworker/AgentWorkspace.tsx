@@ -117,20 +117,31 @@ export function AgentWorkspace({
           onMouseDown={onMouseDown}
         />
 
-        {/* Product header — AURA identity + window controls. */}
-        <div className="shrink-0 border-b border-border bg-gradient-to-b from-background/40 to-transparent">
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex items-center justify-center h-9 w-9 rounded-md bg-primary/15 border border-primary/30 shrink-0">
-                <Sparkles className="h-4.5 w-4.5 text-primary" strokeWidth={1.75} />
+        {/* Product header — single row: AURA identity, model selector,
+            window controls. Parent and terminal both use bg-card so the
+            header sits flush. */}
+        <div className="shrink-0 border-b border-border/60">
+          <div className="flex items-center justify-between gap-3 px-3 py-2">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center justify-center h-7 w-7 rounded-md bg-primary/15 border border-primary/30 shrink-0">
+                <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} />
               </div>
               <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-[15px] font-semibold tracking-[0.02em] text-foreground truncate">
+                <span className="text-[13px] font-semibold tracking-[0.02em] text-foreground truncate">
                   AURA
                 </span>
-                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground truncate">
+                <span className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground truncate">
                   AI Console
                 </span>
+              </div>
+              <div className="ml-1.5 pl-2.5 border-l border-border/60">
+                <ModelSelector
+                  provider={provider}
+                  models={models}
+                  selectedModel={selectedModel}
+                  onSelect={setSelectedModel}
+                  loading={loading}
+                />
               </div>
             </div>
 
@@ -138,7 +149,7 @@ export function AgentWorkspace({
               <button
                 onClick={onMinimize}
                 title="Minimize"
-                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -146,7 +157,7 @@ export function AgentWorkspace({
                 onClick={onPin}
                 title={isPinned ? 'Unpin' : 'Pin open'}
                 className={cn(
-                  'p-1.5 rounded hover:bg-accent/30 transition-colors',
+                  'p-1 rounded hover:bg-accent/30 transition-colors',
                   isPinned ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -155,29 +166,18 @@ export function AgentWorkspace({
               <button
                 onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
                 title="Toggle expanded"
-                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={onClose}
                 title="Close"
-                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
+                className="p-1 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
-          </div>
-
-          {/* Sub-row: model selector at the leading edge, slim and out of the way. */}
-          <div className="flex items-center px-4 pb-2.5 -mt-1">
-            <ModelSelector
-              provider={provider}
-              models={models}
-              selectedModel={selectedModel}
-              onSelect={setSelectedModel}
-              loading={loading}
-            />
           </div>
         </div>
 
