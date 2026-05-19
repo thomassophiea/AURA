@@ -172,7 +172,7 @@ export function RedQueenShell({ className }: { className?: string }) {
       // Hide Claude's splash card + welcome chrome — fire once, 1.5 s after
       // the WS opens. A fixed delay (not reset on each message) ensures the
       // clear always fires even when Claude streams a long splash screen.
-      let splashTimer: ReturnType<typeof setTimeout> | null = null;
+      let _splashTimer: ReturnType<typeof setTimeout> | null = null;
       let splashCleared = false;
       const clearSplash = () => {
         if (splashCleared) return;
@@ -195,7 +195,7 @@ export function RedQueenShell({ className }: { className?: string }) {
       ws.onopen = () => {
         setStatus('open');
         sendResize();
-        splashTimer = setTimeout(clearSplash, 1500);
+        _splashTimer = setTimeout(clearSplash, 1500);
       };
       ws.onmessage = (ev) => {
         if (typeof ev.data === 'string') {

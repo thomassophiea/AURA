@@ -1,6 +1,6 @@
 import { useState, useEffect, type ChangeEvent, type MouseEvent, type FormEvent } from 'react';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
+import { Card, CardContent, CardHeader, CardDescription } from './ui/card';
 import { Alert, AlertDescription } from './ui/alert';
 import {
   Loader2,
