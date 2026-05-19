@@ -131,7 +131,7 @@ export function AgentWorkspace({
                   Red-Queen
                 </span>
                 <span className="text-[10px] uppercase tracking-[0.14em] text-white/40 truncate">
-                  Network Operations Agent
+                  Umbrella Corporation
                 </span>
               </div>
             </div>

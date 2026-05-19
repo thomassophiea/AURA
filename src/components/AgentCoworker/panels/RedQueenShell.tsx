@@ -149,9 +149,37 @@ export function RedQueenShell({ className }: { className?: string }) {
       ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 
+      // Hide Claude's splash card + welcome chrome — once the initial draw
+      // settles (no incoming bytes for 800ms), clear xterm's buffer and tap
+      // Ctrl+L so Claude redraws just the prompt. Fires once per session.
+      let splashTimer: ReturnType<typeof setTimeout> | null = null;
+      let splashCleared = false;
+      const scheduleSplashClear = () => {
+        if (splashCleared) return;
+        if (splashTimer) clearTimeout(splashTimer);
+        splashTimer = setTimeout(() => {
+          if (splashCleared) return;
+          splashCleared = true;
+          try {
+            term.clear();
+            term.reset();
+          } catch {
+            /* ignore */
+          }
+          if (ws.readyState === WebSocket.OPEN) {
+            try {
+              ws.send('\x0c'); // Ctrl+L — ask the agent to redraw
+            } catch {
+              /* ignore */
+            }
+          }
+        }, 800);
+      };
+
       ws.onopen = () => {
         setStatus('open');
         sendResize();
+        scheduleSplashClear();
       };
       ws.onmessage = (ev) => {
         if (typeof ev.data === 'string') {
@@ -159,6 +187,7 @@ export function RedQueenShell({ className }: { className?: string }) {
         } else if (ev.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(ev.data));
         }
+        scheduleSplashClear();
       };
       ws.onerror = () => {
         setStatus('error');

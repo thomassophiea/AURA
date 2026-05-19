@@ -176,24 +176,10 @@ function bridgeOne(ws, opts = {}) {
   };
 
   ssh.on('ready', () => {
-    // Customer-facing banner — never expose SSH host / user.
     void username; void host;
-    const R = '\x1b[1;31m'; // bright red
-    const D = '\x1b[2;37m'; // dim grey
-    const B = '\x1b[1;37m'; // bold white
-    const X = '\x1b[0m';
-    const banner =
-      '\x1b[2J\x1b[H' +
-      `\r\n` +
-      `  ${R}▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄${X}\r\n` +
-      `\r\n` +
-      `       ${R}● ●${X}      ${B}R E D — Q U E E N${X}\r\n` +
-      `\r\n` +
-      `  ${R}▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀${X}\r\n` +
-      `\r\n` +
-      `  ${D}initializing agent…${X}\r\n` +
-      `\r\n`;
-    safeSend(ws, banner);
+    // Just clear the screen — chrome lives in the workspace header now, not
+    // the terminal. The boot banner used to live here.
+    safeSend(ws, '\x1b[2J\x1b[H');
     const ptyOpts = { term: 'xterm-256color', cols: initialCols, rows: initialRows };
     if (launchCmd && launchCmd.trim()) {
       // ssh2's protocol-level remote-exec (NOT child_process.exec) — runs the
