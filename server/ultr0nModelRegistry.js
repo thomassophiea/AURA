@@ -69,7 +69,10 @@ export const MODEL_REGISTRY = {
     },
   ],
 
-  mock: [{ id: 'mock', label: 'Mock', contextWindow: 0, notes: 'No backend' }],
+  // No "Mock" picker entry — we don't ship mock data to users. When no LLM
+  // provider is configured the picker just shows the shell agent; LLM calls
+  // surface a real "configure provider" error instead of returning fakes.
+  mock: [],
 };
 
 /**
@@ -82,7 +85,7 @@ export const MODEL_REGISTRY = {
 export const SHELL_MODELS = [
   {
     id: 'redq-shell',
-    label: 'AURA Agent',
+    label: 'Red Queen',
     kind: 'shell',
     contextWindow: 0,
     notes: 'Network operations agent · default',

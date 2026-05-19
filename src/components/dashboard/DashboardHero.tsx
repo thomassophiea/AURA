@@ -36,8 +36,6 @@ function DashboardHeroComponent({
           <span className="aura-eyebrow-rule" aria-hidden="true" />
         </div>
         <h2 className="aura-hero-title">
-          AURA
-          <span className="aura-divider-glyph"> · </span>
           <em>Observatory</em>
         </h2>
         {activePersona !== 'super-user' && personaConfig && (

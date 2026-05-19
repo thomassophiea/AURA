@@ -124,7 +124,25 @@ export function RedQueenShell({ className }: { className?: string }) {
     const connect = () => {
       if (disposedRef.current) return;
       setStatus('connecting');
-      term.write('\r\n\x1b[2m connecting…\x1b[0m\r\n');
+
+      // ANSI splash — purple crown graphic left, info text right.
+      // Uses true-colour escapes; xterm.js renders them natively.
+      const P = '\x1b[38;2;187;134;252m'; // primary purple
+      const P2 = '\x1b[38;2;208;163;255m'; // lighter purple
+      const DIM = '\x1b[38;2;90;80;110m'; // dim purple
+      const B = '\x1b[1m';
+      const R = '\x1b[0m';
+      const splash = [
+        '',
+        `  ${P}╭────────╮${R}`,
+        `  ${P}│${R}${P2} ▄ ▄▄ ▄ ${R}${P}│${R}   ${B}Red Queen Shell${R}`,
+        `  ${P}│${R}${P2} ███████ ${R}${P}│${R}   ${DIM}AURA · AI Console${R}`,
+        `  ${P}│${R}${P2} ▀█████▀ ${R}${P}│${R}`,
+        `  ${P}│${R}${P2}  ▀███▀  ${R}${P}│${R}   ${DIM}connecting…${R}`,
+        `  ${P}╰────────╯${R}`,
+        '',
+      ].join('\r\n');
+      term.write(splash);
 
       const token = readAuthToken();
       if (!token) {
@@ -151,37 +169,33 @@ export function RedQueenShell({ className }: { className?: string }) {
       ws.binaryType = 'arraybuffer';
       wsRef.current = ws;
 
-      // Hide Claude's splash card + welcome chrome — once the initial draw
-      // settles (no incoming bytes for 800ms), clear xterm's buffer and tap
-      // Ctrl+L so Claude redraws just the prompt. Fires once per session.
+      // Hide Claude's splash card + welcome chrome — fire once, 1.5 s after
+      // the WS opens. A fixed delay (not reset on each message) ensures the
+      // clear always fires even when Claude streams a long splash screen.
       let splashTimer: ReturnType<typeof setTimeout> | null = null;
       let splashCleared = false;
-      const scheduleSplashClear = () => {
+      const clearSplash = () => {
         if (splashCleared) return;
-        if (splashTimer) clearTimeout(splashTimer);
-        splashTimer = setTimeout(() => {
-          if (splashCleared) return;
-          splashCleared = true;
+        splashCleared = true;
+        try {
+          term.clear();
+          term.reset();
+        } catch {
+          /* ignore */
+        }
+        if (ws.readyState === WebSocket.OPEN) {
           try {
-            term.clear();
-            term.reset();
+            ws.send('\x0c'); // Ctrl+L — ask the agent to redraw prompt
           } catch {
             /* ignore */
           }
-          if (ws.readyState === WebSocket.OPEN) {
-            try {
-              ws.send('\x0c'); // Ctrl+L — ask the agent to redraw
-            } catch {
-              /* ignore */
-            }
-          }
-        }, 800);
+        }
       };
 
       ws.onopen = () => {
         setStatus('open');
         sendResize();
-        scheduleSplashClear();
+        splashTimer = setTimeout(clearSplash, 1500);
       };
       ws.onmessage = (ev) => {
         if (typeof ev.data === 'string') {
@@ -189,7 +203,6 @@ export function RedQueenShell({ className }: { className?: string }) {
         } else if (ev.data instanceof ArrayBuffer) {
           term.write(new Uint8Array(ev.data));
         }
-        scheduleSplashClear();
       };
       ws.onerror = () => {
         setStatus('error');
@@ -250,10 +263,36 @@ export function RedQueenShell({ className }: { className?: string }) {
       )}
       <div className="relative flex-1 min-h-0">
         <div ref={containerRef} className="absolute inset-0" />
-        {/* Brand watermark — radar glyph (ties to AURA = Autonomous Unified
-            Radio Agent) centered behind the PTY. Very low opacity + no
-            pointer events so it reads as ambient chrome; PTY content draws
-            over it naturally. */}
+
+        {/* Terminal-art overlay — crown graphic in the top-left, permanent. */}
+        <div
+          className="pointer-events-none absolute z-10 select-none"
+          style={{
+            top: 14,
+            left: 8,
+            fontFamily: '"JetBrainsMono Nerd Font","JetBrains Mono","Fira Code",Menlo,monospace',
+            fontSize: 13,
+            lineHeight: '15.6px',
+            color: '#bb86fc',
+            whiteSpace: 'pre',
+            backgroundColor: '#161618',
+            padding: '2px 4px',
+          }}
+        >
+          <span>{'╭──────╮'}</span>
+          {'\n'}
+          <span>{'│'}</span>
+          <span style={{ color: '#d0a3ff' }}>{'▄████▄'}</span>
+          <span>{'│'}</span>
+          {'\n'}
+          <span>{'│'}</span>
+          <span style={{ color: '#d0a3ff' }}>{'██  ██'}</span>
+          <span>{'│'}</span>
+          {'\n'}
+          <span>{'╰──────╯'}</span>
+        </div>
+
+        {/* Ambient radar watermark behind the PTY */}
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center select-none">
           <Radar className="h-16 w-16 text-primary/15" strokeWidth={1.25} aria-hidden="true" />
         </div>

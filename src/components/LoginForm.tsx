@@ -370,7 +370,6 @@ export function LoginForm({
                 className="h-12 w-12 object-contain"
               />
             </div>
-            <CardTitle className="text-2xl font-bold tracking-widest">AURA</CardTitle>
             <div className="text-xs text-muted-foreground text-center mt-1">
               Autonomous Unified Radio Agent
             </div>

@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { X, Minus, Pin, Maximize2, Sparkles } from 'lucide-react';
+import { X, Minus, Pin, Maximize2 } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 import { ModelSelector } from './ModelSelector';
@@ -117,32 +117,17 @@ export function AgentWorkspace({
           onMouseDown={onMouseDown}
         />
 
-        {/* Product header — single row: AURA identity, model selector,
-            window controls. Parent and terminal both use bg-card so the
-            header sits flush. */}
+        {/* Header — model selector + window controls */}
         <div className="shrink-0 border-b border-border/60">
           <div className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="flex items-center justify-center h-7 w-7 rounded-md bg-primary/15 border border-primary/30 shrink-0">
-                <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} />
-              </div>
-              <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-[13px] font-semibold tracking-[0.02em] text-foreground truncate">
-                  AURA
-                </span>
-                <span className="text-[9px] uppercase tracking-[0.14em] text-muted-foreground truncate">
-                  AI Console
-                </span>
-              </div>
-              <div className="ml-1.5 pl-2.5 border-l border-border/60">
-                <ModelSelector
-                  provider={provider}
-                  models={models}
-                  selectedModel={selectedModel}
-                  onSelect={setSelectedModel}
-                  loading={loading}
-                />
-              </div>
+              <ModelSelector
+                provider={provider}
+                models={models}
+                selectedModel={selectedModel}
+                onSelect={setSelectedModel}
+                loading={loading}
+              />
             </div>
 
             <div className="flex items-center gap-0.5 shrink-0">

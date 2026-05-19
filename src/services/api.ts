@@ -41,12 +41,20 @@ import type {
   Topology,
 } from '../types/api';
 
-// Use proxy in production, direct connection in development
-const isProduction = import.meta.env.PROD || window.location.hostname !== 'localhost';
+// Use proxy in production, direct connection in development.
+// `VITE_USE_PROXY=true` forces proxy mode in dev too — useful when the
+// controller's CORS / self-signed cert blocks direct browser calls. With
+// it set, requests flow browser → Vite → server.js → controller, matching
+// the production path exactly.
+const useProxy =
+  import.meta.env.VITE_USE_PROXY === 'true' ||
+  import.meta.env.PROD ||
+  window.location.hostname !== 'localhost';
 const devBaseUrl = import.meta.env.VITE_DEV_CAMPUS_CONTROLLER_URL || 'https://localhost:443';
-const BASE_URL = isProduction
+const BASE_URL = useProxy
   ? '/api/management' // Proxy through our Express server
   : `${devBaseUrl}/management`; // Direct connection in development from env var
+const isProduction = useProxy;
 
 // Dynamic controller URL support
 let DYNAMIC_CONTROLLER_URL: string | null = null;

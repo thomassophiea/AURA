@@ -179,6 +179,17 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: 3000,
     open: true,
+    // Local dev: Vite serves the SPA + HMR on 3000; backend (Express +
+    // SSH/WS bridge) runs on 3001. Proxy /api/* to it so the agent shell
+    // and controller proxy work during HMR. `ws: true` makes the
+    // WebSocket upgrade for /api/ultr0n/shell/ws forward correctly.
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   test: {
     // Exclude macOS AppleDouble resource fork files (._*) which are not real test files
