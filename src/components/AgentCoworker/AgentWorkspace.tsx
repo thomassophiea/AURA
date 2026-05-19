@@ -18,9 +18,8 @@ interface AgentWorkspaceProps {
 }
 
 /**
- * Dev-mode slideout: header (model picker + window controls) + Red Queen
- * shell body. No tabs, no chat, no approval flow — those are gone with the
- * rest of the LLM-driven coworker UI.
+ * Dev-mode AURA Copilot slideout: header (model picker + window controls)
+ * + agent body. No tabs, no chat, no approval flow.
  */
 export function AgentWorkspace({
   mode,
@@ -76,7 +75,6 @@ export function AgentWorkspace({
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
 
   const { provider, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
-  const shellModels = models.filter((m) => m.kind === 'shell');
 
   if (mode === 'minimized') {
     return (
@@ -84,7 +82,7 @@ export function AgentWorkspace({
         data-testid="agent-workspace"
         className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-[hsl(268_22%_7%)] hover:bg-[hsl(268_22%_10%)] transition-colors group"
         onClick={onPin}
-        title="Expand Red Queen shell"
+        title="Expand AURA Copilot"
       >
         <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-violet-400/40 to-transparent group-hover:via-violet-400/80 transition-colors" />
         <span className="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]" />
@@ -122,7 +120,7 @@ export function AgentWorkspace({
         <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center justify-between gap-2">
           <ModelSelector
             provider={provider}
-            models={shellModels}
+            models={models}
             selectedModel={selectedModel}
             onSelect={setSelectedModel}
             loading={loading}

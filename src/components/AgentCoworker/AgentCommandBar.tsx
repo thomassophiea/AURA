@@ -1,4 +1,4 @@
-import { Terminal } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { ModelSelector } from './ModelSelector';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
@@ -9,12 +9,11 @@ interface AgentCommandBarProps {
 }
 
 /**
- * Dev-mode floating widget: model picker + open-shell hotkey hint.
- * No chat input, no mic, no context badge — the slideout terminal owns input.
+ * Floating AURA Copilot widget: model picker + open-workspace hotkey hint.
+ * No chat input, no mic, no context badge — the workspace panel owns input.
  */
 export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
   const { provider, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
-  const shellModels = models.filter((m) => m.kind === 'shell');
 
   return (
     <div className={cn('fixed bottom-6 left-1/2 -translate-x-1/2 z-[99998]', className)}>
@@ -31,17 +30,17 @@ export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
         <button
           onClick={onOpen}
           className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-white/70 hover:text-white/95 hover:bg-white/8 transition-colors"
-          title="Open Red Queen shell"
+          title="Open AURA Copilot"
         >
-          <Terminal className="h-3.5 w-3.5 text-violet-400/90" />
-          <span className="font-medium">Shell</span>
+          <Sparkles className="h-3.5 w-3.5 text-violet-400/90" />
+          <span className="font-medium">Copilot</span>
         </button>
 
         <div className="w-px h-5 bg-white/10" />
 
         <ModelSelector
           provider={provider}
-          models={shellModels}
+          models={models}
           selectedModel={selectedModel}
           onSelect={setSelectedModel}
           loading={loading}

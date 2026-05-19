@@ -79,10 +79,10 @@ export const MODEL_REGISTRY = {
 export const SHELL_MODELS = [
   {
     id: 'redq-shell',
-    label: 'Red Queen Shell',
+    label: 'AURA Copilot',
     kind: 'shell',
     contextWindow: 0,
-    notes: 'iTerm-style SSH session to redQ@192.168.100.177',
+    notes: 'Network operations agent · default',
   },
 ];
 
