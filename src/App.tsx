@@ -960,7 +960,7 @@ export default function App() {
       applyTheme('dev');
       localStorage.setItem('theme', 'dev');
       toast.success('Dev mode unlocked', {
-        description: 'Red Queen shell available.',
+        description: 'AURA Agent available.',
         duration: 2000,
       });
     } else if (!devMode.isUnlocked && theme === 'dev') {

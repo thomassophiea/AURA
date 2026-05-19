@@ -10,59 +10,59 @@
  *   notes         - short tag (speed / quality / context)
  */
 
-// Customer-facing labels rebrand every upstream model into the Red-Queen
-// family — IDs stay original since they're how the backend routes requests.
+// Customer-facing labels rebrand every upstream model into the AURA family
+// — IDs stay original since they're how the backend routes requests.
 export const MODEL_REGISTRY = {
   groq: [
     {
       id: 'llama-3.3-70b-versatile',
-      label: 'Red-Queen Standard',
+      label: 'AURA Standard',
       contextWindow: 128000,
       notes: 'Default · balanced reasoning',
     },
     {
       id: 'llama-3.1-8b-instant',
-      label: 'Red-Queen Lite',
+      label: 'AURA Lite',
       contextWindow: 128000,
       notes: 'Fastest · low-latency lookups',
     },
     {
       id: 'mixtral-8x7b-32768',
-      label: 'Red-Queen Mixtral',
+      label: 'AURA Mixtral',
       contextWindow: 32768,
       notes: 'Wide-context analysis',
     },
     {
       id: 'openai/gpt-oss-120b',
-      label: 'Red-Queen Heavy',
+      label: 'AURA Heavy',
       contextWindow: 131072,
       notes: 'Deep reasoning · rate-limited tier',
     },
   ],
   grok: [
-    { id: 'grok-3', label: 'Red-Queen X', contextWindow: 131072, notes: 'Default' },
-    { id: 'grok-3-mini', label: 'Red-Queen X Lite', contextWindow: 131072, notes: 'Faster' },
+    { id: 'grok-3', label: 'AURA X', contextWindow: 131072, notes: 'Default' },
+    { id: 'grok-3-mini', label: 'AURA X Lite', contextWindow: 131072, notes: 'Faster' },
   ],
   openai: [
-    { id: 'gpt-4o-mini', label: 'Red-Queen Atlas Lite', contextWindow: 128000, notes: 'Default' },
-    { id: 'gpt-4o', label: 'Red-Queen Atlas', contextWindow: 128000, notes: 'Higher quality' },
+    { id: 'gpt-4o-mini', label: 'AURA Atlas Lite', contextWindow: 128000, notes: 'Default' },
+    { id: 'gpt-4o', label: 'AURA Atlas', contextWindow: 128000, notes: 'Higher quality' },
   ],
   anthropic: [
     {
       id: 'claude-sonnet-4-6',
-      label: 'Red-Queen Sentinel',
+      label: 'AURA Sentinel',
       contextWindow: 1_000_000,
       notes: 'Default · agentic tool-use',
     },
     {
       id: 'claude-opus-4-7',
-      label: 'Red-Queen Sentinel Pro',
+      label: 'AURA Sentinel Pro',
       contextWindow: 1_000_000,
       notes: 'Most capable · long-horizon work',
     },
     {
       id: 'claude-haiku-4-5',
-      label: 'Red-Queen Sentinel Lite',
+      label: 'AURA Sentinel Lite',
       contextWindow: 200_000,
       notes: 'Fastest Sentinel tier',
     },
@@ -81,7 +81,7 @@ export const MODEL_REGISTRY = {
 export const SHELL_MODELS = [
   {
     id: 'redq-shell',
-    label: 'Red-Queen',
+    label: 'AURA Agent',
     kind: 'shell',
     contextWindow: 0,
     notes: 'Network operations agent · default',

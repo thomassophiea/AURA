@@ -49,31 +49,32 @@ export function RedQueenShell({ className }: { className?: string }) {
       convertEol: true,
       scrollback: 5000,
       allowProposedApi: true,
-      // Red-Queen palette — Umbrella corporate dystopia.
-      // Dominant black + bone with blood-red accents; greens/blues/cyans
-      // pushed toward neutral so any output bleeds red, not rainbow.
+      // AURA palette — derived from the EP1 dashboard tokens so the
+      // terminal reads as part of the product, not a separate console.
+      // Background matches `--background` (#1e1f2a), cursor + accents
+      // use the brand purple, status colors come from EP1 success/warn/error.
       theme: {
-        background: '#0a0809',
-        foreground: '#e0d8c8',
-        cursor: '#ff1a25',
-        cursorAccent: '#0a0809',
-        selectionBackground: 'rgba(184,20,26,0.35)',
-        black: '#0a0809',
-        red: '#b8141a',
-        green: '#5a6a5a',
-        yellow: '#8a7a4a',
-        blue: '#3a3a4a',
-        magenta: '#7a2a3a',
-        cyan: '#5a6a6a',
-        white: '#c8c0b4',
-        brightBlack: '#4a4441',
-        brightRed: '#ff3340',
-        brightGreen: '#8b9b8b',
-        brightYellow: '#c8b078',
-        brightBlue: '#6a6a82',
-        brightMagenta: '#b14a64',
-        brightCyan: '#8a9d9d',
-        brightWhite: '#f0ede5',
+        background: '#1e1f2a',
+        foreground: '#f8f8fb',
+        cursor: '#8981e5',
+        cursorAccent: '#1e1f2a',
+        selectionBackground: 'rgba(137,129,229,0.30)',
+        black: '#1e1f2a',
+        red: '#ed5f56',
+        green: '#75bf63',
+        yellow: '#E5B85C',
+        blue: '#8981e5',
+        magenta: '#aba3fb',
+        cyan: '#7eb8c9',
+        white: '#D7D9E6',
+        brightBlack: '#4d4f63',
+        brightRed: '#f47a72',
+        brightGreen: '#9bd685',
+        brightYellow: '#f0c878',
+        brightBlue: '#aba3fb',
+        brightMagenta: '#c4beff',
+        brightCyan: '#a4d4e0',
+        brightWhite: '#f8f8fb',
       },
     });
     const fit = new FitAddon();
@@ -239,7 +240,7 @@ export function RedQueenShell({ className }: { className?: string }) {
   const statusDot = status === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400';
 
   return (
-    <div className={cn('flex flex-col h-full bg-[#0a0809]', className)}>
+    <div className={cn('flex flex-col h-full bg-[#1e1f2a]', className)}>
       {showStatus && (
         <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55 border-b border-white/[0.06] bg-black/40">
           <span className={cn('h-1.5 w-1.5 rounded-full', statusDot)} />

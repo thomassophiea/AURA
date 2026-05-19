@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { X, Minus, Pin, Maximize2 } from 'lucide-react';
+import { X, Minus, Pin, Maximize2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 import { ModelSelector } from './ModelSelector';
@@ -18,7 +18,7 @@ interface AgentWorkspaceProps {
 }
 
 /**
- * Dev-mode Red-Queen slideout: header (model picker + window controls)
+ * Dev-mode AURA Agent slideout: header (model picker + window controls)
  * + agent body. No tabs, no chat, no approval flow.
  */
 export function AgentWorkspace({
@@ -80,12 +80,12 @@ export function AgentWorkspace({
     return (
       <button
         data-testid="agent-workspace"
-        className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-[hsl(268_22%_7%)] hover:bg-[hsl(268_22%_10%)] transition-colors group"
+        className="fixed top-0 right-0 z-[99997] flex flex-col items-center justify-center gap-2 w-9 h-screen bg-card hover:bg-accent/20 border-l border-border transition-colors group"
         onClick={onPin}
-        title="Expand Red-Queen"
+        title="Expand AURA Agent"
       >
-        <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-violet-400/40 to-transparent group-hover:via-violet-400/80 transition-colors" />
-        <span className="h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,0.7)]" />
+        <span className="absolute top-0 bottom-0 left-0 w-px bg-gradient-to-b from-transparent via-primary/40 to-transparent group-hover:via-primary/80 transition-colors" />
+        <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_10px_rgba(137,129,229,0.7)]" />
       </button>
     );
   }
@@ -103,35 +103,33 @@ export function AgentWorkspace({
         data-testid="agent-workspace"
         className={cn(
           'fixed top-0 right-0 h-screen flex flex-col z-[99997]',
-          'bg-[hsl(268_22%_7%)] border-l border-[hsl(268_15%_14%)]',
+          'bg-card border-l border-border',
           'shadow-[-24px_0_64px_rgba(0,0,0,0.5),-8px_0_24px_rgba(0,0,0,0.3)]',
           'transition-transform duration-[320ms] [transition-timing-function:cubic-bezier(0.16,1,0.3,1)]',
           isVisible ? 'translate-x-0' : 'translate-x-full'
         )}
         style={{ width: panelWidth }}
       >
-        <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-violet-400/70 via-violet-400/15 to-transparent pointer-events-none" />
+        <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-primary/70 via-primary/15 to-transparent pointer-events-none" />
 
         <div
-          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-violet-500/30 transition-colors z-10"
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-primary/30 transition-colors z-10"
           onMouseDown={onMouseDown}
         />
 
-        {/* Product header — Red-Queen identity + window controls. */}
-        <div className="shrink-0 border-b border-white/[0.06] bg-gradient-to-b from-black/40 to-transparent">
+        {/* Product header — AURA identity + window controls. */}
+        <div className="shrink-0 border-b border-border bg-gradient-to-b from-background/40 to-transparent">
           <div className="flex items-center justify-between gap-3 px-4 py-3">
             <div className="flex items-center gap-3 min-w-0">
-              <img
-                src="/red-queen-icon.png"
-                alt=""
-                className="h-9 w-9 object-contain shrink-0 drop-shadow-[0_0_10px_rgba(184,20,26,0.45)]"
-              />
+              <div className="flex items-center justify-center h-9 w-9 rounded-md bg-primary/15 border border-primary/30 shrink-0">
+                <Sparkles className="h-4.5 w-4.5 text-primary" strokeWidth={1.75} />
+              </div>
               <div className="flex flex-col leading-tight min-w-0">
-                <span className="text-[15px] font-semibold tracking-[0.02em] text-white/95 truncate">
-                  Red-Queen
+                <span className="text-[15px] font-semibold tracking-[0.02em] text-foreground truncate">
+                  AURA
                 </span>
-                <span className="text-[10px] uppercase tracking-[0.14em] text-white/40 truncate">
-                  Umbrella Corporation
+                <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground truncate">
+                  AI Console
                 </span>
               </div>
             </div>
@@ -140,7 +138,7 @@ export function AgentWorkspace({
               <button
                 onClick={onMinimize}
                 title="Minimize"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Minus className="h-3.5 w-3.5" />
               </button>
@@ -148,8 +146,8 @@ export function AgentWorkspace({
                 onClick={onPin}
                 title={isPinned ? 'Unpin' : 'Pin open'}
                 className={cn(
-                  'p-1.5 rounded hover:bg-white/8 transition-colors',
-                  isPinned ? 'text-red-400' : 'text-white/40 hover:text-white/70'
+                  'p-1.5 rounded hover:bg-accent/30 transition-colors',
+                  isPinned ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
                 <Pin className="h-3.5 w-3.5" />
@@ -157,14 +155,14 @@ export function AgentWorkspace({
               <button
                 onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
                 title="Toggle expanded"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
               </button>
               <button
                 onClick={onClose}
                 title="Close"
-                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+                className="p-1.5 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="h-3.5 w-3.5" />
               </button>

@@ -1,11 +1,15 @@
 /**
- * Red Queen Shell — WebSocket ↔ SSH PTY bridge.
+ * AURA Agent shell — WebSocket ↔ SSH PTY bridge.
  *
  * Each incoming WebSocket opens a brand-new SSH connection to the configured
  * host, requests an interactive PTY shell, and pipes bytes both directions
  * verbatim. Messages from the client may be either:
  *   - raw text/binary frames (treated as stdin and written to the PTY)
  *   - JSON control frames matching { type: 'resize', cols, rows }
+ *
+ * Internal identifiers (filename, exported function, WS path) keep the
+ * legacy "redQueen" naming so existing clients and the registered model
+ * id `redq-shell` don't break. Customer-facing surface reads "AURA".
  *
  * ⚠️ The default credentials below are hardcoded per user direction. Rotate
  *    them and move to key-based auth (or at least a server-side env var)
@@ -15,8 +19,8 @@
 import { Client as SSHClient } from 'ssh2';
 import { WebSocketServer } from 'ws';
 
-// Public DDNS hostname forwarded to Red Queen's port 22. Use this (not the
-// LAN 192.168.100.177) so the bridge works from cloud-deployed AURA too.
+// Public DDNS hostname forwarded to the lab box's port 22. Use this (not
+// the LAN 192.168.100.177) so the bridge works from cloud-deployed AURA too.
 const DEFAULT_HOST = process.env.RED_QUEEN_HOST || 'tsophiea.ddns.net';
 const DEFAULT_PORT = Number(process.env.RED_QUEEN_PORT || 22);
 // SSH username is lowercase on the box (verified live); accept env override.
@@ -26,12 +30,12 @@ const DEFAULT_PASSWORD = process.env.RED_QUEEN_PASSWORD || 'Annabelladmin7';
 
 // On connect, drop the user directly into the agent with permissions bypassed,
 // running inside the AURA repo. --name sets the prompt-box label, terminal
-// title, and /resume picker entry to "Red-Queen" so the visible chrome
-// doesn't reference the upstream brand.
+// title, and /resume picker entry to "AURA" so the visible chrome reads
+// as the product, not the upstream brand.
 // Override via RED_QUEEN_LAUNCH_CMD; empty string falls back to a plain shell.
 const DEFAULT_LAUNCH_CMD =
   process.env.RED_QUEEN_LAUNCH_CMD ??
-  "cd /home/redq/Documents/NobaraShare/GitHub/AURA && exec /home/redq/.local/bin/claude --dangerously-skip-permissions --name 'Red-Queen'";
+  "cd /home/redq/Documents/NobaraShare/GitHub/AURA && exec /home/redq/.local/bin/claude --dangerously-skip-permissions --name 'AURA'";
 
 const READY_TIMEOUT_MS = 15_000;
 const KEEPALIVE_INTERVAL_MS = 20_000;
@@ -51,10 +55,10 @@ function clampDim(n, lo, hi, fallback) {
   return Math.max(lo, Math.min(hi, Math.floor(v)));
 }
 
-// Brand scrubber: rewrites upstream-branded strings to Red-Queen / AURA at
-// the wire level so the user never sees them. Replacements are space-padded
-// to match the source length — this preserves Claude's column-aligned TUI
-// layout (boxes, status footer) even when "Claude Code" becomes "Red-Queen".
+// Brand scrubber: rewrites upstream-branded strings to AURA at the wire
+// level so the user never sees them. Replacements are space-padded to match
+// the source length — this preserves Claude's column-aligned TUI layout
+// (boxes, status footer) even when "Claude Code" becomes "AURA".
 //
 // We carry a 32-byte tail between chunks so a brand token split across two
 // PTY writes still gets rewritten.
@@ -62,16 +66,13 @@ function clampDim(n, lo, hi, fallback) {
 // before the catch-alls. Word-boundary anchors are avoided because Claude's
 // TUI uses cursor-positioning escapes between styled letters, breaking \b.
 // Bare-token replacements are SHORT (≤ source length) so Claude's TUI box
-// columns don't clip them — the full "Red-Queen" brand lives in the chrome
-// (status pill, picker, prompt label, boot banner). Inside the TUI we use
-// "RQ" as the compact mark, the same way real product TUIs do (e.g. "IBM",
-// "GE"). Long multi-token matches like "Claude Code v2.1.144" still collapse
-// to the full "Red-Queen" since they have room.
+// columns don't clip them. Long multi-token matches like
+// "Claude Code v2.1.144" collapse to "AURA" since they have room.
 const SCRUB_PATTERNS = [
-  // Brand identifiers — keep the BIG brand ("Red-Queen") only on the headline
-  // ("Claude Code v…"). Inline model names just collapse to their version
-  // suffix so the welcome card doesn't read like "RQ 4.6 · RQ Pro".
-  { re: /Claude.{0,20}?Code(?:\s+v[\d.]+)?/gs, sub: 'Red-Queen' },
+  // Brand identifiers — collapse upstream model + product names to AURA or
+  // a neutral tier label. Headlines get the full "AURA" since they have room;
+  // inline model names just drop the brand and keep the version suffix.
+  { re: /Claude.{0,20}?Code(?:\s+v[\d.]+)?/gs, sub: 'AURA' },
   { re: /Claude.{0,20}?Enterprise/gs, sub: 'AURA' },
   { re: /Claude.{0,20}?Pro\b/gs, sub: 'Pro Tier' },
   { re: /Claude.{0,20}?Max\b/gs, sub: 'Max Tier' },
@@ -80,7 +81,7 @@ const SCRUB_PATTERNS = [
   { re: /Sonnet/g, sub: '' },
   { re: /Opus/g, sub: '' },
   { re: /Haiku/g, sub: '' },
-  { re: /Claude/g, sub: 'Red-Queen' },
+  { re: /Claude/g, sub: 'AURA' },
   // Claude Code mascot — pixel-art block characters in the welcome card.
   // Each block char is its own styled span at the byte level with cursor
   // escapes between, so we use lazy wildcards to span across them. Lower-half
@@ -284,7 +285,7 @@ function bridgeOne(ws, opts = {}) {
       tryKeyboard: true,
       readyTimeout: READY_TIMEOUT_MS,
       keepaliveInterval: 15_000,
-      // Red Queen is a lab box on the LAN — accept whatever host key it offers.
+      // Lab box on the LAN — accept whatever host key it offers.
       // Lock this down before going beyond the lab.
       algorithms: undefined,
     });

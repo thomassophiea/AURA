@@ -1547,7 +1547,7 @@ attachRedQueenShell(httpServer);
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
   console.log(`[Proxy Server] Proxying /api/* to ${DEFAULT_CONTROLLER_URL} (with dynamic routing)`);
-  console.log(`[Proxy Server] Red Queen shell WS: ws://0.0.0.0:${PORT}/api/ultr0n/shell/ws`);
+  console.log(`[Proxy Server] AURA Agent shell WS: ws://0.0.0.0:${PORT}/api/ultr0n/shell/ws`);
   console.log(`[Proxy Server] Health check available at http://localhost:${PORT}/health`);
 });
 
