@@ -165,8 +165,6 @@ function bridgeOne(ws, opts = {}) {
       `  ${R}▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄${X}\r\n` +
       `\r\n` +
       `       ${R}● ●${X}      ${B}R E D — Q U E E N${X}\r\n` +
-      `        ${R}●${X}       ${D}AURA · Internal Operations Console${X}\r\n` +
-      `       ${R}● ●${X}      ${D}v1.0${X}\r\n` +
       `\r\n` +
       `  ${R}▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀${X}\r\n` +
       `\r\n` +
