@@ -9,7 +9,7 @@ interface AgentCommandBarProps {
 }
 
 /**
- * Dave-mode floating widget: model picker + open-shell hotkey hint.
+ * Dev-mode floating widget: model picker + open-shell hotkey hint.
  * No chat input, no mic, no context badge — the slideout terminal owns input.
  */
 export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {

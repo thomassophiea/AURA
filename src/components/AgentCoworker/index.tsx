@@ -6,7 +6,7 @@ import { useUltronContext } from '../../contexts/UltronContext';
 
 // Detail-panel callbacks are preserved for the App.tsx mount signature but
 // are no longer wired — the LLM coworker that surfaced these is gone in
-// Dave mode.
+// Dev mode.
 interface AgentCoworkerProps {
   onShowClientDetail?: (mac: string, name?: string) => void;
   onShowAccessPointDetail?: (serial: string, name?: string) => void;

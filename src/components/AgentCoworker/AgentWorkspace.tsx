@@ -18,7 +18,7 @@ interface AgentWorkspaceProps {
 }
 
 /**
- * Dave-mode slideout: header (model picker + window controls) + Red Queen
+ * Dev-mode slideout: header (model picker + window controls) + Red Queen
  * shell body. No tabs, no chat, no approval flow — those are gone with the
  * rest of the LLM-driven coworker UI.
  */

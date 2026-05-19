@@ -290,7 +290,7 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState('sle-dashboard');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
-  const [theme, setTheme] = useState<'light' | 'ep1' | 'dev' | 'dave'>('ep1');
+  const [theme, setTheme] = useState<'light' | 'ep1' | 'dev'>('ep1');
   const [detailPanel, setDetailPanel] = useState<DetailPanelState>({
     isOpen: false,
     type: null,
@@ -355,8 +355,8 @@ export default function App() {
     // Initialize theme from localStorage or system preference
     const initializeTheme = () => {
       const saved = localStorage.getItem('theme');
-      const initialTheme: 'light' | 'ep1' | 'dev' | 'dave' =
-        saved === 'light' || saved === 'ep1' || saved === 'dev' || saved === 'dave' ? saved : 'ep1';
+      const initialTheme: 'light' | 'ep1' | 'dev' =
+        saved === 'light' || saved === 'ep1' || saved === 'dev' ? saved : 'ep1';
 
       setTheme(initialTheme);
       applyThemeForMode(initialTheme);
@@ -890,24 +890,13 @@ export default function App() {
   }, []);
 
   // Helper function to apply theme to document
-  const applyTheme = (newTheme: 'light' | 'ep1' | 'dev' | 'dave') => {
+  const applyTheme = (newTheme: 'light' | 'ep1' | 'dev') => {
     const root = document.documentElement;
-    // Dave reuses dev's color tokens — it's a feature gate, not a visual repaint.
-    const baseTheme =
-      newTheme === 'ep1' ? 'ep1' : newTheme === 'dev' || newTheme === 'dave' ? 'dev' : 'default';
+    const baseTheme = newTheme === 'ep1' ? 'ep1' : newTheme === 'dev' ? 'dev' : 'default';
     applyThemeColors(baseTheme);
 
-    root.classList.remove('light', 'dark', 'ep1', 'dev', 'dave', 'synthwave', 'pirate', 'mi5');
-    document.body.classList.remove(
-      'light',
-      'dark',
-      'ep1',
-      'dev',
-      'dave',
-      'synthwave',
-      'pirate',
-      'mi5'
-    );
+    root.classList.remove('light', 'dark', 'ep1', 'dev', 'synthwave', 'pirate', 'mi5');
+    document.body.classList.remove('light', 'dark', 'ep1', 'dev', 'synthwave', 'pirate', 'mi5');
 
     if (newTheme === 'ep1') {
       root.classList.add('dark', 'ep1');
@@ -915,9 +904,6 @@ export default function App() {
     } else if (newTheme === 'dev') {
       root.classList.add('dark', 'dev');
       document.body.classList.add('dark', 'dev');
-    } else if (newTheme === 'dave') {
-      root.classList.add('dark', 'dev', 'dave');
-      document.body.classList.add('dark', 'dev', 'dave');
     } else {
       root.classList.add('light');
       document.body.classList.add('light');
@@ -925,16 +911,14 @@ export default function App() {
     root.setAttribute('data-theme', newTheme);
   };
 
-  const applyThemeForMode = (mode: 'light' | 'ep1' | 'dev' | 'dave') => {
+  const applyThemeForMode = (mode: 'light' | 'ep1' | 'dev') => {
     applyTheme(mode);
   };
 
   const toggleTheme = () => {
-    type Mode = 'light' | 'ep1' | 'dev' | 'dave';
-    const cycle: Record<Mode, Mode> = {
+    const cycle: Record<'light' | 'ep1' | 'dev', 'light' | 'ep1' | 'dev'> = {
       ep1: 'dev',
-      dev: 'dave',
-      dave: 'light',
+      dev: 'light',
       light: 'ep1',
     };
     const newTheme = cycle[theme];
@@ -942,11 +926,10 @@ export default function App() {
     applyTheme(newTheme);
     localStorage.setItem('theme', newTheme);
 
-    const labels: Record<Mode, string> = { ep1: 'Dark', dev: 'Dev', dave: 'Dave', light: 'Light' };
-    const descriptions: Record<Mode, string> = {
+    const labels = { ep1: 'Dark', dev: 'Dev', light: 'Light' };
+    const descriptions = {
       ep1: 'Dark mode activated.',
-      dev: 'Developer mode activated.',
-      dave: 'Dave mode activated — Red Queen shell unlocked.',
+      dev: 'Dev mode activated — Red Queen shell unlocked.',
       light: 'Light mode activated.',
     };
 
@@ -1472,7 +1455,7 @@ export default function App() {
                     adminRole={adminRole}
                     currentPage={currentPage}
                     onPageChange={handlePageChange}
-                    theme={theme === 'dave' ? 'dev' : theme}
+                    theme={theme}
                     onThemeToggle={toggleTheme}
                   />
                   <main
@@ -1501,8 +1484,8 @@ export default function App() {
                 {renderDetailPanel()}
               </div>
 
-              {/* Floating shell bar + slideout — Dave-mode only. */}
-              {theme === 'dave' && networkAssistantEnabled && (
+              {/* Floating shell bar + slideout — Dev-mode only. */}
+              {theme === 'dev' && networkAssistantEnabled && (
                 <AgentCoworker
                   onShowClientDetail={handleShowClientDetail}
                   onShowAccessPointDetail={handleShowAccessPointDetail}
