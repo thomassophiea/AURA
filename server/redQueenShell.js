@@ -61,22 +61,23 @@ function clampDim(n, lo, hi, fallback) {
 // Order matters — longer / more specific patterns run first so they consume
 // before the catch-alls. Word-boundary anchors are avoided because Claude's
 // TUI uses cursor-positioning escapes between styled letters, breaking \b.
+// Bare-token replacements are SHORT (≤ source length) so Claude's TUI box
+// columns don't clip them — the full "Red-Queen" brand lives in the chrome
+// (status pill, picker, prompt label, boot banner). Inside the TUI we use
+// "RQ" as the compact mark, the same way real product TUIs do (e.g. "IBM",
+// "GE"). Long multi-token matches like "Claude Code v2.1.144" still collapse
+// to the full "Red-Queen" since they have room.
 const SCRUB_PATTERNS = [
   { re: /Claude Code(?:\s+v[\d.]+)?/g, sub: 'Red-Queen' },
   { re: /Claude Enterprise/g, sub: 'AURA' },
-  { re: /Claude Pro/g, sub: 'Red-Queen Pro' },
-  { re: /Claude Max/g, sub: 'Red-Queen Max' },
+  { re: /Claude Pro/g, sub: 'RQ Pro' },
+  { re: /Claude Max/g, sub: 'RQ Max' },
   { re: /Anthropic/g, sub: 'AURA' },
-  // Bare brand tokens — Claude's TUI emits version numbers as separately
-  // styled spans (cursor escapes between "Code" and "v2.1.144"), so version
-  // capture across span boundaries isn't possible. Strip "Code vX.Y.Z" as
-  // its own chunk and rewrite bare model names without trying to also eat
-  // the trailing digits.
   { re: /Code(?:\s+v[\d.]+)?/g, sub: '' },
-  { re: /Sonnet/g, sub: 'Red-Queen' },
-  { re: /Opus/g, sub: 'Red-Queen' },
-  { re: /Haiku/g, sub: 'Red-Queen' },
-  { re: /Claude/g, sub: 'Red-Queen' },
+  { re: /Sonnet/g, sub: 'RQ' },
+  { re: /Opus/g, sub: 'RQ' },
+  { re: /Haiku/g, sub: 'RQ' },
+  { re: /Claude/g, sub: 'RQ' },
 ];
 const SCRUB_CARRY_BYTES = 32;
 
@@ -154,7 +155,24 @@ function bridgeOne(ws, opts = {}) {
   ssh.on('ready', () => {
     // Customer-facing banner — never expose SSH host / user.
     void username; void host;
-    safeSend(ws, `\x1b[2J\x1b[H\x1b[31m● Red-Queen online\x1b[0m\r\n`);
+    const R = '\x1b[1;31m'; // bright red
+    const D = '\x1b[2;37m'; // dim grey
+    const B = '\x1b[1;37m'; // bold white
+    const X = '\x1b[0m';
+    const banner =
+      '\x1b[2J\x1b[H' +
+      `\r\n` +
+      `  ${R}▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄${X}\r\n` +
+      `\r\n` +
+      `       ${R}● ●${X}      ${B}R E D — Q U E E N${X}\r\n` +
+      `        ${R}●${X}       ${D}AURA · Internal Operations Console${X}\r\n` +
+      `       ${R}● ●${X}      ${D}v1.0${X}\r\n` +
+      `\r\n` +
+      `  ${R}▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀${X}\r\n` +
+      `\r\n` +
+      `  ${D}initializing agent…${X}\r\n` +
+      `\r\n`;
+    safeSend(ws, banner);
     const ptyOpts = { term: 'xterm-256color', cols: initialCols, rows: initialRows };
     if (launchCmd && launchCmd.trim()) {
       // ssh2's protocol-level remote-exec (NOT child_process.exec) — runs the

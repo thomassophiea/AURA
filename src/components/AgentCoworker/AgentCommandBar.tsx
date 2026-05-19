@@ -32,7 +32,7 @@ export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
           title="Open Red-Queen"
         >
           <img
-            src="/red-queen-icon.webp"
+            src="/red-queen-icon.png"
             alt=""
             className="h-4 w-4 object-contain drop-shadow-[0_0_4px_rgba(239,68,68,0.35)]"
           />
