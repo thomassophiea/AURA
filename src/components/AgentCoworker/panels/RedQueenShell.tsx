@@ -197,30 +197,26 @@ export function RedQueenShell({ className }: { className?: string }) {
     };
   }, []);
 
+  // Once the session is live and stable, hide the pill — connection state is
+  // implicit, and the panel reads as product chrome. Only surface it for the
+  // noisy states (connecting / closed / error) where the user wants feedback.
+  const showStatus = status !== 'open';
   const statusLabel =
-    status === 'open'
-      ? 'CONNECTED'
-      : status === 'connecting'
-        ? 'CONNECTING'
-        : status === 'closed'
-          ? 'DISCONNECTED'
-          : 'ERROR';
-  const statusDot =
-    status === 'open'
-      ? 'bg-emerald-400 shadow-[0_0_8px_rgba(110,231,183,0.6)]'
-      : status === 'connecting'
-        ? 'bg-yellow-400 animate-pulse'
-        : 'bg-red-400';
+    status === 'connecting'
+      ? 'Establishing link…'
+      : status === 'closed'
+        ? 'Reconnecting…'
+        : 'Connection error';
+  const statusDot = status === 'connecting' ? 'bg-yellow-400 animate-pulse' : 'bg-red-400';
 
   return (
-    <div className={cn('flex flex-col h-full bg-[#0d0b14]', className)}>
-      <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-white/50 border-b border-white/8 bg-black/30">
-        <span className={cn('h-1.5 w-1.5 rounded-full', statusDot)} />
-        <img src="/red-queen-icon.png" alt="" className="h-3 w-3 object-contain" />
-        <span className="font-mono">RED-QUEEN</span>
-        <span className="text-white/25">·</span>
-        <span>{statusLabel}</span>
-      </div>
+    <div className={cn('flex flex-col h-full bg-[#0a0809]', className)}>
+      {showStatus && (
+        <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-white/55 border-b border-white/[0.06] bg-black/40">
+          <span className={cn('h-1.5 w-1.5 rounded-full', statusDot)} />
+          <span>{statusLabel}</span>
+        </div>
+      )}
       <div ref={containerRef} className="flex-1 min-h-0 px-2 pt-2" />
     </div>
   );

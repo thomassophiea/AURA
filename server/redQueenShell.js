@@ -68,6 +68,7 @@ function clampDim(n, lo, hi, fallback) {
 // "GE"). Long multi-token matches like "Claude Code v2.1.144" still collapse
 // to the full "Red-Queen" since they have room.
 const SCRUB_PATTERNS = [
+  // Brand identifiers
   { re: /Claude Code(?:\s+v[\d.]+)?/g, sub: 'Red-Queen' },
   { re: /Claude Enterprise/g, sub: 'AURA' },
   { re: /Claude Pro/g, sub: 'RQ Pro' },
@@ -78,6 +79,19 @@ const SCRUB_PATTERNS = [
   { re: /Opus/g, sub: 'RQ' },
   { re: /Haiku/g, sub: 'RQ' },
   { re: /Claude/g, sub: 'RQ' },
+  // Footer / status leaks — make Claude's TUI footer read as a product
+  { re: /MCP server/g, sub: 'service' },
+  { re: /MCP servers/g, sub: 'services' },
+  // .{0,N}? wildcards (non-greedy) between keywords catch both spaced and
+  // escape-separated renderings — Claude's TUI styles adjacent text spans
+  // with cursor escapes that look like non-letters but aren't whitespace.
+  { re: /bypass.{0,40}?on(?![a-z])/gs, sub: 'agent armed' },
+  { re: /\(.{0,40}?tab.{0,40}?\)/gs, sub: '' },
+  { re: /←.{0,20}?agents/gs, sub: '' },
+  { re: /\/(mcp|release-notes|model|effort|resume|help)\b/g, sub: '' },
+  // Bare version strings (eg "v2.1.144") leak the upstream release tag —
+  // strip wherever they appear, not only after whitespace.
+  { re: /v\d+\.\d+\.\d+/g, sub: '' },
 ];
 const SCRUB_CARRY_BYTES = 32;
 

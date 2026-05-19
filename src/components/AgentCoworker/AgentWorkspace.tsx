@@ -117,47 +117,69 @@ export function AgentWorkspace({
           onMouseDown={onMouseDown}
         />
 
-        <div className="shrink-0 px-3 py-2 border-b border-white/8 flex items-center justify-between gap-2">
-          <ModelSelector
-            provider={provider}
-            models={models}
-            selectedModel={selectedModel}
-            onSelect={setSelectedModel}
-            loading={loading}
-          />
+        {/* Product header — Red-Queen identity + window controls. */}
+        <div className="shrink-0 border-b border-white/[0.06] bg-gradient-to-b from-black/40 to-transparent">
+          <div className="flex items-center justify-between gap-3 px-4 py-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <img
+                src="/red-queen-icon.png"
+                alt=""
+                className="h-9 w-9 object-contain shrink-0 drop-shadow-[0_0_10px_rgba(184,20,26,0.45)]"
+              />
+              <div className="flex flex-col leading-tight min-w-0">
+                <span className="text-[15px] font-semibold tracking-[0.02em] text-white/95 truncate">
+                  Red-Queen
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.14em] text-white/40 truncate">
+                  Network Operations Agent
+                </span>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={onMinimize}
-              title="Minimize"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <Minus className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onPin}
-              title={isPinned ? 'Unpin' : 'Pin open'}
-              className={cn(
-                'p-1.5 rounded hover:bg-white/8 transition-colors',
-                isPinned ? 'text-violet-400' : 'text-white/40 hover:text-white/70'
-              )}
-            >
-              <Pin className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
-              title="Toggle expanded"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={onClose}
-              title="Close"
-              className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={onMinimize}
+                title="Minimize"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onPin}
+                title={isPinned ? 'Unpin' : 'Pin open'}
+                className={cn(
+                  'p-1.5 rounded hover:bg-white/8 transition-colors',
+                  isPinned ? 'text-red-400' : 'text-white/40 hover:text-white/70'
+                )}
+              >
+                <Pin className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => onSetSize(size === 'expanded' ? 'standard' : 'expanded')}
+                title="Toggle expanded"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <Maximize2 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={onClose}
+                title="Close"
+                className="p-1.5 rounded hover:bg-white/8 text-white/40 hover:text-white/70 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Sub-row: model selector at the leading edge, slim and out of the way. */}
+          <div className="flex items-center px-4 pb-2.5 -mt-1">
+            <ModelSelector
+              provider={provider}
+              models={models}
+              selectedModel={selectedModel}
+              onSelect={setSelectedModel}
+              loading={loading}
+            />
           </div>
         </div>
 
