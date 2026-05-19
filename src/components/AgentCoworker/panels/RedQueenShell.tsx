@@ -17,9 +17,12 @@ function readAuthToken(): string {
   }
 }
 
-function buildWsUrl(token: string): string {
+function buildWsUrl(token: string, cols: number, rows: number): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${scheme}//${window.location.host}/api/ultr0n/shell/ws?token=${encodeURIComponent(token)}`;
+  return (
+    `${scheme}//${window.location.host}/api/ultr0n/shell/ws` +
+    `?token=${encodeURIComponent(token)}&cols=${cols}&rows=${rows}`
+  );
 }
 
 export function RedQueenShell({ className }: { className?: string }) {
@@ -35,12 +38,17 @@ export function RedQueenShell({ className }: { className?: string }) {
     if (!containerRef.current) return;
 
     const term = new Terminal({
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      // Prefer fonts likely to ship Nerd Font / extended-Unicode glyphs for
+      // Claude Code's mascot + box-drawing chars. Falls back to plain mono.
+      fontFamily:
+        '"JetBrainsMono Nerd Font", "JetBrains Mono", "FiraCode Nerd Font", "Fira Code", "Cascadia Code", "MesloLGS NF", Menlo, Monaco, Consolas, "Liberation Mono", monospace',
       fontSize: 13,
-      lineHeight: 1.15,
+      lineHeight: 1.2,
+      letterSpacing: 0,
       cursorBlink: true,
       convertEol: true,
       scrollback: 5000,
+      allowProposedApi: true,
       theme: {
         background: '#0d0b14',
         foreground: '#e9e6f4',
@@ -95,14 +103,18 @@ export function RedQueenShell({ className }: { className?: string }) {
     });
     const resizeDisp = term.onResize(sendResize);
 
-    const onWindowResize = () => {
+    const refit = () => {
       try {
         fit.fit();
       } catch {
         /* ignore */
       }
     };
-    window.addEventListener('resize', onWindowResize);
+    // The slideout can be drag-resized; the window may not resize. Observe
+    // the container instead so the PTY follows the panel width.
+    const ro = new ResizeObserver(refit);
+    ro.observe(containerRef.current);
+    window.addEventListener('resize', refit);
 
     const connect = () => {
       if (disposedRef.current) return;
@@ -116,9 +128,16 @@ export function RedQueenShell({ className }: { className?: string }) {
         return;
       }
 
+      // Fit *now* so we can hand the server the right initial PTY size in
+      // the URL — otherwise Claude renders its splash at the default 100x32
+      // and our late /resize message can't undo the broken layout.
+      refit();
+      const cols = term.cols;
+      const rows = term.rows;
+
       let ws: WebSocket;
       try {
-        ws = new WebSocket(buildWsUrl(token));
+        ws = new WebSocket(buildWsUrl(token, cols, rows));
       } catch (err) {
         setStatus('error');
         term.write(`\r\n\x1b[31m ws error: ${(err as Error).message}\x1b[0m\r\n`);
@@ -154,7 +173,8 @@ export function RedQueenShell({ className }: { className?: string }) {
 
     return () => {
       disposedRef.current = true;
-      window.removeEventListener('resize', onWindowResize);
+      window.removeEventListener('resize', refit);
+      ro.disconnect();
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       dataDisp.dispose();
       resizeDisp.dispose();

@@ -43,12 +43,20 @@ function safeSend(ws, payload) {
   }
 }
 
+function clampDim(n, lo, hi, fallback) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return fallback;
+  return Math.max(lo, Math.min(hi, Math.floor(v)));
+}
+
 function bridgeOne(ws, opts = {}) {
   const host = opts.host || DEFAULT_HOST;
   const port = opts.port || DEFAULT_PORT;
   const username = opts.username || DEFAULT_USER;
   const password = opts.password || DEFAULT_PASSWORD;
   const launchCmd = opts.launchCmd ?? DEFAULT_LAUNCH_CMD;
+  const initialCols = clampDim(opts.cols, 20, 400, 100);
+  const initialRows = clampDim(opts.rows, 5, 200, 32);
 
   const ssh = new SSHClient();
   let shell = null;
@@ -77,7 +85,7 @@ function bridgeOne(ws, opts = {}) {
 
   ssh.on('ready', () => {
     safeSend(ws, `\x1b[2J\x1b[H\x1b[35m● Red Queen connected (${username}@${host})\x1b[0m\r\n`);
-    const ptyOpts = { term: 'xterm-256color', cols: 120, rows: 32 };
+    const ptyOpts = { term: 'xterm-256color', cols: initialCols, rows: initialRows };
     if (launchCmd && launchCmd.trim()) {
       // ssh2's protocol-level remote-exec (NOT child_process.exec) — runs the
       // command on the remote SSH server inside an allocated PTY. Wrapped in
@@ -185,8 +193,10 @@ export function attachRedQueenShell(httpServer, { path = '/api/ultr0n/shell/ws' 
       return;
     }
 
+    const cols = url.searchParams.get('cols');
+    const rows = url.searchParams.get('rows');
     wss.handleUpgrade(req, socket, head, (ws) => {
-      bridgeOne(ws);
+      bridgeOne(ws, { cols, rows });
     });
   });
 
