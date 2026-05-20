@@ -67,11 +67,25 @@ interface AGGridWrapperProps<TData> {
   storageKey?: string;
 }
 
+// Transient AG Grid state slices that must NOT be restored across mounts:
+// `scroll` and `focusedCell` lock the body to an old viewport offset, which
+// renders as a tall blank band above the actual rows (the grid is paged to
+// the prior scrollTop but the new data doesn't fill it). `rangeSelection`
+// + `cellSelection` re-highlight cells the user never touched.
+const VOLATILE_STATE_KEYS = ['scroll', 'focusedCell', 'rangeSelection', 'cellSelection'] as const;
+
+function sanitizeState(state: any) {
+  if (!state || typeof state !== 'object') return state;
+  const out = { ...state };
+  for (const k of VOLATILE_STATE_KEYS) delete out[k];
+  return out;
+}
+
 function readSavedState(key?: string) {
   if (!key) return undefined;
   try {
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
-    return raw ? JSON.parse(raw) : undefined;
+    return raw ? sanitizeState(JSON.parse(raw)) : undefined;
   } catch {
     return undefined;
   }
@@ -125,7 +139,10 @@ function AGGridWrapperInner<TData>(
         initialState: savedStateRef.current,
         onStateUpdated: (e: any) => {
           try {
-            localStorage.setItem(STORAGE_PREFIX + storageKey, JSON.stringify(e.state));
+            localStorage.setItem(
+              STORAGE_PREFIX + storageKey,
+              JSON.stringify(sanitizeState(e.state))
+            );
           } catch {
             /* ignore quota / disabled storage */
           }
@@ -134,10 +151,20 @@ function AGGridWrapperInner<TData>(
     : {};
 
   // Bridge consumer's onGridReady so we can capture the API regardless.
+  // Belt-and-suspenders against stuck scroll viewports: force the body back
+  // to row 0 once on ready, in case any volatile state slipped past the
+  // sanitizer or the grid restored a scroll offset from a different source.
   const consumerOnGridReady = gridOptions?.onGridReady;
   const onGridReady = (e: GridReadyEvent<TData>) => {
     apiRef.current = e.api;
     consumerOnGridReady?.(e);
+    if (e.api.getDisplayedRowCount() > 0) {
+      try {
+        e.api.ensureIndexVisible(0, 'top');
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   // Apply default selection column styling when consumer hasn't overridden it.
