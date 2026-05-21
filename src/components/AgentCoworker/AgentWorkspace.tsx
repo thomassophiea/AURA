@@ -89,7 +89,7 @@ export function AgentWorkspace({
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
 
-  const { provider, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
+  const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
 
   if (mode === 'minimized') {
     return (
@@ -137,7 +137,7 @@ export function AgentWorkspace({
           <div className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <ModelSelector
-                provider={provider}
+                providers={providers}
                 models={models}
                 selectedModel={selectedModel}
                 onSelect={setSelectedModel}

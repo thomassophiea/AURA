@@ -11,15 +11,60 @@ import { cn } from '../ui/utils';
 import type { Ultr0nModel } from '../../hooks/useUltr0nModel';
 
 interface ModelSelectorProps {
-  provider: string;
+  providers: string[];
   models: Ultr0nModel[];
   selectedModel: string;
   onSelect: (modelId: string) => void;
   loading?: boolean;
 }
 
+const PROVIDER_DISPLAY: Record<string, string> = {
+  shell: 'AURA · Engine',
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  groq: 'Groq Cloud',
+  grok: 'xAI Grok',
+  gemini: 'Google Gemini',
+  mistral: 'Mistral AI',
+  cerebras: 'Cerebras',
+  deepseek: 'DeepSeek',
+  ollama: 'Ollama (local)',
+};
+
+const PROVIDER_ORDER = [
+  'shell',
+  'anthropic',
+  'openai',
+  'gemini',
+  'groq',
+  'grok',
+  'cerebras',
+  'mistral',
+  'deepseek',
+  'ollama',
+];
+
+function groupModelsByProvider(models: Ultr0nModel[]): Array<[string, Ultr0nModel[]]> {
+  const groups = new Map<string, Ultr0nModel[]>();
+  for (const m of models) {
+    const key = m.provider ?? (m.kind === 'shell' ? 'shell' : 'other');
+    const list = groups.get(key) ?? [];
+    list.push(m);
+    groups.set(key, list);
+  }
+  const ordered: Array<[string, Ultr0nModel[]]> = [];
+  for (const key of PROVIDER_ORDER) {
+    if (groups.has(key)) {
+      ordered.push([key, groups.get(key)!]);
+      groups.delete(key);
+    }
+  }
+  for (const [key, list] of groups) ordered.push([key, list]);
+  return ordered;
+}
+
 export function ModelSelector({
-  provider,
+  providers,
   models,
   selectedModel,
   onSelect,
@@ -27,6 +72,11 @@ export function ModelSelector({
 }: ModelSelectorProps) {
   const current = models.find((m) => m.id === selectedModel);
   const label = current?.label ?? selectedModel ?? 'Loading…';
+  const grouped = groupModelsByProvider(models);
+  const titleText =
+    providers.length > 0
+      ? `Configured providers: ${providers.join(', ')}`
+      : 'No LLM provider configured';
 
   return (
     <DropdownMenu>
@@ -38,7 +88,7 @@ export function ModelSelector({
           'transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
           'border border-border'
         )}
-        title={`Model (provider: ${provider})`}
+        title={titleText}
         data-testid="ultr0n-model-selector"
       >
         <Cpu className="h-3 w-3 text-primary/80" />
@@ -49,33 +99,40 @@ export function ModelSelector({
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="z-[99999] min-w-[260px] bg-popover border-border"
+        className="z-[99999] min-w-[280px] max-h-[70vh] overflow-y-auto bg-popover border-border"
       >
-        <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
-          AURA · Engine
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-border" />
-        {models.map((m) => {
-          const isActive = m.id === selectedModel;
-          return (
-            <DropdownMenuItem
-              key={m.id}
-              onSelect={() => onSelect(m.id)}
-              className={cn(
-                'flex flex-col items-start gap-0.5 py-2 cursor-pointer',
-                isActive ? 'bg-primary/15 text-foreground' : 'text-foreground/80 hover:bg-accent/20'
-              )}
-            >
-              <span className="flex items-center gap-2 text-xs font-medium">
-                {m.label}
-                {isActive && <span className="text-[9px] text-primary">● active</span>}
-              </span>
-              <span className="text-[10px] text-muted-foreground">
-                {m.notes} · {m.contextWindow.toLocaleString()} ctx
-              </span>
-            </DropdownMenuItem>
-          );
-        })}
+        {grouped.map(([providerKey, list], idx) => (
+          <div key={providerKey}>
+            {idx > 0 && <DropdownMenuSeparator className="bg-border" />}
+            <DropdownMenuLabel className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {PROVIDER_DISPLAY[providerKey] ?? providerKey}
+            </DropdownMenuLabel>
+            {list.map((m) => {
+              const isActive = m.id === selectedModel;
+              return (
+                <DropdownMenuItem
+                  key={m.id}
+                  onSelect={() => onSelect(m.id)}
+                  className={cn(
+                    'flex flex-col items-start gap-0.5 py-2 cursor-pointer',
+                    isActive
+                      ? 'bg-primary/15 text-foreground'
+                      : 'text-foreground/80 hover:bg-accent/20'
+                  )}
+                >
+                  <span className="flex items-center gap-2 text-xs font-medium">
+                    {m.label}
+                    {isActive && <span className="text-[9px] text-primary">● active</span>}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {m.notes}
+                    {m.contextWindow > 0 ? ` · ${m.contextWindow.toLocaleString()} ctx` : ''}
+                  </span>
+                </DropdownMenuItem>
+              );
+            })}
+          </div>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );

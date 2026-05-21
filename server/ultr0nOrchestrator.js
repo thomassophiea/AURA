@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { sanitizeUltr0nContext } from './ultr0nContextSanitizer.js';
-import { createLlmProvider } from './ultr0nLlmProvider.js';
+import { createLlmProvider, createLlmProviderForModel } from './ultr0nLlmProvider.js';
+import { discoverOllamaModels } from './ultr0nModelRegistry.js';
 import { getToolSpecs } from './ultr0n/toolCatalog.js';
 import { executeTool } from './ultr0n/toolDispatcher.js';
 
@@ -76,6 +77,20 @@ export class Ultr0nOrchestrator {
     this.#model = model ?? process.env.ULTR0N_LLM_MODEL ?? defaultModel;
   }
 
+  // Pick the provider for the actual model the user selected. Falls back to
+  // the singleton (env-configured) provider when no model id resolves.
+  async #resolveProvider(modelId) {
+    if (!modelId || modelId === this.#model) return { provider: this.#llmProvider, model: this.#model };
+    try {
+      const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
+      const { provider, model } = createLlmProviderForModel(modelId, ollamaIds);
+      return { provider, model };
+    } catch (err) {
+      console.warn(`[Ultr0n] per-model routing failed (${err.message}); falling back to default provider.`);
+      return { provider: this.#llmProvider, model: this.#model };
+    }
+  }
+
   createSession(context) {
     const sessionId = crypto.randomUUID();
     const systemMsg = buildSystemMessage(context);
@@ -122,7 +137,9 @@ export class Ultr0nOrchestrator {
     const userMsg = { role: 'user', content: message };
     session.messages.push(userMsg);
 
-    const modelToUse = options.model ?? this.#model;
+    const { provider: activeProvider, model: modelToUse } = await this.#resolveProvider(
+      options.model
+    );
     const tools = options.disableTools ? undefined : getToolSpecs();
     const toolsEnabled = Boolean(tools && options.authToken && options.controllerUrl);
     const toolCallsAggregated = [];
@@ -134,7 +151,7 @@ export class Ultr0nOrchestrator {
     try {
       while (round < MAX_TOOL_ROUNDS) {
         round += 1;
-        const llmResponse = await this.#llmProvider.generateResponse({
+        const llmResponse = await activeProvider.generateResponse({
           model: modelToUse,
           messages: session.messages,
           tools: toolsEnabled ? tools : undefined,

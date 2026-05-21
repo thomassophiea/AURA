@@ -13,7 +13,7 @@ interface AgentCommandBarProps {
  * No chat input, no mic, no context badge — the workspace panel owns input.
  */
 export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
-  const { provider, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
+  const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
 
   return (
     <div className={cn('fixed bottom-6 left-1/2 -translate-x-1/2 z-[99998]', className)}>
@@ -39,7 +39,7 @@ export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
         <div className="w-px h-5 bg-border" />
 
         <ModelSelector
-          provider={provider}
+          providers={providers}
           models={models}
           selectedModel={selectedModel}
           onSelect={setSelectedModel}

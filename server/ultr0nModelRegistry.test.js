@@ -4,6 +4,8 @@ import {
   getAllowedModels,
   isModelAllowed,
   resolveActiveProvider,
+  getConfiguredProviders,
+  findProviderForModel,
 } from './ultr0nModelRegistry.js';
 
 describe('MODEL_REGISTRY', () => {
@@ -29,8 +31,19 @@ describe('MODEL_REGISTRY', () => {
         expect(typeof m.label).toBe('string');
         expect(typeof m.contextWindow).toBe('number');
         expect(typeof m.notes).toBe('string');
+        expect(typeof m.provider).toBe('string');
       }
     }
+  });
+
+  it('exposes the new providers from the multi-provider spec', () => {
+    expect(Object.keys(MODEL_REGISTRY)).toEqual(
+      expect.arrayContaining(['gemini', 'mistral', 'cerebras', 'deepseek', 'ollama'])
+    );
+    expect(MODEL_REGISTRY.gemini.map((m) => m.id)).toContain('gemini-2.0-flash');
+    expect(MODEL_REGISTRY.mistral.map((m) => m.id)).toContain('mistral-small-latest');
+    expect(MODEL_REGISTRY.cerebras.map((m) => m.id)).toContain('llama3.3-70b');
+    expect(MODEL_REGISTRY.deepseek.map((m) => m.id)).toContain('deepseek-chat');
   });
 });
 
@@ -61,6 +74,94 @@ describe('isModelAllowed', () => {
 
   it('rejects a groq model name when provider is openai', () => {
     expect(isModelAllowed('openai', 'llama-3.3-70b-versatile')).toBe(false);
+  });
+
+  describe('cross-provider signature (modelId only)', () => {
+    const savedEnv = { ...process.env };
+
+    beforeEach(() => {
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.GROQ_API_KEY;
+      delete process.env.GROK_API_KEY;
+      delete process.env.GEMINI_API_KEY;
+      delete process.env.MISTRAL_API_KEY;
+      delete process.env.CEREBRAS_API_KEY;
+      delete process.env.DEEPSEEK_API_KEY;
+      delete process.env.OLLAMA_ENABLED;
+      delete process.env.OLLAMA_API_BASE;
+    });
+
+    afterEach(() => {
+      process.env = { ...savedEnv };
+    });
+
+    it('accepts a gemini model when GEMINI_API_KEY is set', () => {
+      process.env.GEMINI_API_KEY = 'gem-FAKE';
+      expect(isModelAllowed('gemini-2.0-flash')).toBe(true);
+    });
+
+    it('rejects a gemini model when GEMINI_API_KEY is missing', () => {
+      expect(isModelAllowed('gemini-2.0-flash')).toBe(false);
+    });
+
+    it('accepts a discovered Ollama model when ollama is enabled', () => {
+      process.env.OLLAMA_ENABLED = 'true';
+      expect(isModelAllowed('llama3.2', ['llama3.2', 'qwen2.5'])).toBe(true);
+    });
+  });
+});
+
+describe('getConfiguredProviders', () => {
+  const savedEnv = { ...process.env };
+
+  beforeEach(() => {
+    for (const k of [
+      'ANTHROPIC_API_KEY', 'CLAUDE_API_KEY', 'OPENAI_API_KEY', 'GROQ_API_KEY',
+      'GROK_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'MISTRAL_API_KEY',
+      'CEREBRAS_API_KEY', 'DEEPSEEK_API_KEY', 'OLLAMA_ENABLED', 'OLLAMA_API_BASE',
+    ]) delete process.env[k];
+  });
+
+  afterEach(() => {
+    process.env = { ...savedEnv };
+  });
+
+  it('returns an empty list when nothing is configured', () => {
+    expect(getConfiguredProviders()).toEqual([]);
+  });
+
+  it('detects anthropic, gemini, and ollama together', () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-FAKE';
+    process.env.GEMINI_API_KEY = 'gem-FAKE';
+    process.env.OLLAMA_ENABLED = 'true';
+    expect(getConfiguredProviders()).toEqual(
+      expect.arrayContaining(['anthropic', 'gemini', 'ollama'])
+    );
+  });
+
+  it('routes a gsk_ key to groq and an xai- key to grok', () => {
+    process.env.GROQ_API_KEY = 'gsk_FAKE';
+    process.env.GROK_API_KEY = 'xai-FAKE';
+    const list = getConfiguredProviders();
+    expect(list).toContain('groq');
+    expect(list).toContain('grok');
+  });
+});
+
+describe('findProviderForModel', () => {
+  it('finds the static provider for a known id', () => {
+    expect(findProviderForModel('claude-sonnet-4-6')).toBe('anthropic');
+    expect(findProviderForModel('gemini-1.5-pro')).toBe('gemini');
+    expect(findProviderForModel('deepseek-chat')).toBe('deepseek');
+  });
+
+  it('falls back to ollama when the id is in the dynamic list', () => {
+    expect(findProviderForModel('llama3.2', ['llama3.2'])).toBe('ollama');
+  });
+
+  it('returns null for an unknown id', () => {
+    expect(findProviderForModel('definitely-not-real')).toBeNull();
   });
 });
 

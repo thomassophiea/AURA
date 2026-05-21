@@ -117,6 +117,17 @@ src/
 - `RATE_LIMIT_WINDOW_MS` -- rate limit window (default: 900000)
 - `RATE_LIMIT_MAX_REQUESTS` -- max requests per window (default: 100)
 
+**LLM provider keys (any subset — picker shows whatever is configured):**
+- `ANTHROPIC_API_KEY` -- Claude (Sonnet 4.6, Opus 4.7, Haiku 4.5)
+- `OPENAI_API_KEY` -- GPT-4o family
+- `GROQ_API_KEY` (`gsk_…`) -- Llama 3.x, Mixtral, GPT-OSS via Groq Cloud
+- `GROK_API_KEY` (`xai-…`) -- xAI Grok 3 / Grok 3 Mini
+- `GEMINI_API_KEY` -- Google Gemini 2.0 Flash / 1.5 Pro (free tier)
+- `MISTRAL_API_KEY` -- Mistral Small / 7B / Large
+- `CEREBRAS_API_KEY` -- Cerebras-hosted Llama 3.3 70B / 3.1 8B (ultra-fast)
+- `DEEPSEEK_API_KEY` -- DeepSeek V3 / R1 reasoner (~$0.14/M tok)
+- `OLLAMA_ENABLED=true` and/or `OLLAMA_API_BASE=http://192.168.100.177:11434/v1` -- local Ollama on redq box
+
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.
 
 ## Security

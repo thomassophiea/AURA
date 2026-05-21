@@ -409,3 +409,131 @@ export function createLlmProvider(config = {}) {
 
   return { provider: new MockLlmProvider(), defaultModel: 'mock' };
 }
+
+// ── Per-model factory (multi-provider routing) ───────────────────────────────
+
+import { findProviderForModel, MODEL_REGISTRY } from './ultr0nModelRegistry.js';
+
+/**
+ * Per-provider configuration for the new OpenAI-compatible providers added
+ * alongside the multi-provider model picker. All five share OpenAiLlmProvider;
+ * only baseUrl + key env name differ.
+ */
+const OPENAI_COMPAT_PROVIDERS = {
+  gemini: {
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    keyEnvs: ['GEMINI_API_KEY', 'GOOGLE_API_KEY'],
+    defaultModel: 'gemini-2.0-flash',
+  },
+  mistral: {
+    baseUrl: 'https://api.mistral.ai/v1',
+    keyEnvs: ['MISTRAL_API_KEY'],
+    defaultModel: 'mistral-small-latest',
+  },
+  cerebras: {
+    baseUrl: 'https://api.cerebras.ai/v1',
+    keyEnvs: ['CEREBRAS_API_KEY'],
+    defaultModel: 'llama3.3-70b',
+  },
+  deepseek: {
+    baseUrl: 'https://api.deepseek.com/v1',
+    keyEnvs: ['DEEPSEEK_API_KEY'],
+    defaultModel: 'deepseek-chat',
+  },
+};
+
+function firstEnv(names) {
+  for (const n of names) {
+    const v = process.env[n];
+    if (v) return v;
+  }
+  return undefined;
+}
+
+/**
+ * Resolve provider+model from a specific model id. The picker sends the model
+ * the user picked; this finds which provider owns it and instantiates with the
+ * right base URL + key.
+ *
+ * @param {string} modelId
+ * @param {string[]} [ollamaModelIds] - dynamically discovered Ollama model ids
+ * @returns {{ provider: object, model: string, providerName: string }}
+ */
+export function createLlmProviderForModel(modelId, ollamaModelIds = []) {
+  if (!modelId) throw new Error('createLlmProviderForModel: modelId is required');
+  const providerName = findProviderForModel(modelId, ollamaModelIds);
+  if (!providerName) throw new Error(`Model not found in any configured provider: ${modelId}`);
+
+  if (providerName === 'anthropic') {
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
+    if (!apiKey) throw new Error('Anthropic model requested but ANTHROPIC_API_KEY is not set');
+    return { provider: new AnthropicLlmProvider({ apiKey }), model: modelId, providerName };
+  }
+
+  if (providerName === 'openai') {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) throw new Error('OpenAI model requested but OPENAI_API_KEY is not set');
+    return {
+      provider: new OpenAiLlmProvider({
+        apiKey,
+        baseUrl: process.env.OPENAI_API_BASE || 'https://api.openai.com/v1',
+      }),
+      model: modelId,
+      providerName,
+    };
+  }
+
+  if (providerName === 'groq') {
+    const apiKey =
+      (process.env.GROQ_API_KEY?.startsWith?.('gsk_') && process.env.GROQ_API_KEY) ||
+      (process.env.GROK_API_KEY?.startsWith?.('gsk_') && process.env.GROK_API_KEY);
+    if (!apiKey) throw new Error('Groq model requested but no gsk_-prefixed key is set');
+    return {
+      provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.groq.com/openai/v1' }),
+      model: modelId,
+      providerName,
+    };
+  }
+
+  if (providerName === 'grok') {
+    const apiKey =
+      (process.env.GROK_API_KEY?.startsWith?.('xai-') && process.env.GROK_API_KEY) ||
+      (process.env.GROQ_API_KEY?.startsWith?.('xai-') && process.env.GROQ_API_KEY);
+    if (!apiKey) throw new Error('xAI Grok model requested but no xai--prefixed key is set');
+    return {
+      provider: new OpenAiLlmProvider({ apiKey, baseUrl: 'https://api.x.ai/v1' }),
+      model: modelId,
+      providerName,
+    };
+  }
+
+  if (providerName === 'ollama') {
+    const baseUrl = process.env.OLLAMA_API_BASE || 'http://localhost:11434/v1';
+    // Ollama doesn't require a key but OpenAiLlmProvider does; use a sentinel.
+    return {
+      provider: new OpenAiLlmProvider({ apiKey: 'ollama-local', baseUrl }),
+      model: modelId,
+      providerName,
+    };
+  }
+
+  const cfg = OPENAI_COMPAT_PROVIDERS[providerName];
+  if (cfg) {
+    const apiKey = firstEnv(cfg.keyEnvs);
+    if (!apiKey) {
+      throw new Error(
+        `${providerName} model requested but ${cfg.keyEnvs.join(' / ')} is not set`
+      );
+    }
+    return {
+      provider: new OpenAiLlmProvider({ apiKey, baseUrl: cfg.baseUrl }),
+      model: modelId,
+      providerName,
+    };
+  }
+
+  throw new Error(`Unsupported provider for model ${modelId}: ${providerName}`);
+}
+
+// Re-export so server.js can import in one shot.
+export { MODEL_REGISTRY };

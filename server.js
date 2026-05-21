@@ -9,12 +9,13 @@ import path from 'path';
 import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
-import { createLlmProvider } from './server/ultr0nLlmProvider.js';
+import { createLlmProvider, createLlmProviderForModel } from './server/ultr0nLlmProvider.js';
 import { runWirelessQuery } from './server/ultr0n/wirelessQueryPipeline.js';
 import {
-  getAllowedModels,
   isModelAllowed,
-  resolveActiveProvider,
+  getConfiguredProviders,
+  getAllModelsForConfiguredProviders,
+  discoverOllamaModels,
   SHELL_MODELS,
   DEFAULT_PICKER_MODEL,
 } from './server/ultr0nModelRegistry.js';
@@ -1390,14 +1391,20 @@ app.post('/api/ultr0n/session', requireAuth, ultr0nRateLimit, jsonParser, (req, 
   }
 });
 
-app.get('/api/ultr0n/models', requireAuth, (_req, res) => {
-  const provider = resolveActiveProvider();
-  res.json({
-    provider,
-    defaultModel: DEFAULT_PICKER_MODEL,
-    llmDefaultModel: ultr0nOrchestrator.defaultModel,
-    models: [...SHELL_MODELS, ...getAllowedModels(provider)],
-  });
+app.get('/api/ultr0n/models', requireAuth, async (_req, res) => {
+  try {
+    const providers = getConfiguredProviders();
+    const llmModels = await getAllModelsForConfiguredProviders();
+    res.json({
+      providers,
+      defaultModel: DEFAULT_PICKER_MODEL,
+      llmDefaultModel: ultr0nOrchestrator.defaultModel,
+      models: [...SHELL_MODELS, ...llmModels],
+    });
+  } catch (err) {
+    console.error('[Ultr0n] /models error:', err.message);
+    res.status(500).json({ error: 'Failed to assemble model list' });
+  }
 });
 
 app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
@@ -1409,8 +1416,13 @@ app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async 
     if (!ultr0nOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    if (model && !isModelAllowed(resolveActiveProvider(), model)) {
-      return res.status(400).json({ error: `Model '${model}' is not in the allowlist for this provider` });
+    if (model) {
+      const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
+      if (!isModelAllowed(model, ollamaIds)) {
+        return res
+          .status(400)
+          .json({ error: `Model '${model}' is not in the allowlist for any configured provider` });
+      }
     }
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
@@ -1470,12 +1482,21 @@ app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser,
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
 
-    if (requestedModel && !isModelAllowed(resolveActiveProvider(), requestedModel)) {
-      return res.status(400).json({ error: `Model '${requestedModel}' is not in the allowlist for this provider` });
+    let llmProvider;
+    let model;
+    if (requestedModel) {
+      const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
+      if (!isModelAllowed(requestedModel, ollamaIds)) {
+        return res
+          .status(400)
+          .json({ error: `Model '${requestedModel}' is not in the allowlist for any configured provider` });
+      }
+      ({ provider: llmProvider, model } = createLlmProviderForModel(requestedModel, ollamaIds));
+    } else {
+      const fallback = createLlmProvider({});
+      llmProvider = fallback.provider;
+      model = process.env.ULTR0N_LLM_MODEL ?? fallback.defaultModel;
     }
-
-    const { provider: llmProvider, defaultModel } = createLlmProvider({});
-    const model = requestedModel ?? process.env.ULTR0N_LLM_MODEL ?? defaultModel;
     const llmFn = async ({ systemMsg, userMsg }) => {
       const response = await llmProvider.generateResponse({
         model,

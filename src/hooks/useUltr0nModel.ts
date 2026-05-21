@@ -6,10 +6,14 @@ export interface Ultr0nModel {
   contextWindow: number;
   notes: string;
   kind?: 'llm' | 'shell';
+  provider?: string;
 }
 
 interface ModelsResponse {
-  provider: string;
+  /** New shape: list of providers whose credentials are configured. */
+  providers?: string[];
+  /** Legacy single-provider field — still accepted for back-compat. */
+  provider?: string;
   defaultModel: string;
   llmDefaultModel?: string;
   models: Ultr0nModel[];
@@ -34,7 +38,7 @@ function writeStored(value: string) {
 }
 
 export function useUltr0nModel() {
-  const [provider, setProvider] = useState<string>('mock');
+  const [providers, setProviders] = useState<string[]>([]);
   const [defaultModel, setDefaultModel] = useState<string>('mock');
   const [models, setModels] = useState<Ultr0nModel[]>([]);
   const [selectedModel, setSelectedModelState] = useState<string | null>(readStored);
@@ -59,7 +63,12 @@ export function useUltr0nModel() {
         if (!resp.ok) throw new Error(`/api/ultr0n/models returned ${resp.status}`);
         const data = (await resp.json()) as ModelsResponse;
         if (cancelled) return;
-        setProvider(data.provider);
+        const list = Array.isArray(data.providers)
+          ? data.providers
+          : data.provider
+            ? [data.provider]
+            : [];
+        setProviders(list);
         setDefaultModel(data.defaultModel);
         setModels(data.models ?? []);
 
@@ -90,7 +99,7 @@ export function useUltr0nModel() {
   }, []);
 
   return {
-    provider,
+    providers,
     defaultModel,
     models,
     selectedModel: selectedModel ?? defaultModel,

@@ -4,6 +4,7 @@ import {
   OpenAiLlmProvider,
   AnthropicLlmProvider,
   createLlmProvider,
+  createLlmProviderForModel,
 } from './ultr0nLlmProvider.js';
 
 describe('MockLlmProvider', () => {
@@ -125,6 +126,64 @@ describe('createLlmProvider', () => {
     });
     expect(provider).toBeInstanceOf(AnthropicLlmProvider);
     expect(defaultModel).toBe('claude-sonnet-4-6');
+  });
+});
+
+describe('createLlmProviderForModel', () => {
+  const savedEnv = { ...process.env };
+
+  beforeEach(() => {
+    for (const k of [
+      'ANTHROPIC_API_KEY', 'CLAUDE_API_KEY', 'OPENAI_API_KEY', 'GROQ_API_KEY',
+      'GROK_API_KEY', 'GEMINI_API_KEY', 'GOOGLE_API_KEY', 'MISTRAL_API_KEY',
+      'CEREBRAS_API_KEY', 'DEEPSEEK_API_KEY', 'OLLAMA_ENABLED', 'OLLAMA_API_BASE',
+    ]) delete process.env[k];
+  });
+
+  afterEach(() => {
+    process.env = { ...savedEnv };
+  });
+
+  it('throws on an unknown model id', () => {
+    expect(() => createLlmProviderForModel('not-a-real-model')).toThrow(/not found/i);
+  });
+
+  it('instantiates an Anthropic provider for a Claude model id', () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-FAKE';
+    const { provider, model, providerName } = createLlmProviderForModel('claude-sonnet-4-6');
+    expect(provider).toBeInstanceOf(AnthropicLlmProvider);
+    expect(model).toBe('claude-sonnet-4-6');
+    expect(providerName).toBe('anthropic');
+  });
+
+  it('instantiates an OpenAI-compatible provider for a Gemini model id', () => {
+    process.env.GEMINI_API_KEY = 'gem-FAKE';
+    const { provider, providerName } = createLlmProviderForModel('gemini-1.5-pro');
+    expect(provider).toBeInstanceOf(OpenAiLlmProvider);
+    expect(providerName).toBe('gemini');
+  });
+
+  it('throws when the model exists but its key env is unset', () => {
+    expect(() => createLlmProviderForModel('mistral-small-latest')).toThrow(/MISTRAL_API_KEY/);
+  });
+
+  it('routes a Cerebras model id to CEREBRAS_API_KEY', () => {
+    process.env.CEREBRAS_API_KEY = 'cere-FAKE';
+    const { providerName } = createLlmProviderForModel('llama3.3-70b');
+    expect(providerName).toBe('cerebras');
+  });
+
+  it('routes a DeepSeek model id to DEEPSEEK_API_KEY', () => {
+    process.env.DEEPSEEK_API_KEY = 'ds-FAKE';
+    const { providerName } = createLlmProviderForModel('deepseek-reasoner');
+    expect(providerName).toBe('deepseek');
+  });
+
+  it('routes a dynamically discovered Ollama id to the local endpoint', () => {
+    process.env.OLLAMA_ENABLED = 'true';
+    const { provider, providerName } = createLlmProviderForModel('llama3.2', ['llama3.2']);
+    expect(provider).toBeInstanceOf(OpenAiLlmProvider);
+    expect(providerName).toBe('ollama');
   });
 });
 
