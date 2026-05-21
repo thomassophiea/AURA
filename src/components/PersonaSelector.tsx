@@ -24,7 +24,7 @@ export function PersonaSelector() {
     <Select value={activePersona} onValueChange={(v: string) => setActivePersona(v as PersonaId)}>
       <SelectTrigger
         size="sm"
-        className="w-[180px] bg-transparent border-primary/30 text-primary hover:bg-primary/10 text-xs"
+        className="w-[220px] bg-transparent border-primary/30 text-primary hover:bg-primary/10 text-xs"
       >
         <UserCog className="h-3.5 w-3.5 shrink-0" />
         <SelectValue />
