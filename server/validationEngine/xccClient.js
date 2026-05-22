@@ -3,12 +3,13 @@ import https from 'node:https';
 const insecureAgent = new https.Agent({ rejectUnauthorized: false });
 
 export async function fetchXcc(path, { authToken, controllerUrl, fetchFn } = {}) {
+  if (!controllerUrl) throw new Error('controllerUrl is required');
   const fn = fetchFn ?? globalThis.fetch;
   const url = `${controllerUrl}/api/management${path}`;
   const init = {
     method: 'GET',
     headers: {
-      Authorization: authToken ?? '',
+      ...(authToken ? { Authorization: authToken } : {}),
       'Content-Type': 'application/json',
     },
   };
