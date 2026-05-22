@@ -52,6 +52,8 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       <AgentWorkspace
         mode={ws.mode}
         size={ws.size}
+        primaryTab={ws.primaryTab}
+        activePanel={ws.activePanel}
         onClose={() => {
           ws.dismiss();
           ctx.closeUltr0n();
@@ -63,6 +65,8 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
           ctx.closeUltr0n();
         }}
         onSetSize={ws.setSize}
+        onSetPrimaryTab={ws.setPrimaryTab}
+        onSetActivePanel={ws.setActivePanel}
       />
     </>
   );

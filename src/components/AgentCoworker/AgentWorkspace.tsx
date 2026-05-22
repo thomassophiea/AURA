@@ -1,44 +1,82 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { X, Minus, Pin, Maximize2 } from 'lucide-react';
+import {
+  X,
+  Minus,
+  Pin,
+  Maximize2,
+  Terminal,
+  Settings2,
+  ShieldCheck,
+  Activity,
+  GitCompare,
+  ClipboardList,
+  Clock,
+  MessageSquare,
+} from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 import { useAppContext } from '../../contexts/AppContext';
+import { useUltronContext } from '../../contexts/UltronContext';
 import { writeAgentContext } from '../../services/agentContextService';
 import { ModelSelector } from './ModelSelector';
 import { RedQueenShell } from './panels/RedQueenShell';
+import { ConversationStream } from './panels/ConversationStream';
+import { ValidationPanel } from './panels/ValidationPanel';
+import { DriftPanel } from './panels/DriftPanel';
+import { ExecutionPlanView } from './panels/ExecutionPlanView';
+import { ConfigDiffView } from './panels/ConfigDiffView';
+import { AuditHistoryView } from './panels/AuditHistoryView';
+import { APITimelineView } from './panels/APITimelineView';
 import { WORKSPACE_WIDTHS } from './agentTypes';
-import type { WorkspaceMode, WorkspaceSize } from './agentTypes';
+import type { WorkspaceMode, WorkspaceSize, ActivePanel, PrimaryTab } from './agentTypes';
 
 interface AgentWorkspaceProps {
   mode: WorkspaceMode;
   size: WorkspaceSize;
+  primaryTab: PrimaryTab;
+  activePanel: ActivePanel;
   onClose: () => void;
   onMinimize: () => void;
   onPin: () => void;
   onDismiss: () => void;
   onSetSize: (s: WorkspaceSize) => void;
+  onSetPrimaryTab: (t: PrimaryTab) => void;
+  onSetActivePanel: (p: ActivePanel) => void;
 }
 
-/**
- * Dev-mode AURA Agent slideout: header (model picker + window controls)
- * + agent body. No tabs, no chat, no approval flow.
- */
+const OPS_PANELS: {
+  id: ActivePanel;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: 'conversation', label: 'Chat', icon: MessageSquare },
+  { id: 'validate', label: 'Validate', icon: ShieldCheck },
+  { id: 'drift', label: 'Drift', icon: Activity },
+  { id: 'execution', label: 'Execution', icon: Settings2 },
+  { id: 'diff', label: 'Diff', icon: GitCompare },
+  { id: 'audit', label: 'Audit', icon: ClipboardList },
+  { id: 'timeline', label: 'Timeline', icon: Clock },
+];
+
 export function AgentWorkspace({
   mode,
   size,
+  primaryTab,
+  activePanel,
   onClose,
   onMinimize,
   onPin,
   onDismiss,
   onSetSize,
+  onSetPrimaryTab,
+  onSetActivePanel,
 }: AgentWorkspaceProps) {
   const isVisible = mode === 'open' || mode === 'pinned';
   const isPinned = mode === 'pinned';
 
   const { siteGroup, navigationScope } = useAppContext();
+  const ctx = useUltronContext();
 
-  // Write context to .aura-session.md (read by CLAUDE.md @import) whenever
-  // the workspace is visible or the active site/scope changes.
   useEffect(() => {
     if (!isVisible) return;
     writeAgentContext({
@@ -50,9 +88,10 @@ export function AgentWorkspace({
 
   const [dragWidth, setDragWidth] = useState<number | null>(null);
   const dragRef = useRef<{ startX: number; startW: number } | null>(null);
-  const activeHandlersRef = useRef<{ onMove: (ev: MouseEvent) => void; onUp: () => void } | null>(
-    null
-  );
+  const activeHandlersRef = useRef<{
+    onMove: (ev: MouseEvent) => void;
+    onUp: () => void;
+  } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -65,10 +104,7 @@ export function AgentWorkspace({
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      dragRef.current = {
-        startX: e.clientX,
-        startW: dragWidth ?? WORKSPACE_WIDTHS[size],
-      };
+      dragRef.current = { startX: e.clientX, startW: dragWidth ?? WORKSPACE_WIDTHS[size] };
       const onMove = (ev: MouseEvent) => {
         if (!dragRef.current) return;
         const delta = dragRef.current.startX - ev.clientX;
@@ -88,8 +124,12 @@ export function AgentWorkspace({
   );
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
-
   const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
+
+  const lastDiff = [...ctx.messages].reverse().find((m) => m.diff?.length)?.diff ?? [];
+
+  const [inputValue, setInputValue] = useState('');
+  const [isListening, setIsListening] = useState(false);
 
   if (mode === 'minimized') {
     return (
@@ -126,25 +166,21 @@ export function AgentWorkspace({
         style={{ width: panelWidth }}
       >
         <div className="absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-primary/70 via-primary/15 to-transparent pointer-events-none" />
-
         <div
           className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-primary/30 transition-colors z-10"
           onMouseDown={onMouseDown}
         />
 
-        {/* Header — model selector + window controls */}
+        {/* Header */}
         <div className="shrink-0 border-b border-border/60">
           <div className="flex items-center justify-between gap-3 px-3 py-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <ModelSelector
-                providers={providers}
-                models={models}
-                selectedModel={selectedModel}
-                onSelect={setSelectedModel}
-                loading={loading}
-              />
-            </div>
-
+            <ModelSelector
+              providers={providers}
+              models={models}
+              selectedModel={selectedModel}
+              onSelect={setSelectedModel}
+              loading={loading}
+            />
             <div className="flex items-center gap-0.5 shrink-0">
               <button
                 onClick={onMinimize}
@@ -179,11 +215,92 @@ export function AgentWorkspace({
               </button>
             </div>
           </div>
+
+          {/* Primary tab bar */}
+          <div className="flex border-t border-border/40" role="tablist">
+            {(['terminal', 'ops'] as PrimaryTab[]).map((tab) => (
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={primaryTab === tab}
+                onClick={() => onSetPrimaryTab(tab)}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium transition-colors border-b-2 capitalize',
+                  primaryTab === tab
+                    ? 'border-primary text-foreground'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab === 'terminal' ? (
+                  <Terminal className="h-3 w-3" />
+                ) : (
+                  <Settings2 className="h-3 w-3" />
+                )}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <RedQueenShell />
-        </div>
+        {/* Body */}
+        {primaryTab === 'terminal' ? (
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <RedQueenShell />
+          </div>
+        ) : (
+          <div className="flex flex-col flex-1 min-h-0">
+            {/* Ops secondary nav */}
+            <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border/40 shrink-0 overflow-x-auto">
+              {OPS_PANELS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => onSetActivePanel(id)}
+                  className={cn(
+                    'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs whitespace-nowrap transition-colors',
+                    activePanel === id
+                      ? 'bg-accent/40 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
+                  )}
+                >
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Ops panel content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activePanel === 'conversation' && (
+                <ConversationStream
+                  messages={ctx.messages}
+                  isThinking={ctx.isThinking}
+                  inputValue={inputValue}
+                  isListening={isListening}
+                  onInput={setInputValue}
+                  onSubmit={() => {
+                    if (inputValue.trim()) {
+                      ctx.sendMessage(inputValue.trim());
+                      setInputValue('');
+                    }
+                  }}
+                  onMicToggle={() => setIsListening((l) => !l)}
+                  onFeedback={() => {}}
+                  onToggleReasoning={() => {}}
+                  onFollowUp={(chip) => ctx.sendMessage(chip)}
+                  onConfirmWireless={ctx.confirmWirelessAction}
+                  wirelessStage={ctx.wirelessStage}
+                  suggestedPrompts={ctx.suggestedPrompts}
+                />
+              )}
+              {activePanel === 'validate' && <ValidationPanel />}
+              {activePanel === 'drift' && <DriftPanel />}
+              {activePanel === 'execution' && <ExecutionPlanView plan={ctx.pendingPlan} />}
+              {activePanel === 'diff' && <ConfigDiffView diff={lastDiff} />}
+              {activePanel === 'audit' && <AuditHistoryView entries={ctx.auditEntries} />}
+              {activePanel === 'timeline' && <APITimelineView entries={ctx.apiTimeline} />}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
