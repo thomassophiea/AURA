@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
+import { json as expressJson } from 'express';
 import request from 'supertest';
 import { createValidationRouter } from './validationRouter.js';
 import { driftMonitor } from './driftMonitor.js';
+import { rollbackEngine } from './rollbackEngine.js';
 
 function makeApp(fetchFn) {
   const app = express();
@@ -111,5 +113,23 @@ describe('validationRouter', () => {
     const res = await request(app).get('/api/validate/topology');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('lldp');
+  });
+
+  it('POST /validate/intent returns 200 LOW when controller unreachable', async () => {
+    const throwingApp = express();
+    throwingApp.use(expressJson());
+    throwingApp.use(createValidationRouter({ fetchFn: async () => { throw new Error('ECONNREFUSED'); } }));
+    const res = await request(throwingApp).post('/validate/intent').send({ intent: { vlan: 100 } });
+    expect(res.status).toBe(200);
+    expect(res.body.confidence.band).toBe('LOW');
+    expect(res.body.provisioningToken).toBeNull();
+  });
+
+  it('POST /rollback/:auditId returns 200 for known auditId', async () => {
+    rollbackEngine.save('test-audit-1', { serviceId: 'svc-abc', profiles: [] });
+    const res = await request(makeApp(vi.fn())).post('/api/rollback/test-audit-1');
+    expect(res.status).toBe(200);
+    expect(res.body.snapshot.serviceId).toBe('svc-abc');
+    rollbackEngine.delete('test-audit-1');
   });
 });

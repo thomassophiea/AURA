@@ -12,7 +12,7 @@ function getOpts(req, fetchFn) {
   return {
     authToken: req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? null,
     controllerUrl: req.headers['x-controller-url'] ?? process.env.CAMPUS_CONTROLLER_URL ?? '',
-    fetchFn: fetchFn ?? undefined,
+    fetchFn,
   };
 }
 
@@ -131,11 +131,11 @@ export function createValidationRouter({ fetchFn } = {}) {
         expiresAt,
       });
     } catch (err) {
-      console.error('[ValidationEngine] Controller unreachable:', err.message);
+      console.error('[ValidationEngine] intent validation error:', err.message);
       return res.json({
         intent,
         checks: [],
-        confidence: { score: 0, band: 'LOW', blockingFailures: [], warnings: ['Controller unreachable: ' + err.message] },
+        confidence: { score: 0, band: 'LOW', blockingFailures: [], warnings: ['Controller unreachable — see server logs for details'] },
         recommendation: 'Provisioning blocked. Controller is unreachable.',
         provisioningToken: null,
         expiresAt: null,
@@ -145,8 +145,8 @@ export function createValidationRouter({ fetchFn } = {}) {
 
   // GET /validate/vlan/:vlanId — single VLAN + DHCP check
   router.get('/validate/vlan/:vlanId', async (req, res) => {
-    const vlanId = Number(req.params.vlanId);
-    if (!Number.isInteger(vlanId)) {
+    const vlanId = parseInt(req.params.vlanId, 10);
+    if (Number.isNaN(vlanId)) {
       return res.status(400).json({ error: 'vlanId must be an integer' });
     }
 
@@ -157,7 +157,8 @@ export function createValidationRouter({ fetchFn } = {}) {
       const dhcp = vlanResult.topology ? validateDhcp(vlanResult.topology) : null;
       return res.json({ ...vlanResult, dhcp });
     } catch (err) {
-      return res.status(503).json({ error: err.message });
+      console.error('[ValidationEngine] vlan check error:', err.message);
+      return res.status(503).json({ error: 'Internal server error — see server logs for details' });
     }
   });
 
@@ -182,7 +183,8 @@ export function createValidationRouter({ fetchFn } = {}) {
 
       return res.json({ lldp, timestamp: new Date().toISOString() });
     } catch (err) {
-      return res.status(503).json({ error: err.message });
+      console.error('[ValidationEngine] topology check error:', err.message);
+      return res.status(503).json({ error: 'Internal server error — see server logs for details' });
     }
   });
 
