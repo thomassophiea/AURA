@@ -1388,7 +1388,10 @@ app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
 
 // ==================== Validation Engine Routes ====================
 // Must appear before the /api proxy middleware so requests are handled server-side.
-app.use('/api', requireAuth, createValidationRouter());
+// requireAuth is scoped to the validation engine prefixes only — mounting it on
+// the whole /api namespace would block /api/management/v1/oauth2/token (login).
+app.use(['/api/validate', '/api/drift', '/api/rollback'], requireAuth);
+app.use('/api', createValidationRouter());
 
 // ==================== Ultr0n AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are

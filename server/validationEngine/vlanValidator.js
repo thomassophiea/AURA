@@ -6,7 +6,7 @@ export function validateVlanExists(topologies, vlanId) {
       evidence: 'GET /v1/topologies → response is not an array',
     };
   }
-  const match = topologies.find(t => t.vlanid === vlanId);
+  const match = topologies.find((t) => t.vlanid === vlanId);
   if (!match) {
     return {
       result: 'fail',
