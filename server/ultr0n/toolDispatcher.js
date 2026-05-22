@@ -9,6 +9,10 @@ export function registerResolver(name, fn) {
   resolvers.set(name, fn);
 }
 
+export function deregisterResolver(name) {
+  resolvers.delete(name);
+}
+
 // Maximum sample size for any array we forward to the LLM. Picked so that a
 // typical org-wide listAps response stays under ~3 KB after JSON serialisation.
 const SAMPLE_CAP = 20;
@@ -77,7 +81,19 @@ export async function executeTool(name, args, { authToken, controllerUrl, fetchF
       const data = await resolvers.get(name)(args ?? {});
       return { ok: true, data: truncateResult(data), callMeta: { tool: name, args, durationMs: Date.now() - startedAt } };
     } catch (err) {
-      return { ok: false, error: err.message || String(err), callMeta: { tool: name, args } };
+      return { ok: false, error: err.message || String(err), callMeta: { tool: name, args, durationMs: Date.now() - startedAt } };
+    }
+  }
+
+  // If the tool exists in the catalog as a RESOLVER but no resolver is registered, fail safely
+  if (isKnownTool(name)) {
+    const catalogTool = getTool(name);
+    if (catalogTool.method === 'RESOLVER') {
+      return {
+        ok: false,
+        error: `Resolver for '${name}' is not registered`,
+        callMeta: { tool: name, args },
+      };
     }
   }
 

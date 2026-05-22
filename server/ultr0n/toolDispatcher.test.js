@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { executeTool, registerResolver } from './toolDispatcher.js';
+import { executeTool, registerResolver, deregisterResolver } from './toolDispatcher.js';
 
 function mockFetchOk(payload, status = 200) {
   return vi.fn(async () => ({
@@ -130,9 +130,19 @@ describe('executeTool', () => {
 
   it('calls a registered resolver instead of making HTTP', async () => {
     registerResolver('_testResolver', async (args) => ({ echo: args }));
-    const result = await executeTool('_testResolver', { x: 1 }, {});
-    expect(result.ok).toBe(true);
-    expect(result.data.echo).toEqual({ x: 1 });
-    // Cleanup: remove _testResolver from the registry if there's a way, or accept it persists in this test run
+    try {
+      const result = await executeTool('_testResolver', { x: 1 }, {});
+      expect(result.ok).toBe(true);
+      expect(result.data.echo).toEqual({ x: 1 });
+    } finally {
+      deregisterResolver('_testResolver');
+    }
+  });
+
+  it('returns error when a RESOLVER tool has no registered resolver', async () => {
+    // getDriftAlerts is in the catalog with method=RESOLVER but no resolver registered in tests
+    const result = await executeTool('getDriftAlerts', {}, { controllerUrl: 'https://ctrl.local' });
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain('not registered');
   });
 });
