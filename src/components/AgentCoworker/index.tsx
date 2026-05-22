@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AgentCommandBar } from './AgentCommandBar';
 import { AgentWorkspace } from './AgentWorkspace';
 import { useAgentWorkspace } from './useAgentWorkspace';
@@ -16,6 +16,7 @@ interface AgentCoworkerProps {
 export function AgentCoworker(_props: AgentCoworkerProps) {
   const ws = useAgentWorkspace();
   const ctx = useUltronContext();
+  const [driftCount, setDriftCount] = useState(0);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -46,6 +47,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
             ctx.openUltr0n();
             ws.open();
           }}
+          driftCount={driftCount}
         />
       )}
 
@@ -67,6 +69,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         onSetSize={ws.setSize}
         onSetPrimaryTab={ws.setPrimaryTab}
         onSetActivePanel={ws.setActivePanel}
+        onDriftCount={setDriftCount}
       />
     </>
   );

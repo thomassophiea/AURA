@@ -6,13 +6,14 @@ import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 interface AgentCommandBarProps {
   onOpen: () => void;
   className?: string;
+  driftCount?: number;
 }
 
 /**
  * Floating AURA widget: model picker + open-workspace hotkey hint.
  * No chat input, no mic, no context badge — the workspace panel owns input.
  */
-export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
+export function AgentCommandBar({ onOpen, className, driftCount = 0 }: AgentCommandBarProps) {
   const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
 
   return (
@@ -29,11 +30,16 @@ export function AgentCommandBar({ onOpen, className }: AgentCommandBarProps) {
 
         <button
           onClick={onOpen}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-colors"
+          className="relative flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent/20 transition-colors"
           title="Open AURA Agent"
         >
           <Sparkles className="h-3.5 w-3.5 text-primary" strokeWidth={1.75} />
           <span className="font-medium">AURA</span>
+          {driftCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+              {driftCount > 9 ? '9+' : driftCount}
+            </span>
+          )}
         </button>
 
         <div className="w-px h-5 bg-border" />

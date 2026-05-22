@@ -43,6 +43,7 @@ interface AgentWorkspaceProps {
   onSetSize: (s: WorkspaceSize) => void;
   onSetPrimaryTab: (t: PrimaryTab) => void;
   onSetActivePanel: (p: ActivePanel) => void;
+  onDriftCount?: (count: number) => void;
 }
 
 const OPS_PANELS: {
@@ -71,6 +72,7 @@ export function AgentWorkspace({
   onSetSize,
   onSetPrimaryTab,
   onSetActivePanel,
+  onDriftCount,
 }: AgentWorkspaceProps) {
   const isVisible = mode === 'open' || mode === 'pinned';
   const isPinned = mode === 'pinned';
@@ -132,28 +134,41 @@ export function AgentWorkspace({
   const [inputValue, setInputValue] = useState('');
   const [isListening, setIsListening] = useState(false);
 
-  // Drift state managed centrally so the parent can show a badge
+  // Drift → Validate pre-fill state
+  const [revalidateSsid, setRevalidateSsid] = useState<string | undefined>(undefined);
+  const [revalidateVlanId, setRevalidateVlanId] = useState<number | undefined>(undefined);
+
+  // Drift state managed centrally so the parent can show a badge and auto-switch
   const [driftAlerts, setDriftAlerts] = useState<DriftAlert[]>([]);
   const [driftLoading, setDriftLoading] = useState(false);
   const [driftError, setDriftError] = useState<string | null>(null);
   const fetchDriftAlerts = useCallback(async () => {
     setDriftLoading(true);
     try {
-      const resp = await fetch('/api/drift');
+      const token = localStorage.getItem('access_token');
+      const resp = await fetch('/api/drift', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!resp.ok) throw new Error(`${resp.status}`);
       const data = await resp.json();
-      setDriftAlerts(data.alerts ?? []);
+      const alerts = data.alerts ?? [];
+      setDriftAlerts(alerts);
       setDriftError(null);
+      onDriftCount?.(alerts.length);
     } catch {
       setDriftError('Failed to fetch drift alerts');
     } finally {
       setDriftLoading(false);
     }
-  }, []);
+  }, [onDriftCount]);
 
   const clearDriftAlerts = useCallback(async () => {
     try {
-      await fetch('/api/drift', { method: 'DELETE' });
+      const token = localStorage.getItem('access_token');
+      await fetch('/api/drift', {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       await fetchDriftAlerts();
     } catch {
       // ignore
@@ -161,10 +176,21 @@ export function AgentWorkspace({
   }, [fetchDriftAlerts]);
 
   useEffect(() => {
-    if (activePanel === 'drift' && isVisible) {
-      fetchDriftAlerts();
+    if (!isVisible) return;
+    fetchDriftAlerts();
+    const id = setInterval(fetchDriftAlerts, 30_000);
+    return () => clearInterval(id);
+  }, [isVisible, fetchDriftAlerts]);
+
+  // Auto-switch to Drift panel when new alerts arrive while Ops is active
+  const prevAlertCountRef = useRef(0);
+  useEffect(() => {
+    const prev = prevAlertCountRef.current;
+    prevAlertCountRef.current = driftAlerts.length;
+    if (primaryTab === 'ops' && driftAlerts.length > prev && prev === 0) {
+      onSetActivePanel('drift');
     }
-  }, [activePanel, isVisible, fetchDriftAlerts]);
+  }, [driftAlerts.length, primaryTab, onSetActivePanel]);
 
   if (mode === 'minimized') {
     return (
@@ -297,7 +323,7 @@ export function AgentWorkspace({
                   key={id}
                   onClick={() => onSetActivePanel(id)}
                   className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1 rounded text-xs whitespace-nowrap transition-colors',
+                    'relative flex items-center gap-1.5 px-2.5 py-1 rounded text-xs whitespace-nowrap transition-colors',
                     activePanel === id
                       ? 'bg-accent/40 text-foreground'
                       : 'text-muted-foreground hover:text-foreground hover:bg-accent/20'
@@ -305,6 +331,9 @@ export function AgentWorkspace({
                 >
                   <Icon className="h-3 w-3" />
                   {label}
+                  {id === 'drift' && driftAlerts.length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-red-500" />
+                  )}
                 </button>
               ))}
             </div>
@@ -325,15 +354,17 @@ export function AgentWorkspace({
                     }
                   }}
                   onMicToggle={() => setIsListening((l) => !l)}
-                  onFeedback={() => {}}
-                  onToggleReasoning={() => {}}
+                  onFeedback={ctx.addFeedback}
+                  onToggleReasoning={ctx.toggleReasoning}
                   onFollowUp={(chip) => ctx.sendMessage(chip)}
                   onConfirmWireless={ctx.confirmWirelessAction}
                   wirelessStage={ctx.wirelessStage}
                   suggestedPrompts={ctx.suggestedPrompts}
                 />
               )}
-              {activePanel === 'validate' && <ValidationPanel />}
+              {activePanel === 'validate' && (
+                <ValidationPanel initialSsid={revalidateSsid} initialVlanId={revalidateVlanId} />
+              )}
               {activePanel === 'drift' && (
                 <DriftPanel
                   alerts={driftAlerts}
@@ -341,12 +372,18 @@ export function AgentWorkspace({
                   error={driftError}
                   onRefresh={fetchDriftAlerts}
                   onClear={clearDriftAlerts}
-                  onRevalidate={() => onSetActivePanel('validate')}
+                  onRevalidate={() => {
+                    setRevalidateSsid(undefined);
+                    setRevalidateVlanId(undefined);
+                    onSetActivePanel('validate');
+                  }}
                 />
               )}
               {activePanel === 'execution' && <ExecutionPlanView plan={ctx.pendingPlan} />}
               {activePanel === 'diff' && <ConfigDiffView diff={lastDiff} />}
-              {activePanel === 'audit' && <AuditHistoryView entries={ctx.auditEntries} />}
+              {activePanel === 'audit' && (
+                <AuditHistoryView entries={ctx.auditEntries} onRollback={ctx.rollbackPlan} />
+              )}
               {activePanel === 'timeline' && <APITimelineView entries={ctx.apiTimeline} />}
             </div>
           </div>
