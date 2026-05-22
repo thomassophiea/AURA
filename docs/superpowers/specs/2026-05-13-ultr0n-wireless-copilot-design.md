@@ -1,14 +1,14 @@
-# Ultr0n Phase 3 — Wireless AI Copilot Design
+# Cortex Phase 3 — Wireless AI Copilot Design
 
 **Date:** 2026-05-13  
 **Status:** Approved  
-**Scope:** Transform Ultr0n from a generic chatbot into a Marvis-like wireless AI copilot that diagnoses wireless issues using live AURA API evidence.
+**Scope:** Transform Cortex from a generic chatbot into a Marvis-like wireless AI copilot that diagnoses wireless issues using live AURA API evidence.
 
 ---
 
 ## Context
 
-Ultr0n Phase 1 shipped the floating command bar and right-side slide-out workspace. Phase 2 wired in the Grok LLM backend (session management, context sanitization, `/api/ultr0n/message` route). Phase 3 adds wireless intelligence: live API evidence gathering, deterministic root cause classification, structured answer cards, and safety guardrails for disruptive actions.
+Cortex Phase 1 shipped the floating command bar and right-side slide-out workspace. Phase 2 wired in the Grok LLM backend (session management, context sanitization, `/api/cortex/message` route). Phase 3 adds wireless intelligence: live API evidence gathering, deterministic root cause classification, structured answer cards, and safety guardrails for disruptive actions.
 
 ### What exists today
 
@@ -17,11 +17,11 @@ Ultr0n Phase 1 shipped the floating command bar and right-side slide-out workspa
 | Floating command bar | `src/components/AgentCoworker/AgentCommandBar.tsx` | Unchanged |
 | Right-side slide-out | `src/components/AgentCoworker/AgentWorkspace.tsx` | Minor update |
 | Conversation rendering | `src/components/AgentCoworker/panels/ConversationStream.tsx` | Updated |
-| React context | `src/contexts/UltronContext.tsx` | Updated |
-| Frontend API client | `src/services/ultr0nApiClient.ts` | Updated |
-| LLM provider | `server/ultr0nLlmProvider.js` | Unchanged |
-| Orchestrator | `server/ultr0nOrchestrator.js` | Updated (new system prompt) |
-| Context sanitizer | `server/ultr0nContextSanitizer.js` | Unchanged |
+| React context | `src/contexts/CortexContext.tsx` | Updated |
+| Frontend API client | `src/services/cortexApiClient.ts` | Updated |
+| LLM provider | `server/cortexLlmProvider.js` | Unchanged |
+| Orchestrator | `server/cortexOrchestrator.js` | Updated (new system prompt) |
+| Context sanitizer | `server/cortexContextSanitizer.js` | Unchanged |
 | Backend routes | `server.js` lines 1363–1414 | New route added |
 
 ### What is NOT changing
@@ -29,18 +29,18 @@ Ultr0n Phase 1 shipped the floating command bar and right-side slide-out workspa
 - `AgentCommandBar.tsx`
 - `AgentWorkspace.tsx` (shell only — no structural changes)
 - All `AgentCoworker/panels/` except `ConversationStream.tsx`
-- Existing `/api/ultr0n/session`, `/api/ultr0n/message`, `/api/ultr0n/context` routes
-- `server/ultr0nLlmProvider.js`
-- `server/ultr0nContextSanitizer.js`
+- Existing `/api/cortex/session`, `/api/cortex/message`, `/api/cortex/context` routes
+- `server/cortexLlmProvider.js`
+- `server/cortexContextSanitizer.js`
 
 ---
 
 ## System Prompt
 
-The wireless system prompt replaces the current generic one when processing wireless queries. It is enforced for the `/api/ultr0n/wireless/query` pipeline only; the existing generic session path keeps its current prompt.
+The wireless system prompt replaces the current generic one when processing wireless queries. It is enforced for the `/api/cortex/wireless/query` pipeline only; the existing generic session path keeps its current prompt.
 
 ```
-You are Ultr0n, a wireless AI copilot for AURA and Campus Controller. You are not a generic chatbot. You diagnose wireless issues using live API evidence only. Infer context from the current UI page. If the user says "this client," "this AP," "this site," or "this WLAN," resolve it from page context. Never invent metrics. Never invent API results. If evidence is missing, say what is missing. Every answer must include short answer, evidence, likely root cause, confidence, recommended next actions, and API evidence used. Do not perform disruptive actions without confirmation.
+You are Cortex, a wireless AI copilot for AURA and Campus Controller. You are not a generic chatbot. You diagnose wireless issues using live API evidence only. Infer context from the current UI page. If the user says "this client," "this AP," "this site," or "this WLAN," resolve it from page context. Never invent metrics. Never invent API results. If evidence is missing, say what is missing. Every answer must include short answer, evidence, likely root cause, confidence, recommended next actions, and API evidence used. Do not perform disruptive actions without confirmation.
 ```
 
 ### Required response format
@@ -85,9 +85,9 @@ API evidence used:
 ```
 User question + page context
   ↓
-UltronContext.sendMessage()
+CortexContext.sendMessage()
   ↓ (wireless question detected)
-POST /api/ultr0n/wireless/query
+POST /api/cortex/wireless/query
   ↓
 intentDetector        → resolves intent type + entities from page context
   ↓
@@ -105,12 +105,12 @@ confidenceScorer      → High / Medium / Low
   ↓
 Grok (compose)        → structured prompt with evidence; returns formatted answer
   ↓
-UltronWirelessAnswer  → JSON returned to frontend
+CortexWirelessAnswer  → JSON returned to frontend
   ↓
-UltronAnswerCard      → rendered in ConversationStream
+CortexAnswerCard      → rendered in ConversationStream
 ```
 
-Non-wireless questions (general config, help, navigation) continue through the existing `/api/ultr0n/message` session path unchanged.
+Non-wireless questions (general config, help, navigation) continue through the existing `/api/cortex/message` session path unchanged.
 
 ### Wireless question detection
 
@@ -123,9 +123,9 @@ A question is routed to the wireless pipeline if it matches any of these signals
 
 ## Backend Additions
 
-All new backend files live in `server/ultr0n/`.
+All new backend files live in `server/cortex/`.
 
-### `server/ultr0n/intentDetector.js`
+### `server/cortex/intentDetector.js`
 
 Maps a natural language question to one of ~37 wireless intents. Entity resolution uses page context to fill:
 - `macaddress` / `stationId` from `pageContext.clientMac`
@@ -147,7 +147,7 @@ config-change-before-issue | what-to-fix | action-packet-capture |
 action-download-logs | action-reboot-ap
 ```
 
-### `server/ultr0n/apiPlanner.js`
+### `server/cortex/apiPlanner.js`
 
 Maps each intent to an ordered list of API calls. Each call entry:
 
@@ -163,11 +163,11 @@ Maps each intent to an ordered list of API calls. Each call entry:
 
 Implements the full 37-question API mapping from the spec. Templates use `{resolved.*}` placeholders filled by `intentDetector` output.
 
-### `server/ultr0n/auraApiClient.js`
+### `server/cortex/auraApiClient.js`
 
 Executes API calls against the Campus Controller. Uses `CAMPUS_CONTROLLER_URL` env var as base. Forwards the session's auth token. Returns raw JSON or throws with status code. Parallel execution where calls are independent; sequential where one result feeds the next (e.g., resolve station ID before fetching report).
 
-### `server/ultr0n/evidenceNormalizer.js`
+### `server/cortex/evidenceNormalizer.js`
 
 Shapes raw multi-API responses into a typed `WirelessEvidence` object:
 
@@ -184,7 +184,7 @@ Shapes raw multi-API responses into a typed `WirelessEvidence` object:
 }
 ```
 
-### `server/ultr0n/rootCauseClassifier.js`
+### `server/cortex/rootCauseClassifier.js`
 
 Deterministic classification. Thresholds:
 
@@ -218,7 +218,7 @@ Root cause categories:
 | `SITE_SYSTEMIC` | Many APs + WLANs impacted; site-wide degradation |
 | `UNKNOWN` | Insufficient evidence |
 
-### `server/ultr0n/confidenceScorer.js`
+### `server/cortex/confidenceScorer.js`
 
 ```
 High:   Multiple APIs agree; clear scope; timeline supports cause; direct action available
@@ -226,11 +226,11 @@ Medium: Strong signal exists; one confirming source missing; scope partially cle
 Low:    One weak signal; missing event timeline or report data; conflicting evidence
 ```
 
-### `server/ultr0n/wirelessSystemPrompt.js`
+### `server/cortex/wirelessSystemPrompt.js`
 
 Exports `buildWirelessSystemMessage(evidence, rootCause, confidence)` — assembles the Grok prompt from normalized evidence + classifier output. Grok's role is answer composition only; it does not decide root cause.
 
-### `server/ultr0n/guardrails.js`
+### `server/cortex/guardrails.js`
 
 ```js
 DISRUPTIVE_ACTIONS = [
@@ -247,13 +247,13 @@ When a planned API call is disruptive and no `confirmationToken` is present in t
 ### New backend route
 
 ```
-POST /api/ultr0n/wireless/query
+POST /api/cortex/wireless/query
 Body: { question, pageContext, confirmationToken? }
-Auth: requireAuth + ultr0nRateLimit
-Returns: UltronWirelessAnswer
+Auth: requireAuth + cortexRateLimit
+Returns: CortexWirelessAnswer
 ```
 
-`UltronWirelessAnswer` shape:
+`CortexWirelessAnswer` shape:
 ```js
 {
   id: string,
@@ -274,24 +274,24 @@ Returns: UltronWirelessAnswer
 
 ## Frontend Additions
 
-### `src/ultr0n/types.ts`
+### `src/cortex/types.ts`
 
-TypeScript interfaces for `UltronWirelessAnswer`, `RootCauseCategory`, `WirelessEvidence`, `FollowUpChip`, `ConfirmationRequest`.
+TypeScript interfaces for `CortexWirelessAnswer`, `RootCauseCategory`, `WirelessEvidence`, `FollowUpChip`, `ConfirmationRequest`.
 
-### `src/ultr0n/components/Ultr0nAnswerCard.tsx`
+### `src/cortex/components/CortexAnswerCard.tsx`
 
-Renders a `UltronWirelessAnswer`:
+Renders a `CortexWirelessAnswer`:
 - Root cause badge (category + color-coded by severity)
 - Confidence badge (High=green, Medium=amber, Low=red)
 - "What I found" bullet list
 - Recommended next actions numbered list
-- `UltronEvidenceAccordion` (collapsed by default)
-- `UltronFollowUpChips`
+- `CortexEvidenceAccordion` (collapsed by default)
+- `CortexFollowUpChips`
 - Confirm button (shown only when `requiresConfirmation` present)
 
-### `src/ultr0n/components/Ultr0nProgress.tsx`
+### `src/cortex/components/CortexProgress.tsx`
 
-7-step animated progress indicator shown while `/api/ultr0n/wireless/query` is in flight:
+7-step animated progress indicator shown while `/api/cortex/wireless/query` is in flight:
 
 1. Understanding question
 2. Resolving context
@@ -303,13 +303,13 @@ Renders a `UltronWirelessAnswer`:
 
 Driven by SSE or polling — backend streams progress events, or frontend advances on a timer if SSE is not implemented initially (acceptable for Phase 3).
 
-### `src/ultr0n/components/Ultr0nEvidenceAccordion.tsx`
+### `src/cortex/components/CortexEvidenceAccordion.tsx`
 
 Collapsible section showing:
 - Each API call used (`METHOD /path`) with response status
 - Key fields extracted from each response (not raw JSON — summarized)
 
-### `src/ultr0n/components/Ultr0nFollowUpChips.tsx`
+### `src/cortex/components/CortexFollowUpChips.tsx`
 
 Chip strip rendered below each answer card. Standard chip list:
 
@@ -326,35 +326,35 @@ Clicking a chip sends that chip text as a new question with the current page con
 
 ## Modified Files
 
-### `src/contexts/UltronContext.tsx`
+### `src/contexts/CortexContext.tsx`
 
 - Add `progressStep: number | null` to state
-- `sendMessage`: check if question is wireless → call `/api/ultr0n/wireless/query` → set `progressStep` during flight → set `progressStep = null` on completion
+- `sendMessage`: check if question is wireless → call `/api/cortex/wireless/query` → set `progressStep` during flight → set `progressStep = null` on completion
 - Non-wireless questions continue through existing session path
 
-### `src/services/ultr0nApiClient.ts`
+### `src/services/cortexApiClient.ts`
 
-Add `queryUltr0nWireless(question, context, confirmationToken?)` function calling `POST /api/ultr0n/wireless/query`.
+Add `queryCortexWireless(question, context, confirmationToken?)` function calling `POST /api/cortex/wireless/query`.
 
 ### `src/components/AgentCoworker/panels/ConversationStream.tsx`
 
-- If message has `wirelessAnswer` field → render `<UltronAnswerCard>`
+- If message has `wirelessAnswer` field → render `<CortexAnswerCard>`
 - Otherwise → existing plain text rendering (unchanged)
 
-### `server/ultr0nOrchestrator.js`
+### `server/cortexOrchestrator.js`
 
 - No structural changes
 - Generic session path continues working as-is
 
 ### `server.js`
 
-- Add `POST /api/ultr0n/wireless/query` route wiring to new pipeline
+- Add `POST /api/cortex/wireless/query` route wiring to new pipeline
 
 ---
 
 ## Page Context Type (wireless-extended)
 
-The existing `UltronPageContext` in `src/types/ultron.ts` is extended with wireless-specific fields:
+The existing `CortexPageContext` in `src/types/cortex.ts` is extended with wireless-specific fields:
 
 ```ts
 apSerialNumber?: string;
@@ -411,8 +411,8 @@ These fields are set by page components (AP detail, client detail, WLAN detail) 
 - Unit tests for `intentDetector.js` (question → intent mapping)
 - Unit tests for `confidenceScorer.js`
 - Unit tests for `guardrails.js` (disruptive call detection)
-- Integration test for `/api/ultr0n/wireless/query` with mock `auraApiClient`
-- Frontend component tests for `UltronAnswerCard`, `UltronProgress`, `UltronEvidenceAccordion`
+- Integration test for `/api/cortex/wireless/query` with mock `auraApiClient`
+- Frontend component tests for `CortexAnswerCard`, `CortexProgress`, `CortexEvidenceAccordion`
 
 ---
 

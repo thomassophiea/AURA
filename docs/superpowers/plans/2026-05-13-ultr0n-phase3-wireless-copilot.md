@@ -1,10 +1,10 @@
-# Ultr0n Phase 3 — Wireless Copilot Implementation Plan
+# Cortex Phase 3 — Wireless Copilot Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform Ultr0n from a generic chatbot into a Marvis-like wireless AI copilot that gathers live AURA API evidence, classifies root cause deterministically, then uses Grok only for final answer composition.
+**Goal:** Transform Cortex from a generic chatbot into a Marvis-like wireless AI copilot that gathers live AURA API evidence, classifies root cause deterministically, then uses Grok only for final answer composition.
 
-**Architecture:** New `/api/ultr0n/wireless/query` pipeline: intentDetector → apiPlanner → guardrails → auraApiClient → evidenceNormalizer → rootCauseClassifier → confidenceScorer → Grok → structured JSON answer. Frontend renders structured `UltronAnswerCard` instead of plain text for wireless messages.
+**Architecture:** New `/api/cortex/wireless/query` pipeline: intentDetector → apiPlanner → guardrails → auraApiClient → evidenceNormalizer → rootCauseClassifier → confidenceScorer → Grok → structured JSON answer. Frontend renders structured `CortexAnswerCard` instead of plain text for wireless messages.
 
 **Tech Stack:** Node.js ESM (server), React 19 + TypeScript 5.7 + Tailwind (frontend), Vitest (tests), node:https for controller calls.
 
@@ -13,42 +13,42 @@
 ## File Map
 
 **New — server:**
-- `server/ultr0n/guardrails.js` + `.test.js`
-- `server/ultr0n/intentDetector.js` + `.test.js`
-- `server/ultr0n/apiPlanner.js` + `.test.js`
-- `server/ultr0n/auraApiClient.js` + `.test.js`
-- `server/ultr0n/evidenceNormalizer.js` + `.test.js`
-- `server/ultr0n/rootCauseClassifier.js` + `.test.js`
-- `server/ultr0n/confidenceScorer.js` + `.test.js`
-- `server/ultr0n/wirelessSystemPrompt.js` + `.test.js`
-- `server/ultr0n/wirelessQueryPipeline.js` + `.test.js`
+- `server/cortex/guardrails.js` + `.test.js`
+- `server/cortex/intentDetector.js` + `.test.js`
+- `server/cortex/apiPlanner.js` + `.test.js`
+- `server/cortex/auraApiClient.js` + `.test.js`
+- `server/cortex/evidenceNormalizer.js` + `.test.js`
+- `server/cortex/rootCauseClassifier.js` + `.test.js`
+- `server/cortex/confidenceScorer.js` + `.test.js`
+- `server/cortex/wirelessSystemPrompt.js` + `.test.js`
+- `server/cortex/wirelessQueryPipeline.js` + `.test.js`
 
 **New — frontend:**
-- `src/ultr0n/types.ts`
-- `src/ultr0n/components/Ultr0nProgress.tsx` + `.test.tsx`
-- `src/ultr0n/components/Ultr0nEvidenceAccordion.tsx` + `.test.tsx`
-- `src/ultr0n/components/Ultr0nFollowUpChips.tsx` + `.test.tsx`
-- `src/ultr0n/components/Ultr0nAnswerCard.tsx` + `.test.tsx`
+- `src/cortex/types.ts`
+- `src/cortex/components/CortexProgress.tsx` + `.test.tsx`
+- `src/cortex/components/CortexEvidenceAccordion.tsx` + `.test.tsx`
+- `src/cortex/components/CortexFollowUpChips.tsx` + `.test.tsx`
+- `src/cortex/components/CortexAnswerCard.tsx` + `.test.tsx`
 
 **Modified:**
-- `server.js` — add `POST /api/ultr0n/wireless/query`
-- `src/types/ultron.ts` — extend `UltronPageContext` with wireless fields
+- `server.js` — add `POST /api/cortex/wireless/query`
+- `src/types/cortex.ts` — extend `CortexPageContext` with wireless fields
 - `src/components/AgentCoworker/agentTypes.ts` — add `wirelessAnswer` to `AgentMessage`
-- `src/services/ultr0nApiClient.ts` — add `queryUltr0nWireless`
-- `src/components/AgentCoworker/panels/ConversationStream.tsx` — render `UltronAnswerCard`
-- `src/contexts/UltronContext.tsx` — wireless routing + progress state
+- `src/services/cortexApiClient.ts` — add `queryCortexWireless`
+- `src/components/AgentCoworker/panels/ConversationStream.tsx` — render `CortexAnswerCard`
+- `src/contexts/CortexContext.tsx` — wireless routing + progress state
 
 ---
 
-### Task 1: Frontend types (`src/ultr0n/types.ts`)
+### Task 1: Frontend types (`src/cortex/types.ts`)
 
 **Files:**
-- Create: `src/ultr0n/types.ts`
+- Create: `src/cortex/types.ts`
 
 - [ ] **Create types file**
 
 ```typescript
-// src/ultr0n/types.ts
+// src/cortex/types.ts
 
 export type RootCauseCategory =
   | 'CLIENT_SPECIFIC'
@@ -63,7 +63,7 @@ export type RootCauseCategory =
   | 'SITE_SYSTEMIC'
   | 'UNKNOWN';
 
-export interface UltronWirelessAnswer {
+export interface CortexWirelessAnswer {
   id: string;
   question: string;
   narrative: string;
@@ -128,22 +128,22 @@ export type FollowUpChip = (typeof ALL_FOLLOW_UP_CHIPS)[number];
 
 - [ ] **Commit**
 ```bash
-git add src/ultr0n/types.ts
-git commit -m "feat(ultr0n): add Phase 3 wireless types"
+git add src/cortex/types.ts
+git commit -m "feat(cortex): add Phase 3 wireless types"
 ```
 
 ---
 
-### Task 2: Guardrails (`server/ultr0n/guardrails.js`)
+### Task 2: Guardrails (`server/cortex/guardrails.js`)
 
 **Files:**
-- Create: `server/ultr0n/guardrails.js`
-- Create: `server/ultr0n/guardrails.test.js`
+- Create: `server/cortex/guardrails.js`
+- Create: `server/cortex/guardrails.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/guardrails.test.js
+// server/cortex/guardrails.test.js
 import { describe, it, expect } from 'vitest';
 import { isDisruptiveCall, checkGuardrails } from './guardrails.js';
 
@@ -194,13 +194,13 @@ describe('checkGuardrails', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/guardrails.test.js 2>&1 | tail -5
+npx vitest run server/cortex/guardrails.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/guardrails.js
+// server/cortex/guardrails.js
 import crypto from 'node:crypto';
 
 const DISRUPTIVE_RE = /\/v1\/aps\/[^/]+\/(reboot|reset|upgrade|realcapture|logs)$/;
@@ -224,27 +224,27 @@ export function checkGuardrails(apiPlan, confirmationToken) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/guardrails.test.js 2>&1 | tail -5
+npx vitest run server/cortex/guardrails.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/guardrails.js server/ultr0n/guardrails.test.js
-git commit -m "feat(ultr0n): add wireless guardrails (disruptive action detection)"
+git add server/cortex/guardrails.js server/cortex/guardrails.test.js
+git commit -m "feat(cortex): add wireless guardrails (disruptive action detection)"
 ```
 
 ---
 
-### Task 3: Intent Detector (`server/ultr0n/intentDetector.js`)
+### Task 3: Intent Detector (`server/cortex/intentDetector.js`)
 
 **Files:**
-- Create: `server/ultr0n/intentDetector.js`
-- Create: `server/ultr0n/intentDetector.test.js`
+- Create: `server/cortex/intentDetector.js`
+- Create: `server/cortex/intentDetector.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/intentDetector.test.js
+// server/cortex/intentDetector.test.js
 import { describe, it, expect } from 'vitest';
 import { detectIntent, isWirelessQuestion } from './intentDetector.js';
 
@@ -311,13 +311,13 @@ describe('detectIntent', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/intentDetector.test.js 2>&1 | tail -5
+npx vitest run server/cortex/intentDetector.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/intentDetector.js
+// server/cortex/intentDetector.js
 
 const WIRELESS_TERMS = [
   'client', 'station', 'ap', 'access point', 'ssid', 'wlan', 'rf',
@@ -410,27 +410,27 @@ export function detectIntent(question, pageContext = {}) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/intentDetector.test.js 2>&1 | tail -5
+npx vitest run server/cortex/intentDetector.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/intentDetector.js server/ultr0n/intentDetector.test.js
-git commit -m "feat(ultr0n): add wireless intent detector"
+git add server/cortex/intentDetector.js server/cortex/intentDetector.test.js
+git commit -m "feat(cortex): add wireless intent detector"
 ```
 
 ---
 
-### Task 4: API Planner (`server/ultr0n/apiPlanner.js`)
+### Task 4: API Planner (`server/cortex/apiPlanner.js`)
 
 **Files:**
-- Create: `server/ultr0n/apiPlanner.js`
-- Create: `server/ultr0n/apiPlanner.test.js`
+- Create: `server/cortex/apiPlanner.js`
+- Create: `server/cortex/apiPlanner.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/apiPlanner.test.js
+// server/cortex/apiPlanner.test.js
 import { describe, it, expect } from 'vitest';
 import { planApiCalls } from './apiPlanner.js';
 
@@ -490,13 +490,13 @@ describe('planApiCalls', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/apiPlanner.test.js 2>&1 | tail -5
+npx vitest run server/cortex/apiPlanner.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/apiPlanner.js
+// server/cortex/apiPlanner.js
 
 function r(path, resolved) {
   return path
@@ -772,27 +772,27 @@ export function getFollowUpChips(intent) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/apiPlanner.test.js 2>&1 | tail -5
+npx vitest run server/cortex/apiPlanner.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/apiPlanner.js server/ultr0n/apiPlanner.test.js
-git commit -m "feat(ultr0n): add wireless API planner (37 intent→call mappings)"
+git add server/cortex/apiPlanner.js server/cortex/apiPlanner.test.js
+git commit -m "feat(cortex): add wireless API planner (37 intent→call mappings)"
 ```
 
 ---
 
-### Task 5: AURA API Client (`server/ultr0n/auraApiClient.js`)
+### Task 5: AURA API Client (`server/cortex/auraApiClient.js`)
 
 **Files:**
-- Create: `server/ultr0n/auraApiClient.js`
-- Create: `server/ultr0n/auraApiClient.test.js`
+- Create: `server/cortex/auraApiClient.js`
+- Create: `server/cortex/auraApiClient.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/auraApiClient.test.js
+// server/cortex/auraApiClient.test.js
 import { describe, it, expect, vi } from 'vitest';
 import { executeApiPlan } from './auraApiClient.js';
 
@@ -831,13 +831,13 @@ describe('executeApiPlan', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/auraApiClient.test.js 2>&1 | tail -5
+npx vitest run server/cortex/auraApiClient.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/auraApiClient.js
+// server/cortex/auraApiClient.js
 import https from 'node:https';
 
 const insecureAgent = new https.Agent({ rejectUnauthorized: false });
@@ -890,27 +890,27 @@ export async function executeDisruptiveCall(call, opts) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/auraApiClient.test.js 2>&1 | tail -5
+npx vitest run server/cortex/auraApiClient.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/auraApiClient.js server/ultr0n/auraApiClient.test.js
-git commit -m "feat(ultr0n): add AURA API client for wireless pipeline"
+git add server/cortex/auraApiClient.js server/cortex/auraApiClient.test.js
+git commit -m "feat(cortex): add AURA API client for wireless pipeline"
 ```
 
 ---
 
-### Task 6: Evidence Normalizer (`server/ultr0n/evidenceNormalizer.js`)
+### Task 6: Evidence Normalizer (`server/cortex/evidenceNormalizer.js`)
 
 **Files:**
-- Create: `server/ultr0n/evidenceNormalizer.js`
-- Create: `server/ultr0n/evidenceNormalizer.test.js`
+- Create: `server/cortex/evidenceNormalizer.js`
+- Create: `server/cortex/evidenceNormalizer.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/evidenceNormalizer.test.js
+// server/cortex/evidenceNormalizer.test.js
 import { describe, it, expect } from 'vitest';
 import { normalizeEvidence } from './evidenceNormalizer.js';
 
@@ -970,13 +970,13 @@ describe('normalizeEvidence', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/evidenceNormalizer.test.js 2>&1 | tail -5
+npx vitest run server/cortex/evidenceNormalizer.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/evidenceNormalizer.js
+// server/cortex/evidenceNormalizer.js
 
 function findByKeyPattern(raw, ...patterns) {
   for (const key of Object.keys(raw)) {
@@ -1094,27 +1094,27 @@ export function normalizeEvidence(raw, intent, resolved) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/evidenceNormalizer.test.js 2>&1 | tail -5
+npx vitest run server/cortex/evidenceNormalizer.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/evidenceNormalizer.js server/ultr0n/evidenceNormalizer.test.js
-git commit -m "feat(ultr0n): add wireless evidence normalizer"
+git add server/cortex/evidenceNormalizer.js server/cortex/evidenceNormalizer.test.js
+git commit -m "feat(cortex): add wireless evidence normalizer"
 ```
 
 ---
 
-### Task 7: Root Cause Classifier (`server/ultr0n/rootCauseClassifier.js`)
+### Task 7: Root Cause Classifier (`server/cortex/rootCauseClassifier.js`)
 
 **Files:**
-- Create: `server/ultr0n/rootCauseClassifier.js`
-- Create: `server/ultr0n/rootCauseClassifier.test.js`
+- Create: `server/cortex/rootCauseClassifier.js`
+- Create: `server/cortex/rootCauseClassifier.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/rootCauseClassifier.test.js
+// server/cortex/rootCauseClassifier.test.js
 import { describe, it, expect } from 'vitest';
 import { classifyRootCause } from './rootCauseClassifier.js';
 
@@ -1169,13 +1169,13 @@ describe('classifyRootCause', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/rootCauseClassifier.test.js 2>&1 | tail -5
+npx vitest run server/cortex/rootCauseClassifier.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/rootCauseClassifier.js
+// server/cortex/rootCauseClassifier.js
 
 const THRESHOLDS = {
   lowRssiDbm: -70,
@@ -1277,27 +1277,27 @@ export function classifyRootCause(evidence, intent) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/rootCauseClassifier.test.js 2>&1 | tail -5
+npx vitest run server/cortex/rootCauseClassifier.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/rootCauseClassifier.js server/ultr0n/rootCauseClassifier.test.js
-git commit -m "feat(ultr0n): add deterministic root cause classifier"
+git add server/cortex/rootCauseClassifier.js server/cortex/rootCauseClassifier.test.js
+git commit -m "feat(cortex): add deterministic root cause classifier"
 ```
 
 ---
 
-### Task 8: Confidence Scorer (`server/ultr0n/confidenceScorer.js`)
+### Task 8: Confidence Scorer (`server/cortex/confidenceScorer.js`)
 
 **Files:**
-- Create: `server/ultr0n/confidenceScorer.js`
-- Create: `server/ultr0n/confidenceScorer.test.js`
+- Create: `server/cortex/confidenceScorer.js`
+- Create: `server/cortex/confidenceScorer.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/confidenceScorer.test.js
+// server/cortex/confidenceScorer.test.js
 import { describe, it, expect } from 'vitest';
 import { scoreConfidence } from './confidenceScorer.js';
 
@@ -1335,13 +1335,13 @@ describe('scoreConfidence', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/confidenceScorer.test.js 2>&1 | tail -5
+npx vitest run server/cortex/confidenceScorer.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/confidenceScorer.js
+// server/cortex/confidenceScorer.js
 
 export function scoreConfidence(evidence, rootCause) {
   let score = 0;
@@ -1370,27 +1370,27 @@ export function scoreConfidence(evidence, rootCause) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/confidenceScorer.test.js 2>&1 | tail -5
+npx vitest run server/cortex/confidenceScorer.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/confidenceScorer.js server/ultr0n/confidenceScorer.test.js
-git commit -m "feat(ultr0n): add confidence scorer"
+git add server/cortex/confidenceScorer.js server/cortex/confidenceScorer.test.js
+git commit -m "feat(cortex): add confidence scorer"
 ```
 
 ---
 
-### Task 9: Wireless System Prompt (`server/ultr0n/wirelessSystemPrompt.js`)
+### Task 9: Wireless System Prompt (`server/cortex/wirelessSystemPrompt.js`)
 
 **Files:**
-- Create: `server/ultr0n/wirelessSystemPrompt.js`
-- Create: `server/ultr0n/wirelessSystemPrompt.test.js`
+- Create: `server/cortex/wirelessSystemPrompt.js`
+- Create: `server/cortex/wirelessSystemPrompt.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/wirelessSystemPrompt.test.js
+// server/cortex/wirelessSystemPrompt.test.js
 import { describe, it, expect } from 'vitest';
 import { buildWirelessPrompt } from './wirelessSystemPrompt.js';
 
@@ -1417,7 +1417,7 @@ describe('buildWirelessPrompt', () => {
 
   it('system prompt contains wireless copilot identity', () => {
     const { systemMsg } = buildWirelessPrompt({ question: 'test', pageContext: {}, evidence: baseEvidence, rootCause, confidence: 'High' });
-    expect(systemMsg.content).toContain('Ultr0n');
+    expect(systemMsg.content).toContain('Cortex');
     expect(systemMsg.content).toContain('wireless');
   });
 
@@ -1441,15 +1441,15 @@ describe('buildWirelessPrompt', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/wirelessSystemPrompt.test.js 2>&1 | tail -5
+npx vitest run server/cortex/wirelessSystemPrompt.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/wirelessSystemPrompt.js
+// server/cortex/wirelessSystemPrompt.js
 
-const WIRELESS_SYSTEM_PROMPT = `You are Ultr0n, a wireless AI copilot for AURA and Campus Controller. You are not a generic chatbot. You diagnose wireless issues using live API evidence only. Never invent metrics. Never invent API results. If evidence is missing, say what is missing.
+const WIRELESS_SYSTEM_PROMPT = `You are Cortex, a wireless AI copilot for AURA and Campus Controller. You are not a generic chatbot. You diagnose wireless issues using live API evidence only. Never invent metrics. Never invent API results. If evidence is missing, say what is missing.
 
 Your answer MUST follow this exact format:
 
@@ -1563,27 +1563,27 @@ export function buildWirelessPrompt({ question, pageContext, evidence, rootCause
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/wirelessSystemPrompt.test.js 2>&1 | tail -5
+npx vitest run server/cortex/wirelessSystemPrompt.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/wirelessSystemPrompt.js server/ultr0n/wirelessSystemPrompt.test.js
-git commit -m "feat(ultr0n): add wireless system prompt builder"
+git add server/cortex/wirelessSystemPrompt.js server/cortex/wirelessSystemPrompt.test.js
+git commit -m "feat(cortex): add wireless system prompt builder"
 ```
 
 ---
 
-### Task 10: Wireless Query Pipeline (`server/ultr0n/wirelessQueryPipeline.js`)
+### Task 10: Wireless Query Pipeline (`server/cortex/wirelessQueryPipeline.js`)
 
 **Files:**
-- Create: `server/ultr0n/wirelessQueryPipeline.js`
-- Create: `server/ultr0n/wirelessQueryPipeline.test.js`
+- Create: `server/cortex/wirelessQueryPipeline.js`
+- Create: `server/cortex/wirelessQueryPipeline.test.js`
 
 - [ ] **Write failing test**
 
 ```javascript
-// server/ultr0n/wirelessQueryPipeline.test.js
+// server/cortex/wirelessQueryPipeline.test.js
 import { describe, it, expect, vi } from 'vitest';
 import { runWirelessQuery } from './wirelessQueryPipeline.js';
 
@@ -1595,7 +1595,7 @@ const mockFetch = vi.fn().mockResolvedValue({
 });
 
 describe('runWirelessQuery', () => {
-  it('returns a UltronWirelessAnswer shaped object', async () => {
+  it('returns a CortexWirelessAnswer shaped object', async () => {
     const result = await runWirelessQuery({
       question: 'Why did this client disconnect?',
       pageContext: ctx,
@@ -1643,13 +1643,13 @@ describe('runWirelessQuery', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run server/ultr0n/wirelessQueryPipeline.test.js 2>&1 | tail -5
+npx vitest run server/cortex/wirelessQueryPipeline.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```javascript
-// server/ultr0n/wirelessQueryPipeline.js
+// server/cortex/wirelessQueryPipeline.js
 import crypto from 'node:crypto';
 import { detectIntent } from './intentDetector.js';
 import { planApiCalls, getFollowUpChips } from './apiPlanner.js';
@@ -1659,7 +1659,7 @@ import { normalizeEvidence } from './evidenceNormalizer.js';
 import { classifyRootCause } from './rootCauseClassifier.js';
 import { scoreConfidence } from './confidenceScorer.js';
 import { buildWirelessPrompt } from './wirelessSystemPrompt.js';
-import { createLlmProvider } from '../ultr0nLlmProvider.js';
+import { createLlmProvider } from '../cortexLlmProvider.js';
 
 export async function runWirelessQuery({
   question,
@@ -1749,13 +1749,13 @@ export async function runWirelessQuery({
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run server/ultr0n/wirelessQueryPipeline.test.js 2>&1 | tail -5
+npx vitest run server/cortex/wirelessQueryPipeline.test.js 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add server/ultr0n/wirelessQueryPipeline.js server/ultr0n/wirelessQueryPipeline.test.js
-git commit -m "feat(ultr0n): add wireless query pipeline (end-to-end orchestration)"
+git add server/cortex/wirelessQueryPipeline.js server/cortex/wirelessQueryPipeline.test.js
+git commit -m "feat(cortex): add wireless query pipeline (end-to-end orchestration)"
 ```
 
 ---
@@ -1767,14 +1767,14 @@ git commit -m "feat(ultr0n): add wireless query pipeline (end-to-end orchestrati
 
 - [ ] **Add import and route**
 
-Add after `import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';` at line 9:
+Add after `import { cortexOrchestrator } from './server/cortexOrchestrator.js';` at line 9:
 ```javascript
-import { runWirelessQuery } from './server/ultr0n/wirelessQueryPipeline.js';
+import { runWirelessQuery } from './server/cortex/wirelessQueryPipeline.js';
 ```
 
-Add after the existing `// ==================== End Ultr0n Routes ====================` comment (after line 1417, before the proxy middleware):
+Add after the existing `// ==================== End Cortex Routes ====================` comment (after line 1417, before the proxy middleware):
 ```javascript
-app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
+app.post('/api/cortex/wireless/query', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
   try {
     const { question, pageContext, confirmationToken } = req.body ?? {};
     if (!question || typeof question !== 'string') {
@@ -1785,7 +1785,7 @@ app.post('/api/ultr0n/wireless/query', requireAuth, ultr0nRateLimit, jsonParser,
     const answer = await runWirelessQuery({ question, pageContext: pageContext ?? {}, confirmationToken, authToken, controllerUrl });
     res.json(answer);
   } catch (err) {
-    console.error('[Ultr0n] wireless/query error:', err.message);
+    console.error('[Cortex] wireless/query error:', err.message);
     res.status(500).json({ error: err.message || 'Wireless query failed' });
   }
 });
@@ -1798,8 +1798,8 @@ npm test 2>&1 | tail -15
 
 - [ ] **Commit**
 ```bash
-git add server.js server/ultr0n/
-git commit -m "feat(ultr0n): add POST /api/ultr0n/wireless/query route"
+git add server.js server/cortex/
+git commit -m "feat(cortex): add POST /api/cortex/wireless/query route"
 ```
 
 ---
@@ -1807,13 +1807,13 @@ git commit -m "feat(ultr0n): add POST /api/ultr0n/wireless/query route"
 ### Task 12: Frontend type updates + API client
 
 **Files:**
-- Modify: `src/types/ultron.ts` — extend `UltronPageContext`
+- Modify: `src/types/cortex.ts` — extend `CortexPageContext`
 - Modify: `src/components/AgentCoworker/agentTypes.ts` — add `wirelessAnswer` to `AgentMessage`
-- Modify: `src/services/ultr0nApiClient.ts` — add `queryUltr0nWireless`
+- Modify: `src/services/cortexApiClient.ts` — add `queryCortexWireless`
 
-- [ ] **Extend UltronPageContext in `src/types/ultron.ts`**
+- [ ] **Extend CortexPageContext in `src/types/cortex.ts`**
 
-Add these fields to the `UltronPageContext` interface after the `availableActions?` field:
+Add these fields to the `CortexPageContext` interface after the `availableActions?` field:
 ```typescript
   apSerialNumber?: string;
   apName?: string;
@@ -1836,26 +1836,26 @@ Add these fields to the `UltronPageContext` interface after the `availableAction
 
 Add import after existing imports:
 ```typescript
-import type { UltronWirelessAnswer } from '@/ultr0n/types';
+import type { CortexWirelessAnswer } from '@/cortex/types';
 ```
 
 Add field to `AgentMessage` interface after `feedback?`:
 ```typescript
-  wirelessAnswer?: UltronWirelessAnswer;
+  wirelessAnswer?: CortexWirelessAnswer;
 ```
 
-- [ ] **Add `queryUltr0nWireless` to `src/services/ultr0nApiClient.ts`**
+- [ ] **Add `queryCortexWireless` to `src/services/cortexApiClient.ts`**
 
-Add after `refreshUltr0nContext`:
+Add after `refreshCortexContext`:
 ```typescript
-import type { UltronWirelessAnswer } from '@/ultr0n/types';
+import type { CortexWirelessAnswer } from '@/cortex/types';
 
-export async function queryUltr0nWireless(
+export async function queryCortexWireless(
   question: string,
-  context: UltronPageContext,
+  context: CortexPageContext,
   confirmationToken?: string
-): Promise<UltronWirelessAnswer> {
-  return ultr0nFetch('/api/ultr0n/wireless/query', { question, pageContext: context, confirmationToken });
+): Promise<CortexWirelessAnswer> {
+  return cortexFetch('/api/cortex/wireless/query', { question, pageContext: context, confirmationToken });
 }
 ```
 
@@ -1866,38 +1866,38 @@ npm run type-check 2>&1 | tail -10
 
 - [ ] **Commit**
 ```bash
-git add src/types/ultron.ts src/components/AgentCoworker/agentTypes.ts src/services/ultr0nApiClient.ts src/ultr0n/types.ts
-git commit -m "feat(ultr0n): extend types and API client for wireless pipeline"
+git add src/types/cortex.ts src/components/AgentCoworker/agentTypes.ts src/services/cortexApiClient.ts src/cortex/types.ts
+git commit -m "feat(cortex): extend types and API client for wireless pipeline"
 ```
 
 ---
 
-### Task 13: UltronProgress component
+### Task 13: CortexProgress component
 
 **Files:**
-- Create: `src/ultr0n/components/UltronProgress.tsx`
-- Create: `src/ultr0n/components/UltronProgress.test.tsx`
+- Create: `src/cortex/components/CortexProgress.tsx`
+- Create: `src/cortex/components/CortexProgress.test.tsx`
 
 - [ ] **Write failing test**
 
 ```typescript
-// src/ultr0n/components/UltronProgress.test.tsx
+// src/cortex/components/CortexProgress.test.tsx
 import { render, screen } from '@testing-library/react';
-import { UltronProgress } from './UltronProgress';
+import { CortexProgress } from './CortexProgress';
 
-describe('UltronProgress', () => {
+describe('CortexProgress', () => {
   it('renders current step label', () => {
-    render(<UltronProgress step={2} />);
+    render(<CortexProgress step={2} />);
     expect(screen.getByText(/Resolving context/i)).toBeInTheDocument();
   });
 
   it('renders first step when step=0', () => {
-    render(<UltronProgress step={0} />);
+    render(<CortexProgress step={0} />);
     expect(screen.getByText(/Understanding question/i)).toBeInTheDocument();
   });
 
   it('renders done state when step=7', () => {
-    render(<UltronProgress step={7} />);
+    render(<CortexProgress step={7} />);
     expect(screen.getByText(/Ready/i)).toBeInTheDocument();
   });
 });
@@ -1905,13 +1905,13 @@ describe('UltronProgress', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run src/ultr0n/components/UltronProgress.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexProgress.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```typescript
-// src/ultr0n/components/UltronProgress.tsx
+// src/cortex/components/CortexProgress.tsx
 import { cn } from '@/components/ui/utils';
 
 const STEPS = [
@@ -1924,12 +1924,12 @@ const STEPS = [
   'Ready',
 ];
 
-interface UltronProgressProps {
+interface CortexProgressProps {
   step: number;
   className?: string;
 }
 
-export function UltronProgress({ step, className }: UltronProgressProps) {
+export function CortexProgress({ step, className }: CortexProgressProps) {
   const label = STEPS[Math.min(step, STEPS.length - 1)] ?? STEPS[0];
   const pct = Math.round(((step + 1) / STEPS.length) * 100);
 
@@ -1960,45 +1960,45 @@ export function UltronProgress({ step, className }: UltronProgressProps) {
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run src/ultr0n/components/UltronProgress.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexProgress.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add src/ultr0n/components/UltronProgress.tsx src/ultr0n/components/UltronProgress.test.tsx
-git commit -m "feat(ultr0n): add UltronProgress component"
+git add src/cortex/components/CortexProgress.tsx src/cortex/components/CortexProgress.test.tsx
+git commit -m "feat(cortex): add CortexProgress component"
 ```
 
 ---
 
-### Task 14: UltronEvidenceAccordion
+### Task 14: CortexEvidenceAccordion
 
 **Files:**
-- Create: `src/ultr0n/components/UltronEvidenceAccordion.tsx`
-- Create: `src/ultr0n/components/UltronEvidenceAccordion.test.tsx`
+- Create: `src/cortex/components/CortexEvidenceAccordion.tsx`
+- Create: `src/cortex/components/CortexEvidenceAccordion.test.tsx`
 
 - [ ] **Write failing test**
 
 ```typescript
-// src/ultr0n/components/UltronEvidenceAccordion.test.tsx
+// src/cortex/components/CortexEvidenceAccordion.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react';
-import { UltronEvidenceAccordion } from './UltronEvidenceAccordion';
+import { CortexEvidenceAccordion } from './CortexEvidenceAccordion';
 
-describe('UltronEvidenceAccordion', () => {
+describe('CortexEvidenceAccordion', () => {
   it('renders collapsed by default', () => {
-    render(<UltronEvidenceAccordion apiCalls={['GET /v1/stations/{mac}', 'GET /v1/aps/ifstats/{sn}']} />);
+    render(<CortexEvidenceAccordion apiCalls={['GET /v1/stations/{mac}', 'GET /v1/aps/ifstats/{sn}']} />);
     expect(screen.queryByText('GET /v1/stations/{mac}')).not.toBeInTheDocument();
   });
 
   it('shows API calls after clicking toggle', () => {
-    render(<UltronEvidenceAccordion apiCalls={['GET /v1/stations/{mac}']} />);
+    render(<CortexEvidenceAccordion apiCalls={['GET /v1/stations/{mac}']} />);
     fireEvent.click(screen.getByRole('button'));
     expect(screen.getByText('GET /v1/stations/{mac}')).toBeInTheDocument();
   });
 
   it('shows missing data when provided', () => {
     render(
-      <UltronEvidenceAccordion
+      <CortexEvidenceAccordion
         apiCalls={['GET /v1/stations/{mac}']}
         missingData={['/v1/stations/events/{mac}']}
       />
@@ -2011,24 +2011,24 @@ describe('UltronEvidenceAccordion', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run src/ultr0n/components/UltronEvidenceAccordion.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexEvidenceAccordion.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```typescript
-// src/ultr0n/components/UltronEvidenceAccordion.tsx
+// src/cortex/components/CortexEvidenceAccordion.tsx
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Database, AlertCircle } from 'lucide-react';
 import { cn } from '@/components/ui/utils';
 
-interface UltronEvidenceAccordionProps {
+interface CortexEvidenceAccordionProps {
   apiCalls: string[];
   missingData?: string[];
   className?: string;
 }
 
-export function UltronEvidenceAccordion({ apiCalls, missingData = [], className }: UltronEvidenceAccordionProps) {
+export function CortexEvidenceAccordion({ apiCalls, missingData = [], className }: CortexEvidenceAccordionProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -2069,46 +2069,46 @@ export function UltronEvidenceAccordion({ apiCalls, missingData = [], className 
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run src/ultr0n/components/UltronEvidenceAccordion.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexEvidenceAccordion.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add src/ultr0n/components/UltronEvidenceAccordion.tsx src/ultr0n/components/UltronEvidenceAccordion.test.tsx
-git commit -m "feat(ultr0n): add UltronEvidenceAccordion component"
+git add src/cortex/components/CortexEvidenceAccordion.tsx src/cortex/components/CortexEvidenceAccordion.test.tsx
+git commit -m "feat(cortex): add CortexEvidenceAccordion component"
 ```
 
 ---
 
-### Task 15: UltronFollowUpChips
+### Task 15: CortexFollowUpChips
 
 **Files:**
-- Create: `src/ultr0n/components/UltronFollowUpChips.tsx`
-- Create: `src/ultr0n/components/UltronFollowUpChips.test.tsx`
+- Create: `src/cortex/components/CortexFollowUpChips.tsx`
+- Create: `src/cortex/components/CortexFollowUpChips.test.tsx`
 
 - [ ] **Write failing test**
 
 ```typescript
-// src/ultr0n/components/UltronFollowUpChips.test.tsx
+// src/cortex/components/CortexFollowUpChips.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react';
-import { UltronFollowUpChips } from './UltronFollowUpChips';
+import { CortexFollowUpChips } from './CortexFollowUpChips';
 
-describe('UltronFollowUpChips', () => {
+describe('CortexFollowUpChips', () => {
   it('renders provided chips', () => {
-    render(<UltronFollowUpChips chips={['Show AP RF stats', 'Reboot AP']} onChipClick={() => {}} />);
+    render(<CortexFollowUpChips chips={['Show AP RF stats', 'Reboot AP']} onChipClick={() => {}} />);
     expect(screen.getByText('Show AP RF stats')).toBeInTheDocument();
     expect(screen.getByText('Reboot AP')).toBeInTheDocument();
   });
 
   it('calls onChipClick with chip text', () => {
     const handler = vi.fn();
-    render(<UltronFollowUpChips chips={['Show AP RF stats']} onChipClick={handler} />);
+    render(<CortexFollowUpChips chips={['Show AP RF stats']} onChipClick={handler} />);
     fireEvent.click(screen.getByText('Show AP RF stats'));
     expect(handler).toHaveBeenCalledWith('Show AP RF stats');
   });
 
   it('renders nothing when chips array is empty', () => {
-    const { container } = render(<UltronFollowUpChips chips={[]} onChipClick={() => {}} />);
+    const { container } = render(<CortexFollowUpChips chips={[]} onChipClick={() => {}} />);
     expect(container.firstChild).toBeNull();
   });
 });
@@ -2116,25 +2116,25 @@ describe('UltronFollowUpChips', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run src/ultr0n/components/UltronFollowUpChips.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexFollowUpChips.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```typescript
-// src/ultr0n/components/UltronFollowUpChips.tsx
+// src/cortex/components/CortexFollowUpChips.tsx
 import { cn } from '@/components/ui/utils';
 import { AlertTriangle } from 'lucide-react';
 
 const DISRUPTIVE_CHIPS = new Set(['Reboot AP', 'Run packet capture', 'Download logs']);
 
-interface UltronFollowUpChipsProps {
+interface CortexFollowUpChipsProps {
   chips: string[];
   onChipClick: (chip: string) => void;
   className?: string;
 }
 
-export function UltronFollowUpChips({ chips, onChipClick, className }: UltronFollowUpChipsProps) {
+export function CortexFollowUpChips({ chips, onChipClick, className }: CortexFollowUpChipsProps) {
   if (!chips.length) return null;
 
   return (
@@ -2164,32 +2164,32 @@ export function UltronFollowUpChips({ chips, onChipClick, className }: UltronFol
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run src/ultr0n/components/UltronFollowUpChips.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexFollowUpChips.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add src/ultr0n/components/UltronFollowUpChips.tsx src/ultr0n/components/UltronFollowUpChips.test.tsx
-git commit -m "feat(ultr0n): add UltronFollowUpChips component"
+git add src/cortex/components/CortexFollowUpChips.tsx src/cortex/components/CortexFollowUpChips.test.tsx
+git commit -m "feat(cortex): add CortexFollowUpChips component"
 ```
 
 ---
 
-### Task 16: UltronAnswerCard
+### Task 16: CortexAnswerCard
 
 **Files:**
-- Create: `src/ultr0n/components/UltronAnswerCard.tsx`
-- Create: `src/ultr0n/components/UltronAnswerCard.test.tsx`
+- Create: `src/cortex/components/CortexAnswerCard.tsx`
+- Create: `src/cortex/components/CortexAnswerCard.test.tsx`
 
 - [ ] **Write failing test**
 
 ```typescript
-// src/ultr0n/components/UltronAnswerCard.test.tsx
+// src/cortex/components/CortexAnswerCard.test.tsx
 import { render, screen } from '@testing-library/react';
-import { UltronAnswerCard } from './UltronAnswerCard';
-import type { UltronWirelessAnswer } from '../types';
+import { CortexAnswerCard } from './CortexAnswerCard';
+import type { CortexWirelessAnswer } from '../types';
 
-const answer: UltronWirelessAnswer = {
+const answer: CortexWirelessAnswer = {
   id: 'test-1',
   question: 'Why did this client disconnect?',
   narrative: 'Short answer:\nLow signal.\n\nWhat I found:\n- Client: RSSI -78 dBm',
@@ -2200,38 +2200,38 @@ const answer: UltronWirelessAnswer = {
   missingData: [],
 };
 
-describe('UltronAnswerCard', () => {
+describe('CortexAnswerCard', () => {
   it('renders root cause badge', () => {
-    render(<UltronAnswerCard answer={answer} onChipClick={() => {}} />);
+    render(<CortexAnswerCard answer={answer} onChipClick={() => {}} />);
     expect(screen.getByText(/Coverage Gap/i)).toBeInTheDocument();
   });
 
   it('renders confidence badge', () => {
-    render(<UltronAnswerCard answer={answer} onChipClick={() => {}} />);
+    render(<CortexAnswerCard answer={answer} onChipClick={() => {}} />);
     expect(screen.getByText(/High/i)).toBeInTheDocument();
   });
 
   it('renders narrative content', () => {
-    render(<UltronAnswerCard answer={answer} onChipClick={() => {}} />);
+    render(<CortexAnswerCard answer={answer} onChipClick={() => {}} />);
     expect(screen.getByText(/Low signal/i)).toBeInTheDocument();
   });
 
   it('renders follow-up chip', () => {
-    render(<UltronAnswerCard answer={answer} onChipClick={() => {}} />);
+    render(<CortexAnswerCard answer={answer} onChipClick={() => {}} />);
     expect(screen.getByText('Show AP RF stats')).toBeInTheDocument();
   });
 
   it('renders evidence accordion', () => {
-    render(<UltronAnswerCard answer={answer} onChipClick={() => {}} />);
+    render(<CortexAnswerCard answer={answer} onChipClick={() => {}} />);
     expect(screen.getByText(/API evidence used/i)).toBeInTheDocument();
   });
 
   it('renders confirm button when requiresConfirmation present', () => {
-    const withConfirm: UltronWirelessAnswer = {
+    const withConfirm: CortexWirelessAnswer = {
       ...answer,
       requiresConfirmation: { action: 'Reboot AP', description: 'Reboots the AP.', confirmationToken: 'tok-1' },
     };
-    render(<UltronAnswerCard answer={withConfirm} onChipClick={() => {}} onConfirm={() => {}} />);
+    render(<CortexAnswerCard answer={withConfirm} onChipClick={() => {}} onConfirm={() => {}} />);
     expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
   });
 });
@@ -2239,28 +2239,28 @@ describe('UltronAnswerCard', () => {
 
 - [ ] **Run test — expect FAIL**
 ```bash
-npx vitest run src/ultr0n/components/UltronAnswerCard.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexAnswerCard.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Implement**
 
 ```typescript
-// src/ultr0n/components/UltronAnswerCard.tsx
+// src/cortex/components/CortexAnswerCard.tsx
 import { ShieldAlert } from 'lucide-react';
-import type { UltronWirelessAnswer } from '../types';
+import type { CortexWirelessAnswer } from '../types';
 import { ROOT_CAUSE_LABELS, ROOT_CAUSE_COLORS, CONFIDENCE_COLORS } from '../types';
-import { UltronEvidenceAccordion } from './UltronEvidenceAccordion';
-import { UltronFollowUpChips } from './UltronFollowUpChips';
+import { CortexEvidenceAccordion } from './CortexEvidenceAccordion';
+import { CortexFollowUpChips } from './CortexFollowUpChips';
 import { cn } from '@/components/ui/utils';
 
-interface UltronAnswerCardProps {
-  answer: UltronWirelessAnswer;
+interface CortexAnswerCardProps {
+  answer: CortexWirelessAnswer;
   onChipClick: (chip: string) => void;
   onConfirm?: (token: string) => void;
   className?: string;
 }
 
-export function UltronAnswerCard({ answer, onChipClick, onConfirm, className }: UltronAnswerCardProps) {
+export function CortexAnswerCard({ answer, onChipClick, onConfirm, className }: CortexAnswerCardProps) {
   return (
     <div className={cn('space-y-3', className)}>
       {/* Badges */}
@@ -2296,14 +2296,14 @@ export function UltronAnswerCard({ answer, onChipClick, onConfirm, className }: 
 
       {/* Evidence accordion */}
       {answer.apiEvidenceUsed.length > 0 && (
-        <UltronEvidenceAccordion
+        <CortexEvidenceAccordion
           apiCalls={answer.apiEvidenceUsed}
           missingData={answer.missingData}
         />
       )}
 
       {/* Follow-up chips */}
-      <UltronFollowUpChips chips={answer.followUpChips} onChipClick={onChipClick} />
+      <CortexFollowUpChips chips={answer.followUpChips} onChipClick={onChipClick} />
     </div>
   );
 }
@@ -2311,29 +2311,29 @@ export function UltronAnswerCard({ answer, onChipClick, onConfirm, className }: 
 
 - [ ] **Run test — expect PASS**
 ```bash
-npx vitest run src/ultr0n/components/UltronAnswerCard.test.tsx 2>&1 | tail -5
+npx vitest run src/cortex/components/CortexAnswerCard.test.tsx 2>&1 | tail -5
 ```
 
 - [ ] **Commit**
 ```bash
-git add src/ultr0n/components/UltronAnswerCard.tsx src/ultr0n/components/UltronAnswerCard.test.tsx
-git commit -m "feat(ultr0n): add UltronAnswerCard component"
+git add src/cortex/components/CortexAnswerCard.tsx src/cortex/components/CortexAnswerCard.test.tsx
+git commit -m "feat(cortex): add CortexAnswerCard component"
 ```
 
 ---
 
-### Task 17: Wire up — ConversationStream + UltronContext
+### Task 17: Wire up — ConversationStream + CortexContext
 
 **Files:**
 - Modify: `src/components/AgentCoworker/panels/ConversationStream.tsx`
-- Modify: `src/contexts/UltronContext.tsx`
+- Modify: `src/contexts/CortexContext.tsx`
 
-- [ ] **Update ConversationStream to render UltronAnswerCard**
+- [ ] **Update ConversationStream to render CortexAnswerCard**
 
 In `ConversationStream.tsx`, add imports at top:
 ```typescript
-import { UltronAnswerCard } from '@/ultr0n/components/UltronAnswerCard';
-import { UltronProgress } from '@/ultr0n/components/UltronProgress';
+import { CortexAnswerCard } from '@/cortex/components/CortexAnswerCard';
+import { CortexProgress } from '@/cortex/components/CortexProgress';
 ```
 
 Add `progressStep?: number | null` to `ConversationStreamProps`.
@@ -2341,7 +2341,7 @@ Add `progressStep?: number | null` to `ConversationStreamProps`.
 Replace the agent message content block (the `<div className={cn('text-sm leading-relaxed', ...)}>{msg.content}</div>`) with:
 ```typescript
 {msg.wirelessAnswer ? (
-  <UltronAnswerCard
+  <CortexAnswerCard
     answer={msg.wirelessAnswer}
     onChipClick={onChipClick}
     onConfirm={onConfirm}
@@ -2367,7 +2367,7 @@ Replace the `isThinking` spinner block with:
     <Bot className="h-6 w-6 shrink-0 mt-0.5 text-violet-400" />
     <div className="flex-1 pt-1">
       {progressStep != null ? (
-        <UltronProgress step={progressStep} />
+        <CortexProgress step={progressStep} />
       ) : (
         <div className="flex items-center gap-1.5 py-1">
           {[0, 1, 2].map((i) => (
@@ -2387,21 +2387,21 @@ Add `onChipClick`, `onConfirm`, `progressStep` to the `ConversationStreamProps` 
   progressStep?: number | null;
 ```
 
-- [ ] **Update UltronContext.tsx**
+- [ ] **Update CortexContext.tsx**
 
 Add `progressStep` state:
 ```typescript
 const [progressStep, setProgressStep] = useState<number | null>(null);
 ```
 
-Add to `UltronContextValue` interface:
+Add to `CortexContextValue` interface:
 ```typescript
   progressStep: number | null;
 ```
 
-Import `queryUltr0nWireless` and `isWirelessQuestion`:
+Import `queryCortexWireless` and `isWirelessQuestion`:
 ```typescript
-import { queryUltr0nWireless } from '../services/ultr0nApiClient';
+import { queryCortexWireless } from '../services/cortexApiClient';
 ```
 
 Replace `sendMessage` with wireless-aware version:
@@ -2431,7 +2431,7 @@ const sendMessage = useCallback(async (message: string) => {
         setProgressStep(step);
       }, 800);
 
-      const answer = await queryUltr0nWireless(message, ultronContextRef.current);
+      const answer = await queryCortexWireless(message, cortexContextRef.current);
 
       clearInterval(interval);
       setProgressStep(6);
@@ -2480,13 +2480,13 @@ const sendMessage = useCallback(async (message: string) => {
 
     let sid = sessionIdRef.current;
     if (!sid) {
-      const { sessionId: newId } = await createUltr0nSession(ultronContextRef.current);
+      const { sessionId: newId } = await createCortexSession(cortexContextRef.current);
       sid = newId;
       setSessionId(newId);
       sessionIdRef.current = newId;
     }
 
-    const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
+    const reply = await sendCortexMessage(sid, message, cortexContextRef.current);
     setMessages((prev) => [...prev, reply]);
   } catch {
     setMessages((prev) => [...prev, {
@@ -2525,8 +2525,8 @@ npm run type-check 2>&1 | tail -10
 
 - [ ] **Commit**
 ```bash
-git add src/contexts/UltronContext.tsx src/components/AgentCoworker/panels/ConversationStream.tsx src/components/AgentCoworker/AgentWorkspace.tsx
-git commit -m "feat(ultr0n): wire wireless pipeline into UI — answer cards, progress, follow-up chips"
+git add src/contexts/CortexContext.tsx src/components/AgentCoworker/panels/ConversationStream.tsx src/components/AgentCoworker/AgentWorkspace.tsx
+git commit -m "feat(cortex): wire wireless pipeline into UI — answer cards, progress, follow-up chips"
 ```
 
 ---

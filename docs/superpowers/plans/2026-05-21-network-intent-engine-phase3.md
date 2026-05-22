@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a server-side validation engine to AURA that exposes REST endpoints for pre-provision intent validation, drift monitoring, and rollback, with Ultr0n able to query drift state conversationally.
+**Goal:** Add a server-side validation engine to AURA that exposes REST endpoints for pre-provision intent validation, drift monitoring, and rollback, with Cortex able to query drift state conversationally.
 
-**Architecture:** Pure-function validators (no HTTP deps) are orchestrated by an Express Router that handles all XCC fetching. A singleton DriftMonitor polls for topology/AP changes. Ultr0n gains a `getDriftAlerts` tool via a resolver pattern (no controller HTTP needed). All new code lives in `server/validationEngine/`.
+**Architecture:** Pure-function validators (no HTTP deps) are orchestrated by an Express Router that handles all XCC fetching. A singleton DriftMonitor polls for topology/AP changes. Cortex gains a `getDriftAlerts` tool via a resolver pattern (no controller HTTP needed). All new code lives in `server/validationEngine/`.
 
 **Tech Stack:** Node.js ESM, Express Router, Vitest, existing `fetchXcc` helper (new), existing `requireAuth`/`jsonParser` middleware from `server.js`.
 
@@ -24,7 +24,7 @@ server/validationEngine/
   driftMonitor.js                # polling service: topology + AP change detection
   validationRouter.js            # Express router: all /api/validate/*, /api/drift, /api/rollback/*
 
-server/ultr0n/
+server/cortex/
   toolDispatcher.js              # MODIFY: add registerResolver() + resolver dispatch branch
   toolCatalog.js                 # MODIFY: add getDriftAlerts tool spec (resolver-based)
 
@@ -1530,19 +1530,19 @@ git commit -m "feat(validation): Express router — intent validation, VLAN chec
 
 ---
 
-### Task 8: Ultr0n integration — toolDispatcher.js + toolCatalog.js
+### Task 8: Cortex integration — toolDispatcher.js + toolCatalog.js
 
 **Files:**
-- Modify: `server/ultr0n/toolDispatcher.js` (add `registerResolver` + resolver dispatch)
-- Modify: `server/ultr0n/toolCatalog.js` (add `getDriftAlerts` spec)
-- Modify: `server/ultr0n/toolCatalog.test.js` (add test for `getDriftAlerts`)
-- Modify: `server/ultr0n/toolDispatcher.js` test file (verify resolver dispatch)
+- Modify: `server/cortex/toolDispatcher.js` (add `registerResolver` + resolver dispatch)
+- Modify: `server/cortex/toolCatalog.js` (add `getDriftAlerts` spec)
+- Modify: `server/cortex/toolCatalog.test.js` (add test for `getDriftAlerts`)
+- Modify: `server/cortex/toolDispatcher.js` test file (verify resolver dispatch)
 
 The toolDispatcher currently builds URL as `${controllerUrl}/api/management${path}` for all tools. `getDriftAlerts` reads from the DriftMonitor singleton — no HTTP needed. Add a resolver registry: `registerResolver(name, fn)` stores `fn`. In `executeTool`, if a resolver is registered for `name`, call `fn(args)` instead of HTTP.
 
 - [ ] **Step 1: Add getDriftAlerts to toolCatalog.js and its test**
 
-In `server/ultr0n/toolCatalog.js`, add after the `getAuditLogs` entry (before the closing `}`):
+In `server/cortex/toolCatalog.js`, add after the `getAuditLogs` entry (before the closing `}`):
 
 ```js
   getDriftAlerts: {
@@ -1557,7 +1557,7 @@ In `server/ultr0n/toolCatalog.js`, add after the `getAuditLogs` entry (before th
   },
 ```
 
-In `server/ultr0n/toolCatalog.test.js`, add to the existing test suite:
+In `server/cortex/toolCatalog.test.js`, add to the existing test suite:
 
 ```js
   it('getDriftAlerts tool is in catalog with a valid spec', () => {
@@ -1582,20 +1582,20 @@ Also update the existing "does not expose any write/destructive tools" test to e
 - [ ] **Step 2: Run existing toolCatalog tests to confirm no regressions**
 
 ```bash
-npx vitest run server/ultr0n/toolCatalog.test.js
+npx vitest run server/cortex/toolCatalog.test.js
 ```
 Expected: New test FAIL (getDriftAlerts not yet added), existing tests PASS
 
 - [ ] **Step 3: Apply toolCatalog.js changes**
 
-Open `server/ultr0n/toolCatalog.js` and:
+Open `server/cortex/toolCatalog.js` and:
 1. Add `getDriftAlerts` entry after `getAuditLogs` (before the closing `};`).
 2. Add to `getToolSpecs()` — it already works since it uses `Object.values(TOOLS)`.
 3. Note: `isKnownTool` and `getTool` already work by key lookup.
 
 - [ ] **Step 4: Add resolver registry to toolDispatcher.js**
 
-At the top of `server/ultr0n/toolDispatcher.js`, add after the imports:
+At the top of `server/cortex/toolDispatcher.js`, add after the imports:
 
 ```js
 const resolvers = new Map(); // name → async (args) => data
@@ -1627,7 +1627,7 @@ export async function executeTool(name, args, { authToken, controllerUrl, fetchF
 - [ ] **Step 5: Run toolDispatcher tests**
 
 ```bash
-npx vitest run server/ultr0n/toolCatalog.test.js
+npx vitest run server/cortex/toolCatalog.test.js
 ```
 (toolDispatcher doesn't have a dedicated test file — the catalog test covers catalog lookups)
 
@@ -1636,8 +1636,8 @@ Expected: All tests PASS including new getDriftAlerts test
 - [ ] **Step 6: Commit**
 
 ```bash
-git add server/ultr0n/toolCatalog.js server/ultr0n/toolCatalog.test.js server/ultr0n/toolDispatcher.js
-git commit -m "feat(ultr0n): getDriftAlerts tool + resolver registry in toolDispatcher"
+git add server/cortex/toolCatalog.js server/cortex/toolCatalog.test.js server/cortex/toolDispatcher.js
+git commit -m "feat(cortex): getDriftAlerts tool + resolver registry in toolDispatcher"
 ```
 
 ---
@@ -1647,16 +1647,16 @@ git commit -m "feat(ultr0n): getDriftAlerts tool + resolver registry in toolDisp
 **Files:**
 - Modify: `server.js` (import + mount validationRouter, register getDriftAlerts resolver)
 
-Add the import and mount after the existing Ultr0n imports. Register the getDriftAlerts resolver after both `driftMonitor` and `registerResolver` are available.
+Add the import and mount after the existing Cortex imports. Register the getDriftAlerts resolver after both `driftMonitor` and `registerResolver` are available.
 
 - [ ] **Step 1: Add imports to server.js**
 
-At the top of `server.js`, after the Ultr0n imports block (after `import { attachRedQueenShell } from './server/redQueenShell.js';`):
+At the top of `server.js`, after the Cortex imports block (after `import { attachConsoleShell } from './server/consoleShell.js';`):
 
 ```js
 import { createValidationRouter } from './server/validationEngine/validationRouter.js';
 import { driftMonitor } from './server/validationEngine/driftMonitor.js';
-import { registerResolver } from './server/ultr0n/toolDispatcher.js';
+import { registerResolver } from './server/cortex/toolDispatcher.js';
 ```
 
 - [ ] **Step 2: Register the getDriftAlerts resolver**
@@ -1664,7 +1664,7 @@ import { registerResolver } from './server/ultr0n/toolDispatcher.js';
 After all imports but before `app.use(helmet(...))` (near the top where `DEFAULT_CONTROLLER_URL` is defined), add:
 
 ```js
-// Wire getDriftAlerts Ultr0n tool to the live drift monitor
+// Wire getDriftAlerts Cortex tool to the live drift monitor
 registerResolver('getDriftAlerts', () => ({
   alerts: driftMonitor.getAlerts(),
   status: driftMonitor.getStatus(),
@@ -1673,7 +1673,7 @@ registerResolver('getDriftAlerts', () => ({
 
 - [ ] **Step 3: Mount validationRouter**
 
-In `server.js`, find the comment `// ==================== Ultr0n AI Copilot Routes ====================` (around line 1379). Add the validation router mount BEFORE this block:
+In `server.js`, find the comment `// ==================== Cortex AI Copilot Routes ====================` (around line 1379). Add the validation router mount BEFORE this block:
 
 ```js
 // ==================== Validation Engine Routes ====================
@@ -1776,11 +1776,11 @@ curl -s http://localhost:3000/api/drift \
 
 Expected: `{ alerts: [], status: { polling: false, ... } }` (no drift on first call)
 
-- [ ] **Step 6: Verify getDriftAlerts in Ultr0n**
+- [ ] **Step 6: Verify getDriftAlerts in Cortex**
 
-In the AURA browser UI, open Ultr0n and ask: "What drift alerts are there?"
+In the AURA browser UI, open Cortex and ask: "What drift alerts are there?"
 
-Expected: Ultr0n calls `getDriftAlerts`, receives the alerts array, responds with something like "No drift alerts detected at this time."
+Expected: Cortex calls `getDriftAlerts`, receives the alerts array, responds with something like "No drift alerts detected at this time."
 
 - [ ] **Step 7: Commit smoke test confirmation**
 
@@ -1817,7 +1817,7 @@ git commit --allow-empty -m "test(validation): Phase 3 smoke test passed against
 | `GET /api/validate/topology` | Task 7 |
 | `GET /api/drift` | Task 7 |
 | `POST /api/rollback/:auditId` | Task 7 |
-| Ultr0n `getDriftAlerts` tool | Task 8 |
+| Cortex `getDriftAlerts` tool | Task 8 |
 | server.js mount | Task 9 |
 | Live lab smoke test | Task 10 |
 

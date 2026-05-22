@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import type { AgentMessage } from '../agentTypes';
-import { UltronAnswerCard } from '@/ultr0n/components/UltronAnswerCard';
-import { UltronProgress } from '@/ultr0n/components/UltronProgress';
+import { CortexAnswerCard } from '@/cortex/components/CortexAnswerCard';
+import { CortexProgress } from '@/cortex/components/CortexProgress';
 
 interface ConversationStreamProps {
   messages: AgentMessage[];
@@ -99,7 +99,7 @@ export function ConversationStream({
             )}
             <div className={cn('max-w-[88%] space-y-2', msg.role === 'user' && 'items-end')}>
               {msg.role === 'agent' && msg.wirelessAnswer ? (
-                <UltronAnswerCard
+                <CortexAnswerCard
                   answer={msg.wirelessAnswer}
                   onFollowUp={onFollowUp}
                   onConfirm={(token) => onConfirmWireless(msg.wirelessAnswer!.question, token)}
@@ -183,7 +183,7 @@ export function ConversationStream({
           <div className="flex gap-3">
             <span className="h-2 w-2 rounded-full bg-violet-400 shrink-0 mt-2 shadow-[0_0_8px_rgba(167,139,250,0.7)]" />
             {wirelessStage ? (
-              <UltronProgress stage={wirelessStage} />
+              <CortexProgress stage={wirelessStage} />
             ) : (
               <div className="flex items-center gap-1.5 py-1">
                 {[0, 1, 2].map((i) => (

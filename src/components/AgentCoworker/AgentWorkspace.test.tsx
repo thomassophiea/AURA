@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentWorkspace } from './AgentWorkspace';
 
-vi.mock('./panels/RedQueenShell', () => ({
-  RedQueenShell: () => <div data-testid="red-queen-shell">Terminal</div>,
+vi.mock('./panels/ConsoleShell', () => ({
+  ConsoleShell: () => <div data-testid="red-queen-shell">Terminal</div>,
 }));
 vi.mock('./panels/ConversationStream', () => ({
   ConversationStream: () => <div data-testid="conversation-stream">Chat</div>,
@@ -26,8 +26,8 @@ vi.mock('./panels/AuditHistoryView', () => ({
 vi.mock('./panels/APITimelineView', () => ({
   APITimelineView: () => <div data-testid="timeline-panel">Timeline</div>,
 }));
-vi.mock('../../contexts/UltronContext', () => ({
-  useUltronContext: () => ({
+vi.mock('../../contexts/CortexContext', () => ({
+  useCortexContext: () => ({
     messages: [],
     isThinking: false,
     wirelessStage: null,
@@ -39,8 +39,8 @@ vi.mock('../../contexts/UltronContext', () => ({
     confirmWirelessAction: vi.fn(),
   }),
 }));
-vi.mock('../../hooks/useUltr0nModel', () => ({
-  useUltr0nModel: () => ({
+vi.mock('../../hooks/useCortexModel', () => ({
+  useCortexModel: () => ({
     providers: [],
     models: [],
     selectedModel: null,

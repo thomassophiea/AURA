@@ -8,9 +8,9 @@ import expressRateLimit from 'express-rate-limit';
 import path from 'path';
 import { writeFileSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
-import { createLlmProvider, createLlmProviderForModel } from './server/ultr0nLlmProvider.js';
-import { runWirelessQuery } from './server/ultr0n/wirelessQueryPipeline.js';
+import { cortexOrchestrator } from './server/cortexOrchestrator.js';
+import { createLlmProvider, createLlmProviderForModel } from './server/cortexLlmProvider.js';
+import { runWirelessQuery } from './server/cortex/wirelessQueryPipeline.js';
 import {
   isModelAllowed,
   getConfiguredProviders,
@@ -18,18 +18,18 @@ import {
   discoverOllamaModels,
   SHELL_MODELS,
   DEFAULT_PICKER_MODEL,
-} from './server/ultr0nModelRegistry.js';
-import { attachRedQueenShell } from './server/redQueenShell.js';
+} from './server/cortexModelRegistry.js';
+import { attachConsoleShell } from './server/consoleShell.js';
 import { createValidationRouter } from './server/validationEngine/validationRouter.js';
 import { driftMonitor } from './server/validationEngine/driftMonitor.js';
-import { registerResolver } from './server/ultr0n/toolDispatcher.js';
+import { registerResolver } from './server/cortex/toolDispatcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// Wire getDriftAlerts Ultr0n tool to the live drift monitor
+// Wire getDriftAlerts Cortex tool to the live drift monitor
 registerResolver('getDriftAlerts', () => ({
   alerts: driftMonitor.getAlerts(),
   status: driftMonitor.getStatus(),
@@ -266,8 +266,8 @@ app.get('/api/version', async (req, res) => {
 // POST/PUT bodies to the controller (breaks login and all write operations)
 const jsonParser = express.json();
 
-// Ultr0n LLM endpoints — rate limited separately (LLM calls are expensive)
-const ultr0nRateLimit = rateLimit({ windowMs: 60_000, max: 30 });
+// Cortex LLM endpoints — rate limited separately (LLM calls are expensive)
+const cortexRateLimit = rateLimit({ windowMs: 60_000, max: 30 });
 
 // ==================== Simple in-memory rate limiter ====================
 // Limits per-IP requests on expensive/unauthenticated server-side endpoints.
@@ -1781,44 +1781,44 @@ app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
 app.use(['/api/validate', '/api/drift', '/api/rollback'], requireAuth);
 app.use('/api', createValidationRouter());
 
-// ==================== Ultr0n AI Copilot Routes ====================
+// ==================== Cortex AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are
 // handled server-side rather than forwarded to the controller.
 
-app.post('/api/ultr0n/session', requireAuth, ultr0nRateLimit, jsonParser, (req, res) => {
+app.post('/api/cortex/session', requireAuth, cortexRateLimit, jsonParser, (req, res) => {
   try {
     const context = req.body?.context ?? {};
-    const result = ultr0nOrchestrator.createSession(context);
+    const result = cortexOrchestrator.createSession(context);
     res.json(result);
   } catch (err) {
-    console.error('[Ultr0n] createSession error:', err.message);
-    res.status(500).json({ error: 'Failed to create Ultr0n session' });
+    console.error('[Cortex] createSession error:', err.message);
+    res.status(500).json({ error: 'Failed to create Cortex session' });
   }
 });
 
-app.get('/api/ultr0n/models', requireAuth, async (_req, res) => {
+app.get('/api/cortex/models', requireAuth, async (_req, res) => {
   try {
     const providers = getConfiguredProviders();
     const llmModels = await getAllModelsForConfiguredProviders();
     res.json({
       providers,
       defaultModel: DEFAULT_PICKER_MODEL,
-      llmDefaultModel: ultr0nOrchestrator.defaultModel,
+      llmDefaultModel: cortexOrchestrator.defaultModel,
       models: [...SHELL_MODELS, ...llmModels],
     });
   } catch (err) {
-    console.error('[Ultr0n] /models error:', err.message);
+    console.error('[Cortex] /models error:', err.message);
     res.status(500).json({ error: 'Failed to assemble model list' });
   }
 });
 
-app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
+app.post('/api/cortex/message', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
   try {
     const { sessionId, message, context, model } = req.body ?? {};
     if (!sessionId || !message) {
       return res.status(400).json({ error: 'sessionId and message are required' });
     }
-    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+    if (!cortexOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
     if (model) {
@@ -1831,36 +1831,36 @@ app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async 
     }
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
-    const reply = await ultr0nOrchestrator.processMessage(sessionId, message, context ?? {}, {
+    const reply = await cortexOrchestrator.processMessage(sessionId, message, context ?? {}, {
       model: model ?? undefined,
       authToken,
       controllerUrl,
     });
     res.json(reply);
   } catch (err) {
-    console.error('[Ultr0n] processMessage error:', err.message);
+    console.error('[Cortex] processMessage error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to process message' });
   }
 });
 
-app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
+app.post('/api/cortex/context', requireAuth, jsonParser, (req, res) => {
   try {
     const { sessionId, context } = req.body ?? {};
     if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
-    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+    if (!cortexOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    ultr0nOrchestrator.updateContext(sessionId, context ?? {});
+    cortexOrchestrator.updateContext(sessionId, context ?? {});
     res.json({ ok: true });
   } catch (err) {
-    console.error('[Ultr0n] updateContext error:', err.message);
+    console.error('[Cortex] updateContext error:', err.message);
     res.status(500).json({ error: 'Failed to update context' });
   }
 });
 
 // Write live session context to .aura-session.md so Claude reads it silently
 // via the @.aura-session.md import in CLAUDE.md at startup.
-app.post('/api/ultr0n/shell/context', requireAuth, jsonParser, (req, res) => {
+app.post('/api/cortex/shell/context', requireAuth, jsonParser, (req, res) => {
   const { markdown } = req.body ?? {};
   if (!markdown || typeof markdown !== 'string') {
     return res.status(400).json({ error: 'markdown string required' });
@@ -1875,9 +1875,9 @@ app.post('/api/ultr0n/shell/context', requireAuth, jsonParser, (req, res) => {
 });
 
 app.post(
-  '/api/ultr0n/wireless/query',
+  '/api/cortex/wireless/query',
   requireAuth,
-  ultr0nRateLimit,
+  cortexRateLimit,
   jsonParser,
   async (req, res) => {
     try {
@@ -1902,7 +1902,7 @@ app.post(
       } else {
         const fallback = createLlmProvider({});
         llmProvider = fallback.provider;
-        model = process.env.ULTR0N_LLM_MODEL ?? fallback.defaultModel;
+        model = process.env.CORTEX_LLM_MODEL ?? fallback.defaultModel;
       }
       const llmFn = async ({ systemMsg, userMsg }) => {
         const response = await llmProvider.generateResponse({
@@ -1929,24 +1929,24 @@ app.post(
 
       res.json(answer);
     } catch (err) {
-      console.error('[Ultr0n] wireless/query error:', err.message);
+      console.error('[Cortex] wireless/query error:', err.message);
       res.status(500).json({ error: err.message || 'Failed to process wireless query' });
     }
   }
 );
 
-app.post('/api/ultr0n/tool-call', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/tool-call', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Tool calling not yet implemented (Phase 3)' });
 });
 
-app.post('/api/ultr0n/config/preview', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/config/preview', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Config preview not yet implemented (Phase 3)' });
 });
 
-app.post('/api/ultr0n/config/commit', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/config/commit', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Config commit not yet implemented (Phase 3)' });
 });
-// ==================== End Ultr0n Routes ====================
+// ==================== End Cortex Routes ====================
 
 // Proxy all /api/* requests to Campus Controller (with dynamic routing support)
 console.log('[Proxy Server] Setting up /api/* proxy middleware with dynamic routing');
@@ -2005,12 +2005,12 @@ app.get('*', (req, res) => {
 });
 
 const httpServer = http.createServer(app);
-attachRedQueenShell(httpServer);
+attachConsoleShell(httpServer);
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
   console.log(`[Proxy Server] Proxying /api/* to ${DEFAULT_CONTROLLER_URL} (with dynamic routing)`);
-  console.log(`[Proxy Server] AURA Agent shell WS: ws://0.0.0.0:${PORT}/api/ultr0n/shell/ws`);
+  console.log(`[Proxy Server] AURA Agent shell WS: ws://0.0.0.0:${PORT}/api/cortex/shell/ws`);
   console.log(`[Proxy Server] Health check available at http://localhost:${PORT}/health`);
 });
 

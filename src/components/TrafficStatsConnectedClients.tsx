@@ -70,7 +70,7 @@ import { useTableCustomization } from '../hooks/useTableCustomization';
 import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
 import { useAppContext } from '@/contexts/AppContext';
-import { useUltronContext } from '@/contexts/UltronContext';
+import { useCortexContext } from '@/contexts/CortexContext';
 import { Server } from 'lucide-react';
 
 interface ConnectedClientsProps {
@@ -79,7 +79,7 @@ interface ConnectedClientsProps {
 
 export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
-  const { setWirelessContext } = useUltronContext();
+  const { setWirelessContext } = useCortexContext();
   const [stations, setStations] = useState<Station[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');

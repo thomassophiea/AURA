@@ -1,6 +1,6 @@
 // src/components/AgentCoworker/agentTypes.ts
 
-import type { UltronWirelessAnswer } from '@/ultr0n/types';
+import type { CortexWirelessAnswer } from '@/cortex/types';
 
 export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 // pixel widths:            400         520           720
@@ -30,8 +30,8 @@ export type PlanStatus =
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
-// Re-export UltronPageContext as AssistantUIContext for backward compatibility
-export type { UltronPageContext as AssistantUIContext } from '@/types/ultron';
+// Re-export CortexPageContext as AssistantUIContext for backward compatibility
+export type { CortexPageContext as AssistantUIContext } from '@/types/cortex';
 
 export interface AgentToolCall {
   id: string;
@@ -54,7 +54,7 @@ export interface AgentMessage {
   executionPlan?: ExecutionPlan;
   diff?: DiffEntry[];
   feedback?: 'up' | 'down' | null;
-  wirelessAnswer?: UltronWirelessAnswer;
+  wirelessAnswer?: CortexWirelessAnswer;
   toolCalls?: AgentToolCall[];
 }
 

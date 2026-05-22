@@ -1,6 +1,6 @@
 /**
  * Agent context service — builds a live session snapshot and writes it to
- * .aura-session.md on the server (via POST /api/ultr0n/shell/context) so
+ * .aura-session.md on the server (via POST /api/cortex/shell/context) so
  * Claude reads it silently through the @.aura-session.md import in CLAUDE.md.
  *
  * Also persists to localStorage so context survives page reloads and works
@@ -91,7 +91,7 @@ export async function writeAgentContext(input: ContextInput): Promise<void> {
   // Write to server so Claude reads it via CLAUDE.md @import at startup
   try {
     const token = localStorage.getItem('access_token') ?? '';
-    await fetch('/api/ultr0n/shell/context', {
+    await fetch('/api/cortex/shell/context', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -39,7 +39,7 @@ import { apiService, Site } from '../services/api';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
-import { useUltronContext } from '../contexts/UltronContext';
+import { useCortexContext } from '../contexts/CortexContext';
 import {
   LineChart,
   Line,
@@ -152,7 +152,7 @@ export function ServiceLevelsEnhanced() {
   // Sync with global site filter for consistent context scoping
   const { filters, updateFilter } = useGlobalFilters();
   const scope = useContextScope();
-  const { setWirelessContext } = useUltronContext();
+  const { setWirelessContext } = useCortexContext();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -182,7 +182,7 @@ export default defineConfig(({ mode }) => ({
     // Local dev: Vite serves the SPA + HMR on 3000; backend (Express +
     // SSH/WS bridge) runs on 3001. Proxy /api/* to it so the agent shell
     // and controller proxy work during HMR. `ws: true` makes the
-    // WebSocket upgrade for /api/ultr0n/shell/ws forward correctly.
+    // WebSocket upgrade for /api/cortex/shell/ws forward correctly.
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

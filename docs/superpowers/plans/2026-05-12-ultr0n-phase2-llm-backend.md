@@ -1,10 +1,10 @@
-# Ultr0n Phase 2 — LLM Backend Implementation Plan
+# Cortex Phase 2 — LLM Backend Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Wire Ultr0n to a real LLM (OpenAI) via a pluggable backend, replacing the mock regex responses from Phase 1 for conversational queries.
+**Goal:** Wire Cortex to a real LLM (OpenAI) via a pluggable backend, replacing the mock regex responses from Phase 1 for conversational queries.
 
-**Architecture:** Three new ES-module server files (`server/ultr0nLlmProvider.js`, `server/ultr0nContextSanitizer.js`, `server/ultr0nOrchestrator.js`) provide the backend LLM layer. Six `/api/ultr0n/*` routes are added to `server.js` before the controller proxy. The frontend `ultr0nApiClient.ts` stubs are replaced with real `fetch` calls, and `UltronContext.tsx` switches from agentService mock responses to the LLM backend for read/conversational messages (write intents continue using local plan building via agentService).
+**Architecture:** Three new ES-module server files (`server/cortexLlmProvider.js`, `server/cortexContextSanitizer.js`, `server/cortexOrchestrator.js`) provide the backend LLM layer. Six `/api/cortex/*` routes are added to `server.js` before the controller proxy. The frontend `cortexApiClient.ts` stubs are replaced with real `fetch` calls, and `CortexContext.tsx` switches from agentService mock responses to the LLM backend for read/conversational messages (write intents continue using local plan building via agentService).
 
 **Tech Stack:** Node.js native `fetch` for OpenAI REST API calls (no SDK dependency), Express.js, Vitest for tests, React 19 / TypeScript 5.7 frontend.
 
@@ -27,30 +27,30 @@ OPENAI_API_BASE=https://api.openai.com/v1  # optional override for Azure/proxies
 
 | File | Status | Responsibility |
 |---|---|---|
-| `server/ultr0nLlmProvider.js` | **Create** | LLM provider abstraction + OpenAI + Mock implementations |
-| `server/ultr0nContextSanitizer.js` | **Create** | Strip secrets from UltronPageContext before sending to LLM |
-| `server/ultr0nOrchestrator.js` | **Create** | Session store, system prompt builder, message orchestration |
-| `server/ultr0nLlmProvider.test.js` | **Create** | Unit tests for sanitizer + Mock provider |
-| `server/ultr0nOrchestrator.test.js` | **Create** | Unit tests for session management |
-| `server.js` | **Modify** | Add 6 `/api/ultr0n/*` routes before the controller proxy (line ~1357) |
-| `src/services/ultr0nApiClient.ts` | **Modify** | Replace stubs with real `fetch` calls |
-| `src/contexts/UltronContext.tsx` | **Modify** | Use API client for conversational messages; keep agentService for plans |
+| `server/cortexLlmProvider.js` | **Create** | LLM provider abstraction + OpenAI + Mock implementations |
+| `server/cortexContextSanitizer.js` | **Create** | Strip secrets from CortexPageContext before sending to LLM |
+| `server/cortexOrchestrator.js` | **Create** | Session store, system prompt builder, message orchestration |
+| `server/cortexLlmProvider.test.js` | **Create** | Unit tests for sanitizer + Mock provider |
+| `server/cortexOrchestrator.test.js` | **Create** | Unit tests for session management |
+| `server.js` | **Modify** | Add 6 `/api/cortex/*` routes before the controller proxy (line ~1357) |
+| `src/services/cortexApiClient.ts` | **Modify** | Replace stubs with real `fetch` calls |
+| `src/contexts/CortexContext.tsx` | **Modify** | Use API client for conversational messages; keep agentService for plans |
 
 ---
 
-## Task 1: Create `server/ultr0nLlmProvider.js`
+## Task 1: Create `server/cortexLlmProvider.js`
 
 **Files:**
-- Create: `server/ultr0nLlmProvider.js`
-- Test: `server/ultr0nLlmProvider.test.js`
+- Create: `server/cortexLlmProvider.js`
+- Test: `server/cortexLlmProvider.test.js`
 
 - [ ] **Step 1.1: Write failing tests**
 
-Create `server/ultr0nLlmProvider.test.js`:
+Create `server/cortexLlmProvider.test.js`:
 
 ```js
 import { describe, it, expect } from 'vitest';
-import { MockLlmProvider, createLlmProvider } from './ultr0nLlmProvider.js';
+import { MockLlmProvider, createLlmProvider } from './cortexLlmProvider.js';
 
 describe('MockLlmProvider', () => {
   it('returns a response with a message string', async () => {
@@ -101,16 +101,16 @@ describe('createLlmProvider', () => {
 - [ ] **Step 1.2: Run tests to confirm failure**
 
 ```bash
-npm test -- --run server/ultr0nLlmProvider.test.js
+npm test -- --run server/cortexLlmProvider.test.js
 ```
 
-Expected: FAIL — `Cannot find module './ultr0nLlmProvider.js'`
+Expected: FAIL — `Cannot find module './cortexLlmProvider.js'`
 
-- [ ] **Step 1.3: Create `server/ultr0nLlmProvider.js`**
+- [ ] **Step 1.3: Create `server/cortexLlmProvider.js`**
 
 ```js
 /**
- * Ultr0n LLM Provider abstraction
+ * Cortex LLM Provider abstraction
  * Supports OpenAI (default), Mock (dev/test), Azure stub, Anthropic stub.
  *
  * @typedef {{ role: 'system'|'user'|'assistant'|'tool', content: string, name?: string, toolCallId?: string }} LlmMessage
@@ -132,13 +132,13 @@ export class MockLlmProvider {
 
     let message;
     if (question.includes('client') || question.includes('station')) {
-      message = `[Mock Ultr0n] On ${pageName}: I can see client connectivity data. In a live deployment I would query the controller for real client metrics, authentication failures, and roaming events.`;
+      message = `[Mock Cortex] On ${pageName}: I can see client connectivity data. In a live deployment I would query the controller for real client metrics, authentication failures, and roaming events.`;
     } else if (question.includes('ap') || question.includes('access point')) {
-      message = `[Mock Ultr0n] On ${pageName}: Access point health data would be fetched from the controller. I would report uptime, client load, and any alarms.`;
+      message = `[Mock Cortex] On ${pageName}: Access point health data would be fetched from the controller. I would report uptime, client load, and any alarms.`;
     } else if (question.includes('site')) {
-      message = `[Mock Ultr0n] On ${pageName}: Site-level metrics would be aggregated from all APs. I would highlight any sites with degraded service levels.`;
+      message = `[Mock Cortex] On ${pageName}: Site-level metrics would be aggregated from all APs. I would highlight any sites with degraded service levels.`;
     } else {
-      message = `[Mock Ultr0n] On ${pageName}: I received your question. In a live deployment with OPENAI_API_KEY set, I would provide a detailed, data-driven answer using the full page context.`;
+      message = `[Mock Cortex] On ${pageName}: I received your question. In a live deployment with OPENAI_API_KEY set, I would provide a detailed, data-driven answer using the full page context.`;
     }
 
     return { message };
@@ -235,7 +235,7 @@ export function createLlmProvider(config = {}) {
   if (provider === 'openai') {
     const apiKey = config.apiKey || process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      console.warn('[Ultr0n] OPENAI_API_KEY not set — falling back to MockLlmProvider');
+      console.warn('[Cortex] OPENAI_API_KEY not set — falling back to MockLlmProvider');
       return new MockLlmProvider();
     }
     return new OpenAiLlmProvider({
@@ -254,7 +254,7 @@ export function createLlmProvider(config = {}) {
 - [ ] **Step 1.4: Run tests**
 
 ```bash
-npm test -- --run server/ultr0nLlmProvider.test.js
+npm test -- --run server/cortexLlmProvider.test.js
 ```
 
 Expected: All 4 tests PASS.
@@ -262,26 +262,26 @@ Expected: All 4 tests PASS.
 - [ ] **Step 1.5: Commit**
 
 ```bash
-git add server/ultr0nLlmProvider.js server/ultr0nLlmProvider.test.js
-git commit -m "feat(ultr0n): add LLM provider abstraction (OpenAI + Mock)"
+git add server/cortexLlmProvider.js server/cortexLlmProvider.test.js
+git commit -m "feat(cortex): add LLM provider abstraction (OpenAI + Mock)"
 ```
 
 ---
 
-## Task 2: Create `server/ultr0nContextSanitizer.js`
+## Task 2: Create `server/cortexContextSanitizer.js`
 
 **Files:**
-- Create: `server/ultr0nContextSanitizer.js`
-- Test: `server/ultr0nContextSanitizer.test.js` (added to `server/ultr0nLlmProvider.test.js`)
+- Create: `server/cortexContextSanitizer.js`
+- Test: `server/cortexContextSanitizer.test.js` (added to `server/cortexLlmProvider.test.js`)
 
 - [ ] **Step 2.1: Add sanitizer tests to existing test file**
 
-Append to `server/ultr0nLlmProvider.test.js`:
+Append to `server/cortexLlmProvider.test.js`:
 
 ```js
-import { sanitizeUltr0nContext } from './ultr0nContextSanitizer.js';
+import { sanitizeCortexContext } from './cortexContextSanitizer.js';
 
-describe('sanitizeUltr0nContext', () => {
+describe('sanitizeCortexContext', () => {
   it('redacts top-level sensitive string fields', () => {
     const ctx = {
       route: 'configure-networks',
@@ -293,7 +293,7 @@ describe('sanitizeUltr0nContext', () => {
         timeRange: '24h',
       },
     };
-    const result = sanitizeUltr0nContext(ctx);
+    const result = sanitizeCortexContext(ctx);
     expect(result.filters.psk).toBe('[REDACTED]');
     expect(result.filters.password).toBe('[REDACTED]');
     expect(result.filters.timeRange).toBe('24h');
@@ -301,7 +301,7 @@ describe('sanitizeUltr0nContext', () => {
 
   it('does not mutate the original context', () => {
     const ctx = { filters: { psk: 'secret' } };
-    sanitizeUltr0nContext(ctx);
+    sanitizeCortexContext(ctx);
     expect(ctx.filters.psk).toBe('secret');
   });
 
@@ -309,14 +309,14 @@ describe('sanitizeUltr0nContext', () => {
     const ctx = {
       selectedObject: { name: 'SSID-Corp', psk: 'p@ssw0rd', ssid: 'Corp-WiFi' },
     };
-    const result = sanitizeUltr0nContext(ctx);
+    const result = sanitizeCortexContext(ctx);
     expect(result.selectedObject.psk).toBe('[REDACTED]');
     expect(result.selectedObject.name).toBe('SSID-Corp');
   });
 
   it('handles null/undefined context gracefully', () => {
-    expect(sanitizeUltr0nContext(null)).toBeNull();
-    expect(sanitizeUltr0nContext(undefined)).toBeUndefined();
+    expect(sanitizeCortexContext(null)).toBeNull();
+    expect(sanitizeCortexContext(undefined)).toBeUndefined();
   });
 
   it('truncates visibleRowsSummary sampleRows to 5', () => {
@@ -327,7 +327,7 @@ describe('sanitizeUltr0nContext', () => {
         sampleRows: Array.from({ length: 20 }, (_, i) => ({ mac: `00:${i}`, rssi: -70 })),
       },
     };
-    const result = sanitizeUltr0nContext(ctx);
+    const result = sanitizeCortexContext(ctx);
     expect(result.visibleRowsSummary.sampleRows.length).toBe(5);
     expect(result.visibleRowsSummary.rowCount).toBe(100);
   });
@@ -337,16 +337,16 @@ describe('sanitizeUltr0nContext', () => {
 - [ ] **Step 2.2: Run to confirm failure**
 
 ```bash
-npm test -- --run server/ultr0nLlmProvider.test.js
+npm test -- --run server/cortexLlmProvider.test.js
 ```
 
-Expected: FAIL — `Cannot find module './ultr0nContextSanitizer.js'`
+Expected: FAIL — `Cannot find module './cortexContextSanitizer.js'`
 
-- [ ] **Step 2.3: Create `server/ultr0nContextSanitizer.js`**
+- [ ] **Step 2.3: Create `server/cortexContextSanitizer.js`**
 
 ```js
 /**
- * Sanitizes UltronPageContext before sending to an LLM.
+ * Sanitizes CortexPageContext before sending to an LLM.
  * Deep-clones the context, redacts sensitive string fields,
  * and truncates large arrays to reduce token usage.
  */
@@ -379,10 +379,10 @@ function redactObject(obj) {
 }
 
 /**
- * @param {import('../src/types/ultron.js').UltronPageContext | null | undefined} context
+ * @param {import('../src/types/cortex.js').CortexPageContext | null | undefined} context
  * @returns {object | null | undefined}
  */
-export function sanitizeUltr0nContext(context) {
+export function sanitizeCortexContext(context) {
   if (context === null || context === undefined) return context;
 
   const sanitized = redactObject(context);
@@ -405,7 +405,7 @@ export function sanitizeUltr0nContext(context) {
 - [ ] **Step 2.4: Run tests**
 
 ```bash
-npm test -- --run server/ultr0nLlmProvider.test.js
+npm test -- --run server/cortexLlmProvider.test.js
 ```
 
 Expected: All 9 tests PASS (4 provider + 5 sanitizer).
@@ -413,26 +413,26 @@ Expected: All 9 tests PASS (4 provider + 5 sanitizer).
 - [ ] **Step 2.5: Commit**
 
 ```bash
-git add server/ultr0nContextSanitizer.js
-git commit -m "feat(ultr0n): add context sanitizer (strips secrets, truncates rows)"
+git add server/cortexContextSanitizer.js
+git commit -m "feat(cortex): add context sanitizer (strips secrets, truncates rows)"
 ```
 
 ---
 
-## Task 3: Create `server/ultr0nOrchestrator.js`
+## Task 3: Create `server/cortexOrchestrator.js`
 
 **Files:**
-- Create: `server/ultr0nOrchestrator.js`
-- Test: `server/ultr0nOrchestrator.test.js`
+- Create: `server/cortexOrchestrator.js`
+- Test: `server/cortexOrchestrator.test.js`
 
 - [ ] **Step 3.1: Write failing tests**
 
-Create `server/ultr0nOrchestrator.test.js`:
+Create `server/cortexOrchestrator.test.js`:
 
 ```js
 import { describe, it, expect, beforeEach } from 'vitest';
-import { Ultr0nOrchestrator } from './ultr0nOrchestrator.js';
-import { MockLlmProvider } from './ultr0nLlmProvider.js';
+import { CortexOrchestrator } from './cortexOrchestrator.js';
+import { MockLlmProvider } from './cortexLlmProvider.js';
 
 function makeContext(overrides = {}) {
   return {
@@ -448,11 +448,11 @@ function makeContext(overrides = {}) {
   };
 }
 
-describe('Ultr0nOrchestrator', () => {
+describe('CortexOrchestrator', () => {
   let orchestrator;
 
   beforeEach(() => {
-    orchestrator = new Ultr0nOrchestrator({ llmProvider: new MockLlmProvider() });
+    orchestrator = new CortexOrchestrator({ llmProvider: new MockLlmProvider() });
   });
 
   it('createSession returns a sessionId string', () => {
@@ -517,21 +517,21 @@ describe('Ultr0nOrchestrator', () => {
 - [ ] **Step 3.2: Run to confirm failure**
 
 ```bash
-npm test -- --run server/ultr0nOrchestrator.test.js
+npm test -- --run server/cortexOrchestrator.test.js
 ```
 
-Expected: FAIL — `Cannot find module './ultr0nOrchestrator.js'`
+Expected: FAIL — `Cannot find module './cortexOrchestrator.js'`
 
-- [ ] **Step 3.3: Create `server/ultr0nOrchestrator.js`**
+- [ ] **Step 3.3: Create `server/cortexOrchestrator.js`**
 
 ```js
 import crypto from 'crypto';
-import { sanitizeUltr0nContext } from './ultr0nContextSanitizer.js';
-import { createLlmProvider } from './ultr0nLlmProvider.js';
+import { sanitizeCortexContext } from './cortexContextSanitizer.js';
+import { createLlmProvider } from './cortexLlmProvider.js';
 
 const SESSION_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
-const SYSTEM_PROMPT = `You are Ultr0n, an AI network operations and configuration copilot embedded in Extreme Platform ONE.
+const SYSTEM_PROMPT = `You are Cortex, an AI network operations and configuration copilot embedded in Extreme Platform ONE.
 You are page-aware. You know the current page, selected objects, filters, visible data, site context, org context, and available actions.
 Your job is to:
 - summarize what the user is viewing
@@ -549,7 +549,7 @@ Rules:
 - When on a page, make your response relevant to that page.`;
 
 function buildSystemMessage(context) {
-  const sanitized = sanitizeUltr0nContext(context);
+  const sanitized = sanitizeCortexContext(context);
   const lines = [
     SYSTEM_PROMPT,
     '',
@@ -587,7 +587,7 @@ function buildSystemMessage(context) {
   return { role: 'system', content: lines.join('\n') };
 }
 
-export class Ultr0nOrchestrator {
+export class CortexOrchestrator {
   #sessions = new Map();
   #llmProvider;
   #model;
@@ -607,7 +607,7 @@ export class Ultr0nOrchestrator {
       createdAt: new Date(),
       lastActiveAt: new Date(),
     });
-    console.log(`[Ultr0n] Session created: ${sessionId} (page: ${context?.pageName})`);
+    console.log(`[Cortex] Session created: ${sessionId} (page: ${context?.pageName})`);
     return { sessionId };
   }
 
@@ -681,21 +681,21 @@ export class Ultr0nOrchestrator {
         pruned++;
       }
     }
-    if (pruned > 0) console.log(`[Ultr0n] Pruned ${pruned} expired session(s)`);
+    if (pruned > 0) console.log(`[Cortex] Pruned ${pruned} expired session(s)`);
   }
 }
 
 // Singleton for use by server routes
-export const ultr0nOrchestrator = new Ultr0nOrchestrator();
+export const cortexOrchestrator = new CortexOrchestrator();
 
 // Prune every 30 minutes
-setInterval(() => ultr0nOrchestrator.pruneExpiredSessions(), 30 * 60 * 1000);
+setInterval(() => cortexOrchestrator.pruneExpiredSessions(), 30 * 60 * 1000);
 ```
 
 - [ ] **Step 3.4: Run tests**
 
 ```bash
-npm test -- --run server/ultr0nOrchestrator.test.js
+npm test -- --run server/cortexOrchestrator.test.js
 ```
 
 Expected: All 7 tests PASS.
@@ -703,13 +703,13 @@ Expected: All 7 tests PASS.
 - [ ] **Step 3.5: Commit**
 
 ```bash
-git add server/ultr0nOrchestrator.js server/ultr0nOrchestrator.test.js
-git commit -m "feat(ultr0n): add Ultr0n orchestrator with session management"
+git add server/cortexOrchestrator.js server/cortexOrchestrator.test.js
+git commit -m "feat(cortex): add Cortex orchestrator with session management"
 ```
 
 ---
 
-## Task 4: Add `/api/ultr0n/*` Routes to `server.js`
+## Task 4: Add `/api/cortex/*` Routes to `server.js`
 
 **Files:**
 - Modify: `server.js` (insert before line ~1357, the `/api` proxy middleware)
@@ -719,16 +719,16 @@ git commit -m "feat(ultr0n): add Ultr0n orchestrator with session management"
 Find the top import block in server.js (starts with `import express from 'express'`). Add the orchestrator import after the last existing import in that group (around line 8):
 
 ```js
-import { ultr0nOrchestrator } from './server/ultr0nOrchestrator.js';
+import { cortexOrchestrator } from './server/cortexOrchestrator.js';
 ```
 
-- [ ] **Step 4.2: Add Ultr0n rate limiter**
+- [ ] **Step 4.2: Add Cortex rate limiter**
 
 After the `const jsonParser = express.json();` line (line ~198), add:
 
 ```js
-// Ultr0n LLM endpoints — rate limited separately (LLM calls are expensive)
-const ultr0nRateLimit = rateLimit({ windowMs: 60_000, max: 30 });
+// Cortex LLM endpoints — rate limited separately (LLM calls are expensive)
+const cortexRateLimit = rateLimit({ windowMs: 60_000, max: 30 });
 ```
 
 - [ ] **Step 4.3: Add the 6 routes**
@@ -741,65 +741,65 @@ Find this comment in server.js:
 Insert the following block IMMEDIATELY BEFORE that line:
 
 ```js
-// ==================== Ultr0n AI Copilot Routes ====================
+// ==================== Cortex AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are
 // handled server-side rather than forwarded to the controller.
 
-app.post('/api/ultr0n/session', requireAuth, ultr0nRateLimit, jsonParser, (req, res) => {
+app.post('/api/cortex/session', requireAuth, cortexRateLimit, jsonParser, (req, res) => {
   try {
     const context = req.body?.context ?? {};
-    const result = ultr0nOrchestrator.createSession(context);
+    const result = cortexOrchestrator.createSession(context);
     res.json(result);
   } catch (err) {
-    console.error('[Ultr0n] createSession error:', err.message);
-    res.status(500).json({ error: 'Failed to create Ultr0n session' });
+    console.error('[Cortex] createSession error:', err.message);
+    res.status(500).json({ error: 'Failed to create Cortex session' });
   }
 });
 
-app.post('/api/ultr0n/message', requireAuth, ultr0nRateLimit, jsonParser, async (req, res) => {
+app.post('/api/cortex/message', requireAuth, cortexRateLimit, jsonParser, async (req, res) => {
   try {
     const { sessionId, message, context } = req.body ?? {};
     if (!sessionId || !message) {
       return res.status(400).json({ error: 'sessionId and message are required' });
     }
-    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+    if (!cortexOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    const reply = await ultr0nOrchestrator.processMessage(sessionId, message, context ?? {});
+    const reply = await cortexOrchestrator.processMessage(sessionId, message, context ?? {});
     res.json(reply);
   } catch (err) {
-    console.error('[Ultr0n] processMessage error:', err.message);
+    console.error('[Cortex] processMessage error:', err.message);
     res.status(500).json({ error: err.message || 'Failed to process message' });
   }
 });
 
-app.post('/api/ultr0n/context', requireAuth, jsonParser, (req, res) => {
+app.post('/api/cortex/context', requireAuth, jsonParser, (req, res) => {
   try {
     const { sessionId, context } = req.body ?? {};
     if (!sessionId) return res.status(400).json({ error: 'sessionId is required' });
-    if (!ultr0nOrchestrator.hasSession(sessionId)) {
+    if (!cortexOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
-    ultr0nOrchestrator.updateContext(sessionId, context ?? {});
+    cortexOrchestrator.updateContext(sessionId, context ?? {});
     res.json({ ok: true });
   } catch (err) {
-    console.error('[Ultr0n] updateContext error:', err.message);
+    console.error('[Cortex] updateContext error:', err.message);
     res.status(500).json({ error: 'Failed to update context' });
   }
 });
 
-app.post('/api/ultr0n/tool-call', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/tool-call', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Tool calling not yet implemented (Phase 3)' });
 });
 
-app.post('/api/ultr0n/config/preview', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/config/preview', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Config preview not yet implemented (Phase 3)' });
 });
 
-app.post('/api/ultr0n/config/commit', requireAuth, jsonParser, (_req, res) => {
+app.post('/api/cortex/config/commit', requireAuth, jsonParser, (_req, res) => {
   res.status(501).json({ error: 'Config commit not yet implemented (Phase 3)' });
 });
-// ==================== End Ultr0n Routes ====================
+// ==================== End Cortex Routes ====================
 ```
 
 - [ ] **Step 4.4: Test the server starts without errors**
@@ -822,33 +822,33 @@ Expected: Server starts, logs `[Proxy Server] Starting...` and `[TEST] Server im
 
 ```bash
 git add server.js
-git commit -m "feat(ultr0n): add /api/ultr0n/* routes to Express server"
+git commit -m "feat(cortex): add /api/cortex/* routes to Express server"
 ```
 
 ---
 
-## Task 5: Update `src/services/ultr0nApiClient.ts`
+## Task 5: Update `src/services/cortexApiClient.ts`
 
 **Files:**
-- Modify: `src/services/ultr0nApiClient.ts`
+- Modify: `src/services/cortexApiClient.ts`
 
 Replace all stub bodies with real `fetch` calls. The apiService token is in localStorage as `access_token` — read it via the same pattern used elsewhere in the codebase.
 
 - [ ] **Step 5.1: Read current file**
 
-Verify current content of `src/services/ultr0nApiClient.ts` matches the Phase 1 stubs before editing.
+Verify current content of `src/services/cortexApiClient.ts` matches the Phase 1 stubs before editing.
 
 - [ ] **Step 5.2: Replace with real implementation**
 
-Overwrite `src/services/ultr0nApiClient.ts` with:
+Overwrite `src/services/cortexApiClient.ts` with:
 
 ```ts
 /**
- * Ultr0n API Client
- * Phase 2: real fetch calls to /api/ultr0n/* backend routes.
+ * Cortex API Client
+ * Phase 2: real fetch calls to /api/cortex/* backend routes.
  */
 
-import type { UltronPageContext } from '@/types/ultron';
+import type { CortexPageContext } from '@/types/cortex';
 import type { AgentMessage } from '../components/AgentCoworker/agentTypes';
 
 function getAuthHeader(): string {
@@ -860,7 +860,7 @@ function getAuthHeader(): string {
   }
 }
 
-async function ultr0nFetch<T>(path: string, body: unknown): Promise<T> {
+async function cortexFetch<T>(path: string, body: unknown): Promise<T> {
   const resp = await fetch(path, {
     method: 'POST',
     headers: {
@@ -872,71 +872,71 @@ async function ultr0nFetch<T>(path: string, body: unknown): Promise<T> {
 
   if (!resp.ok) {
     const msg = await resp.text().catch(() => resp.statusText);
-    throw new Error(`Ultr0n API error ${resp.status}: ${msg}`);
+    throw new Error(`Cortex API error ${resp.status}: ${msg}`);
   }
 
   return resp.json() as Promise<T>;
 }
 
-/** Create a new Ultr0n conversation session on the backend. */
-export async function createUltr0nSession(
-  context: UltronPageContext
+/** Create a new Cortex conversation session on the backend. */
+export async function createCortexSession(
+  context: CortexPageContext
 ): Promise<{ sessionId: string }> {
-  return ultr0nFetch('/api/ultr0n/session', { context });
+  return cortexFetch('/api/cortex/session', { context });
 }
 
 /** Send a message to an existing session; returns the LLM's AgentMessage reply. */
-export async function sendUltr0nMessage(
+export async function sendCortexMessage(
   sessionId: string,
   message: string,
-  context: UltronPageContext
+  context: CortexPageContext
 ): Promise<AgentMessage> {
-  const raw = await ultr0nFetch<{
+  const raw = await cortexFetch<{
     id: string;
     role: string;
     content: string;
     timestamp: string;
     reasoning?: string;
-  }>('/api/ultr0n/message', { sessionId, message, context });
+  }>('/api/cortex/message', { sessionId, message, context });
 
   // Coerce timestamp string to Date
   return { ...raw, role: 'agent', timestamp: new Date(raw.timestamp) } as AgentMessage;
 }
 
 /** Refresh the backend session's page context (no-op response). */
-export async function refreshUltr0nContext(
+export async function refreshCortexContext(
   sessionId: string,
-  context: UltronPageContext
+  context: CortexPageContext
 ): Promise<void> {
-  await ultr0nFetch('/api/ultr0n/context', { sessionId, context });
+  await cortexFetch('/api/cortex/context', { sessionId, context });
 }
 
 /** Execute a named tool call within a session (Phase 3). */
-export async function executeUltr0nToolCall(
+export async function executeCortexToolCall(
   sessionId: string,
   toolName: string,
   args: Record<string, unknown>
 ): Promise<unknown> {
-  return ultr0nFetch('/api/ultr0n/tool-call', { sessionId, toolName, args });
+  return cortexFetch('/api/cortex/tool-call', { sessionId, toolName, args });
 }
 
 /** Generate a config change preview diff (Phase 3). */
-export async function previewUltr0nConfigChange(
+export async function previewCortexConfigChange(
   sessionId: string,
   changePlan: unknown
 ): Promise<unknown> {
-  return ultr0nFetch('/api/ultr0n/config/preview', { sessionId, changePlan });
+  return cortexFetch('/api/cortex/config/preview', { sessionId, changePlan });
 }
 
 /**
  * Commit an approved config change (Phase 3).
  * IMPORTANT: Only call after explicit human approval in the UI.
  */
-export async function commitUltr0nConfigChange(
+export async function commitCortexConfigChange(
   sessionId: string,
   approvedChangeId: string
 ): Promise<unknown> {
-  return ultr0nFetch('/api/ultr0n/config/commit', { sessionId, approvedChangeId });
+  return cortexFetch('/api/cortex/config/commit', { sessionId, approvedChangeId });
 }
 ```
 
@@ -951,29 +951,29 @@ Expected: 0 errors.
 - [ ] **Step 5.4: Commit**
 
 ```bash
-git add src/services/ultr0nApiClient.ts
-git commit -m "feat(ultr0n): wire ultr0nApiClient to real backend endpoints"
+git add src/services/cortexApiClient.ts
+git commit -m "feat(cortex): wire cortexApiClient to real backend endpoints"
 ```
 
 ---
 
-## Task 6: Update `src/contexts/UltronContext.tsx` — Hybrid sendMessage
+## Task 6: Update `src/contexts/CortexContext.tsx` — Hybrid sendMessage
 
 **Files:**
-- Modify: `src/contexts/UltronContext.tsx`
+- Modify: `src/contexts/CortexContext.tsx`
 
 Change `sendMessage` to use a hybrid approach:
 - Write intents (detected by `agentService.parseIntent`) → local plan building (Phase 1 behavior)
-- Read/conversational intents → LLM backend via `sendUltr0nMessage`
+- Read/conversational intents → LLM backend via `sendCortexMessage`
 
 Also update `sessionId` to start as `null` (backend assigns it on first message) and reset to `null` on `clearConversation`.
 
 - [ ] **Step 6.1: Add sessionIdRef and import API client**
 
-Find the imports block in `UltronContext.tsx`. Add:
+Find the imports block in `CortexContext.tsx`. Add:
 
 ```ts
-import { createUltr0nSession, sendUltr0nMessage } from '../services/ultr0nApiClient';
+import { createCortexSession, sendCortexMessage } from '../services/cortexApiClient';
 import { agentService } from '../services/agentService';
 ```
 
@@ -1008,7 +1008,7 @@ useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
 - [ ] **Step 6.4: Replace sendMessage**
 
-Find the `sendMessage` useCallback in UltronContext.tsx. Replace its body with:
+Find the `sendMessage` useCallback in CortexContext.tsx. Replace its body with:
 
 ```ts
 const sendMessage = useCallback(async (message: string) => {
@@ -1044,13 +1044,13 @@ const sendMessage = useCallback(async (message: string) => {
     // Conversational/read: use LLM backend
     let sid = sessionIdRef.current;
     if (!sid) {
-      const { sessionId: newId } = await createUltr0nSession(ultronContextRef.current);
+      const { sessionId: newId } = await createCortexSession(cortexContextRef.current);
       sid = newId;
       setSessionId(newId);
       sessionIdRef.current = newId;
     }
 
-    const reply = await sendUltr0nMessage(sid, message, ultronContextRef.current);
+    const reply = await sendCortexMessage(sid, message, cortexContextRef.current);
     setMessages(prev => [...prev, reply]);
   } catch (err) {
     const errorMsg: AgentMessage = {
@@ -1100,8 +1100,8 @@ Expected: 1861+ tests pass (new orchestrator + provider tests), 1 pre-existing V
 - [ ] **Step 6.8: Commit**
 
 ```bash
-git add src/contexts/UltronContext.tsx
-git commit -m "feat(ultr0n): wire sendMessage to LLM backend, keep local plan building"
+git add src/contexts/CortexContext.tsx
+git commit -m "feat(cortex): wire sendMessage to LLM backend, keep local plan building"
 ```
 
 ---
@@ -1112,11 +1112,11 @@ git commit -m "feat(ultr0n): wire sendMessage to LLM backend, keep local plan bu
 
 1. Start dev server: `npm run dev`
 2. Set `ULTR0N_LLM_PROVIDER=mock` (default) — no API key needed
-3. Open app, press ⌘K to open Ultr0n
-4. Type: `"How many clients are connected?"` → should get a Mock Ultr0n response (not the old regex response)
+3. Open app, press ⌘K to open Cortex
+4. Type: `"How many clients are connected?"` → should get a Mock Cortex response (not the old regex response)
 5. Type: `"disable AP AP-HQ-001"` → should show an execution plan (local plan building still works)
 6. Switch page to Access Points → suggestedPrompts should change to device-specific prompts
-7. Check browser Network tab: `/api/ultr0n/session` and `/api/ultr0n/message` should be called for #4
+7. Check browser Network tab: `/api/cortex/session` and `/api/cortex/message` should be called for #4
 
 ### With real OpenAI:
 
@@ -1129,7 +1129,7 @@ Repeat step 4 above — response should be a real GPT-4.1 answer with page conte
 ### Automated tests:
 
 ```bash
-npm test -- --run server/ultr0nLlmProvider.test.js server/ultr0nOrchestrator.test.js
+npm test -- --run server/cortexLlmProvider.test.js server/cortexOrchestrator.test.js
 ```
 
 Expected: 16 tests pass.
@@ -1141,4 +1141,4 @@ Expected: 16 tests pass.
 - Context enrichment: orchestrator calls real controller APIs to enrich context before LLM
 - Tool calling: 17 tool definitions wired to controller API calls
 - Config change flow: preview → human approval → commit endpoint
-- Phase 3 stubs (`/api/ultr0n/tool-call`, `/api/ultr0n/config/preview`, `/api/ultr0n/config/commit`) already exist in server.js from Task 4
+- Phase 3 stubs (`/api/cortex/tool-call`, `/api/cortex/config/preview`, `/api/cortex/config/commit`) already exist in server.js from Task 4

@@ -14,13 +14,13 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { useUltr0nModel } from '../../hooks/useUltr0nModel';
+import { useCortexModel } from '../../hooks/useCortexModel';
 import { useAppContext } from '../../contexts/AppContext';
-import { useUltronContext } from '../../contexts/UltronContext';
+import { useCortexContext } from '../../contexts/CortexContext';
 import { writeAgentContext } from '../../services/agentContextService';
 import { apiService } from '../../services/api';
 import { ModelSelector } from './ModelSelector';
-import { RedQueenShell } from './panels/RedQueenShell';
+import { ConsoleShell } from './panels/ConsoleShell';
 import { ConversationStream } from './panels/ConversationStream';
 import { ValidationPanel } from './panels/ValidationPanel';
 import { DriftPanel } from './panels/DriftPanel';
@@ -79,7 +79,7 @@ export function AgentWorkspace({
   const isPinned = mode === 'pinned';
 
   const { siteGroup, navigationScope } = useAppContext();
-  const ctx = useUltronContext();
+  const ctx = useCortexContext();
 
   useEffect(() => {
     if (!isVisible) return;
@@ -128,7 +128,7 @@ export function AgentWorkspace({
   );
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
-  const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
+  const { providers, models, selectedModel, setSelectedModel, loading } = useCortexModel();
 
   const lastDiff = [...ctx.messages].reverse().find((m) => m.diff?.length)?.diff ?? [];
 
@@ -307,7 +307,7 @@ export function AgentWorkspace({
         </div>
 
         {/* Body — both panels stay mounted; CSS hides the inactive one so
-            RedQueenShell keeps its xterm.js instance and WebSocket alive. */}
+            ConsoleShell keeps its xterm.js instance and WebSocket alive. */}
         <div className="flex-1 min-h-0 relative">
           <div
             className={cn(
@@ -315,7 +315,7 @@ export function AgentWorkspace({
               primaryTab !== 'terminal' && 'hidden'
             )}
           >
-            <RedQueenShell />
+            <ConsoleShell />
           </div>
 
           <div className={cn('absolute inset-0 flex flex-col', primaryTab !== 'ops' && 'hidden')}>

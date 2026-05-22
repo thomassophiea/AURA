@@ -74,7 +74,7 @@ import { ColumnCustomizationDialog } from './ui/ColumnCustomizationDialog';
 import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';
 import { useAppContext } from '@/contexts/AppContext';
 import { useGridMode } from '@/contexts/GridModeContext';
-import { useUltronContext } from '@/contexts/UltronContext';
+import { useCortexContext } from '@/contexts/CortexContext';
 import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server, Building } from 'lucide-react';
@@ -519,7 +519,7 @@ interface AccessPointsProps {
 export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { agGridEnabled } = useGridMode();
-  const { setWirelessContext } = useUltronContext();
+  const { setWirelessContext } = useCortexContext();
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [clientCounts, setClientCounts] = useState<Record<string, number>>({});
   const [apMetrics, setApMetrics] = useState<

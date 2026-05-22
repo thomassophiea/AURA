@@ -1,30 +1,30 @@
-# Ultron: Page-Aware AI Network Operations Copilot
+# Cortex: Page-Aware AI Network Operations Copilot
 
 **Specification Version:** 1.0  
 **Date:** 2026-05-18  
 **Status:** Design Phase  
-**Replaces:** Agent 1 Coworker (renamed → Ultron)
+**Replaces:** Agent 1 Coworker (renamed → Cortex)
 
 ---
 
 ## Overview
 
-Ultron is a page-aware, LLM-powered AI copilot embedded in AURA. Unlike generic chatbots, Ultron understands the current UI page, what data the user is viewing, what objects are selected, available actions, and organizational context. It provides proactive insights, predicts user intent, supports multi-turn conversations, generates configuration change plans with human approval gates, and connects to pluggable LLM providers (OpenAI, Azure, Anthropic, local models).
+Cortex is a page-aware, LLM-powered AI copilot embedded in AURA. Unlike generic chatbots, Cortex understands the current UI page, what data the user is viewing, what objects are selected, available actions, and organizational context. It provides proactive insights, predicts user intent, supports multi-turn conversations, generates configuration change plans with human approval gates, and connects to pluggable LLM providers (OpenAI, Azure, Anthropic, local models).
 
-**Key Principle:** Ultron must never invent data, commit changes without approval, or send secrets to the LLM.
+**Key Principle:** Cortex must never invent data, commit changes without approval, or send secrets to the LLM.
 
 ---
 
 ## Architecture
 
-### 1. Frontend: Ultron Context Provider
+### 1. Frontend: Cortex Context Provider
 
-#### UltronContextProvider
+#### CortexContextProvider
 
 A React Context Provider that captures and exposes the current page state:
 
 ```typescript
-type UltronPageContext = {
+type CortexPageContext = {
   route: string;                           // /clients, /devices, /insights, etc.
   pageName: string;                        // "Wireless Clients", "Access Points", etc.
   pageType: "insights" | "service-levels" | "clients" | "devices" | "configuration"
@@ -74,46 +74,46 @@ type UltronPageContext = {
 };
 ```
 
-#### useUltronContext() Hook
+#### useCortexContext() Hook
 
 ```typescript
-interface UseUltronContextReturn {
-  context: UltronPageContext;
-  updateContext(partial: Partial<UltronPageContext>): void;
+interface UseCortexContextReturn {
+  context: CortexPageContext;
+  updateContext(partial: Partial<CortexPageContext>): void;
   setSelectedObject(obj: any): void;
   setSelectedRows(rows: any[]): void;
   setVisibleRows(rows: any[]): void;
   setPageMetadata(meta: Record<string, any>): void;
-  setAvailableActions(actions: UltronPageContext['availableActions']): void;
+  setAvailableActions(actions: CortexPageContext['availableActions']): void;
   resetContext(): void;
 }
 
-const useUltronContext = (): UseUltronContextReturn => { ... }
+const useCortexContext = (): UseCortexContextReturn => { ... }
 ```
 
 **Integration Points:**
 - Wrapped at `<App>` level in `App.tsx`
 - Updated whenever page route changes
 - Updated when user selects rows, applies filters, changes sort, or selects an object
-- Passed to `useUltron()` hook for session context enrichment
+- Passed to `useCortex()` hook for session context enrichment
 
 ---
 
-### 2. Frontend: Ultron UI & Hooks
+### 2. Frontend: Cortex UI & Hooks
 
-#### useUltron() Hook
+#### useCortex() Hook
 
 ```typescript
-interface UseUltronReturn {
+interface UseCortexReturn {
   isOpen: boolean;
-  openUltron(): void;
-  closeUltron(): void;
-  toggleUltron(): void;
+  openCortex(): void;
+  closeCortex(): void;
+  toggleCortex(): void;
   
   sessionId: string | null;
-  messages: UltronMessage[];
+  messages: CortexMessage[];
   suggestedPrompts: string[];
-  pageInsights: UltronPageAnalysis['insights'];
+  pageInsights: CortexPageAnalysis['insights'];
   isThinking: boolean;
   
   sendMessage(message: string): Promise<void>;
@@ -122,15 +122,15 @@ interface UseUltronReturn {
   
   pendingApproval?: {
     changeId: string;
-    changePlan: UltronChangePlan;
-    diff: UltronConfigDiff;
+    changePlan: CortexChangePlan;
+    diff: CortexConfigDiff;
     riskLevel: 'low' | 'medium' | 'high' | 'critical';
   };
   approveChange(changeId: string): Promise<void>;
   rejectChange(changeId: string): void;
 }
 
-type UltronMessage = {
+type CortexMessage = {
   id: string;
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -145,7 +145,7 @@ type UltronMessage = {
   }[];
 };
 
-type UltronPageAnalysis = {
+type CortexPageAnalysis = {
   summary: string;
   insights: {
     severity: 'info' | 'warning' | 'critical';
@@ -158,7 +158,7 @@ type UltronPageAnalysis = {
   availableActions: string[];
 };
 
-type UltronChangePlan = {
+type CortexChangePlan = {
   id: string;
   title: string;
   description: string;
@@ -173,7 +173,7 @@ type UltronChangePlan = {
   estimatedImpact?: { scope: string; count: number }[];
 };
 
-type UltronConfigDiff = {
+type CortexConfigDiff = {
   objectType: string;
   objectId: string;
   changes: {
@@ -184,7 +184,7 @@ type UltronConfigDiff = {
 };
 ```
 
-#### Ultron UI Component
+#### Cortex UI Component
 
 Right-side slide-out panel:
 - Opens from right edge (like AgentCoworker/AgentWorkspace)
@@ -195,45 +195,45 @@ Right-side slide-out panel:
 - Shows change plans and diffs before commit
 - Requires human approval for any write action
 
-**Key Difference from AgentCoworker:** Ultron is *page-aware* and *action-aware*. It shows suggested prompts relevant to the current page and available actions, not generic "ask anything" prompts.
+**Key Difference from AgentCoworker:** Cortex is *page-aware* and *action-aware*. It shows suggested prompts relevant to the current page and available actions, not generic "ask anything" prompts.
 
 ---
 
 ### 3. Frontend API Client Functions
 
 ```typescript
-// src/services/ultronClient.ts
+// src/services/cortexClient.ts
 
-export async function createUltronSession(context: UltronPageContext): Promise<{ sessionId: string }>;
+export async function createCortexSession(context: CortexPageContext): Promise<{ sessionId: string }>;
 
-export async function sendUltronMessage(
+export async function sendCortexMessage(
   sessionId: string,
   message: string,
-  context: UltronPageContext,
-): Promise<UltronMessage>;
+  context: CortexPageContext,
+): Promise<CortexMessage>;
 
-export async function refreshUltronContext(
+export async function refreshCortexContext(
   sessionId: string,
-  context: UltronPageContext,
-): Promise<UltronPageAnalysis>;
+  context: CortexPageContext,
+): Promise<CortexPageAnalysis>;
 
-export async function executeUltronToolCall(
+export async function executeCortexToolCall(
   sessionId: string,
   toolName: string,
   args: Record<string, any>,
 ): Promise<{ result: any; displayText: string }>;
 
-export async function previewUltronConfigChange(
+export async function previewCortexConfigChange(
   sessionId: string,
-  changePlan: UltronChangePlan,
+  changePlan: CortexChangePlan,
 ): Promise<{
   changeId: string;
-  diff: UltronConfigDiff[];
+  diff: CortexConfigDiff[];
   riskLevel: 'low' | 'medium' | 'high' | 'critical';
   warnings?: string[];
 }>;
 
-export async function commitUltronConfigChange(
+export async function commitCortexConfigChange(
   sessionId: string,
   changeId: string,
 ): Promise<{ success: boolean; auditEntry: any }>;
@@ -244,36 +244,36 @@ export async function commitUltronConfigChange(
 ### 4. Backend: REST Endpoints
 
 ```
-POST   /api/ultron/session
-       Body: { context: UltronPageContext }
+POST   /api/cortex/session
+       Body: { context: CortexPageContext }
        Response: { sessionId: string, sessionToken: string }
 
-POST   /api/ultron/message
+POST   /api/cortex/message
        Headers: { Authorization: sessionToken }
-       Body: { message: string, context: UltronPageContext }
-       Response: { message: UltronMessage, suggestedPrompts: string[] }
+       Body: { message: string, context: CortexPageContext }
+       Response: { message: CortexMessage, suggestedPrompts: string[] }
 
-POST   /api/ultron/context
+POST   /api/cortex/context
        Headers: { Authorization: sessionToken }
-       Body: { context: UltronPageContext }
-       Response: { analysis: UltronPageAnalysis }
+       Body: { context: CortexPageContext }
+       Response: { analysis: CortexPageAnalysis }
 
-POST   /api/ultron/tool-call
+POST   /api/cortex/tool-call
        Headers: { Authorization: sessionToken }
        Body: { toolName: string, args: Record<string, any> }
        Response: { result: any, displayText: string }
 
-POST   /api/ultron/config/preview
+POST   /api/cortex/config/preview
        Headers: { Authorization: sessionToken }
-       Body: { changePlan: UltronChangePlan }
+       Body: { changePlan: CortexChangePlan }
        Response: {
          changeId: string,
-         diff: UltronConfigDiff[],
+         diff: CortexConfigDiff[],
          riskLevel: 'low'|'medium'|'high'|'critical',
          warnings?: string[]
        }
 
-POST   /api/ultron/config/commit
+POST   /api/cortex/config/commit
        Headers: { Authorization: sessionToken }
        Body: { changeId: string }
        Response: { success: boolean, auditEntry: any }
@@ -423,23 +423,23 @@ ANTHROPIC_API_KEY=sk-ant-...
 
 ---
 
-### 6. Backend: Ultron Orchestrator
+### 6. Backend: Cortex Orchestrator
 
-#### UltronOrchestrator
+#### CortexOrchestrator
 
 ```typescript
-class UltronOrchestrator {
+class CortexOrchestrator {
   private llmProvider: LlmProvider;
-  private sessions: Map<string, UltronSession>;
-  private contextEnricher: UltronContextEnricher;
+  private sessions: Map<string, CortexSession>;
+  private contextEnricher: CortexContextEnricher;
   
-  async createSession(context: UltronPageContext): Promise<UltronSession>;
+  async createSession(context: CortexPageContext): Promise<CortexSession>;
   
   async receiveMessage(
     sessionId: string,
     userMessage: string,
-    currentContext: UltronPageContext,
-  ): Promise<UltronMessage>;
+    currentContext: CortexPageContext,
+  ): Promise<CortexMessage>;
   
   async handleToolCall(
     sessionId: string,
@@ -449,7 +449,7 @@ class UltronOrchestrator {
   
   async generateConfigChangePreview(
     sessionId: string,
-    changePlan: UltronChangePlan,
+    changePlan: CortexChangePlan,
   ): Promise<ConfigChangePreview>;
   
   async commitApprovedChange(
@@ -457,28 +457,28 @@ class UltronOrchestrator {
     changeId: string,
   ): Promise<CommitResult>;
   
-  private async buildSystemPrompt(context: UltronPageContext): Promise<string>;
-  private async enrichContext(context: UltronPageContext): Promise<EnrichedContext>;
+  private async buildSystemPrompt(context: CortexPageContext): Promise<string>;
+  private async enrichContext(context: CortexPageContext): Promise<EnrichedContext>;
   private enforceUsageRateLimit(sessionId: string): void;
   private enforceOutputSanitization(response: LlmResponse): LlmResponse;
 }
 
-type UltronSession = {
+type CortexSession = {
   id: string;
   createdAt: Date;
-  context: UltronPageContext;
+  context: CortexPageContext;
   history: LlmMessage[];
-  conversationHistory: UltronMessage[];
+  conversationHistory: CortexMessage[];
   tools: string[];                 // Tool names user can call in this session
   lastActivity: Date;
 };
 ```
 
-#### UltronContextEnricher
+#### CortexContextEnricher
 
 ```typescript
-class UltronContextEnricher {
-  async enrich(context: UltronPageContext): Promise<EnrichedContext> {
+class CortexContextEnricher {
+  async enrich(context: CortexPageContext): Promise<EnrichedContext> {
     // Based on pageType, call backend APIs to summarize actual data
     // Do NOT send all raw data to LLM
     // Return summaries, stats, and sample data only
@@ -499,14 +499,14 @@ class UltronContextEnricher {
     }
   }
   
-  private async enrichClientsPage(context: UltronPageContext): Promise<EnrichedContext> {
+  private async enrichClientsPage(context: CortexPageContext): Promise<EnrichedContext> {
     // GET /api/clients/summary → client count, online/offline, poor SNR/RSSI
     // GET /api/clients/failures → auth failures, roaming issues
     // GET /api/clients/top-impacts → top impacted APs, sites
     // Return summary, NOT all 10k clients
   }
   
-  private async enrichServiceLevelsPage(context: UltronPageContext): Promise<EnrichedContext> {
+  private async enrichServiceLevelsPage(context: CortexPageContext): Promise<EnrichedContext> {
     // GET /api/service-levels → failing SLs, degraded metrics
     // GET /api/service-levels/{id}/impacted → impacted sites, clients
     // GET /api/service-levels/{id}/trends → direction, forecast
@@ -518,10 +518,10 @@ class UltronContextEnricher {
 
 ---
 
-### 7. System Prompt for Ultron
+### 7. System Prompt for Cortex
 
 ```
-You are Ultron, an AI network operations and configuration copilot embedded in Extreme Platform ONE (AURA).
+You are Cortex, an AI network operations and configuration copilot embedded in Extreme Platform ONE (AURA).
 
 You are page-aware. You understand:
 - The current page the user is viewing
@@ -724,12 +724,12 @@ const TOOL_METADATA: Record<string, {
 
 ### 9. Proactive Page Analysis
 
-When Ultron opens:
+When Cortex opens:
 
-1. Frontend calls `POST /api/ultron/session` with current page context
-2. Backend enriches context with real API data (via `UltronContextEnricher`)
+1. Frontend calls `POST /api/cortex/session` with current page context
+2. Backend enriches context with real API data (via `CortexContextEnricher`)
 3. Backend calls LLM with special system prompt: *"Analyze this page and user context. Provide: (1) A 2-3 sentence summary of what's on this page, (2) 3–5 key insights or issues, (3) 4–6 suggested prompts the user might ask, (4) 2–3 available next actions."*
-4. Frontend receives `UltronPageAnalysis` and displays:
+4. Frontend receives `CortexPageAnalysis` and displays:
    - Summary paragraph
    - Insights with severity badges
    - Suggested prompts (clickable)
@@ -786,7 +786,7 @@ Available Actions:
 #### Sanitizer Function
 
 ```typescript
-function sanitizeUltronContext(context: UltronPageContext): UltronPageContext {
+function sanitizeCortexContext(context: CortexPageContext): CortexPageContext {
   const redacted = { ...context };
   
   // Recursively redact secrets
@@ -827,7 +827,7 @@ function sanitizeUltronContext(context: UltronPageContext): UltronPageContext {
 
 #### Before Sending to LLM
 
-- Redact all secrets via `sanitizeUltronContext()`
+- Redact all secrets via `sanitizeCortexContext()`
 - Remove or redact PII (MACs, IPs where possible)
 - Summarize large tables instead of sending all rows (max 10–20 samples)
 - Include aggregate stats, not raw rows
@@ -842,9 +842,9 @@ function sanitizeUltronContext(context: UltronPageContext): UltronPageContext {
 User: "Increase the channel width on all 5GHz APs to 80MHz"
 ```
 
-**Step 2: Ultron Generates Change Plan**
+**Step 2: Cortex Generates Change Plan**
 - Calls tool: `generateConfigChangePlan(intent, scope, scopeIds)`
-- Backend returns `UltronChangePlan` with:
+- Backend returns `CortexChangePlan` with:
   - Title, description
   - Step-by-step changes
   - Affected objects (25 APs)
@@ -870,7 +870,7 @@ User: "Increase the channel width on all 5GHz APs to 80MHz"
 
 **Step 5: Human Approval**
 - User reviews and clicks **Commit**
-- Frontend calls `POST /api/ultron/config/commit` with `changeId`
+- Frontend calls `POST /api/cortex/config/commit` with `changeId`
 
 **Step 6: Execute**
 - Backend executes change plan steps
@@ -882,19 +882,19 @@ User: "Increase the channel width on all 5GHz APs to 80MHz"
 
 ## Deliverables Checklist
 
-- [ ] `src/providers/UltronContextProvider.tsx` — React Context + hook
-- [ ] `src/hooks/useUltronContext.ts` — useUltronContext() hook
-- [ ] `src/hooks/useUltron.ts` — useUltron() hook
-- [ ] `src/components/Ultron/` — UI components (index, ConversationStream, PageAnalysis, ChangePlanPreview, etc.)
-- [ ] `src/types/ultron.ts` — All TypeScript interfaces
-- [ ] `src/services/ultronClient.ts` — Frontend API client functions
+- [ ] `src/providers/CortexContextProvider.tsx` — React Context + hook
+- [ ] `src/hooks/useCortexContext.ts` — useCortexContext() hook
+- [ ] `src/hooks/useCortex.ts` — useCortex() hook
+- [ ] `src/components/Cortex/` — UI components (index, ConversationStream, PageAnalysis, ChangePlanPreview, etc.)
+- [ ] `src/types/cortex.ts` — All TypeScript interfaces
+- [ ] `src/services/cortexClient.ts` — Frontend API client functions
 - [ ] `backend/services/llm/llmProvider.ts` — LLM provider interface
 - [ ] `backend/services/llm/providers/` — OpenAI, Azure, Anthropic, Mock implementations
-- [ ] `backend/services/ultronOrchestrator.ts` — Session management, message handling
-- [ ] `backend/services/ultronContextEnricher.ts` — Page context enrichment
-- [ ] `backend/services/ultronSanitizer.ts` — Data safety sanitization
-- [ ] `backend/services/ultronToolHandler.ts` — Tool call execution
-- [ ] `backend/routes/api/ultron.ts` — REST endpoints
+- [ ] `backend/services/cortexOrchestrator.ts` — Session management, message handling
+- [ ] `backend/services/cortexContextEnricher.ts` — Page context enrichment
+- [ ] `backend/services/cortexSanitizer.ts` — Data safety sanitization
+- [ ] `backend/services/cortexToolHandler.ts` — Tool call execution
+- [ ] `backend/routes/api/cortex.ts` — REST endpoints
 - [ ] `docs/ULTRON.md` — User guide
 - [ ] `.env.example` — Updated with ULTRON_* variables
 - [ ] Tests — Unit + integration tests for all components
@@ -903,7 +903,7 @@ User: "Increase the channel width on all 5GHz APs to 80MHz"
 
 ## Key Decisions
 
-1. **Page-Aware Design:** Ultron is never generic; it always knows the page, selected data, and available actions.
+1. **Page-Aware Design:** Cortex is never generic; it always knows the page, selected data, and available actions.
 2. **Pluggable LLM Providers:** No hardcoded single provider; environment variables determine which backend to use.
 3. **Mandatory Human Approval:** LLM can propose config changes, but only humans can commit.
 4. **Data Sanitization:** Secrets are redacted before sending to LLM; large tables are summarized.
@@ -915,7 +915,7 @@ User: "Increase the channel width on all 5GHz APs to 80MHz"
 
 ## Success Criteria
 
-- Ultron opens on command (⌘K)
+- Cortex opens on command (⌘K)
 - Shows proactive page analysis within 1 second of opening
 - Suggested prompts are relevant to the current page
 - Multi-turn conversations work end-to-end

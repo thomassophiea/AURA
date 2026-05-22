@@ -18,7 +18,7 @@ The Red Queen agent currently supports four LLM providers (Anthropic, Groq, xAI 
 
 ## Backend Architecture
 
-### `server/ultr0nModelRegistry.js`
+### `server/cortexModelRegistry.js`
 
 **Model entry shape** gains a required `provider` field:
 ```js
@@ -27,13 +27,13 @@ The Red Queen agent currently supports four LLM providers (Anthropic, Groq, xAI 
 
 **New exports:**
 - `getConfiguredProviders()` — scans env vars at startup/request time; returns array of provider names whose credentials are present (e.g., `["anthropic", "gemini", "ollama"]`). Ollama is included if its base URL is reachable or if `OLLAMA_ENABLED=true`.
-- `getAllModelsForConfiguredProviders()` — returns `[...SHELL_MODELS, ...flatMap(configuredProviders, getAllowedModels)]`. Used by `/api/ultr0n/models`.
+- `getAllModelsForConfiguredProviders()` — returns `[...SHELL_MODELS, ...flatMap(configuredProviders, getAllowedModels)]`. Used by `/api/cortex/models`.
 - `findProviderForModel(modelId)` — reverse-lookup: returns the provider name for a given model ID. Used by `createLlmProviderForModel`.
 - `isModelAllowed(modelId)` — now checks across all configured providers (not just the active one).
 
 **Existing `MODEL_REGISTRY`** keeps current entries; new keys added: `gemini`, `mistral`, `cerebras`, `deepseek`, `ollama`.
 
-### `server/ultr0nLlmProvider.js`
+### `server/cortexLlmProvider.js`
 
 **New export:** `createLlmProviderForModel(modelId)` — calls `findProviderForModel(modelId)`, then instantiates the correct provider class with env-var credentials. Returns `{ provider, model }`.
 
@@ -51,11 +51,11 @@ All five new providers reuse `OpenAiLlmProvider` — they all expose OpenAI-comp
 
 ### Ollama Model Discovery
 
-When Ollama is a configured provider, `/api/ultr0n/models` queries `GET {OLLAMA_BASE}/api/tags` to enumerate installed models dynamically. Each tag is mapped to a registry entry with `provider: "ollama"` and `notes: "local"`. If Ollama is unreachable, it is silently excluded from the model list (no server error).
+When Ollama is a configured provider, `/api/cortex/models` queries `GET {OLLAMA_BASE}/api/tags` to enumerate installed models dynamically. Each tag is mapped to a registry entry with `provider: "ollama"` and `notes: "local"`. If Ollama is unreachable, it is silently excluded from the model list (no server error).
 
 ### `server.js` endpoint changes
 
-**`GET /api/ultr0n/models`:**
+**`GET /api/cortex/models`:**
 ```js
 // Before
 const provider = resolveActiveProvider();
@@ -66,7 +66,7 @@ const models = await getAllModelsForConfiguredProviders(); // async for Ollama d
 res.json({ providers: getConfiguredProviders(), defaultModel: DEFAULT_PICKER_MODEL, models });
 ```
 
-**`POST /api/ultr0n/message`:**
+**`POST /api/cortex/message`:**
 ```js
 // Before
 const { provider } = createLlmProvider({});
@@ -75,7 +75,7 @@ const { provider } = createLlmProvider({});
 const { provider } = createLlmProviderForModel(model);
 ```
 
-**`POST /api/ultr0n/wireless/query`:** Same change — swap to `createLlmProviderForModel`.
+**`POST /api/cortex/wireless/query`:** Same change — swap to `createLlmProviderForModel`.
 
 **`isModelAllowed` call sites:** Updated to use the new signature that checks all configured providers.
 
@@ -116,7 +116,7 @@ Dynamic — discovered from `GET {OLLAMA_BASE}/api/tags`. Common models that may
 
 ## Frontend Changes
 
-### `useUltr0nModel.ts`
+### `useCortexModel.ts`
 
 Response shape changes from `{ provider: string }` to `{ providers: string[] }`. Hook updated to read `providers` (array) for informational display. Model selection, localStorage persistence, and validity checks are unchanged.
 
@@ -151,10 +151,10 @@ Visual structure of the dropdown:
 
 | File | Change |
 |---|---|
-| `server/ultr0nModelRegistry.js` | Add 5 providers; add `getConfiguredProviders`, `getAllModelsForConfiguredProviders`, `findProviderForModel`; update `isModelAllowed` |
-| `server/ultr0nLlmProvider.js` | Add `createLlmProviderForModel`; add 5 provider factory branches |
+| `server/cortexModelRegistry.js` | Add 5 providers; add `getConfiguredProviders`, `getAllModelsForConfiguredProviders`, `findProviderForModel`; update `isModelAllowed` |
+| `server/cortexLlmProvider.js` | Add `createLlmProviderForModel`; add 5 provider factory branches |
 | `server.js` | Update 3 endpoints to use new functions |
-| `src/hooks/useUltr0nModel.ts` | Handle `providers[]` array in response |
+| `src/hooks/useCortexModel.ts` | Handle `providers[]` array in response |
 | `src/components/AgentCoworker/ModelSelector.tsx` | Group models by provider |
 
 ---

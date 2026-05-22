@@ -36,7 +36,7 @@ AI-First Claude Code skill (enhanced). The skill orchestrates the full pipeline:
 
 ### Diagnostic Copilot
 
-Ultr0n (unchanged). Stays as read-only wireless diagnostic layer. Phase 3 adds a `getDriftAlerts` tool to Ultr0n so operators can query drift state conversationally.
+Cortex (unchanged). Stays as read-only wireless diagnostic layer. Phase 3 adds a `getDriftAlerts` tool to Cortex so operators can query drift state conversationally.
 
 ### Phase 1–2: Skill-Layer Pipeline
 
@@ -80,7 +80,7 @@ Claude Code + AI-First skill
 
 ### Phase 3–4: Backend Validation Service
 
-New `server/validationEngine/` module. Shares `auraApiClient.js` with Ultr0n. Runs independently of skill invocations for continuous drift monitoring.
+New `server/validationEngine/` module. Shares `auraApiClient.js` with Cortex. Runs independently of skill invocations for continuous drift monitoring.
 
 ```
 server/
@@ -153,10 +153,10 @@ server/
 | `server/validationEngine/schedulerService.js` | Creates and manages XCC schedule objects programmatically |
 | `server/validationEngine/rollbackEngine.js` | Stores pre-provision snapshots, enables one-click rollback |
 | `/api/validate/intent` | Backend-powered validation (richer than skill-only) with cached infra state |
-| `/api/drift` | Drift alert feed consumed by Ultr0n and Red Queen |
-| Ultr0n `getDriftAlerts` tool | New tool in toolCatalog.js: operator asks "what's drifted?" |
+| `/api/drift` | Drift alert feed consumed by Cortex and Red Queen |
+| Cortex `getDriftAlerts` tool | New tool in toolCatalog.js: operator asks "what's drifted?" |
 
-**Deliverable:** AURA alerts: "Guest SSID operational integrity degraded — VLAN 120 removed from 4 AP uplinks." Operator responds in Red Queen or queries via Ultr0n.
+**Deliverable:** AURA alerts: "Guest SSID operational integrity degraded — VLAN 120 removed from 4 AP uplinks." Operator responds in Red Queen or queries via Cortex.
 
 ---
 
@@ -377,7 +377,7 @@ Concrete steps to resolve fail or warn conditions.
 
 - Write operations require an explicit operator `approve` gate — no autonomous writes in Phase 1–2.
 - `provisioningToken` has a 30-minute TTL. Expired tokens block execution.
-- All LLM context is sanitized by `ultr0nContextSanitizer.js` — no credentials, tokens, or raw API keys reach the LLM.
+- All LLM context is sanitized by `cortexContextSanitizer.js` — no credentials, tokens, or raw API keys reach the LLM.
 - LLDP data and AP uplink state are treated as read-only validation evidence only.
 - Phase 4 autonomy requires a separate `autonomy-policies.md` configuration explicitly authored by the operator before any autonomous writes.
 
@@ -389,9 +389,9 @@ Concrete steps to resolve fail or warn conditions.
 |---|---|
 | Red Queen terminal | Operator surface for all NIE interactions (Phase 1–4) |
 | AI-First Claude skill | Execution brain — enhanced with validation, verify, rollback, scheduling |
-| Ultr0n copilot | Diagnostic layer (unchanged Phase 1–2); gains `getDriftAlerts` tool in Phase 3 |
+| Cortex copilot | Diagnostic layer (unchanged Phase 1–2); gains `getDriftAlerts` tool in Phase 3 |
 | AURA proxy (`server.js`) | All XCC API calls route through existing `/api/management/*` proxy |
-| `auraApiClient.js` | Shared HTTP client; used by both ultr0n pipeline and validationEngine |
+| `auraApiClient.js` | Shared HTTP client; used by both cortex pipeline and validationEngine |
 | `driftDetectionService.ts` | Existing frontend drift detection; Phase 3 replaces/extends with server-side monitor |
 
 ---
@@ -400,7 +400,7 @@ Concrete steps to resolve fail or warn conditions.
 
 - Replacement of existing AURA configuration UI (SSID forms, profile editors). NIE is an additive AI layer, not a replacement for the existing operator workflows.
 - Non-XCC network infrastructure (third-party switches beyond LLDP data available via XCC).
-- Natural-language queries about non-wireless domains (NIE = wireless provisioning only; Ultr0n handles diagnostic queries).
+- Natural-language queries about non-wireless domains (NIE = wireless provisioning only; Cortex handles diagnostic queries).
 - OpenAI / Groq / Gemini-backed provisioning. AI-First skill uses Claude Code (Sonnet 4.6 / Opus 4.7). Model selection for NIE is separate from the multi-provider picker.
 
 ---
@@ -411,5 +411,5 @@ Concrete steps to resolve fail or warn conditions.
 |---|---|
 | 1 | Operator asks "Can I add X?" and gets a confidence-scored validation report using live XCC data. No writes occur. |
 | 2 | End-to-end: natural language → validate → approve → SSID deployed → closed-loop confirms broadcasting within 60s. |
-| 3 | AURA alerts on drift without operator asking. Operator can query drift state via Ultr0n. |
+| 3 | AURA alerts on drift without operator asking. Operator can query drift state via Cortex. |
 | 4 | New AP onboarded → automatically profiled and verified → no operator action required (under policy). |

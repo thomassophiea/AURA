@@ -1,9 +1,9 @@
 import { useState, useEffect, lazy, Suspense, useMemo, useCallback, startTransition } from 'react';
 import { useGlobalFilters } from './hooks/useGlobalFilters';
 import { AgentCoworker } from './components/AgentCoworker';
-import { UltronContextProvider } from './contexts/UltronContext';
-import { ULTR0N_PAGE_NAMES, ULTR0N_PAGE_TYPES } from './types/ultron';
-import type { UltronPageContext } from './types/ultron';
+import { CortexContextProvider } from './contexts/CortexContext';
+import { CORTEX_PAGE_NAMES, CORTEX_PAGE_TYPES } from './types/cortex';
+import type { CortexPageContext } from './types/cortex';
 import { LoginForm } from './components/LoginForm';
 import { SharedReportViewer } from './components/SharedReportViewer';
 import { Sidebar } from './components/Sidebar';
@@ -336,11 +336,11 @@ export default function App() {
   // Device detection for responsive design
   const device = useDeviceDetection();
 
-  const ultr0nBaseContext = useMemo(
-    (): Partial<UltronPageContext> => ({
+  const cortexBaseContext = useMemo(
+    (): Partial<CortexPageContext> => ({
       route: currentPage,
-      pageName: ULTR0N_PAGE_NAMES[currentPage] ?? currentPage,
-      pageType: ULTR0N_PAGE_TYPES[currentPage] ?? 'unknown',
+      pageName: CORTEX_PAGE_NAMES[currentPage] ?? currentPage,
+      pageType: CORTEX_PAGE_TYPES[currentPage] ?? 'unknown',
       siteId: filters.site !== 'all' ? filters.site : undefined,
       siteName: siteName || undefined,
       userRole: activePersona,
@@ -1341,7 +1341,7 @@ export default function App() {
         onPageChange={handlePageChange}
         onTemplateCreation={handleTemplateCreation}
       >
-        <UltronContextProvider pageContext={ultr0nBaseContext}>
+        <CortexContextProvider pageContext={cortexBaseContext}>
           <PersonaProvider
             theme={theme}
             activePersona={activePersona}
@@ -1574,7 +1574,7 @@ export default function App() {
               />
             </>
           </PersonaProvider>
-        </UltronContextProvider>
+        </CortexContextProvider>
       </AppContextProvider>
     </GridModeProvider>
   );

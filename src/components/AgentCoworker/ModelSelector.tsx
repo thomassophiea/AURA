@@ -8,11 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { cn } from '../ui/utils';
-import type { Ultr0nModel } from '../../hooks/useUltr0nModel';
+import type { CortexModel } from '../../hooks/useCortexModel';
 
 interface ModelSelectorProps {
   providers: string[];
-  models: Ultr0nModel[];
+  models: CortexModel[];
   selectedModel: string;
   onSelect: (modelId: string) => void;
   loading?: boolean;
@@ -44,15 +44,15 @@ const PROVIDER_ORDER = [
   'ollama',
 ];
 
-function groupModelsByProvider(models: Ultr0nModel[]): Array<[string, Ultr0nModel[]]> {
-  const groups = new Map<string, Ultr0nModel[]>();
+function groupModelsByProvider(models: CortexModel[]): Array<[string, CortexModel[]]> {
+  const groups = new Map<string, CortexModel[]>();
   for (const m of models) {
     const key = m.provider ?? (m.kind === 'shell' ? 'shell' : 'other');
     const list = groups.get(key) ?? [];
     list.push(m);
     groups.set(key, list);
   }
-  const ordered: Array<[string, Ultr0nModel[]]> = [];
+  const ordered: Array<[string, CortexModel[]]> = [];
   for (const key of PROVIDER_ORDER) {
     if (groups.has(key)) {
       ordered.push([key, groups.get(key)!]);
@@ -89,7 +89,7 @@ export function ModelSelector({
           'border border-border'
         )}
         title={titleText}
-        data-testid="ultr0n-model-selector"
+        data-testid="cortex-model-selector"
       >
         <Cpu className="h-3 w-3 text-primary/80" />
         <span className="font-medium truncate max-w-[140px]">{label}</span>

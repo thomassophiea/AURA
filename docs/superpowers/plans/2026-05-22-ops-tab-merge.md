@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Merge Ultr0n and Red Queen into a single two-tab AURA Engine slideout: Terminal tab (Red Queen PTY, unchanged) + Ops tab (7 sub-panels: Chat, Validate, Drift, Execution, Diff, Audit, Timeline).
+**Goal:** Merge Cortex and Red Queen into a single two-tab AURA Engine slideout: Terminal tab (Red Queen PTY, unchanged) + Ops tab (7 sub-panels: Chat, Validate, Drift, Execution, Diff, Audit, Timeline).
 
-**Architecture:** `AgentWorkspace.tsx` gains a primary tab bar (Terminal | Ops). Terminal renders `<RedQueenShell />` as before. Ops renders a secondary nav strip and one of 7 sub-panels. Conversation state comes from `UltronContext` (already wired with `sendMessage`, `messages`, `isThinking`, etc.). ValidationPanel and DriftPanel are new components that call Phase 3 backend endpoints directly. No external Ultr0n UI exists separately — `openUltr0n`/`closeUltr0n` calls in `AgentCoworker/index.tsx` stay as-is since they track context sync, not a separate render.
+**Architecture:** `AgentWorkspace.tsx` gains a primary tab bar (Terminal | Ops). Terminal renders `<ConsoleShell />` as before. Ops renders a secondary nav strip and one of 7 sub-panels. Conversation state comes from `CortexContext` (already wired with `sendMessage`, `messages`, `isThinking`, etc.). ValidationPanel and DriftPanel are new components that call Phase 3 backend endpoints directly. No external Cortex UI exists separately — `openCortex`/`closeCortex` calls in `AgentCoworker/index.tsx` stay as-is since they track context sync, not a separate render.
 
 **Tech Stack:** React 19, TypeScript strict, Tailwind CSS, Radix UI. Phase 3 backend endpoints: `POST /api/validate/intent`, `GET /api/drift`, `DELETE /api/drift`.
 
@@ -788,11 +788,11 @@ git commit -m "feat(workspace): add DriftPanel with polling and clear"
 
 This is the main wiring task. Add:
 1. A primary tab bar (Terminal | Ops) just below the header.
-2. Terminal tab renders `<RedQueenShell />` (unchanged).
+2. Terminal tab renders `<ConsoleShell />` (unchanged).
 3. Ops tab renders a secondary nav strip (7 icons) + the selected sub-panel content.
-4. Import all 7 panel components and wire them to data from `useUltronContext()`.
+4. Import all 7 panel components and wire them to data from `useCortexContext()`.
 
-The `useUltronContext()` hook (from `src/contexts/UltronContext.tsx`) provides:
+The `useCortexContext()` hook (from `src/contexts/CortexContext.tsx`) provides:
 - `messages`, `isThinking`, `wirelessStage`, `suggestedPrompts` → ConversationStream
 - `pendingPlan` → ExecutionPlanView (as `plan`)
 - `messages` (last agent message `.diff`) → ConfigDiffView
@@ -809,8 +809,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AgentWorkspace } from './AgentWorkspace';
 
-vi.mock('./panels/RedQueenShell', () => ({
-  RedQueenShell: () => <div data-testid="red-queen-shell">Terminal</div>,
+vi.mock('./panels/ConsoleShell', () => ({
+  ConsoleShell: () => <div data-testid="red-queen-shell">Terminal</div>,
 }));
 vi.mock('./panels/ConversationStream', () => ({
   ConversationStream: () => <div data-testid="conversation-stream">Chat</div>,
@@ -833,8 +833,8 @@ vi.mock('./panels/AuditHistoryView', () => ({
 vi.mock('./panels/APITimelineView', () => ({
   APITimelineView: () => <div data-testid="timeline-panel">Timeline</div>,
 }));
-vi.mock('../../contexts/UltronContext', () => ({
-  useUltronContext: () => ({
+vi.mock('../../contexts/CortexContext', () => ({
+  useCortexContext: () => ({
     messages: [],
     isThinking: false,
     wirelessStage: null,
@@ -846,8 +846,8 @@ vi.mock('../../contexts/UltronContext', () => ({
     confirmWirelessAction: vi.fn(),
   }),
 }));
-vi.mock('../../hooks/useUltr0nModel', () => ({
-  useUltr0nModel: () => ({ providers: [], models: [], selectedModel: null, setSelectedModel: vi.fn(), loading: false }),
+vi.mock('../../hooks/useCortexModel', () => ({
+  useCortexModel: () => ({ providers: [], models: [], selectedModel: null, setSelectedModel: vi.fn(), loading: false }),
 }));
 vi.mock('../../contexts/AppContext', () => ({
   useAppContext: () => ({ siteGroup: null, navigationScope: 'global' }),
@@ -914,12 +914,12 @@ Replace `src/components/AgentCoworker/AgentWorkspace.tsx` with the following com
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { X, Minus, Pin, Maximize2, Terminal, Settings2, ShieldCheck, Activity, GitCompare, ClipboardList, Clock, MessageSquare } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { useUltr0nModel } from '../../hooks/useUltr0nModel';
+import { useCortexModel } from '../../hooks/useCortexModel';
 import { useAppContext } from '../../contexts/AppContext';
-import { useUltronContext } from '../../contexts/UltronContext';
+import { useCortexContext } from '../../contexts/CortexContext';
 import { writeAgentContext } from '../../services/agentContextService';
 import { ModelSelector } from './ModelSelector';
-import { RedQueenShell } from './panels/RedQueenShell';
+import { ConsoleShell } from './panels/ConsoleShell';
 import { ConversationStream } from './panels/ConversationStream';
 import { ValidationPanel } from './panels/ValidationPanel';
 import { DriftPanel } from './panels/DriftPanel';
@@ -971,7 +971,7 @@ export function AgentWorkspace({
   const isPinned = mode === 'pinned';
 
   const { siteGroup, navigationScope } = useAppContext();
-  const ctx = useUltronContext();
+  const ctx = useCortexContext();
 
   useEffect(() => {
     if (!isVisible) return;
@@ -1017,7 +1017,7 @@ export function AgentWorkspace({
   );
 
   const panelWidth = dragWidth ?? WORKSPACE_WIDTHS[size];
-  const { providers, models, selectedModel, setSelectedModel, loading } = useUltr0nModel();
+  const { providers, models, selectedModel, setSelectedModel, loading } = useCortexModel();
 
   // Derive diff from last agent message that has a diff property
   const lastDiff = [...ctx.messages].reverse().find(m => m.diff?.length)?.diff ?? [];
@@ -1120,7 +1120,7 @@ export function AgentWorkspace({
         {/* Body */}
         {primaryTab === 'terminal' ? (
           <div className="flex-1 min-h-0 overflow-hidden">
-            <RedQueenShell />
+            <ConsoleShell />
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0">
@@ -1227,7 +1227,7 @@ import { useEffect } from 'react';
 import { AgentCommandBar } from './AgentCommandBar';
 import { AgentWorkspace } from './AgentWorkspace';
 import { useAgentWorkspace } from './useAgentWorkspace';
-import { useUltronContext } from '../../contexts/UltronContext';
+import { useCortexContext } from '../../contexts/CortexContext';
 
 interface AgentCoworkerProps {
   onShowClientDetail?: (mac: string, name?: string) => void;
@@ -1237,7 +1237,7 @@ interface AgentCoworkerProps {
 
 export function AgentCoworker(_props: AgentCoworkerProps) {
   const ws = useAgentWorkspace();
-  const ctx = useUltronContext();
+  const ctx = useCortexContext();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -1245,14 +1245,14 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         e.preventDefault();
         if (ws.mode === 'open' || ws.mode === 'pinned') {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         } else {
-          ctx.openUltr0n();
+          ctx.openCortex();
           ws.open();
         }
       }
       if (e.key === 'Escape' && ws.mode === 'open') {
-        ctx.closeUltr0n();
+        ctx.closeCortex();
         ws.dismiss();
       }
     };
@@ -1265,7 +1265,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       {ws.mode === 'idle' && (
         <AgentCommandBar
           onOpen={() => {
-            ctx.openUltr0n();
+            ctx.openCortex();
             ws.open();
           }}
         />
@@ -1278,13 +1278,13 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         activePanel={ws.activePanel}
         onClose={() => {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         }}
         onMinimize={ws.minimize}
         onPin={ws.pin}
         onDismiss={() => {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         }}
         onSetSize={ws.setSize}
         onSetPrimaryTab={ws.setPrimaryTab}
@@ -1345,11 +1345,11 @@ git push origin main
 
 **Spec coverage:**
 - ✅ Two primary tabs (Terminal | Ops) — Task 5
-- ✅ Terminal renders RedQueenShell unchanged — Task 5
+- ✅ Terminal renders ConsoleShell unchanged — Task 5
 - ✅ 7 Ops sub-panels: Chat, Validate, Drift, Execution, Diff, Audit, Timeline — Task 5
 - ✅ ValidationPanel: form + POST /api/validate/intent + confidence/checks/token — Task 3
 - ✅ DriftPanel: GET /api/drift polling + DELETE /api/drift clear — Task 4
-- ✅ ConversationStream wired to UltronContext (messages, sendMessage, etc.) — Task 5
+- ✅ ConversationStream wired to CortexContext (messages, sendMessage, etc.) — Task 5
 - ✅ ExecutionPlanView wired to ctx.pendingPlan — Task 5
 - ✅ ConfigDiffView wired to last diff from messages — Task 5
 - ✅ AuditHistoryView wired to ctx.auditEntries — Task 5

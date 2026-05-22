@@ -36,14 +36,14 @@ import { simpleServiceMapping } from '../services/simpleServiceMapping';
 import { toast } from 'sonner';
 import { formatCompactNumber } from '../lib/units';
 import { resolveClientIdentity } from '../lib/clientIdentity';
-import { useUltronContext } from '../contexts/UltronContext';
+import { useCortexContext } from '../contexts/CortexContext';
 
 interface ClientDetailProps {
   macAddress: string;
 }
 
 export function ClientDetail({ macAddress }: ClientDetailProps) {
-  const { setWirelessContext } = useUltronContext();
+  const { setWirelessContext } = useCortexContext();
   const [clientDetails, setClientDetails] = useState<Station | null>(null);
   const [trafficStats, setTrafficStats] = useState<StationTrafficStats | null>(null);
   const [resolvedSiteName, setResolvedSiteName] = useState<string | null>(null);

@@ -9,7 +9,7 @@ import type {
   OperationIntent,
   PlanStep,
 } from '../components/AgentCoworker/agentTypes';
-import type { UltronPageContext, UltronPageType, UltronInsight } from '@/types/ultron';
+import type { CortexPageContext, CortexPageType, CortexInsight } from '@/types/cortex';
 
 const AUDIT_KEY = 'agent-audit-history';
 
@@ -76,7 +76,7 @@ export class AgentService {
     return [...this.apiTimeline];
   }
 
-  async sendMessage(content: string, context?: UltronPageContext): Promise<AgentMessage> {
+  async sendMessage(content: string, context?: CortexPageContext): Promise<AgentMessage> {
     const userMsg: AgentMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
@@ -106,7 +106,7 @@ export class AgentService {
     return agentMsg;
   }
 
-  private async handleQuery(content: string, context?: UltronPageContext): Promise<AgentMessage> {
+  private async handleQuery(content: string, context?: CortexPageContext): Promise<AgentMessage> {
     try {
       const [sites, aps, stations] = await Promise.all([
         apiService.getSites().catch(() => []),
@@ -377,7 +377,7 @@ export class AgentService {
     }
   }
 
-  getPageInsights(_pageType: UltronPageType): UltronInsight[] {
+  getPageInsights(_pageType: CortexPageType): CortexInsight[] {
     return [];
   }
 }

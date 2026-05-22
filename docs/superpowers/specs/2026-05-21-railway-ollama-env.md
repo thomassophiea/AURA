@@ -62,7 +62,7 @@ Or hit the live endpoint and read the picker payload:
 
 ```bash
 TOKEN="$(your-auth-flow)"  # however you grab a JWT
-curl -s -H "Authorization: Bearer $TOKEN" https://YOUR-AURA.up.railway.app/api/ultr0n/models | jq '.providers, .models | length'
+curl -s -H "Authorization: Bearer $TOKEN" https://YOUR-AURA.up.railway.app/api/cortex/models | jq '.providers, .models | length'
 ```
 
 `.providers` should list every provider whose key you set; `.models | length` should jump by 2–3 per added provider.

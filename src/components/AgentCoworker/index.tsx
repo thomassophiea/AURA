@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { AgentCommandBar } from './AgentCommandBar';
 import { AgentWorkspace } from './AgentWorkspace';
 import { useAgentWorkspace } from './useAgentWorkspace';
-import { useUltronContext } from '../../contexts/UltronContext';
+import { useCortexContext } from '../../contexts/CortexContext';
 
 // Detail-panel callbacks are preserved for the App.tsx mount signature but
 // are no longer wired — the LLM coworker that surfaced these is gone in
@@ -15,7 +15,7 @@ interface AgentCoworkerProps {
 
 export function AgentCoworker(_props: AgentCoworkerProps) {
   const ws = useAgentWorkspace();
-  const ctx = useUltronContext();
+  const ctx = useCortexContext();
   const [driftCount, setDriftCount] = useState(0);
 
   useEffect(() => {
@@ -36,9 +36,9 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         e.preventDefault();
         if (isOpen) {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         } else {
-          ctx.openUltr0n();
+          ctx.openCortex();
           ws.open();
         }
         return;
@@ -73,7 +73,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       }
 
       if (e.key === 'Escape') {
-        ctx.closeUltr0n();
+        ctx.closeCortex();
         ws.dismiss();
       }
     };
@@ -86,7 +86,7 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
       {ws.mode === 'idle' && (
         <AgentCommandBar
           onOpen={() => {
-            ctx.openUltr0n();
+            ctx.openCortex();
             ws.open();
           }}
           driftCount={driftCount}
@@ -100,13 +100,13 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
         activePanel={ws.activePanel}
         onClose={() => {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         }}
         onMinimize={ws.minimize}
         onPin={ws.pin}
         onDismiss={() => {
           ws.dismiss();
-          ctx.closeUltr0n();
+          ctx.closeCortex();
         }}
         onSetSize={ws.setSize}
         onSetPrimaryTab={ws.setPrimaryTab}
