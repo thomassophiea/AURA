@@ -87,7 +87,7 @@ export class Ultr0nOrchestrator {
       return { provider, model };
     } catch (err) {
       console.warn(`[Ultr0n] per-model routing failed (${err.message}); falling back to default provider.`);
-      return { provider: this.#llmProvider, model: this.#model };
+      return { provider: this.#llmProvider, model: modelId };
     }
   }
 

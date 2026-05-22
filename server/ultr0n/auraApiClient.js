@@ -4,7 +4,7 @@ const insecureAgent = new https.Agent({ rejectUnauthorized: false });
 
 async function callOne(apiCall, { authToken, controllerUrl, fetchFn }) {
   const fn = fetchFn ?? globalThis.fetch;
-  const url = `${controllerUrl}/api/management${apiCall.path}`;
+  const url = `${controllerUrl}/management${apiCall.path}`;
   const init = {
     method: apiCall.method,
     headers: {

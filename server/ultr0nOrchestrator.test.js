@@ -148,7 +148,7 @@ describe('Ultr0nOrchestrator', () => {
       // The provider should have been handed the tool catalog
       expect(sentTools[0]).toContain('listSites');
       expect(fetchFn).toHaveBeenCalledWith(
-        'https://ctrl.example/api/management/v1/state/sites',
+        'https://ctrl.example/management/v1/state/sites',
         expect.any(Object)
       );
     } finally {

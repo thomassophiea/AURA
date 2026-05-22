@@ -119,6 +119,7 @@ describe('AgentService — executeApprovedPlan', () => {
   let service: AgentService;
 
   beforeEach(() => {
+    localStorage.clear();
     service = new AgentService();
   });
 

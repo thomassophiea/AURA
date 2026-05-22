@@ -6,15 +6,11 @@
 import type { UltronPageContext } from '@/types/ultron';
 import type { AgentMessage, AgentToolCall } from '../components/AgentCoworker/agentTypes';
 import type { UltronWirelessAnswer } from '@/ultr0n/types';
-import { getDynamicControllerUrl } from './api';
+import { apiService, getDynamicControllerUrl } from './api';
 
 function getAuthHeader(): string {
-  try {
-    const token = localStorage.getItem('access_token') ?? '';
-    return token ? `Bearer ${token}` : '';
-  } catch {
-    return '';
-  }
+  const token = apiService.getAccessToken();
+  return token ? `Bearer ${token}` : '';
 }
 
 function buildHeaders(): Record<string, string> {

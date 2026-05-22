@@ -18,6 +18,7 @@ import { useUltr0nModel } from '../../hooks/useUltr0nModel';
 import { useAppContext } from '../../contexts/AppContext';
 import { useUltronContext } from '../../contexts/UltronContext';
 import { writeAgentContext } from '../../services/agentContextService';
+import { apiService } from '../../services/api';
 import { ModelSelector } from './ModelSelector';
 import { RedQueenShell } from './panels/RedQueenShell';
 import { ConversationStream } from './panels/ConversationStream';
@@ -145,7 +146,7 @@ export function AgentWorkspace({
   const fetchDriftAlerts = useCallback(async () => {
     setDriftLoading(true);
     try {
-      const token = localStorage.getItem('access_token');
+      const token = apiService.getAccessToken();
       const resp = await fetch('/api/drift', {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -164,7 +165,7 @@ export function AgentWorkspace({
 
   const clearDriftAlerts = useCallback(async () => {
     try {
-      const token = localStorage.getItem('access_token');
+      const token = apiService.getAccessToken();
       await fetch('/api/drift', {
         method: 'DELETE',
         headers: token ? { Authorization: `Bearer ${token}` } : {},

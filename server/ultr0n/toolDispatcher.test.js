@@ -49,7 +49,7 @@ describe('executeTool', () => {
     );
     expect(res.ok).toBe(true);
     expect(fetchFn).toHaveBeenCalledWith(
-      'https://ctrl/api/management/v1/state/sites',
+      'https://ctrl/management/v1/state/sites',
       expect.objectContaining({ method: 'GET' })
     );
   });
@@ -123,7 +123,7 @@ describe('executeTool', () => {
       { authToken: '', controllerUrl: 'https://ctrl', fetchFn }
     );
     expect(fetchFn).toHaveBeenCalledWith(
-      'https://ctrl/api/management/v1/state/sites/my-site',
+      'https://ctrl/management/v1/state/sites/my-site',
       expect.any(Object)
     );
   });

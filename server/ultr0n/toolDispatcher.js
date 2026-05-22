@@ -121,7 +121,7 @@ export async function executeTool(name, args, { authToken, controllerUrl, fetchF
   }
 
   const fn = fetchFn ?? globalThis.fetch;
-  const url = `${controllerUrl}/api/management${path}`;
+  const url = `${controllerUrl}/management${path}`;
   const init = {
     method: tool.method,
     headers: {

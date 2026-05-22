@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2, Copy, Check } from 'lucide-react';
 import { cn } from '../../ui/utils';
+import { apiService } from '../../../services/api';
 
 interface ValidationCheck {
   name: string;
@@ -51,13 +52,12 @@ export function ValidationPanel({ initialSsid, initialVlanId }: ValidationPanelP
     setResult(null);
     setError(null);
     try {
+      const token = apiService.getAccessToken();
       const resp = await fetch('/api/validate/intent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(localStorage.getItem('access_token')
-            ? { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
-            : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           intent: {
