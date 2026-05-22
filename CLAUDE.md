@@ -31,12 +31,27 @@ Browser -> Express (port 3000) -> Campus Controller API (/api/management)
 
 ```
 server.js                  Express proxy server
+server/
+  cortex/                  AURA Cortex pipeline modules (intent, tools, wireless query)
+  cortexOrchestrator.js    Session & LLM round-trip management
+  cortexLlmProvider.js     Multi-provider LLM factory
+  cortexModelRegistry.js   Model/provider discovery & registration
+  consoleShell.js          SSH PTY WebSocket server (AURA Console)
+  validationEngine/        Network intent validation & drift detection
 src/
   components/              250+ React TSX components
+    AgentCoworker/         AURA workspace slideout (Terminal | Ops tabs)
+  cortex/                  AURA Cortex UI components (AnswerCard, FollowUpChips, etc.)
+  contexts/
+    CortexContext.tsx       AI agent conversation state (messages, plan, audit, timeline)
+  hooks/
+    useCortexModel.ts       Multi-provider model picker hook
+  services/
+    cortexApiClient.ts      HTTP client for /api/cortex/* routes
+  types/
+    cortex.ts               CortexPageContext, CortexPageType, CORTEX_PAGE_NAMES
   services/                47 service files (API, data, business logic)
   hooks/                   30+ custom React hooks
-  contexts/                3 React Context providers (App, Persona, Site)
-  types/                   TypeScript interfaces (api, network, system, policy, table, domain, deployment, globalElements)
   lib/                     Utilities & helpers
   config/                  Configuration & constants
   test/                    Test setup & fixtures
@@ -127,6 +142,10 @@ src/
 - `CEREBRAS_API_KEY` -- Cerebras-hosted Llama 3.3 70B / 3.1 8B (ultra-fast)
 - `DEEPSEEK_API_KEY` -- DeepSeek V3 / R1 reasoner (~$0.14/M tok)
 - `OLLAMA_ENABLED=true` and/or `OLLAMA_API_BASE=http://192.168.100.177:11434/v1` -- local Ollama on redq box
+
+**AURA Cortex (AI agent engine) overrides:**
+- `CORTEX_LLM_PROVIDER` -- force a specific provider (`openai`, `anthropic`, `groq`, etc.; default: auto-detect from API keys)
+- `CORTEX_LLM_MODEL` -- force a default model ID (overrides registry default)
 
 **Security rule:** NEVER use `VITE_` prefixed variables for credentials or secrets. Vite exposes these in the browser bundle.
 
