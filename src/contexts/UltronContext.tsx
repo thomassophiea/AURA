@@ -101,6 +101,8 @@ export interface UltronContextValue {
   rejectPlan: (planId: string) => void;
   rollbackPlan: (planId: string) => Promise<void>;
   refreshAuditAndTimeline: () => void;
+  addFeedback: (msgId: string, feedback: 'up' | 'down') => void;
+  toggleReasoning: (msgId: string) => void;
 }
 
 // ============================================
@@ -460,6 +462,16 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
     setApiTimeline(agentService.getAPITimeline());
   }, []);
 
+  const addFeedback = useCallback((msgId: string, feedback: 'up' | 'down') => {
+    setMessages((prev) => prev.map((m) => (m.id === msgId ? { ...m, feedback } : m)));
+  }, []);
+
+  const toggleReasoning = useCallback((msgId: string) => {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msgId ? { ...m, showReasoning: !m.showReasoning } : m))
+    );
+  }, []);
+
   // ============================================
   // Workspace controls
   // ============================================
@@ -557,6 +569,8 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       rejectPlan,
       rollbackPlan,
       refreshAuditAndTimeline,
+      addFeedback,
+      toggleReasoning,
     }),
     [
       ultronContext,
@@ -589,6 +603,8 @@ export function UltronContextProvider({ pageContext, children }: UltronContextPr
       rejectPlan,
       rollbackPlan,
       refreshAuditAndTimeline,
+      addFeedback,
+      toggleReasoning,
     ]
   );
 

@@ -12,6 +12,7 @@ import type { AuditEntry } from '../agentTypes';
 
 interface AuditHistoryViewProps {
   entries: AuditEntry[];
+  onRollback?: (planId: string) => void;
 }
 
 function statusIcon(status: AuditEntry['status']) {
@@ -31,7 +32,13 @@ const STATUS_LABEL: Record<AuditEntry['status'], string> = {
   rolledback: 'text-orange-400',
 };
 
-function AuditRow({ entry }: { entry: AuditEntry }) {
+function AuditRow({
+  entry,
+  onRollback,
+}: {
+  entry: AuditEntry;
+  onRollback?: (planId: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -74,13 +81,22 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
               ))}
             </div>
           )}
+          {entry.status === 'completed' && onRollback && (
+            <button
+              onClick={() => onRollback(entry.planId)}
+              className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded text-[10px] text-orange-400 hover:bg-orange-900/20 transition-colors"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Roll back
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function AuditHistoryView({ entries }: AuditHistoryViewProps) {
+export function AuditHistoryView({ entries, onRollback }: AuditHistoryViewProps) {
   if (!entries.length) {
     return (
       <div className="flex items-center justify-center h-full text-sm text-white/30">
@@ -95,7 +111,7 @@ export function AuditHistoryView({ entries }: AuditHistoryViewProps) {
         Audit History — {entries.length} operation{entries.length !== 1 ? 's' : ''}
       </p>
       {entries.map((entry) => (
-        <AuditRow key={entry.id} entry={entry} />
+        <AuditRow key={entry.id} entry={entry} onRollback={onRollback} />
       ))}
     </div>
   );
