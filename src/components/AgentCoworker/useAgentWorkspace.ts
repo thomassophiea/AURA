@@ -7,6 +7,7 @@ interface WorkspacePrefs {
   size: WorkspaceSize;
   mode: WorkspaceMode;
   primaryTab?: PrimaryTab;
+  activePanel?: ActivePanel;
 }
 
 function loadPrefs(): WorkspacePrefs {
@@ -57,14 +58,16 @@ export function useAgentWorkspace(): AgentWorkspaceState & AgentWorkspaceActions
   const [mode, setMode] = useState<WorkspaceMode>(prefs.mode === 'pinned' ? 'pinned' : 'idle');
   const [size, setSize] = useState<WorkspaceSize>(prefs.size);
   const [primaryTab, setPrimaryTabState] = useState<PrimaryTab>(prefs.primaryTab ?? 'terminal');
-  const [activePanel, setActivePanel] = useState<ActivePanel>('conversation');
+  const [activePanel, setActivePanelState] = useState<ActivePanel>(
+    prefs.activePanel ?? 'conversation'
+  );
   const [inputValue, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [pendingPlanId, setPendingPlan] = useState<string | null>(null);
 
   useEffect(() => {
-    savePrefs({ size, mode });
-  }, [size, mode]);
+    savePrefs({ size, mode, primaryTab, activePanel });
+  }, [size, mode, primaryTab, activePanel]);
 
   const open = useCallback(() => setMode('open'), []);
   const minimize = useCallback(() => setMode('minimized'), []);
@@ -80,9 +83,17 @@ export function useAgentWorkspace(): AgentWorkspaceState & AgentWorkspaceActions
   const setPrimaryTab = useCallback(
     (t: PrimaryTab) => {
       setPrimaryTabState(t);
-      savePrefs({ size, mode, primaryTab: t });
+      savePrefs({ size, mode, primaryTab: t, activePanel });
     },
-    [size, mode]
+    [size, mode, activePanel]
+  );
+
+  const setActivePanel = useCallback(
+    (p: ActivePanel) => {
+      setActivePanelState(p);
+      savePrefs({ size, mode, primaryTab, activePanel: p });
+    },
+    [size, mode, primaryTab]
   );
 
   return {
