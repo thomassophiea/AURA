@@ -31,8 +31,8 @@ export function createValidationRouter({ fetchFn } = {}) {
   // POST /validate/intent — full pre-provision validation
   router.post('/validate/intent', jsonBody, async (req, res) => {
     const { intent } = req.body ?? {};
-    if (!intent?.vlan) {
-      return res.status(400).json({ error: 'intent.vlan is required' });
+    if (!Number.isInteger(intent?.vlan)) {
+      return res.status(400).json({ error: 'intent.vlan must be an integer' });
     }
 
     const opts = getOpts(req, fetchFn);
@@ -40,8 +40,13 @@ export function createValidationRouter({ fetchFn } = {}) {
     const multipliers = {};
 
     try {
+      // Parallel fetch: topologies and APs
+      const [topologies, aps] = await Promise.all([
+        fetchXcc('/v1/topologies', opts),
+        fetchXcc('/v1/aps', opts),
+      ]);
+
       // Step a: VLAN exists check
-      const topologies = await fetchXcc('/v1/topologies', opts);
       const vlanResult = validateVlanExists(topologies, intent.vlan);
       checks.push({ name: 'vlan_exists', result: vlanResult.result, evidence: vlanResult.evidence });
 
@@ -53,7 +58,6 @@ export function createValidationRouter({ fetchFn } = {}) {
 
       // Step c: LLDP switch trunk check
       try {
-        const aps = await fetchXcc('/v1/aps', opts);
         const apList = toArray(aps).slice(0, 15);
 
         const lldpByAp = await Promise.all(
@@ -109,17 +113,32 @@ export function createValidationRouter({ fetchFn } = {}) {
       // Wire drift monitor with current credentials (no-op until startPolling is called)
       driftMonitor.configure(opts);
 
+      const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      const provisioningToken = `vtok_${Date.now().toString(36)}`;
+      const recommendation =
+        confidence.band === 'HIGH'
+          ? 'Infrastructure validated. Proceed with provisioning.'
+          : confidence.band === 'MEDIUM'
+          ? 'Can provision with approval. Review warnings before proceeding.'
+          : 'Provisioning blocked. Resolve issues before retrying.';
+
       return res.json({
         intent,
         checks,
         confidence,
-        timestamp: new Date().toISOString(),
+        recommendation,
+        provisioningToken,
+        expiresAt,
       });
     } catch (err) {
       console.error('[ValidationEngine] Controller unreachable:', err.message);
-      return res.status(503).json({
-        error: 'Controller unreachable during validation',
-        detail: err.message,
+      return res.json({
+        intent,
+        checks: [],
+        confidence: { score: 0, band: 'LOW', blockingFailures: [], warnings: ['Controller unreachable: ' + err.message] },
+        recommendation: 'Provisioning blocked. Controller is unreachable.',
+        provisioningToken: null,
+        expiresAt: null,
       });
     }
   });
@@ -149,7 +168,7 @@ export function createValidationRouter({ fetchFn } = {}) {
       const aps = await fetchXcc('/v1/aps', opts);
       const apList = toArray(aps).slice(0, 15);
 
-      const snapshot = await Promise.all(
+      const lldp = await Promise.all(
         apList.map(async (ap) => {
           const serial = apSerial(ap);
           try {
@@ -161,7 +180,7 @@ export function createValidationRouter({ fetchFn } = {}) {
         }),
       );
 
-      return res.json({ snapshot, timestamp: new Date().toISOString() });
+      return res.json({ lldp, timestamp: new Date().toISOString() });
     } catch (err) {
       return res.status(503).json({ error: err.message });
     }
@@ -178,14 +197,14 @@ export function createValidationRouter({ fetchFn } = {}) {
   // DELETE /drift — clear drift alerts
   router.delete('/drift', (_req, res) => {
     driftMonitor.clearAlerts();
-    res.json({ ok: true });
+    return res.json({ cleared: true });
   });
 
   // POST /rollback/:auditId — return snapshot for rollback
   router.post('/rollback/:auditId', jsonBody, (req, res) => {
     const snap = rollbackEngine.get(req.params.auditId);
     if (!snap) {
-      return res.status(404).json({ error: `No snapshot for auditId=${req.params.auditId}` });
+      return res.status(404).json({ error: 'No snapshot found for auditId' });
     }
     return res.json({ auditId: req.params.auditId, snapshot: snap });
   });

@@ -45,7 +45,9 @@ describe('validationRouter', () => {
     expect(res.body.checks).toBeDefined();
     expect(res.body.confidence).toBeDefined();
     expect(res.body.confidence.band).toMatch(/HIGH|MEDIUM|LOW|BLOCK/);
-    expect(res.body.timestamp).toBeDefined();
+    expect(res.body.recommendation).toBeDefined();
+    expect(res.body.provisioningToken).toBeDefined();
+    expect(res.body.expiresAt).toBeDefined();
   });
 
   it('POST /api/validate/intent returns 400 when intent.vlan is missing', async () => {
@@ -92,12 +94,22 @@ describe('validationRouter', () => {
     const app = makeApp(vi.fn());
     const res = await request(app).delete('/api/drift');
     expect(res.status).toBe(200);
-    expect(res.body.ok).toBe(true);
+    expect(res.body.cleared).toBe(true);
   });
 
   it('POST /api/rollback/:auditId returns 404 for unknown auditId', async () => {
     const app = makeApp(vi.fn());
     const res = await request(app).post('/api/rollback/unknown-id');
     expect(res.status).toBe(404);
+  });
+
+  it('GET /validate/topology returns 200 with lldp data', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => [{ apSerialNum: 'AP001' }] }) // /v1/aps
+      .mockResolvedValueOnce({ ok: true, json: async () => [] });                         // /v1/aps/AP001/lldp
+    const app = makeApp(mockFetch);
+    const res = await request(app).get('/api/validate/topology');
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('lldp');
   });
 });
