@@ -7,7 +7,16 @@ export type WorkspaceSize = 'compact' | 'standard' | 'expanded';
 
 export type WorkspaceMode = 'idle' | 'open' | 'minimized' | 'pinned';
 
-export type ActivePanel = 'conversation' | 'execution' | 'diff' | 'audit' | 'timeline';
+export type PrimaryTab = 'terminal' | 'ops';
+
+export type ActivePanel =
+  | 'conversation'
+  | 'execution'
+  | 'diff'
+  | 'audit'
+  | 'timeline'
+  | 'validate'
+  | 'drift';
 
 export type PlanStatus =
   | 'building'
