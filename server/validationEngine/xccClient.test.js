@@ -14,7 +14,7 @@ describe('fetchXcc', () => {
     });
     expect(result).toEqual([{ id: '1', vlanid: 10 }]);
     expect(mockFetch).toHaveBeenCalledWith(
-      'https://ctrl.local/api/management/v1/topologies',
+      'https://ctrl.local/management/v1/topologies',
       expect.objectContaining({ method: 'GET' })
     );
   });
