@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import type { WorkspaceMode, WorkspaceSize, ActivePanel } from './agentTypes';
+import type { WorkspaceMode, WorkspaceSize, ActivePanel, PrimaryTab } from './agentTypes';
 
 const STORAGE_KEY = 'agent-workspace-prefs';
 
 interface WorkspacePrefs {
   size: WorkspaceSize;
   mode: WorkspaceMode;
+  primaryTab?: PrimaryTab;
 }
 
 function loadPrefs(): WorkspacePrefs {
@@ -30,6 +31,7 @@ export interface AgentWorkspaceState {
   mode: WorkspaceMode;
   size: WorkspaceSize;
   activePanel: ActivePanel;
+  primaryTab: PrimaryTab;
   inputValue: string;
   isListening: boolean;
   pendingPlanId: string | null;
@@ -46,6 +48,7 @@ export interface AgentWorkspaceActions {
   startListening: () => void;
   stopListening: () => void;
   setPendingPlan: (id: string | null) => void;
+  setPrimaryTab: (t: PrimaryTab) => void;
   toggle: () => void;
 }
 
@@ -53,6 +56,7 @@ export function useAgentWorkspace(): AgentWorkspaceState & AgentWorkspaceActions
   const prefs = loadPrefs();
   const [mode, setMode] = useState<WorkspaceMode>(prefs.mode === 'pinned' ? 'pinned' : 'idle');
   const [size, setSize] = useState<WorkspaceSize>(prefs.size);
+  const [primaryTab, setPrimaryTabState] = useState<PrimaryTab>(prefs.primaryTab ?? 'terminal');
   const [activePanel, setActivePanel] = useState<ActivePanel>('conversation');
   const [inputValue, setInput] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -73,10 +77,19 @@ export function useAgentWorkspace(): AgentWorkspaceState & AgentWorkspaceActions
     setMode((m) => (m === 'idle' || m === 'minimized' ? 'open' : 'idle'));
   }, []);
 
+  const setPrimaryTab = useCallback(
+    (t: PrimaryTab) => {
+      setPrimaryTabState(t);
+      savePrefs({ size, mode, primaryTab: t });
+    },
+    [size, mode]
+  );
+
   return {
     mode,
     size,
     activePanel,
+    primaryTab,
     inputValue,
     isListening,
     pendingPlanId,
@@ -91,5 +104,6 @@ export function useAgentWorkspace(): AgentWorkspaceState & AgentWorkspaceActions
     startListening,
     stopListening,
     setPendingPlan,
+    setPrimaryTab,
   };
 }
