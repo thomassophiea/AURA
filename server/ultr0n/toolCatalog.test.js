@@ -25,15 +25,23 @@ describe('Ultr0n tool catalog', () => {
       expect(tool.spec.name).toBe(name);
       expect(typeof tool.spec.description).toBe('string');
       expect(tool.spec.parameters.type).toBe('object');
-      expect(['GET']).toContain(tool.method);
+      expect(['GET', 'RESOLVER']).toContain(tool.method);
       expect(typeof tool.buildPath).toBe('function');
     }
   });
 
   it('does not expose any write/destructive tools', () => {
     for (const tool of Object.values(TOOLS)) {
+      if (tool.method === 'RESOLVER') continue;
       expect(['POST', 'PUT', 'DELETE', 'PATCH']).not.toContain(tool.method);
     }
+  });
+
+  it('getDriftAlerts tool is in catalog with a valid spec', () => {
+    expect(isKnownTool('getDriftAlerts')).toBe(true);
+    const tool = getTool('getDriftAlerts');
+    expect(tool.spec.name).toBe('getDriftAlerts');
+    expect(tool.method).toBe('RESOLVER');
   });
 
   it('getToolSpecs returns specs only (no buildPath/method leakage)', () => {

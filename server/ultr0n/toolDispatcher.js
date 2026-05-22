@@ -3,6 +3,12 @@ import { getTool, isKnownTool } from './toolCatalog.js';
 
 const insecureAgent = new https.Agent({ rejectUnauthorized: false });
 
+const resolvers = new Map();
+
+export function registerResolver(name, fn) {
+  resolvers.set(name, fn);
+}
+
 // Maximum sample size for any array we forward to the LLM. Picked so that a
 // typical org-wide listAps response stays under ~3 KB after JSON serialisation.
 const SAMPLE_CAP = 20;
@@ -65,6 +71,16 @@ function truncateResult(data) {
  * @returns {Promise<{ok: true, data: any, callMeta: object} | {ok: false, error: string, callMeta: object}>}
  */
 export async function executeTool(name, args, { authToken, controllerUrl, fetchFn } = {}) {
+  if (resolvers.has(name)) {
+    const startedAt = Date.now();
+    try {
+      const data = await resolvers.get(name)(args ?? {});
+      return { ok: true, data: truncateResult(data), callMeta: { tool: name, args, durationMs: Date.now() - startedAt } };
+    } catch (err) {
+      return { ok: false, error: err.message || String(err), callMeta: { tool: name, args } };
+    }
+  }
+
   if (!isKnownTool(name)) {
     return { ok: false, error: `Unknown tool: ${name}`, callMeta: { tool: name, args } };
   }

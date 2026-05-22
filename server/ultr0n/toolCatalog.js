@@ -265,6 +265,17 @@ export const TOOLS = {
     buildPath: ({ startTime, endTime } = {}) =>
       withQs('/v1/auditlogs', { startTime, endTime }),
   },
+
+  getDriftAlerts: {
+    spec: {
+      name: 'getDriftAlerts',
+      description:
+        'Return current infrastructure drift alerts — topology changes, AP profile changes, VLAN removals detected since last poll. Use when operator asks "what has changed", "is anything drifted", or "what went wrong since I last checked".',
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
+    },
+    method: 'RESOLVER',
+    buildPath: () => '',
+  },
 };
 
 /** OpenAI-compatible tool definitions for createLlmProvider({ tools }). */

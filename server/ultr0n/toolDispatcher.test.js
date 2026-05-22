@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { executeTool } from './toolDispatcher.js';
+import { executeTool, registerResolver } from './toolDispatcher.js';
 
 function mockFetchOk(payload, status = 200) {
   return vi.fn(async () => ({
@@ -126,5 +126,13 @@ describe('executeTool', () => {
       'https://ctrl/api/management/v1/state/sites/my-site',
       expect.any(Object)
     );
+  });
+
+  it('calls a registered resolver instead of making HTTP', async () => {
+    registerResolver('_testResolver', async (args) => ({ echo: args }));
+    const result = await executeTool('_testResolver', { x: 1 }, {});
+    expect(result.ok).toBe(true);
+    expect(result.data.echo).toEqual({ x: 1 });
+    // Cleanup: remove _testResolver from the registry if there's a way, or accept it persists in this test run
   });
 });
