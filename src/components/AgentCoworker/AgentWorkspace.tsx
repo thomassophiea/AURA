@@ -242,13 +242,19 @@ export function AgentWorkspace({
           </div>
         </div>
 
-        {/* Body */}
-        {primaryTab === 'terminal' ? (
-          <div className="flex-1 min-h-0 overflow-hidden">
+        {/* Body — both panels stay mounted; CSS hides the inactive one so
+            RedQueenShell keeps its xterm.js instance and WebSocket alive. */}
+        <div className="flex-1 min-h-0 relative">
+          <div
+            className={cn(
+              'absolute inset-0 overflow-hidden',
+              primaryTab !== 'terminal' && 'hidden'
+            )}
+          >
             <RedQueenShell />
           </div>
-        ) : (
-          <div className="flex flex-col flex-1 min-h-0">
+
+          <div className={cn('absolute inset-0 flex flex-col', primaryTab !== 'ops' && 'hidden')}>
             {/* Ops secondary nav */}
             <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border/40 shrink-0 overflow-x-auto">
               {OPS_PANELS.map(({ id, label, icon: Icon }) => (
@@ -300,7 +306,7 @@ export function AgentWorkspace({
               {activePanel === 'timeline' && <APITimelineView entries={ctx.apiTimeline} />}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </>
   );
