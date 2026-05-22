@@ -4,7 +4,7 @@
  * Reads/writes settings via the controllers table's settings JSON column.
  */
 
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type { SiteGroupSettings } from '../types/siteGroupSettings';
 import { DEFAULT_SITE_GROUP_SETTINGS } from '../types/siteGroupSettings';
 
@@ -12,8 +12,7 @@ const STORAGE_PREFIX = 'sg_settings:';
 
 class SiteGroupSettingsService {
   private _isSupabaseConfigured(): boolean {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return !!url && !url.includes('placeholder');
+    return isSupabaseConfigured;
   }
 
   async getSettings(siteGroupId: string): Promise<SiteGroupSettings> {
@@ -49,8 +48,16 @@ class SiteGroupSettingsService {
     const current = await this.getSettings(siteGroupId);
 
     const merged: SiteGroupSettings = {
-      connection: { ...DEFAULT_SITE_GROUP_SETTINGS.connection, ...current.connection, ...updates.connection },
-      deployment: { ...DEFAULT_SITE_GROUP_SETTINGS.deployment, ...current.deployment, ...updates.deployment },
+      connection: {
+        ...DEFAULT_SITE_GROUP_SETTINGS.connection,
+        ...current.connection,
+        ...updates.connection,
+      },
+      deployment: {
+        ...DEFAULT_SITE_GROUP_SETTINGS.deployment,
+        ...current.deployment,
+        ...updates.deployment,
+      },
       custom: { ...current.custom, ...updates.custom },
     };
 
@@ -86,14 +93,18 @@ class SiteGroupSettingsService {
   private _cache(siteGroupId: string, settings: SiteGroupSettings) {
     try {
       localStorage.setItem(`${STORAGE_PREFIX}${siteGroupId}`, JSON.stringify(settings));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }
 
   private _getCached(siteGroupId: string): SiteGroupSettings {
     try {
       const raw = localStorage.getItem(`${STORAGE_PREFIX}${siteGroupId}`);
       if (raw) return JSON.parse(raw);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     return { ...DEFAULT_SITE_GROUP_SETTINGS };
   }
 }

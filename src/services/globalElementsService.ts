@@ -6,7 +6,7 @@
  * localStorage fallback for offline / fast-reload support.
  */
 
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type {
   GlobalElementTemplate,
   GlobalElementType,
@@ -32,8 +32,7 @@ const STORAGE_KEYS = {
 class GlobalElementsService {
   /** Check if Supabase is actually configured (not using placeholder). */
   private _isSupabaseConfigured(): boolean {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return !!url && !url.includes('placeholder');
+    return isSupabaseConfigured;
   }
 
   // -----------------------------------------------------------------------
@@ -335,6 +334,9 @@ class GlobalElementsService {
     scopeType?: VariableScope,
     scopeId?: string
   ): Promise<VariableValue[]> {
+    if (!this._isSupabaseConfigured()) {
+      return this._getCachedVariableVals(orgId);
+    }
     try {
       let query = supabase.from('variable_values').select('*').eq('org_id', orgId);
 
@@ -387,6 +389,9 @@ class GlobalElementsService {
   async getAssignmentsByOrg(
     orgId: string
   ): Promise<(TemplateAssignment & { template_name?: string; element_type?: string })[]> {
+    if (!this._isSupabaseConfigured()) {
+      return [];
+    }
     const { data, error } = await supabase
       .from('template_assignments')
       .select('*, global_element_templates!inner(name, element_type, org_id)')

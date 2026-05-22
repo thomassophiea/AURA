@@ -857,106 +857,43 @@ class ApiService {
     // Build query string from options
     const queryString = this.buildQueryString(options);
 
-    // Try multiple endpoints as Extreme Platform ONE may use different versions
-    const siteEndpoints = ['/v3/sites', '/v1/sites', '/sites', '/v2/sites', '/v1/sites/all'];
+    // Extreme Platform ONE uses /v3/sites. Keep /v1/sites as a single fallback
+    // for older controllers; older speculative paths were removed because they
+    // 404 on every modern controller and only added console noise.
+    const siteEndpoints = ['/v3/sites', '/v1/sites'];
 
     for (let i = 0; i < siteEndpoints.length; i++) {
       const endpoint = siteEndpoints[i] + queryString;
       try {
-        const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000); // Longer timeout for sites
+        const response = await this.makeAuthenticatedRequest(endpoint, {}, 10000);
 
         if (!response.ok) {
-          logger.warn(
-            `Sites API ${endpoint} returned status ${response.status}: ${response.statusText}`
-          );
-
-          // If it's 404, try the next endpoint
           if (response.status === 404) {
-            logger.log(`Endpoint ${endpoint} not found, trying next...`);
+            logger.log(`${endpoint} not found, trying next...`);
             continue;
           }
-
-          // Fall through to next endpoint on any non-ok response, not just 404
-          logger.log(`Endpoint ${endpoint} returned ${response.status}, trying next...`);
+          logger.warn(`Sites API ${endpoint} returned ${response.status}`);
           continue;
         }
 
         const sites = await response.json();
-        logger.log(`Successfully fetched ${sites ? sites.length : 0} sites from ${endpoint}`);
+        const arr = Array.isArray(sites) ? sites : [];
+        logger.log(`Fetched ${arr.length} sites from ${endpoint}`);
 
-        // Debug log the first few sites to verify structure
-        if (sites && sites.length > 0) {
-          logger.log('Sample site structure:', {
-            endpoint: endpoint,
-            firstSite: sites[0],
-            totalSites: sites.length,
-            sampleSiteIds: sites
-              .slice(0, 3)
-              .map((s: Site) => ({ id: s.id, name: s.name || s.siteName })),
-          });
-
-          // Specifically look for the problematic site ID
-          const targetSite = sites.find(
-            (site: Site) => site.id === 'c7395471-aa5c-46dc-9211-3ed24c5789bd'
-          );
-          if (targetSite) {
-            logger.log('Found target site in response:', {
-              endpoint: endpoint,
-              site: targetSite,
-            });
-          }
-
-          // Cache the sites for 5 minutes (only if no custom query options)
-          if (!options) {
-            cacheService.set(cacheKey, sites, CACHE_TTL.MEDIUM);
-          }
-
-          return sites;
-        } else {
-          logger.warn(`${endpoint} returned empty or null sites array`);
-          // Continue to next endpoint if this one returns empty
-          continue;
+        // Trust a 200 OK — cache and return even when empty so concurrent
+        // callers short-circuit instead of stampeding the fallback list.
+        if (!options) {
+          cacheService.set(cacheKey, arr, CACHE_TTL.MEDIUM);
         }
+        return arr;
       } catch (error) {
-        logger.warn(`Failed to load sites from ${endpoint}:`, error);
-
-        // Provide more detailed error information
-        if (error instanceof Error) {
-          logger.warn(`Sites API ${endpoint} error details:`, {
-            message: error.message,
-            stack: error.stack?.split('\n')[0], // Just first line of stack
-          });
-
-          // If it's a network error or 404, try the next endpoint
-          if (
-            error.message.includes('404') ||
-            error.message.includes('Not Found') ||
-            error.message.includes('Failed to fetch')
-          ) {
-            logger.log(`Network/404 error for ${endpoint}, trying next endpoint...`);
-            continue;
-          }
-
-          // Check if it's a suppressed error (which shouldn't happen for sites but just in case)
-          if (
-            error.message.includes('SUPPRESSED_ANALYTICS_ERROR') ||
-            error.message.includes('SUPPRESSED_NON_CRITICAL_ERROR')
-          ) {
-            logger.log(
-              `Sites endpoint ${endpoint} was marked as suppressed endpoint - this should not happen`
-            );
-            continue;
-          }
-        }
-
-        // If this is the last endpoint, don't continue
-        if (i === siteEndpoints.length - 1) {
-          break;
-        }
+        const msg = error instanceof Error ? error.message : String(error);
+        logger.log(`Sites endpoint ${endpoint} threw: ${msg}, trying next...`);
+        continue;
       }
     }
 
-    logger.warn('All site endpoints failed or returned empty results');
+    logger.warn('All site endpoints failed');
     return [];
   }
 
@@ -978,31 +915,14 @@ class ApiService {
         return foundByName;
       }
 
-      // If not found in sites list, try individual site lookup endpoints
-      const individualEndpoints = [
-        `/v3/sites/${siteId}`,
-        `/v1/sites/${siteId}`,
-        `/sites/${siteId}`,
-        `/v2/sites/${siteId}`,
-      ];
-
-      for (const endpoint of individualEndpoints) {
-        try {
-          logger.log(`Trying individual site lookup: ${endpoint}`);
-          const response = await this.makeAuthenticatedRequest(endpoint, {}, 5000);
-
-          if (response.ok) {
-            const site = await response.json();
-            logger.log(`Found individual site via ${endpoint}:`, site);
-            return site;
-          } else if (response.status === 404) {
-            logger.log(`Individual site endpoint ${endpoint} not found, trying next...`);
-            continue;
-          }
-        } catch (error) {
-          logger.warn(`Individual site lookup failed for ${endpoint}:`, error);
-          continue;
-        }
+      // Not in list — try /v3 single-site lookup (current platform endpoint).
+      try {
+        const response = await this.makeAuthenticatedRequest(`/v3/sites/${siteId}`, {}, 5000);
+        if (response.ok) return await response.json();
+      } catch (error) {
+        logger.log(
+          `Single-site lookup failed for ${siteId}: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
 
       return null;
@@ -2376,28 +2296,21 @@ class ApiService {
    * Get profiles for a specific device group
    */
   async getProfilesByDeviceGroup(deviceGroupId: string): Promise<any[]> {
-    // Try multiple endpoint patterns
-    const endpoints = [
-      `/v3/devicegroups/${encodeURIComponent(deviceGroupId)}/profiles`,
-      `/v1/devicegroups/${encodeURIComponent(deviceGroupId)}/profiles`,
-      `/v3/profiles?deviceGroupId=${encodeURIComponent(deviceGroupId)}`,
-      `/v3/groups/${encodeURIComponent(deviceGroupId)}/profiles`,
-    ];
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
-        if (response.ok) {
-          const data = await response.json();
-          logger.log(`Found profiles for device group ${deviceGroupId} at ${endpoint}`);
-          return Array.isArray(data) ? data : [];
-        }
-      } catch (error) {
-        continue;
+    const endpoint = `/v3/devicegroups/${encodeURIComponent(deviceGroupId)}/profiles`;
+    try {
+      const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
+      if (response.ok) {
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
       }
+      if (response.status !== 404) {
+        logger.warn(`Profiles for device group ${deviceGroupId} returned ${response.status}`);
+      }
+    } catch (error) {
+      logger.log(
+        `Profiles fetch threw for ${deviceGroupId}: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-
-    logger.warn(`No profiles found for device group ${deviceGroupId}`);
     return [];
   }
 
@@ -2405,22 +2318,16 @@ class ApiService {
    * Get profile by ID
    */
   async getProfileById(profileId: string): Promise<any | null> {
-    const endpoints = [
-      `/v3/profiles/${encodeURIComponent(profileId)}`,
-      `/v1/profiles/${encodeURIComponent(profileId)}`,
-    ];
-
-    for (const endpoint of endpoints) {
-      try {
-        const response = await this.makeAuthenticatedRequest(endpoint, {}, 8000);
-        if (response.ok) {
-          return await response.json();
-        }
-      } catch (error) {
-        continue;
-      }
+    try {
+      const response = await this.makeAuthenticatedRequest(
+        `/v3/profiles/${encodeURIComponent(profileId)}`,
+        {},
+        8000
+      );
+      if (response.ok) return await response.json();
+    } catch {
+      // fall through
     }
-
     return null;
   }
 

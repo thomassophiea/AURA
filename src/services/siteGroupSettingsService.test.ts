@@ -19,6 +19,7 @@ const mockSupabase = vi.hoisted((): { from: any; builder: any } => {
 
 vi.mock('./supabaseClient', () => ({
   supabase: { from: mockSupabase.from },
+  isSupabaseConfigured: true,
 }));
 
 // Provide an env value so _isSupabaseConfigured returns true in tests.

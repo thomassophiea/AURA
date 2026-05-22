@@ -1,35 +1,88 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase configuration — values must be set via environment variables.
-// VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are the Supabase project URL
-// and public anon key; both are safe to expose to the browser per Supabase
-// design (RLS policies enforce access control). Never use the service role key here.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.warn('[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set — Supabase features will be unavailable.');
+const isPlaceholder = (v: string | undefined): boolean =>
+  !v || v.includes('placeholder') || v.includes('example.com');
+
+export const isSupabaseConfigured: boolean =
+  !isPlaceholder(SUPABASE_URL) && !isPlaceholder(SUPABASE_ANON_KEY);
+
+// Chainable no-op stub. Returns itself for any property access, is thenable,
+// and resolves to a structured "not configured" error so callers fall back to
+// localStorage / empty results instead of firing DNS-failing requests.
+function createStubClient(): SupabaseClient {
+  const notConfiguredError = {
+    message: 'Supabase not configured (VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY missing)',
+    code: 'SUPABASE_NOT_CONFIGURED',
+    details: '',
+    hint: '',
+    name: 'PostgrestError',
+  };
+
+  const stubResult = {
+    data: null,
+    error: notConfiguredError,
+    count: null,
+    status: 0,
+    statusText: '',
+  };
+
+  const makeChain = (): any => {
+    const chain: any = new Proxy(function () {}, {
+      get(_target, prop) {
+        if (prop === 'then') {
+          // Make the proxy thenable so `await supabase.from(...).select(...)` resolves.
+          return (resolve: (v: typeof stubResult) => unknown) => resolve(stubResult);
+        }
+        if (prop === Symbol.iterator || prop === Symbol.asyncIterator) {
+          return undefined;
+        }
+        return () => chain;
+      },
+      apply() {
+        return chain;
+      },
+    });
+    return chain;
+  };
+
+  const stubAuth = {
+    getSession: async () => ({ data: { session: null }, error: null }),
+    getUser: async () => ({ data: { user: null }, error: null }),
+    signInWithPassword: async () => ({
+      data: { user: null, session: null },
+      error: notConfiguredError,
+    }),
+    signOut: async () => ({ error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => undefined } } }),
+  };
+
+  return new Proxy({} as SupabaseClient, {
+    get(_target, prop) {
+      if (prop === 'auth') return stubAuth;
+      if (prop === 'from' || prop === 'rpc' || prop === 'schema') return () => makeChain();
+      if (prop === 'storage' || prop === 'realtime' || prop === 'functions') return makeChain();
+      return () => makeChain();
+    },
+  });
 }
 
-// Create a single supabase client for interacting with your database.
-// Falls back to placeholder values when env vars are absent so the module
-// can be imported without crashing; callers should check the warning above.
-export const supabase: SupabaseClient = createClient(SUPABASE_URL || 'https://placeholder.supabase.co', SUPABASE_ANON_KEY || 'placeholder', {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'edge-services-site'
-    }
-  }
-});
+if (!isSupabaseConfigured) {
+  console.warn(
+    '[Supabase] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not set — using no-op stub. Supabase-backed features (templates, variables, network rewind) will return empty results.'
+  );
+}
 
-// Database types for TypeScript
+export const supabase: SupabaseClient = isSupabaseConfigured
+  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      auth: { persistSession: true, autoRefreshToken: true },
+      db: { schema: 'public' },
+      global: { headers: { 'X-Client-Info': 'edge-services-site' } },
+    })
+  : createStubClient();
+
 export interface ServiceMetricsSnapshot {
   id?: string;
   service_id: string;

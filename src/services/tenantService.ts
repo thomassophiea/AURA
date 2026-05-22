@@ -3,7 +3,7 @@
  * Manages organizations, controllers, and user access
  */
 
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 // Types
 export interface Organization {
@@ -99,8 +99,7 @@ class TenantService {
 
   /** Check if Supabase is actually configured (not using placeholder). */
   private _isSupabaseConfigured(): boolean {
-    const url = import.meta.env.VITE_SUPABASE_URL;
-    return !!url && !url.includes('placeholder');
+    return isSupabaseConfigured;
   }
 
   constructor() {

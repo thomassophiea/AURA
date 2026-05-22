@@ -18,6 +18,7 @@ vi.mock('../../services/supabaseClient', () => ({
       throw new Error('Supabase should not be reached in test mode');
     },
   },
+  isSupabaseConfigured: false,
 }));
 
 // Force the placeholder URL so _isSupabaseConfigured returns false.
