@@ -20,11 +20,21 @@ import {
   DEFAULT_PICKER_MODEL,
 } from './server/ultr0nModelRegistry.js';
 import { attachRedQueenShell } from './server/redQueenShell.js';
+import { createValidationRouter } from './server/validationEngine/validationRouter.js';
+import { driftMonitor } from './server/validationEngine/driftMonitor.js';
+import { registerResolver } from './server/ultr0n/toolDispatcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Wire getDriftAlerts Ultr0n tool to the live drift monitor
+registerResolver('getDriftAlerts', () => ({
+  alerts: driftMonitor.getAlerts(),
+  status: driftMonitor.getStatus(),
+}));
+
 const PORT = process.env.PORT || 3000;
 
 // Default Campus Controller URL (fallback if no dynamic controller specified)
@@ -1375,6 +1385,10 @@ app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
   });
   xiqReq.end();
 });
+
+// ==================== Validation Engine Routes ====================
+// Must appear before the /api proxy middleware so requests are handled server-side.
+app.use('/api', requireAuth, createValidationRouter());
 
 // ==================== Ultr0n AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are
