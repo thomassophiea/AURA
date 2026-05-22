@@ -1,55 +1,30 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { AlertTriangle, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Trash2, Loader2, ShieldCheck } from 'lucide-react';
 import { cn } from '../../ui/utils';
 
-interface DriftAlert {
+export interface DriftAlert {
   id: string;
   type: string;
   detail: string;
   detectedAt: string;
 }
 
-const POLL_MS = 30_000;
+interface DriftPanelProps {
+  alerts: DriftAlert[];
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => void;
+  onClear: () => void;
+  onRevalidate?: () => void;
+}
 
-export function DriftPanel() {
-  const [alerts, setAlerts] = useState<DriftAlert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [clearing, setClearing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const fetchAlerts = useCallback(async () => {
-    try {
-      const resp = await fetch('/api/drift');
-      if (!resp.ok) throw new Error(`${resp.status}`);
-      const data = await resp.json();
-      setAlerts(data.alerts ?? []);
-      setError(null);
-    } catch {
-      setError('Failed to fetch drift alerts');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAlerts();
-    intervalRef.current = setInterval(fetchAlerts, POLL_MS);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fetchAlerts]);
-
-  async function handleClear() {
-    setClearing(true);
-    try {
-      await fetch('/api/drift', { method: 'DELETE' });
-      await fetchAlerts();
-    } finally {
-      setClearing(false);
-    }
-  }
-
+export function DriftPanel({
+  alerts,
+  loading,
+  error,
+  onRefresh,
+  onClear,
+  onRevalidate,
+}: DriftPanelProps) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/60 shrink-0">
@@ -57,27 +32,33 @@ export function DriftPanel() {
           {alerts.length} alert{alerts.length !== 1 ? 's' : ''}
         </span>
         <div className="flex items-center gap-1">
+          {onRevalidate && alerts.length > 0 && (
+            <button
+              onClick={onRevalidate}
+              className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors"
+              title="Switch to Validate panel"
+            >
+              <ShieldCheck className="h-3 w-3" />
+              Validate
+            </button>
+          )}
           <button
-            onClick={fetchAlerts}
+            onClick={onRefresh}
             className="p-1 rounded hover:bg-accent/30 text-muted-foreground hover:text-foreground transition-colors"
             title="Refresh"
           >
             <RefreshCw className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={handleClear}
-            disabled={clearing || alerts.length === 0}
+            onClick={onClear}
+            disabled={alerts.length === 0}
             className={cn(
               'flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors',
               'text-red-400 hover:bg-red-900/20 disabled:opacity-40 disabled:cursor-not-allowed'
             )}
             aria-label="Clear"
           >
-            {clearing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Trash2 className="h-3 w-3" />
-            )}
+            <Trash2 className="h-3 w-3" />
             Clear
           </button>
         </div>

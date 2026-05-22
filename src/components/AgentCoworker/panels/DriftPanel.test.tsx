@@ -1,72 +1,51 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DriftPanel } from './DriftPanel';
+import type { DriftAlert } from './DriftPanel';
 
-const mockFetch = vi.fn();
+const mockAlert: DriftAlert = {
+  id: 'd1',
+  type: 'ssid-mismatch',
+  detail: 'SSID Corp-WiFi missing on AP abc123',
+  detectedAt: '2026-05-22T10:00:00Z',
+};
 
-beforeEach(() => {
-  vi.stubGlobal('fetch', mockFetch);
-  mockFetch.mockReset();
-});
+const baseProps = {
+  alerts: [],
+  loading: false,
+  error: null,
+  onRefresh: vi.fn(),
+  onClear: vi.fn(),
+};
 
 describe('DriftPanel', () => {
-  it('fetches and displays alerts on mount', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        alerts: [
-          {
-            id: 'd1',
-            type: 'ssid-mismatch',
-            detail: 'SSID Corp-WiFi missing on AP abc123',
-            detectedAt: '2026-05-22T10:00:00Z',
-          },
-        ],
-      }),
-    });
-
-    render(<DriftPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/ssid-mismatch/i)).toBeDefined();
-      expect(screen.getByText(/Corp-WiFi missing/i)).toBeDefined();
-    });
+  it('shows empty state when no alerts', () => {
+    render(<DriftPanel {...baseProps} />);
+    expect(screen.getByText(/no drift detected/i)).toBeDefined();
   });
 
-  it('shows empty state when no alerts', async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ alerts: [] }),
-    });
-
-    render(<DriftPanel />);
-
-    await waitFor(() => {
-      expect(screen.getByText(/no drift detected/i)).toBeDefined();
-    });
+  it('displays alerts when provided', () => {
+    render(<DriftPanel {...baseProps} alerts={[mockAlert]} />);
+    expect(screen.getByText(/ssid-mismatch/i)).toBeDefined();
+    expect(screen.getByText(/Corp-WiFi missing/i)).toBeDefined();
   });
 
-  it('clears alerts on DELETE button click', async () => {
-    mockFetch
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          alerts: [
-            { id: 'd1', type: 'ssid-mismatch', detail: 'x', detectedAt: '2026-05-22T10:00:00Z' },
-          ],
-        }),
-      })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ cleared: 1 }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ alerts: [] }) });
+  it('shows loading state', () => {
+    render(<DriftPanel {...baseProps} loading={true} />);
+    expect(screen.getByText(/loading/i)).toBeDefined();
+  });
 
-    render(<DriftPanel />);
-
-    await waitFor(() => expect(screen.getByText(/ssid-mismatch/i)).toBeDefined());
-
+  it('calls onClear when Clear button is clicked', () => {
+    const onClear = vi.fn();
+    render(<DriftPanel {...baseProps} alerts={[mockAlert]} onClear={onClear} />);
     fireEvent.click(screen.getByRole('button', { name: /clear/i }));
+    expect(onClear).toHaveBeenCalledOnce();
+  });
 
-    await waitFor(() => {
-      expect(screen.getByText(/no drift detected/i)).toBeDefined();
-    });
+  it('calls onRevalidate when Validate button is clicked', () => {
+    const onRevalidate = vi.fn();
+    render(<DriftPanel {...baseProps} alerts={[mockAlert]} onRevalidate={onRevalidate} />);
+    fireEvent.click(screen.getByRole('button', { name: /validate/i }));
+    expect(onRevalidate).toHaveBeenCalledOnce();
   });
 });

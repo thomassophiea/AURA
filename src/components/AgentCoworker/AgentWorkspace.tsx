@@ -23,6 +23,7 @@ import { RedQueenShell } from './panels/RedQueenShell';
 import { ConversationStream } from './panels/ConversationStream';
 import { ValidationPanel } from './panels/ValidationPanel';
 import { DriftPanel } from './panels/DriftPanel';
+import type { DriftAlert } from './panels/DriftPanel';
 import { ExecutionPlanView } from './panels/ExecutionPlanView';
 import { ConfigDiffView } from './panels/ConfigDiffView';
 import { AuditHistoryView } from './panels/AuditHistoryView';
@@ -130,6 +131,40 @@ export function AgentWorkspace({
 
   const [inputValue, setInputValue] = useState('');
   const [isListening, setIsListening] = useState(false);
+
+  // Drift state managed centrally so the parent can show a badge
+  const [driftAlerts, setDriftAlerts] = useState<DriftAlert[]>([]);
+  const [driftLoading, setDriftLoading] = useState(false);
+  const [driftError, setDriftError] = useState<string | null>(null);
+  const fetchDriftAlerts = useCallback(async () => {
+    setDriftLoading(true);
+    try {
+      const resp = await fetch('/api/drift');
+      if (!resp.ok) throw new Error(`${resp.status}`);
+      const data = await resp.json();
+      setDriftAlerts(data.alerts ?? []);
+      setDriftError(null);
+    } catch {
+      setDriftError('Failed to fetch drift alerts');
+    } finally {
+      setDriftLoading(false);
+    }
+  }, []);
+
+  const clearDriftAlerts = useCallback(async () => {
+    try {
+      await fetch('/api/drift', { method: 'DELETE' });
+      await fetchDriftAlerts();
+    } catch {
+      // ignore
+    }
+  }, [fetchDriftAlerts]);
+
+  useEffect(() => {
+    if (activePanel === 'drift' && isVisible) {
+      fetchDriftAlerts();
+    }
+  }, [activePanel, isVisible, fetchDriftAlerts]);
 
   if (mode === 'minimized') {
     return (
@@ -299,7 +334,16 @@ export function AgentWorkspace({
                 />
               )}
               {activePanel === 'validate' && <ValidationPanel />}
-              {activePanel === 'drift' && <DriftPanel />}
+              {activePanel === 'drift' && (
+                <DriftPanel
+                  alerts={driftAlerts}
+                  loading={driftLoading}
+                  error={driftError}
+                  onRefresh={fetchDriftAlerts}
+                  onClear={clearDriftAlerts}
+                  onRevalidate={() => onSetActivePanel('validate')}
+                />
+              )}
               {activePanel === 'execution' && <ExecutionPlanView plan={ctx.pendingPlan} />}
               {activePanel === 'diff' && <ConfigDiffView diff={lastDiff} />}
               {activePanel === 'audit' && <AuditHistoryView entries={ctx.auditEntries} />}

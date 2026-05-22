@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, XCircle, Loader2, Copy, Check } from 'lucide-react';
 import { cn } from '../../ui/utils';
 
@@ -23,12 +23,25 @@ const BAND_STYLES: Record<ValidationResult['band'], string> = {
   LOW: 'text-red-300 bg-red-900/30 border-red-700/40',
 };
 
-export function ValidationPanel() {
-  const [ssidName, setSsidName] = useState('');
-  const [vlanId, setVlanId] = useState('');
+interface ValidationPanelProps {
+  initialSsid?: string;
+  initialVlanId?: number;
+}
+
+export function ValidationPanel({ initialSsid, initialVlanId }: ValidationPanelProps = {}) {
+  const [ssidName, setSsidName] = useState(initialSsid ?? '');
+  const [vlanId, setVlanId] = useState(initialVlanId != null ? String(initialVlanId) : '');
   const [security, setSecurity] = useState<'WPA2' | 'WPA3' | 'WPA3_TRANSITION' | 'OPEN'>('WPA3');
   const [site, setSite] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialSsid !== undefined) setSsidName(initialSsid);
+  }, [initialSsid]);
+
+  useEffect(() => {
+    if (initialVlanId !== undefined) setVlanId(String(initialVlanId));
+  }, [initialVlanId]);
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -40,7 +53,12 @@ export function ValidationPanel() {
     try {
       const resp = await fetch('/api/validate/intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(localStorage.getItem('access_token')
+            ? { Authorization: `Bearer ${localStorage.getItem('access_token')}` }
+            : {}),
+        },
         body: JSON.stringify({
           intent: {
             action: 'provision-ssid',
