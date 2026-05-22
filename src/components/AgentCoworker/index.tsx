@@ -19,18 +19,60 @@ export function AgentCoworker(_props: AgentCoworkerProps) {
   const [driftCount, setDriftCount] = useState(0);
 
   useEffect(() => {
+    const OPS_PANEL_KEYS: Record<string, Parameters<typeof ws.setActivePanel>[0]> = {
+      '1': 'conversation',
+      '2': 'validate',
+      '3': 'drift',
+      '4': 'execution',
+      '5': 'diff',
+      '6': 'audit',
+      '7': 'timeline',
+    };
+
     const handler = (e: KeyboardEvent) => {
+      const isOpen = ws.mode === 'open' || ws.mode === 'pinned';
+
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        if (ws.mode === 'open' || ws.mode === 'pinned') {
+        if (isOpen) {
           ws.dismiss();
           ctx.closeUltr0n();
         } else {
           ctx.openUltr0n();
           ws.open();
         }
+        return;
       }
-      if (e.key === 'Escape' && ws.mode === 'open') {
+
+      if (!isOpen) return;
+
+      // ⌘1 / Ctrl+1 → Terminal tab, ⌘2 / Ctrl+2 → Ops tab
+      if ((e.metaKey || e.ctrlKey) && e.key === '1') {
+        e.preventDefault();
+        ws.setPrimaryTab('terminal');
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === '2') {
+        e.preventDefault();
+        ws.setPrimaryTab('ops');
+        return;
+      }
+
+      // 1–7 without modifier → Ops sub-panel (only when Ops tab is active)
+      if (!e.metaKey && !e.ctrlKey && !e.altKey && ws.primaryTab === 'ops') {
+        const panel = OPS_PANEL_KEYS[e.key];
+        if (
+          panel &&
+          !(e.target instanceof HTMLInputElement) &&
+          !(e.target instanceof HTMLTextAreaElement)
+        ) {
+          e.preventDefault();
+          ws.setActivePanel(panel);
+          return;
+        }
+      }
+
+      if (e.key === 'Escape') {
         ctx.closeUltr0n();
         ws.dismiss();
       }

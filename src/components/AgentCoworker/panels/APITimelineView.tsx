@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Clock } from 'lucide-react';
 import { cn } from '../../ui/utils';
 import type { APITimelineEntry } from '../agentTypes';
 
@@ -30,8 +31,16 @@ export function APITimelineView({ entries }: APITimelineViewProps) {
 
   if (!entries.length) {
     return (
-      <div className="flex items-center justify-center h-full text-sm text-white/30">
-        No API calls recorded
+      <div className="flex flex-col items-center justify-center h-full gap-3 px-6 text-center">
+        <div className="h-8 w-8 rounded-full bg-muted/30 flex items-center justify-center">
+          <Clock className="h-4 w-4 text-muted-foreground/50" />
+        </div>
+        <div className="flex flex-col gap-1">
+          <p className="text-sm text-muted-foreground">No API calls yet</p>
+          <p className="text-xs text-muted-foreground/60">
+            API calls made during Chat sessions and plan execution will appear here in real time.
+          </p>
+        </div>
       </div>
     );
   }

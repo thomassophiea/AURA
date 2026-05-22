@@ -176,11 +176,10 @@ export function AgentWorkspace({
   }, [fetchDriftAlerts]);
 
   useEffect(() => {
-    if (!isVisible) return;
     fetchDriftAlerts();
     const id = setInterval(fetchDriftAlerts, 30_000);
     return () => clearInterval(id);
-  }, [isVisible, fetchDriftAlerts]);
+  }, [fetchDriftAlerts]);
 
   // Auto-switch to Drift panel when new alerts arrive while Ops is active
   const prevAlertCountRef = useRef(0);
@@ -298,6 +297,9 @@ export function AgentWorkspace({
                   <Settings2 className="h-3 w-3" />
                 )}
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'ops' && driftAlerts.length > 0 && (
+                  <span className="ml-0.5 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
+                )}
               </button>
             ))}
           </div>
