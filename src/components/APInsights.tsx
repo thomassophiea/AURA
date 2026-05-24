@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * AP Insights Component
  *
@@ -423,6 +426,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
     timeline.softReset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duration, timeline.softReset]);
 
   // Transform data for each chart
