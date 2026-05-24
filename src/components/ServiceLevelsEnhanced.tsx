@@ -380,7 +380,7 @@ export function ServiceLevelsEnhanced() {
 
       const data = await response.json();
       return data;
-    } catch (error) {
+    } catch {
       return null;
     }
   };
@@ -422,7 +422,7 @@ export function ServiceLevelsEnhanced() {
       const stations = Array.isArray(data) ? data : data.stations || data.clients || [];
 
       return stations;
-    } catch (error) {
+    } catch {
       return [];
     }
   };
