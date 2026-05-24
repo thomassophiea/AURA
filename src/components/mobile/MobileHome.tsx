@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * MobileHome - Wireless Status home screen
  * Instant network status at a glance
@@ -76,21 +79,11 @@ export function MobileHome({
   const isOffline = !isOnline;
 
   const fetchStats = async () => {
-    console.log('[MobileHome] Fetching stats for site:', currentSite);
     const [clientsData, apsData, networksData] = await Promise.all([
       apiService.getStations(),
       apiService.getAccessPoints(),
       apiService.getServices().catch(() => []),
     ]);
-
-    console.log(
-      '[MobileHome] Raw data - clients:',
-      clientsData?.length,
-      'aps:',
-      apsData?.length,
-      'networks:',
-      networksData?.length
-    );
 
     const filteredClients =
       currentSite === 'all'
@@ -106,13 +99,6 @@ export function MobileHome({
             (ap: any) =>
               ap.siteId === currentSite || ap.site === currentSite || ap.hostSite === currentSite
           );
-
-    console.log(
-      '[MobileHome] Filtered - clients:',
-      filteredClients?.length,
-      'aps:',
-      filteredAPs?.length
-    );
 
     const isAPOnline = (ap: any): boolean => {
       const status = (
@@ -140,7 +126,7 @@ export function MobileHome({
     const offlineAPsCount = offlineAPsList.length;
 
     const apScore = filteredAPs.length > 0 ? (onlineAPs / filteredAPs.length) * 100 : 100;
-    const issueCount = offlineAPsCount;
+    const _issueCount = offlineAPsCount;
 
     // Count enabled/disabled networks
     const enabledNetworks = networksData.filter((n: any) => n.status === 'enabled').length;
@@ -210,7 +196,7 @@ export function MobileHome({
       await offlineStorage.clear();
       toast.success('Cache cleared');
       await refresh();
-    } catch (e) {
+    } catch {
       toast.error('Failed to clear cache');
     } finally {
       setIsClearingCache(false);
@@ -234,6 +220,7 @@ export function MobileHome({
       }
     };
     loadSites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSiteChange = (siteId: string) => {
