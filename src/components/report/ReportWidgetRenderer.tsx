@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Report widget data from Campus Controller API is untyped JSON; any is required throughout
+
 /**
  * Universal Report Widget Renderer
  *
@@ -11,7 +14,6 @@ import { Badge } from '../ui/badge';
 import {
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
   CheckCircle,
   AlertTriangle,
   XCircle,
@@ -24,18 +26,7 @@ import {
   Signal,
   Router,
   Activity,
-  BarChart3,
   Radio,
-  AppWindow,
-  MapPin,
-  FileText,
-  TrendingUp,
-  ArrowUpRight as Up,
-  ArrowDownRight as Down,
-  Hash,
-  Timer,
-  Gauge,
-  Globe,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -160,7 +151,7 @@ interface Props {
 }
 
 export function ReportWidgetRenderer({ widget, widgetData, metrics, platformLoading }: Props) {
-  const { displayType, widgetKey, title, config: wCfg } = widget;
+  const { displayType, widgetKey } = widget;
 
   // ── Scorecard ──
   if (displayType === 'scorecard') {
