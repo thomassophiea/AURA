@@ -1,6 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Resizable } from 're-resizable';
-import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -9,7 +8,6 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Activity,
   CheckCircle,
   XCircle,
@@ -17,23 +15,17 @@ import {
   Loader2,
   Copy,
   Download,
-  GripHorizontal,
   Database,
   Gauge,
   Zap,
   Terminal,
-  Settings,
   RefreshCw,
   Key,
   Globe,
   Cpu,
   HardDrive,
   Timer,
-  Wifi,
-  Users,
   BarChart3,
-  Eye,
-  EyeOff,
   Layers,
   Braces,
   Play,
