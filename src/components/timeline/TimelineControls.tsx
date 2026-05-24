@@ -2,7 +2,6 @@ import { Lock, Unlock, X, Copy, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { useState } from 'react';
-import { cn } from '../ui/utils';
 
 interface TimelineControlsProps {
   currentTime: number | null;

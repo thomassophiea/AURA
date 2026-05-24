@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from './ui/sheet';
 import { Button } from './ui/button';
@@ -47,14 +48,32 @@ interface RadioDescriptor {
 }
 
 const DEFAULT_FORM = {
-  name: '', hostname: '', description: '', type: 'DEFAULT', apPlatform: '',
-  radio1AdminMode: true, radio2AdminMode: true, radio3AdminMode: false,
-  radio1RfControl: 'RRM', radio2RfControl: 'RRM', radio3RfControl: 'RRM',
-  radio1FixedChannel: '', radio2FixedChannel: '', radio3FixedChannel: '',
-  radio1MaxTxPower: '', radio2MaxTxPower: '', radio3MaxTxPower: '',
-  mgmtVlanId: '', staticMtu: '', enableSsh: false, ledStatus: true,
-  adoptionPreference: 'CLOUD', usbPower: true,
-  peapUsername: 'NA', peapPassword: 'NA', enforceManufacturingCert: false,
+  name: '',
+  hostname: '',
+  description: '',
+  type: 'DEFAULT',
+  apPlatform: '',
+  radio1AdminMode: true,
+  radio2AdminMode: true,
+  radio3AdminMode: false,
+  radio1RfControl: 'RRM',
+  radio2RfControl: 'RRM',
+  radio3RfControl: 'RRM',
+  radio1FixedChannel: '',
+  radio2FixedChannel: '',
+  radio3FixedChannel: '',
+  radio1MaxTxPower: '',
+  radio2MaxTxPower: '',
+  radio3MaxTxPower: '',
+  mgmtVlanId: '',
+  staticMtu: '',
+  enableSsh: false,
+  ledStatus: true,
+  adoptionPreference: 'CLOUD',
+  usbPower: true,
+  peapUsername: 'NA',
+  peapPassword: 'NA',
+  enforceManufacturingCert: false,
 };
 
 export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: ProfileEditSheetProps) {
@@ -98,10 +117,14 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
     }
   }, [open, profile]);
 
-  const setField = (field: keyof typeof DEFAULT_FORM, value: unknown) => setForm(f => ({ ...f, [field]: value }));
+  const setField = (field: keyof typeof DEFAULT_FORM, value: unknown) =>
+    setForm((f) => ({ ...f, [field]: value }));
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error('Profile name is required'); return; }
+    if (!form.name.trim()) {
+      toast.error('Profile name is required');
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -204,7 +227,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 </Label>
                 <Input
                   value={form.name}
-                  onChange={e => setField('name', e.target.value)}
+                  onChange={(e) => setField('name', e.target.value)}
                   placeholder="Profile name"
                 />
               </div>
@@ -212,7 +235,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 <Label>Hostname</Label>
                 <Input
                   value={form.hostname}
-                  onChange={e => setField('hostname', e.target.value)}
+                  onChange={(e) => setField('hostname', e.target.value)}
                   placeholder="Optional hostname template"
                 />
               </div>
@@ -220,13 +243,13 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 <Label>Description</Label>
                 <Input
                   value={form.description}
-                  onChange={e => setField('description', e.target.value)}
+                  onChange={(e) => setField('description', e.target.value)}
                   placeholder="Optional description"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Profile Type</Label>
-                <Select value={form.type} onValueChange={v => setField('type', v)}>
+                <Select value={form.type} onValueChange={(v) => setField('type', v)}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -241,7 +264,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                   <Label>AP Platform</Label>
                   <Input
                     value={form.apPlatform}
-                    onChange={e => setField('apPlatform', e.target.value)}
+                    onChange={(e) => setField('apPlatform', e.target.value)}
                     placeholder="e.g. AP5020"
                   />
                   <p className="text-xs text-muted-foreground">
@@ -253,7 +276,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
 
             {/* Radios Tab */}
             <TabsContent value="radios" className="space-y-4 mt-4">
-              {radios.map(radio => (
+              {radios.map((radio) => (
                 <div key={radio.label} className="border rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <Label className="font-medium">{radio.label}</Label>
@@ -261,7 +284,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                       <span className="text-xs text-muted-foreground">Admin Mode</span>
                       <Switch
                         checked={form[radio.adminKey] as boolean}
-                        onCheckedChange={v => setField(radio.adminKey, v)}
+                        onCheckedChange={(v) => setField(radio.adminKey, v)}
                       />
                     </div>
                   </div>
@@ -271,7 +294,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                         <Label className="text-sm">RF Control Mode</Label>
                         <Select
                           value={form[radio.rfKey] as string}
-                          onValueChange={v => setField(radio.rfKey, v)}
+                          onValueChange={(v) => setField(radio.rfKey, v)}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -288,7 +311,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                             <Label className="text-sm">Fixed Channel</Label>
                             <Input
                               value={form[radio.chanKey] as string}
-                              onChange={e => setField(radio.chanKey, e.target.value)}
+                              onChange={(e) => setField(radio.chanKey, e.target.value)}
                               placeholder="e.g. 36"
                             />
                           </div>
@@ -296,7 +319,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                             <Label className="text-sm">Max Tx Power (dBm)</Label>
                             <Input
                               value={form[radio.powerKey] as string}
-                              onChange={e => setField(radio.powerKey, e.target.value)}
+                              onChange={(e) => setField(radio.powerKey, e.target.value)}
                               placeholder="e.g. 20"
                             />
                           </div>
@@ -320,7 +343,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                   <Label>Management VLAN ID</Label>
                   <Input
                     value={form.mgmtVlanId}
-                    onChange={e => setField('mgmtVlanId', e.target.value)}
+                    onChange={(e) => setField('mgmtVlanId', e.target.value)}
                     placeholder="e.g. 1"
                   />
                 </div>
@@ -328,7 +351,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                   <Label>Static MTU</Label>
                   <Input
                     value={form.staticMtu}
-                    onChange={e => setField('staticMtu', e.target.value)}
+                    onChange={(e) => setField('staticMtu', e.target.value)}
                     placeholder="e.g. 1500"
                   />
                 </div>
@@ -344,7 +367,10 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 ).map(({ label, key }) => (
                   <div key={key} className="flex items-center justify-between">
                     <Label>{label}</Label>
-                    <Switch checked={form[key] as boolean} onCheckedChange={v => setField(key, v)} />
+                    <Switch
+                      checked={form[key] as boolean}
+                      onCheckedChange={(v) => setField(key, v)}
+                    />
                   </div>
                 ))}
               </div>
@@ -352,7 +378,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                 <Label>Adoption Preference</Label>
                 <Select
                   value={form.adoptionPreference}
-                  onValueChange={v => setField('adoptionPreference', v)}
+                  onValueChange={(v) => setField('adoptionPreference', v)}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -369,7 +395,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                   <Label>PEAP Username</Label>
                   <Select
                     value={form.peapUsername}
-                    onValueChange={v => setField('peapUsername', v)}
+                    onValueChange={(v) => setField('peapUsername', v)}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -387,7 +413,7 @@ export function ProfileEditSheet({ profile, open, onOpenChange, onSaved }: Profi
                   <Label>PEAP Password</Label>
                   <Select
                     value={form.peapPassword}
-                    onValueChange={v => setField('peapPassword', v)}
+                    onValueChange={(v) => setField('peapPassword', v)}
                   >
                     <SelectTrigger>
                       <SelectValue />

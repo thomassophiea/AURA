@@ -14,15 +14,9 @@ import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Switch } from '../ui/switch';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../ui/select';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '../ui/dialog';
-import {
-  GLOBAL_ELEMENT_TYPE_LABELS,
-} from '../../types/globalElements';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
+import { GLOBAL_ELEMENT_TYPE_LABELS } from '../../types/globalElements';
 import type {
   GlobalElementTemplate,
   GlobalElementType,
@@ -36,24 +30,34 @@ interface Props {
   orgId: string;
   /** Pre-select element type when creating a new template */
   initialElementType?: GlobalElementType;
-  onSave: (template: Omit<GlobalElementTemplate, 'id' | 'created_at' | 'updated_at' | 'version'>) => Promise<unknown>;
+  onSave: (
+    template: Omit<GlobalElementTemplate, 'id' | 'created_at' | 'updated_at' | 'version'>
+  ) => Promise<unknown>;
   onUpdate: (id: string, updates: Partial<GlobalElementTemplate>) => Promise<unknown>;
   onBack: () => void;
 }
 
-export function TemplateEditor({ template, definitions, orgId, initialElementType, onSave, onUpdate, onBack }: Props) {
+export function TemplateEditor({
+  template,
+  definitions,
+  orgId,
+  initialElementType,
+  onSave,
+  onUpdate,
+  onBack,
+}: Props) {
   const isEditing = !!template;
 
   const [name, setName] = useState(template?.name ?? '');
   const [description, setDescription] = useState(template?.description ?? '');
-  const [elementType, setElementType] = useState<GlobalElementType>(template?.element_type ?? initialElementType ?? 'service');
+  const [elementType, setElementType] = useState<GlobalElementType>(
+    template?.element_type ?? initialElementType ?? 'service'
+  );
   const [isActive, setIsActive] = useState(template?.is_active ?? true);
   const [tags, setTags] = useState(template?.tags?.join(', ') ?? '');
 
   // JSON payload
-  const [jsonText, setJsonText] = useState(
-    JSON.stringify(template?.config_payload ?? {}, null, 2)
-  );
+  const [jsonText, setJsonText] = useState(JSON.stringify(template?.config_payload ?? {}, null, 2));
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'json' | 'form'>('json');
   const [saving, setSaving] = useState(false);
@@ -107,9 +111,7 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
     }
   })();
 
-  const undefinedTokens = usedTokens.filter(
-    t => !definitions.some(d => d.token === t)
-  );
+  const undefinedTokens = usedTokens.filter((t) => !definitions.some((d) => d.token === t));
 
   const handleSave = async () => {
     let payload: Record<string, unknown>;
@@ -124,7 +126,7 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
     try {
       const parsedTags = tags
         .split(',')
-        .map(t => t.trim())
+        .map((t) => t.trim())
         .filter(Boolean);
 
       if (isEditing && template) {
@@ -177,11 +179,13 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-1.5">
-                <Label htmlFor="tpl-name" className="text-xs">Name</Label>
+                <Label htmlFor="tpl-name" className="text-xs">
+                  Name
+                </Label>
                 <Input
                   id="tpl-name"
                   value={name}
-                  onChange={e => setName(e.target.value)}
+                  onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., Corporate WLAN"
                   className="h-8 text-sm"
                   required
@@ -189,10 +193,12 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="tpl-type" className="text-xs">Element Type</Label>
+                <Label htmlFor="tpl-type" className="text-xs">
+                  Element Type
+                </Label>
                 <Select
                   value={elementType}
-                  onValueChange={v => setElementType(v as GlobalElementType)}
+                  onValueChange={(v) => setElementType(v as GlobalElementType)}
                   disabled={isEditing}
                 >
                   <SelectTrigger className="h-8 text-sm">
@@ -200,41 +206,45 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(GLOBAL_ELEMENT_TYPE_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="tpl-desc" className="text-xs">Description</Label>
+                <Label htmlFor="tpl-desc" className="text-xs">
+                  Description
+                </Label>
                 <Input
                   id="tpl-desc"
                   value={description}
-                  onChange={e => setDescription(e.target.value)}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Optional description"
                   className="h-8 text-sm"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="tpl-tags" className="text-xs">Tags</Label>
+                <Label htmlFor="tpl-tags" className="text-xs">
+                  Tags
+                </Label>
                 <Input
                   id="tpl-tags"
                   value={tags}
-                  onChange={e => setTags(e.target.value)}
+                  onChange={(e) => setTags(e.target.value)}
                   placeholder="Comma-separated tags"
                   className="h-8 text-sm"
                 />
               </div>
 
               <div className="flex items-center justify-between pt-1">
-                <Label htmlFor="tpl-active" className="text-xs">Active</Label>
-                <Switch
-                  id="tpl-active"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
+                <Label htmlFor="tpl-active" className="text-xs">
+                  Active
+                </Label>
+                <Switch id="tpl-active" checked={isActive} onCheckedChange={setIsActive} />
               </div>
 
               {/* Used variables summary */}
@@ -242,7 +252,7 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                 <div className="space-y-2 pt-3 border-t">
                   <Label className="text-xs text-muted-foreground">Variables Used</Label>
                   <div className="flex flex-wrap gap-1">
-                    {usedTokens.map(token => (
+                    {usedTokens.map((token) => (
                       <Badge
                         key={token}
                         variant={undefinedTokens.includes(token) ? 'destructive' : 'secondary'}
@@ -254,7 +264,8 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                   </div>
                   {undefinedTokens.length > 0 && (
                     <p className="text-xs text-destructive">
-                      {undefinedTokens.length} undefined variable{undefinedTokens.length !== 1 ? 's' : ''}
+                      {undefinedTokens.length} undefined variable
+                      {undefinedTokens.length !== 1 ? 's' : ''}
                     </p>
                   )}
                 </div>
@@ -288,7 +299,12 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                     <FormInput className="h-3.5 w-3.5 mr-1" />
                     Form
                   </Button>
-                  <Button variant="outline" size="sm" className="h-7 text-xs px-2.5" onClick={() => setPickerOpen(true)}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2.5"
+                    onClick={() => setPickerOpen(true)}
+                  >
                     <Plus className="h-3.5 w-3.5 mr-1" />
                     Variable
                   </Button>
@@ -301,19 +317,17 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                   <Textarea
                     ref={textareaRef}
                     value={jsonText}
-                    onChange={e => handleJsonChange(e.target.value)}
+                    onChange={(e) => handleJsonChange(e.target.value)}
                     className="font-mono text-sm min-h-[300px] lg:min-h-[400px] resize-y w-full"
                     placeholder='{"serviceName": "{{site_name}}-Corporate", "vlanId": "{{employee_vlan}}"}'
                   />
-                  {jsonError && (
-                    <p className="text-xs text-destructive">{jsonError}</p>
-                  )}
+                  {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Form view provides structured editing for common fields.
-                    Switch to JSON view for full control.
+                    Form view provides structured editing for common fields. Switch to JSON view for
+                    full control.
                   </p>
                   <FormView
                     jsonText={jsonText}
@@ -350,7 +364,7 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                 No variables defined yet. Create variables in the Variables tab.
               </p>
             ) : (
-              definitions.map(def => (
+              definitions.map((def) => (
                 <button
                   key={def.id}
                   className="w-full text-left p-3 rounded-lg hover:bg-muted transition-colors"
@@ -358,7 +372,9 @@ export function TemplateEditor({ template, definitions, orgId, initialElementTyp
                 >
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-sm">{def.name}</span>
-                    <Badge variant="secondary" className="text-xs">{def.type}</Badge>
+                    <Badge variant="secondary" className="text-xs">
+                      {def.type}
+                    </Badge>
                   </div>
                   <code className="text-xs text-muted-foreground">{`{{${def.token}}}`}</code>
                 </button>
@@ -401,10 +417,35 @@ function FormView({
   if (elementType === 'service') {
     return (
       <div className="space-y-4">
-        <FieldRow label="Service Name (SSID)" field="serviceName" payload={payload} onUpdate={updateField} definitions={definitions} />
-        <FieldRow label="SSID" field="ssid" payload={payload} onUpdate={updateField} definitions={definitions} />
-        <FieldRow label="VLAN ID" field="vlanId" payload={payload} onUpdate={updateField} definitions={definitions} type="number" />
-        <FieldRow label="Description" field="description" payload={payload} onUpdate={updateField} definitions={definitions} />
+        <FieldRow
+          label="Service Name (SSID)"
+          field="serviceName"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
+        <FieldRow
+          label="SSID"
+          field="ssid"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
+        <FieldRow
+          label="VLAN ID"
+          field="vlanId"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+          type="number"
+        />
+        <FieldRow
+          label="Description"
+          field="description"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
       </div>
     );
   }
@@ -412,10 +453,35 @@ function FormView({
   if (elementType === 'topology') {
     return (
       <div className="space-y-4">
-        <FieldRow label="Topology Name" field="name" payload={payload} onUpdate={updateField} definitions={definitions} />
-        <FieldRow label="VLAN ID" field="vlanId" payload={payload} onUpdate={updateField} definitions={definitions} type="number" />
-        <FieldRow label="Subnet" field="subnet" payload={payload} onUpdate={updateField} definitions={definitions} />
-        <FieldRow label="Gateway" field="gateway" payload={payload} onUpdate={updateField} definitions={definitions} />
+        <FieldRow
+          label="Topology Name"
+          field="name"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
+        <FieldRow
+          label="VLAN ID"
+          field="vlanId"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+          type="number"
+        />
+        <FieldRow
+          label="Subnet"
+          field="subnet"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
+        <FieldRow
+          label="Gateway"
+          field="gateway"
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
       </div>
     );
   }
@@ -423,8 +489,15 @@ function FormView({
   // Generic: show top-level keys as text fields
   return (
     <div className="space-y-4">
-      {Object.keys(payload).map(key => (
-        <FieldRow key={key} label={key} field={key} payload={payload} onUpdate={updateField} definitions={definitions} />
+      {Object.keys(payload).map((key) => (
+        <FieldRow
+          key={key}
+          label={key}
+          field={key}
+          payload={payload}
+          onUpdate={updateField}
+          definitions={definitions}
+        />
       ))}
       <p className="text-xs text-muted-foreground">
         For full control over nested fields, switch to JSON view.
@@ -438,7 +511,7 @@ function FieldRow({
   field,
   payload,
   onUpdate,
-  definitions,
+  definitions: _definitions,
   type,
 }: {
   label: string;
@@ -456,15 +529,20 @@ function FieldRow({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <Label className="text-sm">{label}</Label>
-        {isVariable && <Badge variant="info" className="text-xs">Variable</Badge>}
+        {isVariable && (
+          <Badge variant="info" className="text-xs">
+            Variable
+          </Badge>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Input
           value={strValue}
-          onChange={e => {
-            const v = type === 'number' && !e.target.value.includes('{{')
-              ? Number(e.target.value) || 0
-              : e.target.value;
+          onChange={(e) => {
+            const v =
+              type === 'number' && !e.target.value.includes('{{')
+                ? Number(e.target.value) || 0
+                : e.target.value;
             onUpdate(field, v);
           }}
           placeholder={`Enter ${label.toLowerCase()} or {{variable}}`}

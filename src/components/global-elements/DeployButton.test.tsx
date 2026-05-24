@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
@@ -48,16 +49,14 @@ const baseProps = {
     is_fully_resolved: true,
     variables: [{ name: 'x' }, { name: 'y' }],
     resolved_payload: { ssid: 'TestSSID' },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
   definitions: [],
   values: [],
-  context: { org_id: 'org-1' } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  context: { org_id: 'org-1' } as any,
   siteGroup: {
     id: 'sg-1',
     name: 'HQ',
     controller_url: 'https://controller.local',
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any,
 };
 

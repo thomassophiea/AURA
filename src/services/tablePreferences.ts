@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Table Preferences Service
  *
@@ -12,12 +13,7 @@
  */
 
 import { supabase } from './supabaseClient';
-import {
-  TablePreferences,
-  ColumnView,
-  PreferenceScope,
-  TableId
-} from '@/types/table';
+import { TablePreferences, ColumnView, PreferenceScope, TableId } from '@/types/table';
 
 export class TablePreferencesService {
   private static instance: TablePreferencesService;
@@ -67,7 +63,7 @@ export class TablePreferencesService {
         columnWidths: data.column_widths,
         pinnedColumns: data.pinned_columns,
         currentView: data.current_view,
-        lastModified: data.updated_at
+        lastModified: data.updated_at,
       };
     } catch (error) {
       console.error('[TablePreferences] Failed to fetch preferences:', error);
@@ -84,9 +80,8 @@ export class TablePreferencesService {
     }
 
     try {
-      const { error } = await supabase
-        .from('table_preferences')
-        .upsert({
+      const { error } = await supabase.from('table_preferences').upsert(
+        {
           table_id: preferences.tableId,
           user_id: preferences.userId,
           scope: preferences.scope || 'user',
@@ -95,10 +90,12 @@ export class TablePreferencesService {
           column_widths: preferences.columnWidths,
           pinned_columns: preferences.pinnedColumns,
           current_view: preferences.currentView,
-          updated_at: new Date().toISOString()
-        }, {
-          onConflict: 'table_id,user_id,scope'
-        });
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'table_id,user_id,scope',
+        }
+      );
 
       if (error) throw error;
     } catch (error) {
@@ -110,10 +107,7 @@ export class TablePreferencesService {
   /**
    * Fetch all saved views for a table
    */
-  async fetchViews(
-    tableId: TableId,
-    userId: string
-  ): Promise<ColumnView[]> {
+  async fetchViews(tableId: TableId, userId: string): Promise<ColumnView[]> {
     try {
       const { data, error } = await supabase
         .from('table_views')
@@ -124,7 +118,7 @@ export class TablePreferencesService {
 
       if (error) throw error;
 
-      return (data || []).map(row => ({
+      return (data || []).map((row) => ({
         id: row.id,
         name: row.name,
         description: row.description,
@@ -137,7 +131,7 @@ export class TablePreferencesService {
         sharedWith: row.shared_with,
         isDefault: row.is_default,
         createdAt: row.created_at,
-        updatedAt: row.updated_at
+        updatedAt: row.updated_at,
       }));
     } catch (error) {
       console.error('[TablePreferences] Failed to fetch views:', error);
@@ -165,7 +159,7 @@ export class TablePreferencesService {
         is_shared: view.isShared || false,
         shared_with: view.sharedWith || [],
         is_default: view.isDefault || false,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       if (view.id) {
@@ -185,7 +179,7 @@ export class TablePreferencesService {
           .from('table_views')
           .insert({
             ...viewData,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
           })
           .select()
           .single();
@@ -204,10 +198,7 @@ export class TablePreferencesService {
    */
   async deleteView(viewId: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('table_views')
-        .delete()
-        .eq('id', viewId);
+      const { error } = await supabase.from('table_views').delete().eq('id', viewId);
 
       if (error) throw error;
     } catch (error) {
@@ -221,12 +212,12 @@ export class TablePreferencesService {
    */
   async shareView(viewId: string, userIds: string[]): Promise<void> {
     try {
-      const { error} = await supabase
+      const { error } = await supabase
         .from('table_views')
         .update({
           is_shared: true,
           shared_with: userIds,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', viewId);
 
@@ -240,11 +231,7 @@ export class TablePreferencesService {
   /**
    * Set a view as default for a user
    */
-  async setDefaultView(
-    tableId: TableId,
-    viewId: string,
-    userId: string
-  ): Promise<void> {
+  async setDefaultView(tableId: TableId, viewId: string, userId: string): Promise<void> {
     try {
       // First, unset any existing default for this table/user
       await supabase
@@ -258,7 +245,7 @@ export class TablePreferencesService {
         .from('table_views')
         .update({
           is_default: true,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('id', viewId);
 
@@ -272,10 +259,7 @@ export class TablePreferencesService {
   /**
    * Get default view for a table and user
    */
-  async getDefaultView(
-    tableId: TableId,
-    userId: string
-  ): Promise<ColumnView | null> {
+  async getDefaultView(tableId: TableId, userId: string): Promise<ColumnView | null> {
     try {
       const { data, error } = await supabase
         .from('table_views')
@@ -304,15 +288,9 @@ export class TablePreferencesService {
    */
   async deleteTablePreferences(tableId: TableId): Promise<void> {
     try {
-      await supabase
-        .from('table_preferences')
-        .delete()
-        .eq('table_id', tableId);
+      await supabase.from('table_preferences').delete().eq('table_id', tableId);
 
-      await supabase
-        .from('table_views')
-        .delete()
-        .eq('table_id', tableId);
+      await supabase.from('table_views').delete().eq('table_id', tableId);
     } catch (error) {
       console.error('[TablePreferences] Failed to delete table preferences:', error);
       throw error;
@@ -329,7 +307,7 @@ export class TablePreferencesService {
     try {
       const [preferences, views] = await Promise.all([
         this.fetchPreferences(tableId, userId),
-        this.fetchViews(tableId, userId)
+        this.fetchViews(tableId, userId),
       ]);
 
       return { preferences, views };
@@ -342,9 +320,10 @@ export class TablePreferencesService {
   /**
    * Import preferences from JSON (for backup/migration)
    */
-  async importPreferences(
-    data: { preferences: TablePreferences; views: ColumnView[] }
-  ): Promise<void> {
+  async importPreferences(data: {
+    preferences: TablePreferences;
+    views: ColumnView[];
+  }): Promise<void> {
     try {
       if (data.preferences) {
         await this.savePreferences(data.preferences);
@@ -376,7 +355,7 @@ export class TablePreferencesService {
       sharedWith: row.shared_with,
       isDefault: row.is_default,
       createdAt: row.created_at,
-      updatedAt: row.updated_at
+      updatedAt: row.updated_at,
     };
   }
 }

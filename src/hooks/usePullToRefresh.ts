@@ -3,7 +3,7 @@
  * Triggers refresh callback when user pulls down at top of scrollable area
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useHaptic } from './useHaptic';
 
 export interface PullToRefreshOptions {

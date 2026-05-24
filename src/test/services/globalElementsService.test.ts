@@ -25,11 +25,7 @@ vi.mock('../../services/supabaseClient', () => ({
 vi.stubEnv('VITE_SUPABASE_URL', 'https://placeholder.supabase.co');
 
 const { globalElementsService } = await import('../../services/globalElementsService');
-import type {
-  GlobalElementTemplate,
-  PersistedVariableDefinition,
-  VariableValue,
-} from '../../types/globalElements';
+import type { PersistedVariableDefinition, VariableValue } from '../../types/globalElements';
 
 const ORG = 'org-test';
 

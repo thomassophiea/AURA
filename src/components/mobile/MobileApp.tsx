@@ -3,7 +3,7 @@
  * iPhone-first, badass wireless status monitoring
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MobileShell } from './MobileShell';
 import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav, MobileTab } from './MobileBottomNav';

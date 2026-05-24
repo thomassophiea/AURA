@@ -29,7 +29,6 @@ export function SiteProvider({ children }: { children: React.ReactNode }) {
 
       const sites = await apiService.getSites();
       if (sites && sites.length > 0) {
-        console.log('[SiteContext] Loaded first available site:', sites[0]);
         setCurrentSite(sites[0]);
       } else {
         console.warn('[SiteContext] No sites available');

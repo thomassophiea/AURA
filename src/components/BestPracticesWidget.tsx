@@ -1,9 +1,18 @@
-import { useState, useEffect, memo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { CheckCircle, AlertTriangle, XCircle, RefreshCw, ChevronDown, ChevronRight, ArrowUpDown, Info } from 'lucide-react';
+import {
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  RefreshCw,
+  ChevronDown,
+  ChevronRight,
+  ArrowUpDown,
+  Info,
+} from 'lucide-react';
 import { apiService } from '../services/api';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -38,8 +47,8 @@ export function BestPracticesWidget() {
   // Auto-select the most relevant filter based on practice status counts
   useEffect(() => {
     if (!hasAutoSelected && practices.length > 0) {
-      const errorCount = practices.filter(p => p.status === 'Error').length;
-      const warningCount = practices.filter(p => p.status === 'Warning').length;
+      const errorCount = practices.filter((p) => p.status === 'Error').length;
+      const warningCount = practices.filter((p) => p.status === 'Warning').length;
 
       // Prioritize showing issues: Errors > Warnings > All
       if (errorCount > 0) {
@@ -59,7 +68,7 @@ export function BestPracticesWidget() {
 
     try {
       const response = await apiService.makeAuthenticatedRequest('/v1/bestpractices/evaluate', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (response.ok) {
@@ -104,20 +113,19 @@ export function BestPracticesWidget() {
   };
 
   const statusCounts = {
-    Good: practices.filter(p => p.status === 'Good').length,
-    Warning: practices.filter(p => p.status === 'Warning').length,
-    Error: practices.filter(p => p.status === 'Error').length,
+    Good: practices.filter((p) => p.status === 'Good').length,
+    Warning: practices.filter((p) => p.status === 'Warning').length,
+    Error: practices.filter((p) => p.status === 'Error').length,
   };
 
   // Filter practices based on selected status
-  const filteredPractices = statusFilter === 'All'
-    ? practices
-    : practices.filter(p => p.status === statusFilter);
+  const filteredPractices =
+    statusFilter === 'All' ? practices : practices.filter((p) => p.status === statusFilter);
 
   // Sort practices
   const sortedPractices = [...filteredPractices].sort((a, b) => {
     if (sortBy === 'severity') {
-      const severityOrder = { 'Error': 0, 'Warning': 1, 'Good': 2 };
+      const severityOrder = { Error: 0, Warning: 1, Good: 2 };
       return severityOrder[a.status] - severityOrder[b.status];
     } else {
       return a.criteria.localeCompare(b.criteria);
@@ -176,9 +184,7 @@ export function BestPracticesWidget() {
           <button
             onClick={() => setStatusFilter(statusFilter === 'Good' ? 'All' : 'Good')}
             className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-success-bg)] hover:opacity-80 ${
-              statusFilter === 'Good'
-                ? 'ring-2 ring-purple-500'
-                : ''
+              statusFilter === 'Good' ? 'ring-2 ring-purple-500' : ''
             }`}
           >
             <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
@@ -190,9 +196,7 @@ export function BestPracticesWidget() {
           <button
             onClick={() => setStatusFilter(statusFilter === 'Warning' ? 'All' : 'Warning')}
             className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-warning-bg)] hover:opacity-80 ${
-              statusFilter === 'Warning'
-                ? 'ring-2 ring-purple-500'
-                : ''
+              statusFilter === 'Warning' ? 'ring-2 ring-purple-500' : ''
             }`}
           >
             <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)]" />
@@ -204,9 +208,7 @@ export function BestPracticesWidget() {
           <button
             onClick={() => setStatusFilter(statusFilter === 'Error' ? 'All' : 'Error')}
             className={`flex items-center gap-2 p-3 rounded-lg transition-all cursor-pointer bg-[color:var(--status-error-bg)] hover:opacity-80 ${
-              statusFilter === 'Error'
-                ? 'ring-2 ring-purple-500'
-                : ''
+              statusFilter === 'Error' ? 'ring-2 ring-purple-500' : ''
             }`}
           >
             <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
@@ -222,9 +224,13 @@ export function BestPracticesWidget() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <h4 className="font-semibold text-sm">
-                {statusFilter === 'All' ? 'All Practices' :
-                 statusFilter === 'Good' ? 'Good Practices' :
-                 statusFilter === 'Warning' ? 'Warnings' : 'Errors'}
+                {statusFilter === 'All'
+                  ? 'All Practices'
+                  : statusFilter === 'Good'
+                    ? 'Good Practices'
+                    : statusFilter === 'Warning'
+                      ? 'Warnings'
+                      : 'Errors'}
               </h4>
               <Badge variant="outline" className="text-xs">
                 {displayPractices.length}
@@ -251,7 +257,9 @@ export function BestPracticesWidget() {
                 <Collapsible
                   key={practice.id}
                   open={expandedId === practice.id}
-                  onOpenChange={() => setExpandedId(expandedId === practice.id ? null : practice.id)}
+                  onOpenChange={() =>
+                    setExpandedId(expandedId === practice.id ? null : practice.id)
+                  }
                 >
                   <div className="border rounded-lg p-3">
                     <CollapsibleTrigger className="w-full">
@@ -260,14 +268,19 @@ export function BestPracticesWidget() {
                         <div className="flex-1 text-left">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{practice.criteria}</span>
-                            <Badge variant={getStatusBadgeVariant(practice.status)} className="text-xs">
+                            <Badge
+                              variant={getStatusBadgeVariant(practice.status)}
+                              className="text-xs"
+                            >
                               {practice.status}
                             </Badge>
-                            <Badge variant="outline" className="text-xs">{practice.type}</Badge>
+                            <Badge variant="outline" className="text-xs">
+                              {practice.type}
+                            </Badge>
                           </div>
                           {practice.causeBy.length > 0 && (
                             <div className="text-xs text-muted-foreground mt-1">
-                              Affected: {practice.causeBy.map(c => c.name || c.type).join(', ')}
+                              Affected: {practice.causeBy.map((c) => c.name || c.type).join(', ')}
                             </div>
                           )}
                         </div>
@@ -279,7 +292,9 @@ export function BestPracticesWidget() {
                       </div>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-2 pt-2 border-t">
-                      <p className="text-sm text-muted-foreground">{practice.detailedDescription}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {practice.detailedDescription}
+                      </p>
                     </CollapsibleContent>
                   </div>
                 </Collapsible>
@@ -291,7 +306,9 @@ export function BestPracticesWidget() {
         {displayPractices.length === 0 && practices.length > 0 && (
           <div className="text-center py-6 text-muted-foreground">
             <Info className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p className="font-semibold">No {statusFilter !== 'All' ? statusFilter : ''} practices found</p>
+            <p className="font-semibold">
+              No {statusFilter !== 'All' ? statusFilter : ''} practices found
+            </p>
             <p className="text-sm">Try selecting a different filter</p>
           </div>
         )}
@@ -300,7 +317,9 @@ export function BestPracticesWidget() {
           <div className="text-center py-6 text-[color:var(--status-success)]">
             <CheckCircle className="h-12 w-12 mx-auto mb-2" />
             <p className="font-semibold">All Best Practices Met!</p>
-            <p className="text-sm text-muted-foreground">Your configuration follows all recommended best practices.</p>
+            <p className="text-sm text-muted-foreground">
+              Your configuration follows all recommended best practices.
+            </p>
           </div>
         )}
       </CardContent>

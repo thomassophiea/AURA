@@ -5,16 +5,21 @@
 
 import { useState } from 'react';
 import {
-  CheckCircle2, AlertTriangle, XCircle, HelpCircle, RefreshCw, Rocket,
-  ChevronDown, ChevronUp, Server,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  HelpCircle,
+  RefreshCw,
+  Rocket,
+  ChevronDown,
+  ChevronUp,
+  Server,
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '../ui/table';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Collapsible, CollapsibleTrigger } from '../ui/collapsible';
 import { useDriftDetection } from '../../hooks/useDriftDetection';
 import { GLOBAL_ELEMENT_TYPE_LABELS } from '../../types/globalElements';
 import type {
@@ -35,7 +40,14 @@ interface Props {
   onRedeploy?: (templateId: string) => void;
 }
 
-const STATUS_CONFIG: Record<DriftStatus, { icon: typeof CheckCircle2; label: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' }> = {
+const STATUS_CONFIG: Record<
+  DriftStatus,
+  {
+    icon: typeof CheckCircle2;
+    label: string;
+    variant: 'success' | 'destructive' | 'secondary' | 'outline';
+  }
+> = {
   in_sync: { icon: CheckCircle2, label: 'In Sync', variant: 'success' },
   drifted: { icon: AlertTriangle, label: 'Drifted', variant: 'destructive' },
   missing: { icon: XCircle, label: 'Missing', variant: 'destructive' },
@@ -43,9 +55,20 @@ const STATUS_CONFIG: Record<DriftStatus, { icon: typeof CheckCircle2; label: str
   error: { icon: XCircle, label: 'Error', variant: 'outline' },
 };
 
-export function DriftDetection({ templates, definitions, values, assignments, siteGroups, onRedeploy }: Props) {
+export function DriftDetection({
+  templates,
+  definitions,
+  values,
+  assignments,
+  siteGroups,
+  onRedeploy,
+}: Props) {
   const { summary, loading, error, checkAll } = useDriftDetection(
-    templates, definitions, values, assignments, siteGroups
+    templates,
+    definitions,
+    values,
+    assignments,
+    siteGroups
   );
 
   return (
@@ -82,9 +105,7 @@ export function DriftDetection({ templates, definitions, values, assignments, si
       </Card>
 
       {error && (
-        <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">
-          {error}
-        </div>
+        <div className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{error}</div>
       )}
 
       {/* Results */}
@@ -133,7 +154,15 @@ export function DriftDetection({ templates, definitions, values, assignments, si
   );
 }
 
-function StatCard({ label, count, variant }: { label: string; count: number; variant: 'success' | 'warning' | 'error' | 'muted' }) {
+function StatCard({
+  label,
+  count,
+  variant,
+}: {
+  label: string;
+  count: number;
+  variant: 'success' | 'warning' | 'error' | 'muted';
+}) {
   const colors = {
     success: 'text-emerald-400',
     warning: 'text-amber-400',
@@ -149,7 +178,13 @@ function StatCard({ label, count, variant }: { label: string; count: number; var
   );
 }
 
-function DriftResultRow({ result, onRedeploy }: { result: DriftCheckResult; onRedeploy?: (id: string) => void }) {
+function DriftResultRow({
+  result,
+  onRedeploy,
+}: {
+  result: DriftCheckResult;
+  onRedeploy?: (id: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
   const config = STATUS_CONFIG[result.status];
   const StatusIcon = config.icon;
@@ -181,7 +216,11 @@ function DriftResultRow({ result, onRedeploy }: { result: DriftCheckResult; onRe
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
                   {result.diffs.length} field{result.diffs.length !== 1 ? 's' : ''}
-                  {expanded ? <ChevronUp className="h-3 w-3 ml-1" /> : <ChevronDown className="h-3 w-3 ml-1" />}
+                  {expanded ? (
+                    <ChevronUp className="h-3 w-3 ml-1" />
+                  ) : (
+                    <ChevronDown className="h-3 w-3 ml-1" />
+                  )}
                 </Button>
               </CollapsibleTrigger>
             </Collapsible>
@@ -193,7 +232,12 @@ function DriftResultRow({ result, onRedeploy }: { result: DriftCheckResult; onRe
         </TableCell>
         <TableCell className="text-right">
           {(result.status === 'drifted' || result.status === 'missing') && onRedeploy && (
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => onRedeploy(result.template_id)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onRedeploy(result.template_id)}
+            >
               <Rocket className="h-3 w-3 mr-1" />
               Re-deploy
             </Button>
@@ -205,9 +249,16 @@ function DriftResultRow({ result, onRedeploy }: { result: DriftCheckResult; onRe
           <TableCell colSpan={6} className="p-0">
             <div className="bg-muted/20 p-3 space-y-1">
               {result.diffs.map((diff, i) => (
-                <div key={i} className="font-mono text-xs flex flex-col sm:grid sm:grid-cols-3 gap-0.5 sm:gap-2 py-1.5 border-b border-border/50 last:border-0">
-                  <span className="text-muted-foreground font-semibold sm:font-normal truncate">{diff.path}</span>
-                  <span className="text-emerald-400 truncate">expected: {formatValue(diff.expected)}</span>
+                <div
+                  key={i}
+                  className="font-mono text-xs flex flex-col sm:grid sm:grid-cols-3 gap-0.5 sm:gap-2 py-1.5 border-b border-border/50 last:border-0"
+                >
+                  <span className="text-muted-foreground font-semibold sm:font-normal truncate">
+                    {diff.path}
+                  </span>
+                  <span className="text-emerald-400 truncate">
+                    expected: {formatValue(diff.expected)}
+                  </span>
                   <span className="text-red-400 truncate">actual: {formatValue(diff.actual)}</span>
                 </div>
               ))}

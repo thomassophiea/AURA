@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /// <reference types="@testing-library/jest-dom/vitest" />
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';

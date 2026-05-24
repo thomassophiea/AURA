@@ -63,7 +63,7 @@ describe('useGlobalFilters Hook', () => {
       localStorage.setItem('aura_global_filters', JSON.stringify(persistedFilters));
 
       // Re-import to test initialization
-      const { result } = renderHook(() => useGlobalFilters());
+      const { result: _result } = renderHook(() => useGlobalFilters());
 
       // Note: This test may not work as expected because the global state
       // is already initialized before the hook is called.

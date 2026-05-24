@@ -6,16 +6,10 @@
  */
 
 import { useState, useRef } from 'react';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from '../ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '../ui/sheet';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { GripVertical, Trash2, Settings, Columns, ChevronDown, ChevronUp } from 'lucide-react';
+import { GripVertical, Trash2, Columns, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { WidgetPicker } from './WidgetPicker';
 import type { ReportPageConfig, ReportWidgetConfig } from '../../types/reportConfig';
@@ -24,7 +18,10 @@ interface ReportEditorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   page: ReportPageConfig | null;
-  onUpdatePage: (pageId: string, updates: Partial<Pick<ReportPageConfig, 'title' | 'description'>>) => void;
+  onUpdatePage: (
+    pageId: string,
+    updates: Partial<Pick<ReportPageConfig, 'title' | 'description'>>
+  ) => void;
   onAddWidget: (pageId: string, widget: ReportWidgetConfig) => void;
   onRemoveWidget: (pageId: string, widgetId: string) => void;
   onReorderWidgets: (pageId: string, fromIndex: number, toIndex: number) => void;
@@ -32,8 +29,14 @@ interface ReportEditorDialogProps {
 }
 
 export function ReportEditorDialog({
-  open, onOpenChange, page,
-  onUpdatePage, onAddWidget, onRemoveWidget, onReorderWidgets, onUpdateWidget,
+  open,
+  onOpenChange,
+  page,
+  onUpdatePage,
+  onAddWidget,
+  onRemoveWidget,
+  onReorderWidgets,
+  onUpdateWidget,
 }: ReportEditorDialogProps) {
   const [showPicker, setShowPicker] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -42,7 +45,7 @@ export function ReportEditorDialog({
 
   if (!page) return null;
 
-  const existingKeys = new Set(page.widgets.map(w => w.widgetKey));
+  const existingKeys = new Set(page.widgets.map((w) => w.widgetKey));
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     dragRef.current = index;
@@ -85,20 +88,24 @@ export function ReportEditorDialog({
           {/* Page Details */}
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Page Title</label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Page Title
+              </label>
               <input
                 type="text"
                 value={page.title}
-                onChange={e => onUpdatePage(page.id, { title: e.target.value })}
+                onChange={(e) => onUpdatePage(page.id, { title: e.target.value })}
                 className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Description</label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Description
+              </label>
               <input
                 type="text"
                 value={page.description || ''}
-                onChange={e => onUpdatePage(page.id, { description: e.target.value })}
+                onChange={(e) => onUpdatePage(page.id, { description: e.target.value })}
                 className="w-full px-3 py-1.5 text-sm bg-background border border-border rounded-md outline-none focus:ring-1 focus:ring-primary"
                 placeholder="Optional page description"
               />
@@ -111,8 +118,23 @@ export function ReportEditorDialog({
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Widgets ({page.widgets.length})
               </label>
-              <Button variant="outline" size="sm" className="text-xs" onClick={() => setShowPicker(!showPicker)}>
-                {showPicker ? <><ChevronUp className="h-3 w-3 mr-1" />Hide Catalog</> : <><ChevronDown className="h-3 w-3 mr-1" />Add Widget</>}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs"
+                onClick={() => setShowPicker(!showPicker)}
+              >
+                {showPicker ? (
+                  <>
+                    <ChevronUp className="h-3 w-3 mr-1" />
+                    Hide Catalog
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3 mr-1" />
+                    Add Widget
+                  </>
+                )}
               </Button>
             </div>
 
@@ -139,7 +161,7 @@ export function ReportEditorDialog({
                   className={cn(
                     'flex items-center gap-2 p-2 rounded-md border border-border/50 bg-card/30 group',
                     dragIndex === index && 'opacity-40',
-                    dropIndex === index && 'ring-1 ring-primary',
+                    dropIndex === index && 'ring-1 ring-primary'
                   )}
                 >
                   <GripVertical className="h-3.5 w-3.5 text-muted-foreground cursor-grab flex-shrink-0" />
@@ -148,19 +170,25 @@ export function ReportEditorDialog({
                     <input
                       type="text"
                       value={widget.title || widget.widgetKey}
-                      onChange={e => onUpdateWidget(page.id, widget.id, { title: e.target.value })}
+                      onChange={(e) =>
+                        onUpdateWidget(page.id, widget.id, { title: e.target.value })
+                      }
                       className="w-full text-xs bg-transparent outline-none font-medium"
                     />
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <Badge variant="secondary" className="text-[9px] py-0">{widget.displayType}</Badge>
-                      <span className="text-[9px] text-muted-foreground">{widget.source === 'metric_computed' ? 'Local' : 'API'}</span>
+                      <Badge variant="secondary" className="text-[9px] py-0">
+                        {widget.displayType}
+                      </Badge>
+                      <span className="text-[9px] text-muted-foreground">
+                        {widget.source === 'metric_computed' ? 'Local' : 'API'}
+                      </span>
                     </div>
                   </div>
 
                   {/* Grid span selector */}
                   <div className="flex items-center gap-0.5 flex-shrink-0">
                     <Columns className="h-3 w-3 text-muted-foreground" />
-                    {gridSpanOptions.map(span => (
+                    {gridSpanOptions.map((span) => (
                       <button
                         key={span}
                         onClick={() => onUpdateWidget(page.id, widget.id, { gridSpan: span })}

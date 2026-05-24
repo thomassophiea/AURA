@@ -55,9 +55,7 @@ export const HealthWidget: React.FC<HealthWidgetProps> = ({ title, metrics }) =>
                 <span className="text-xs text-muted-foreground">{metric.label}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className={`text-2xl font-bold ${statusColor}`}>
-                  {metric.value}
-                </span>
+                <span className={`text-2xl font-bold ${statusColor}`}>{metric.value}</span>
                 {metric.total !== undefined && (
                   <span className="text-sm text-muted-foreground">/ {metric.total}</span>
                 )}
@@ -77,17 +75,17 @@ interface NetworkHealthWidgetProps {
 
 export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
   title = 'Network Health',
-  data
+  data,
 }) => {
   const totalAPs = data.primaryActiveAPs + data.backupActiveAPs + data.inactiveAPs;
   const activeAPs = data.primaryActiveAPs + data.backupActiveAPs;
   const totalSWs = data.activeSWs + data.inactiveSWs + data.troubleSWs;
 
-  const apHealthStatus = data.inactiveAPs > totalAPs * 0.2 ? 'critical' :
-                        data.inactiveAPs > 0 ? 'warning' : 'good';
+  const apHealthStatus =
+    data.inactiveAPs > totalAPs * 0.2 ? 'critical' : data.inactiveAPs > 0 ? 'warning' : 'good';
 
-  const swHealthStatus = data.troubleSWs > 0 ? 'critical' :
-                        data.inactiveSWs > 0 ? 'warning' : 'good';
+  const swHealthStatus =
+    data.troubleSWs > 0 ? 'critical' : data.inactiveSWs > 0 ? 'warning' : 'good';
 
   const metrics: HealthMetric[] = [
     {
@@ -95,27 +93,35 @@ export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
       value: activeAPs,
       total: totalAPs,
       status: apHealthStatus,
-      icon: <Wifi className={`w-4 h-4 ${getStatusColor(apHealthStatus)}`} />
+      icon: <Wifi className={`w-4 h-4 ${getStatusColor(apHealthStatus)}`} />,
     },
     {
       label: 'Inactive APs',
       value: data.inactiveAPs,
       status: data.inactiveAPs > 0 ? 'warning' : 'good',
-      icon: <XCircle className={`w-4 h-4 ${getStatusColor(data.inactiveAPs > 0 ? 'warning' : 'good')}`} />
+      icon: (
+        <XCircle
+          className={`w-4 h-4 ${getStatusColor(data.inactiveAPs > 0 ? 'warning' : 'good')}`}
+        />
+      ),
     },
     {
       label: 'Low Power APs',
       value: data.lowPowerAPs,
       status: data.lowPowerAPs > 0 ? 'warning' : 'good',
-      icon: <AlertCircle className={`w-4 h-4 ${getStatusColor(data.lowPowerAPs > 0 ? 'warning' : 'good')}`} />
+      icon: (
+        <AlertCircle
+          className={`w-4 h-4 ${getStatusColor(data.lowPowerAPs > 0 ? 'warning' : 'good')}`}
+        />
+      ),
     },
     {
       label: 'Active Switches',
       value: data.activeSWs,
       total: totalSWs > 0 ? totalSWs : undefined,
       status: swHealthStatus,
-      icon: <Server className={`w-4 h-4 ${getStatusColor(swHealthStatus)}`} />
-    }
+      icon: <Server className={`w-4 h-4 ${getStatusColor(swHealthStatus)}`} />,
+    },
   ];
 
   if (data.troubleSWs > 0) {
@@ -123,7 +129,7 @@ export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
       label: 'Trouble Switches',
       value: data.troubleSWs,
       status: 'critical',
-      icon: <XCircle className="w-4 h-4 text-red-500" />
+      icon: <XCircle className="w-4 h-4 text-red-500" />,
     });
   }
 
@@ -133,7 +139,6 @@ export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
         {metrics.map((metric, index) => {
-          const StatusIcon = getStatusIcon(metric.status);
           const statusColor = getStatusColor(metric.status);
 
           return (
@@ -143,9 +148,7 @@ export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
                 <span className="text-xs text-muted-foreground">{metric.label}</span>
               </div>
               <div className="flex items-baseline gap-1">
-                <span className={`text-2xl font-bold ${statusColor}`}>
-                  {metric.value}
-                </span>
+                <span className={`text-2xl font-bold ${statusColor}`}>{metric.value}</span>
                 {metric.total !== undefined && (
                   <span className="text-sm text-muted-foreground">/ {metric.total}</span>
                 )}
@@ -159,17 +162,21 @@ export const NetworkHealthWidget: React.FC<NetworkHealthWidgetProps> = ({
       <div className="space-y-2 pt-4 border-t border-border">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Global Sync Status:</span>
-          <span className={`font-semibold ${
-            data.globalSyncStatus === 'Synchronized' ? 'text-green-500' : 'text-amber-500'
-          }`}>
+          <span
+            className={`font-semibold ${
+              data.globalSyncStatus === 'Synchronized' ? 'text-green-500' : 'text-amber-500'
+            }`}
+          >
             {data.globalSyncStatus}
           </span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Mobility Status:</span>
-          <span className={`font-semibold ${
-            data.mobilityStatus ? 'text-green-500' : 'text-muted-foreground'
-          }`}>
+          <span
+            className={`font-semibold ${
+              data.mobilityStatus ? 'text-green-500' : 'text-muted-foreground'
+            }`}
+          >
             {data.mobilityStatus ? 'Enabled' : 'Disabled'}
           </span>
         </div>

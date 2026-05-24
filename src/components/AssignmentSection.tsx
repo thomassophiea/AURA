@@ -46,10 +46,10 @@ export function AssignmentSection({
     const q = searchQuery.toLowerCase();
     return {
       sites: sites.filter(
-        s => !selectedSiteIds.includes(s.id) && (s.name ?? s.id).toLowerCase().includes(q)
+        (s) => !selectedSiteIds.includes(s.id) && (s.name ?? s.id).toLowerCase().includes(q)
       ),
       siteGroups: siteGroups.filter(
-        sg => !selectedSiteGroupIds.includes(sg.id) && sg.name.toLowerCase().includes(q)
+        (sg) => !selectedSiteGroupIds.includes(sg.id) && sg.name.toLowerCase().includes(q)
       ),
     };
   }, [searchQuery, sites, siteGroups, selectedSiteIds, selectedSiteGroupIds]);
@@ -57,8 +57,8 @@ export function AssignmentSection({
   const hasDropdownResults =
     filteredResults.sites.length > 0 || filteredResults.siteGroups.length > 0;
 
-  const selectedSiteObjects = sites.filter(s => selectedSiteIds.includes(s.id));
-  const selectedGroupObjects = siteGroups.filter(sg => selectedSiteGroupIds.includes(sg.id));
+  const selectedSiteObjects = sites.filter((s) => selectedSiteIds.includes(s.id));
+  const selectedGroupObjects = siteGroups.filter((sg) => selectedSiteGroupIds.includes(sg.id));
   const hasSelections = selectedSiteIds.length > 0 || selectedSiteGroupIds.length > 0;
 
   const summaryText = useMemo(() => {
@@ -111,11 +111,11 @@ export function AssignmentSection({
   );
 
   function removeSite(id: string) {
-    onSitesChange(selectedSiteIds.filter(s => s !== id));
+    onSitesChange(selectedSiteIds.filter((s) => s !== id));
   }
 
   function removeSiteGroup(id: string) {
-    onSiteGroupsChange(selectedSiteGroupIds.filter(sg => sg !== id));
+    onSiteGroupsChange(selectedSiteGroupIds.filter((sg) => sg !== id));
   }
 
   function selectSite(site: Site) {
@@ -130,17 +130,9 @@ export function AssignmentSection({
     setShowDropdown(false);
   }
 
-  // Build flat list of dropdown items to compute stable global indices for keyboard nav
-  const dropdownItems = useMemo(() => {
-    const items: Array<{ type: 'group'; item: SiteGroup } | { type: 'site'; item: Site }> = [];
-    filteredResults.siteGroups.forEach(sg => items.push({ type: 'group', item: sg }));
-    filteredResults.sites.forEach(s => items.push({ type: 'site', item: s }));
-    return items;
-  }, [filteredResults]);
-
   return (
     <div role="radiogroup" aria-label="Deployment assignment" className="space-y-2">
-      {MODES.map(mode => (
+      {MODES.map((mode) => (
         <div
           key={mode.value}
           className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
@@ -163,11 +155,11 @@ export function AssignmentSection({
 
             {/* Chip picker — only when this mode is active */}
             {mode.value === 'selected_targets' && value === 'selected_targets' && (
-              <div className="mt-3 space-y-2" onClick={e => e.stopPropagation()}>
+              <div className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
                 {/* Selected chips */}
                 {hasSelections && (
                   <div className="flex flex-wrap gap-1.5">
-                    {selectedGroupObjects.map(sg => (
+                    {selectedGroupObjects.map((sg) => (
                       <Badge key={sg.id} variant="secondary" className="gap-1 pr-1 text-xs">
                         <Folder className="h-3 w-3" />
                         {sg.name}
@@ -181,7 +173,7 @@ export function AssignmentSection({
                         </button>
                       </Badge>
                     ))}
-                    {selectedSiteObjects.map(s => (
+                    {selectedSiteObjects.map((s) => (
                       <Badge key={s.id} variant="outline" className="gap-1 pr-1 text-xs">
                         {s.name ?? s.id}
                         <button
@@ -206,7 +198,7 @@ export function AssignmentSection({
                   <Input
                     placeholder="Search sites or groups..."
                     value={searchQuery}
-                    onChange={e => {
+                    onChange={(e) => {
                       setSearchQuery(e.target.value);
                       setShowDropdown(true);
                     }}
@@ -231,7 +223,7 @@ export function AssignmentSection({
                               type="button"
                               className="flex items-center gap-2 w-full px-2 py-1.5 text-xs hover:bg-accent text-left"
                               onMouseDown={() => selectSiteGroup(sg)}
-                              onKeyDown={e => handleDropdownKeyDown(e, i)}
+                              onKeyDown={(e) => handleDropdownKeyDown(e, i)}
                             >
                               <Folder className="h-3 w-3 text-muted-foreground" />
                               {sg.name}
@@ -250,11 +242,8 @@ export function AssignmentSection({
                               type="button"
                               className="w-full px-2 py-1.5 text-xs hover:bg-accent text-left pl-6"
                               onMouseDown={() => selectSite(s)}
-                              onKeyDown={e =>
-                                handleDropdownKeyDown(
-                                  e,
-                                  filteredResults.siteGroups.length + i
-                                )
+                              onKeyDown={(e) =>
+                                handleDropdownKeyDown(e, filteredResults.siteGroups.length + i)
                               }
                             >
                               {s.name ?? s.id}
@@ -268,9 +257,7 @@ export function AssignmentSection({
 
                 {/* Validation hint */}
                 {!hasSelections && (
-                  <p className="text-xs text-destructive">
-                    Select at least one target to continue
-                  </p>
+                  <p className="text-xs text-destructive">Select at least one target to continue</p>
                 )}
               </div>
             )}

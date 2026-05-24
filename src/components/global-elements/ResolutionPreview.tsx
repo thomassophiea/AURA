@@ -5,13 +5,11 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Eye, AlertTriangle, CheckCircle2, ChevronRight, Rocket } from 'lucide-react';
+import { Eye, AlertTriangle, CheckCircle2, ChevronRight } from 'lucide-react';
 import { DeployButton } from './DeployButton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Badge } from '../ui/badge';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useAppContext } from '../../contexts/AppContext';
 import { useResolvedTemplate } from '../../hooks/useGlobalElements';
 import { templateResolver } from '../../services/templateResolver';
@@ -34,11 +32,11 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [selectedSiteGroupId, setSelectedSiteGroupId] = useState<string>('');
 
-  const selectedTemplate = templates.find(t => t.id === selectedTemplateId) ?? null;
+  const selectedTemplate = templates.find((t) => t.id === selectedTemplateId) ?? null;
 
   const context = useMemo<ResolutionContext | null>(() => {
     if (!organization) return null;
-    const sg = siteGroups.find(g => g.id === selectedSiteGroupId);
+    const sg = siteGroups.find((g) => g.id === selectedSiteGroupId);
     return {
       org_id: organization.id,
       org_name: organization.name,
@@ -75,7 +73,7 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                   <SelectValue placeholder="Select a template..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {templates.map(t => (
+                  {templates.map((t) => (
                     <SelectItem key={t.id} value={t.id}>
                       {t.name}
                     </SelectItem>
@@ -96,7 +94,7 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Organization level only</SelectItem>
-                  {siteGroups.map(sg => (
+                  {siteGroups.map((sg) => (
                     <SelectItem key={sg.id} value={sg.id}>
                       {sg.name}
                     </SelectItem>
@@ -123,9 +121,13 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Resolved Configuration</CardTitle>
                 <div className="flex items-center gap-2">
-                  {selectedTemplate && resolved && context && selectedSiteGroupId && selectedSiteGroupId !== '__none__' && (
+                  {selectedTemplate &&
+                    resolved &&
+                    context &&
+                    selectedSiteGroupId &&
+                    selectedSiteGroupId !== '__none__' &&
                     (() => {
-                      const sg = siteGroups.find(g => g.id === selectedSiteGroupId);
+                      const sg = siteGroups.find((g) => g.id === selectedSiteGroupId);
                       return sg ? (
                         <DeployButton
                           template={selectedTemplate}
@@ -137,17 +139,21 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                           disabled={!validation?.valid}
                         />
                       ) : null;
-                    })()
+                    })()}
+                  {validation && (
+                    <Badge variant={validation.valid ? 'success' : 'warning'}>
+                      {validation.valid ? (
+                        <>
+                          <CheckCircle2 className="h-3 w-3 mr-1" /> Valid
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="h-3 w-3 mr-1" /> {validation.errors.length}{' '}
+                          issue{validation.errors.length !== 1 ? 's' : ''}
+                        </>
+                      )}
+                    </Badge>
                   )}
-                {validation && (
-                  <Badge variant={validation.valid ? 'success' : 'warning'}>
-                    {validation.valid ? (
-                      <><CheckCircle2 className="h-3 w-3 mr-1" /> Valid</>
-                    ) : (
-                      <><AlertTriangle className="h-3 w-3 mr-1" /> {validation.errors.length} issue{validation.errors.length !== 1 ? 's' : ''}</>
-                    )}
-                  </Badge>
-                )}
                 </div>
               </div>
               <CardDescription>
@@ -187,7 +193,7 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {resolved.variables.map(rv => (
+                  {resolved.variables.map((rv) => (
                     <div key={rv.token} className="border rounded-lg p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <code className="text-sm font-mono bg-muted px-1.5 py-0.5 rounded">
@@ -219,7 +225,7 @@ export function ResolutionPreview({ templates, definitions, values }: Props) {
                     <div className="border border-destructive/30 rounded-lg p-3">
                       <p className="text-sm font-medium text-destructive mb-2">Unresolved Tokens</p>
                       <div className="flex flex-wrap gap-1">
-                        {resolved.unresolved_tokens.map(token => (
+                        {resolved.unresolved_tokens.map((token) => (
                           <Badge key={token} variant="destructive" className="text-xs">
                             {`{{${token}}}`}
                           </Badge>

@@ -19,20 +19,9 @@ interface EffectiveSetPreviewProps {
 
 export function EffectiveSetPreview({ effectiveSets, className }: EffectiveSetPreviewProps) {
   // Calculate totals across all sites
-  const totalProfiles = effectiveSets.reduce(
-    (sum, set) => sum + set.allProfiles.length,
-    0
-  );
+  const totalProfiles = effectiveSets.reduce((sum, set) => sum + set.allProfiles.length, 0);
 
-  const totalSelected = effectiveSets.reduce(
-    (sum, set) => sum + set.selectedProfiles.length,
-    0
-  );
-
-  const totalExcluded = effectiveSets.reduce(
-    (sum, set) => sum + set.excludedProfiles.length,
-    0
-  );
+  const totalExcluded = effectiveSets.reduce((sum, set) => sum + set.excludedProfiles.length, 0);
 
   // Deduplicate profiles across sites (a profile might appear in multiple sites)
   const allUniqueSelected = effectiveSetCalculator.mergeEffectiveSets(effectiveSets);
@@ -127,9 +116,7 @@ export function EffectiveSetPreview({ effectiveSets, className }: EffectiveSetPr
                     {/* Profile List Preview (first 3) */}
                     {effectiveSet.selectedProfiles.length > 0 && (
                       <div className="space-y-1">
-                        <div className="text-xs font-medium text-muted-foreground">
-                          Profiles:
-                        </div>
+                        <div className="text-xs font-medium text-muted-foreground">Profiles:</div>
                         <div className="space-y-1">
                           {effectiveSet.selectedProfiles.slice(0, 3).map((profile) => (
                             <div

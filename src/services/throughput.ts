@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Use local Express server for throughput storage (replaces Supabase edge function)
 const SERVER_URL = '/api';
 
@@ -79,7 +80,7 @@ class ThroughputService {
 
     const queryString = params.toString();
     const endpoint = queryString ? `/throughput/snapshots?${queryString}` : '/throughput/snapshots';
-    
+
     const result = await this.makeRequest(endpoint);
     return result.snapshots || [];
   }
@@ -95,15 +96,12 @@ class ThroughputService {
   /**
    * Get aggregated throughput statistics over a time period
    */
-  async getAggregatedStats(
-    startTime: number,
-    endTime: number
-  ): Promise<AggregatedThroughputStats> {
+  async getAggregatedStats(startTime: number, endTime: number): Promise<AggregatedThroughputStats> {
     const params = new URLSearchParams({
       startTime: startTime.toString(),
       endTime: endTime.toString(),
     });
-    
+
     return this.makeRequest(`/throughput/aggregated?${params.toString()}`);
   }
 
@@ -120,10 +118,10 @@ class ThroughputService {
     if (endTime) params.append('endTime', endTime.toString());
 
     const queryString = params.toString();
-    const endpoint = queryString 
-      ? `/throughput/network/${encodeURIComponent(networkName)}?${queryString}` 
+    const endpoint = queryString
+      ? `/throughput/network/${encodeURIComponent(networkName)}?${queryString}`
       : `/throughput/network/${encodeURIComponent(networkName)}`;
-    
+
     const result = await this.makeRequest(endpoint);
     return result.trends || [];
   }
@@ -143,7 +141,7 @@ class ThroughputService {
    */
   async getSnapshotsForLastHours(hours: number): Promise<ThroughputSnapshot[]> {
     const endTime = Date.now();
-    const startTime = endTime - (hours * 60 * 60 * 1000);
+    const startTime = endTime - hours * 60 * 60 * 1000;
     return this.getSnapshots(startTime, endTime);
   }
 
@@ -152,7 +150,7 @@ class ThroughputService {
    */
   async getSnapshotsForLastMinutes(minutes: number): Promise<ThroughputSnapshot[]> {
     const endTime = Date.now();
-    const startTime = endTime - (minutes * 60 * 1000);
+    const startTime = endTime - minutes * 60 * 1000;
     return this.getSnapshots(startTime, endTime);
   }
 

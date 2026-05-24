@@ -193,6 +193,7 @@ export function useBackgroundSync(options: BackgroundSyncOptions = {}) {
     if (isOnline && wasOfflineRef.current) {
       handleOnline();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearPendingRequests = useCallback(() => {

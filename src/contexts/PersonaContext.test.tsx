@@ -32,6 +32,7 @@ afterEach(() => {
 });
 
 function makeWrapper(theme: string, persona: PersonaId = 'super-user') {
+  // eslint-disable-next-line react/display-name
   return ({ children }: { children: React.ReactNode }) => (
     <PersonaProvider theme={theme} activePersona={persona} setActivePersona={vi.fn()}>
       {children}

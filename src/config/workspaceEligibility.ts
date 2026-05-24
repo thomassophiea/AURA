@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Workspace Widget Eligibility Registry
  *
@@ -561,8 +562,8 @@ export function checkWidgetEligibility(
   if (widgetType && ELIGIBLE_WIDGET_TYPES.includes(widgetType as any)) {
     // Check if endpoint refs are valid
     if (endpointRefs && endpointRefs.length > 0) {
-      const hasValidEndpoint = endpointRefs.some(ref =>
-        ELIGIBLE_ENDPOINT_PREFIXES.some(prefix => ref.startsWith(prefix))
+      const hasValidEndpoint = endpointRefs.some((ref) =>
+        ELIGIBLE_ENDPOINT_PREFIXES.some((prefix) => ref.startsWith(prefix))
       );
 
       if (hasValidEndpoint) {
@@ -660,9 +661,9 @@ export function listWidgetsRequiringContext(
   contextType: 'siteId' | 'timeRange' | 'clientId' | 'apId'
 ): string[] {
   return Object.entries(WIDGET_ELIGIBILITY_REGISTRY)
-    .filter(([_, eligibility]) =>
-      eligibility.isEligible &&
-      eligibility.requiredContext?.includes(contextType)
+    .filter(
+      ([_, eligibility]) =>
+        eligibility.isEligible && eligibility.requiredContext?.includes(contextType)
     )
     .map(([widgetId]) => widgetId);
 }

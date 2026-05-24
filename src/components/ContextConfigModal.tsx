@@ -11,11 +11,33 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
-import { Plus, Trash2, RotateCcw, Save, Info, ArrowLeft, Settings2, Building2, Warehouse, Store, Landmark, Sparkles } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
+import {
+  Plus,
+  Trash2,
+  RotateCcw,
+  Save,
+  Info,
+  ArrowLeft,
+  Settings2,
+  Building2,
+  Warehouse,
+  Store,
+  Landmark,
+  Sparkles,
+} from 'lucide-react';
 import { useSiteContexts } from '../hooks/useSiteContexts';
 import { SiteContext, AVAILABLE_METRICS } from '../types/siteContext';
 import { Alert, AlertDescription } from './ui/alert';
@@ -31,7 +53,12 @@ const getContextIcon = (name: string) => {
   if (nameLower.includes('ai context') || nameLower.includes('ai-context')) return Sparkles;
   if (nameLower.includes('retail') || nameLower.includes('store')) return Store;
   if (nameLower.includes('warehouse') || nameLower.includes('distribution')) return Warehouse;
-  if (nameLower.includes('headquarters') || nameLower.includes('office') || nameLower.includes('corporate')) return Building2;
+  if (
+    nameLower.includes('headquarters') ||
+    nameLower.includes('office') ||
+    nameLower.includes('corporate')
+  )
+    return Building2;
   return Landmark;
 };
 
@@ -57,7 +84,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
   }, [open, contexts, selectedContextId]);
 
   const selectedContext = selectedContextId
-    ? contexts.find(c => c.id === selectedContextId) || null
+    ? contexts.find((c) => c.id === selectedContextId) || null
     : null;
 
   const handleCreateNew = () => {
@@ -73,9 +100,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
         latencyThreshold: 50,
         packetLossThreshold: 1,
         coverageThreshold: 90,
-        interferenceThreshold: 15
+        interferenceThreshold: 15,
       },
-      isCustom: true
+      isCustom: true,
     };
     setEditingContext(newContext as SiteContext);
     setIsCreating(true);
@@ -111,12 +138,12 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
       ...editingContext,
       metrics: {
         ...editingContext.metrics,
-        [metricName]: value
-      }
+        [metricName]: value,
+      },
     });
   };
 
-  const renderMetricSlider = (metricConfig: typeof AVAILABLE_METRICS[0]) => {
+  const renderMetricSlider = (metricConfig: (typeof AVAILABLE_METRICS)[0]) => {
     const context = editingContext || selectedContext;
     if (!context) return null;
 
@@ -127,7 +154,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
       <div key={metricConfig.name} className="space-y-3 p-4 rounded-lg bg-muted/30 border">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Label htmlFor={metricConfig.name} className="text-sm font-medium">{metricConfig.label}</Label>
+            <Label htmlFor={metricConfig.name} className="text-sm font-medium">
+              {metricConfig.label}
+            </Label>
             <Badge variant="outline" className="text-xs">
               {metricConfig.category}
             </Badge>
@@ -140,7 +169,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
           id={metricConfig.name}
           min={metricConfig.min}
           max={metricConfig.max}
-          step={metricConfig.unit === '%' ? 1 : (metricConfig.max - metricConfig.min) > 100 ? 5 : 1}
+          step={metricConfig.unit === '%' ? 1 : metricConfig.max - metricConfig.min > 100 ? 5 : 1}
           value={[currentValue]}
           onValueChange={([value]) => isEditing && handleMetricChange(metricConfig.name, value)}
           disabled={!isEditing}
@@ -174,15 +203,12 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
               <div>
                 <h1 className="text-2xl font-bold">Configure Site Contexts</h1>
                 <p className="text-sm text-muted-foreground">
-                  Define baseline metrics for different types of sites to understand what "healthy" means in each environment
+                  Define baseline metrics for different types of sites to understand what "healthy"
+                  means in each environment
                 </p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetToDefaults}
-            >
+            <Button variant="outline" size="sm" onClick={resetToDefaults}>
               <RotateCcw className="mr-2 h-4 w-4" />
               Reset to Defaults
             </Button>
@@ -196,10 +222,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                 <div className="p-4 border-b bg-background">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-lg">Contexts</h3>
-                    <Button
-                      size="sm"
-                      onClick={handleCreateNew}
-                    >
+                    <Button size="sm" onClick={handleCreateNew}>
                       <Plus className="h-4 w-4 mr-2" />
                       New
                     </Button>
@@ -231,7 +254,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                             <div className="flex items-start gap-3">
                               <div
                                 className={`p-2 rounded-lg ${isAI ? 'bg-gradient-to-br from-purple-500/20 to-blue-500/20' : ''}`}
-                                style={!isAI ? { backgroundColor: `${context.color}20` } : undefined}
+                                style={
+                                  !isAI ? { backgroundColor: `${context.color}20` } : undefined
+                                }
                               >
                                 <IconComponent
                                   className={`h-5 w-5 ${isAI ? 'text-purple-400 animate-sparkle' : ''}`}
@@ -239,7 +264,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                                 />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <CardTitle className={`text-sm font-medium truncate ${isAI ? 'text-foreground' : ''}`}>
+                                <CardTitle
+                                  className={`text-sm font-medium truncate ${isAI ? 'text-foreground' : ''}`}
+                                >
                                   {context.name}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-0.5 line-clamp-2">
@@ -267,7 +294,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
 
               {/* Context Editor - Main Area */}
               <div className="flex-1 overflow-hidden flex flex-col">
-                {(selectedContext || editingContext) ? (
+                {selectedContext || editingContext ? (
                   <>
                     {/* Editor Header */}
                     <div className="p-6 border-b bg-background">
@@ -281,12 +308,19 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                               >
                                 {(() => {
                                   const Icon = getContextIcon(selectedContext.name);
-                                  return <Icon className="h-6 w-6" style={{ color: selectedContext.color }} />;
+                                  return (
+                                    <Icon
+                                      className="h-6 w-6"
+                                      style={{ color: selectedContext.color }}
+                                    />
+                                  );
                                 })()}
                               </div>
                               <div>
                                 <h2 className="text-xl font-semibold">{selectedContext.name}</h2>
-                                <p className="text-sm text-muted-foreground">{selectedContext.description}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {selectedContext.description}
+                                </p>
                               </div>
                             </>
                           )}
@@ -339,10 +373,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                               >
                                 Cancel
                               </Button>
-                              <Button
-                                size="sm"
-                                onClick={handleSave}
-                              >
+                              <Button size="sm" onClick={handleSave}>
                                 <Save className="mr-2 h-4 w-4" />
                                 {isCreating ? 'Create' : 'Save'}
                               </Button>
@@ -359,7 +390,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                             <Input
                               id="name"
                               value={editingContext.name}
-                              onChange={(e) => setEditingContext({ ...editingContext, name: e.target.value })}
+                              onChange={(e) =>
+                                setEditingContext({ ...editingContext, name: e.target.value })
+                              }
                               placeholder="e.g., Retail Store, Warehouse"
                             />
                           </div>
@@ -368,7 +401,12 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                             <Input
                               id="description"
                               value={editingContext.description}
-                              onChange={(e) => setEditingContext({ ...editingContext, description: e.target.value })}
+                              onChange={(e) =>
+                                setEditingContext({
+                                  ...editingContext,
+                                  description: e.target.value,
+                                })
+                              }
                               placeholder="Brief description of this environment"
                             />
                           </div>
@@ -404,9 +442,9 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                           {(['performance', 'reliability', 'quality'] as const).map((category) => (
                             <TabsContent key={category} value={category} className="mt-0">
                               <div className="grid gap-4">
-                                {AVAILABLE_METRICS
-                                  .filter((m) => m.category === category)
-                                  .map((metric) => renderMetricSlider(metric))}
+                                {AVAILABLE_METRICS.filter((m) => m.category === category).map(
+                                  (metric) => renderMetricSlider(metric)
+                                )}
                               </div>
                             </TabsContent>
                           ))}
@@ -431,11 +469,7 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
                       <Settings2 className="h-16 w-16 mx-auto mb-4 opacity-30" />
                       <p className="text-lg font-medium">Select a context to view and edit</p>
                       <p className="text-sm mt-2">or create a new custom context</p>
-                      <Button
-                        size="sm"
-                        className="mt-4"
-                        onClick={handleCreateNew}
-                      >
+                      <Button size="sm" className="mt-4" onClick={handleCreateNew}>
                         <Plus className="h-4 w-4 mr-2" />
                         Create New Context
                       </Button>
@@ -459,7 +493,10 @@ export function ContextConfigModal({ open, onOpenChange }: ContextConfigModalPro
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground"
+            >
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

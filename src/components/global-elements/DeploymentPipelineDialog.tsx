@@ -5,16 +5,14 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Rocket, CheckCircle2, XCircle, AlertTriangle, Loader2, SkipForward } from 'lucide-react';
+import { Rocket, CheckCircle2, XCircle, Loader2, SkipForward } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { Progress } from '../ui/progress';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { useAppContext } from '../../contexts/AppContext';
 import { deploymentPipeline } from '../../services/deploymentPipeline';
 import type {
@@ -22,11 +20,7 @@ import type {
   PersistedVariableDefinition,
   VariableValue,
 } from '../../types/globalElements';
-import type {
-  DeploymentTarget,
-  PipelineProgress,
-  PipelineResult,
-} from '../../types/deployment';
+import type { DeploymentTarget, PipelineProgress, PipelineResult } from '../../types/deployment';
 
 interface Props {
   template: GlobalElementTemplate;
@@ -73,9 +67,10 @@ export function DeploymentPipelineDialog({
   const [result, setResult] = useState<PipelineResult | null>(null);
 
   const toggleSg = (id: string) => {
-    setSelectedSgIds(prev => {
+    setSelectedSgIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -84,7 +79,7 @@ export function DeploymentPipelineDialog({
     if (selectedSgIds.size === siteGroups.length) {
       setSelectedSgIds(new Set());
     } else {
-      setSelectedSgIds(new Set(siteGroups.map(sg => sg.id)));
+      setSelectedSgIds(new Set(siteGroups.map((sg) => sg.id)));
     }
   };
 
@@ -94,8 +89,8 @@ export function DeploymentPipelineDialog({
     setResult(null);
 
     const targets: DeploymentTarget[] = siteGroups
-      .filter(sg => selectedSgIds.has(sg.id))
-      .map(sg => ({
+      .filter((sg) => selectedSgIds.has(sg.id))
+      .map((sg) => ({
         scope_type: 'site_group' as const,
         scope_id: sg.id,
         scope_name: sg.name,
@@ -154,8 +149,11 @@ export function DeploymentPipelineDialog({
             </div>
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {siteGroups.map(sg => (
-                <label key={sg.id} className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer">
+              {siteGroups.map((sg) => (
+                <label
+                  key={sg.id}
+                  className="flex items-center gap-3 p-2 rounded hover:bg-muted cursor-pointer"
+                >
                   <Checkbox
                     checked={selectedSgIds.has(sg.id)}
                     onCheckedChange={() => toggleSg(sg.id)}
@@ -164,7 +162,10 @@ export function DeploymentPipelineDialog({
                     <span className="text-sm font-medium">{sg.name}</span>
                     <span className="text-xs text-muted-foreground ml-2">{sg.controller_url}</span>
                   </div>
-                  <Badge variant={sg.connection_status === 'connected' ? 'success' : 'secondary'} className="text-xs">
+                  <Badge
+                    variant={sg.connection_status === 'connected' ? 'success' : 'secondary'}
+                    className="text-xs"
+                  >
                     {sg.connection_status}
                   </Badge>
                 </label>
@@ -172,7 +173,9 @@ export function DeploymentPipelineDialog({
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={handleClose}>Cancel</Button>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
               <Button onClick={() => setStep('options')} disabled={selectedSgIds.size === 0}>
                 Next ({selectedSgIds.size} selected)
               </Button>
@@ -194,7 +197,9 @@ export function DeploymentPipelineDialog({
             <div className="flex items-center justify-between">
               <div>
                 <Label>Dry Run</Label>
-                <p className="text-xs text-muted-foreground">Validate without pushing to controllers</p>
+                <p className="text-xs text-muted-foreground">
+                  Validate without pushing to controllers
+                </p>
               </div>
               <Switch checked={dryRun} onCheckedChange={setDryRun} />
             </div>
@@ -206,12 +211,16 @@ export function DeploymentPipelineDialog({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Targets</span>
-                <span>{selectedSgIds.size} site group{selectedSgIds.size !== 1 ? 's' : ''}</span>
+                <span>
+                  {selectedSgIds.size} site group{selectedSgIds.size !== 1 ? 's' : ''}
+                </span>
               </div>
             </div>
 
             <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep('targets')}>Back</Button>
+              <Button variant="outline" onClick={() => setStep('targets')}>
+                Back
+              </Button>
               <Button onClick={handleRun}>
                 <Rocket className="h-4 w-4 mr-2" />
                 {dryRun ? 'Start Dry Run' : 'Deploy'}
@@ -227,7 +236,10 @@ export function DeploymentPipelineDialog({
             <p className="text-sm text-center">
               {progress.completed} / {progress.total} completed
               {progress.current_target && (
-                <span className="text-muted-foreground"> — {progress.current_target.scope_name}</span>
+                <span className="text-muted-foreground">
+                  {' '}
+                  — {progress.current_target.scope_name}
+                </span>
               )}
             </p>
 
@@ -239,7 +251,9 @@ export function DeploymentPipelineDialog({
                     <Icon className={`h-4 w-4 ${STATUS_COLORS[r.status]}`} />
                     <span>{r.scope_name}</span>
                     {r.error_message && (
-                      <span className="text-xs text-destructive truncate ml-auto max-w-[200px]">{r.error_message}</span>
+                      <span className="text-xs text-destructive truncate ml-auto max-w-[200px]">
+                        {r.error_message}
+                      </span>
                     )}
                   </div>
                 );
@@ -272,7 +286,10 @@ export function DeploymentPipelineDialog({
               {result.results.map((r, i) => {
                 const Icon = STATUS_ICONS[r.status];
                 return (
-                  <div key={i} className="flex items-start gap-2 text-sm py-1.5 border-b last:border-0">
+                  <div
+                    key={i}
+                    className="flex items-start gap-2 text-sm py-1.5 border-b last:border-0"
+                  >
                     <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${STATUS_COLORS[r.status]}`} />
                     <div className="flex-1 min-w-0">
                       <span className="font-medium">{r.scope_name}</span>
@@ -280,7 +297,16 @@ export function DeploymentPipelineDialog({
                         <p className="text-xs text-destructive mt-0.5">{r.error_message}</p>
                       )}
                     </div>
-                    <Badge variant={r.status === 'success' ? 'success' : r.status === 'failed' ? 'destructive' : 'secondary'} className="text-xs shrink-0">
+                    <Badge
+                      variant={
+                        r.status === 'success'
+                          ? 'success'
+                          : r.status === 'failed'
+                            ? 'destructive'
+                            : 'secondary'
+                      }
+                      className="text-xs shrink-0"
+                    >
                       {r.status}
                     </Badge>
                   </div>

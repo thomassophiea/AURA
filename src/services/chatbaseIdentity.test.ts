@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock the supabase info module so module load doesn't crash on missing env.

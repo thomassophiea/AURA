@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * usePWAInstall - PWA installation prompt hook
  * Handles beforeinstallprompt event and tracks user dismissals

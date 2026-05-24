@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Client Identity Resolution Utility
  *
@@ -224,7 +225,11 @@ const DEVICE_TYPE_PATTERNS: Array<{ pattern: RegExp; type: string; category: str
   { pattern: /printer/i, type: 'Printer', category: 'Printer' },
   { pattern: /camera/i, type: 'Camera', category: 'IoT' },
   { pattern: /tv|television/i, type: 'Smart TV', category: 'Entertainment' },
-  { pattern: /roku|firestick|chromecast|appletv/i, type: 'Streaming Device', category: 'Entertainment' },
+  {
+    pattern: /roku|firestick|chromecast|appletv/i,
+    type: 'Streaming Device',
+    category: 'Entertainment',
+  },
   { pattern: /echo|alexa|homepod|google-home/i, type: 'Smart Speaker', category: 'IoT' },
   { pattern: /nest|ring|thermostat/i, type: 'Smart Home Device', category: 'IoT' },
   { pattern: /xbox|playstation|nintendo/i, type: 'Gaming Console', category: 'Entertainment' },
@@ -238,7 +243,11 @@ const DEVICE_TYPE_PATTERNS: Array<{ pattern: RegExp; type: string; category: str
  */
 export function normalizeMac(mac: string | undefined | null): string {
   if (!mac) return '';
-  return mac.toUpperCase().replace(/[^A-F0-9]/g, '').replace(/(.{2})/g, '$1:').slice(0, -1);
+  return mac
+    .toUpperCase()
+    .replace(/[^A-F0-9]/g, '')
+    .replace(/(.{2})/g, '$1:')
+    .slice(0, -1);
 }
 
 /**
@@ -254,7 +263,10 @@ export function getManufacturerFromMac(mac: string): string | null {
 /**
  * Infer device type from hostname or other identifiers
  */
-export function inferDeviceType(data: RawClientData): { type: string | null; category: string | null } {
+export function inferDeviceType(data: RawClientData): {
+  type: string | null;
+  category: string | null;
+} {
   const searchText = [
     data.hostName,
     data.hostname,
@@ -305,7 +317,7 @@ export function shortenManufacturer(name: string): string {
     'Raspberry Pi Trading Ltd': 'Raspberry Pi',
     'Raspberry Pi (Trading) Ltd': 'Raspberry Pi',
     'Espressif Inc.': 'Espressif',
-    'NETGEAR': 'Netgear',
+    NETGEAR: 'Netgear',
     'Dell Inc.': 'Dell',
     'Dell Technologies': 'Dell',
     'Lenovo Group Limited': 'Lenovo',
@@ -437,10 +449,14 @@ export function resolveClientIdentity(data: RawClientData): ClientIdentity {
   let identitySource: IdentitySource;
 
   if (deviceName && deviceName.trim() && !isMacLike(deviceName)) {
-    displayName = isVendorDerivedHostname(deviceName) ? shortenVendorHostname(deviceName) : deviceName.trim();
+    displayName = isVendorDerivedHostname(deviceName)
+      ? shortenVendorHostname(deviceName)
+      : deviceName.trim();
     identitySource = 'device_name';
   } else if (hostname && hostname.trim() && !isMacLike(hostname)) {
-    displayName = isVendorDerivedHostname(hostname) ? shortenVendorHostname(hostname) : hostname.trim();
+    displayName = isVendorDerivedHostname(hostname)
+      ? shortenVendorHostname(hostname)
+      : hostname.trim();
     identitySource = isVendorDerivedHostname(hostname) ? 'derived_label' : 'hostname';
   } else if (userName && userName.trim()) {
     displayName = userName.trim();
@@ -489,7 +505,8 @@ export function resolveClientIdentity(data: RawClientData): ClientIdentity {
  * e.g. "Amazon Technologies Inc. Mobile", "CLOUD NETWORK TECHNOLOGY SINGAPORE PTE. LTD. Device"
  * These end with a generic device-type suffix and contain legal entity markers.
  */
-const VENDOR_HOSTNAME_PATTERN = /\b(?:Inc\.?|Ltd\.?|LTD\.?|Corp\.?|Co\.?,?\s*Ltd\.?|LLC|PTE|GmbH|S\.?A\.?|AG)\b.*\s(?:Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i;
+const VENDOR_HOSTNAME_PATTERN =
+  /\b(?:Inc\.?|Ltd\.?|LTD\.?|Corp\.?|Co\.?,?\s*Ltd\.?|LLC|PTE|GmbH|S\.?A\.?|AG)\b.*\s(?:Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i;
 
 function isVendorDerivedHostname(value: string): boolean {
   return VENDOR_HOSTNAME_PATTERN.test(value.trim());
@@ -503,7 +520,9 @@ function isVendorDerivedHostname(value: string): boolean {
 function shortenVendorHostname(value: string): string {
   const trimmed = value.trim();
   // Extract the suffix (Device, Mobile, Server, etc.)
-  const suffixMatch = trimmed.match(/\s(Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i);
+  const suffixMatch = trimmed.match(
+    /\s(Device|Mobile|Server|Phone|Tablet|IoT|Laptop|Desktop|Workstation|Gateway|Router|Switch|Printer|Camera|Sensor|Hub|Bridge|Appliance|Station|Client|Endpoint)$/i
+  );
   const suffix = suffixMatch ? suffixMatch[1] : 'Device';
   // Strip the suffix to get the vendor part, then shorten
   const vendorPart = suffixMatch ? trimmed.slice(0, suffixMatch.index!).trim() : trimmed;
@@ -522,7 +541,7 @@ function isMacLike(value: string): boolean {
     /^[0-9A-Fa-f]{12}$/,
   ];
 
-  return macPatterns.some(pattern => pattern.test(value.trim()));
+  return macPatterns.some((pattern) => pattern.test(value.trim()));
 }
 
 /**
@@ -581,10 +600,13 @@ export function resolveClientIdentities(clients: RawClientData[]): ClientIdentit
 /**
  * Create a display string for client with context
  */
-export function formatClientDisplay(identity: ClientIdentity, options?: {
-  includeDevice?: boolean;
-  includeLocation?: boolean;
-}): string {
+export function formatClientDisplay(
+  identity: ClientIdentity,
+  options?: {
+    includeDevice?: boolean;
+    includeLocation?: boolean;
+  }
+): string {
   const parts = [identity.displayName];
 
   if (options?.includeDevice && identity.deviceType) {
@@ -601,13 +623,10 @@ export function formatClientDisplay(identity: ClientIdentity, options?: {
 /**
  * Search clients by various identity fields
  */
-export function searchClients(
-  clients: ClientIdentity[],
-  query: string
-): ClientIdentity[] {
+export function searchClients(clients: ClientIdentity[], query: string): ClientIdentity[] {
   const lowerQuery = query.toLowerCase();
 
-  return clients.filter(client => {
+  return clients.filter((client) => {
     return (
       client.displayName.toLowerCase().includes(lowerQuery) ||
       client.hostname?.toLowerCase().includes(lowerQuery) ||
