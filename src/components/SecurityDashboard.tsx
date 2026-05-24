@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -12,11 +13,9 @@ import {
   XCircle,
   RefreshCw,
   Scan,
-  Eye
+  Eye,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { TouchButton } from './TouchButton';
-import { DesktopOnly } from './MobileOptimized';
 import { apiService } from '../services/api';
 
 export function SecurityDashboard() {
@@ -37,7 +36,7 @@ export function SecurityDashboard() {
       // /v3/adsp returns Air Defense profile configs, not detected rogue APs — not a substitute.
       const [rogueResult, threatResult] = await Promise.allSettled([
         apiService.getRogueAPList(),
-        apiService.getSecurityThreats()
+        apiService.getSecurityThreats(),
       ]);
 
       const rogueList = rogueResult.status === 'fulfilled' ? rogueResult.value : [];
@@ -47,14 +46,21 @@ export function SecurityDashboard() {
       setThreats(threatList);
 
       // Mark API as available only if at least one endpoint responded
-      const anyAvailable = rogueResult.status === 'fulfilled' || threatResult.status === 'fulfilled';
+      const anyAvailable =
+        rogueResult.status === 'fulfilled' || threatResult.status === 'fulfilled';
       setSecurityApiAvailable(anyAvailable);
 
       if (rogueResult.status === 'rejected') {
-        console.warn('[SecurityDashboard] Rogue AP API unavailable (non-Swagger endpoint):', rogueResult.reason);
+        console.warn(
+          '[SecurityDashboard] Rogue AP API unavailable (non-Swagger endpoint):',
+          rogueResult.reason
+        );
       }
       if (threatResult.status === 'rejected') {
-        console.warn('[SecurityDashboard] Threats API unavailable (non-Swagger endpoint):', threatResult.reason);
+        console.warn(
+          '[SecurityDashboard] Threats API unavailable (non-Swagger endpoint):',
+          threatResult.reason
+        );
       }
     } catch (error) {
       console.error('Failed to load security data:', error);
@@ -79,7 +85,10 @@ export function SecurityDashboard() {
     }
   };
 
-  const handleClassify = async (macAddress: string, classification: 'friendly' | 'malicious' | 'unknown') => {
+  const handleClassify = async (
+    macAddress: string,
+    classification: 'friendly' | 'malicious' | 'unknown'
+  ) => {
     try {
       await apiService.classifyRogueAP(macAddress, classification);
       toast.success(`Rogue AP classified as ${classification}`);
@@ -95,7 +104,14 @@ export function SecurityDashboard() {
       case 'malicious':
         return <Badge variant="destructive">Malicious</Badge>;
       case 'friendly':
-        return <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Friendly</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+          >
+            Friendly
+          </Badge>
+        );
       default:
         return <Badge variant="outline">Unknown</Badge>;
     }
@@ -106,9 +122,23 @@ export function SecurityDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'high':
-        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">High</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+          >
+            High
+          </Badge>
+        );
       case 'medium':
-        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Medium</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+          >
+            Medium
+          </Badge>
+        );
       case 'low':
         return <Badge variant="secondary">Low</Badge>;
       default:
@@ -118,10 +148,12 @@ export function SecurityDashboard() {
 
   const stats = {
     totalRogueAPs: rogueAPs.length,
-    malicious: rogueAPs.filter(ap => ap.classification?.toLowerCase() === 'malicious').length,
-    friendly: rogueAPs.filter(ap => ap.classification?.toLowerCase() === 'friendly').length,
-    unknown: rogueAPs.filter(ap => !ap.classification || ap.classification?.toLowerCase() === 'unknown').length,
-    threats: threats.length
+    malicious: rogueAPs.filter((ap) => ap.classification?.toLowerCase() === 'malicious').length,
+    friendly: rogueAPs.filter((ap) => ap.classification?.toLowerCase() === 'friendly').length,
+    unknown: rogueAPs.filter(
+      (ap) => !ap.classification || ap.classification?.toLowerCase() === 'unknown'
+    ).length,
+    threats: threats.length,
   };
 
   if (loading) {
@@ -143,16 +175,19 @@ export function SecurityDashboard() {
             <Shield className="h-6 w-6" />
             Security Dashboard
           </h2>
-          <p className="text-muted-foreground">
-            Rogue AP detection and security threat monitoring
-          </p>
+          <p className="text-muted-foreground">Rogue AP detection and security threat monitoring</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadData} aria-label="Refresh security data">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm" onClick={handleScan} disabled={scanning} aria-label="Scan for rogue access points">
+          <Button
+            size="sm"
+            onClick={handleScan}
+            disabled={scanning}
+            aria-label="Scan for rogue access points"
+          >
             {scanning ? (
               <>
                 <Scan className="h-4 w-4 mr-2 animate-pulse" />
@@ -172,7 +207,11 @@ export function SecurityDashboard() {
       {securityApiAvailable === false && (
         <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <span>Security API endpoints (/v1/security/*) are not available on this controller. These are non-Swagger endpoints that may require a specific controller version or security module. Note: /v3/adsp provides Air Defense profile configuration, not rogue AP detections.</span>
+          <span>
+            Security API endpoints (/v1/security/*) are not available on this controller. These are
+            non-Swagger endpoints that may require a specific controller version or security module.
+            Note: /v3/adsp provides Air Defense profile configuration, not rogue AP detections.
+          </span>
         </div>
       )}
 
@@ -180,9 +219,7 @@ export function SecurityDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Rogue APs
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Rogue APs</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -194,9 +231,7 @@ export function SecurityDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Malicious
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Malicious</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -208,9 +243,7 @@ export function SecurityDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Friendly
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Friendly</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -222,9 +255,7 @@ export function SecurityDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unknown
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Unknown</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -236,9 +267,7 @@ export function SecurityDashboard() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Threats
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Threats</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
@@ -278,9 +307,7 @@ export function SecurityDashboard() {
                         <h3 className="font-semibold">{ap.ssid || 'Hidden SSID'}</h3>
                         {getRogueClassBadge(ap.classification)}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        MAC: {ap.macAddress}
-                      </p>
+                      <p className="text-sm text-muted-foreground mb-2">MAC: {ap.macAddress}</p>
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         {ap.channel && (
                           <div>
@@ -300,9 +327,7 @@ export function SecurityDashboard() {
                   <div>
                     <Select
                       defaultValue={ap.classification || 'unknown'}
-                      onValueChange={(value) =>
-                        handleClassify(ap.macAddress, value as any)
-                      }
+                      onValueChange={(value) => handleClassify(ap.macAddress, value as any)}
                     >
                       <SelectTrigger className="w-32">
                         <SelectValue />
@@ -325,9 +350,7 @@ export function SecurityDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Security Threats</CardTitle>
-          <CardDescription>
-            Detected security threats and anomalies
-          </CardDescription>
+          <CardDescription>Detected security threats and anomalies</CardDescription>
         </CardHeader>
         <CardContent>
           {threats.length === 0 ? (
@@ -338,10 +361,7 @@ export function SecurityDashboard() {
           ) : (
             <div className="space-y-2">
               {threats.map((threat, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-start gap-3 p-4 border rounded-lg"
-                >
+                <div key={idx} className="flex items-start gap-3 p-4 border rounded-lg">
                   <AlertTriangle className="h-5 w-5 text-[color:var(--status-warning)] mt-0.5" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">

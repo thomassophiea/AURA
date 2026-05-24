@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('./api', () => ({
@@ -46,7 +47,7 @@ const buildPrivacyPayload = (security: SecurityType, passphrase?: string, config
     band: 'dual',
     enabled: true,
   };
-  
+
   const payloadStr = JSON.stringify(buildServicePayloadForTest(serviceData));
   const payload = JSON.parse(payloadStr);
   return payload.privacy;
@@ -54,7 +55,11 @@ const buildPrivacyPayload = (security: SecurityType, passphrase?: string, config
 
 const buildServicePayloadForTest = (serviceData: CreateServiceRequest) => {
   const securityConfig = serviceData.securityConfig;
-  const isEnterprise = ['wpa2-enterprise', 'wpa3-enterprise-transition', 'wpa3-enterprise-192'].includes(serviceData.security);
+  const isEnterprise = [
+    'wpa2-enterprise',
+    'wpa3-enterprise-transition',
+    'wpa3-enterprise-192',
+  ].includes(serviceData.security);
 
   const pmfMode = securityConfig?.pmfMode ?? 'disabled';
   const encryptionMode = securityConfig?.encryptionMode ?? 'aesOnly';
@@ -171,7 +176,7 @@ const buildServicePayloadForTest = (serviceData: CreateServiceRequest) => {
     purgeOnDisconnect: serviceData.purgeOnDisconnect ?? false,
     beaconProtection: serviceData.beaconProtection ?? false,
     sixEWpaCompliance: securityConfig?.sixECompliance ?? false,
-    aaaPolicyId: isEnterprise ? (securityConfig?.aaaPolicyId || null) : null,
+    aaaPolicyId: isEnterprise ? securityConfig?.aaaPolicyId || null : null,
     mbatimeoutRoleId: null,
     roamingAssistPolicy: null,
     vendorSpecificAttributes: ['apName', 'vnsName', 'ssid'],
@@ -526,7 +531,10 @@ describe('wlanAssignment', () => {
         ]);
         vi.mocked(apiService.getProfileById).mockResolvedValue({ id: 'p1' });
         vi.mocked(apiService.assignServiceToProfile).mockResolvedValue(undefined as any);
-        vi.mocked(apiService.syncMultipleProfiles).mockResolvedValue({ success: true, message: 'Synced' });
+        vi.mocked(apiService.syncMultipleProfiles).mockResolvedValue({
+          success: true,
+          message: 'Synced',
+        });
 
         const result = await service.createWLANWithAutoAssignment({
           serviceName: 'Test WLAN',

@@ -33,13 +33,10 @@ export async function lookupVendor(mac: string): Promise<string> {
 
   // Check cache first
   if (vendorCache[oui]) {
-    console.log('[OUI Lookup] Cache hit for', oui, ':', vendorCache[oui]);
     return vendorCache[oui];
   }
 
   try {
-    console.log('[OUI Lookup] Looking up vendor for MAC:', mac);
-
     // Use macvendors.com API
     const response = await fetch(`https://api.macvendors.com/${encodeURIComponent(mac)}`, {
       method: 'GET',
@@ -55,14 +52,12 @@ export async function lookupVendor(mac: string): Promise<string> {
 
       // Cache the result
       vendorCache[oui] = trimmedVendor;
-      console.log('[OUI Lookup] ✓ Found vendor:', trimmedVendor);
 
       return trimmedVendor;
     }
 
     // 404 means vendor not found
     if (response.status === 404) {
-      console.log('[OUI Lookup] Vendor not found for', mac);
       vendorCache[oui] = 'Unknown Vendor';
       return 'Unknown Vendor';
     }
@@ -87,8 +82,6 @@ export async function lookupVendor(mac: string): Promise<string> {
 export async function batchLookupVendors(macs: string[]): Promise<Map<string, string>> {
   const results = new Map<string, string>();
 
-  console.log('[OUI Lookup] Batch lookup for', macs.length, 'MAC addresses');
-
   // Add delay between requests to respect rate limits (2 requests/second max)
   const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -99,7 +92,6 @@ export async function batchLookupVendors(macs: string[]): Promise<Map<string, st
 
     // If rate limited, wait longer
     if (vendor === 'Rate Limited') {
-      console.log('[OUI Lookup] Waiting 60s due to rate limit...');
       await delay(60000);
       // Retry
       const retryVendor = await lookupVendor(mac);
@@ -111,7 +103,5 @@ export async function batchLookupVendors(macs: string[]): Promise<Map<string, st
       await delay(550);
     }
   }
-
-  console.log('[OUI Lookup] ✓ Batch lookup complete:', results.size, 'results');
   return results;
 }

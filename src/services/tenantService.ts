@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Multi-Tenant Service
  * Manages organizations, controllers, and user access

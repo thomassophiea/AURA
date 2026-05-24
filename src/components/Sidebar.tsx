@@ -102,18 +102,18 @@ const controllerItems = [
 ];
 
 export function Sidebar({
-  onLogout,
+  onLogout: _onLogout,
   adminRole,
   currentPage,
   onPageChange,
-  theme = 'ep1',
-  onThemeToggle,
+  theme: _theme = 'ep1',
+  onThemeToggle: _onThemeToggle,
 }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const branding = useBranding();
+  const _branding = useBranding();
   const device = useDeviceDetection();
-  const org = tenantService.getCurrentOrganization();
+  const _org = tenantService.getCurrentOrganization();
   const { navigationScope, siteGroup, exitSiteGroup } = useAppContext();
   const { filterItems, isPageAllowed } = usePersonaContext();
 

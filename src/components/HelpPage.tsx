@@ -1,9 +1,4 @@
-/**
- * HelpPage Component
- *
- * Embeds Chatbase AI assistant for user support and documentation.
- * The chatbot provides contextual help for the EDGE platform.
- */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -50,7 +45,7 @@ export function HelpPage() {
             return target.q;
           }
           return (...args: any[]) => target(prop, ...args);
-        }
+        },
       });
     }
 
@@ -61,7 +56,6 @@ export function HelpPage() {
     script.setAttribute('domain', 'www.chatbase.co');
 
     script.onload = () => {
-      console.log('[HelpPage] Chatbase script loaded');
       scriptLoadedRef.current = true;
 
       // Identify user after script loads
@@ -112,8 +106,8 @@ export function HelpPage() {
           </CardHeader>
           <CardContent>
             <CardDescription>
-              Ask questions about network configuration, troubleshooting, or any EDGE feature.
-              The chat widget appears in the bottom-right corner.
+              Ask questions about network configuration, troubleshooting, or any EDGE feature. The
+              chat widget appears in the bottom-right corner.
             </CardDescription>
           </CardContent>
         </Card>
@@ -127,7 +121,8 @@ export function HelpPage() {
           </CardHeader>
           <CardContent>
             <CardDescription>
-              Browse comprehensive guides, API references, and best practices for wireless network management.
+              Browse comprehensive guides, API references, and best practices for wireless network
+              management.
             </CardDescription>
             <Button variant="link" className="p-0 h-auto mt-2 text-primary">
               View Docs <ExternalLink className="h-3 w-3 ml-1" />
@@ -144,7 +139,8 @@ export function HelpPage() {
           </CardHeader>
           <CardContent>
             <CardDescription>
-              Find answers to common questions about access points, clients, policies, and system configuration.
+              Find answers to common questions about access points, clients, policies, and system
+              configuration.
             </CardDescription>
           </CardContent>
         </Card>
@@ -169,12 +165,8 @@ export function HelpPage() {
           >
             <div className="text-center space-y-2">
               <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
-              <p className="text-sm">
-                Look for the chat widget in the bottom-right corner
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Powered by Chatbase AI
-              </p>
+              <p className="text-sm">Look for the chat widget in the bottom-right corner</p>
+              <p className="text-xs text-muted-foreground">Powered by Chatbase AI</p>
             </div>
           </div>
         </CardContent>

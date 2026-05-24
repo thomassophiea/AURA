@@ -68,7 +68,6 @@ export function useMetricsCollection(
 
       const currentMetrics = getCurrentMetrics();
       if (!currentMetrics) {
-        console.log('[MetricsCollection] No metrics available to collect');
         return;
       }
 
@@ -84,8 +83,6 @@ export function useMetricsCollection(
 
       setLastCollectionTime(new Date());
       setCollectionCount((prev) => prev + 1);
-
-      console.log(`[MetricsCollection] Collected metrics for ${currentMetrics.serviceName}`);
 
       if (onCollectionComplete) {
         onCollectionComplete();
@@ -103,10 +100,6 @@ export function useMetricsCollection(
       return;
     }
 
-    console.log(
-      `[MetricsCollection] Starting periodic collection every ${intervalMinutes} minutes`
-    );
-
     // Collect immediately on mount
     collectMetrics();
 
@@ -123,9 +116,9 @@ export function useMetricsCollection(
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
-        console.log('[MetricsCollection] Stopped periodic collection');
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, intervalMinutes, supabaseAvailable]);
 
   // Manual collection trigger
