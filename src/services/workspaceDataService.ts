@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this service
 /**
  * Workspace Data Service
  *
@@ -8,11 +10,7 @@
 
 import type { WidgetCatalogItem, WorkspaceContext, WorkspaceWidget } from '@/hooks/useWorkspace';
 import { WIDGET_CATALOG } from '@/hooks/useWorkspace';
-import {
-  resolveClientIdentity,
-  getExperienceStateLabel,
-  type ClientIdentity,
-} from '@/lib/clientIdentity';
+import { resolveClientIdentity, getExperienceStateLabel } from '@/lib/clientIdentity';
 
 /**
  * Normalized data response from widget data fetching
@@ -225,7 +223,7 @@ async function fetchAccessPointsTimeseries(
   api: any,
   siteId: string | null,
   timeRange: string,
-  catalogItem: WidgetCatalogItem
+  _catalogItem: WidgetCatalogItem
 ): Promise<WidgetDataResponse> {
   // Get site report with timeseries widgets
   if (!siteId) {
@@ -372,7 +370,7 @@ async function fetchClientsTimeseries(
   siteId: string | null,
   timeRange: string,
   clientId: string | undefined,
-  catalogItem: WidgetCatalogItem
+  _catalogItem: WidgetCatalogItem
 ): Promise<WidgetDataResponse> {
   if (clientId) {
     // Fetch specific client's timeseries
@@ -457,7 +455,7 @@ async function fetchAppInsightsTimeseries(
   api: any,
   siteId: string | null,
   timeRange: string,
-  catalogItem: WidgetCatalogItem
+  _catalogItem: WidgetCatalogItem
 ): Promise<WidgetDataResponse> {
   // App timeseries data typically comes from site reports
   if (!siteId) {
@@ -491,7 +489,7 @@ async function fetchClientExperienceRFQI(
   api: any,
   siteId: string | null,
   timeRange: string,
-  catalogItem: WidgetCatalogItem
+  _catalogItem: WidgetCatalogItem
 ): Promise<WidgetDataResponse> {
   try {
     // Fetch RF Quality data from site report
@@ -727,7 +725,7 @@ function getTimeRangeDays(timeRange: string): number {
   return days[timeRange] || 1;
 }
 
-function transformEventsToInsights(apEvents: any[], clientEvents: any[]): any[] {
+function transformEventsToInsights(apEvents: any[], _clientEvents: any[]): any[] {
   const insights: any[] = [];
 
   // Transform AP events to insights
@@ -1531,7 +1529,7 @@ async function fetchInsightsSummary(
 async function fetchAlertsList(
   api: any,
   siteId: string | null,
-  timeRange: string
+  _timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
     // NOTE: /v1/alerts is NOT in Swagger. Use /v1/notifications (Swagger: NotificationManager).
@@ -1605,7 +1603,7 @@ async function fetchEventsList(
 async function fetchAlarmsList(
   api: any,
   siteId: string | null,
-  timeRange: string
+  _timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
     // NOTE: /v1/alarms and /v1/alarms/active are NOT in Swagger. Use /v1/notifications.
@@ -1671,9 +1669,9 @@ async function fetchAPEventsList(
 }
 
 async function fetchClientEventsList(
-  api: any,
-  siteId: string | null,
-  timeRange: string
+  _api: any,
+  _siteId: string | null,
+  _timeRange: string
 ): Promise<WidgetDataResponse> {
   // Client events are typically embedded in station data or fetched separately
   return { data: [], metadata: { source: 'events.client_list' } };
@@ -1819,7 +1817,7 @@ async function fetchNetworkPerformanceSummary(
 async function fetchTrafficSummary(
   api: any,
   siteId: string | null,
-  timeRange: string
+  _timeRange: string
 ): Promise<WidgetDataResponse> {
   try {
     const clients = (await api.getStationsWithSiteCorrelation?.()) || [];
@@ -1855,7 +1853,7 @@ async function fetchTrafficSummary(
 // AUDIT FETCHERS
 // ========================================
 
-async function fetchAuditLogs(api: any, timeRange: string): Promise<WidgetDataResponse> {
+async function fetchAuditLogs(api: any, _timeRange: string): Promise<WidgetDataResponse> {
   try {
     const logs = (await api.getAuditLogs?.()) || [];
 
