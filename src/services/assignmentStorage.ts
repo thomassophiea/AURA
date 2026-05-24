@@ -5,7 +5,7 @@
  * Stores assignment metadata to enable reconciliation and mismatch detection.
  */
 
-import type { WLANSiteAssignment, WLANProfileAssignment, DeploymentMode } from '../types/network';
+import type { WLANSiteAssignment, WLANProfileAssignment } from '../types/network';
 
 const STORAGE_KEYS = {
   SITE_ASSIGNMENTS: 'wlan_site_assignments',

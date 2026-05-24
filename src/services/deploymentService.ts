@@ -18,7 +18,7 @@ import type {
   ResolutionContext,
 } from '../types/globalElements';
 import type { SiteGroup } from '../types/domain';
-import type { DeploymentResult, DeploymentRecord, DeploymentStatus } from '../types/deployment';
+import type { DeploymentResult, DeploymentRecord } from '../types/deployment';
 
 // Name fields used to detect existing resources per element type
 const NAME_FIELDS: Record<GlobalElementType, string> = {

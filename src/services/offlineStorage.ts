@@ -25,12 +25,12 @@ interface CacheStats {
 const CURRENT_SCHEMA_VERSION = 1;
 
 const DEFAULT_TTL: Record<string, number> = {
-  stations: 5 * 60 * 1000,      // 5 minutes
-  accessPoints: 5 * 60 * 1000,  // 5 minutes
+  stations: 5 * 60 * 1000, // 5 minutes
+  accessPoints: 5 * 60 * 1000, // 5 minutes
   applications: 10 * 60 * 1000, // 10 minutes
-  sites: 30 * 60 * 1000,        // 30 minutes
-  events: 2 * 60 * 1000,        // 2 minutes
-  default: 5 * 60 * 1000,       // 5 minutes
+  sites: 30 * 60 * 1000, // 30 minutes
+  events: 2 * 60 * 1000, // 2 minutes
+  default: 5 * 60 * 1000, // 5 minutes
 };
 
 class OfflineStorage {
@@ -262,7 +262,7 @@ class OfflineStorage {
       }
 
       return { data: entry.data, timestamp: entry.timestamp };
-    } catch (e) {
+    } catch {
       return null;
     }
   }
