@@ -251,7 +251,8 @@ export function DevToolsPanel({
       }
     });
     return ls;
-  }, [activeTab]); // Re-compute when tab switches
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]); // force re-read localStorage when tab switches
 
   if (!isOpen) return null;
 
@@ -1103,9 +1104,13 @@ export function DevToolsPanel({
                     <div className="flex gap-2 py-0.5">
                       <span className="text-violet-400 w-44">memory (if available)</span>
                       <span className="text-card-foreground">
-                        {(performance as any).memory
-                          ? `${fmtBytes((performance as any).memory.usedJSHeapSize)} / ${fmtBytes((performance as any).memory.jsHeapSizeLimit)}`
-                          : 'N/A (non-Chrome)'}
+                        {(() => {
+                          type PerfMemory = { usedJSHeapSize: number; jsHeapSizeLimit: number };
+                          const mem = (performance as Performance & { memory?: PerfMemory }).memory;
+                          return mem
+                            ? `${fmtBytes(mem.usedJSHeapSize)} / ${fmtBytes(mem.jsHeapSizeLimit)}`
+                            : 'N/A (non-Chrome)';
+                        })()}
                       </span>
                     </div>
                   </div>
