@@ -1,4 +1,7 @@
-import { useState, useEffect ,  memo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Settings, Shield, Wifi, Target, TrendingUp, Network, Layers } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -33,7 +36,7 @@ const COS_NAME_MAP: Record<string, string> = {
   '1eea4d66-2607-11e7-93ae-92361f002678': 'Network Control (Priority 7)',
   '1eea4d66-2607-11e7-93ae-92361f002679': 'CoS Profile 8',
   'b3021be1-a663-4f20-82e4-40bbd1a4e9a6': 'Custom CoS Profile 1',
-  '83080873-a72c-4aa0-af3c-41907a51c030': 'Custom CoS Profile 2'
+  '83080873-a72c-4aa0-af3c-41907a51c030': 'Custom CoS Profile 2',
 };
 
 function getCoSProfileName(profile: any): string {
@@ -70,7 +73,7 @@ export function ConfigurationProfilesWidget() {
     positioning: [],
     roles: [],
     cos: [],
-    rateLimiters: []
+    rateLimiters: [],
   });
 
   useEffect(() => {
@@ -81,19 +84,18 @@ export function ConfigurationProfilesWidget() {
     setLoading(true);
 
     try {
-      console.log('[ConfigurationProfiles] Loading all configuration profiles...');
-
       // Load all profile types in parallel
-      const [rfMgmt, iot, adsp, analytics, positioning, roles, cos, rateLimiters] = await Promise.all([
-        apiService.getRFManagementProfiles(),
-        apiService.getIoTProfiles(),
-        apiService.getADSPProfiles(),
-        apiService.getAnalyticsProfiles(),
-        apiService.getPositioningProfiles(),
-        apiService.getRoles(),
-        apiService.getCoSProfiles(),
-        apiService.getRateLimiters()
-      ]);
+      const [rfMgmt, iot, adsp, analytics, positioning, roles, cos, rateLimiters] =
+        await Promise.all([
+          apiService.getRFManagementProfiles(),
+          apiService.getIoTProfiles(),
+          apiService.getADSPProfiles(),
+          apiService.getAnalyticsProfiles(),
+          apiService.getPositioningProfiles(),
+          apiService.getRoles(),
+          apiService.getCoSProfiles(),
+          apiService.getRateLimiters(),
+        ]);
 
       setProfiles({
         rfMgmt,
@@ -103,18 +105,7 @@ export function ConfigurationProfilesWidget() {
         positioning,
         roles,
         cos,
-        rateLimiters
-      });
-
-      console.log('[ConfigurationProfiles] Loaded all profiles:', {
-        rfMgmt: rfMgmt.length,
-        iot: iot.length,
-        adsp: adsp.length,
-        analytics: analytics.length,
-        positioning: positioning.length,
-        roles: roles.length,
-        cos: cos.length,
-        rateLimiters: rateLimiters.length
+        rateLimiters,
       });
     } catch (error) {
       console.error('[ConfigurationProfiles] Error loading profiles:', error);
@@ -153,9 +144,7 @@ export function ConfigurationProfilesWidget() {
           <Settings className="h-5 w-5 text-primary" />
           Configuration Profiles
         </CardTitle>
-        <CardDescription>
-          {getTotalCount()} total profiles across 8 categories
-        </CardDescription>
+        <CardDescription>{getTotalCount()} total profiles across 8 categories</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="summary" className="w-full">
@@ -262,9 +251,13 @@ export function ConfigurationProfilesWidget() {
                 <div className="space-y-2">
                   {profiles.rfMgmt.map((profile: any, idx: number) => (
                     <div key={idx} className="p-2 rounded border bg-card text-sm">
-                      <div className="font-medium">{profile.name || profile.id || `Profile ${idx + 1}`}</div>
+                      <div className="font-medium">
+                        {profile.name || profile.id || `Profile ${idx + 1}`}
+                      </div>
                       {profile.description && (
-                        <div className="text-xs text-muted-foreground mt-1">{profile.description}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {profile.description}
+                        </div>
                       )}
                     </div>
                   ))}
@@ -283,9 +276,14 @@ export function ConfigurationProfilesWidget() {
                 <div className="space-y-2">
                   {profiles.iot.map((profile: any, idx: number) => (
                     <div key={idx} className="p-2 rounded border bg-card text-sm">
-                      <div className="font-medium">{profile.name || profile.id || `Profile ${idx + 1}`}</div>
+                      <div className="font-medium">
+                        {profile.name || profile.id || `Profile ${idx + 1}`}
+                      </div>
                       {profile.enabled !== undefined && (
-                        <Badge variant={profile.enabled ? "default" : "secondary"} className="text-xs mt-1">
+                        <Badge
+                          variant={profile.enabled ? 'default' : 'secondary'}
+                          className="text-xs mt-1"
+                        >
                           {profile.enabled ? 'Enabled' : 'Disabled'}
                         </Badge>
                       )}
@@ -356,7 +354,9 @@ export function ConfigurationProfilesWidget() {
                 <div className="space-y-2">
                   {profiles.rateLimiters.map((limiter: any, idx: number) => (
                     <div key={idx} className="p-2 rounded border bg-card text-sm">
-                      <div className="font-medium">{limiter.name || limiter.id || `Limiter ${idx + 1}`}</div>
+                      <div className="font-medium">
+                        {limiter.name || limiter.id || `Limiter ${idx + 1}`}
+                      </div>
                       {limiter.uplink && (
                         <div className="text-xs text-muted-foreground mt-1">
                           Uplink: {limiter.uplink} Mbps
@@ -384,9 +384,13 @@ export function ConfigurationProfilesWidget() {
                 <div className="space-y-2">
                   {profiles.adsp.map((profile: any, idx: number) => (
                     <div key={idx} className="p-2 rounded border bg-card text-sm">
-                      <div className="font-medium">{profile.name || profile.id || `ADSP ${idx + 1}`}</div>
+                      <div className="font-medium">
+                        {profile.name || profile.id || `ADSP ${idx + 1}`}
+                      </div>
                       {profile.description && (
-                        <div className="text-xs text-muted-foreground mt-1">{profile.description}</div>
+                        <div className="text-xs text-muted-foreground mt-1">
+                          {profile.description}
+                        </div>
                       )}
                     </div>
                   ))}
