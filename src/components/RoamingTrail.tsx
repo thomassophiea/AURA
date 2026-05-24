@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo, useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
 import {
@@ -9,14 +10,11 @@ import {
   Signal,
   X,
   AlertTriangle,
-  CheckCircle,
   XCircle,
   TrendingUp,
   Timer,
   ArrowLeftRight,
   Info,
-  ChevronDown,
-  ChevronRight,
   PanelRightClose,
   PanelRightOpen,
 } from 'lucide-react';
@@ -723,6 +721,7 @@ export function RoamingTrail({
   const highlightedEvents = useMemo(() => {
     if (alertFilter.type === 'none') return [];
     return roamingEvents.filter((event, idx) => isEventHighlighted(event, idx));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alertFilter, roamingEvents]);
 
   // Toggle alert filter
@@ -992,7 +991,7 @@ export function RoamingTrail({
           {stats.issues.map((issue) => {
             const info = ISSUE_DESCRIPTIONS[issue];
             const isSelected = alertFilter.type === 'issue' && alertFilter.issue === issue;
-            const matchCount = roamingEvents.filter((e, i) => {
+            const matchCount = roamingEvents.filter((e, _i) => {
               if (issue === ROAMING_ISSUES.LATE_ROAM) return e.isLateRoam;
               if (issue === ROAMING_ISSUES.AUTH_FAILURE) return e.isFailedRoam;
               if (issue === ROAMING_ISSUES.BAND_BOUNCE) return e.isBandSteering;
