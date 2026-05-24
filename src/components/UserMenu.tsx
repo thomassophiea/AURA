@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import {
   User,
@@ -8,7 +9,6 @@ import {
   ExternalLink,
   ChevronRight,
   LogOut,
-  Building2,
   Moon,
   Sun,
   Lock,
@@ -86,9 +86,7 @@ export function UserMenu({
       label: 'About AURA Mobility Core',
       icon: null,
       beta: true,
-      action: () => {
-        console.log('About AURA');
-      },
+      action: () => {},
     },
     {
       type: 'item',
@@ -104,9 +102,7 @@ export function UserMenu({
       label: 'Help & Support',
       icon: HelpCircle,
       beta: true,
-      action: () => {
-        console.log('Help & Support');
-      },
+      action: () => {},
     },
     {
       type: 'separator',
@@ -120,9 +116,7 @@ export function UserMenu({
       label: 'Account Settings',
       icon: User,
       beta: true,
-      action: () => {
-        console.log('Account Settings');
-      },
+      action: () => {},
     },
     {
       type: 'item',
@@ -139,18 +133,14 @@ export function UserMenu({
       label: 'External Integrations',
       icon: ExternalLink,
       beta: true,
-      action: () => {
-        console.log('External Integrations');
-      },
+      action: () => {},
     },
     {
       type: 'item',
       label: 'Preferences',
       icon: Settings,
       beta: true,
-      action: () => {
-        console.log('Preferences');
-      },
+      action: () => {},
     },
     {
       type: 'separator',

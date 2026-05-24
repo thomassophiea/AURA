@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
@@ -136,24 +137,12 @@ export function RoleEditDialog({
     try {
       // Load CoS and Topology options in parallel - these are optional features
       const [cos, topologies] = await Promise.all([
-        apiService.getClassOfService().catch((err) => {
-          console.log('CoS data unavailable, using manual input:', err.message);
-          return [];
-        }),
-        apiService.getTopologies().catch((err) => {
-          console.log('Topology data unavailable, using manual input:', err.message);
-          return [];
-        }),
+        apiService.getClassOfService().catch(() => []),
+        apiService.getTopologies().catch(() => []),
       ]);
 
       setCosOptions(cos);
       setTopologyOptions(topologies);
-
-      if (cos.length > 0 || topologies.length > 0) {
-        console.log(`✓ Loaded ${cos.length} CoS options and ${topologies.length} topologies`);
-      } else {
-        console.log('⚠️ Reference data unavailable - using manual ID entry for CoS and Topology');
-      }
     } catch (error) {
       console.warn('Error loading reference data:', error);
       // Don't show error toast - these are optional features

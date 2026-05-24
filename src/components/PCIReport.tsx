@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -17,7 +18,7 @@ import {
   Download,
   MapPin,
   Wifi,
-  Activity
+  Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
@@ -78,7 +79,7 @@ export function PCIReport() {
     siteId: '',
     wlanId: '',
     vlanIds: [],
-    includeDisconnectedAPs: true
+    includeDisconnectedAPs: true,
   });
   const [vlanInput, setVlanInput] = useState('');
 
@@ -97,7 +98,7 @@ export function PCIReport() {
       loadWlans(config.siteId);
     } else {
       setWlans([]);
-      setConfig(prev => ({ ...prev, wlanId: '' }));
+      setConfig((prev) => ({ ...prev, wlanId: '' }));
     }
   }, [config.siteId]);
 
@@ -114,9 +115,8 @@ export function PCIReport() {
     }
   };
 
-  const loadWlans = async (siteId: string) => {
+  const loadWlans = async (_siteId: string) => {
     setLoadingWlans(true);
-    console.log(`[PCIReport] Loading WLANs for site: ${siteId}`);
 
     try {
       // Call /v1/services directly - this is what Dashboard uses and it works
@@ -130,30 +130,27 @@ export function PCIReport() {
       }
 
       const services = await response.json();
-      console.log(`[PCIReport] Raw services from API:`, services);
 
       if (!services || !Array.isArray(services) || services.length === 0) {
-        console.log('[PCIReport] No services returned from API');
         setWlans([]);
         toast.info('No WLANs/Services configured on the controller');
         return;
       }
 
       // Transform services to WLAN format
-      const wlanList: WLAN[] = services.map((service: any) => {
-        const ssid = service.ssid || service.serviceName || service.name || '';
-        console.log(`[PCIReport] Service:`, { id: service.id, ssid, serviceName: service.serviceName, name: service.name });
-        return {
-          id: service.id,
-          ssid: ssid,
-          name: service.name || service.serviceName,
-          serviceName: service.serviceName,
-          vlan: service.vlan || service.dot1dPortNumber,
-          enabled: service.enabled !== false && service.status !== 'disabled'
-        };
-      }).filter((wlan: WLAN) => wlan.id && wlan.ssid);
-
-      console.log(`[PCIReport] Processed ${wlanList.length} WLANs:`, wlanList);
+      const wlanList: WLAN[] = services
+        .map((service: any) => {
+          const ssid = service.ssid || service.serviceName || service.name || '';
+          return {
+            id: service.id,
+            ssid: ssid,
+            name: service.name || service.serviceName,
+            serviceName: service.serviceName,
+            vlan: service.vlan || service.dot1dPortNumber,
+            enabled: service.enabled !== false && service.status !== 'disabled',
+          };
+        })
+        .filter((wlan: WLAN) => wlan.id && wlan.ssid);
       setWlans(wlanList);
 
       if (wlanList.length === 0) {
@@ -180,17 +177,17 @@ export function PCIReport() {
       return;
     }
 
-    setConfig(prev => ({
+    setConfig((prev) => ({
       ...prev,
-      vlanIds: [...prev.vlanIds, vlanId]
+      vlanIds: [...prev.vlanIds, vlanId],
     }));
     setVlanInput('');
   };
 
   const handleRemoveVlan = (vlanId: number) => {
-    setConfig(prev => ({
+    setConfig((prev) => ({
       ...prev,
-      vlanIds: prev.vlanIds.filter(id => id !== vlanId)
+      vlanIds: prev.vlanIds.filter((id) => id !== vlanId),
     }));
   };
 
@@ -208,8 +205,8 @@ export function PCIReport() {
     setGenerating(true);
     try {
       // Get site info
-      const site = sites.find(s => s.id === config.siteId);
-      const wlan = wlans.find(w => w.id === config.wlanId);
+      const site = sites.find((s) => s.id === config.siteId);
+      const wlan = wlans.find((w) => w.id === config.wlanId);
 
       if (!site) {
         throw new Error('Site not found');
@@ -231,7 +228,13 @@ export function PCIReport() {
 
       const aps: AccessPoint[] = siteAPs.map((ap: any) => {
         // Determine connection status
-        const status = (ap.status || ap.connectionState || ap.operationalState || ap.state || '').toLowerCase();
+        const status = (
+          ap.status ||
+          ap.connectionState ||
+          ap.operationalState ||
+          ap.state ||
+          ''
+        ).toLowerCase();
         const isConnected =
           status === 'inservice' ||
           status.includes('up') ||
@@ -245,12 +248,12 @@ export function PCIReport() {
           name: ap.apName || ap.displayName || ap.name || ap.macAddress || 'Unknown AP',
           mac: ap.macAddress || ap.mac || 'Unknown',
           status: isConnected ? 'connected' : 'disconnected',
-          siteId: config.siteId
+          siteId: config.siteId,
         };
       });
 
-      const connectedAPs = aps.filter(ap => ap.status === 'connected');
-      const disconnectedAPs = aps.filter(ap => ap.status !== 'connected');
+      const connectedAPs = aps.filter((ap) => ap.status === 'connected');
+      const disconnectedAPs = aps.filter((ap) => ap.status !== 'connected');
 
       // Determine compliance status
       let complianceStatus: 'pass' | 'fail' | 'warning' = 'pass';
@@ -268,7 +271,7 @@ export function PCIReport() {
         connectedAPs,
         disconnectedAPs,
         totalAPs: aps.length,
-        complianceStatus
+        complianceStatus,
       };
 
       setReportResult(result);
@@ -365,7 +368,9 @@ export function PCIReport() {
       <Card>
         <CardHeader>
           <CardTitle>Report Configuration</CardTitle>
-          <CardDescription>Select site, WLAN, and VLANs transmitting cardholder data</CardDescription>
+          <CardDescription>
+            Select site, WLAN, and VLANs transmitting cardholder data
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Site Selection */}
@@ -373,13 +378,13 @@ export function PCIReport() {
             <Label>Site</Label>
             <Select
               value={config.siteId}
-              onValueChange={(value) => setConfig(prev => ({ ...prev, siteId: value }))}
+              onValueChange={(value) => setConfig((prev) => ({ ...prev, siteId: value }))}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a site..." />
               </SelectTrigger>
               <SelectContent>
-                {sites.map(site => (
+                {sites.map((site) => (
                   <SelectItem key={site.id} value={site.id}>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
@@ -396,11 +401,11 @@ export function PCIReport() {
             <Label>WLAN (Transmitting Cardholder Data)</Label>
             <Select
               value={config.wlanId}
-              onValueChange={(value) => setConfig(prev => ({ ...prev, wlanId: value }))}
+              onValueChange={(value) => setConfig((prev) => ({ ...prev, wlanId: value }))}
               disabled={!config.siteId || loadingWlans}
             >
               <SelectTrigger>
-                <SelectValue placeholder={loadingWlans ? "Loading WLANs..." : "Select a WLAN..."} />
+                <SelectValue placeholder={loadingWlans ? 'Loading WLANs...' : 'Select a WLAN...'} />
               </SelectTrigger>
               <SelectContent>
                 {wlans.length === 0 ? (
@@ -408,7 +413,7 @@ export function PCIReport() {
                     No WLANs available
                   </SelectItem>
                 ) : (
-                  wlans.map(wlan => (
+                  wlans.map((wlan) => (
                     <SelectItem key={wlan.id} value={wlan.id}>
                       <div className="flex items-center gap-2">
                         <Wifi className="h-4 w-4" />
@@ -444,7 +449,7 @@ export function PCIReport() {
             </div>
             {config.vlanIds.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-2">
-                {config.vlanIds.map(vlanId => (
+                {config.vlanIds.map((vlanId) => (
                   <Badge key={vlanId} variant="secondary" className="gap-1">
                     VLAN {vlanId}
                     <button
@@ -539,14 +544,24 @@ export function PCIReport() {
                   {reportResult.complianceStatus === 'pass' && (
                     <>
                       <CheckCircle className="h-5 w-5 text-[color:var(--status-success)]" />
-                      <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">PASS</Badge>
+                      <Badge
+                        variant="outline"
+                        className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                      >
+                        PASS
+                      </Badge>
                       <span className="text-sm">All access points are connected</span>
                     </>
                   )}
                   {reportResult.complianceStatus === 'warning' && (
                     <>
                       <AlertCircle className="h-5 w-5 text-[color:var(--status-warning)]" />
-                      <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">WARNING</Badge>
+                      <Badge
+                        variant="outline"
+                        className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+                      >
+                        WARNING
+                      </Badge>
                       <span className="text-sm">Some access points are disconnected</span>
                     </>
                   )}
@@ -571,11 +586,15 @@ export function PCIReport() {
                     <div className="text-sm text-muted-foreground">Total APs</div>
                   </div>
                   <div className="text-center p-4 bg-[color:var(--status-success-bg)] rounded-lg">
-                    <div className="text-2xl font-bold text-[color:var(--status-success)]">{reportResult.connectedAPs.length}</div>
+                    <div className="text-2xl font-bold text-[color:var(--status-success)]">
+                      {reportResult.connectedAPs.length}
+                    </div>
                     <div className="text-sm text-muted-foreground">Connected</div>
                   </div>
                   <div className="text-center p-4 bg-[color:var(--status-error-bg)] rounded-lg">
-                    <div className="text-2xl font-bold text-[color:var(--status-error)]">{reportResult.disconnectedAPs.length}</div>
+                    <div className="text-2xl font-bold text-[color:var(--status-error)]">
+                      {reportResult.disconnectedAPs.length}
+                    </div>
                     <div className="text-sm text-muted-foreground">Disconnected</div>
                   </div>
                 </div>
@@ -599,12 +618,17 @@ export function PCIReport() {
                         </tr>
                       </thead>
                       <tbody>
-                        {reportResult.connectedAPs.map(ap => (
+                        {reportResult.connectedAPs.map((ap) => (
                           <tr key={ap.id} className="border-b">
                             <td className="p-2">{ap.name}</td>
                             <td className="p-2 font-mono text-sm">{ap.mac}</td>
                             <td className="p-2">
-                              <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Connected</Badge>
+                              <Badge
+                                variant="outline"
+                                className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                              >
+                                Connected
+                              </Badge>
                             </td>
                           </tr>
                         ))}
@@ -619,9 +643,12 @@ export function PCIReport() {
                 <>
                   <Separator />
                   <div>
-                    <h4 className="font-semibold mb-3 text-[color:var(--status-error)]">Appendix: Disconnected Access Points</h4>
+                    <h4 className="font-semibold mb-3 text-[color:var(--status-error)]">
+                      Appendix: Disconnected Access Points
+                    </h4>
                     <p className="text-sm text-muted-foreground mb-3">
-                      The following access points are not in a connected state and require attention:
+                      The following access points are not in a connected state and require
+                      attention:
                     </p>
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse">
@@ -633,7 +660,7 @@ export function PCIReport() {
                           </tr>
                         </thead>
                         <tbody>
-                          {reportResult.disconnectedAPs.map(ap => (
+                          {reportResult.disconnectedAPs.map((ap) => (
                             <tr key={ap.id} className="border-b">
                               <td className="p-2">{ap.name}</td>
                               <td className="p-2 font-mono text-sm">{ap.mac}</td>
@@ -653,9 +680,9 @@ export function PCIReport() {
               <Separator />
               <div className="text-xs text-muted-foreground">
                 <p>
-                  This report was automatically generated by the Network Management System.
-                  For PCI DSS compliance requirements, ensure all access points are in a connected state
-                  and transmitting on the designated VLANs for cardholder data.
+                  This report was automatically generated by the Network Management System. For PCI
+                  DSS compliance requirements, ensure all access points are in a connected state and
+                  transmitting on the designated VLANs for cardholder data.
                 </p>
               </div>
             </div>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Universal Table Customization Types
  *
@@ -400,8 +401,14 @@ export interface TableExportOptions {
  */
 export interface TableCustomizationEvent {
   /** Event type */
-  type: 'view_loaded' | 'column_toggled' | 'column_reordered' | 'column_resized'
-    | 'view_saved' | 'view_loaded' | 'reset_to_default';
+  type:
+    | 'view_loaded'
+    | 'column_toggled'
+    | 'column_reordered'
+    | 'column_resized'
+    | 'view_saved'
+    | 'view_loaded'
+    | 'reset_to_default';
 
   /** Table identifier */
   tableId: TableId;

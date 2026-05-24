@@ -3,6 +3,7 @@
  * Search, filters, two-line rows. No tables, no experience scores.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Search,
@@ -25,7 +26,6 @@ import {
   Printer,
   HardDrive,
   ChevronRight,
-  Signal,
 } from 'lucide-react';
 import { MobileStatusList } from './MobileStatusList';
 import { MobileBottomSheet } from './MobileBottomSheet';
