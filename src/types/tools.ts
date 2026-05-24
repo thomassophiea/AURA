@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Tools Types for ExtremeCloud IQ Controller
  * Includes Logs, Diagnostics, Reports, Workflow
@@ -11,17 +12,12 @@
 /**
  * Log severity level
  */
-export type LogSeverity = 
-  | 'debug'
-  | 'info'
-  | 'warning'
-  | 'error'
-  | 'critical';
+export type LogSeverity = 'debug' | 'info' | 'warning' | 'error' | 'critical';
 
 /**
  * Log category
  */
-export type LogCategory = 
+export type LogCategory =
   | 'events'
   | 'station-events'
   | 'audit'
@@ -70,7 +66,7 @@ export interface StationEventEntry extends LogEntry {
 /**
  * Station event types
  */
-export type StationEventType = 
+export type StationEventType =
   | 'association'
   | 'disassociation'
   | 'authentication'
@@ -128,7 +124,7 @@ export interface SmartRFLogEntry extends LogEntry {
 /**
  * Smart RF event types
  */
-export type SmartRFEventType = 
+export type SmartRFEventType =
   | 'channel-change'
   | 'power-change'
   | 'interference-detected'
@@ -155,7 +151,7 @@ export interface APUpgradeLogEntry extends LogEntry {
 /**
  * AP upgrade status
  */
-export type APUpgradeStatus = 
+export type APUpgradeStatus =
   | 'pending'
   | 'downloading'
   | 'installing'
@@ -221,8 +217,8 @@ export interface HealthCheckItem {
  */
 export interface SystemHealthSummary {
   overallStatus: HealthStatus;
-  configurationScore: number;    // 0-100
-  operationalScore: number;      // 0-100
+  configurationScore: number; // 0-100
+  operationalScore: number; // 0-100
   items: HealthCheckItem[];
   lastUpdated: string;
 }
@@ -413,7 +409,7 @@ export interface DiagnosticResult {
 /**
  * AP test type
  */
-export type APTestType = 
+export type APTestType =
   | 'connectivity'
   | 'throughput'
   | 'latency'
@@ -486,7 +482,7 @@ export interface APTestRunSummary {
 /**
  * Report type
  */
-export type ReportType = 
+export type ReportType =
   | 'dashboard-widget'
   | 'client-usage'
   | 'ap-usage'
@@ -503,7 +499,7 @@ export type ReportFormat = 'pdf' | 'csv' | 'xlsx';
 /**
  * Report time range
  */
-export type ReportTimeRange = 
+export type ReportTimeRange =
   | 'last-hour'
   | 'last-24-hours'
   | 'last-7-days'
@@ -514,11 +510,7 @@ export type ReportTimeRange =
 /**
  * Report schedule frequency
  */
-export type ReportScheduleFrequency = 
-  | 'once'
-  | 'daily'
-  | 'weekly'
-  | 'monthly';
+export type ReportScheduleFrequency = 'once' | 'daily' | 'weekly' | 'monthly';
 
 /**
  * Report template
@@ -528,7 +520,7 @@ export interface ReportTemplate {
   name: string;
   description?: string;
   type: ReportType;
-  widgetIds?: string[];       // For dashboard-widget type
+  widgetIds?: string[]; // For dashboard-widget type
   filters?: Record<string, any>;
   columns?: string[];
   sortBy?: string;
@@ -550,10 +542,10 @@ export interface ReportSchedule {
   customStartDate?: string;
   customEndDate?: string;
   format: ReportFormat;
-  recipients: string[];       // Email addresses
-  dayOfWeek?: number;         // 0-6 for weekly
-  dayOfMonth?: number;        // 1-31 for monthly
-  time: string;               // HH:MM format
+  recipients: string[]; // Email addresses
+  dayOfWeek?: number; // 0-6 for weekly
+  dayOfMonth?: number; // 1-31 for monthly
+  time: string; // HH:MM format
   siteIds?: string[];
   lastRun?: string;
   nextRun?: string;
@@ -598,7 +590,7 @@ export interface ReportVenueGroup {
 /**
  * Workflow component type
  */
-export type WorkflowComponentType = 
+export type WorkflowComponentType =
   | 'site'
   | 'device-group'
   | 'profile'
@@ -611,11 +603,7 @@ export type WorkflowComponentType =
 /**
  * Workflow component status
  */
-export type WorkflowComponentStatus = 
-  | 'configured'
-  | 'incomplete'
-  | 'error'
-  | 'not-configured';
+export type WorkflowComponentStatus = 'configured' | 'incomplete' | 'error' | 'not-configured';
 
 /**
  * Workflow component
@@ -648,11 +636,7 @@ export interface WorkflowOverview {
 /**
  * AFC server status
  */
-export type AFCServerStatus = 
-  | 'connected'
-  | 'disconnected'
-  | 'error'
-  | 'pending';
+export type AFCServerStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 
 /**
  * AFC server info
@@ -673,9 +657,9 @@ export interface AFCCoverageArea {
   siteName: string;
   latitude: number;
   longitude: number;
-  radius: number;             // meters
+  radius: number; // meters
   channels: number[];
-  maxPower: number;           // dBm
+  maxPower: number; // dBm
   lastUpdated: string;
 }
 

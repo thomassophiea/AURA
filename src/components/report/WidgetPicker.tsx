@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Widget Picker
  *
@@ -9,7 +10,7 @@ import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Search, BarChart3, TrendingUp, Hash, Layers, Check } from 'lucide-react';
+import { Plus, Search, Check } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { WIDGET_CATEGORIES } from '../../services/widgetService';
 import type { ReportWidgetConfig, WidgetDisplayType } from '../../types/reportConfig';

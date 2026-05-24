@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -9,20 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import {
-  Radio,
-  Play,
-  Download,
-  RefreshCw,
-  MapPin,
-  Wifi,
-  BarChart3,
-  Settings,
-  AlertCircle,
-  CheckCircle,
-  TrendingUp,
-  Zap,
-} from 'lucide-react';
+import { Radio, Play, MapPin, Wifi, BarChart3, AlertCircle, CheckCircle, Zap } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { ExportButton } from './ExportButton';

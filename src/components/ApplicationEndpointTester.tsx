@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -34,9 +35,9 @@ export function ApplicationEndpointTester() {
 
   const testEndpoints = async () => {
     setTesting(true);
-    const initialResults: EndpointResult[] = ENDPOINTS_TO_TEST.map(endpoint => ({
+    const initialResults: EndpointResult[] = ENDPOINTS_TO_TEST.map((endpoint) => ({
       endpoint,
-      status: 'testing'
+      status: 'testing',
     }));
     setResults(initialResults);
 
@@ -44,11 +45,13 @@ export function ApplicationEndpointTester() {
       const endpoint = ENDPOINTS_TO_TEST[i];
 
       try {
-        console.log(`[Endpoint Tester] Testing: ${endpoint}`);
-
-        const response = await apiService.makeAuthenticatedRequest(endpoint, {
-          method: 'GET'
-        }, 5000);
+        const response = await apiService.makeAuthenticatedRequest(
+          endpoint,
+          {
+            method: 'GET',
+          },
+          5000
+        );
 
         const statusCode = response.status;
         let data = null;
@@ -58,31 +61,30 @@ export function ApplicationEndpointTester() {
           try {
             data = await response.json();
             resultStatus = 'success';
-            console.log(`[Endpoint Tester] ✓ ${endpoint} -> ${statusCode}`, data);
-          } catch (e) {
-            console.log(`[Endpoint Tester] ✓ ${endpoint} -> ${statusCode} (no JSON)`);
+          } catch {
+            /* ignore */
           }
-        } else {
-          console.log(`[Endpoint Tester] ✗ ${endpoint} -> ${statusCode}`);
         }
 
-        setResults(prev => prev.map((r, idx) =>
-          idx === i
-            ? { ...r, status: resultStatus, statusCode, data }
-            : r
-        ));
-
+        setResults((prev) =>
+          prev.map((r, idx) => (idx === i ? { ...r, status: resultStatus, statusCode, data } : r))
+        );
       } catch (error) {
-        console.log(`[Endpoint Tester] ✗ ${endpoint} -> Error:`, error);
-        setResults(prev => prev.map((r, idx) =>
-          idx === i
-            ? { ...r, status: 'failed', error: error instanceof Error ? error.message : 'Unknown error' }
-            : r
-        ));
+        setResults((prev) =>
+          prev.map((r, idx) =>
+            idx === i
+              ? {
+                  ...r,
+                  status: 'failed',
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }
+              : r
+          )
+        );
       }
 
       // Small delay between requests
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     setTesting(false);
@@ -99,7 +101,7 @@ export function ApplicationEndpointTester() {
     }
   };
 
-  const successfulEndpoints = results.filter(r => r.status === 'success');
+  const successfulEndpoints = results.filter((r) => r.status === 'success');
 
   return (
     <Card className="border-2 border-[color:var(--status-warning)]/30">
@@ -111,11 +113,7 @@ export function ApplicationEndpointTester() {
               Testing {ENDPOINTS_TO_TEST.length} possible endpoints to find application data
             </p>
           </div>
-          <Button
-            onClick={testEndpoints}
-            disabled={testing}
-            size="sm"
-          >
+          <Button onClick={testEndpoints} disabled={testing} size="sm">
             {testing ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -186,7 +184,8 @@ export function ApplicationEndpointTester() {
         {!testing && results.length > 0 && successfulEndpoints.length === 0 && (
           <div className="mt-4 p-4 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg">
             <p className="text-sm text-[color:var(--status-error)]">
-              No working endpoints found. The controller may not have an application analytics API available.
+              No working endpoints found. The controller may not have an application analytics API
+              available.
             </p>
           </div>
         )}
