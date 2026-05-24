@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API response types are dynamic; any required for untyped filter functions
+
 /**
  * Context Scope Hook - STRICT ENFORCEMENT
  *
@@ -230,7 +233,7 @@ async function fetchScopedAPs(siteId?: string): Promise<AccessPoint[]> {
   try {
     const aps = await apiService.getAccessPointsBySite(siteId);
     return aps;
-  } catch (error) {
+  } catch {
     logViolation(`AP fetch failed for site ${siteId}, returning empty`, `site:${siteId}`);
     return []; // STRICT: empty on failure
   }
@@ -273,7 +276,7 @@ async function fetchScopedStations(siteId?: string): Promise<Station[]> {
 
     // STRICT: return filtered results even if empty - no global fallback
     return filtered;
-  } catch (error) {
+  } catch {
     logViolation(`Station fetch failed for site ${siteId}, returning empty`, `site:${siteId}`);
     return []; // STRICT: empty on failure
   }
@@ -314,7 +317,7 @@ async function fetchScopedServices(siteId?: string): Promise<Service[]> {
 
     // STRICT: return filtered results even if empty
     return filtered;
-  } catch (error) {
+  } catch {
     logViolation(`Service fetch failed for site ${siteId}, returning empty`, `site:${siteId}`);
     return []; // STRICT: empty on failure
   }
@@ -385,7 +388,7 @@ export async function getSiteDeviceIdentifiers(siteId: string): Promise<Set<stri
       if ((ap as any).hostname) identifiers.add((ap as any).hostname.toLowerCase());
       if ((ap as any).macAddress) identifiers.add((ap as any).macAddress.toLowerCase());
     });
-  } catch (error) {
+  } catch {
     logViolation(`Failed to resolve device identifiers for site ${siteId}`, `site:${siteId}`);
   }
   return identifiers;

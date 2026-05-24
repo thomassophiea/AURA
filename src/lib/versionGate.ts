@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Version gate logic uses dynamic localStorage access; any is required for untyped storage values
+
 /**
  * Version Gate - Forces clean application state on version changes
  *
@@ -56,9 +59,8 @@ async function clearCacheStorage(): Promise<void> {
 
   try {
     const cacheNames = await caches.keys();
-    const deletePromises = cacheNames.map(name => caches.delete(name));
+    const deletePromises = cacheNames.map((name) => caches.delete(name));
     await Promise.allSettled(deletePromises);
-    console.log(`[VersionGate] Deleted ${cacheNames.length} cache(s)`);
   } catch (error) {
     console.warn('[VersionGate] Failed to clear Cache Storage:', error);
   }
@@ -72,9 +74,8 @@ async function unregisterServiceWorkers(): Promise<void> {
 
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
-    const unregisterPromises = registrations.map(reg => reg.unregister());
+    const unregisterPromises = registrations.map((reg) => reg.unregister());
     await Promise.allSettled(unregisterPromises);
-    console.log(`[VersionGate] Unregistered ${registrations.length} service worker(s)`);
   } catch (error) {
     console.warn('[VersionGate] Failed to unregister service workers:', error);
   }
@@ -84,12 +85,12 @@ async function unregisterServiceWorkers(): Promise<void> {
 // These are site group lists, saved credentials, and controller selection — not
 // app state or cache data, so they should NOT be wiped on each deploy.
 const PRESERVE_PREFIXES = [
-  'api_controllers',       // saved site group list
+  'api_controllers', // saved site group list
   'api_current_controller', // last-selected site group
-  'api_current_org',        // last-selected org
-  'sg_login_',              // per-site-group controller credentials
-  'xiq_creds_',             // per-site-group ExtremeCloud credentials
-  'xiq_token_',             // active ExtremeCloud tokens
+  'api_current_org', // last-selected org
+  'sg_login_', // per-site-group controller credentials
+  'xiq_creds_', // per-site-group ExtremeCloud credentials
+  'xiq_token_', // active ExtremeCloud tokens
 ];
 
 /**
@@ -103,7 +104,7 @@ function clearAllStorage(): void {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key) continue;
-      if (PRESERVE_PREFIXES.some(p => key.startsWith(p))) {
+      if (PRESERVE_PREFIXES.some((p) => key.startsWith(p))) {
         const val = localStorage.getItem(key);
         if (val !== null) preserved.push([key, val]);
       } else {
@@ -111,21 +112,18 @@ function clearAllStorage(): void {
       }
     }
 
-    keysToRemove.forEach(key => localStorage.removeItem(key));
+    keysToRemove.forEach((key) => localStorage.removeItem(key));
 
     // Restore preserved user data after the wipe
     preserved.forEach(([k, v]) => localStorage.setItem(k, v));
-
-    console.log(`[VersionGate] Cleared ${keysToRemove.length} localStorage item(s), preserved ${preserved.length}`);
   } catch (error) {
     console.warn('[VersionGate] Failed to clear localStorage:', error);
   }
 
   try {
     // Clear sessionStorage
-    const sessionKeysCount = sessionStorage.length;
+    const _sessionKeysCount = sessionStorage.length;
     sessionStorage.clear();
-    console.log(`[VersionGate] Cleared ${sessionKeysCount} sessionStorage item(s)`);
   } catch (error) {
     console.warn('[VersionGate] Failed to clear sessionStorage:', error);
   }
@@ -146,12 +144,11 @@ function expireOldCookies(): void {
 
   try {
     const cookies = document.cookie.split(';');
-    cookies.forEach(cookie => {
-      const [name] = cookie.split('=').map(s => s.trim());
-      if (oldCookiePatterns.some(pattern => name.startsWith(pattern))) {
+    cookies.forEach((cookie) => {
+      const [name] = cookie.split('=').map((s) => s.trim());
+      if (oldCookiePatterns.some((pattern) => name.startsWith(pattern))) {
         // Expire the cookie by setting it with maxAge=0
         document.cookie = `${name}=; path=/; max-age=0; secure; samesite=lax`;
-        console.log(`[VersionGate] Expired cookie: ${name}`);
       }
     });
   } catch (error) {
@@ -163,20 +160,12 @@ function expireOldCookies(): void {
  * Perform full state cleanup
  */
 async function performCleanup(): Promise<void> {
-  console.log('[VersionGate] Performing full state cleanup...');
-
   // Clear synchronous storage first
   clearAllStorage();
   expireOldCookies();
 
   // Clear async storage
-  await Promise.allSettled([
-    clearIndexedDB(),
-    clearCacheStorage(),
-    unregisterServiceWorkers(),
-  ]);
-
-  console.log('[VersionGate] State cleanup complete');
+  await Promise.allSettled([clearIndexedDB(), clearCacheStorage(), unregisterServiceWorkers()]);
 }
 
 /**
@@ -191,10 +180,6 @@ export async function checkVersionGate(): Promise<boolean> {
   const cacheVersionMismatch = storedCacheVersion !== String(CACHE_VERSION);
 
   if (versionMismatch || cacheVersionMismatch) {
-    console.log(`[VersionGate] Version mismatch detected`);
-    console.log(`  Stored: ${storedVersion} (cache: ${storedCacheVersion})`);
-    console.log(`  Current: ${APP_VERSION} (cache: ${CACHE_VERSION})`);
-
     // Perform full cleanup
     await performCleanup();
 
@@ -202,11 +187,9 @@ export async function checkVersionGate(): Promise<boolean> {
     localStorage.setItem(VERSION_STORAGE_KEY, APP_VERSION);
     localStorage.setItem(CACHE_VERSION_KEY, String(CACHE_VERSION));
 
-    console.log('[VersionGate] Forcing full page reload...');
     return true;
   }
 
-  console.log(`[VersionGate] Version OK: ${APP_VERSION}`);
   return false;
 }
 

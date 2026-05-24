@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import React, { useState, useMemo } from 'react';
 import {
   RefreshCw,
@@ -16,14 +19,7 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardAction } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from './ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { cn } from './ui/utils';
 import type { WorkspaceWidget as WorkspaceWidgetType } from '@/hooks/useWorkspace';
 import { TOPIC_METADATA, WIDGET_CATALOG } from '@/hooks/useWorkspace';
@@ -43,12 +39,12 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
   onDelete,
   onDuplicate,
   onToggleLinking,
-  onTimeBrush,
+  onTimeBrush: _onTimeBrush,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const topicMeta = TOPIC_METADATA[widget.topic];
   const catalogItem = useMemo(
-    () => WIDGET_CATALOG.find(item => item.id === widget.catalogId),
+    () => WIDGET_CATALOG.find((item) => item.id === widget.catalogId),
     [widget.catalogId]
   );
 
@@ -80,9 +76,7 @@ export const WorkspaceWidget: React.FC<WorkspaceWidgetProps> = ({
             >
               {topicMeta.label}
             </Badge>
-            <CardTitle className="text-sm font-medium line-clamp-2">
-              {widget.title}
-            </CardTitle>
+            <CardTitle className="text-sm font-medium line-clamp-2">{widget.title}</CardTitle>
           </div>
           <CardAction>
             <div className="flex items-center gap-1">
@@ -253,12 +247,19 @@ const KPITileContent: React.FC<{ data: any }> = ({ data }) => {
       {/* Component Breakdown */}
       {Object.keys(components).length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          {Object.entries(components).slice(0, 6).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs">
-              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-              <span className="font-medium">{typeof value === 'number' ? value.toFixed(1) : String(value)}</span>
-            </div>
-          ))}
+          {Object.entries(components)
+            .slice(0, 6)
+            .map(([key, value]) => (
+              <div
+                key={key}
+                className="flex items-center justify-between p-2 bg-muted/50 rounded text-xs"
+              >
+                <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+                <span className="font-medium">
+                  {typeof value === 'number' ? value.toFixed(1) : String(value)}
+                </span>
+              </div>
+            ))}
         </div>
       )}
     </div>
@@ -330,15 +331,15 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
   const formatHeader = (column: string): string => {
     // ClientIdentityDisplayPolicy: Friendly column names
     const headerMappings: Record<string, string> = {
-      'display_name': 'Client',
-      'experience_state': 'Experience',
-      'device_type': 'Device',
-      'device_category': 'Category',
-      'ap_name': 'Access Point',
-      'site_name': 'Site',
-      'mac_address': 'MAC',
-      'ip_address': 'IP',
-      'rfqi_score': 'RFQI',
+      display_name: 'Client',
+      experience_state: 'Experience',
+      device_type: 'Device',
+      device_category: 'Category',
+      ap_name: 'Access Point',
+      site_name: 'Site',
+      mac_address: 'MAC',
+      ip_address: 'IP',
+      rfqi_score: 'RFQI',
     };
 
     if (headerMappings[column]) {
@@ -347,7 +348,7 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
 
     return column
       .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase())
+      .replace(/\b\w/g, (c) => c.toUpperCase())
       .replace(/Dbm/g, 'dBm')
       .replace(/Db/g, 'dB')
       .replace(/Bps/g, 'bps')
@@ -367,18 +368,19 @@ const TableContent: React.FC<{ data: any[]; columns?: string[]; isExpanded: bool
 
     // Experience state gets color coding
     if (column === 'experience_state') {
-      return (
-        <span className={cn('font-medium', getExperienceStyle(value))}>
-          {value || '-'}
-        </span>
-      );
+      return <span className={cn('font-medium', getExperienceStyle(value))}>{value || '-'}</span>;
     }
 
     // RFQI score gets color based on value
     if (column === 'rfqi_score' && typeof value === 'number') {
-      const color = value >= 90 ? 'text-[color:var(--status-success)]' :
-                   value >= 75 ? 'text-[color:var(--status-info)]' :
-                   value >= 60 ? 'text-[color:var(--status-warning)]' : 'text-[color:var(--status-error)]';
+      const color =
+        value >= 90
+          ? 'text-[color:var(--status-success)]'
+          : value >= 75
+            ? 'text-[color:var(--status-info)]'
+            : value >= 60
+              ? 'text-[color:var(--status-warning)]'
+              : 'text-[color:var(--status-error)]';
       return <span className={cn('font-medium', color)}>{value.toFixed(0)}</span>;
     }
 
@@ -437,9 +439,7 @@ const TimeseriesContent: React.FC<{ data: any }> = ({ data }) => {
       return (
         <div className="space-y-2">
           <div className="h-32 bg-muted/30 rounded flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">
-              {data.length} data points
-            </span>
+            <span className="text-xs text-muted-foreground">{data.length} data points</span>
           </div>
         </div>
       );
@@ -468,8 +468,19 @@ const TimeseriesContent: React.FC<{ data: any }> = ({ data }) => {
                 {typeof latest === 'number' ? latest.toFixed(1) : latest}
               </span>
               {trend !== 0 && (
-                <span className={cn('flex items-center text-xs', trend > 0 ? 'text-[color:var(--status-success)]' : 'text-[color:var(--status-error)]')}>
-                  {trend > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                <span
+                  className={cn(
+                    'flex items-center text-xs',
+                    trend > 0
+                      ? 'text-[color:var(--status-success)]'
+                      : 'text-[color:var(--status-error)]'
+                  )}
+                >
+                  {trend > 0 ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
                   {trendPercent}%
                 </span>
               )}
@@ -484,7 +495,10 @@ const TimeseriesContent: React.FC<{ data: any }> = ({ data }) => {
 /**
  * Timeline feed content for contextual insights
  */
-const TimelineFeedContent: React.FC<{ data: any[]; isExpanded: boolean }> = ({ data, isExpanded }) => {
+const TimelineFeedContent: React.FC<{ data: any[]; isExpanded: boolean }> = ({
+  data,
+  isExpanded,
+}) => {
   if (!Array.isArray(data) || data.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
@@ -566,23 +580,21 @@ const GenericContent: React.FC<{ data: any }> = ({ data }) => {
   if (typeof data === 'object' && data !== null) {
     return (
       <div className="space-y-2">
-        {Object.entries(data).slice(0, 8).map(([key, value]) => (
-          <div key={key} className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
-            <span className="font-medium truncate ml-2">
-              {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-            </span>
-          </div>
-        ))}
+        {Object.entries(data)
+          .slice(0, 8)
+          .map(([key, value]) => (
+            <div key={key} className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</span>
+              <span className="font-medium truncate ml-2">
+                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+              </span>
+            </div>
+          ))}
       </div>
     );
   }
 
-  return (
-    <div className="text-sm text-foreground whitespace-pre-wrap">
-      {String(data)}
-    </div>
-  );
+  return <div className="text-sm text-foreground whitespace-pre-wrap">{String(data)}</div>;
 };
 
 export default WorkspaceWidget;
