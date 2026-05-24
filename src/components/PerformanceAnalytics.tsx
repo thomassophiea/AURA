@@ -7,20 +7,14 @@ import { Alert, AlertDescription } from './ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
-  LineChart,
-  Line,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   PieChart,
   Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from 'recharts';
 import {
@@ -29,15 +23,11 @@ import {
   TrendingDown,
   Users,
   Wifi,
-  Server,
   RefreshCw,
   Download,
-  Clock,
   BarChart3,
   AlertTriangle,
-  CheckCircle,
   MapPin,
-  Filter,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
@@ -52,13 +42,13 @@ interface ReportWidget {
   id: string;
   name: string;
   type: string;
-  data: any;
+  data: unknown;
 }
 
 interface SiteReport {
   siteId: string;
   siteName: string;
-  widgets: any[];
+  widgets: unknown[];
   metrics: {
     apCount?: number;
     clientCount?: number;
@@ -106,22 +96,18 @@ export function PerformanceAnalytics() {
           const sitesData = Array.isArray(data) ? data : data.sites || [];
           setSites(
             sitesData.map((site: any) => ({
+              // eslint-disable-line @typescript-eslint/no-explicit-any
               id: site.id || site.siteId,
               name: site.name || site.siteName || `Site ${site.id}`,
               status: site.status,
             }))
           );
-          console.log(`Sites data loaded successfully from: ${endpoint}`);
           return;
         }
-      } catch (err) {
-        console.log(
-          `Sites endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
-    console.log('All sites endpoints failed, but continuing with empty sites array');
   };
 
   // Fetch site report widgets with fallback strategies
@@ -137,18 +123,13 @@ export function PerformanceAnalytics() {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 3000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`Site widgets successful with endpoint: ${endpoint}`);
           return Array.isArray(data) ? data : data.widgets || [];
         }
-      } catch (err) {
-        console.log(
-          `Widget endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
 
-    console.log('All widget endpoints failed, returning empty array');
     return [];
   };
 
@@ -166,20 +147,15 @@ export function PerformanceAnalytics() {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 4000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`Sites report successful with endpoint: ${endpoint}`);
           return data;
         }
-      } catch (err) {
-        console.log(
-          `Sites report endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
 
     // If all report endpoints fail, fall back to basic sites data
     try {
-      console.log('Falling back to basic sites data for analytics');
       const response = await apiService.makeAuthenticatedRequest('/v3/sites', {}, 4000);
       if (response.ok) {
         const sitesData = await response.json();
@@ -190,11 +166,8 @@ export function PerformanceAnalytics() {
           fallback: true,
         };
       }
-    } catch (err) {
-      console.log(
-        'Fallback to basic sites data also failed:',
-        err instanceof Error ? err.message : 'Unknown error'
-      );
+    } catch {
+      // endpoint unavailable, try next
     }
 
     return null;
@@ -214,20 +187,14 @@ export function PerformanceAnalytics() {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 4000); // Shorter timeout
         if (response.ok) {
           const data = await response.json();
-          console.log(`Site report successful with endpoint: ${endpoint}`);
           return data;
         }
-      } catch (err) {
-        // Log the error but continue trying other endpoints - use console.log instead of warn to reduce noise
-        console.log(
-          `Site report endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
 
     // All endpoints failed, return null
-    console.log(`All site report endpoints failed for site ${siteId}`);
     return null;
   };
 
@@ -244,18 +211,13 @@ export function PerformanceAnalytics() {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 4000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`APs data successful with endpoint: ${endpoint}`);
           return Array.isArray(data) ? data : data.aps || [];
         }
-      } catch (err) {
-        console.log(
-          `AP endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
 
-    console.log('All AP endpoints failed, returning empty array');
     return [];
   };
 
@@ -271,14 +233,10 @@ export function PerformanceAnalytics() {
         const response = await apiService.makeAuthenticatedRequest(endpoint, {}, 3000);
         if (response.ok) {
           const data = await response.json();
-          console.log(`AP widgets successful with endpoint: ${endpoint}`);
           return Array.isArray(data) ? data : data.widgets || [];
         }
-      } catch (err) {
-        console.log(
-          `AP widget endpoint ${endpoint} failed:`,
-          err instanceof Error ? err.message : 'Unknown error'
-        );
+      } catch {
+        // endpoint unavailable, try next
       }
     }
 
@@ -291,14 +249,10 @@ export function PerformanceAnalytics() {
       const response = await apiService.makeAuthenticatedRequest('/v1/reports/widgets', {}, 3000);
       if (response.ok) {
         const data = await response.json();
-        console.log('General widgets successful');
         return Array.isArray(data) ? data : data.widgets || [];
       }
-    } catch (err) {
-      console.log(
-        'General widgets endpoint failed:',
-        err instanceof Error ? err.message : 'Unknown error'
-      );
+    } catch {
+      // endpoint unavailable, try next
     }
     return [];
   };
@@ -314,7 +268,6 @@ export function PerformanceAnalytics() {
 
       if (selectedSite === 'all') {
         // Fetch all sites analytics with graceful error handling
-        console.log('Fetching analytics data for all sites...');
         const [sitesReportData, apsReportData, siteWidgets, apWidgets, generalWidgets] =
           await Promise.allSettled([
             fetchSitesReport(),
@@ -333,6 +286,7 @@ export function PerformanceAnalytics() {
 
           if (sitesData.sites && Array.isArray(sitesData.sites)) {
             sitesData.sites.forEach((site: any) => {
+              // eslint-disable-line @typescript-eslint/no-explicit-any
               processedSiteReports.push({
                 siteId: site.id || site.siteId,
                 siteName: site.name || site.siteName || `Site ${site.id}`,
@@ -355,6 +309,7 @@ export function PerformanceAnalytics() {
         if (apsReportData.status === 'fulfilled' && apsReportData.value) {
           const apsData = apsReportData.value;
           const processedAPReports: APReport[] = apsData.map((ap: any) => ({
+            // eslint-disable-line @typescript-eslint/no-explicit-any
             apId: ap.id || ap.apId || ap.serial,
             name: ap.name || ap.displayName || `AP ${ap.serial}`,
             serialNumber: ap.serial || ap.serialNumber,
@@ -377,6 +332,7 @@ export function PerformanceAnalytics() {
           if (widgetResult.status === 'fulfilled' && widgetResult.value) {
             const widgets = Array.isArray(widgetResult.value) ? widgetResult.value : [];
             widgets.forEach((widget: any) => {
+              // eslint-disable-line @typescript-eslint/no-explicit-any
               allWidgets.push({
                 id: widget.id || widget.widgetId,
                 name: widget.name || widget.title,
@@ -390,7 +346,6 @@ export function PerformanceAnalytics() {
         setReportWidgets(allWidgets);
       } else {
         // Fetch specific site analytics
-        console.log(`Fetching analytics data for site: ${selectedSite}`);
         const siteReport = await fetchSiteReport(selectedSite);
 
         if (siteReport) {
@@ -430,13 +385,16 @@ export function PerformanceAnalytics() {
         // Fetch APs for this specific site
         const apsData = await fetchAPsReport();
         const siteAPs = apsData.filter(
-          (ap: any) =>
+          (
+            ap: any // eslint-disable-line @typescript-eslint/no-explicit-any
+          ) =>
             ap.siteId === selectedSite ||
             ap.site === selectedSite ||
             (ap.siteName && sites.find((s) => s.id === selectedSite)?.name === ap.siteName)
         );
 
         const processedAPReports: APReport[] = siteAPs.map((ap: any) => ({
+          // eslint-disable-line @typescript-eslint/no-explicit-any
           apId: ap.id || ap.apId || ap.serial,
           name: ap.name || ap.displayName || `AP ${ap.serial}`,
           serialNumber: ap.serial || ap.serialNumber,
@@ -499,7 +457,6 @@ export function PerformanceAnalytics() {
 
       // Don't show error toasts for suppressed analytics endpoints
       if (errorMessage.includes('SUPPRESSED_ANALYTICS_ERROR')) {
-        console.log('Suppressed analytics error in PerformanceAnalytics component');
         setError(null); // Don't set error state for suppressed errors
       } else {
         setError(errorMessage);
@@ -787,6 +744,7 @@ export function PerformanceAnalytics() {
                         labelLine={false}
                         outerRadius={80}
                         dataKey="value"
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         label={({ cx, cy, midAngle, outerRadius, name, percent }: any) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius * 1.2;
