@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * Logger service that only logs in development mode
  * In production, all logs are suppressed

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
@@ -46,9 +47,10 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
 
       // Fetch site state and AP/client counts in parallel
       const [siteState, aps, stations] = await Promise.all([
-        apiService.makeAuthenticatedRequest(
-          `/v1/state/sites/${encodeURIComponent(siteId)}`
-        ).then(r => r.ok ? r.json() : null).catch(() => null),
+        apiService
+          .makeAuthenticatedRequest(`/v1/state/sites/${encodeURIComponent(siteId)}`)
+          .then((r) => (r.ok ? r.json() : null))
+          .catch(() => null),
         apiService.getAccessPointsBySite(siteId).catch(() => [] as any[]),
         apiService.getStations().catch(() => [] as any[]),
       ]);
@@ -69,9 +71,7 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
       // Extract location from tree node or top-level
       const city = siteState?.treeNode?.city;
       const region = siteState?.treeNode?.region;
-      const location = city
-        ? [city, region].filter(Boolean).join(', ')
-        : siteState?.location;
+      const location = city ? [city, region].filter(Boolean).join(', ') : siteState?.location;
 
       setSiteInfo({
         id: siteId,
@@ -131,14 +131,17 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
     );
   }
 
-  const statusVariant = siteInfo.status === 'active'
-    ? 'default'
-    : siteInfo.status === 'error'
-      ? 'destructive'
-      : 'secondary';
+  const statusVariant =
+    siteInfo.status === 'active'
+      ? 'default'
+      : siteInfo.status === 'error'
+        ? 'destructive'
+        : 'secondary';
 
-  const statusLabel = siteInfo.status === 'unknown' ? 'Unknown' :
-    siteInfo.status.charAt(0).toUpperCase() + siteInfo.status.slice(1);
+  const statusLabel =
+    siteInfo.status === 'unknown'
+      ? 'Unknown'
+      : siteInfo.status.charAt(0).toUpperCase() + siteInfo.status.slice(1);
 
   return (
     <div className="space-y-6">
@@ -188,9 +191,12 @@ export function SiteDetail({ siteId, siteName }: SiteDetailProps) {
               <span>{siteInfo.timezone}</span>
             </div>
           )}
-          {!siteInfo.location && !siteInfo.country && !siteInfo.timezone && !siteInfo.site_group_name && (
-            <p className="text-muted-foreground italic text-xs">No location details available</p>
-          )}
+          {!siteInfo.location &&
+            !siteInfo.country &&
+            !siteInfo.timezone &&
+            !siteInfo.site_group_name && (
+              <p className="text-muted-foreground italic text-xs">No location details available</p>
+            )}
         </div>
       </section>
 

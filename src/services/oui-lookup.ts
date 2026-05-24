@@ -38,7 +38,6 @@ function extractOUI(mac: string): string {
 async function lookupVendorAPI(mac: string): Promise<string> {
   try {
     const url = `${SERVER_URL}/oui/lookup?mac=${encodeURIComponent(mac)}`;
-    console.log('[OUI Lookup] Fetching from:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -47,11 +46,8 @@ async function lookupVendorAPI(mac: string): Promise<string> {
       },
     });
 
-    console.log('[OUI Lookup] Response status:', response.status, response.statusText);
-
     if (response.ok) {
       const data = await response.json();
-      console.log('[OUI Lookup] Response data:', data);
       return data.vendor || 'Unknown Vendor';
     }
 

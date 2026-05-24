@@ -1,4 +1,4 @@
-import { useState, useEffect ,  memo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { FileText, User, Clock, AlertCircle, CheckCircle, Info } from 'lucide-react';
 import { Badge } from './ui/badge';
@@ -42,16 +42,13 @@ export function AuditLogsWidget() {
     setLoading(true);
 
     try {
-      console.log('[AuditLogs] Loading audit logs...');
-
       // Get logs from the last 7 days
       const endTime = Date.now();
-      const startTime = endTime - (7 * 24 * 60 * 60 * 1000);
+      const startTime = endTime - 7 * 24 * 60 * 60 * 1000;
 
       const auditLogs = await apiService.getAuditLogs(startTime, endTime);
 
       setLogs(auditLogs);
-      console.log(`[AuditLogs] Loaded ${auditLogs.length} audit logs`);
     } catch (error) {
       console.error('[AuditLogs] Error loading audit logs:', error);
       setLogs([]);
@@ -63,15 +60,15 @@ export function AuditLogsWidget() {
   const getFilteredLogs = () => {
     if (filter === 'all') return logs;
     if (filter === 'user') {
-      return logs.filter(log =>
-        (log.user || log.userId || log.username) &&
-        (log.action || log.actionType)
+      return logs.filter(
+        (log) => (log.user || log.userId || log.username) && (log.action || log.actionType)
       );
     }
     if (filter === 'system') {
-      return logs.filter(log =>
-        !(log.user || log.userId || log.username) ||
-        (log.action || log.actionType || '').toLowerCase().includes('system')
+      return logs.filter(
+        (log) =>
+          !(log.user || log.userId || log.username) ||
+          (log.action || log.actionType || '').toLowerCase().includes('system')
       );
     }
     return logs;
@@ -85,7 +82,7 @@ export function AuditLogsWidget() {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
   };
 
@@ -110,7 +107,11 @@ export function AuditLogsWidget() {
     const status = log.status || '';
 
     if (status.toLowerCase().includes('error') || status.toLowerCase().includes('fail')) {
-      return <Badge variant="destructive" className="text-xs">Error</Badge>;
+      return (
+        <Badge variant="destructive" className="text-xs">
+          Error
+        </Badge>
+      );
     }
 
     if (!action) {
@@ -118,15 +119,40 @@ export function AuditLogsWidget() {
     }
 
     if (action.toLowerCase().includes('create') || action.toLowerCase().includes('add')) {
-      return <Badge variant="outline" className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Create</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="text-xs bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+        >
+          Create
+        </Badge>
+      );
     }
     if (action.toLowerCase().includes('update') || action.toLowerCase().includes('modify')) {
-      return <Badge variant="outline" className="text-xs bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30">Update</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="text-xs bg-[color:var(--status-info-bg)] text-[color:var(--status-info)] border-[color:var(--status-info)]/30"
+        >
+          Update
+        </Badge>
+      );
     }
     if (action.toLowerCase().includes('delete') || action.toLowerCase().includes('remove')) {
-      return <Badge variant="outline" className="text-xs bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30">Delete</Badge>;
+      return (
+        <Badge
+          variant="outline"
+          className="text-xs bg-[color:var(--status-error-bg)] text-[color:var(--status-error)] border-[color:var(--status-error)]/30"
+        >
+          Delete
+        </Badge>
+      );
     }
-    return <Badge variant="secondary" className="text-xs">{action}</Badge>;
+    return (
+      <Badge variant="secondary" className="text-xs">
+        {action}
+      </Badge>
+    );
   };
 
   if (loading) {
@@ -205,9 +231,7 @@ export function AuditLogsWidget() {
                     className="p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5">
-                        {getActionIcon(log)}
-                      </div>
+                      <div className="mt-0.5">{getActionIcon(log)}</div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {getActionBadge(log)}
@@ -221,13 +245,13 @@ export function AuditLogsWidget() {
                         {action && (
                           <div className="text-sm font-medium mb-1">
                             {action}
-                            {resource && <span className="text-muted-foreground"> on {resource}</span>}
+                            {resource && (
+                              <span className="text-muted-foreground"> on {resource}</span>
+                            )}
                           </div>
                         )}
                         {description && (
-                          <div className="text-xs text-muted-foreground mb-2">
-                            {description}
-                          </div>
+                          <div className="text-xs text-muted-foreground mb-2">{description}</div>
                         )}
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />

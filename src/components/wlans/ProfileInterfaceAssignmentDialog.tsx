@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Checkbox } from '../ui/checkbox';
@@ -44,9 +51,9 @@ interface ProfileInterfaceAssignmentDialogProps {
 export function ProfileInterfaceAssignmentDialog({
   open,
   onOpenChange,
-  serviceId,
+  serviceId: _serviceId,
   serviceName,
-  onSave
+  onSave,
 }: ProfileInterfaceAssignmentDialogProps) {
   const [profiles, setProfiles] = useState<ProfileWithInterfaces[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,21 +72,29 @@ export function ProfileInterfaceAssignmentDialog({
     try {
       const profilesData = await apiService.getProfiles();
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mappedProfiles: ProfileWithInterfaces[] = profilesData.map((p: any) => {
         const deviceType = p.deviceType || p.hardwareType || 'Unknown';
 
         const dt = deviceType.toUpperCase();
         const hasRadio1 = true;
         // Single-band: AP505 (not AP5050), APVMAP, SA201
-        const isSingleBand = (dt.includes('AP505') && !dt.includes('AP5050')) ||
-                             dt.includes('APVMAP') || dt.includes('SA201');
+        const isSingleBand =
+          (dt.includes('AP505') && !dt.includes('AP5050')) ||
+          dt.includes('APVMAP') ||
+          dt.includes('SA201');
         // Tri-band: AP4000/4020, AP5010/5020/5050 series
-        const isTriBand = dt.includes('AP4000') || dt.includes('AP4020') || 
-                          dt.includes('AP5010') || dt.includes('AP5020') || dt.includes('AP5050');
+        const isTriBand =
+          dt.includes('AP4000') ||
+          dt.includes('AP4020') ||
+          dt.includes('AP5010') ||
+          dt.includes('AP5020') ||
+          dt.includes('AP5050');
         const hasRadio2 = !isSingleBand;
         // Radio 3 (6GHz) requires WPA3 or OWE per Wi-Fi 6E standard
         const hasRadio3 = isTriBand;
-        const hasPorts = deviceType.includes('302W') || deviceType.includes('3915') || deviceType.includes('3916');
+        const hasPorts =
+          deviceType.includes('302W') || deviceType.includes('3915') || deviceType.includes('3916');
         const hasCamera = deviceType.includes('camera');
         const hasGe2 = deviceType.includes('302W');
         const hasEthPoe = deviceType.includes('302W') || deviceType.includes('3915');
@@ -98,8 +113,8 @@ export function ProfileInterfaceAssignmentDialog({
             port3: { name: 'Port 3', enabled: false, available: hasPorts },
             camera: { name: 'Camera', enabled: false, available: hasCamera },
             ge2: { name: 'ge2', enabled: false, available: hasGe2 },
-            ethPoe: { name: 'ETH/POE', enabled: false, available: hasEthPoe }
-          }
+            ethPoe: { name: 'ETH/POE', enabled: false, available: hasEthPoe },
+          },
         };
       });
 
@@ -113,80 +128,108 @@ export function ProfileInterfaceAssignmentDialog({
   };
 
   const toggleAll = (profileId: string) => {
-    setProfiles(prev => prev.map(p => {
-      if (p.id !== profileId) return p;
-      const newAll = !p.interfaces.all;
-      const updatedInterfaces = { ...p.interfaces, all: newAll };
+    setProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id !== profileId) return p;
+        const newAll = !p.interfaces.all;
+        const updatedInterfaces = { ...p.interfaces, all: newAll };
 
-      Object.keys(updatedInterfaces).forEach(key => {
-        if (key !== 'all') {
-          const iface = updatedInterfaces[key as keyof typeof updatedInterfaces];
-          if (typeof iface === 'object' && iface.available) {
-            (updatedInterfaces[key as keyof typeof updatedInterfaces] as ProfileInterface).enabled = newAll;
+        Object.keys(updatedInterfaces).forEach((key) => {
+          if (key !== 'all') {
+            const iface = updatedInterfaces[key as keyof typeof updatedInterfaces];
+            if (typeof iface === 'object' && iface.available) {
+              (
+                updatedInterfaces[key as keyof typeof updatedInterfaces] as ProfileInterface
+              ).enabled = newAll;
+            }
           }
-        }
-      });
+        });
 
-      return { ...p, interfaces: updatedInterfaces };
-    }));
+        return { ...p, interfaces: updatedInterfaces };
+      })
+    );
   };
 
   const toggleInterface = (profileId: string, interfaceKey: string) => {
-    setProfiles(prev => prev.map(p => {
-      if (p.id !== profileId) return p;
-      const iface = p.interfaces[interfaceKey as keyof typeof p.interfaces] as ProfileInterface;
-      if (!iface?.available) return p;
+    setProfiles((prev) =>
+      prev.map((p) => {
+        if (p.id !== profileId) return p;
+        const iface = p.interfaces[interfaceKey as keyof typeof p.interfaces] as ProfileInterface;
+        if (!iface?.available) return p;
 
-      const newEnabled = !iface.enabled;
-      const updatedInterfaces = {
-        ...p.interfaces,
-        [interfaceKey]: { ...iface, enabled: newEnabled }
-      };
+        const newEnabled = !iface.enabled;
+        const updatedInterfaces = {
+          ...p.interfaces,
+          [interfaceKey]: { ...iface, enabled: newEnabled },
+        };
 
-      const allChecked = Object.entries(updatedInterfaces)
-        .filter(([k, v]) => k !== 'all' && typeof v === 'object' && (v as ProfileInterface).available)
-        .every(([, v]) => (v as ProfileInterface).enabled);
-      updatedInterfaces.all = allChecked;
+        const allChecked = Object.entries(updatedInterfaces)
+          .filter(
+            ([k, v]) => k !== 'all' && typeof v === 'object' && (v as ProfileInterface).available
+          )
+          .every(([, v]) => (v as ProfileInterface).enabled);
+        updatedInterfaces.all = allChecked;
 
-      return { ...p, interfaces: updatedInterfaces };
-    }));
+        return { ...p, interfaces: updatedInterfaces };
+      })
+    );
   };
 
   const toggleSelectAllProfiles = () => {
     const newSelectAll = !selectAll;
     setSelectAll(newSelectAll);
-    setProfiles(prev => prev.map(p => ({
-      ...p,
-      interfaces: {
-        ...p.interfaces,
-        all: newSelectAll,
-        radio1: { ...p.interfaces.radio1, enabled: newSelectAll && p.interfaces.radio1.available },
-        radio2: { ...p.interfaces.radio2, enabled: newSelectAll && p.interfaces.radio2.available },
-        radio3: { ...p.interfaces.radio3, enabled: newSelectAll && p.interfaces.radio3.available },
-        port1: { ...p.interfaces.port1, enabled: newSelectAll && p.interfaces.port1.available },
-        port2: { ...p.interfaces.port2, enabled: newSelectAll && p.interfaces.port2.available },
-        port3: { ...p.interfaces.port3, enabled: newSelectAll && p.interfaces.port3.available },
-        camera: { ...p.interfaces.camera, enabled: newSelectAll && p.interfaces.camera.available },
-        ge2: { ...p.interfaces.ge2, enabled: newSelectAll && p.interfaces.ge2.available },
-        ethPoe: { ...p.interfaces.ethPoe, enabled: newSelectAll && p.interfaces.ethPoe.available }
-      }
-    })));
+    setProfiles((prev) =>
+      prev.map((p) => ({
+        ...p,
+        interfaces: {
+          ...p.interfaces,
+          all: newSelectAll,
+          radio1: {
+            ...p.interfaces.radio1,
+            enabled: newSelectAll && p.interfaces.radio1.available,
+          },
+          radio2: {
+            ...p.interfaces.radio2,
+            enabled: newSelectAll && p.interfaces.radio2.available,
+          },
+          radio3: {
+            ...p.interfaces.radio3,
+            enabled: newSelectAll && p.interfaces.radio3.available,
+          },
+          port1: { ...p.interfaces.port1, enabled: newSelectAll && p.interfaces.port1.available },
+          port2: { ...p.interfaces.port2, enabled: newSelectAll && p.interfaces.port2.available },
+          port3: { ...p.interfaces.port3, enabled: newSelectAll && p.interfaces.port3.available },
+          camera: {
+            ...p.interfaces.camera,
+            enabled: newSelectAll && p.interfaces.camera.available,
+          },
+          ge2: { ...p.interfaces.ge2, enabled: newSelectAll && p.interfaces.ge2.available },
+          ethPoe: {
+            ...p.interfaces.ethPoe,
+            enabled: newSelectAll && p.interfaces.ethPoe.available,
+          },
+        },
+      }))
+    );
   };
 
-  const filteredProfiles = profiles.filter(p =>
-    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.deviceType.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProfiles = profiles.filter(
+    (p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.deviceType.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const assignedCount = profiles.filter(p =>
-    p.interfaces.all ||
-    Object.values(p.interfaces).some(v => typeof v === 'object' && v.enabled)
+  const assignedCount = profiles.filter(
+    (p) =>
+      p.interfaces.all ||
+      Object.values(p.interfaces).some((v) => typeof v === 'object' && v.enabled)
   ).length;
 
   const handleSave = async () => {
-    const assignedProfiles = profiles.filter(p =>
-      p.interfaces.all ||
-      Object.values(p.interfaces).some(v => typeof v === 'object' && v.enabled)
+    const assignedProfiles = profiles.filter(
+      (p) =>
+        p.interfaces.all ||
+        Object.values(p.interfaces).some((v) => typeof v === 'object' && v.enabled)
     );
 
     if (assignedProfiles.length === 0) {
@@ -199,14 +242,24 @@ export function ProfileInterfaceAssignmentDialog({
       await onSave(assignedProfiles);
       toast.success(`Assigned to ${assignedProfiles.length} profile(s)`);
       onOpenChange(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to assign profiles');
     } finally {
       setSaving(false);
     }
   };
 
-  const interfaceKeys = ['radio1', 'radio2', 'radio3', 'port1', 'port2', 'port3', 'camera', 'ge2', 'ethPoe'] as const;
+  const interfaceKeys = [
+    'radio1',
+    'radio2',
+    'radio3',
+    'port1',
+    'port2',
+    'port3',
+    'camera',
+    'ge2',
+    'ethPoe',
+  ] as const;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -232,7 +285,7 @@ export function ProfileInterfaceAssignmentDialog({
                 className="pl-10"
               />
             </div>
-            <Badge variant={assignedCount > 0 ? "default" : "secondary"} className="gap-1">
+            <Badge variant={assignedCount > 0 ? 'default' : 'secondary'} className="gap-1">
               <CheckCircle className="h-3 w-3" />
               {assignedCount} profile(s) selected
             </Badge>
@@ -277,7 +330,7 @@ export function ProfileInterfaceAssignmentDialog({
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredProfiles.map(profile => (
+                      {filteredProfiles.map((profile) => (
                         <tr key={profile.id} className="border-t hover:bg-muted/50">
                           <td className="px-3 py-2 font-medium">{profile.name}</td>
                           <td className="px-3 py-2 text-muted-foreground">{profile.deviceType}</td>
@@ -287,7 +340,7 @@ export function ProfileInterfaceAssignmentDialog({
                               onCheckedChange={() => toggleAll(profile.id)}
                             />
                           </td>
-                          {interfaceKeys.map(key => {
+                          {interfaceKeys.map((key) => {
                             const iface = profile.interfaces[key];
                             return (
                               <td key={key} className="px-2 py-2 text-center">

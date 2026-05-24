@@ -14,8 +14,6 @@ import {
   AlertTriangle,
   RefreshCw,
   Calendar,
-  Clock,
-  XCircle,
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -154,10 +152,6 @@ export function APFirmwareManager() {
       console.error('Failed to schedule upgrade:', error);
       toast.error('Failed to schedule firmware upgrade');
     }
-  };
-
-  const handleDeleteSchedule = async (_scheduleId: string) => {
-    toast.error('Schedule deletion not supported by controller API');
   };
 
   const getUpgradeStatus = (ap: AccessPoint) => {

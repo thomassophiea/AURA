@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { forwardRef, useImperativeHandle, useRef } from 'react';
 import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';

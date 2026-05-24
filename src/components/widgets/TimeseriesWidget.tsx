@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -9,7 +10,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 } from 'chart.js';
 
 ChartJS.register(
@@ -44,12 +45,12 @@ interface TimeseriesWidgetProps {
 }
 
 const COLORS = [
-  'rgb(59, 130, 246)',   // blue-500
-  'rgb(16, 185, 129)',   // green-500
-  'rgb(245, 158, 11)',   // amber-500
-  'rgb(239, 68, 68)',    // red-500
-  'rgb(139, 92, 246)',   // purple-500
-  'rgb(236, 72, 153)',   // pink-500
+  'rgb(59, 130, 246)', // blue-500
+  'rgb(16, 185, 129)', // green-500
+  'rgb(245, 158, 11)', // amber-500
+  'rgb(239, 68, 68)', // red-500
+  'rgb(139, 92, 246)', // purple-500
+  'rgb(236, 72, 153)', // pink-500
 ];
 
 export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
@@ -58,7 +59,7 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
   height = 300,
   showLegend = true,
   fillArea = false,
-  unit
+  unit,
 }) => {
   if (!statistics || statistics.length === 0) {
     return (
@@ -73,18 +74,16 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
 
   // Get all unique timestamps across all statistics
   const allTimestamps = Array.from(
-    new Set(
-      statistics.flatMap(stat => stat.values.map(v => v.timestamp))
-    )
+    new Set(statistics.flatMap((stat) => stat.values.map((v) => v.timestamp)))
   ).sort((a, b) => a - b);
 
   // Format timestamps for labels
-  const labels = allTimestamps.map(ts => {
+  const labels = allTimestamps.map((ts) => {
     const date = new Date(ts);
     return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false
+      hour12: false,
     });
   });
 
@@ -93,29 +92,29 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
     const color = COLORS[index % COLORS.length];
 
     // Create a map of timestamp to value for quick lookup
-    const valueMap = new Map(
-      stat.values.map(v => [v.timestamp, v.value])
-    );
+    const valueMap = new Map(stat.values.map((v) => [v.timestamp, v.value]));
 
     // Map timestamps to values (null if not present)
-    const data = allTimestamps.map(ts => valueMap.get(ts) ?? null);
+    const data = allTimestamps.map((ts) => valueMap.get(ts) ?? null);
 
     return {
       label: stat.name,
       data,
       borderColor: color,
-      backgroundColor: fillArea ? color.replace('rgb', 'rgba').replace(')', ', 0.1)') : 'transparent',
+      backgroundColor: fillArea
+        ? color.replace('rgb', 'rgba').replace(')', ', 0.1)')
+        : 'transparent',
       fill: fillArea,
       tension: 0.4,
       pointRadius: 0,
       pointHoverRadius: 4,
-      borderWidth: 2
+      borderWidth: 2,
     };
   });
 
   const data = {
     labels,
-    datasets
+    datasets,
   };
 
   const options: any = {
@@ -134,9 +133,9 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
           usePointStyle: true,
           padding: 16,
           font: {
-            size: 12
-          }
-        }
+            size: 12,
+          },
+        },
       },
       tooltip: {
         backgroundColor: 'rgb(31, 41, 55)', // bg-card
@@ -147,7 +146,7 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
         padding: 12,
         displayColors: true,
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             let label = context.dataset.label || '';
             if (label) {
               label += ': ';
@@ -159,36 +158,36 @@ export const TimeseriesWidget: React.FC<TimeseriesWidgetProps> = ({
               label += formatted;
             }
             return label;
-          }
-        }
-      }
+          },
+        },
+      },
     },
     scales: {
       x: {
         grid: {
           color: 'rgb(55, 65, 81)', // grid lines
-          drawBorder: false
+          drawBorder: false,
         },
         ticks: {
           color: 'rgb(156, 163, 175)', // text-muted-foreground
           maxRotation: 0,
-          autoSkipPadding: 20
-        }
+          autoSkipPadding: 20,
+        },
       },
       y: {
         beginAtZero: true,
         grid: {
           color: 'rgb(55, 65, 81)', // grid lines
-          drawBorder: false
+          drawBorder: false,
         },
         ticks: {
           color: 'rgb(156, 163, 175)', // text-muted-foreground
-          callback: function(value: any) {
+          callback: function (value: any) {
             return formatValue(value, unit || statistics[0]?.unit);
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   };
 
   return (

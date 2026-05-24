@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Report Configuration Persistence
  *
@@ -31,20 +32,24 @@ export function loadReportConfigs(): ReportConfigStore {
     }
 
     // Ensure default config always exists
-    if (!store.configs.find(c => c.id === 'default')) {
-      store.configs.unshift({ ...DEFAULT_REPORT_CONFIG, createdAt: Date.now(), updatedAt: Date.now() });
+    if (!store.configs.find((c) => c.id === 'default')) {
+      store.configs.unshift({
+        ...DEFAULT_REPORT_CONFIG,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
     }
 
     // Ensure activeConfigId points to a valid config
-    if (!store.configs.find(c => c.id === store.activeConfigId)) {
+    if (!store.configs.find((c) => c.id === store.activeConfigId)) {
       store.activeConfigId = store.configs[0].id;
     }
 
     // Migrate v1 -> v2: convert pie_chart displayType to bar_chart
     if (store.version < 2) {
-      store.configs.forEach(config => {
-        config.pages.forEach(page => {
-          page.widgets.forEach(w => {
+      store.configs.forEach((config) => {
+        config.pages.forEach((page) => {
+          page.widgets.forEach((w) => {
             if (w.displayType === ('pie_chart' as any)) {
               w.displayType = 'bar_chart';
             }
