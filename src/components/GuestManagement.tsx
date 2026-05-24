@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -13,11 +14,9 @@ import {
   CheckCircle,
   Clock,
   Mail,
-  Calendar
+  Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { TouchButton } from './TouchButton';
-import { DesktopOnly } from './MobileOptimized';
 import { apiService } from '../services/api';
 import {
   Dialog,
@@ -39,7 +38,7 @@ export function GuestManagement() {
     name: '',
     email: '',
     duration: '24',
-    company: ''
+    company: '',
   });
 
   useEffect(() => {
@@ -89,7 +88,7 @@ export function GuestManagement() {
         name: newGuest.name,
         email: newGuest.email,
         duration: duration * 60 * 60, // Convert hours to seconds
-        company: newGuest.company
+        company: newGuest.company,
       });
       toast.success('Guest account created successfully');
       setShowCreateDialog(false);
@@ -118,10 +117,9 @@ export function GuestManagement() {
 
   const handleGenerateVoucher = async (guestId: string) => {
     try {
-      const voucher = await apiService.generateGuestVoucher(guestId);
+      await apiService.generateGuestVoucher(guestId);
       toast.success('Voucher generated successfully');
       // You could show the voucher in a dialog or copy to clipboard
-      console.log('Voucher:', voucher);
     } catch (error) {
       console.error('Failed to generate voucher:', error);
       toast.error('Failed to generate voucher');
@@ -160,16 +158,18 @@ export function GuestManagement() {
             <UserPlus className="h-6 w-6" />
             Guest Management
           </h2>
-          <p className="text-muted-foreground">
-            Manage guest wireless access accounts
-          </p>
+          <p className="text-muted-foreground">Manage guest wireless access accounts</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={loadGuests} aria-label="Refresh guest list">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button size="sm" onClick={() => setShowCreateDialog(true)} aria-label="Create new guest account">
+          <Button
+            size="sm"
+            onClick={() => setShowCreateDialog(true)}
+            aria-label="Create new guest account"
+          >
             <UserPlus className="h-4 w-4 mr-2" />
             Create Guest
           </Button>
@@ -194,15 +194,13 @@ export function GuestManagement() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Active
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5 text-green-500" />
               <span className="text-2xl font-bold">
-                {guests.filter(g => !isExpired(g.expirationDate)).length}
+                {guests.filter((g) => !isExpired(g.expirationDate)).length}
               </span>
             </div>
           </CardContent>
@@ -210,15 +208,13 @@ export function GuestManagement() {
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Expired
-            </CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">Expired</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-muted-foreground" />
               <span className="text-2xl font-bold">
-                {guests.filter(g => isExpired(g.expirationDate)).length}
+                {guests.filter((g) => isExpired(g.expirationDate)).length}
               </span>
             </div>
           </CardContent>
@@ -229,9 +225,7 @@ export function GuestManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Guest Accounts</CardTitle>
-          <CardDescription>
-            Manage temporary guest wireless access
-          </CardDescription>
+          <CardDescription>Manage temporary guest wireless access</CardDescription>
         </CardHeader>
         <CardContent>
           {guestsApiAvailable === false ? (
@@ -239,8 +233,8 @@ export function GuestManagement() {
               <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p className="font-medium">Guest accounts API not available</p>
               <p className="text-sm mt-2 max-w-sm mx-auto">
-                The /v1/guests endpoint is not available on this controller.
-                This feature may require a different controller version or configuration.
+                The /v1/guests endpoint is not available on this controller. This feature may
+                require a different controller version or configuration.
               </p>
             </div>
           ) : guests.length === 0 ? (
@@ -264,7 +258,12 @@ export function GuestManagement() {
                         {isExpired(guest.expirationDate) ? (
                           <Badge variant="outline">Expired</Badge>
                         ) : (
-                          <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">Active</Badge>
+                          <Badge
+                            variant="outline"
+                            className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+                          >
+                            Active
+                          </Badge>
                         )}
                       </div>
                       <div className="space-y-1 text-sm text-muted-foreground">

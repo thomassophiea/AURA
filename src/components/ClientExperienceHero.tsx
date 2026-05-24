@@ -6,18 +6,27 @@ import {
   Frown,
   Meh,
   TrendingUp,
-  TrendingDown,
   Zap,
   Signal,
   Radio,
   Target,
   CheckCircle,
-  AlertCircle,
   Activity,
   Users,
-  Gauge
+  Gauge,
 } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, RadialBarChart, RadialBar } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  RadialBarChart,
+  RadialBar,
+} from 'recharts';
 import { SaveToWorkspace } from './SaveToWorkspace';
 
 interface ClientExperienceMetrics {
@@ -51,7 +60,11 @@ interface ClientExperienceHeroProps {
  * Massive, prominent display of overall client experience
  * with comprehensive metrics and visual indicators
  */
-export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: ClientExperienceHeroProps) {
+export function ClientExperienceHero({
+  metrics,
+  serviceName,
+  timeSeries = [],
+}: ClientExperienceHeroProps) {
   // Calculate overall Client Experience Score (0-100)
   const calculateExperienceScore = (): number => {
     let score = 0;
@@ -71,7 +84,7 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
     // Latency (20%) - Lower is better
     if (metrics.latency !== undefined) {
-      const latencyScore = Math.max(0, 100 - (metrics.latency / 2)); // Perfect at 0ms, 0% at 200ms
+      const latencyScore = Math.max(0, 100 - metrics.latency / 2); // Perfect at 0ms, 0% at 200ms
       score += (latencyScore / 100) * 20;
       factors++;
     }
@@ -85,7 +98,7 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
     // Packet Loss (15%) - Lower is better
     if (metrics.packetLoss !== undefined) {
-      const plScore = Math.max(0, 100 - (metrics.packetLoss * 20));
+      const plScore = Math.max(0, 100 - metrics.packetLoss * 20);
       score += (plScore / 100) * 15;
       factors++;
     }
@@ -97,10 +110,37 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
   // Get experience level and styling
   const getExperienceLevel = (score: number) => {
-    if (score >= 90) return { level: 'Excellent', icon: Smile, color: 'text-[color:var(--status-success)]', bgColor: 'bg-[color:var(--status-success-bg)]', borderColor: 'border-[color:var(--status-success)]' };
-    if (score >= 75) return { level: 'Good', icon: Smile, color: 'text-[color:var(--status-info)]', bgColor: 'bg-[color:var(--status-info-bg)]', borderColor: 'border-[color:var(--status-info)]' };
-    if (score >= 60) return { level: 'Fair', icon: Meh, color: 'text-[color:var(--status-warning)]', bgColor: 'bg-[color:var(--status-warning-bg)]', borderColor: 'border-[color:var(--status-warning)]' };
-    return { level: 'Poor', icon: Frown, color: 'text-[color:var(--status-error)]', bgColor: 'bg-[color:var(--status-error-bg)]', borderColor: 'border-[color:var(--status-error)]' };
+    if (score >= 90)
+      return {
+        level: 'Excellent',
+        icon: Smile,
+        color: 'text-[color:var(--status-success)]',
+        bgColor: 'bg-[color:var(--status-success-bg)]',
+        borderColor: 'border-[color:var(--status-success)]',
+      };
+    if (score >= 75)
+      return {
+        level: 'Good',
+        icon: Smile,
+        color: 'text-[color:var(--status-info)]',
+        bgColor: 'bg-[color:var(--status-info-bg)]',
+        borderColor: 'border-[color:var(--status-info)]',
+      };
+    if (score >= 60)
+      return {
+        level: 'Fair',
+        icon: Meh,
+        color: 'text-[color:var(--status-warning)]',
+        bgColor: 'bg-[color:var(--status-warning-bg)]',
+        borderColor: 'border-[color:var(--status-warning)]',
+      };
+    return {
+      level: 'Poor',
+      icon: Frown,
+      color: 'text-[color:var(--status-error)]',
+      bgColor: 'bg-[color:var(--status-error-bg)]',
+      borderColor: 'border-[color:var(--status-error)]',
+    };
   };
 
   const experience = getExperienceLevel(experienceScore);
@@ -111,8 +151,15 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
     {
       name: 'Experience',
       value: experienceScore,
-      fill: experienceScore >= 90 ? '#10b981' : experienceScore >= 75 ? '#3b82f6' : experienceScore >= 60 ? '#f59e0b' : '#ef4444'
-    }
+      fill:
+        experienceScore >= 90
+          ? '#10b981'
+          : experienceScore >= 75
+            ? '#3b82f6'
+            : experienceScore >= 60
+              ? '#f59e0b'
+              : '#ef4444',
+    },
   ];
 
   // Format metric values
@@ -121,7 +168,12 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
     return `${value.toFixed(value < 10 ? 2 : 1)}${suffix}`;
   };
 
-  const getMetricStatus = (value: number | undefined, good: number, warn: number, reverse = false): 'excellent' | 'good' | 'fair' | 'poor' => {
+  const getMetricStatus = (
+    value: number | undefined,
+    good: number,
+    warn: number,
+    reverse = false
+  ): 'excellent' | 'good' | 'fair' | 'poor' => {
     if (value === undefined) return 'good';
 
     if (reverse) {
@@ -141,21 +193,16 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'excellent': return 'text-[color:var(--status-success)]';
-      case 'good': return 'text-[color:var(--status-info)]';
-      case 'fair': return 'text-[color:var(--status-warning)]';
-      case 'poor': return 'text-[color:var(--status-error)]';
-      default: return 'text-muted-foreground';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'excellent': return CheckCircle;
-      case 'good': return CheckCircle;
-      case 'fair': return AlertCircle;
-      case 'poor': return AlertCircle;
-      default: return Activity;
+      case 'excellent':
+        return 'text-[color:var(--status-success)]';
+      case 'good':
+        return 'text-[color:var(--status-info)]';
+      case 'fair':
+        return 'text-[color:var(--status-warning)]';
+      case 'poor':
+        return 'text-[color:var(--status-error)]';
+      default:
+        return 'text-muted-foreground';
     }
   };
 
@@ -204,11 +251,7 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
                     startAngle={90}
                     endAngle={-270}
                   >
-                    <RadialBar
-                      background
-                      dataKey="value"
-                      cornerRadius={10}
-                    />
+                    <RadialBar background dataKey="value" cornerRadius={10} />
                   </RadialBarChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -219,14 +262,23 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
                 </div>
               </div>
               <div className="text-center">
-                <Badge variant="outline" className={`text-lg px-4 py-2 ${experience.borderColor} ${experience.color}`}>
+                <Badge
+                  variant="outline"
+                  className={`text-lg px-4 py-2 ${experience.borderColor} ${experience.color}`}
+                >
                   {experience.level} Experience
                 </Badge>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {experienceScore >= 90 && 'Outstanding network performance - clients are experiencing optimal connectivity'}
-                  {experienceScore >= 75 && experienceScore < 90 && 'Good network performance - clients have reliable connectivity'}
-                  {experienceScore >= 60 && experienceScore < 75 && 'Fair network performance - some improvements recommended'}
-                  {experienceScore < 60 && 'Poor network performance - immediate attention required'}
+                  {experienceScore >= 90 &&
+                    'Outstanding network performance - clients are experiencing optimal connectivity'}
+                  {experienceScore >= 75 &&
+                    experienceScore < 90 &&
+                    'Good network performance - clients have reliable connectivity'}
+                  {experienceScore >= 60 &&
+                    experienceScore < 75 &&
+                    'Fair network performance - some improvements recommended'}
+                  {experienceScore < 60 &&
+                    'Poor network performance - immediate attention required'}
                 </p>
               </div>
             </div>
@@ -237,8 +289,12 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.averageRssi !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Radio className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.averageRssi, -50, -70))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.averageRssi, -50, -70))}`}>
+                    <Radio
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.averageRssi, -50, -70))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.averageRssi, -50, -70))}`}
+                    >
                       {metrics.averageRssi}
                     </span>
                   </div>
@@ -254,8 +310,12 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.averageSnr !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Signal className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.averageSnr, 40, 25))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.averageSnr, 40, 25))}`}>
+                    <Signal
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.averageSnr, 40, 25))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.averageSnr, 40, 25))}`}
+                    >
                       {metrics.averageSnr}
                     </span>
                   </div>
@@ -271,16 +331,17 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.latency !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Zap className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.latency, 20, 50, true))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.latency, 20, 50, true))}`}>
+                    <Zap
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.latency, 20, 50, true))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.latency, 20, 50, true))}`}
+                    >
                       {formatMetric(metrics.latency)}
                     </span>
                   </div>
                   <div className="text-xs font-medium text-muted-foreground">Latency (ms)</div>
-                  <Progress
-                    value={Math.max(0, 100 - (metrics.latency / 2))}
-                    className="h-1.5 mt-2"
-                  />
+                  <Progress value={Math.max(0, 100 - metrics.latency / 2)} className="h-1.5 mt-2" />
                 </div>
               )}
 
@@ -288,14 +349,18 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.packetLoss !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Target className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.packetLoss, 0.5, 2, true))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.packetLoss, 0.5, 2, true))}`}>
+                    <Target
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.packetLoss, 0.5, 2, true))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.packetLoss, 0.5, 2, true))}`}
+                    >
                       {formatMetric(metrics.packetLoss)}
                     </span>
                   </div>
                   <div className="text-xs font-medium text-muted-foreground">Loss (%)</div>
                   <Progress
-                    value={Math.max(0, 100 - (metrics.packetLoss * 20))}
+                    value={Math.max(0, 100 - metrics.packetLoss * 20)}
                     className="h-1.5 mt-2"
                   />
                 </div>
@@ -305,8 +370,12 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.successRate !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <CheckCircle className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.successRate, 98, 95))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.successRate, 98, 95))}`}>
+                    <CheckCircle
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.successRate, 98, 95))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.successRate, 98, 95))}`}
+                    >
                       {formatMetric(metrics.successRate, '%')}
                     </span>
                   </div>
@@ -319,8 +388,12 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.reliability !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Gauge className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.reliability, 95, 90))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.reliability, 95, 90))}`}>
+                    <Gauge
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.reliability, 95, 90))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.reliability, 95, 90))}`}
+                    >
                       {formatMetric(metrics.reliability, '%')}
                     </span>
                   </div>
@@ -334,9 +407,7 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
                     <Users className="h-5 w-5 text-primary" />
-                    <span className="text-2xl font-bold text-primary">
-                      {metrics.clientCount}
-                    </span>
+                    <span className="text-2xl font-bold text-primary">{metrics.clientCount}</span>
                   </div>
                   <div className="text-xs font-medium text-muted-foreground">Active Clients</div>
                   <div className="text-xs text-muted-foreground mt-2">Currently connected</div>
@@ -347,14 +418,18 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               {metrics.jitter !== undefined && (
                 <div className="p-4 rounded-lg border bg-card">
                   <div className="flex items-center justify-between mb-2">
-                    <Activity className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.jitter, 10, 30, true))}`} />
-                    <span className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.jitter, 10, 30, true))}`}>
+                    <Activity
+                      className={`h-5 w-5 ${getStatusColor(getMetricStatus(metrics.jitter, 10, 30, true))}`}
+                    />
+                    <span
+                      className={`text-2xl font-bold ${getStatusColor(getMetricStatus(metrics.jitter, 10, 30, true))}`}
+                    >
                       {formatMetric(metrics.jitter)}
                     </span>
                   </div>
                   <div className="text-xs font-medium text-muted-foreground">Jitter (ms)</div>
                   <Progress
-                    value={Math.max(0, 100 - (metrics.jitter / 0.5))}
+                    value={Math.max(0, 100 - metrics.jitter / 0.5)}
                     className="h-1.5 mt-2"
                   />
                 </div>
@@ -379,26 +454,18 @@ export function ClientExperienceHero({ metrics, serviceName, timeSeries = [] }: 
               <AreaChart data={timeSeries}>
                 <defs>
                   <linearGradient id="experienceGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="time"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                />
+                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: 'hsl(var(--popover))',
                     border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
+                    borderRadius: '6px',
                   }}
                 />
                 <Legend />

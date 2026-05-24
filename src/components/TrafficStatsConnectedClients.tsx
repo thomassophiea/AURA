@@ -845,8 +845,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                           p: any // eslint-disable-line @typescript-eslint/no-explicit-any
                         ) => (
                           <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
+                            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                             {(p.data as any)._siteGroupName || '—'}{' '}
-                            {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
                           </Badge>
                         ),
                       } as ColDef,

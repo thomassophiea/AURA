@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import { formatCompactNumber } from '../../lib/units';
@@ -8,7 +9,7 @@ import {
   LinearScale,
   BarElement,
   Tooltip,
-  Legend
+  Legend,
 } from 'chart.js';
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, BarElement, Tooltip, Legend);
@@ -30,16 +31,16 @@ interface DistributionWidgetProps {
 }
 
 const DEFAULT_COLORS = [
-  'rgb(59, 130, 246)',   // blue-500
-  'rgb(16, 185, 129)',   // green-500
-  'rgb(245, 158, 11)',   // amber-500
-  'rgb(239, 68, 68)',    // red-500
-  'rgb(139, 92, 246)',   // purple-500
-  'rgb(236, 72, 153)',   // pink-500
-  'rgb(14, 165, 233)',   // sky-500
-  'rgb(34, 197, 94)',    // lime-500
-  'rgb(251, 146, 60)',   // orange-500
-  'rgb(168, 85, 247)',   // violet-500
+  'rgb(59, 130, 246)', // blue-500
+  'rgb(16, 185, 129)', // green-500
+  'rgb(245, 158, 11)', // amber-500
+  'rgb(239, 68, 68)', // red-500
+  'rgb(139, 92, 246)', // purple-500
+  'rgb(236, 72, 153)', // pink-500
+  'rgb(14, 165, 233)', // sky-500
+  'rgb(34, 197, 94)', // lime-500
+  'rgb(251, 146, 60)', // orange-500
+  'rgb(168, 85, 247)', // violet-500
 ];
 
 export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
@@ -48,7 +49,7 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
   type = 'doughnut',
   height = 300,
   showLegend = true,
-  showPercentages = true
+  showPercentages = true,
 }) => {
   if (!items || items.length === 0) {
     return (
@@ -68,19 +69,19 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
   const dataWithPercentages = items.map((item, index) => ({
     ...item,
     percentage: item.percentage ?? (total > 0 ? (item.value / total) * 100 : 0),
-    color: item.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length]
+    color: item.color || DEFAULT_COLORS[index % DEFAULT_COLORS.length],
   }));
 
   const chartData = {
-    labels: dataWithPercentages.map(item => item.label),
+    labels: dataWithPercentages.map((item) => item.label),
     datasets: [
       {
-        data: dataWithPercentages.map(item => item.value),
-        backgroundColor: dataWithPercentages.map(item => item.color),
+        data: dataWithPercentages.map((item) => item.value),
+        backgroundColor: dataWithPercentages.map((item) => item.color),
         borderColor: 'rgb(31, 41, 55)', // bg-card
-        borderWidth: 2
-      }
-    ]
+        borderWidth: 2,
+      },
+    ],
   };
 
   const options: any = {
@@ -95,7 +96,7 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
           padding: 16,
           usePointStyle: true,
           font: {
-            size: 12
+            size: 12,
           },
           generateLabels: (chart: any) => {
             const data = chart.data;
@@ -111,13 +112,13 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
                     : `${label}: ${formattedValue}`,
                   fillStyle: data.datasets[0].backgroundColor[i],
                   hidden: false,
-                  index: i
+                  index: i,
                 };
               });
             }
             return [];
-          }
-        }
+          },
+        },
       },
       tooltip: {
         backgroundColor: 'rgb(31, 41, 55)', // bg-card
@@ -127,7 +128,7 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
         borderWidth: 1,
         padding: 12,
         callbacks: {
-          label: function(context: any) {
+          label: function (context: any) {
             const label = context.label || '';
             const value = context.parsed || context.parsed.y || 0;
             const percentage = dataWithPercentages[context.dataIndex].percentage;
@@ -136,10 +137,10 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
             return showPercentages
               ? `${label}: ${formattedValue} (${percentage.toFixed(1)}%)`
               : `${label}: ${formattedValue}`;
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    },
   };
 
   // Bar chart specific options
@@ -150,23 +151,23 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
         beginAtZero: true,
         grid: {
           color: 'rgb(55, 65, 81)',
-          drawBorder: false
+          drawBorder: false,
         },
         ticks: {
           color: 'rgb(156, 163, 175)',
-          callback: function(value: any) {
+          callback: function (value: any) {
             return formatValue(value);
-          }
-        }
+          },
+        },
       },
       y: {
         grid: {
-          display: false
+          display: false,
         },
         ticks: {
-          color: 'rgb(156, 163, 175)'
-        }
-      }
+          color: 'rgb(156, 163, 175)',
+        },
+      },
     };
   }
 
@@ -187,16 +188,11 @@ export const DistributionWidget: React.FC<DistributionWidgetProps> = ({
           {dataWithPercentages.map((item, index) => (
             <div key={index} className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
+                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                 <span className="text-foreground">{item.label}</span>
               </div>
               <div className="flex items-center gap-3">
-                <span className="text-foreground font-semibold">
-                  {formatValue(item.value)}
-                </span>
+                <span className="text-foreground font-semibold">{formatValue(item.value)}</span>
                 {showPercentages && (
                   <span className="text-muted-foreground w-12 text-right">
                     {item.percentage.toFixed(1)}%

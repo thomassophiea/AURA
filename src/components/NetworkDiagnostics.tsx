@@ -5,20 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
-import {
-  Activity,
-  Search,
-  Route,
-  Globe,
-  PlayCircle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  AlertCircle
-} from 'lucide-react';
+import { Activity, Search, Route, Globe, PlayCircle, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { TouchButton } from './TouchButton';
-import { DesktopOnly } from './MobileOptimized';
 import { apiService } from '../services/api';
 
 interface PingResult {
@@ -100,7 +88,7 @@ export function NetworkDiagnostics() {
       const result = await apiService.networkPing(pingHost, parseInt(pingCount) || 4);
       setPingResult({
         ...result,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toLocaleString(),
       });
       toast.success('Ping completed successfully');
     } catch (error) {
@@ -128,7 +116,7 @@ export function NetworkDiagnostics() {
       const result = await apiService.networkTraceroute(traceHost);
       setTraceResult({
         ...result,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toLocaleString(),
       });
       toast.success('Traceroute completed successfully');
     } catch (error) {
@@ -157,7 +145,7 @@ export function NetworkDiagnostics() {
       const result = await apiService.networkDnsLookup(dnsHostname);
       setDnsResult({
         ...result,
-        timestamp: new Date().toLocaleString()
+        timestamp: new Date().toLocaleString(),
       });
       toast.success('DNS lookup completed successfully');
     } catch (error) {
@@ -183,7 +171,10 @@ export function NetworkDiagnostics() {
       {/* Platform Manager dependency notice */}
       <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
         <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>Network diagnostics require Platform Manager API access (/platformmanager/v1/network/*). These tools may not be available on all controller versions.</span>
+        <span>
+          Network diagnostics require Platform Manager API access (/platformmanager/v1/network/*).
+          These tools may not be available on all controller versions.
+        </span>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -327,9 +318,7 @@ export function NetworkDiagnostics() {
           <Card>
             <CardHeader>
               <CardTitle>Traceroute</CardTitle>
-              <CardDescription>
-                Trace the network path to a destination
-              </CardDescription>
+              <CardDescription>Trace the network path to a destination</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -343,7 +332,11 @@ export function NetworkDiagnostics() {
                   aria-label="Enter hostname or IP address for traceroute"
                 />
               </div>
-              <Button onClick={handleTraceroute} disabled={traceRunning} aria-label="Run traceroute">
+              <Button
+                onClick={handleTraceroute}
+                disabled={traceRunning}
+                aria-label="Run traceroute"
+              >
                 {traceRunning ? (
                   <>
                     <Activity className="h-4 w-4 mr-2 animate-pulse" />
@@ -370,10 +363,7 @@ export function NetworkDiagnostics() {
               <CardContent>
                 <div className="space-y-2">
                   {traceResult.hops.map((hop, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center gap-4 p-3 border rounded-lg"
-                    >
+                    <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
                       <Badge variant="outline" className="w-12 justify-center">
                         {hop.hop}
                       </Badge>
@@ -403,9 +393,7 @@ export function NetworkDiagnostics() {
           <Card>
             <CardHeader>
               <CardTitle>DNS Lookup</CardTitle>
-              <CardDescription>
-                Resolve hostname to IP addresses
-              </CardDescription>
+              <CardDescription>Resolve hostname to IP addresses</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
@@ -419,7 +407,11 @@ export function NetworkDiagnostics() {
                   aria-label="Enter hostname for DNS lookup"
                 />
               </div>
-              <Button onClick={handleDnsLookup} disabled={dnsRunning} aria-label="Perform DNS lookup">
+              <Button
+                onClick={handleDnsLookup}
+                disabled={dnsRunning}
+                aria-label="Perform DNS lookup"
+              >
                 {dnsRunning ? (
                   <>
                     <Activity className="h-4 w-4 mr-2 animate-pulse" />
@@ -462,9 +454,7 @@ export function NetworkDiagnostics() {
                           <Globe className="h-4 w-4 text-primary" />
                           <span className="font-mono">{address}</span>
                         </div>
-                        <Badge variant="secondary">
-                          {address.includes(':') ? 'IPv6' : 'IPv4'}
-                        </Badge>
+                        <Badge variant="secondary">{address.includes(':') ? 'IPv6' : 'IPv4'}</Badge>
                       </div>
                     ))}
                   </div>

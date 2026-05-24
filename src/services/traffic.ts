@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { apiService } from './api';
 
 export interface StationTrafficStats {
@@ -17,9 +18,13 @@ class TrafficService {
   // Get individual station traffic statistics from /v1/stations/{MAC_ADDRESS}
   async getStationTrafficStats(macAddress: string): Promise<StationTrafficStats | null> {
     try {
-      const response = await apiService.makeAuthenticatedRequest(`/v1/stations/${encodeURIComponent(macAddress)}`);
+      const response = await apiService.makeAuthenticatedRequest(
+        `/v1/stations/${encodeURIComponent(macAddress)}`
+      );
       if (!response.ok) {
-        throw new Error(`Failed to fetch station traffic stats: ${response.status} ${response.statusText}`);
+        throw new Error(
+          `Failed to fetch station traffic stats: ${response.status} ${response.statusText}`
+        );
       }
       const data = await response.json();
       return data;
@@ -40,8 +45,6 @@ class TrafficService {
     const trafficMap = new Map<string, StationTrafficStats>();
 
     try {
-      console.log(`[TrafficService] Loading traffic stats for ${stations.length} stations (limit: ${limit}, offset: ${offset})`);
-
       // Use field projection to fetch only traffic-related fields
       // This significantly reduces payload size and improves performance
       const trafficFields = [
@@ -53,14 +56,14 @@ class TrafficService {
         'packets',
         'outPackets',
         'rss',
-        'signalStrength'
+        'signalStrength',
       ];
 
       // Fetch stations with traffic data using optimized query
       const stationsWithTraffic = await apiService.getStations({
         fields: trafficFields,
         limit: limit,
-        offset: offset
+        offset: offset,
       });
 
       // Build map of MAC address to traffic data
@@ -75,16 +78,16 @@ class TrafficService {
             packets: station.packets || 0,
             outPackets: station.outPackets || 0,
             rss: station.rss || station.signalStrength,
-            signalStrength: station.signalStrength || station.rss
+            signalStrength: station.signalStrength || station.rss,
           });
         }
       });
-
-      console.log(`[TrafficService] Successfully loaded traffic stats for ${trafficMap.size} stations`);
       return trafficMap;
-
     } catch (error) {
-      console.warn('[TrafficService] Error loading traffic statistics, falling back to individual queries:', error);
+      console.warn(
+        '[TrafficService] Error loading traffic statistics, falling back to individual queries:',
+        error
+      );
 
       // Fallback: Use the old N+1 pattern for a limited subset if batch query fails
       // This ensures backward compatibility with older API versions
@@ -100,8 +103,6 @@ class TrafficService {
   ): Promise<Map<string, StationTrafficStats>> {
     const trafficMap = new Map<string, StationTrafficStats>();
     const stationsToLoad = stations.slice(0, limit);
-
-    console.log(`[TrafficService] Using fallback N+1 pattern for ${stationsToLoad.length} stations`);
 
     const trafficPromises = stationsToLoad.map(async (station) => {
       try {

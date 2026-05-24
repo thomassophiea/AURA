@@ -1,8 +1,4 @@
-/**
- * Chatbase Identity Service
- * Handles user identification with Chatbase AI assistant
- */
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 
 const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-efba0687`;
@@ -23,7 +19,6 @@ export async function getChatbaseToken(): Promise<string | null> {
     const adminRole = localStorage.getItem('admin_role');
 
     if (!userEmail) {
-      console.log('[Chatbase] No user email found, skipping identification');
       return null;
     }
 
@@ -34,13 +29,13 @@ export async function getChatbaseToken(): Promise<string | null> {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`
+        Authorization: `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({
         user_id: userId,
         email: userEmail,
-        role: adminRole || undefined
-      })
+        role: adminRole || undefined,
+      }),
     });
 
     if (!response.ok) {
@@ -66,14 +61,12 @@ export async function identifyUserWithChatbase(): Promise<boolean> {
     const token = await getChatbaseToken();
 
     if (!token) {
-      console.log('[Chatbase] No token available, user will be anonymous');
       return false;
     }
 
     const win = window as any;
     if (win.chatbase) {
       win.chatbase('identify', { token });
-      console.log('[Chatbase] User identified successfully');
       return true;
     } else {
       console.warn('[Chatbase] Chatbase not loaded yet');
@@ -93,5 +86,5 @@ async function hashString(str: string): Promise<string> {
   const data = encoder.encode(str);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }

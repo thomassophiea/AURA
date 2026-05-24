@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useCallback } from 'react';
 import {
   Wifi,
   Users,
@@ -58,7 +59,7 @@ export const Workspace: React.FC<WorkspaceProps> = ({ api }) => {
     context,
     hasWidgets,
     selectTopic,
-    updateContext,
+    updateContext: _updateContext,
     createWidgetFromCatalog,
     updateWidget,
     deleteWidget,

@@ -6,8 +6,8 @@
  * Shows the report exactly as it was when the link was created.
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react';
-import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import {
@@ -28,7 +28,6 @@ import {
 import { cn } from './ui/utils';
 import { parseSharePayload } from '../services/reportConfigPersistence';
 import { ReportWidgetRenderer, type ReportMetrics } from './report/ReportWidgetRenderer';
-import type { ReportConfig } from '../types/reportConfig';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,

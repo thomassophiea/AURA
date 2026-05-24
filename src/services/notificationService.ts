@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * NotificationService - Handles in-app and push notification alerts
  * Monitors for: AP offline events, SLE drops below threshold, client issues
@@ -112,7 +113,7 @@ class NotificationService {
   }
 
   private notifySubscribers(): void {
-    this.subscribers.forEach(callback => {
+    this.subscribers.forEach((callback) => {
       try {
         callback([...this.notifications]);
       } catch (e) {
@@ -138,7 +139,7 @@ class NotificationService {
     const newNotifications: AppNotification[] = [];
     const currentOffline = new Set<string>();
 
-    aps.forEach(ap => {
+    aps.forEach((ap) => {
       const apId = ap.id || ap.mac || ap.name;
       const isOffline = ap.status === 'offline' || ap.status === 'down' || ap.connected === false;
 
@@ -164,7 +165,7 @@ class NotificationService {
       }
     });
 
-    this.seenAPOffline.forEach(apId => {
+    this.seenAPOffline.forEach((apId) => {
       if (!currentOffline.has(apId)) {
         this.seenAPOffline.delete(apId);
       }
@@ -181,7 +182,7 @@ class NotificationService {
     const newNotifications: AppNotification[] = [];
     const threshold = this.preferences.sleThreshold;
 
-    sles.forEach(sle => {
+    sles.forEach((sle) => {
       const sleId = sle.id || sle.metric || sle.name;
       const value = typeof sle.value === 'number' ? sle.value : parseFloat(sle.value);
 
@@ -191,9 +192,12 @@ class NotificationService {
         if (!this.seenSLEDrops.has(notificationKey)) {
           this.seenSLEDrops.add(notificationKey);
 
-          setTimeout(() => {
-            this.seenSLEDrops.delete(notificationKey);
-          }, 5 * 60 * 1000);
+          setTimeout(
+            () => {
+              this.seenSLEDrops.delete(notificationKey);
+            },
+            5 * 60 * 1000
+          );
 
           const notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'> = {
             type: 'sle_drop',
@@ -228,19 +232,21 @@ class NotificationService {
         data: { clientCount, context },
       };
       this.addNotification(notification);
-      return [{
-        ...notification,
-        id: this.notifications[0]?.id || '',
-        timestamp: Date.now(),
-        read: false,
-      }];
+      return [
+        {
+          ...notification,
+          id: this.notifications[0]?.id || '',
+          timestamp: Date.now(),
+          read: false,
+        },
+      ];
     }
 
     return [];
   }
 
   getUnreadNotifications(): AppNotification[] {
-    return this.notifications.filter(n => !n.read);
+    return this.notifications.filter((n) => !n.read);
   }
 
   getAllNotifications(): AppNotification[] {
@@ -248,11 +254,11 @@ class NotificationService {
   }
 
   getUnreadCount(): number {
-    return this.notifications.filter(n => !n.read).length;
+    return this.notifications.filter((n) => !n.read).length;
   }
 
   markAsRead(notificationId: string): void {
-    const notification = this.notifications.find(n => n.id === notificationId);
+    const notification = this.notifications.find((n) => n.id === notificationId);
     if (notification) {
       notification.read = true;
       this.saveNotifications();
@@ -261,7 +267,7 @@ class NotificationService {
   }
 
   markAllAsRead(): void {
-    this.notifications.forEach(n => (n.read = true));
+    this.notifications.forEach((n) => (n.read = true));
     this.saveNotifications();
     this.notifySubscribers();
   }
@@ -273,7 +279,7 @@ class NotificationService {
   }
 
   deleteNotification(notificationId: string): void {
-    this.notifications = this.notifications.filter(n => n.id !== notificationId);
+    this.notifications = this.notifications.filter((n) => n.id !== notificationId);
     this.saveNotifications();
     this.notifySubscribers();
   }

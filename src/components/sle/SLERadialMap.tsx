@@ -1,8 +1,4 @@
-/**
- * SLE Radial Map - Hub-spoke mind-map layout for SLE metrics
- * Center: overall score. Ring: SLE nodes. Click to expand detail panel.
- */
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { Wifi, Signal, Radio, Shield, Clock, Activity, Target } from 'lucide-react';
 import { SLESankeyFlow } from './SLESankeyFlow';
@@ -20,12 +16,6 @@ const SLE_ICONS: Record<string, React.ElementType> = {
   time_to_connect: Clock,
   roaming: Radio,
 };
-
-const STATUS_NODE_BG = {
-  good: 'rgba(22, 163, 74, 0.92)',
-  warn: 'rgba(202, 138, 4, 0.92)',
-  poor: 'rgba(220, 38, 38, 0.92)',
-} as const;
 
 const STATUS_NODE_BORDER = {
   good: 'rgba(34, 197, 94, 0.6)',
@@ -93,6 +83,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
         y: centerY + Math.sin(angle) * ringRadius,
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sles.length, centerX, centerY, ringRadius]);
 
   return (

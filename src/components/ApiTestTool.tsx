@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
@@ -8,8 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
-import { Play, Copy, Trash2, Filter, Info, BarChart3 } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
+import { Play, Copy, Trash2, Filter, BarChart3 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { TopApplicationsDebug } from './TopApplicationsDebug';
 
