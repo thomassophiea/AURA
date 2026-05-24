@@ -26,11 +26,6 @@ import {
   ReferenceArea,
 } from 'recharts';
 import {
-  Activity,
-  Zap,
-  Users,
-  Radio,
-  Signal,
   BarChart3,
   ChevronDown,
   ChevronRight,
@@ -177,13 +172,11 @@ const CHART_COLORS = {
   pink: '#ec4899',
 };
 
-export function APInsights({ serialNumber, apName, onOpenFullScreen }: APInsightsProps) {
+export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: APInsightsProps) {
   const [insights, setInsights] = useState<APInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
-
-  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
   useEffect(() => {
     let cancelled = false;
@@ -385,8 +378,6 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
   const handleRefresh = () => setRefreshKey((k) => k + 1);
 
