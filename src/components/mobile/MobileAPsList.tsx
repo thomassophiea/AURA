@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * MobileAPsList - Access Points list for mobile
  * Search, status filters, two-line rows
@@ -339,7 +342,7 @@ export function MobileAPsList({ currentSite, onSiteChange }: MobileAPsListProps)
                 .filter((v: any, i: number, a: any[]) => a.indexOf(v) === i);
               band = bands.length > 0 ? bands.join('/') : null;
             }
-            const bandText = band || (ap.model || ap.hardwareType ? 'Dual' : 'Unknown');
+            const _bandText = band || (ap.model || ap.hardwareType ? 'Dual' : 'Unknown');
 
             // Get the best available name for the AP
             const apName =
