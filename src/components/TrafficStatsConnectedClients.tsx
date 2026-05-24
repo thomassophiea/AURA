@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -6,8 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
 import type { ColDef } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
 import {
   AlertCircle,
@@ -15,54 +13,21 @@ import {
   RefreshCw,
   Wifi,
   Activity,
-  Timer,
-  Signal,
-  Download,
-  Upload,
   Shield,
-  Router,
-  MapPin,
-  User,
-  Clock,
-  Star,
   Trash2,
-  UserX,
   RotateCcw,
-  UserPlus,
-  UserMinus,
-  ShieldCheck,
-  ShieldX,
-  Info,
-  Radio,
   WifiOff,
-  SignalHigh,
-  SignalMedium,
-  SignalLow,
-  SignalZero,
-  Cable,
   Shuffle,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   FileDown,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Settings2,
   Columns,
   Building,
 } from 'lucide-react';
-import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
 import { apiService, Station, Site } from '../services/api';
 import { trafficService } from '../services/traffic';
-import { identifyClient, lookupVendor, suggestDeviceType } from '../services/ouiLookup';
-import { isRandomizedMac, getMacAddressInfo } from '../services/macAddressUtils';
-import { resolveClientIdentity, type ClientIdentity } from '../lib/clientIdentity';
+import { isRandomizedMac } from '../services/macAddressUtils';
 import { toast } from 'sonner';
-import { SaveToWorkspace } from './SaveToWorkspace';
 import { ExportButton } from './ExportButton';
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
@@ -71,7 +36,6 @@ import { DetailSlideOut } from './DetailSlideOut';
 import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';
 import { useAppContext } from '@/contexts/AppContext';
 import { useCortexContext } from '@/contexts/CortexContext';
-import { Server } from 'lucide-react';
 
 interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
@@ -98,28 +62,27 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       (s) => s.macAddress,
       (s) => s.ipAddress,
       (s) => s.siteName,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => s.apName || (s as any).apDisplayName || (s as any).apHostname,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => (s as any).deviceType,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => (s as any).manufacturer,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => (s as any).username,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => s.network || (s as any).ssid || (s as any).serviceName,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => (s as any).vlan?.toString() || (s as any).vlanId?.toString(),
       (s) => s.status,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (s) => (s as any).band || (s as any).frequencyBand,
     ],
   });
 
-  const [selectedStation, setSelectedStation] = useState<Station | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [, setSelectedStation] = useState<Station | null>(null);
   const [selectedStations, setSelectedStations] = useState<Set<string>>(new Set());
-  const [isActionsModalOpen, setIsActionsModalOpen] = useState(false);
-  const [isPerformingAction, setIsPerformingAction] = useState(false);
-  const [actionType, setActionType] = useState<string>('');
-  const [groupId, setGroupId] = useState<string>('');
-  const [siteId, setSiteId] = useState<string>('');
-  const [stationEvents, setStationEvents] = useState<any[]>([]);
-  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
-  const [stationTrafficData, setStationTrafficData] = useState<Map<string, any>>(new Map());
+  const [stationTrafficData, setStationTrafficData] = useState<Map<string, any>>(new Map()); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [isLoadingTraffic, setIsLoadingTraffic] = useState(false);
 
   // GDPR state
@@ -128,8 +91,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(100);
-  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 100;
 
   // Sorting state
   type SortField =
@@ -143,8 +105,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     | 'band'
     | null;
   type SortDirection = 'asc' | 'desc';
-  const [sortField, setSortField] = useState<SortField>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [sortField, setSortField] = useState<SortField>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc'); // eslint-disable-line @typescript-eslint/no-unused-vars
 
   // Column customization state
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
@@ -157,23 +119,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     enableViews: false,
     enablePersistence: true,
   });
-
-  // Memoize stations with traffic data for column rendering
-  const stationsWithTraffic = useMemo(() => {
-    return stations.map((station) => ({
-      ...station,
-      trafficData: stationTrafficData.get(station.macAddress),
-    }));
-  }, [stations, stationTrafficData]);
-
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
 
   const loadSites = async () => {
     try {
@@ -257,7 +202,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       }
 
       setStations(stationsArray);
-      setTotalItems(stationsArray.length);
 
       // Load traffic statistics for all stations with pagination
       if (stationsArray.length > 0) {
@@ -287,10 +231,6 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
       );
 
       setStationTrafficData(trafficMap);
-
-      console.log(
-        `[TrafficStats] Loaded traffic for page ${currentPage} (${trafficMap.size} stations)`
-      );
     } catch (error) {
       console.warn('Error loading traffic statistics:', error);
       toast.error('Failed to load traffic statistics', {
@@ -306,24 +246,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     if (stations.length > 0) {
       loadTrafficStatisticsForCurrentPage(stations);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentPage, itemsPerPage]);
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'connected':
-      case 'associated':
-      case 'active':
-        return 'default';
-      case 'disconnected':
-      case 'inactive':
-        return 'destructive';
-      case 'idle':
-      case 'low':
-        return 'secondary';
-      default:
-        return 'outline';
-    }
-  };
 
   const formatBytes = (bytes: number) => {
     if (!bytes || bytes === 0) return '0 B';
@@ -333,141 +257,9 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatDuration = (duration: string | number) => {
-    if (!duration) return 'N/A';
-    if (typeof duration === 'string') return duration;
-
-    const hours = Math.floor(duration / 3600);
-    const minutes = Math.floor((duration % 3600) / 60);
-    const seconds = duration % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
-
-  const formatLastSeen = (lastSeenTimestamp: string | undefined) => {
-    if (!lastSeenTimestamp) return null;
-
-    try {
-      const lastSeenDate = new Date(lastSeenTimestamp);
-      const now = new Date();
-      const diffMs = now.getTime() - lastSeenDate.getTime();
-      const diffSeconds = Math.floor(diffMs / 1000);
-      const diffMinutes = Math.floor(diffSeconds / 60);
-      const diffHours = Math.floor(diffMinutes / 60);
-      const diffDays = Math.floor(diffHours / 24);
-
-      if (diffSeconds < 60) {
-        return 'Just now';
-      } else if (diffMinutes < 60) {
-        return `${diffMinutes} min${diffMinutes !== 1 ? 's' : ''} ago`;
-      } else if (diffHours < 24) {
-        return `${diffHours} hr${diffHours !== 1 ? 's' : ''} ago`;
-      } else if (diffDays < 7) {
-        return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
-      } else {
-        // For older dates, show the actual date
-        return lastSeenDate.toLocaleDateString('en-US', {
-          month: 'short',
-          day: 'numeric',
-          year: diffDays > 365 ? 'numeric' : undefined,
-        });
-      }
-    } catch (error) {
-      return lastSeenTimestamp; // Return as-is if parsing fails
-    }
-  };
-
-  const getBandFromRadioId = (radioId: number | undefined) => {
-    switch (radioId) {
-      case 1:
-        return { band: '2.4 GHz', color: 'text-blue-500', bgColor: 'bg-blue-500/10' };
-      case 2:
-        return { band: '5 GHz', color: 'text-green-500', bgColor: 'bg-green-500/10' };
-      case 3:
-        return { band: '6 GHz', color: 'text-purple-500', bgColor: 'bg-purple-500/10' };
-      case 20:
-        return { band: 'Eth1 Wired', color: 'text-orange-500', bgColor: 'bg-orange-500/10' };
-      default:
-        return { band: 'Unknown', color: 'text-muted-foreground', bgColor: 'bg-muted/10' };
-    }
-  };
-
-  const getSignalStrengthIndicator = (rss: number | undefined, radioId: number | undefined) => {
-    // Handle wired connections (radioId 20 = Eth1 Wired)
-    if (radioId === 20) {
-      return {
-        icon: Cable,
-        color: 'text-[color:var(--status-info)]',
-        label: 'Wired',
-        quality: 'Ethernet',
-        bgColor: 'bg-[color:var(--status-info-bg)]',
-      };
-    }
-
-    // Handle wireless connections without signal data
-    if (rss === undefined || rss === null) {
-      return {
-        icon: WifiOff,
-        color: 'text-muted-foreground',
-        label: 'No Signal',
-        quality: 'No Data',
-        bgColor: 'bg-muted/10',
-      };
-    }
-
-    // RSSI is typically negative, closer to 0 is better (wireless only)
-    if (rss >= -30) {
-      return {
-        icon: Signal,
-        color: 'text-[color:var(--status-success)]',
-        label: `${rss} dBm`,
-        quality: 'Excellent',
-        bgColor: 'bg-[color:var(--status-success-bg)]',
-      };
-    } else if (rss >= -50) {
-      return {
-        icon: SignalHigh,
-        color: 'text-[color:var(--status-success)]',
-        label: `${rss} dBm`,
-        quality: 'Very Good',
-        bgColor: 'bg-[color:var(--status-success-bg)]',
-      };
-    } else if (rss >= -60) {
-      return {
-        icon: SignalMedium,
-        color: 'text-[color:var(--status-warning)]',
-        label: `${rss} dBm`,
-        quality: 'Good',
-        bgColor: 'bg-[color:var(--status-warning-bg)]',
-      };
-    } else if (rss >= -70) {
-      return {
-        icon: SignalLow,
-        color: 'text-[color:var(--status-warning)]',
-        label: `${rss} dBm`,
-        quality: 'Fair',
-        bgColor: 'bg-[color:var(--status-warning-bg)]',
-      };
-    } else {
-      return {
-        icon: SignalZero,
-        color: 'text-[color:var(--status-error)]',
-        label: `${rss} dBm`,
-        quality: 'Poor',
-        bgColor: 'bg-[color:var(--status-error-bg)]',
-      };
-    }
-  };
-
   // Filter stations by site group (org scope), site, compound search, and time range
   const siteGroupFiltered = orgSiteGroupFilter
-    ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter)
+    ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter) // eslint-disable-line @typescript-eslint/no-explicit-any
     : stations;
   const siteFiltered =
     selectedSite !== 'all'
@@ -537,46 +329,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     return 0;
   });
 
-  // Pagination calculations
-  const totalFilteredItems = sortedStations.length;
-  const totalPages = Math.ceil(totalFilteredItems / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalFilteredItems);
-  const paginatedStations = sortedStations.slice(startIndex, endIndex);
-
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
-
-  const getUniqueStatuses = () => {
-    const statuses = new Set(effectiveStations.map((station) => station.status).filter(Boolean));
-    return Array.from(statuses);
-  };
-
-  const getUniqueAPs = () => {
-    const aps = new Set(
-      effectiveStations.map((station) => station.apName || station.apSerial).filter(Boolean)
-    );
-    return Array.from(aps);
-  };
-
-  const getUniqueSites = () => {
-    const sites = new Set(effectiveStations.map((station) => station.siteName).filter(Boolean));
-    return Array.from(sites);
-  };
-
-  const getUniqueDeviceTypes = () => {
-    const deviceTypes = new Set(
-      effectiveStations.map((station) => station.deviceType).filter(Boolean)
-    );
-    return Array.from(deviceTypes);
-  };
-
-  const getUniqueNetworks = () => {
-    const networks = new Set(effectiveStations.map((station) => station.network).filter(Boolean));
-    return Array.from(networks);
-  };
 
   const getTotalTraffic = () => {
     return effectiveStations.reduce((total, station) => {
@@ -609,40 +365,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     ).length;
   };
 
-  const getUniqueNetworkCount = () => {
-    return getUniqueNetworks().length;
-  };
-
-  const getUniqueSiteCount = () => {
-    return getUniqueSites().length;
-  };
-
   const getRandomizedMacCount = () => {
     return effectiveStations.filter((station) => isRandomizedMac(station.macAddress)).length;
-  };
-
-  const getPermanentMacCount = () => {
-    return effectiveStations.filter((station) => !isRandomizedMac(station.macAddress)).length;
-  };
-
-  const handleStationSelect = (macAddress: string, checked: boolean) => {
-    const newSelection = new Set(selectedStations);
-    if (checked) {
-      newSelection.add(macAddress);
-    } else {
-      newSelection.delete(macAddress);
-    }
-    setSelectedStations(newSelection);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      // Select all stations on current page
-      const allMacAddresses = new Set(paginatedStations.map((station) => station.macAddress));
-      setSelectedStations(allMacAddresses);
-    } else {
-      setSelectedStations(new Set());
-    }
   };
 
   // GDPR: Download client data as JSON (supports multiple clients)
@@ -1117,9 +841,12 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         colId: 'siteGroup',
                         headerName: 'Site Group',
                         width: 130,
-                        cellRenderer: (p: any) => (
+                        cellRenderer: (
+                          p: any // eslint-disable-line @typescript-eslint/no-explicit-any
+                        ) => (
                           <Badge variant="outline" className="text-xs px-1.5 py-0 font-normal">
-                            {(p.data as any)._siteGroupName || '—'}
+                            {(p.data as any)._siteGroupName || '—'}{' '}
+                            {/* eslint-disable-line @typescript-eslint/no-explicit-any */}
                           </Badge>
                         ),
                       } as ColDef,
@@ -1133,7 +860,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                   return {
                     colId: column.key,
                     headerName: column.label,
-                    field: (column.fieldPath || column.key) as any,
+                    field: (column.fieldPath || column.key) as any, // eslint-disable-line @typescript-eslint/no-explicit-any
                     sortable: column.sortable !== false,
                     width: sizing.width,
                     minWidth: sizing.minWidth,
@@ -1153,6 +880,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                     },
                     cellRenderer: column.renderCell
                       ? (p: any) => {
+                          // eslint-disable-line @typescript-eslint/no-explicit-any
                           const stationWithTraffic = {
                             ...p.data,
                             trafficData: stationTrafficData.get(p.data.macAddress),
@@ -1175,7 +903,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                     rowSelection: { mode: 'multiRow', checkboxes: true, headerCheckbox: true },
                     onSelectionChanged: (e) => {
                       const next = new Set<string>();
-                      e.api.getSelectedRows().forEach((s: any) => next.add(s.macAddress));
+                      e.api.getSelectedRows().forEach((s: any) => next.add(s.macAddress)); // eslint-disable-line @typescript-eslint/no-explicit-any
                       setSelectedStations(next);
                     },
                     onRowClicked: (e) => {
@@ -1187,10 +915,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         ssid: e.data.ssid,
                       });
                       if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);
-                      else {
-                        setSelectedStation(e.data);
-                        setIsModalOpen(true);
-                      }
+                      else setSelectedStation(e.data);
                     },
                   }}
                 />
