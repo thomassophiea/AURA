@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// AP details and metrics from Campus Controller have no TypeScript interfaces
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -58,14 +60,7 @@ import { Switch } from './ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import {
-  apiService,
-  AccessPoint,
-  APDetails,
-  APStation,
-  APQueryColumn,
-  Site,
-} from '../services/api';
+import { apiService, AccessPoint, APDetails, APStation, APQueryColumn } from '../services/api';
 import { ExportButton } from './ExportButton';
 import { toast } from 'sonner';
 import { SaveToWorkspace } from './SaveToWorkspace';
@@ -749,8 +744,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       try {
         const columnsData = await apiService.getAPQueryColumns();
         setQueryColumns(Array.isArray(columnsData) ? columnsData : []);
-      } catch (columnError) {
-        console.log('Query columns not available:', columnError);
+      } catch {
         setQueryColumns([]);
       }
 
@@ -862,7 +856,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           const stations = await apiService.getAccessPointStations(ap.serialNumber);
           const count = Array.isArray(stations) ? stations.length : 0;
           return { serialNumber: ap.serialNumber, count };
-        } catch (error) {
+        } catch {
           // Return 0 for failed APs
           return { serialNumber: ap.serialNumber, count: 0 };
         }
@@ -902,16 +896,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       const ifStats = await apiService.getAllAPInterfaceStats();
 
       if (ifStats && ifStats.length > 0) {
-        console.log(
-          '[AP Metrics] Using bulk ifstats endpoint, received',
-          ifStats.length,
-          'entries'
-        );
-        // Log first entry to see available fields
-        if (ifStats[0]) {
-          console.log('[AP Metrics] Sample ifstats entry fields:', Object.keys(ifStats[0]));
-        }
-
         ifStats.forEach((stat: any) => {
           const serial = stat.serialNumber || stat.serial || stat.apSerial || stat.apSerialNumber;
           if (serial) {
@@ -932,49 +916,17 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
 
         // If we got data from ifstats, use it
         if (Object.keys(metricsByAP).length > 0) {
-          console.log(
-            '[AP Metrics] Found metrics for',
-            Object.keys(metricsByAP).length,
-            'APs from ifstats'
-          );
           setApMetrics(metricsByAP);
           setIsLoadingMetrics(false);
           return;
         }
       }
 
-      console.log(
-        '[AP Metrics] Bulk ifstats did not return CPU/Memory, trying individual AP details...'
-      );
-
       // Fallback: Load metrics from individual AP details in parallel
       const promises = aps.map(async (ap) => {
         try {
           const details = await apiService.getAccessPointDetails(ap.serialNumber);
           // Log first AP details to see available fields
-          if (aps.indexOf(ap) === 0) {
-            console.log('[AP Metrics] Sample AP details fields:', Object.keys(details));
-            // Log any ethernet/link/port related fields
-            const ethFields = Object.entries(details).filter(([key]) =>
-              /eth|speed|link|port|cable|duplex|nego|phy|lan|uplink/i.test(key)
-            );
-            console.log('[AP Metrics] Ethernet-related fields found:', ethFields);
-            // Log any CPU/memory related fields
-            const cpuMemFields = Object.entries(details).filter(([key]) =>
-              /cpu|mem|util|usage|percent|load|ram/i.test(key)
-            );
-            console.log('[AP Metrics] CPU/Memory-related fields found:', cpuMemFields);
-            // Log all fields with numeric values between 0-100 (potential percentage metrics)
-            const percentFields = Object.entries(details).filter(
-              ([, value]) => typeof value === 'number' && value >= 0 && value <= 100
-            );
-            console.log('[AP Metrics] Numeric fields 0-100 (potential %):', percentFields);
-            // Log full first AP data for debugging
-            console.log(
-              '[AP Metrics] Full AP data sample:',
-              JSON.stringify(details, null, 2).substring(0, 5000)
-            );
-          }
           return {
             serialNumber: ap.serialNumber,
             cpuUsage:
@@ -988,7 +940,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
               (details as any).memory ??
               (details as any).memPercent,
           };
-        } catch (error) {
+        } catch {
           return { serialNumber: ap.serialNumber, cpuUsage: undefined, memoryUsage: undefined };
         }
       });
@@ -1000,12 +952,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           metricsByAP[serialNumber] = { cpuUsage, memoryUsage };
         }
       });
-
-      console.log(
-        '[AP Metrics] Found metrics for',
-        Object.keys(metricsByAP).length,
-        'APs from individual details'
-      );
       setApMetrics(metricsByAP);
     } catch (err) {
       console.error('[AP Metrics] Error loading metrics:', err);
@@ -1432,7 +1378,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       toast.success(
         `Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911`
       );
-    } catch (error) {
+    } catch {
       console.error('[AccessPoints] Error exporting BSSIDs:', error);
       toast.error('Failed to export BSSIDs');
     }
@@ -1489,7 +1435,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       toast.success(
         `Exported ${apsToExport.length} BSSID${apsToExport.length > 1 ? 's' : ''} for E911 (JSON)`
       );
-    } catch (error) {
+    } catch {
       console.error('[AccessPoints] Error exporting BSSIDs JSON:', error);
       toast.error('Failed to export BSSIDs');
     }
@@ -1624,7 +1570,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         );
       case 'apName': {
         const apCableHealth = cableHealthMap[ap.serialNumber];
-        const apIsOnline = isAPOnline(ap);
         return (
           <div className="flex items-center gap-2">
             <span>{getAPName(ap)}</span>
@@ -2848,11 +2793,8 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                                       onClick={async (e) => {
                                         e.stopPropagation();
                                         try {
-                                          const result = await apiService.generateCSR(
-                                            ap.serialNumber
-                                          );
+                                          await apiService.generateCSR(ap.serialNumber);
                                           toast.success('CSR generated successfully');
-                                          console.log('[AccessPoints] Generated CSR:', result);
                                         } catch (err) {
                                           toast.error(
                                             err instanceof Error
