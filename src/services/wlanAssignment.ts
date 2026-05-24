@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API payloads are untyped JSON; any is required for dynamic payload construction
 import { apiService } from './api';
 import type {
   CreateServiceRequest,
@@ -262,34 +264,20 @@ export class WLANAssignmentService {
       skipSync?: boolean; // Skip profile sync step
     } = {}
   ): Promise<AutoAssignmentResponse> {
-    console.log('[WLANAssignment] Starting auto-assignment workflow', { serviceData, options });
-
     try {
       // Step 1: Create the WLAN/Service
-      console.log('[WLANAssignment] Step 1: Creating service...');
 
       const servicePayload = buildServicePayload(serviceData);
-      console.log('[WLANAssignment] Service payload:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
-      console.log('[WLANAssignment] Service created:', service.id);
-
       // Step 2: Discover profiles for selected sites
-      console.log('[WLANAssignment] Step 2: Discovering profiles for sites:', serviceData.sites);
       const profileMap = await this.discoverProfilesForSites(serviceData.sites);
 
       const allProfiles = Object.values(profileMap).flat();
       const uniqueProfiles = this.deduplicateProfiles(allProfiles);
 
-      console.log('[WLANAssignment] Discovered profiles:', {
-        totalProfiles: allProfiles.length,
-        uniqueProfiles: uniqueProfiles.length,
-        deviceGroupsFound: Object.keys(profileMap).length,
-      });
-
       if (options.dryRun) {
-        console.log('[WLANAssignment] Dry run mode - skipping assignment and sync');
         return {
           serviceId: service.id,
           sitesProcessed: serviceData.sites.length,
@@ -306,23 +294,15 @@ export class WLANAssignmentService {
       }
 
       // Step 3: Assign service to each profile
-      console.log('[WLANAssignment] Step 3: Assigning service to profiles...');
       const assignments = await this.assignToProfiles(service.id, uniqueProfiles);
 
       const successfulAssignments = assignments.filter((a) => a.success);
       const failedAssignments = assignments.filter((a) => !a.success);
 
-      console.log('[WLANAssignment] Assignment results:', {
-        successful: successfulAssignments.length,
-        failed: failedAssignments.length,
-      });
-
       // Step 4: Trigger profile synchronization
       let syncResults: SyncResult[] | undefined;
       if (!options.skipSync && successfulAssignments.length > 0) {
-        console.log('[WLANAssignment] Step 4: Triggering profile sync...');
         syncResults = await this.syncProfiles(successfulAssignments.map((a) => a.profileId));
-        console.log('[WLANAssignment] Sync completed');
       }
 
       const response: AutoAssignmentResponse = {
@@ -339,7 +319,6 @@ export class WLANAssignmentService {
             : undefined,
       };
 
-      console.log('[WLANAssignment] Workflow completed:', response);
       return response;
     } catch (error) {
       console.error('[WLANAssignment] Workflow failed:', error);
@@ -355,20 +334,13 @@ export class WLANAssignmentService {
 
     for (const siteId of siteIds) {
       try {
-        console.log(`[WLANAssignment] Fetching device groups for site: ${siteId}`);
-
         // Fetch device groups for this site
         const deviceGroups: DeviceGroup[] = await apiService.getDeviceGroupsBySite(siteId);
-
-        console.log(
-          `[WLANAssignment] Found ${deviceGroups.length} device groups for site ${siteId}`
-        );
 
         // Fetch profiles for each device group
         const profiles: Profile[] = [];
         for (const group of deviceGroups) {
           try {
-            console.log(`[WLANAssignment] Fetching profiles for device group: ${group.id}`);
             const groupProfiles: Profile[] = await apiService.getProfilesByDeviceGroup(group.id);
 
             // Add device group info to each profile for reference
@@ -379,9 +351,6 @@ export class WLANAssignmentService {
             }));
 
             profiles.push(...enrichedProfiles);
-            console.log(
-              `[WLANAssignment] Found ${groupProfiles.length} profiles in group ${group.id}`
-            );
           } catch (error) {
             console.warn(
               `[WLANAssignment] Error fetching profiles for device group ${group.id}:`,
@@ -424,19 +393,11 @@ export class WLANAssignmentService {
     profiles: Profile[]
   ): Promise<AssignmentResult[]> {
     const results: AssignmentResult[] = [];
-    let successCount = 0;
-    let failCount = 0;
-
-    console.log(`[WLANAssignment] Starting assignment to ${profiles.length} profiles...`);
 
     // Process assignments in parallel (but limit concurrency to avoid overwhelming the API)
     const batchSize = 5;
     for (let i = 0; i < profiles.length; i += batchSize) {
       const batch = profiles.slice(i, i + batchSize);
-      const batchNum = Math.floor(i / batchSize) + 1;
-      const totalBatches = Math.ceil(profiles.length / batchSize);
-
-      console.log(`[WLANAssignment] Processing batch ${batchNum}/${totalBatches}...`);
 
       const batchResults = await Promise.all(
         batch.map(async (profile) => {
@@ -448,7 +409,6 @@ export class WLANAssignmentService {
               console.warn(
                 `[WLANAssignment] Profile ${profileName} not found or inaccessible, skipping`
               );
-              failCount++;
               return {
                 profileId: profile.id,
                 profileName,
@@ -459,15 +419,12 @@ export class WLANAssignmentService {
             }
 
             await apiService.assignServiceToProfile(serviceId, profile.id);
-            successCount++;
-            console.log(`[WLANAssignment] ✓ Assigned to profile: ${profileName}`);
             return {
               profileId: profile.id,
               profileName,
               success: true,
             };
           } catch (error) {
-            failCount++;
             const errorMsg = error instanceof Error ? error.message : 'Unknown error';
             console.warn(
               `[WLANAssignment] ✗ Failed to assign to profile ${profileName}: ${errorMsg}`
@@ -485,9 +442,6 @@ export class WLANAssignmentService {
       results.push(...batchResults);
     }
 
-    console.log(
-      `[WLANAssignment] Assignment complete: ${successCount} succeeded, ${failCount} failed`
-    );
     return results;
   }
 
@@ -506,7 +460,7 @@ export class WLANAssignmentService {
         success: true,
         syncTime: new Date().toISOString(),
       }));
-    } catch (error) {
+    } catch {
       console.warn('[WLANAssignment] Batch sync failed, falling back to individual syncs');
 
       // Fall back to individual syncs
@@ -570,19 +524,12 @@ export class WLANAssignmentService {
       skipSync?: boolean;
     } = {}
   ): Promise<AutoAssignmentResponse> {
-    console.log('[WLANAssignment] Starting site-centric deployment workflow', {
-      serviceData,
-      siteAssignments,
-      options,
-    });
-
     // Import services dynamically to avoid circular dependencies
     const { assignmentStorageService } = await import('./assignmentStorage');
     const { effectiveSetCalculator } = await import('./effectiveSetCalculator');
 
     try {
       // Step 1: Validate site assignments
-      console.log('[WLANAssignment] Step 1: Validating site assignments...');
       for (const assignment of siteAssignments) {
         const validation = effectiveSetCalculator.validateSiteAssignment({
           ...assignment,
@@ -597,12 +544,10 @@ export class WLANAssignmentService {
       }
 
       // Step 2: Discover profiles for all sites
-      console.log('[WLANAssignment] Step 2: Discovering profiles for sites...');
       const siteIds = siteAssignments.map((a) => a.siteId);
       const profileMap = await this.discoverProfilesForSites(siteIds);
 
       // Step 3: Calculate effective profile sets
-      console.log('[WLANAssignment] Step 3: Calculating effective profile sets...');
       const profilesBySite = new Map<string, Profile[]>();
       for (const [siteId, profiles] of Object.entries(profileMap)) {
         profilesBySite.set(siteId, profiles);
@@ -620,13 +565,7 @@ export class WLANAssignmentService {
       // Merge all effective sets to get final profile list
       const profilesToAssign = effectiveSetCalculator.mergeEffectiveSets(effectiveSets);
 
-      console.log('[WLANAssignment] Effective profile sets calculated:', {
-        sites: effectiveSets.length,
-        totalProfiles: profilesToAssign.length,
-      });
-
       if (options.dryRun) {
-        console.log('[WLANAssignment] Dry run mode - skipping actual deployment');
         return {
           serviceId: 'dry-run',
           sitesProcessed: siteAssignments.length,
@@ -643,31 +582,21 @@ export class WLANAssignmentService {
       }
 
       // Step 4: Create the WLAN/Service
-      console.log('[WLANAssignment] Step 4: Creating service...');
 
       const servicePayload = buildServicePayload(serviceData);
-      console.log('[WLANAssignment] Service payload:', JSON.stringify(servicePayload));
 
       const service = await apiService.createService(servicePayload);
 
       const wlanId = service.id;
       const wlanName = service.serviceName || service.name || service.ssid || wlanId;
-      console.log('[WLANAssignment] Service created:', { wlanId, wlanName });
 
       // Step 5: Assign service to profiles
-      console.log('[WLANAssignment] Step 5: Assigning service to profiles...');
       const assignments = await this.assignToProfiles(wlanId, profilesToAssign);
 
       const successfulAssignments = assignments.filter((a) => a.success);
       const failedAssignments = assignments.filter((a) => !a.success);
 
-      console.log('[WLANAssignment] Assignment results:', {
-        successful: successfulAssignments.length,
-        failed: failedAssignments.length,
-      });
-
       // Step 6: Save assignment tracking data
-      console.log('[WLANAssignment] Step 6: Saving assignment tracking data...');
 
       // Save site assignments
       for (const siteAssignment of siteAssignments) {
@@ -713,7 +642,6 @@ export class WLANAssignmentService {
       // Step 7: Trigger profile synchronization
       let syncResults;
       if (!options.skipSync && successfulAssignments.length > 0) {
-        console.log('[WLANAssignment] Step 7: Triggering profile sync...');
         syncResults = await this.syncProfiles(successfulAssignments.map((a) => a.profileId));
 
         // Update sync status in storage
@@ -725,8 +653,6 @@ export class WLANAssignmentService {
             syncResult.error
           );
         }
-
-        console.log('[WLANAssignment] Sync completed');
       }
 
       const response: AutoAssignmentResponse = {
@@ -743,7 +669,6 @@ export class WLANAssignmentService {
             : undefined,
       };
 
-      console.log('[WLANAssignment] Site-centric deployment completed:', response);
       return response;
     } catch (error) {
       console.error('[WLANAssignment] Site-centric deployment failed:', error);
