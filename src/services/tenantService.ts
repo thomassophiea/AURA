@@ -257,7 +257,7 @@ class TenantService {
           data.forEach((c) => this.saveControllerLocally(c));
           return data;
         }
-      } catch (error) {
+      } catch {
         console.warn('Supabase not available or timed out, using defaults');
       }
     }

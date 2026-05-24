@@ -949,9 +949,6 @@ export function downloadMigrationReport(
   if (result) {
     y = addSectionHeader(doc, 'Migration Summary', y);
 
-    const statusColor = (n: number, bad = false): [number, number, number] =>
-      n === 0 ? [120, 120, 120] : bad ? FAIL_RED : SUCCESS_GREEN;
-
     const summaryRows = [
       [
         'Topologies Created',
