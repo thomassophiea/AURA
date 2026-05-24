@@ -1,10 +1,22 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { Alert, AlertDescription } from './ui/alert';
-import { RefreshCw, BarChart3, TrendingUp, Network, Zap, Database, Activity, AlertTriangle } from 'lucide-react';
+import {
+  RefreshCw,
+  BarChart3,
+  TrendingUp,
+  Network,
+  Zap,
+  Database,
+  Activity,
+  AlertTriangle,
+} from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 
@@ -23,7 +35,10 @@ interface ApplicationWidgetsProps {
   timeRange?: string;
 }
 
-export function ApplicationWidgets({ selectedService, timeRange = '24h' }: ApplicationWidgetsProps) {
+export function ApplicationWidgets({
+  selectedService,
+  timeRange = '24h',
+}: ApplicationWidgetsProps) {
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<Application[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +54,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
     }, 60000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService, timeRange]);
 
   const loadApplications = async (isRefresh = false) => {
@@ -48,8 +64,6 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
       } else {
         setLoading(true);
       }
-
-      console.log('[ApplicationWidgets] Fetching applications from /v1/applications...');
 
       const response = await apiService.makeAuthenticatedRequest(
         '/v1/applications',
@@ -62,32 +76,18 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
       }
 
       const data = await response.json();
-      console.log('[ApplicationWidgets] Raw API response:', data);
-      console.log('[ApplicationWidgets] Response type:', typeof data, 'isArray:', Array.isArray(data));
-
-      if (data && typeof data === 'object') {
-        console.log('[ApplicationWidgets] Response keys:', Object.keys(data));
-      }
 
       // Parse application data with flexible schema detection
       const parsedApps = parseApplicationData(data);
-      console.log('[ApplicationWidgets] Parsed applications count:', parsedApps.length);
-      if (parsedApps.length > 0) {
-        console.log('[ApplicationWidgets] Sample app:', parsedApps[0]);
-      }
 
       // Filter by selected service if provided
       let filteredApps = parsedApps;
       if (selectedService) {
-        filteredApps = parsedApps.filter(app =>
-          app.site === selectedService || !app.site
-        );
+        filteredApps = parsedApps.filter((app) => app.site === selectedService || !app.site);
       }
 
       // Sort by bytes (traffic) and take top 10
-      const topApps = filteredApps
-        .sort((a, b) => b.bytes - a.bytes)
-        .slice(0, 10);
+      const topApps = filteredApps.sort((a, b) => b.bytes - a.bytes).slice(0, 10);
 
       setApplications(topApps);
 
@@ -100,11 +100,9 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
       if (isRefresh) {
         toast.success('Applications refreshed');
       }
-
     } catch (error) {
       console.error('[ApplicationWidgets] Error loading applications:', error);
       // Suppress analytics errors - don't show toast to user
-      console.log('SUPPRESSED_ANALYTICS_ERROR: Failed to load application widgets');
 
       // Set empty data instead of showing error
       setApplications([]);
@@ -118,63 +116,71 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
   const parseApplicationData = (data: any): Application[] => {
     const apps: Application[] = [];
 
-    console.log('[ApplicationWidgets] parseApplicationData called with:', typeof data, Array.isArray(data));
-
     // Strategy 1: Direct array
     if (Array.isArray(data)) {
-      console.log('[ApplicationWidgets] Data is array, length:', data.length);
       data.forEach((app: any, index: number) => {
-        if (index < 3) {
-          console.log('[ApplicationWidgets] Sample item', index, ':', app);
-        }
         apps.push({
-          name: app.name || app.applicationName || app.application || app.app || app.appName || `Unknown-${index}`,
+          name:
+            app.name ||
+            app.applicationName ||
+            app.application ||
+            app.app ||
+            app.appName ||
+            `Unknown-${index}`,
           bytes: app.bytes || app.totalBytes || app.byteCount || app.traffic || app.dataVolume || 0,
-          flows: app.flows || app.sessionCount || app.sessions || app.flowCount || app.connections || 0,
+          flows:
+            app.flows || app.sessionCount || app.sessions || app.flowCount || app.connections || 0,
           packets: app.packets || app.packetCount || app.packetsCount || undefined,
           site: app.site || app.siteName || app.location || app.siteId || undefined,
           category: app.category || app.type || app.appCategory || app.classification || undefined,
-          protocol: app.protocol || app.protocolType || undefined
+          protocol: app.protocol || app.protocolType || undefined,
         });
       });
     }
     // Strategy 2: Object with applications array
     else if (data && typeof data === 'object') {
-      const possibleKeys = ['applications', 'apps', 'data', 'items', 'results', 'topApps', 'topApplications'];
-
-      console.log('[ApplicationWidgets] Checking for nested arrays in keys:', possibleKeys);
+      const possibleKeys = [
+        'applications',
+        'apps',
+        'data',
+        'items',
+        'results',
+        'topApps',
+        'topApplications',
+      ];
 
       for (const key of possibleKeys) {
         if (data[key] && Array.isArray(data[key])) {
-          console.log('[ApplicationWidgets] Found array at key:', key, 'length:', data[key].length);
           data[key].forEach((app: any, index: number) => {
-            if (index < 3) {
-              console.log('[ApplicationWidgets] Sample item from', key, index, ':', app);
-            }
             apps.push({
-              name: app.name || app.applicationName || app.application || app.app || app.appName || `Unknown-${index}`,
-              bytes: app.bytes || app.totalBytes || app.byteCount || app.traffic || app.dataVolume || 0,
-              flows: app.flows || app.sessionCount || app.sessions || app.flowCount || app.connections || 0,
+              name:
+                app.name ||
+                app.applicationName ||
+                app.application ||
+                app.app ||
+                app.appName ||
+                `Unknown-${index}`,
+              bytes:
+                app.bytes || app.totalBytes || app.byteCount || app.traffic || app.dataVolume || 0,
+              flows:
+                app.flows ||
+                app.sessionCount ||
+                app.sessions ||
+                app.flowCount ||
+                app.connections ||
+                0,
               packets: app.packets || app.packetCount || app.packetsCount || undefined,
               site: app.site || app.siteName || app.location || app.siteId || undefined,
-              category: app.category || app.type || app.appCategory || app.classification || undefined,
-              protocol: app.protocol || app.protocolType || undefined
+              category:
+                app.category || app.type || app.appCategory || app.classification || undefined,
+              protocol: app.protocol || app.protocolType || undefined,
             });
           });
           break;
         }
       }
-
-      if (apps.length === 0) {
-        console.log('[ApplicationWidgets] No apps found. Available top-level keys:', Object.keys(data));
-        // Log first few keys and their types for debugging
-        Object.keys(data).slice(0, 5).forEach(key => {
-          console.log(`  - ${key}:`, typeof data[key], Array.isArray(data[key]) ? `[Array, length: ${data[key].length}]` : '');
-        });
-      }
     }
 
-    console.log('[ApplicationWidgets] Parsed', apps.length, 'applications');
     return apps;
   };
 
@@ -195,7 +201,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
   if (loading) {
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {[1, 2, 3].map(i => (
+        {[1, 2, 3].map((i) => (
           <Card key={i}>
             <CardHeader className="pb-3">
               <div className="h-4 w-32 bg-muted rounded animate-pulse mb-2" />
@@ -219,9 +225,7 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
             <BarChart3 className="h-5 w-5" />
             Application Analytics
           </CardTitle>
-          <CardDescription>
-            Top applications by network traffic and session data
-          </CardDescription>
+          <CardDescription>Top applications by network traffic and session data</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-end">
@@ -239,7 +243,8 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
           <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
             <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
             <AlertDescription className="text-[color:var(--status-warning)]">
-              Application analytics API endpoints are not available on this controller version. This feature requires API v1/applications support.
+              Application analytics API endpoints are not available on this controller version. This
+              feature requires API v1/applications support.
             </AlertDescription>
           </Alert>
 
@@ -317,7 +322,11 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
                     <Progress value={percentage} className="h-2" />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{percentage.toFixed(1)}% of total</span>
-                      {app.category && <Badge variant="secondary" className="text-xs">{app.category}</Badge>}
+                      {app.category && (
+                        <Badge variant="secondary" className="text-xs">
+                          {app.category}
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 );
@@ -352,12 +361,18 @@ export function ApplicationWidgets({ selectedService, timeRange = '24h' }: Appli
                           </Badge>
                           {app.name}
                         </span>
-                        <span className="text-muted-foreground">{formatNumber(app.flows)} flows</span>
+                        <span className="text-muted-foreground">
+                          {formatNumber(app.flows)} flows
+                        </span>
                       </div>
                       <Progress value={percentage} className="h-2" />
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>{percentage.toFixed(1)}% of sessions</span>
-                        {app.protocol && <Badge variant="secondary" className="text-xs">{app.protocol}</Badge>}
+                        {app.protocol && (
+                          <Badge variant="secondary" className="text-xs">
+                            {app.protocol}
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   );
