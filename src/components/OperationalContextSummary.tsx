@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * Operational Context Summary Widget
  *
@@ -103,6 +106,7 @@ function OperationalContextSummaryComponent() {
     // Refresh every 2 minutes
     const interval = setInterval(loadContextMetrics, 120000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.site, filters.timeRange]);
 
   // STRICT: Fetch stations scoped by site. Returns empty on failure, never global.
