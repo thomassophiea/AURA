@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this service
+
 import { apiService } from './api';
 
 /**
@@ -21,35 +24,35 @@ export interface WidgetResponse {
  * Fetch widget data from Extreme Platform ONE
  */
 export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetResponse> {
-  const {
-    siteId,
-    duration = '3H',
-    resolution = '15',
-    widgets,
-    userGroups
-  } = request;
+  const { siteId, duration = '3H', resolution = '15', widgets, userGroups: _userGroups } = request;
 
   // Build widgetList parameter with proper format
   // Some widgets need a filter suffix like |all, |2_4, |5
   // Format: widgetName|filter,widgetName|filter,...
-  const widgetList = widgets.map(widget => {
-    // Widgets that need |all suffix for throughput/usage reports
-    // Use case-insensitive matching since widget names have inconsistent capitalization
-    const widgetLower = widget.toLowerCase();
-    if (widgetLower.includes('throughput') || widgetLower.includes('usage') ||
-        widgetLower.includes('user') || widgetLower.includes('snr') ||
-        widgetLower.includes('channelutil')) {
-      return `${widget}|all`;
-    }
-    // Other widgets don't need a suffix
-    return widget;
-  }).join(',');
+  const widgetList = widgets
+    .map((widget) => {
+      // Widgets that need |all suffix for throughput/usage reports
+      // Use case-insensitive matching since widget names have inconsistent capitalization
+      const widgetLower = widget.toLowerCase();
+      if (
+        widgetLower.includes('throughput') ||
+        widgetLower.includes('usage') ||
+        widgetLower.includes('user') ||
+        widgetLower.includes('snr') ||
+        widgetLower.includes('channelutil')
+      ) {
+        return `${widget}|all`;
+      }
+      // Other widgets don't need a suffix
+      return widget;
+    })
+    .join(',');
 
   const params: any = {
     duration,
     resolution,
     widgetList,
-    noCache: Date.now()
+    noCache: Date.now(),
   };
 
   // Declare endpoint variables outside try block for error logging
@@ -70,18 +73,21 @@ export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetRes
     fullEndpoint = `${endpoint}?${queryString}`;
 
     // Report endpoints can take 15-30 seconds to process analytics
-    console.log(`[WidgetService] Fetching widgets from: ${fullEndpoint}`);
-    const response = await apiService.makeAuthenticatedRequest(fullEndpoint, { method: 'GET' }, 30000);
-
-    console.log(`[WidgetService] Response status: ${response.status} ${response.statusText}`);
+    const response = await apiService.makeAuthenticatedRequest(
+      fullEndpoint,
+      { method: 'GET' },
+      30000
+    );
 
     if (response.ok) {
       const data = await response.json();
-      console.log(`[WidgetService] Successfully fetched widget data:`, data);
       return data;
     } else {
       const errorText = await response.text();
-      console.error(`[WidgetService] Failed to fetch widget data: ${response.status} ${response.statusText}`, errorText);
+      console.error(
+        `[WidgetService] Failed to fetch widget data: ${response.status} ${response.statusText}`,
+        errorText
+      );
       throw new Error(`Failed to fetch widget data: ${response.status} ${response.statusText}`);
     }
   } catch (error) {
@@ -90,7 +96,7 @@ export async function fetchWidgetData(request: WidgetRequest): Promise<WidgetRes
       endpoint: fullEndpoint,
       duration: params.duration,
       widgets: params.widgetList,
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
@@ -125,8 +131,8 @@ export const WIDGET_CATEGORIES = {
       'countOfUniqueUsersReport',
       'deploymentQoE',
       'systemHealth',
-      'networkHealth'
-    ]
+      'networkHealth',
+    ],
   },
   THROUGHPUT_USAGE: {
     name: 'Throughput & Usage',
@@ -138,8 +144,8 @@ export const WIDGET_CATEGORIES = {
       'ulThroughputPeakScorecard',
       'dlThroughputPeakScorecard',
       'ulUsageScorecard',
-      'dlUsageScorecard'
-    ]
+      'dlUsageScorecard',
+    ],
   },
   SITES: {
     name: 'Sites',
@@ -149,8 +155,8 @@ export const WIDGET_CATEGORIES = {
       'topSitesByChannelUtil',
       'topSitesBySnr',
       'topSitesByChannelChanges',
-      'topSitesByPowerChanges'
-    ]
+      'topSitesByPowerChanges',
+    ],
   },
   ACCESS_POINTS: {
     name: 'Access Points',
@@ -167,8 +173,8 @@ export const WIDGET_CATEGORIES = {
       'worstApsByRetries',
       'topApsByChannelChanges',
       'topApsByPowerChanges',
-      'worstApsByRfHealth'
-    ]
+      'worstApsByRfHealth',
+    ],
   },
   CLIENTS: {
     name: 'Clients',
@@ -185,8 +191,8 @@ export const WIDGET_CATEGORIES = {
       'topClientsBySnr',
       'worstClientsBySnr',
       'uniqueClientsPeakScorecard',
-      'uniqueClientsTotalScorecard'
-    ]
+      'uniqueClientsTotalScorecard',
+    ],
   },
   RF_ANALYTICS: {
     name: 'RF Analytics',
@@ -196,8 +202,8 @@ export const WIDGET_CATEGORIES = {
       'channelDistributionRadio2',
       'channelDistributionRadio3',
       'topApsByChannelChanges',
-      'topApsByPowerChanges'
-    ]
+      'topApsByPowerChanges',
+    ],
   },
   APPLICATIONS: {
     name: 'Applications',
@@ -210,8 +216,8 @@ export const WIDGET_CATEGORIES = {
       'worstAppGroupsByThroughputReport',
       'topServicesByThroughput',
       'topServicesByClientCount',
-      'worstServicesByClientCount'
-    ]
+      'worstServicesByClientCount',
+    ],
   },
   LOCATIONS: {
     name: 'Locations',
@@ -220,15 +226,12 @@ export const WIDGET_CATEGORIES = {
       'topAreaByVisitors',
       'worstAreaByVisitors',
       'topFloorByVisitors',
-      'worstFloorByVisitors'
-    ]
+      'worstFloorByVisitors',
+    ],
   },
   GUESTS: {
     name: 'Guests',
-    widgets: [
-      'guestUsersReport',
-      'dwellTimeReport'
-    ]
+    widgets: ['guestUsersReport', 'dwellTimeReport'],
   },
   HEALTH: {
     name: 'System Health',
@@ -239,9 +242,9 @@ export const WIDGET_CATEGORIES = {
       'dataPortCongestionEvent',
       'dataPortCongestionDuration',
       'packetCaptureList',
-      'pollSitesStats'
-    ]
-  }
+      'pollSitesStats',
+    ],
+  },
 };
 
 /**
@@ -256,15 +259,17 @@ export function parseTimeseriesData(widgetData: any) {
     band: report.band,
     fromTime: report.fromTimeInMillis,
     toTime: report.toTimeInMillis,
-    statistics: report.statistics?.map((stat: any) => ({
-      name: stat.statName,
-      type: stat.type,
-      unit: stat.unit,
-      values: stat.values?.map((v: any) => ({
-        timestamp: v.timestamp,
-        value: parseFloat(v.value) || 0
-      })) || []
-    })) || []
+    statistics:
+      report.statistics?.map((stat: any) => ({
+        name: stat.statName,
+        type: stat.type,
+        unit: stat.unit,
+        values:
+          stat.values?.map((v: any) => ({
+            timestamp: v.timestamp,
+            value: parseFloat(v.value) || 0,
+          })) || [],
+      })) || [],
   }));
 }
 
@@ -281,7 +286,7 @@ export function parseRankingData(widgetData: any) {
     name: stat.statName || stat.label || 'Unknown',
     value: parseFloat(stat.value || stat.count || 0),
     unit: stat.unit || '',
-    additionalInfo: stat.additionalInfo || {}
+    additionalInfo: stat.additionalInfo || {},
   }));
 }
 
@@ -307,6 +312,6 @@ export function parseDistributionData(widgetData: any) {
   return report.statistics.map((stat: any) => ({
     label: stat.statName || stat.label || 'Unknown',
     value: parseFloat(stat.value || stat.count || 0),
-    percentage: stat.percentage || 0
+    percentage: stat.percentage || 0,
   }));
 }
