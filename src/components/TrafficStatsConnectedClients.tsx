@@ -879,8 +879,8 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                       overflow: 'hidden',
                     },
                     cellRenderer: column.renderCell
-                      ? (p: any) => {
-                          // eslint-disable-line @typescript-eslint/no-explicit-any
+                      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (p: any) => {
                           const stationWithTraffic = {
                             ...p.data,
                             trafficData: stationTrafficData.get(p.data.macAddress),
