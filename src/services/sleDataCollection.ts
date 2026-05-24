@@ -74,11 +74,9 @@ class SLEDataCollectionService {
    */
   startCollection() {
     if (this.collectionInterval) {
-      console.log('SLE data collection already running');
       return;
     }
 
-    console.log('Starting SLE data collection (every 1 minute)');
     this.isCollecting = true;
 
     // Collect immediately on start
@@ -95,7 +93,6 @@ class SLEDataCollectionService {
    */
   stopCollection() {
     if (this.collectionInterval) {
-      console.log('Stopping SLE data collection');
       clearInterval(this.collectionInterval);
       this.collectionInterval = null;
       this.isCollecting = false;
@@ -116,15 +113,12 @@ class SLEDataCollectionService {
     try {
       // Check if we have an access token before attempting to collect data
       if (!apiService.isAuthenticated()) {
-        console.log('[SLE Collection] Skipping collection - not authenticated');
         return;
       }
 
-      console.log('[SLE Collection] Fetching client data...');
-      
       // Fetch all clients/stations
       const response = await apiService.makeAuthenticatedRequest('/v1/stations', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (!response.ok) {
@@ -133,14 +127,13 @@ class SLEDataCollectionService {
       }
 
       const data = await response.json();
-      const clients: ClientData[] = Array.isArray(data) ? data : (data.stations || data.clients || data.data || []);
-      
+      const clients: ClientData[] = Array.isArray(data)
+        ? data
+        : data.stations || data.clients || data.data || [];
+
       if (!Array.isArray(clients) || clients.length === 0) {
-        console.log('[SLE Collection] No clients found');
         return;
       }
-
-      console.log(`[SLE Collection] Processing ${clients.length} clients`);
 
       // Group clients by site
       const siteMetricsMap = this.calculateSiteMetrics(clients);
@@ -149,7 +142,7 @@ class SLEDataCollectionService {
       const timestamp = Date.now();
       const newDataPoints: SLEDataPoint[] = [];
 
-      siteMetricsMap.forEach((metrics, siteId) => {
+      siteMetricsMap.forEach((metrics, _siteId) => {
         // Generate SLE metrics for wireless clients
         if (metrics.wirelessClients > 0) {
           newDataPoints.push(...this.generateWirelessMetrics(metrics, timestamp));
@@ -171,7 +164,6 @@ class SLEDataCollectionService {
       if (this.dataStore.length > this.MAX_DATA_POINTS) {
         const excess = this.dataStore.length - this.MAX_DATA_POINTS;
         this.dataStore.splice(0, excess);
-        console.log(`[SLE Collection] Trimmed ${excess} old data points`);
       }
 
       // Save to localStorage
@@ -179,8 +171,6 @@ class SLEDataCollectionService {
 
       // Notify listeners
       this.notifyListeners();
-
-      console.log(`[SLE Collection] Collected ${newDataPoints.length} data points from ${siteMetricsMap.size} sites`);
     } catch (error) {
       console.error('[SLE Collection] Error collecting data:', error);
     }
@@ -194,8 +184,8 @@ class SLEDataCollectionService {
 
     // Group clients by site
     const clientsBySite = new Map<string, ClientData[]>();
-    
-    clients.forEach(client => {
+
+    clients.forEach((client) => {
       const siteId = client.siteId || 'unknown';
       if (!clientsBySite.has(siteId)) {
         clientsBySite.set(siteId, []);
@@ -205,44 +195,46 @@ class SLEDataCollectionService {
 
     // Calculate metrics for each site
     clientsBySite.forEach((siteClients, siteId) => {
-      const wirelessClients = siteClients.filter(c => !c.isWired);
-      const wiredClients = siteClients.filter(c => c.isWired);
+      const wirelessClients = siteClients.filter((c) => !c.isWired);
+      const wiredClients = siteClients.filter((c) => c.isWired);
 
       // Calculate average RSSI for wireless clients
       const rssiValues = wirelessClients
-        .map(c => c.rssi)
-        .filter(rssi => rssi !== undefined && rssi !== null) as number[];
-      const avgRssi = rssiValues.length > 0 
-        ? rssiValues.reduce((sum, val) => sum + val, 0) / rssiValues.length 
-        : 0;
+        .map((c) => c.rssi)
+        .filter((rssi) => rssi !== undefined && rssi !== null) as number[];
+      const avgRssi =
+        rssiValues.length > 0
+          ? rssiValues.reduce((sum, val) => sum + val, 0) / rssiValues.length
+          : 0;
 
       // Calculate average SNR
       const snrValues = wirelessClients
-        .map(c => c.snr)
-        .filter(snr => snr !== undefined && snr !== null) as number[];
-      const avgSnr = snrValues.length > 0
-        ? snrValues.reduce((sum, val) => sum + val, 0) / snrValues.length
-        : 0;
+        .map((c) => c.snr)
+        .filter((snr) => snr !== undefined && snr !== null) as number[];
+      const avgSnr =
+        snrValues.length > 0 ? snrValues.reduce((sum, val) => sum + val, 0) / snrValues.length : 0;
 
       // Calculate average TX rate
       const txRateValues = siteClients
-        .map(c => c.txRate)
-        .filter(rate => rate !== undefined && rate !== null) as number[];
-      const avgTxRate = txRateValues.length > 0
-        ? txRateValues.reduce((sum, val) => sum + val, 0) / txRateValues.length
-        : 0;
+        .map((c) => c.txRate)
+        .filter((rate) => rate !== undefined && rate !== null) as number[];
+      const avgTxRate =
+        txRateValues.length > 0
+          ? txRateValues.reduce((sum, val) => sum + val, 0) / txRateValues.length
+          : 0;
 
       // Calculate average RX rate
       const rxRateValues = siteClients
-        .map(c => c.rxRate)
-        .filter(rate => rate !== undefined && rate !== null) as number[];
-      const avgRxRate = rxRateValues.length > 0
-        ? rxRateValues.reduce((sum, val) => sum + val, 0) / rxRateValues.length
-        : 0;
+        .map((c) => c.rxRate)
+        .filter((rate) => rate !== undefined && rate !== null) as number[];
+      const avgRxRate =
+        rxRateValues.length > 0
+          ? rxRateValues.reduce((sum, val) => sum + val, 0) / rxRateValues.length
+          : 0;
 
       // Count clients with poor signal
       const poorSignalCount = wirelessClients.filter(
-        c => c.rssi !== undefined && c.rssi < this.POOR_RSSI_THRESHOLD
+        (c) => c.rssi !== undefined && c.rssi < this.POOR_RSSI_THRESHOLD
       ).length;
 
       // Calculate total throughput (Mbps) — sum of TX + RX rates across all clients
@@ -262,7 +254,7 @@ class SLEDataCollectionService {
         avgRxRate,
         poorSignalCount,
         totalThroughput,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
     });
 
@@ -276,9 +268,10 @@ class SLEDataCollectionService {
     const dataPoints: SLEDataPoint[] = [];
 
     // Coverage: % of clients with acceptable signal (higher = better coverage)
-    const coverageValue = metrics.wirelessClients > 0
-      ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
-      : 100;
+    const coverageValue =
+      metrics.wirelessClients > 0
+        ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
+        : 100;
 
     dataPoints.push({
       metric_key: 'coverage',
@@ -287,7 +280,7 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(coverageValue.toFixed(2)),
-      unit: 'percent_good_coverage'
+      unit: 'percent_good_coverage',
     });
 
     // Throughput (average of TX/RX rates)
@@ -298,15 +291,14 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(metrics.totalThroughput.toFixed(2)),
-      unit: 'Mbps'
+      unit: 'Mbps',
     });
 
     // Capacity: SNR-based proxy — high SNR indicates less interference/contention.
     // Real channel utilization requires /v1/aps/ifstats (not fetched in this loop).
     // SNR > 30 dB → high capacity available; SNR < 15 dB → low capacity.
-    const capacityValue = metrics.avgSnr > 0
-      ? Math.max(0, Math.min(100, (metrics.avgSnr / 40) * 100))
-      : null;
+    const capacityValue =
+      metrics.avgSnr > 0 ? Math.max(0, Math.min(100, (metrics.avgSnr / 40) * 100)) : null;
     if (capacityValue !== null) {
       dataPoints.push({
         metric_key: 'capacity',
@@ -315,7 +307,7 @@ class SLEDataCollectionService {
         site_name: metrics.siteName,
         timestamp,
         value: parseFloat(capacityValue.toFixed(2)),
-        unit: 'percent_available_channel_capacity'
+        unit: 'percent_available_channel_capacity',
       });
     }
 
@@ -334,14 +326,15 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(timeToConnect.toFixed(2)),
-      unit: 'seconds'
+      unit: 'seconds',
     });
 
     // AP Health: derived from signal quality (% of clients with acceptable RSSI ≥ -70 dBm)
     // Real AP operational state requires /v1/state/aps — not available in this polling loop.
-    const apHealth = metrics.wirelessClients > 0
-      ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
-      : 100;
+    const apHealth =
+      metrics.wirelessClients > 0
+        ? 100 - (metrics.poorSignalCount / metrics.wirelessClients) * 100
+        : 100;
     dataPoints.push({
       metric_key: 'ap_health',
       scope: 'wireless',
@@ -349,13 +342,14 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(apHealth.toFixed(2)),
-      unit: 'percent_healthy'
+      unit: 'percent_healthy',
     });
 
     // Roaming (severity score 1-5, lower is better)
-    const roamingSeverity = metrics.poorSignalCount > 0 
-      ? Math.min(5, 1 + (metrics.poorSignalCount / metrics.wirelessClients) * 3)
-      : 1.0;
+    const roamingSeverity =
+      metrics.poorSignalCount > 0
+        ? Math.min(5, 1 + (metrics.poorSignalCount / metrics.wirelessClients) * 3)
+        : 1.0;
     dataPoints.push({
       metric_key: 'roaming',
       scope: 'wireless',
@@ -363,7 +357,7 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(roamingSeverity.toFixed(2)),
-      unit: 'severity_score_1_to_5'
+      unit: 'severity_score_1_to_5',
     });
 
     return dataPoints;
@@ -383,7 +377,7 @@ class SLEDataCollectionService {
       site_name: metrics.siteName,
       timestamp,
       value: parseFloat(metrics.totalThroughput.toFixed(2)),
-      unit: 'Mbps'
+      unit: 'Mbps',
     });
 
     // Switch health and wired successful_connects require switch port state data
@@ -396,7 +390,7 @@ class SLEDataCollectionService {
   /**
    * Generate organization-wide metrics (across all sites)
    */
-  private generateOrganizationMetrics(metrics: SiteMetrics, timestamp: number): SLEDataPoint[] {
+  private generateOrganizationMetrics(_metrics: SiteMetrics, _timestamp: number): SLEDataPoint[] {
     // These are site-specific but also contribute to org-wide metrics
     // The component will aggregate these when "All Sites" is selected
     return [];
@@ -422,23 +416,23 @@ class SLEDataCollectionService {
     let filtered = [...this.dataStore];
 
     if (filters.siteId && filters.siteId !== 'all') {
-      filtered = filtered.filter(d => d.site_id === filters.siteId);
+      filtered = filtered.filter((d) => d.site_id === filters.siteId);
     }
 
     if (filters.scope) {
-      filtered = filtered.filter(d => d.scope === filters.scope);
+      filtered = filtered.filter((d) => d.scope === filters.scope);
     }
 
     if (filters.metricKeys && filters.metricKeys.length > 0) {
-      filtered = filtered.filter(d => filters.metricKeys!.includes(d.metric_key));
+      filtered = filtered.filter((d) => filters.metricKeys!.includes(d.metric_key));
     }
 
     if (filters.startTimestamp) {
-      filtered = filtered.filter(d => d.timestamp >= filters.startTimestamp!);
+      filtered = filtered.filter((d) => d.timestamp >= filters.startTimestamp!);
     }
 
     if (filters.endTimestamp) {
-      filtered = filtered.filter(d => d.timestamp <= filters.endTimestamp!);
+      filtered = filtered.filter((d) => d.timestamp <= filters.endTimestamp!);
     }
 
     return filtered;
@@ -451,7 +445,6 @@ class SLEDataCollectionService {
     this.dataStore = [];
     this.saveDataToStorage();
     this.notifyListeners();
-    console.log('[SLE Collection] Data cleared');
   }
 
   /**
@@ -468,7 +461,7 @@ class SLEDataCollectionService {
    * Notify all listeners of data update
    */
   private notifyListeners() {
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener();
       } catch (error) {
@@ -496,7 +489,6 @@ class SLEDataCollectionService {
       const stored = localStorage.getItem('sle_data_points');
       if (stored) {
         this.dataStore = JSON.parse(stored);
-        console.log(`[SLE Collection] Loaded ${this.dataStore.length} data points from storage`);
       }
     } catch (error) {
       console.error('[SLE Collection] Failed to load data from localStorage:', error);
@@ -508,13 +500,11 @@ class SLEDataCollectionService {
    * Get collection statistics
    */
   getStats() {
-    const sites = new Set(this.dataStore.map(d => d.site_id));
-    const oldestTimestamp = this.dataStore.length > 0 
-      ? Math.min(...this.dataStore.map(d => d.timestamp))
-      : 0;
-    const newestTimestamp = this.dataStore.length > 0
-      ? Math.max(...this.dataStore.map(d => d.timestamp))
-      : 0;
+    const sites = new Set(this.dataStore.map((d) => d.site_id));
+    const oldestTimestamp =
+      this.dataStore.length > 0 ? Math.min(...this.dataStore.map((d) => d.timestamp)) : 0;
+    const newestTimestamp =
+      this.dataStore.length > 0 ? Math.max(...this.dataStore.map((d) => d.timestamp)) : 0;
 
     return {
       totalDataPoints: this.dataStore.length,
@@ -522,7 +512,7 @@ class SLEDataCollectionService {
       oldestDataPoint: oldestTimestamp ? new Date(oldestTimestamp) : null,
       newestDataPoint: newestTimestamp ? new Date(newestTimestamp) : null,
       isCollecting: this.isCollecting,
-      collectionInterval: this.COLLECTION_INTERVAL_MS / 1000 + ' seconds'
+      collectionInterval: this.COLLECTION_INTERVAL_MS / 1000 + ' seconds',
     };
   }
 }
