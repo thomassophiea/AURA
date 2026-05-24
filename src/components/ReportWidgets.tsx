@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// API response shapes from Campus Controller are untyped JSON; any is required for widget data
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -17,9 +19,7 @@ import {
   RefreshCw,
   Search,
   Filter,
-  Info,
 } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
 import { apiService } from '../services/api';
 import { useAppContext } from '@/contexts/AppContext';
 import { toast } from 'sonner';
@@ -39,10 +39,6 @@ interface ReportWidget {
   endpoint: string;
   category: string;
   lastUpdated?: Date;
-}
-
-interface WidgetData {
-  [key: string]: any;
 }
 
 export function ReportWidgets() {
@@ -162,8 +158,8 @@ export function ReportWidgets() {
               value = utilization;
               status = utilization > 85 ? 'critical' : utilization > 70 ? 'warning' : 'healthy';
             }
-          } catch (err) {
-            console.log('Failed to fetch client load data');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -181,8 +177,8 @@ export function ReportWidgets() {
               value = clientsArray.length;
               status = 'healthy';
             }
-          } catch (err) {
-            console.log('Failed to fetch client count');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -213,8 +209,8 @@ export function ReportWidgets() {
                 status = 'warning';
               }
             }
-          } catch (err) {
-            console.log('Failed to fetch AP health data');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -245,8 +241,8 @@ export function ReportWidgets() {
               value = totalMB;
               status = 'healthy';
             }
-          } catch (err) {
-            console.log('Failed to fetch throughput data');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -275,8 +271,8 @@ export function ReportWidgets() {
                 status = avgSignal < -70 ? 'critical' : avgSignal < -50 ? 'warning' : 'healthy';
               }
             }
-          } catch (err) {
-            console.log('Failed to fetch signal quality data');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -321,8 +317,8 @@ export function ReportWidgets() {
               value = securityNotifications.length;
               status = Number(value) > 5 ? 'critical' : Number(value) > 2 ? 'warning' : 'healthy';
             }
-          } catch (err) {
-            console.log('Failed to fetch security notifications');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -355,8 +351,8 @@ export function ReportWidgets() {
               value = activeAlerts.length;
               status = Number(value) > 3 ? 'critical' : Number(value) > 1 ? 'warning' : 'healthy';
             }
-          } catch (err) {
-            console.log('Failed to fetch active alerts from notifications');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -404,8 +400,8 @@ export function ReportWidgets() {
 
             value = Math.min(apScore + clientScore, 100);
             status = value < 70 ? 'critical' : value < 85 ? 'warning' : 'healthy';
-          } catch (err) {
-            console.log('Failed to calculate performance score');
+          } catch {
+            /* ignore */
           }
           break;
 
@@ -425,8 +421,8 @@ export function ReportWidgets() {
               value = data.value || data.count || data.total || 'N/A';
               status = data.status || 'healthy';
             }
-          } catch (err) {
-            console.log(`Failed to fetch data for widget ${widget.id}`);
+          } catch {
+            /* ignore */
           }
       }
 
@@ -502,8 +498,7 @@ export function ReportWidgets() {
         const loadedWidgets = await Promise.all(widgetPromises);
         setWidgets(loadedWidgets);
       }
-    } catch (error) {
-      console.log('SUPPRESSED_ANALYTICS_ERROR: Error loading report widgets:', error);
+    } catch {
       toast.error('Failed to load some widgets', {
         description: 'Some report widgets may not be available.',
       });
