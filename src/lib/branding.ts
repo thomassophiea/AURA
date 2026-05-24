@@ -19,21 +19,21 @@ export const branding: Record<ThemeMode, BrandConfig> = {
     fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
-    icon: '/favicon.ico'
+    icon: '/favicon.ico',
   },
   default: {
     name: 'API',
     fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
-    icon: '/favicon.ico'
+    icon: '/favicon.ico',
   },
   dark: {
     name: 'API',
     fullName: 'API Mobility Core',
     tagline: 'Autonomous Unified Radio Agent',
     logo: '/logo.svg',
-    icon: '/favicon.ico'
+    icon: '/favicon.ico',
   },
   ep1: {
     name: 'API',
@@ -45,8 +45,8 @@ export const branding: Record<ThemeMode, BrandConfig> = {
     //   public/branding/ep1/icon.png
     // and update these paths accordingly.
     logo: '/logo.svg',
-    icon: '/favicon.ico'
-  }
+    icon: '/favicon.ico',
+  },
 };
 
 /**
@@ -74,13 +74,9 @@ export function useBranding(): BrandConfig {
       const preferred = localStorage.getItem('aura-theme-preference');
       const legacy = localStorage.getItem('theme');
       const raw = preferred || legacy || 'default';
-      const theme = getStoredTheme();
       // If preferred key holds a recognized ThemeMode use that, else fall back
       const resolvedTheme: ThemeMode =
-        raw === 'ep1' ? 'ep1' :
-        raw === 'dev' ? 'dev' :
-        raw === 'dark' ? 'dark' :
-        'default';
+        raw === 'ep1' ? 'ep1' : raw === 'dev' ? 'dev' : raw === 'dark' ? 'dark' : 'default';
       setCurrentBranding(getBranding(resolvedTheme));
     };
 
@@ -96,7 +92,7 @@ export function useBranding(): BrandConfig {
 
     observer.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ['class', 'data-theme']
+      attributeFilter: ['class', 'data-theme'],
     });
 
     return () => {

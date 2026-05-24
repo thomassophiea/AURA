@@ -1,9 +1,9 @@
 /**
  * AI Baseline Service
- * 
+ *
  * Collects and aggregates historical network metrics to calculate
  * AI-generated baseline thresholds that adapt to actual network performance.
- * 
+ *
  * This service:
  * 1. Collects metrics over time (RFQI, client counts, AP status, etc.)
  * 2. Stores aggregated data in localStorage for offline operation
@@ -11,23 +11,17 @@
  * 4. Provides confidence indicators based on data availability
  */
 
-import { 
-  calculateAIBaseline, 
-  type AIBaselineInput, 
-  type AIBaselineThresholds 
-} from './aiInsights';
-import { metricsStorage } from './metricsStorage';
-
+import { calculateAIBaseline, type AIBaselineInput, type AIBaselineThresholds } from './aiInsights';
 const STORAGE_KEY = 'edge_ai_baseline_v1';
 const MAX_SAMPLES = 500; // Keep last 500 data points (~3.5 days at 15-min intervals)
 
 export interface MetricsSample {
   timestamp: number;
-  rfqi: number;            // 0-100 scale
+  rfqi: number; // 0-100 scale
   channelUtilization: number; // 0-100
   clientCount: number;
   apOnlineCount: number;
-  retryRate?: number;      // 0-100
+  retryRate?: number; // 0-100
   latencyMs?: number;
   siteId?: string;
 }
@@ -73,11 +67,11 @@ class AIBaselineService {
     } catch (error) {
       console.warn('[AIBaseline] Failed to load from storage:', error);
     }
-    
+
     return {
       samples: [],
       lastCalculated: 0,
-      calculatedThresholds: null
+      calculatedThresholds: null,
     };
   }
 
@@ -88,7 +82,7 @@ class AIBaselineService {
     if (this.saveDebounceTimer) {
       clearTimeout(this.saveDebounceTimer);
     }
-    
+
     this.saveDebounceTimer = setTimeout(() => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(this.data));
@@ -145,7 +139,7 @@ class AIBaselineService {
       apOnlineCount: metrics.apOnlineCount,
       retryRate: metrics.retryRate,
       latencyMs: metrics.latencyMs,
-      siteId: metrics.siteId
+      siteId: metrics.siteId,
     });
   }
 
@@ -155,10 +149,8 @@ class AIBaselineService {
   getSamples(startTime?: number, endTime?: number): MetricsSample[] {
     const start = startTime ?? 0;
     const end = endTime ?? Date.now();
-    
-    return this.data.samples.filter(
-      s => s.timestamp >= start && s.timestamp <= end
-    );
+
+    return this.data.samples.filter((s) => s.timestamp >= start && s.timestamp <= end);
   }
 
   /**
@@ -175,11 +167,11 @@ class AIBaselineService {
     if (this.data.samples.length === 0) {
       return { earliest: null, latest: null };
     }
-    
+
     const sorted = this.data.samples.sort((a, b) => a.timestamp - b.timestamp);
     return {
       earliest: sorted[0].timestamp,
-      latest: sorted[sorted.length - 1].timestamp
+      latest: sorted[sorted.length - 1].timestamp,
     };
   }
 
@@ -188,7 +180,7 @@ class AIBaselineService {
    */
   calculateBaseline(): AIBaselineThresholds {
     const samples = this.data.samples;
-    
+
     if (samples.length === 0) {
       // Return defaults if no data
       return {
@@ -202,22 +194,22 @@ class AIBaselineService {
         interferenceHigh: 0.3,
         confidence: 0,
         sampleSize: 0,
-        lastUpdated: Date.now()
+        lastUpdated: Date.now(),
       };
     }
 
     // Prepare input for calculation
     const input: AIBaselineInput = {
-      rfqiHistory: samples.map(s => s.rfqi),
-      channelUtilHistory: samples.map(s => s.channelUtilization || 0),
-      clientCountHistory: samples.map(s => s.clientCount),
-      apOnlineHistory: samples.map(s => s.apOnlineCount),
-      retryRateHistory: samples.filter(s => s.retryRate !== undefined).map(s => s.retryRate!),
-      latencyHistory: samples.filter(s => s.latencyMs !== undefined).map(s => s.latencyMs!)
+      rfqiHistory: samples.map((s) => s.rfqi),
+      channelUtilHistory: samples.map((s) => s.channelUtilization || 0),
+      clientCountHistory: samples.map((s) => s.clientCount),
+      apOnlineHistory: samples.map((s) => s.apOnlineCount),
+      retryRateHistory: samples.filter((s) => s.retryRate !== undefined).map((s) => s.retryRate!),
+      latencyHistory: samples.filter((s) => s.latencyMs !== undefined).map((s) => s.latencyMs!),
     };
 
     const thresholds = calculateAIBaseline(input);
-    
+
     // Cache the result
     this.data.calculatedThresholds = thresholds;
     this.data.lastCalculated = Date.now();
@@ -231,10 +223,7 @@ class AIBaselineService {
    */
   getThresholds(maxAgeMs: number = 15 * 60 * 1000): AIBaselineThresholds {
     // Return cached if fresh enough
-    if (
-      this.data.calculatedThresholds &&
-      Date.now() - this.data.lastCalculated < maxAgeMs
-    ) {
+    if (this.data.calculatedThresholds && Date.now() - this.data.lastCalculated < maxAgeMs) {
       return this.data.calculatedThresholds;
     }
 
@@ -247,7 +236,7 @@ class AIBaselineService {
    */
   getConfidenceLevel(): 'none' | 'low' | 'moderate' | 'high' {
     const count = this.data.samples.length;
-    
+
     if (count === 0) return 'none';
     if (count < 10) return 'low';
     if (count < 50) return 'moderate';
@@ -260,7 +249,7 @@ class AIBaselineService {
   getConfidenceDescription(): string {
     const level = this.getConfidenceLevel();
     const count = this.data.samples.length;
-    
+
     switch (level) {
       case 'none':
         return 'No data collected yet';
@@ -287,17 +276,16 @@ class AIBaselineService {
   } {
     const samples = this.data.samples;
     const timeRange = this.getTimeRange();
-    const timeRangeHours = timeRange.earliest && timeRange.latest
-      ? (timeRange.latest - timeRange.earliest) / (1000 * 60 * 60)
-      : 0;
+    const timeRangeHours =
+      timeRange.earliest && timeRange.latest
+        ? (timeRange.latest - timeRange.earliest) / (1000 * 60 * 60)
+        : 0;
 
-    const avgRfqi = samples.length > 0
-      ? samples.reduce((sum, s) => sum + s.rfqi, 0) / samples.length
-      : 0;
+    const avgRfqi =
+      samples.length > 0 ? samples.reduce((sum, s) => sum + s.rfqi, 0) / samples.length : 0;
 
-    const avgClientCount = samples.length > 0
-      ? samples.reduce((sum, s) => sum + s.clientCount, 0) / samples.length
-      : 0;
+    const avgClientCount =
+      samples.length > 0 ? samples.reduce((sum, s) => sum + s.clientCount, 0) / samples.length : 0;
 
     return {
       sampleCount: samples.length,
@@ -306,7 +294,7 @@ class AIBaselineService {
       timeRangeHours: Math.round(timeRangeHours * 10) / 10,
       avgRfqi: Math.round(avgRfqi * 10) / 10,
       avgClientCount: Math.round(avgClientCount),
-      thresholds: this.data.calculatedThresholds
+      thresholds: this.data.calculatedThresholds,
     };
   }
 
@@ -317,7 +305,7 @@ class AIBaselineService {
     this.data = {
       samples: [],
       lastCalculated: 0,
-      calculatedThresholds: null
+      calculatedThresholds: null,
     };
     localStorage.removeItem(STORAGE_KEY);
   }
