@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -255,7 +256,7 @@ export function AdministratorsManagement() {
       }
 
       handleCloseDialog();
-    } catch (error) {
+    } catch {
       toast.error('Failed to save administrator');
     }
   };
@@ -283,7 +284,7 @@ export function AdministratorsManagement() {
       } else {
         throw new Error('Failed to delete administrator');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete administrator');
     }
   };
@@ -307,7 +308,7 @@ export function AdministratorsManagement() {
       } else {
         throw new Error('Failed to update administrator');
       }
-    } catch (error) {
+    } catch {
       toast.error('Failed to update administrator');
     }
   };

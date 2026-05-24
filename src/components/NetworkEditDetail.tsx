@@ -197,10 +197,10 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   // Site Assignment State
   const [sites, setSites] = useState<Site[]>([]);
   const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
-  const [selectedSites, setSelectedSites] = useState<string[]>([]);
-  const [selectedLegacySiteGroups, setSelectedLegacySiteGroups] = useState<string[]>([]);
+  const [selectedSites, _setSelectedSites] = useState<string[]>([]);
+  const [selectedLegacySiteGroups, _setSelectedLegacySiteGroups] = useState<string[]>([]);
   const [, setLoadingSites] = useState(false);
-  const [, setAssigningSites] = useState(false);
+  const [, _setAssigningSites] = useState(false);
   const [, setProfilesBySite] = useState<Map<string, Profile[]>>(new Map());
   const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
@@ -352,6 +352,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
   useEffect(() => {
     loadNetworkData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId]);
 
   const loadNetworkData = async () => {
@@ -653,6 +654,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     if (activeTab === 'sites' && sites.length === 0) {
       loadSitesData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   // Discover profiles when site selection changes
@@ -661,6 +663,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     if (expandedSites.length > 0 && activeTab === 'sites') {
       discoverProfilesForSites(expandedSites);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSites, selectedLegacySiteGroups, activeTab]);
 
   const handleSave = async () => {

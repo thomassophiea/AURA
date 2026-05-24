@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Slider } from './ui/slider';
 import { Badge } from './ui/badge';
-import { Clock, Play, Pause, RotateCcw, Calendar, History } from 'lucide-react';
+import { Clock, Play, RotateCcw, Calendar, History } from 'lucide-react';
 import { metricsStorage } from '../services/metricsStorage';
 import { toast } from 'sonner';
 
@@ -14,10 +14,18 @@ interface NetworkRewindProps {
   onLiveToggle: () => void;
 }
 
-export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }: NetworkRewindProps) {
-  const [availableRange, setAvailableRange] = useState<{ earliest: Date | null; latest: Date | null }>({
+export function NetworkRewind({
+  serviceId,
+  onTimeChange,
+  isLive,
+  onLiveToggle,
+}: NetworkRewindProps) {
+  const [availableRange, setAvailableRange] = useState<{
+    earliest: Date | null;
+    latest: Date | null;
+  }>({
     earliest: null,
-    latest: null
+    latest: null,
   });
   const [selectedTime, setSelectedTime] = useState<Date>(new Date());
   const [sliderValue, setSliderValue] = useState<number>(100);
@@ -27,6 +35,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
   // Load available time range on mount
   useEffect(() => {
     loadAvailableRange();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serviceId]);
 
   const loadAvailableRange = async () => {
@@ -38,12 +47,10 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
         setAvailableRange(range);
         setSelectedTime(range.latest); // Start at latest time
         setDataAvailable(true);
-        console.log('[NetworkRewind] Available range:', range);
       } else {
         setDataAvailable(false);
-        console.log('[NetworkRewind] No historical data available yet');
         toast.info('No historical data available', {
-          description: 'Historical data will be collected starting now. Check back in 15 minutes.'
+          description: 'Historical data will be collected starting now. Check back in 15 minutes.',
         });
       }
     } catch (error) {
@@ -68,6 +75,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
     if (!isLive) {
       onTimeChange(newTime);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sliderValue, availableRange, isLive]);
 
   // Reset to live when toggling live mode
@@ -79,6 +87,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
         setSliderValue(100);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLive]);
 
   const handleSliderChange = (value: number[]) => {
@@ -108,7 +117,11 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
 
-    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      date.toLocaleDateString() +
+      ' ' +
+      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    );
   };
 
   const formatRangeInfo = (): string => {
@@ -152,7 +165,8 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
             <Badge variant="outline">No Data</Badge>
           </div>
           <CardDescription className="pt-2">
-            Historical data collection will begin automatically. Check back in 15-30 minutes to see past metrics.
+            Historical data collection will begin automatically. Check back in 15-30 minutes to see
+            past metrics.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -169,7 +183,10 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
           </div>
           <div className="flex items-center space-x-2">
             {isLive ? (
-              <Badge variant="outline" className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30">
+              <Badge
+                variant="outline"
+                className="bg-[color:var(--status-success-bg)] text-[color:var(--status-success)] border-[color:var(--status-success)]/30"
+              >
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></span>
                 LIVE
               </Badge>
@@ -181,9 +198,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
             )}
           </div>
         </div>
-        <CardDescription>
-          View metrics from the past {formatRangeInfo()}
-        </CardDescription>
+        <CardDescription>View metrics from the past {formatRangeInfo()}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Time Slider */}
@@ -193,9 +208,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
               <Calendar className="h-4 w-4" />
               <span>{formatDate(selectedTime)}</span>
             </div>
-            <span className="text-xs text-muted-foreground">
-              {selectedTime.toLocaleString()}
-            </span>
+            <span className="text-xs text-muted-foreground">{selectedTime.toLocaleString()}</span>
           </div>
 
           <Slider
@@ -209,19 +222,15 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
           />
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>
-              {availableRange.earliest?.toLocaleDateString()}
-            </span>
-            <span>
-              {availableRange.latest?.toLocaleDateString()}
-            </span>
+            <span>{availableRange.earliest?.toLocaleDateString()}</span>
+            <span>{availableRange.latest?.toLocaleDateString()}</span>
           </div>
         </div>
 
         {/* Control Buttons */}
         <div className="flex items-center space-x-2">
           <Button
-            variant={isLive ? "default" : "outline"}
+            variant={isLive ? 'default' : 'outline'}
             size="sm"
             onClick={handleResetToLive}
             className="flex-1"
@@ -239,11 +248,7 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
             )}
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={loadAvailableRange}
-          >
+          <Button variant="outline" size="sm" onClick={loadAvailableRange}>
             <RotateCcw className="h-4 w-4" />
           </Button>
         </div>
@@ -255,8 +260,8 @@ export function NetworkRewind({ serviceId, onTimeChange, isLive, onLiveToggle }:
             <div className="flex-1 text-xs text-secondary">
               <p className="font-medium">Viewing historical data</p>
               <p className="text-muted-foreground mt-1">
-                Showing metrics from {formatDate(selectedTime)}.
-                Return to live mode to see real-time data.
+                Showing metrics from {formatDate(selectedTime)}. Return to live mode to see
+                real-time data.
               </p>
             </div>
           </div>

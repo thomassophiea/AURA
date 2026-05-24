@@ -1,10 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MobileNetworksList - Mobile-optimized WLANs view with QR codes
  * Quick access to network QR codes for easy sharing
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { RefreshCw, Loader2, Search, Wifi, QrCode, Shield, Eye, EyeOff, Download, Share2, X, Check, Copy } from 'lucide-react';
+import {
+  RefreshCw,
+  Search,
+  Wifi,
+  QrCode,
+  Eye,
+  EyeOff,
+  Download,
+  Share2,
+  X,
+  Check,
+  Copy,
+} from 'lucide-react';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -29,15 +42,15 @@ interface MobileNetworksListProps {
   currentSite: string;
 }
 
-function NetworkCard({ 
-  network, 
-  onShowQR 
-}: { 
-  network: Network; 
+function NetworkCard({
+  network,
+  onShowQR,
+}: {
+  network: Network;
   onShowQR: (network: Network) => void;
 }) {
   const haptic = useHaptic();
-  
+
   const getSecurityLabel = (security: string) => {
     const s = security?.toLowerCase() || '';
     if (s.includes('wpa3')) return 'WPA3';
@@ -69,7 +82,10 @@ function NetworkCard({
           <div className="flex items-center gap-2">
             <Wifi className="h-3.5 w-3.5 text-primary flex-shrink-0" />
             <span className="text-sm font-medium truncate">{network.ssid}</span>
-            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 flex-shrink-0 ${getSecurityColor(network.security)}`}>
+            <Badge
+              variant="outline"
+              className={`text-[9px] px-1.5 py-0 h-4 flex-shrink-0 ${getSecurityColor(network.security)}`}
+            >
               {getSecurityLabel(network.security)}
             </Badge>
             {network.enabled === false && (
@@ -78,7 +94,7 @@ function NetworkCard({
               </Badge>
             )}
           </div>
-          
+
           {/* Secondary info */}
           <div className="flex items-center gap-2 mt-0.5 ml-5">
             <span className="text-xs text-muted-foreground/80">
@@ -106,13 +122,13 @@ function NetworkCard({
   );
 }
 
-function QRCodeSheet({ 
-  network, 
-  isOpen, 
-  onClose 
-}: { 
-  network: Network | null; 
-  isOpen: boolean; 
+function QRCodeSheet({
+  network,
+  isOpen,
+  onClose,
+}: {
+  network: Network | null;
+  isOpen: boolean;
   onClose: () => void;
 }) {
   const haptic = useHaptic();
@@ -122,7 +138,7 @@ function QRCodeSheet({
 
   // Don't render if no network AND not open (allow render during close animation)
   if (!network && !isOpen) return null;
-  
+
   // Use empty values if network is null (during close animation)
   const displayNetwork = network || { ssid: '', security: '', passphrase: '', hidden: false };
 
@@ -190,7 +206,7 @@ function QRCodeSheet({
       };
 
       img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
-    } catch (error) {
+    } catch {
       haptic.error();
       toast.error('Failed to download QR code');
     }
@@ -217,7 +233,9 @@ function QRCodeSheet({
 
               canvas.toBlob(async (blob) => {
                 if (blob) {
-                  const file = new File([blob], `wifi-${displayNetwork.ssid}.png`, { type: 'image/png' });
+                  const file = new File([blob], `wifi-${displayNetwork.ssid}.png`, {
+                    type: 'image/png',
+                  });
                   await navigator.share({
                     title: `WiFi: ${displayNetwork.ssid}`,
                     text: `Scan this QR code to connect to ${displayNetwork.ssid}`,
@@ -253,13 +271,13 @@ function QRCodeSheet({
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className={`fixed inset-0 bg-black/50 z-50 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
-      
+
       {/* Sheet */}
-      <div 
+      <div
         className={`fixed inset-x-0 bottom-0 z-50 bg-card rounded-t-3xl transition-transform duration-300 ease-out ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}
         style={{ maxHeight: '90vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
@@ -269,7 +287,10 @@ function QRCodeSheet({
         </div>
 
         {/* Content */}
-        <div className="px-6 pb-6 space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 48px)' }}>
+        <div
+          className="px-6 pb-6 space-y-4 overflow-y-auto"
+          style={{ maxHeight: 'calc(90vh - 48px)' }}
+        >
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -283,12 +304,7 @@ function QRCodeSheet({
 
           {/* QR Code */}
           <div ref={qrRef} className="flex justify-center p-6 bg-white rounded-2xl">
-            <QRCodeSVG
-              value={generateWifiQRString()}
-              size={220}
-              level="M"
-              includeMargin={false}
-            />
+            <QRCodeSVG value={generateWifiQRString()} size={220} level="M" includeMargin={false} />
           </div>
 
           {/* Password (if PSK) */}
@@ -315,12 +331,12 @@ function QRCodeSheet({
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopyPassword}
-                >
-                  {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                <Button variant="outline" size="icon" onClick={handleCopyPassword}>
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>
@@ -368,13 +384,13 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
       // Get services and clients to calculate client counts
       const [services, stations] = await Promise.all([
         apiService.getServices(),
-        apiService.getStations().catch(() => [])
+        apiService.getStations().catch(() => []),
       ]);
-      
+
       // Count clients per service/SSID
       const clientCountByService: Record<string, number> = {};
       const clientCountBySSID: Record<string, number> = {};
-      
+
       stations.forEach((station: any) => {
         const serviceId = station.serviceId;
         const ssid = station.ssid || station.essid || station.networkName;
@@ -385,20 +401,21 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           clientCountBySSID[ssid] = (clientCountBySSID[ssid] || 0) + 1;
         }
       });
-      
+
       // Transform to network format with security detection
       const networkList: Network[] = services.map((s: any) => {
         let security = 'Open';
         let passphrase = '';
-        const ssidName = s.ssid || s.serviceName || s.name || '';
+        const _ssidName = s.ssid || s.serviceName || s.name || '';
 
         // Priority 1: Check for WPA3-SAE (multiple possible locations)
-        const saeElement = s.WpaSaeElement 
-          || s.privacy?.WpaSaeElement 
-          || s.privacy?.wpaSaeElement
-          || s.privacy?.sae
-          || s.privacy?.Wpa3SaeElement
-          || s.Wpa3SaeElement;
+        const saeElement =
+          s.WpaSaeElement ||
+          s.privacy?.WpaSaeElement ||
+          s.privacy?.wpaSaeElement ||
+          s.privacy?.sae ||
+          s.privacy?.Wpa3SaeElement ||
+          s.Wpa3SaeElement;
 
         if (saeElement) {
           if (saeElement?.pmfMode === 'required' && saeElement?.saeMethod === 'SaeH2e') {
@@ -411,20 +428,36 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           passphrase = saeElement.presharedKey || '';
         }
         // Priority 2: Check for WPA Enterprise (802.1X) - check all possible field names
-        else if (s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement 
-          || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement
-          || s.Wpa3Enterprise192Element || s.privacy?.Wpa3Enterprise192Element
-          || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement
-          || s.radiusServerAddress || s.privacy?.radiusServerAddress
-          || s.radiusSecret || s.privacy?.radiusSecret
-          || s.authenticationServerIp || s.privacy?.authenticationServerIp) {
-          const enterpriseElement = s.WpaEnterpriseElement || s.privacy?.WpaEnterpriseElement
-            || s.Wpa2EnterpriseElement || s.privacy?.Wpa2EnterpriseElement;
+        else if (
+          s.WpaEnterpriseElement ||
+          s.privacy?.WpaEnterpriseElement ||
+          s.Wpa2EnterpriseElement ||
+          s.privacy?.Wpa2EnterpriseElement ||
+          s.Wpa3Enterprise192Element ||
+          s.privacy?.Wpa3Enterprise192Element ||
+          s.Wpa3EnterpriseTransitionElement ||
+          s.privacy?.Wpa3EnterpriseTransitionElement ||
+          s.radiusServerAddress ||
+          s.privacy?.radiusServerAddress ||
+          s.radiusSecret ||
+          s.privacy?.radiusSecret ||
+          s.authenticationServerIp ||
+          s.privacy?.authenticationServerIp
+        ) {
+          const enterpriseElement =
+            s.WpaEnterpriseElement ||
+            s.privacy?.WpaEnterpriseElement ||
+            s.Wpa2EnterpriseElement ||
+            s.privacy?.Wpa2EnterpriseElement;
           const mode = enterpriseElement?.mode?.toLowerCase();
-          
-          if (s.Wpa3Enterprise192Element || s.privacy?.Wpa3Enterprise192Element 
-            || s.Wpa3EnterpriseTransitionElement || s.privacy?.Wpa3EnterpriseTransitionElement
-            || enterpriseElement?.pmfMode === 'required') {
+
+          if (
+            s.Wpa3Enterprise192Element ||
+            s.privacy?.Wpa3Enterprise192Element ||
+            s.Wpa3EnterpriseTransitionElement ||
+            s.privacy?.Wpa3EnterpriseTransitionElement ||
+            enterpriseElement?.pmfMode === 'required'
+          ) {
             security = 'WPA3-Enterprise';
           } else if (mode === 'wpa3mixed') {
             security = 'WPA2/WPA3-Enterprise';
@@ -433,19 +466,27 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           }
         }
         // Priority 3: Check for 802.1X / EAP specific fields
-        else if (s.WpaEapElement || s.privacy?.WpaEapElement
-          || s.eapElement || s.privacy?.eapElement
-          || s.dot1xElement || s.privacy?.dot1xElement
-          || s['802.1x'] || s.privacy?.['802.1x']
-          || s.dot1x || s.privacy?.dot1x
-          || s.eap || s.privacy?.eap) {
+        else if (
+          s.WpaEapElement ||
+          s.privacy?.WpaEapElement ||
+          s.eapElement ||
+          s.privacy?.eapElement ||
+          s.dot1xElement ||
+          s.privacy?.dot1xElement ||
+          s['802.1x'] ||
+          s.privacy?.['802.1x'] ||
+          s.dot1x ||
+          s.privacy?.dot1x ||
+          s.eap ||
+          s.privacy?.eap
+        ) {
           security = 'WPA2-Enterprise';
         }
         // Priority 4: Check for WPA PSK
         else if (s.WpaPskElement || s.privacy?.WpaPskElement) {
           const pskElement = s.WpaPskElement || s.privacy?.WpaPskElement;
           const mode = pskElement?.mode?.toLowerCase();
-          
+
           if (mode === 'wpa3only' || mode === 'wpa3mixed') {
             security = mode === 'wpa3only' ? 'WPA3-Personal' : 'WPA2/WPA3-Personal';
           } else {
@@ -485,19 +526,11 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
           // Has privacy config but we didn't match specific type - assume WPA2
           security = 'WPA2';
         }
-        
-        // Debug: Log services that still show as Open
-        if (security === 'Open') {
-          console.log(`[MobileNetworks] "${ssidName}" detected as Open. Service data:`, {
-            hasPrivacy: !!s.privacy,
-            privacyKeys: s.privacy ? Object.keys(s.privacy) : [],
-            topLevelKeys: Object.keys(s).filter(k => k.toLowerCase().includes('wpa') || k.toLowerCase().includes('privacy') || k.toLowerCase().includes('security') || k.toLowerCase().includes('radius') || k.toLowerCase().includes('eap'))
-          });
-        }
 
         // Get client count from our mapping
         const ssid = s.ssid || s.serviceName;
-        const clientCount = s.clientCount ?? clientCountByService[s.id] ?? clientCountBySSID[ssid] ?? 0;
+        const clientCount =
+          s.clientCount ?? clientCountByService[s.id] ?? clientCountBySSID[ssid] ?? 0;
 
         return {
           id: s.id,
@@ -536,9 +569,10 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
     setQrSheetOpen(true);
   };
 
-  const filteredNetworks = networks.filter(n =>
-    n.ssid.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    n.serviceName?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredNetworks = networks.filter(
+    (n) =>
+      n.ssid.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      n.serviceName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -585,10 +619,10 @@ export function MobileNetworksList({ currentSite }: MobileNetworksListProps) {
       {!loading && filteredNetworks.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Networks</span>
-            <span className="text-xs text-muted-foreground">
-              {filteredNetworks.length}
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Networks
             </span>
+            <span className="text-xs text-muted-foreground">{filteredNetworks.length}</span>
           </div>
           {filteredNetworks.map((network) => (
             <NetworkCard key={network.id} network={network} onShowQR={handleShowQR} />

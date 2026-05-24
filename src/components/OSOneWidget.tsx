@@ -18,17 +18,13 @@ import {
   ChevronDown,
   ChevronRight,
   Cloud,
-  Shield,
   Key,
-  Activity,
-  Gauge,
   Info,
-  CheckCircle2,
   AlertCircle,
   Wifi,
   Loader2,
 } from 'lucide-react';
-import { apiService, OSOneInfo, OSOneSystemInfo, OSOneManufacturingInfo } from '../services/api';
+import { apiService, OSOneInfo } from '../services/api';
 
 interface OSOneWidgetProps {
   siteId?: string;
