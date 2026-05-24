@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -23,6 +26,7 @@ export function TopApplicationsDebug() {
 
   useEffect(() => {
     loadApplications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadApplications = async () => {
@@ -31,46 +35,43 @@ export function TopApplicationsDebug() {
     const startTime = Date.now();
 
     try {
-      console.log('[TopApplicationsDebug] Fetching /v1/applications...');
-      
       const response = await apiService.makeAuthenticatedRequest(
-        '/v1/applications', 
-        { method: 'GET' }, 
+        '/v1/applications',
+        { method: 'GET' },
         10000
       );
-      
+
       const endTime = Date.now();
       setResponseTime(endTime - startTime);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[TopApplicationsDebug] Raw API Response:', data);
-        
+
         setRawResponse(data);
-        
+
         // Try to parse the data
         const apps = parseApplicationData(data);
         setParsedApps(apps);
-        
+
         toast.success('Applications loaded', {
-          description: `Found ${apps.length} applications in ${endTime - startTime}ms`
+          description: `Found ${apps.length} applications in ${endTime - startTime}ms`,
         });
       } else {
         const errorText = await response.text();
         setError(`HTTP ${response.status}: ${errorText || response.statusText}`);
         console.error('[TopApplicationsDebug] Error response:', response.status, errorText);
-        
+
         toast.error('Failed to load applications', {
-          description: `HTTP ${response.status}`
+          description: `HTTP ${response.status}`,
         });
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
       console.error('[TopApplicationsDebug] Exception:', err);
-      
+
       toast.error('Failed to load applications', {
-        description: errorMessage
+        description: errorMessage,
       });
     } finally {
       setLoading(false);
@@ -79,19 +80,15 @@ export function TopApplicationsDebug() {
 
   const parseApplicationData = (data: any): TopApp[] => {
     const apps: TopApp[] = [];
-    
-    console.log('[TopApplicationsDebug] Parsing data, type:', typeof data, 'isArray:', Array.isArray(data));
-    
+
     // Strategy 1: Direct array
     if (Array.isArray(data)) {
-      console.log('[TopApplicationsDebug] Data is direct array, length:', data.length);
       data.slice(0, 20).forEach((app: any, index: number) => {
-        console.log(`[TopApplicationsDebug] App ${index}:`, app);
         apps.push({
           app: app.name || app.applicationName || app.application || app.app || `Unknown-${index}`,
           bytes: app.bytes || app.totalBytes || app.byteCount || 0,
           flows: app.flows || app.sessionCount || app.sessions || app.flowCount || 0,
-          site: app.site || app.siteName || app.location || 'N/A'
+          site: app.site || app.siteName || app.location || 'N/A',
         });
       });
     }
@@ -99,30 +96,23 @@ export function TopApplicationsDebug() {
     else if (data && typeof data === 'object') {
       // Try common property names
       const possibleKeys = ['applications', 'apps', 'data', 'items', 'results'];
-      
+
       for (const key of possibleKeys) {
         if (data[key] && Array.isArray(data[key])) {
-          console.log(`[TopApplicationsDebug] Found array at data.${key}, length:`, data[key].length);
           data[key].slice(0, 20).forEach((app: any, index: number) => {
-            console.log(`[TopApplicationsDebug] App ${index} from ${key}:`, app);
             apps.push({
-              app: app.name || app.applicationName || app.application || app.app || `Unknown-${index}`,
+              app:
+                app.name || app.applicationName || app.application || app.app || `Unknown-${index}`,
               bytes: app.bytes || app.totalBytes || app.byteCount || 0,
               flows: app.flows || app.sessionCount || app.sessions || app.flowCount || 0,
-              site: app.site || app.siteName || app.location || 'N/A'
+              site: app.site || app.siteName || app.location || 'N/A',
             });
           });
           break;
         }
       }
-      
-      // If still no apps found, log all top-level keys
-      if (apps.length === 0) {
-        console.log('[TopApplicationsDebug] No apps found, available keys:', Object.keys(data));
-      }
     }
-    
-    console.log('[TopApplicationsDebug] Parsed apps:', apps);
+
     return apps;
   };
 
@@ -153,11 +143,7 @@ export function TopApplicationsDebug() {
             Endpoint: <code className="bg-muted px-1 rounded">/v1/applications</code>
           </p>
         </div>
-        <Button
-          onClick={loadApplications}
-          disabled={loading}
-          size="sm"
-        >
+        <Button onClick={loadApplications} disabled={loading} size="sm">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Reload
         </Button>
@@ -166,13 +152,9 @@ export function TopApplicationsDebug() {
       {/* Response Metadata */}
       {responseTime !== null && (
         <div className="flex gap-4">
-          <Badge variant="outline">
-            Response Time: {responseTime}ms
-          </Badge>
+          <Badge variant="outline">Response Time: {responseTime}ms</Badge>
           {parsedApps.length > 0 && (
-            <Badge variant="default">
-              {parsedApps.length} applications found
-            </Badge>
+            <Badge variant="default">{parsedApps.length} applications found</Badge>
           )}
         </div>
       )}
@@ -203,9 +185,7 @@ export function TopApplicationsDebug() {
               </div>
               <Badge variant="outline">{parsedApps.length} apps</Badge>
             </div>
-            <CardDescription>
-              Successfully parsed application data
-            </CardDescription>
+            <CardDescription>Successfully parsed application data</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -216,9 +196,7 @@ export function TopApplicationsDebug() {
                 >
                   <div className="flex-1">
                     <p className="font-medium">{app.app}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {app.site}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{app.site}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{formatBytes(app.bytes)}</p>
@@ -240,11 +218,7 @@ export function TopApplicationsDebug() {
                 <Code className="h-5 w-5 text-secondary" />
                 <CardTitle>Raw API Response</CardTitle>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={copyToClipboard}
-              >
+              <Button variant="outline" size="sm" onClick={copyToClipboard}>
                 {copied ? (
                   <>
                     <Check className="h-4 w-4 mr-2" />
@@ -258,29 +232,23 @@ export function TopApplicationsDebug() {
                 )}
               </Button>
             </div>
-            <CardDescription>
-              Raw JSON response from the API
-            </CardDescription>
+            <CardDescription>Raw JSON response from the API</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="bg-muted/20 rounded-lg p-4 overflow-auto max-h-96">
-              <pre className="text-xs font-mono">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
+              <pre className="text-xs font-mono">{JSON.stringify(rawResponse, null, 2)}</pre>
             </div>
-            
+
             {/* Data Structure Analysis */}
             <div className="mt-4 p-3 bg-info/10 border border-info/20 rounded-lg">
               <h4 className="text-sm font-semibold mb-2">Data Structure Analysis:</h4>
               <ul className="text-xs space-y-1 text-muted-foreground">
                 <li>• Type: {Array.isArray(rawResponse) ? 'Array' : typeof rawResponse}</li>
-                {Array.isArray(rawResponse) && (
-                  <li>• Array Length: {rawResponse.length}</li>
-                )}
+                {Array.isArray(rawResponse) && <li>• Array Length: {rawResponse.length}</li>}
                 {typeof rawResponse === 'object' && !Array.isArray(rawResponse) && (
                   <>
                     <li>• Top-level Keys: {Object.keys(rawResponse).join(', ')}</li>
-                    {Object.keys(rawResponse).map(key => {
+                    {Object.keys(rawResponse).map((key) => {
                       const value = rawResponse[key];
                       return (
                         <li key={key}>
