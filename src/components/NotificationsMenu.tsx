@@ -1,22 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller notification API responses are untyped JSON
 import { useState, useEffect } from 'react';
-import {
-  Bell,
-  Search,
-  Settings,
-  Filter,
-  AlertTriangle,
-  Info,
-  AlertCircle,
-  CheckCircle2,
-  RefreshCw,
-  Clock,
-  Shield,
-  Wifi,
-  Server,
-  Users,
-  XCircle,
-  Activity,
-} from 'lucide-react';
+import { Bell, Search, Settings, Filter, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { Button } from './ui/button';
 import {
   Sheet,
@@ -30,8 +15,6 @@ import { Badge } from './ui/badge';
 import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
@@ -78,54 +61,6 @@ interface NotificationItem {
   isRead: boolean;
 }
 
-const getCategoryIcon = (category: string) => {
-  switch (category.toLowerCase()) {
-    case 'security':
-      return <Shield className="h-4 w-4" />;
-    case 'wireless':
-    case 'wifi':
-      return <Wifi className="h-4 w-4" />;
-    case 'infrastructure':
-    case 'system':
-      return <Server className="h-4 w-4" />;
-    case 'client':
-    case 'user':
-      return <Users className="h-4 w-4" />;
-    case 'performance':
-      return <Activity className="h-4 w-4" />;
-    default:
-      return <Bell className="h-4 w-4" />;
-  }
-};
-
-const getSeverityColor = (severity: string) => {
-  switch (severity.toLowerCase()) {
-    case 'critical':
-      return 'text-[color:var(--status-error)] bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
-    case 'warning':
-      return 'text-[color:var(--status-warning)] bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
-    case 'info':
-    case 'low':
-      return 'text-[color:var(--status-info)] bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30';
-    default:
-      return 'text-muted-foreground bg-muted/20 border-border';
-  }
-};
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'active':
-      return <AlertCircle className="h-4 w-4 text-[color:var(--status-error)]" />;
-    case 'acknowledged':
-      return <Clock className="h-4 w-4 text-[color:var(--status-warning)]" />;
-    case 'resolved':
-    case 'cleared':
-      return <CheckCircle2 className="h-4 w-4 text-[color:var(--status-success)]" />;
-    default:
-      return <Info className="h-4 w-4 text-muted-foreground" />;
-  }
-};
-
 const getNotificationIcon = (type: NotificationItem['type']) => {
   switch (type) {
     case 'critical':
@@ -168,6 +103,7 @@ export function NotificationsMenu() {
 
   useEffect(() => {
     loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.site]); // Reload when site context changes
 
   const loadNotifications = async () => {
@@ -187,7 +123,7 @@ export function NotificationsMenu() {
       }
 
       setNotifications(allNotifications);
-    } catch (error) {
+    } catch {
       // Silently handle expected API failures
       setNotifications([]);
     } finally {
@@ -257,7 +193,7 @@ export function NotificationsMenu() {
         }));
       }
       return [];
-    } catch (error) {
+    } catch {
       // Silently handle expected API failures - errors are already handled by global error system
       return [];
     }
@@ -287,7 +223,7 @@ export function NotificationsMenu() {
         }));
       }
       return [];
-    } catch (error) {
+    } catch {
       // Silently handle expected API failures - errors are already handled by global error system
       return [];
     }
@@ -317,7 +253,7 @@ export function NotificationsMenu() {
         }));
       }
       return [];
-    } catch (error) {
+    } catch {
       // Silently handle expected API failures - errors are already handled by global error system
       return [];
     }
@@ -337,7 +273,7 @@ export function NotificationsMenu() {
       if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
       if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
       return date.toLocaleDateString();
-    } catch (error) {
+    } catch {
       return 'Recent';
     }
   };
@@ -352,7 +288,7 @@ export function NotificationsMenu() {
         },
         5000
       );
-    } catch (error) {
+    } catch {
       // Silently handle API failures for mark as read operations
     }
 
@@ -370,7 +306,7 @@ export function NotificationsMenu() {
         },
         5000
       );
-    } catch (error) {
+    } catch {
       // Silently handle API failures for mark as read operations
     }
 
