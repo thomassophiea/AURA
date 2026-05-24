@@ -39,8 +39,6 @@ import {
   Line,
   AreaChart,
   Area,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -56,7 +54,6 @@ import {
 import { BestPracticesWidget } from './BestPracticesWidget';
 import { NetworkRewind } from './NetworkRewind';
 import { ApplicationWidgets } from './ApplicationWidgets';
-import { ApplicationEndpointTester } from './ApplicationEndpointTester';
 import { ClientExperienceHero } from './ClientExperienceHero';
 import { useMetricsCollection } from '../hooks/useMetricsCollection';
 import { metricsStorage } from '../services/metricsStorage';
@@ -71,6 +68,9 @@ interface Service {
   vlan?: number;
   bandSteering?: boolean;
   description?: string;
+  siteName?: string;
+  site?: string;
+  location?: string;
 }
 
 interface ServiceReport {
@@ -140,6 +140,9 @@ interface Station {
   outPackets?: number;
   inBytes?: number;
   packets?: number;
+  rss?: number;
+  transmittedRate?: number;
+  receivedRate?: number;
 }
 
 export function ServiceLevelsEnhanced() {
@@ -166,8 +169,6 @@ export function ServiceLevelsEnhanced() {
 
   // Filters
   const [timeRange, setTimeRange] = useState('24h');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [severityFilter, setSeverityFilter] = useState('all');
 
   // Client Detail Dialog
   const [selectedClient, setSelectedClient] = useState<Station | null>(null);
@@ -175,7 +176,7 @@ export function ServiceLevelsEnhanced() {
 
   // Network Rewind
   const [isLive, setIsLive] = useState(true);
-  const [historicalTimestamp, setHistoricalTimestamp] = useState<Date | null>(null);
+  const [, setHistoricalTimestamp] = useState<Date | null>(null);
   const [historicalMetrics, setHistoricalMetrics] = useState<ServiceReport | null>(null);
 
   // Metrics collection function
@@ -190,7 +191,7 @@ export function ServiceLevelsEnhanced() {
   };
 
   // Start metrics collection for Network Rewind
-  const { collectionCount, supabaseAvailable } = useMetricsCollection(getCurrentMetrics, {
+  useMetricsCollection(getCurrentMetrics, {
     enabled: selectedService !== null && isLive,
     intervalMinutes: 15,
   });
@@ -227,15 +228,13 @@ export function ServiceLevelsEnhanced() {
       }
 
       const siteId = selectedSite !== 'all' ? selectedSite : undefined;
-      console.log('[ServiceLevels] Fetching services' + (siteId ? ` for site: ${siteId}` : ''));
 
-      let servicesList: any[] = [];
+      let servicesList: Service[] = [];
 
       // STRICT: Use site-specific API when site is selected. No global fallback.
       if (siteId) {
         try {
           servicesList = await apiService.getServicesBySite(siteId);
-          console.log('[ServiceLevels] Loaded', servicesList.length, 'services for site');
         } catch {
           // Fall through to client-side filter
         }
@@ -253,15 +252,10 @@ export function ServiceLevelsEnhanced() {
               const allServices = Array.isArray(data) ? data : data.services || data.data || [];
               const site = await apiService.getSiteById(siteId).catch(() => null);
               const siteName = site?.name || site?.siteName || siteId;
-              servicesList = allServices.filter((service: any) => {
+              servicesList = allServices.filter((service: Service) => {
                 const serviceSite = service.siteName || service.site || service.location;
                 return serviceSite === siteName || serviceSite === siteId;
               });
-              console.log(
-                '[ServiceLevels] Client-side filtered to',
-                servicesList.length,
-                'services for site'
-              );
             }
           } catch {
             // STRICT: empty on failure
@@ -281,8 +275,6 @@ export function ServiceLevelsEnhanced() {
         servicesList = Array.isArray(data) ? data : data.services || data.data || [];
       }
 
-      console.log('[ServiceLevels] Loaded', servicesList.length, 'services');
-
       // STRICT: No additional global fallback - use what we have (even if empty)
       const filteredServices = servicesList;
 
@@ -293,7 +285,6 @@ export function ServiceLevelsEnhanced() {
         setSelectedService(filteredServices[0].id);
         await loadServiceDetails(filteredServices[0].id);
       } else if (filteredServices.length === 0) {
-        console.log('[ServiceLevels] No services found for selected site');
         setSelectedService(null);
         setServiceReport(null);
       }
@@ -320,8 +311,6 @@ export function ServiceLevelsEnhanced() {
         setRefreshing(true);
       }
 
-      console.log('[ServiceLevels] Loading details for service:', serviceId);
-
       // Fetch service report and stations in parallel
       const [reportResult, stationsResult] = await Promise.allSettled([
         fetchServiceReport(serviceId),
@@ -332,7 +321,6 @@ export function ServiceLevelsEnhanced() {
       if (reportResult.status === 'fulfilled' && reportResult.value) {
         setServiceReport(reportResult.value);
       } else {
-        console.log('[ServiceLevels] No report available for service', serviceId);
         // Create a basic report from available data
         setServiceReport({
           serviceId,
@@ -368,8 +356,6 @@ export function ServiceLevelsEnhanced() {
 
   const fetchServiceReport = async (serviceId: string): Promise<ServiceReport | null> => {
     try {
-      console.log('[ServiceLevels] Fetching report for service:', serviceId);
-
       const response = await apiService.makeAuthenticatedRequest(
         `/v1/services/${serviceId}/report`,
         { method: 'GET' },
@@ -393,18 +379,14 @@ export function ServiceLevelsEnhanced() {
       }
 
       const data = await response.json();
-      console.log('[ServiceLevels] Service report loaded');
       return data;
     } catch (error) {
-      console.log('[ServiceLevels] Service report not available:', error);
       return null;
     }
   };
 
   const fetchServiceStations = async (serviceId: string): Promise<Station[]> => {
     try {
-      console.log('[ServiceLevels] Fetching stations for service:', serviceId);
-
       const response = await apiService.makeAuthenticatedRequest(
         `/v1/services/${serviceId}/stations`,
         { method: 'GET' },
@@ -430,7 +412,6 @@ export function ServiceLevelsEnhanced() {
               station.serviceId === serviceId || (service?.ssid && station.ssid === service.ssid)
           );
 
-          console.log('[ServiceLevels] Filtered', filtered.length, 'stations for service');
           return filtered;
         }
 
@@ -440,10 +421,8 @@ export function ServiceLevelsEnhanced() {
       const data = await response.json();
       const stations = Array.isArray(data) ? data : data.stations || data.clients || [];
 
-      console.log('[ServiceLevels] Loaded', stations.length, 'stations for service');
       return stations;
     } catch (error) {
-      console.log('[ServiceLevels] Stations not available:', error);
       return [];
     }
   };
@@ -461,7 +440,7 @@ export function ServiceLevelsEnhanced() {
       totalThroughput += (station.txBytes || 0) + (station.rxBytes || 0);
 
       // Use rssi or rss field (API returns rss)
-      const rssi = station.rssi ?? (station as any).rss;
+      const rssi = station.rssi ?? station.rss;
       if (rssi !== undefined && rssi < 0) {
         totalRssi += rssi;
         rssiCount++;
@@ -496,19 +475,14 @@ export function ServiceLevelsEnhanced() {
     setIsLoadingSites(true);
     try {
       if (!apiService.isAuthenticated()) {
-        console.log('Waiting for authentication before loading sites...');
         setSites([]);
         return;
       }
 
-      console.log('Loading sites for ServiceLevels filter...');
       const sitesData = await apiService.getSites();
-      console.log('Sites loaded for ServiceLevels:', sitesData);
 
       const sitesArray = Array.isArray(sitesData) ? sitesData : [];
       setSites(sitesArray);
-
-      console.log(`Loaded ${sitesArray.length} sites for ServiceLevels filter`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       if (
@@ -556,7 +530,6 @@ export function ServiceLevelsEnhanced() {
             metrics: snapshot.metrics,
           });
         } else {
-          console.log('[ServiceLevels] No historical data found for', timestamp);
           setHistoricalMetrics(null);
         }
       } catch (error) {
@@ -773,7 +746,6 @@ export function ServiceLevelsEnhanced() {
           <Select
             value={selectedSite}
             onValueChange={(value) => {
-              console.log('[ServiceLevels] Site filter changed to:', value);
               setSelectedSite(value);
             }}
           >
@@ -1466,7 +1438,7 @@ export function ServiceLevelsEnhanced() {
                 <ScrollArea className="h-[400px] pr-4">
                   <div className="space-y-2">
                     {serviceStations.slice(0, 20).map((station) => {
-                      const rssi = station.rssi ?? (station as any).rss ?? 0;
+                      const rssi = station.rssi ?? station.rss ?? 0;
                       const signalQuality =
                         rssi >= -50
                           ? 'excellent'
@@ -1479,13 +1451,9 @@ export function ServiceLevelsEnhanced() {
 
                       // Use transmittedRate/receivedRate (API field names) with fallback to txRate/rxRate
                       const tx =
-                        (station as any).transmittedRate ||
-                        station.txRate ||
-                        (station.txBytes || 0) * 8;
+                        station.transmittedRate || station.txRate || (station.txBytes || 0) * 8;
                       const rx =
-                        (station as any).receivedRate ||
-                        station.rxRate ||
-                        (station.rxBytes || 0) * 8;
+                        station.receivedRate || station.rxRate || (station.rxBytes || 0) * 8;
                       const totalThroughput = tx + rx;
 
                       return (
@@ -1668,12 +1636,11 @@ export function ServiceLevelsEnhanced() {
 
                 {/* Signal & Connection Metrics */}
                 <div className="grid grid-cols-3 gap-4">
-                  {(selectedClient.rssi !== undefined ||
-                    (selectedClient as any).rss !== undefined) && (
+                  {(selectedClient.rssi !== undefined || selectedClient.rss !== undefined) && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Signal Strength</p>
                       <p className="text-sm font-medium">
-                        {selectedClient.rssi ?? (selectedClient as any).rss} dBm
+                        {selectedClient.rssi ?? selectedClient.rss} dBm
                       </p>
                     </div>
                   )}
@@ -1681,8 +1648,8 @@ export function ServiceLevelsEnhanced() {
                     <p className="text-xs text-muted-foreground mb-1">Data Rate</p>
                     <p className="text-sm font-medium">
                       {(() => {
-                        const tx = (selectedClient as any).transmittedRate || selectedClient.txRate;
-                        const rx = (selectedClient as any).receivedRate || selectedClient.rxRate;
+                        const tx = selectedClient.transmittedRate || selectedClient.txRate;
+                        const rx = selectedClient.receivedRate || selectedClient.rxRate;
                         if (tx || rx) {
                           const txMbps = tx ? Math.round(tx / 1000000) : 0;
                           const rxMbps = rx ? Math.round(rx / 1000000) : 0;
