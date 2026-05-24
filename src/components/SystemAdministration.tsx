@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -12,7 +13,6 @@ import {
   Settings,
   Network,
   Clock,
-  Bell,
   FileText,
   Save,
   Shield,
@@ -21,11 +21,10 @@ import {
   AlertTriangle,
   Sparkles,
   Bot,
-  ToggleRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
-import type { NetworkTimeConfig, SNMPConfig, SystemLoggingConfig, SystemInfo } from '../types/system';
+import type { SystemInfo } from '../types/system';
 
 interface SystemConfig {
   // General
@@ -71,7 +70,10 @@ interface SystemAdministrationProps {
   onToggleNetworkAssistant?: (enabled: boolean) => void;
 }
 
-export function SystemAdministration({ networkAssistantEnabled = false, onToggleNetworkAssistant }: SystemAdministrationProps) {
+export function SystemAdministration({
+  networkAssistantEnabled = false,
+  onToggleNetworkAssistant,
+}: SystemAdministrationProps) {
   const [config, setConfig] = useState<SystemConfig>({
     hostname: 'extreme-controller',
     domain: 'local',
@@ -97,7 +99,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
     syslogLevel: 'info',
     auditLoggingEnabled: true,
     auditRetentionDays: 90,
-    auditSyslogEnabled: false
+    auditSyslogEnabled: false,
   });
 
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
   const [activeTab, setActiveTab] = useState('preferences');
   const [apiNotAvailable, setApiNotAvailable] = useState(false);
   const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
-  const [loadingSystemInfo, setLoadingSystemInfo] = useState(false);
+  const [_loadingSystemInfo, setLoadingSystemInfo] = useState(false);
 
   useEffect(() => {
     loadSystemConfig();
@@ -116,16 +118,18 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
     setLoading(true);
     try {
       const response = await apiService.makeAuthenticatedRequest('/v1/system/config', {
-        method: 'GET'
+        method: 'GET',
       });
 
       if (response.ok) {
         const data = await response.json();
-        setConfig(prevConfig => ({ ...prevConfig, ...data }));
+        setConfig((prevConfig) => ({ ...prevConfig, ...data }));
         setApiNotAvailable(false);
       } else if (response.status === 404) {
         setApiNotAvailable(true);
-        console.warn('System configuration API endpoint not available on this Extreme Platform ONE');
+        console.warn(
+          'System configuration API endpoint not available on this Extreme Platform ONE'
+        );
       }
     } catch (error) {
       console.error('Failed to load system config:', error);
@@ -167,7 +171,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
       const response = await apiService.makeAuthenticatedRequest('/v1/system/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(config)
+        body: JSON.stringify(config),
       });
 
       if (response.ok) {
@@ -184,7 +188,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
   };
 
   const handleUpdateConfig = (field: keyof SystemConfig, value: any) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    setConfig((prev) => ({ ...prev, [field]: value }));
   };
 
   const timezones = [
@@ -199,7 +203,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
     'Europe/Paris',
     'Asia/Tokyo',
     'Asia/Shanghai',
-    'Australia/Sydney'
+    'Australia/Sydney',
   ];
 
   if (loading) {
@@ -221,9 +225,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
             <Settings className="h-6 w-6" />
             System Administration
           </h2>
-          <p className="text-muted-foreground">
-            Configure system-wide settings and parameters
-          </p>
+          <p className="text-muted-foreground">Configure system-wide settings and parameters</p>
         </div>
         <Button onClick={handleSaveConfig} disabled={saving || apiNotAvailable}>
           <Save className="h-4 w-4 mr-2" />
@@ -235,8 +237,8 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
         <Alert className="border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            System configuration API endpoints are not available on this controller version.
-            This feature requires API v1/system/config support.
+            System configuration API endpoints are not available on this controller version. This
+            feature requires API v1/system/config support.
           </AlertDescription>
         </Alert>
       )}
@@ -273,9 +275,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                 <Label className="text-muted-foreground">CPU Usage</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all" 
-                      style={{ width: `${systemInfo.cpuUsage}%` }} 
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${systemInfo.cpuUsage}%` }}
                     />
                   </div>
                   <span className="text-sm">{systemInfo.cpuUsage}%</span>
@@ -285,9 +287,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                 <Label className="text-muted-foreground">Memory</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all" 
-                      style={{ width: `${systemInfo.memoryUsage}%` }} 
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${systemInfo.memoryUsage}%` }}
                     />
                   </div>
                   <span className="text-sm">{systemInfo.memoryUsage}%</span>
@@ -297,9 +299,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                 <Label className="text-muted-foreground">Disk</Label>
                 <div className="flex items-center gap-2 mt-1">
                   <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary transition-all" 
-                      style={{ width: `${systemInfo.diskUsage}%` }} 
+                    <div
+                      className="h-full bg-primary transition-all"
+                      style={{ width: `${systemInfo.diskUsage}%` }}
                     />
                   </div>
                   <span className="text-sm">{systemInfo.diskUsage}%</span>
@@ -343,8 +345,8 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                       Network Assistant
                     </Label>
                     <p className="text-sm text-muted-foreground mt-0.5">
-                      AI-powered assistant for network queries and troubleshooting.
-                      Use ⌘K to toggle when enabled.
+                      AI-powered assistant for network queries and troubleshooting. Use ⌘K to toggle
+                      when enabled.
                     </p>
                   </div>
                 </div>
@@ -359,7 +361,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                 <Alert>
                   <Bot className="h-4 w-4" />
                   <AlertDescription>
-                    Network Assistant is enabled. Press <kbd className="px-1.5 py-0.5 text-xs font-mono bg-muted rounded">⌘K</kbd> to open it, or click the chat bubble in the bottom-right corner.
+                    Network Assistant is enabled. Press{' '}
+                    <kbd className="px-1.5 py-0.5 text-xs font-mono bg-muted rounded">⌘K</kbd> to
+                    open it, or click the chat bubble in the bottom-right corner.
                   </AlertDescription>
                 </Alert>
               )}
@@ -493,12 +497,15 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Timezone</Label>
-                <Select value={config.timezone} onValueChange={(value) => handleUpdateConfig('timezone', value)}>
+                <Select
+                  value={config.timezone}
+                  onValueChange={(value) => handleUpdateConfig('timezone', value)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {timezones.map(tz => (
+                    {timezones.map((tz) => (
                       <SelectItem key={tz} value={tz}>
                         {tz}
                       </SelectItem>
@@ -626,9 +633,7 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Enable Syslog</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Send logs to remote syslog server
-                  </p>
+                  <p className="text-sm text-muted-foreground">Send logs to remote syslog server</p>
                 </div>
                 <Switch
                   checked={config.syslogEnabled}
@@ -662,7 +667,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                     <Label>Log Level</Label>
                     <Select
                       value={config.syslogLevel}
-                      onValueChange={(value: SystemConfig['syslogLevel']) => handleUpdateConfig('syslogLevel', value)}
+                      onValueChange={(value: SystemConfig['syslogLevel']) =>
+                        handleUpdateConfig('syslogLevel', value)
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -712,7 +719,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                     <Input
                       type="number"
                       value={config.auditRetentionDays}
-                      onChange={(e) => handleUpdateConfig('auditRetentionDays', parseInt(e.target.value))}
+                      onChange={(e) =>
+                        handleUpdateConfig('auditRetentionDays', parseInt(e.target.value))
+                      }
                       placeholder="90"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -729,7 +738,9 @@ export function SystemAdministration({ networkAssistantEnabled = false, onToggle
                     </div>
                     <Switch
                       checked={config.auditSyslogEnabled}
-                      onCheckedChange={(checked) => handleUpdateConfig('auditSyslogEnabled', checked)}
+                      onCheckedChange={(checked) =>
+                        handleUpdateConfig('auditSyslogEnabled', checked)
+                      }
                     />
                   </div>
                 </div>

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Server,
@@ -82,7 +83,11 @@ export function SiteGroupsPage({ onNavigateToSites }: SiteGroupsPageProps) {
   });
 
   // AppContext for site groups
-  const { siteGroups: contextSiteGroups, isLoadingOrg, refreshSiteGroups } = useAppContext();
+  const {
+    siteGroups: contextSiteGroups,
+    isLoadingOrg: _isLoadingOrg,
+    refreshSiteGroups,
+  } = useAppContext();
 
   const loadData = useCallback(async () => {
     setLoading(true);

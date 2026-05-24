@@ -1,22 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import {
-  Bell,
-  AlertTriangle,
-  Info,
-  CheckCircle,
-  XCircle,
-  Clock,
-  RefreshCw,
-  Filter
-} from 'lucide-react';
+import { Bell, AlertTriangle, Info, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { TouchButton } from './TouchButton';
-import { DesktopOnly } from './MobileOptimized';
 import { apiService } from '../services/api';
 
 export function EventAlarmDashboard() {
@@ -40,14 +30,16 @@ export function EventAlarmDashboard() {
       const [auditLogs, alarmsData, activeAlarmsData] = await Promise.allSettled([
         apiService.getAuditLogs(startTime, endTime),
         apiService.getAlarms(),
-        apiService.getActiveAlarms()
+        apiService.getActiveAlarms(),
       ]);
 
       if (auditLogs.status === 'fulfilled') {
         const mapped = auditLogs.value.map((log: any) => ({
           type: log.action || log.actionType || log.resourceType || 'Audit Event',
-          severity: log.severity || (log.status?.toLowerCase().includes('error') ? 'critical' : undefined),
-          message: log.description || log.message || `${log.action || ''} ${log.resource || ''}`.trim(),
+          severity:
+            log.severity || (log.status?.toLowerCase().includes('error') ? 'critical' : undefined),
+          message:
+            log.description || log.message || `${log.action || ''} ${log.resource || ''}`.trim(),
           timestamp: log.timestamp || log.time,
           user: log.user || log.username || log.userId,
         }));
@@ -64,7 +56,10 @@ export function EventAlarmDashboard() {
         console.warn('Alarms API unavailable (non-Swagger endpoint):', alarmsData.reason);
       }
       if (activeAlarmsData.status === 'rejected') {
-        console.warn('Active alarms API unavailable (non-Swagger endpoint):', activeAlarmsData.reason);
+        console.warn(
+          'Active alarms API unavailable (non-Swagger endpoint):',
+          activeAlarmsData.reason
+        );
       }
     } catch (error) {
       console.error('Failed to load data:', error);
@@ -114,7 +109,14 @@ export function EventAlarmDashboard() {
       case 'critical':
         return <Badge variant="destructive">Critical</Badge>;
       case 'warning':
-        return <Badge variant="outline" className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30">Warning</Badge>;
+        return (
+          <Badge
+            variant="outline"
+            className="bg-[color:var(--status-warning-bg)] text-[color:var(--status-warning)] border-[color:var(--status-warning)]/30"
+          >
+            Warning
+          </Badge>
+        );
       case 'info':
         return <Badge variant="secondary">Info</Badge>;
       default:
@@ -139,11 +141,14 @@ export function EventAlarmDashboard() {
             <Bell className="h-6 w-6" />
             Events & Alarms
           </h2>
-          <p className="text-muted-foreground">
-            Monitor system events and manage alarms
-          </p>
+          <p className="text-muted-foreground">Monitor system events and manage alarms</p>
         </div>
-        <Button variant="outline" size="sm" onClick={loadData} aria-label="Refresh events and alarms">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={loadData}
+          aria-label="Refresh events and alarms"
+        >
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -203,7 +208,7 @@ export function EventAlarmDashboard() {
             <div className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-[color:var(--status-error)]" />
               <span className="text-2xl font-bold">
-                {alarms.filter(a => a.severity?.toLowerCase() === 'critical').length}
+                {alarms.filter((a) => a.severity?.toLowerCase() === 'critical').length}
               </span>
             </div>
           </CardContent>
@@ -230,9 +235,7 @@ export function EventAlarmDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>Active Alarms</CardTitle>
-              <CardDescription>
-                Alarms requiring attention
-              </CardDescription>
+              <CardDescription>Alarms requiring attention</CardDescription>
             </CardHeader>
             <CardContent>
               {activeAlarms.length === 0 ? (
@@ -294,46 +297,43 @@ export function EventAlarmDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>All Alarms</CardTitle>
-              <CardDescription>
-                Complete alarm history
-              </CardDescription>
+              <CardDescription>Complete alarm history</CardDescription>
             </CardHeader>
             <CardContent>
               {alarms.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <AlertTriangle className="h-10 w-10 text-muted-foreground/40 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">No alarms recorded</p>
-                  <p className="text-xs text-muted-foreground mt-1">Alarm history will appear here when the controller reports events.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Alarm history will appear here when the controller reports events.
+                  </p>
                 </div>
               ) : (
-              <div className="space-y-2">
-                {alarms.map((alarm) => (
-                  <div
-                    key={alarm.id}
-                    className="flex items-start gap-3 p-3 border rounded-lg"
-                  >
-                    {getSeverityIcon(alarm.severity)}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{alarm.title || alarm.type}</span>
-                        {getSeverityBadge(alarm.severity)}
-                        {alarm.status && (
-                          <Badge variant="outline" className="text-xs">
-                            {alarm.status}
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {alarm.message || alarm.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{new Date(alarm.timestamp).toLocaleString()}</span>
+                <div className="space-y-2">
+                  {alarms.map((alarm) => (
+                    <div key={alarm.id} className="flex items-start gap-3 p-3 border rounded-lg">
+                      {getSeverityIcon(alarm.severity)}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">{alarm.title || alarm.type}</span>
+                          {getSeverityBadge(alarm.severity)}
+                          {alarm.status && (
+                            <Badge variant="outline" className="text-xs">
+                              {alarm.status}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {alarm.message || alarm.description}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{new Date(alarm.timestamp).toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
@@ -343,41 +343,41 @@ export function EventAlarmDashboard() {
           <Card>
             <CardHeader>
               <CardTitle>System Events</CardTitle>
-              <CardDescription>
-                Recent system activity
-              </CardDescription>
+              <CardDescription>Recent system activity</CardDescription>
             </CardHeader>
             <CardContent>
               {events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Info className="h-10 w-10 text-muted-foreground/40 mb-3" />
                   <p className="text-sm font-medium text-muted-foreground">No recent events</p>
-                  <p className="text-xs text-muted-foreground mt-1">System events will appear here as controller activity is logged.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    System events will appear here as controller activity is logged.
+                  </p>
                 </div>
               ) : (
-              <div className="space-y-2">
-                {events.map((event, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <Info className="h-4 w-4 text-[color:var(--status-info)] mt-0.5" />
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{event.type || 'Event'}</span>
-                        {event.severity && getSeverityBadge(event.severity)}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {event.message || event.description}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span>{new Date(event.timestamp).toLocaleString()}</span>
+                <div className="space-y-2">
+                  {events.map((event, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <Info className="h-4 w-4 text-[color:var(--status-info)] mt-0.5" />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">{event.type || 'Event'}</span>
+                          {event.severity && getSeverityBadge(event.severity)}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {event.message || event.description}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                          <Clock className="h-3 w-3" />
+                          <span>{new Date(event.timestamp).toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>

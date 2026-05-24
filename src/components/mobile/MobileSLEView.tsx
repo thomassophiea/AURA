@@ -3,10 +3,10 @@
  * Shows SLE metrics in a touch-friendly card format
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   RefreshCw,
-  Loader2,
   Signal,
   Zap,
   Clock,
