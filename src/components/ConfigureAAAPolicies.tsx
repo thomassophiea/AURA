@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -16,7 +18,6 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import {
-  AlertCircle,
   Server,
   Database,
   Lock,
@@ -28,7 +29,6 @@ import {
   XCircle,
   Layers,
 } from 'lucide-react';
-import { Alert, AlertDescription } from './ui/alert';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
 import { toast } from 'sonner';
@@ -129,6 +129,7 @@ export function ConfigureAAAPolicies() {
 
   useEffect(() => {
     loadAAAConfiguration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadAAAConfiguration = async () => {
@@ -220,7 +221,7 @@ export function ConfigureAAAPolicies() {
   const handleSaveAAAConfig = async () => {
     try {
       toast.success('AAA configuration saved');
-    } catch (error) {
+    } catch {
       toast.error('Failed to save AAA configuration');
     }
   };
@@ -324,7 +325,7 @@ export function ConfigureAAAPolicies() {
       }
       setShowRadiusDialog(false);
       setEditingRadius(null);
-    } catch (error) {
+    } catch {
       toast.error('Failed to save RADIUS server');
     }
   };
@@ -335,7 +336,7 @@ export function ConfigureAAAPolicies() {
     try {
       setRadiusServers((prev) => prev.filter((s) => s.id !== id));
       toast.success('RADIUS server deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete RADIUS server');
     }
   };
@@ -360,7 +361,7 @@ export function ConfigureAAAPolicies() {
       }
       setShowLdapDialog(false);
       setEditingLdap(null);
-    } catch (error) {
+    } catch {
       toast.error('Failed to save LDAP configuration');
     }
   };
@@ -371,7 +372,7 @@ export function ConfigureAAAPolicies() {
     try {
       setLdapConfigs((prev) => prev.filter((c) => c.id !== id));
       toast.success('LDAP configuration deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete LDAP configuration');
     }
   };
@@ -394,7 +395,7 @@ export function ConfigureAAAPolicies() {
       }
       setShowUserDialog(false);
       setEditingUser(null);
-    } catch (error) {
+    } catch {
       toast.error('Failed to save user');
     }
   };
@@ -405,7 +406,7 @@ export function ConfigureAAAPolicies() {
     try {
       setLocalUsers((prev) => prev.filter((u) => u.id !== id));
       toast.success('User deleted successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete user');
     }
   };
@@ -1333,7 +1334,7 @@ function LdapConfigDialog({
       // Simulate LDAP connection test
       await new Promise((resolve) => setTimeout(resolve, 1500));
       toast.success('LDAP connection test successful');
-    } catch (error) {
+    } catch {
       toast.error('LDAP connection test failed');
     } finally {
       setIsTestingConnection(false);

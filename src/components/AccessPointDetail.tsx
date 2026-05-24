@@ -1,19 +1,17 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Separator } from './ui/separator';
 import { Skeleton } from './ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   Wifi,
   Activity,
   Users,
-  MapPin,
   Server,
   Signal,
-  Zap,
-  HardDrive,
   Cpu,
   RefreshCw,
   Settings,
@@ -24,7 +22,6 @@ import {
   ChevronDown,
   ChevronRight,
   Radio,
-  ArrowUpDown,
   Power,
   Download,
   ArrowLeft,
@@ -33,16 +30,7 @@ import {
   CheckCircle2,
   XCircle,
 } from 'lucide-react';
-import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
-import {
-  apiService,
-  AccessPoint,
-  APDetails,
-  APStation,
-  APRadio,
-  APAlarm,
-  APAlarmCategory,
-} from '../services/api';
+import { apiService, APDetails, APStation, APAlarm, APAlarmCategory } from '../services/api';
 import { APEventsTimeline } from './APEventsTimeline';
 import { APInsights, APInsightsFullScreen } from './APInsights';
 import { toast } from 'sonner';
@@ -444,6 +432,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
 
   useEffect(() => {
     loadApDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialNumber]);
 
   // Reload events when duration changes
@@ -451,6 +440,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
     if (apDetails) {
       loadEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventDuration]);
 
   // Auto-refresh polling
@@ -469,6 +459,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialNumber]);
 
   // Pause polling when tab becomes inactive, resume when active
@@ -484,6 +475,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serialNumber]);
 
   // Force re-render every 10 seconds to update "time ago" text

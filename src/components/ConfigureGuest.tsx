@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -24,18 +26,13 @@ import {
   Users,
   Wifi,
   Shield,
-  Clock,
   RefreshCw,
   Plus,
   Edit,
   Trash2,
   CheckCircle,
   XCircle,
-  Info,
-  Search,
   Globe,
-  Key,
-  Calendar,
   Ticket,
   Save,
   AlertCircle,
@@ -43,25 +40,12 @@ import {
 import { apiService, Service, Role } from '../services/api';
 import { toast } from 'sonner';
 import { useAppContext } from '@/contexts/AppContext';
-import { Server } from 'lucide-react';
 import { useGridMode } from '@/contexts/GridModeContext';
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
 import type { ColDef } from 'ag-grid-community';
 
-interface GuestUser {
-  id: string;
-  username: string;
-  email?: string;
-  status: 'active' | 'expired' | 'disabled';
-  createdDate: string;
-  expiryDate?: string;
-  network?: string;
-  accessDuration: number;
-  remainingTime?: number;
-}
-
 export function ConfigureGuest() {
-  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
+  const { navigationScope, siteGroups } = useAppContext();
   const isOrgScope = navigationScope === 'global';
   const [loading, setLoading] = useState(true);
   const [guestNetworks, setGuestNetworks] = useState<Service[]>([]);
@@ -209,6 +193,7 @@ export function ConfigureGuest() {
 
   useEffect(() => {
     loadGuestData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadGuestData = async () => {
