@@ -20,7 +20,7 @@ import { useSiteGroupSettings } from '../hooks/useSiteGroupSettings';
 import { useVariableDefinitions, useVariableValues } from '../hooks/useGlobalElements';
 
 export function SiteGroupSettingsPage() {
-  const { organization, siteGroup, siteGroups } = useAppContext();
+  const { organization, siteGroup } = useAppContext();
   const orgId = organization?.id;
   const sgId = siteGroup?.id;
 
@@ -60,7 +60,7 @@ export function SiteGroupSettingsPage() {
     }
   };
 
-  const sgValues = values.filter((v) => v.scope_type === 'site_group' && v.scope_id === sgId);
+  const _sgValues = values.filter((v) => v.scope_type === 'site_group' && v.scope_id === sgId);
   const selectedVar = definitions.find((d) => d.id === selectedVarId) ?? null;
 
   return (

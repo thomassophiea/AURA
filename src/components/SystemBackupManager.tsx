@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -14,7 +15,7 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
-  HardDrive
+  HardDrive,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
@@ -27,7 +28,6 @@ import {
   DialogTitle,
 } from './ui/dialog';
 import { TouchButton } from './TouchButton';
-import { ResponsiveDialog } from './ResponsiveDialog';
 import { DesktopOnly } from './MobileOptimized';
 
 interface BackupFile {
@@ -78,7 +78,7 @@ export function SystemBackupManager() {
     try {
       const [files, usage] = await Promise.all([
         apiService.getFlashFiles(),
-        apiService.getFlashUsage()
+        apiService.getFlashUsage(),
       ]);
       setFlashFiles(files);
       setFlashUsage(usage);
@@ -214,7 +214,11 @@ export function SystemBackupManager() {
       {/* Platform Manager dependency notice */}
       <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-3 text-sm text-amber-800 dark:text-amber-300">
         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-        <span>Backup features require Platform Manager API access. These endpoints (/platformmanager/v1/*) are not part of the standard Swagger specification and may not be available on all controller versions.</span>
+        <span>
+          Backup features require Platform Manager API access. These endpoints
+          (/platformmanager/v1/*) are not part of the standard Swagger specification and may not be
+          available on all controller versions.
+        </span>
       </div>
 
       {/* Flash Storage Overview */}
@@ -237,14 +241,21 @@ export function SystemBackupManager() {
                     {formatFileSize(flashUsage.used)} / {formatFileSize(flashUsage.total)}
                   </span>
                 </div>
-                <div className="w-full bg-muted/50 rounded-full h-3 overflow-hidden shadow-inner" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={getUsagePercentage()} aria-label="Flash memory usage">
+                <div
+                  className="w-full bg-muted/50 rounded-full h-3 overflow-hidden shadow-inner"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={getUsagePercentage()}
+                  aria-label="Flash memory usage"
+                >
                   <div
                     className={`h-3 rounded-full transition-all duration-700 ease-out shadow-sm ${
                       getUsagePercentage() > 90
                         ? 'bg-gradient-to-r from-red-500 to-red-600'
                         : getUsagePercentage() > 70
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-500'
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500'
+                          : 'bg-gradient-to-r from-green-500 to-emerald-500'
                     }`}
                     style={{ width: `${getUsagePercentage()}%` }}
                   />
@@ -317,7 +328,10 @@ export function SystemBackupManager() {
                 <Database className="h-16 w-16 mx-auto text-blue-500/60" />
               </div>
               <p className="text-lg font-semibold mb-2">No configuration backups found</p>
-              <p className="text-sm max-w-md mx-auto">Create your first backup to safeguard your controller configuration and enable quick restore capabilities</p>
+              <p className="text-sm max-w-md mx-auto">
+                Create your first backup to safeguard your controller configuration and enable quick
+                restore capabilities
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -332,13 +346,17 @@ export function SystemBackupManager() {
                       <Database className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-base group-hover:text-primary transition-colors">{backup.filename}</p>
+                      <p className="font-semibold text-base group-hover:text-primary transition-colors">
+                        {backup.filename}
+                      </p>
                       <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                         <span className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
                           {formatDate(backup.created)}
                         </span>
-                        <Badge variant="outline" className="font-mono text-xs">{formatFileSize(backup.size)}</Badge>
+                        <Badge variant="outline" className="font-mono text-xs">
+                          {formatFileSize(backup.size)}
+                        </Badge>
                       </div>
                     </div>
                   </div>
@@ -383,9 +401,7 @@ export function SystemBackupManager() {
             </div>
             Flash Memory Files
           </CardTitle>
-          <CardDescription className="mt-1">
-            Manage files stored in flash memory
-          </CardDescription>
+          <CardDescription className="mt-1">Manage files stored in flash memory</CardDescription>
         </CardHeader>
         <CardContent>
           {flashFiles.length === 0 ? (

@@ -210,6 +210,7 @@ export function ServiceLevelsEnhanced() {
     }, 30000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedService]);
 
   useEffect(() => {
@@ -217,6 +218,7 @@ export function ServiceLevelsEnhanced() {
     if (selectedSite) {
       loadServices();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSite]);
 
   const loadServices = async (isRefresh = false) => {

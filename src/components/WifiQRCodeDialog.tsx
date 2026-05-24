@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { DetailSlideOut } from './DetailSlideOut';
 import { Button } from './ui/button';
 import { QRCodeSVG } from 'qrcode.react';
-import { Download, Wifi, Shield, Radio } from 'lucide-react';
+import { Download, Shield, Radio } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { toast } from 'sonner';
 
@@ -94,7 +94,7 @@ export function WifiQRCodeDialog({ open, onOpenChange, wlan }: WifiQRCodeDialogP
               URL.revokeObjectURL(url);
 
               toast.success('QR Code Downloaded', {
-                description: `Saved as ${a.download}`
+                description: `Saved as ${a.download}`,
               });
             }
           }, 'image/png');
@@ -105,7 +105,7 @@ export function WifiQRCodeDialog({ open, onOpenChange, wlan }: WifiQRCodeDialogP
     } catch (error) {
       console.error('Error downloading QR code:', error);
       toast.error('Failed to download QR code', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   };
@@ -114,13 +114,29 @@ export function WifiQRCodeDialog({ open, onOpenChange, wlan }: WifiQRCodeDialogP
     const security = wlan.security?.toLowerCase() || 'unknown';
 
     if (security.includes('open')) {
-      return <Badge variant="outline" className="gap-1"><Shield className="h-3 w-3" /> Open</Badge>;
+      return (
+        <Badge variant="outline" className="gap-1">
+          <Shield className="h-3 w-3" /> Open
+        </Badge>
+      );
     } else if (security.includes('wpa3')) {
-      return <Badge variant="default" className="gap-1"><Shield className="h-3 w-3" /> WPA3</Badge>;
+      return (
+        <Badge variant="default" className="gap-1">
+          <Shield className="h-3 w-3" /> WPA3
+        </Badge>
+      );
     } else if (security.includes('wpa2-enterprise') || security.includes('enterprise')) {
-      return <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> WPA2-Enterprise</Badge>;
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Shield className="h-3 w-3" /> WPA2-Enterprise
+        </Badge>
+      );
     } else if (security.includes('wpa2')) {
-      return <Badge variant="secondary" className="gap-1"><Shield className="h-3 w-3" /> WPA2</Badge>;
+      return (
+        <Badge variant="secondary" className="gap-1">
+          <Shield className="h-3 w-3" /> WPA2
+        </Badge>
+      );
     } else {
       return <Badge variant="outline">{wlan.security || 'Unknown'}</Badge>;
     }
@@ -156,12 +172,7 @@ export function WifiQRCodeDialog({ open, onOpenChange, wlan }: WifiQRCodeDialogP
 
         {/* QR Code */}
         <div ref={qrRef} className="flex justify-center p-6 bg-white rounded-lg">
-          <QRCodeSVG
-            value={qrString}
-            size={256}
-            level="M"
-            includeMargin={false}
-          />
+          <QRCodeSVG value={qrString} size={256} level="M" includeMargin={false} />
         </div>
 
         {/* Instructions */}

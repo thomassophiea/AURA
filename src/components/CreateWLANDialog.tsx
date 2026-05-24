@@ -311,6 +311,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setProfilesBySite(new Map());
       setEffectiveSets([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.selectedSites, formData.selectedSiteGroups]);
 
   // Recalculate effective sets when site configs change
@@ -318,6 +319,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     if (siteConfigs.size > 0) {
       calculateEffectiveSets();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteConfigs, profilesBySite]);
 
   // Check for 6GHz band with non-WPA3/OWE security

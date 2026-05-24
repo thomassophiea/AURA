@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
-import { Link, Copy, Download, Upload, Check, Globe, FileText, Share2 } from 'lucide-react';
+import { Copy, Download, Upload, Check, Globe, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportShareDialogProps {

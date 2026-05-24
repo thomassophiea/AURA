@@ -18,6 +18,7 @@
  * />
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Bookmark, BookmarkCheck, AlertCircle } from 'lucide-react';
 import { cn } from './ui/utils';
@@ -28,11 +29,7 @@ import {
   createWidgetReference,
   type PersistedWidgetReference,
 } from '@/services/workspacePersistence';
-import {
-  checkWidgetEligibility,
-  canHydrateInWorkspace,
-  type WidgetEligibility,
-} from '@/config/workspaceEligibility';
+import { checkWidgetEligibility, type WidgetEligibility } from '@/config/workspaceEligibility';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 export interface SaveToWorkspaceProps {
@@ -122,23 +119,17 @@ export const SaveToWorkspace: React.FC<SaveToWorkspaceProps> = ({
         }
       } else {
         // Save to workspace
-        const widgetRef = createWidgetReference(
-          widgetId,
-          widgetType,
-          title,
-          endpointRefs,
-          {
-            catalog_id: catalogId || eligibility.catalogId,
-            columns,
-            filters,
-            time_range: timeRange,
-            metric_selection: metricSelection,
-            layout_position: layoutPosition,
-            layout_size: layoutSize,
-            source_page: sourcePage,
-            source_widget_id: widgetId,
-          }
-        );
+        const widgetRef = createWidgetReference(widgetId, widgetType, title, endpointRefs, {
+          catalog_id: catalogId || eligibility.catalogId,
+          columns,
+          filters,
+          time_range: timeRange,
+          metric_selection: metricSelection,
+          layout_position: layoutPosition,
+          layout_size: layoutSize,
+          source_page: sourcePage,
+          source_widget_id: widgetId,
+        });
 
         const success = saveWidgetToWorkspace(widgetRef);
         if (success) {
@@ -235,9 +226,7 @@ export const SaveToWorkspace: React.FC<SaveToWorkspaceProps> = ({
             )}
           />
           {showLabel && (
-            <span className="text-xs font-medium">
-              {isSaved ? 'Saved' : 'Save to Workspace'}
-            </span>
+            <span className="text-xs font-medium">{isSaved ? 'Saved' : 'Save to Workspace'}</span>
           )}
         </button>
       </TooltipTrigger>
@@ -266,13 +255,16 @@ export function useSaveToWorkspace(widgetId: string) {
     return success;
   }, [widgetId]);
 
-  const toggle = useCallback((widget: PersistedWidgetReference) => {
-    if (isSaved) {
-      return remove();
-    } else {
-      return save(widget);
-    }
-  }, [isSaved, save, remove]);
+  const toggle = useCallback(
+    (widget: PersistedWidgetReference) => {
+      if (isSaved) {
+        return remove();
+      } else {
+        return save(widget);
+      }
+    },
+    [isSaved, save, remove]
+  );
 
   // Re-check on mount
   useEffect(() => {

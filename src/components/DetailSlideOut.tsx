@@ -1,7 +1,5 @@
 import { ReactNode } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from './ui/sheet';
-import { Button } from './ui/button';
-import { X } from 'lucide-react';
 
 interface DetailSlideOutProps {
   isOpen: boolean;
@@ -18,7 +16,7 @@ export function DetailSlideOut({
   title,
   description,
   children,
-  width = '2xl'  // Changed default to 2xl for better visibility
+  width = '2xl', // Changed default to 2xl for better visibility
 }: DetailSlideOutProps) {
   const widthClasses = {
     sm: 'max-w-sm',
@@ -27,7 +25,7 @@ export function DetailSlideOut({
     xl: 'max-w-xl',
     '2xl': 'max-w-2xl',
     '3xl': 'max-w-3xl',
-    '4xl': 'max-w-4xl'
+    '4xl': 'max-w-4xl',
   };
 
   return (
@@ -40,9 +38,7 @@ export function DetailSlideOut({
         <SheetHeader className="px-6 py-4 border-b border-border">
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0">
-              <SheetTitle className="text-lg font-semibold truncate">
-                {title}
-              </SheetTitle>
+              <SheetTitle className="text-lg font-semibold truncate">{title}</SheetTitle>
               {description && (
                 <SheetDescription className="mt-1 text-sm text-muted-foreground">
                   {description}
@@ -51,10 +47,8 @@ export function DetailSlideOut({
             </div>
           </div>
         </SheetHeader>
-        
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
-          {children}
-        </div>
+
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">{children}</div>
       </SheetContent>
     </Sheet>
   );
