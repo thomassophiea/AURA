@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Wifi,
   MapPin,
-  Users,
   GripVertical,
   Settings,
   Info,
@@ -44,6 +43,11 @@ import {
   ProfileInterfaceAssignmentDialog,
   type ProfileWithInterfaces,
 } from './wlans/ProfileInterfaceAssignmentDialog';
+interface NamedItem {
+  id: string;
+  name: string;
+}
+
 // Legacy manual site-grouping concept (color-coded groups stored in localStorage).
 // The canonical SiteGroup (controller pair) is in src/types/domain.ts.
 interface LegacySiteGroup {
@@ -65,6 +69,8 @@ import type {
   DeploymentMode,
   EffectiveProfileSet,
   SecurityType,
+  SAEMethod,
+  WLANAuthMethod,
   PMFMode,
 } from '../types/network';
 
@@ -135,22 +141,22 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   // Site groups
   const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
-  const [siteGroupDialogOpen, setLegacySiteGroupDialogOpen] = useState(false);
+  const [, setLegacySiteGroupDialogOpen] = useState(false);
 
   // Roles
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<NamedItem[]>([]);
   const [loadingRoles, setLoadingRoles] = useState(false);
 
   // AAA Policies (for enterprise auth)
-  const [aaaPolicies, setAaaPolicies] = useState<any[]>([]);
+  const [aaaPolicies, setAaaPolicies] = useState<NamedItem[]>([]);
   const [loadingAaaPolicies, setLoadingAaaPolicies] = useState(false);
 
   // Topologies
-  const [topologies, setTopologies] = useState<any[]>([]);
+  const [topologies, setTopologies] = useState<NamedItem[]>([]);
   const [loadingTopologies, setLoadingTopologies] = useState(false);
 
   // Class of Service
-  const [cosProfiles, setCosProfiles] = useState<any[]>([]);
+  const [cosProfiles, setCosProfiles] = useState<NamedItem[]>([]);
   const [loadingCos, setLoadingCos] = useState(false);
 
   // Site deployment configurations
@@ -248,7 +254,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         preAuthenticatedIdleTimeout: 300,
         postAuthenticatedIdleTimeout: 1800,
         sessionTimeout: 0,
-      } as any);
+        assignmentMode: 'all_sites' as WLANAssignmentMode,
+        assignedSiteIds: [],
+        assignedSiteGroupIds: [],
+      });
       setSiteConfigs(new Map());
       setProfilesBySite(new Map());
       setEffectiveSets([]);
@@ -340,9 +349,8 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       setSites(data);
       // Auto-select all sites by default for easy deployment
       if (data.length > 0) {
-        const allSiteIds = data.map((s: any) => s.id);
+        const allSiteIds = data.map((s: Site) => s.id);
         setFormData((prev) => ({ ...prev, selectedSites: allSiteIds }));
-        console.log('[CreateWLAN] Auto-selected all sites:', allSiteIds.length);
       }
     } catch (error) {
       console.error('Failed to load sites:', error);
@@ -363,7 +371,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       const bridgedId = nameMap['bridged'] || nameMap['Bridged'];
       if (bridgedId) {
         setFormData((prev) => ({ ...prev, authenticatedUserDefaultRoleID: bridgedId }));
-        console.log('[CreateWLAN] Auto-selected "bridged" role:', bridgedId);
       }
     } catch (error) {
       console.error('Failed to load roles:', error);
@@ -378,7 +385,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       const nameMap = await apiService.getAaaPolicyNameToIdMap();
       const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setAaaPolicies(data);
-      console.log(`[CreateWLAN] Loaded ${data.length} AAA policies`);
     } catch (error) {
       console.error('Failed to load AAA policies:', error);
     } finally {
@@ -392,7 +398,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       const nameMap = await apiService.getTopologyNameToIdMap();
       const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setTopologies(data);
-      console.log(`[CreateWLAN] Loaded ${data.length} topologies`);
     } catch (error) {
       console.error('Failed to load topologies:', error);
     } finally {
@@ -406,7 +411,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       const nameMap = await apiService.getCoSNameToIdMap();
       const data = Object.entries(nameMap).map(([name, id]) => ({ id, name }));
       setCosProfiles(data);
-      console.log(`[CreateWLAN] Loaded ${data.length} CoS profiles`);
     } catch (error) {
       console.error('Failed to load CoS profiles:', error);
     } finally {
@@ -416,8 +420,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
   const discoverProfiles = async (siteIds?: string[]) => {
     const sitesToDiscover = siteIds || formData.selectedSites;
-    console.log('=== PROFILE DISCOVERY START ===');
-    console.log('Selected sites to discover:', sitesToDiscover);
 
     if (sitesToDiscover.length === 0) {
       console.warn('⚠️ No sites to discover profiles for');
@@ -427,9 +429,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
     setDiscoveringProfiles(true);
     try {
       const assignmentService = new WLANAssignmentService();
-      console.log('Calling discoverProfilesForSites...');
       const profileMap = await assignmentService.discoverProfilesForSites(sitesToDiscover);
-      console.log('Profile Map Received:', profileMap);
 
       const newProfilesBySite = new Map<string, Profile[]>();
       const newSiteConfigs = new Map(siteConfigs);
@@ -438,7 +438,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       for (const siteId of sitesToDiscover) {
         const profiles = profileMap[siteId] || [];
         totalProfilesFound += profiles.length;
-        console.log(`Site ${siteId}: Found ${profiles.length} profiles`, profiles);
 
         if (profiles.length === 0) {
           console.warn(
@@ -459,13 +458,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
             excludedProfiles: [],
             profiles,
           };
-          console.log(`Creating new site config for ${siteId}:`, config);
           newSiteConfigs.set(siteId, config);
         } else {
           // Update profiles for existing config
           const config = newSiteConfigs.get(siteId)!;
           newSiteConfigs.set(siteId, { ...config, profiles });
-          console.log(`Updated existing site config for ${siteId}:`, { ...config, profiles });
         }
       }
 
@@ -477,14 +474,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
         toast.warning('No Profiles Found', {
           description: `No profiles were discovered at the selected site(s). Please ensure the site(s) have device groups with profiles configured.`,
         });
-      } else {
-        console.log(
-          `✅ Discovered ${totalProfilesFound} total profiles across ${sitesToDiscover.length} sites`
-        );
       }
-
-      console.log('Final site configs:', Array.from(newSiteConfigs.entries()));
-      console.log('=== PROFILE DISCOVERY END ===');
     } catch (error) {
       console.error('❌ Failed to discover profiles:', error);
       console.error('Error details:', error);
@@ -514,12 +504,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       return group?.siteIds || [];
     });
     return [...new Set([...formData.selectedSites, ...groupSites])];
-  };
-
-  // Save site groups to localStorage
-  const handleSaveLegacySiteGroups = (groups: LegacySiteGroup[]) => {
-    setLegacySiteGroups(groups);
-    localStorage.setItem('siteGroups', JSON.stringify(groups));
   };
 
   const toggleSite = (siteId: string) => {
@@ -615,13 +599,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
   };
 
   const handleSubmit = async () => {
-    console.log('=== WLAN CREATION DEBUG START ===');
-    console.log('1. Form Data:', formData);
-    console.log('2. Selected Sites:', formData.selectedSites);
-    console.log('3. Site Configs:', Array.from(siteConfigs.entries()));
-    console.log('4. Profiles By Site:', Array.from(profilesBySite.entries()));
-    console.log('5. Effective Sets:', effectiveSets);
-
     // Comprehensive validation - check all required fields
     const errors: string[] = [];
 
@@ -666,8 +643,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
 
     // For selected_targets, validate that profile discovery completed and configs are valid
     if (assignmentMode === 'selected_targets') {
-      console.log('6. Validation passed, site configs count:', siteConfigs.size);
-
       if (siteConfigs.size === 0) {
         toast.error('No site configurations found', {
           description: 'Please wait for profile discovery to complete before creating the WLAN',
@@ -676,7 +651,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       }
 
       for (const config of siteConfigs.values()) {
-        console.log('7. Validating config for site:', config.siteName, config);
         if (!config.profiles || config.profiles.length === 0) {
           toast.error(`No profiles found at site "${config.siteName}"`, {
             description:
@@ -685,7 +659,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           return;
         }
         const validation = effectiveSetCalculator.validateSiteAssignment(config);
-        console.log('8. Validation result:', validation);
         if (!validation.valid) {
           toast.error(`Invalid configuration for ${config.siteName}`, {
             description: validation.errors.join(', '),
@@ -759,16 +732,10 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
           excludedProfiles: config.excludedProfiles,
         }));
 
-        console.log('9. Site Assignments Prepared:', siteAssignments);
-        console.log('10. Expanded Sites:', expandedSites);
-
         result = await assignmentService.createWLANWithSiteCentricDeployment(
           { ...serviceData, sites: expandedSites },
           siteAssignments
         );
-
-        console.log('11. WLAN Creation Result:', result);
-        console.log('=== WLAN CREATION DEBUG END ===');
 
         const successfulAssignments = result.assignments?.filter((a) => a.success) || [];
         const failedAssignments = result.assignments?.filter((a) => !a.success) || [];
@@ -813,9 +780,6 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
       toast.error('No service ID available for assignment');
       return;
     }
-
-    console.log('[InterfaceAssignment] Saving assignments for service:', createdServiceId);
-    console.log('[InterfaceAssignment] Profile assignments:', assignments);
 
     let successCount = 0;
     let failCount = 0;
@@ -1032,8 +996,12 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     <Label htmlFor="security">Auth Type</Label>
                     <Select
                       value={formData.security}
-                      onValueChange={(value: any) =>
-                        setFormData({ ...formData, security: value, securityConfig: undefined })
+                      onValueChange={(value) =>
+                        setFormData({
+                          ...formData,
+                          security: value as SecurityType,
+                          securityConfig: undefined,
+                        })
                       }
                     >
                       <SelectTrigger>
@@ -1060,7 +1028,9 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                     <Label htmlFor="band">Band</Label>
                     <Select
                       value={formData.band}
-                      onValueChange={(value: any) => setFormData({ ...formData, band: value })}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, band: value as WLANFormData['band'] })
+                      }
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -1150,10 +1120,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Label htmlFor="saeMethod">SAE Method</Label>
                       <Select
                         value={formData.securityConfig?.saeMethod || 'both'}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value) =>
                           setFormData({
                             ...formData,
-                            securityConfig: { ...formData.securityConfig, saeMethod: value },
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              saeMethod: value as SAEMethod,
+                            },
                           })
                         }
                       >
@@ -1382,7 +1355,7 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                           <SelectItem value="none">None (Use WLAN-level RADIUS)</SelectItem>
                           {aaaPolicies.map((policy) => (
                             <SelectItem key={policy.id} value={policy.id}>
-                              {policy.name || policy.policyName || policy.id}
+                              {policy.name || policy.id}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -1394,10 +1367,13 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                       <Label htmlFor="wlanAuthMethod">Authentication Method</Label>
                       <Select
                         value={formData.securityConfig?.wlanAuthMethod || 'RADIUS'}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value) =>
                           setFormData({
                             ...formData,
-                            securityConfig: { ...formData.securityConfig, wlanAuthMethod: value },
+                            securityConfig: {
+                              ...formData.securityConfig,
+                              wlanAuthMethod: value as WLANAuthMethod,
+                            },
                           })
                         }
                       >
@@ -2065,7 +2041,11 @@ export function CreateWLANDialog({ open, onOpenChange, onSuccess }: CreateWLANDi
                           onConfigureProfiles={
                             config.deploymentMode === 'ALL_PROFILES_AT_SITE'
                               ? undefined
-                              : () => openProfilePicker(config.siteId, config.deploymentMode as any)
+                              : () =>
+                                  openProfilePicker(
+                                    config.siteId,
+                                    config.deploymentMode as 'INCLUDE_ONLY' | 'EXCLUDE_SOME'
+                                  )
                           }
                           selectedProfilesCount={config.includedProfiles.length}
                           excludedProfilesCount={config.excludedProfiles.length}
