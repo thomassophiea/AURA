@@ -30,9 +30,6 @@ class SiteMappingService {
     this.loadAttempts++;
 
     try {
-      console.log(
-        `Loading sites from /v3/sites for mapping (attempt ${this.loadAttempts}/${this.maxLoadAttempts})...`
-      );
       const sites = await apiService.getSites();
 
       // Clear existing cache and populate with new data
@@ -44,7 +41,6 @@ class SiteMappingService {
         });
         this.lastLoadTime = now;
         this.loadAttempts = 0; // Reset attempts on success
-        console.log(`Successfully loaded ${sites.length} sites for mapping`);
       } else {
         console.warn('No sites returned from /v3/sites endpoint');
         // Don't reset attempts if we got an empty response
@@ -74,23 +70,12 @@ class SiteMappingService {
   async getSiteName(siteId: string): Promise<string | null> {
     if (!siteId) return null;
 
-    console.log(`Getting site name for ID: ${siteId}`);
-
     // Try to get from cache first
     const cachedSite = this.sitesCache.get(siteId);
     if (cachedSite) {
       const siteName = cachedSite.siteName || cachedSite.name || null;
-      console.log(`Found site in cache: ${siteId} -> ${siteName}`);
       return siteName;
     }
-
-    console.log(`Site ${siteId} not in cache, loading sites...`);
-    console.log(`Current cache status:`, {
-      size: this.sitesCache.size,
-      keys: Array.from(this.sitesCache.keys()).slice(0, 5), // Show first 5 keys
-      isLoading: this.isLoading,
-      lastLoadTime: this.lastLoadTime,
-    });
 
     // If not in cache, try to load sites and check again
     await this.loadSites();
@@ -98,7 +83,6 @@ class SiteMappingService {
     const site = this.sitesCache.get(siteId);
     if (site) {
       const siteName = site.siteName || site.name || null;
-      console.log(`Site found after loading: ${siteId} -> ${siteName}`);
       return siteName;
     } else {
       console.warn(
@@ -107,12 +91,10 @@ class SiteMappingService {
       console.warn('Available site IDs:', Array.from(this.sitesCache.keys()).slice(0, 10));
 
       // Try individual site lookup as fallback
-      console.log(`Attempting individual site lookup for ${siteId}...`);
       try {
         const individualSite = await apiService.getSiteById(siteId);
         if (individualSite) {
           const siteName = individualSite.siteName || individualSite.name || null;
-          console.log(`Found site via individual lookup: ${siteId} -> ${siteName}`);
 
           // Cache the individually found site
           this.sitesCache.set(siteId, individualSite);
@@ -123,11 +105,9 @@ class SiteMappingService {
       }
 
       // Try to extract site info from connected clients as last resort
-      console.log(`Attempting to extract site info from clients for ${siteId}...`);
       try {
         const extractedSiteName = await this.extractSiteNameFromClients(siteId);
         if (extractedSiteName) {
-          console.log(`Extracted site name from clients: ${siteId} -> ${extractedSiteName}`);
           return extractedSiteName;
         }
       } catch (error) {
@@ -154,7 +134,6 @@ class SiteMappingService {
 
       if (stationWithSiteName) {
         const siteName = stationWithSiteName.siteName || stationWithSiteName.site;
-        console.log(`Extracted site name from station data: ${siteName}`);
 
         // Create a fake site object and cache it
         const fakeSite: Site = {
@@ -229,49 +208,6 @@ class SiteMappingService {
       loadAttempts: this.loadAttempts,
       maxAttempts: this.maxLoadAttempts,
     };
-  }
-
-  // Debug method to help diagnose site mapping issues
-  async diagnoseSiteMapping(targetSiteId: string): Promise<void> {
-    console.log('=== Site Mapping Diagnostic ===');
-    console.log(`Target Site ID: ${targetSiteId}`);
-
-    // Check cache status
-    const status = this.getCacheStatus();
-    console.log('Cache Status:', status);
-
-    // List all cached sites
-    console.log('Cached Sites:');
-    Array.from(this.sitesCache.entries()).forEach(([id, site]) => {
-      console.log(`  ${id}: ${site.name || site.siteName || 'No Name'}`);
-    });
-
-    // Try to load sites manually
-    console.log('Attempting to load sites...');
-    await this.loadSites();
-
-    // Check if target site exists
-    const targetSite = this.sitesCache.get(targetSiteId);
-    if (targetSite) {
-      console.log('Target site found:', targetSite);
-    } else {
-      console.log('Target site NOT found');
-
-      // Try individual lookup
-      console.log('Attempting individual site lookup...');
-      try {
-        const individualSite = await apiService.getSiteById(targetSiteId);
-        if (individualSite) {
-          console.log('Individual lookup successful:', individualSite);
-        } else {
-          console.log('Individual lookup also failed');
-        }
-      } catch (error) {
-        console.log('Individual lookup error:', error);
-      }
-    }
-
-    console.log('=== End Diagnostic ===');
   }
 }
 
