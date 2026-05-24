@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Dashboard API responses from Campus Controller are untyped JSON
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { apiService } from '../services/api';
 import { throughputService, ThroughputSnapshot } from '../services/throughput';
 import { getVendor, getVendorIcon } from '../services/oui-lookup';
-import { formatBytes as formatBytesUnit } from '../lib/units';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { useGlobalFilters } from './useGlobalFilters';
 import { useOperationalContext } from './useOperationalContext';
@@ -243,8 +244,6 @@ export function useDashboardData(): DashboardData {
   const [avgSnr, setAvgSnr] = useState<number>(0);
   const [avgRssi, setAvgRssi] = useState<number>(0);
 
-  const formatBytes = formatBytesUnit;
-
   const getActiveSiteFilter = useCallback((): string | undefined => {
     if (operationalCtx.mode === 'SITE' && operationalCtx.siteId) {
       return operationalCtx.siteId;
@@ -254,12 +253,8 @@ export function useDashboardData(): DashboardData {
 
   const fetchAccessPoints = useCallback(async (): Promise<AccessPoint[]> => {
     const siteFilter = getActiveSiteFilter();
-    console.log(
-      '[Dashboard] Fetching access points' + (siteFilter ? ` for site: ${siteFilter}` : '')
-    );
     try {
       const aps = await apiService.getAccessPointsBySite(siteFilter);
-      console.log('[Dashboard] Fetched', aps.length, 'access points');
       return aps;
     } catch (error) {
       console.error('[Dashboard] Error fetching APs:', error);
@@ -269,7 +264,6 @@ export function useDashboardData(): DashboardData {
 
   const fetchStations = useCallback(async (): Promise<Station[]> => {
     const siteFilter = getActiveSiteFilter();
-    console.log('[Dashboard] Fetching stations' + (siteFilter ? ` for site: ${siteFilter}` : ''));
     try {
       if (siteFilter) {
         try {
@@ -284,7 +278,6 @@ export function useDashboardData(): DashboardData {
             const stns = Array.isArray(data)
               ? data
               : safe.stations || safe.clients || safe.data || [];
-            console.log('[Dashboard] Fetched', stns.length, 'stations for site (API-scoped)');
             return stns;
           }
         } catch {
@@ -309,13 +302,6 @@ export function useDashboardData(): DashboardData {
               (s: any) =>
                 s.siteName === siteName || s.siteId === siteFilter || s.siteName === siteFilter
             );
-            console.log(
-              '[Dashboard] Filtered',
-              filtered.length,
-              '/',
-              allStations.length,
-              'stations for site'
-            );
             return filtered;
           }
         } catch {
@@ -335,7 +321,6 @@ export function useDashboardData(): DashboardData {
       const data = await response.json();
       const safe = data ?? {};
       const stns = Array.isArray(data) ? data : safe.stations || safe.clients || safe.data || [];
-      console.log('[Dashboard] Fetched', stns.length, 'stations');
       return stns;
     } catch (error) {
       console.error('[Dashboard] Error fetching stations:', error);
@@ -345,13 +330,11 @@ export function useDashboardData(): DashboardData {
 
   const fetchServices = useCallback(async (): Promise<Service[]> => {
     const siteFilter = getActiveSiteFilter();
-    console.log('[Dashboard] Fetching services' + (siteFilter ? ` for site: ${siteFilter}` : ''));
     try {
       if (siteFilter) {
         try {
           const svcs = await apiService.getServicesBySite(siteFilter);
           if (svcs.length > 0) {
-            console.log('[Dashboard] Fetched', svcs.length, 'services for site');
             return svcs;
           }
         } catch {
@@ -377,7 +360,6 @@ export function useDashboardData(): DashboardData {
                 s.site === siteName ||
                 s.location === siteName
             );
-            console.log('[Dashboard] Filtered', filtered.length, 'services for site (client-side)');
             return filtered;
           }
         } catch {
@@ -397,7 +379,6 @@ export function useDashboardData(): DashboardData {
       const data = await response.json();
       const safe = data ?? {};
       const svcs = Array.isArray(data) ? data : safe.services || safe.data || [];
-      console.log('[Dashboard] Fetched', svcs.length, 'services');
       return svcs;
     } catch (error) {
       console.error('[Dashboard] Error fetching services:', error);
@@ -431,9 +412,6 @@ export function useDashboardData(): DashboardData {
 
   const fetchNotifications = useCallback(async (): Promise<Notification[]> => {
     const siteFilter = getActiveSiteFilter();
-    console.log(
-      '[Dashboard] Fetching notifications' + (siteFilter ? ` for site: ${siteFilter}` : '')
-    );
     try {
       const response = await apiService.makeAuthenticatedRequest(
         '/v1/notifications',
@@ -464,10 +442,8 @@ export function useDashboardData(): DashboardData {
       const notifs = siteFilter
         ? await filterNotificationsBySite(allNotifs, siteFilter)
         : allNotifs;
-      console.log('[Dashboard] Fetched', notifs.length, 'notifications');
       return notifs;
-    } catch (error) {
-      console.log('[Dashboard] Notifications not available:', error);
+    } catch {
       return [];
     }
   }, [getActiveSiteFilter, filterNotificationsBySite]);
@@ -500,9 +476,6 @@ export function useDashboardData(): DashboardData {
 
   const fetchRFQIData = useCallback(async () => {
     const siteId = getActiveSiteFilter();
-    console.log(
-      '[Dashboard] Fetching RFQI data' + (siteId ? ` for site: ${siteId}` : ' for all sites')
-    );
     try {
       if (siteId) {
         const rfData = await apiService.fetchRFQualityData(siteId, '24H');
@@ -536,7 +509,6 @@ export function useDashboardData(): DashboardData {
               .sort((a: any, b: any) => a.timestamp - b.timestamp)
               .slice(-24);
             setRfqiData(sortedData);
-            console.log('[Dashboard] RFQI: loaded', sortedData.length, 'time-series points');
             return;
           }
         }
@@ -581,18 +553,9 @@ export function useDashboardData(): DashboardData {
               needsAttention: 100 - compositeScore,
             },
           ]);
-          console.log(
-            '[Dashboard] RFQI composite score:',
-            compositeScore,
-            'from',
-            allRadios.length,
-            'radios'
-          );
           return;
         }
       }
-
-      console.log('[Dashboard] No RFQI data available; showing empty state');
       setRfqiData([]);
     } catch (error) {
       console.error('[Dashboard] Error fetching RFQI data:', error);
@@ -626,25 +589,6 @@ export function useDashboardData(): DashboardData {
       const isUp = (ap as any).isUp;
       const isOnline = (ap as any).online;
 
-      console.log('[Dashboard] AP Status Debug:', {
-        name: ap.name || ap.hostname || ap.serialNumber,
-        status: ap.status,
-        connectionState: ap.connectionState,
-        operationalState: ap.operationalState,
-        state: (ap as any).state,
-        isUp,
-        online: isOnline,
-        computedStatus: status,
-        allKeys: Object.keys(ap).filter(
-          (k) =>
-            k.toLowerCase().includes('status') ||
-            k.toLowerCase().includes('state') ||
-            k.toLowerCase().includes('connect') ||
-            k === 'online' ||
-            k === 'isUp'
-        ),
-      });
-
       const apIsOnline =
         status === 'inservice' ||
         status.includes('up') ||
@@ -656,10 +600,8 @@ export function useDashboardData(): DashboardData {
 
       if (apIsOnline) {
         stats.online++;
-        console.log('[Dashboard] ✓ AP marked ONLINE:', ap.name || ap.hostname || ap.serialNumber);
       } else {
         stats.offline++;
-        console.log('[Dashboard] ✗ AP marked OFFLINE:', ap.name || ap.hostname || ap.serialNumber);
       }
 
       const role = (ap.role || '').toLowerCase();
@@ -690,10 +632,6 @@ export function useDashboardData(): DashboardData {
     });
 
     setApStats(stats);
-    console.log('[Dashboard] AP Stats:', stats);
-    console.log(
-      `[Dashboard] AP Uptime: ${stats.online}/${stats.total} = ${stats.total > 0 ? ((stats.online / stats.total) * 100).toFixed(1) : 0}%`
-    );
   }, []);
 
   const storeThroughputSnapshot = useCallback(
@@ -739,24 +677,15 @@ export function useDashboardData(): DashboardData {
         };
 
         await throughputService.storeSnapshot(snapshot);
-        console.log('[Dashboard] ✓ Stored throughput snapshot:', {
-          timestamp: new Date(snapshot.timestamp).toISOString(),
-          totalTraffic: formatBytes(snapshot.totalTraffic),
-          upload: formatBytes(snapshot.totalUpload),
-          download: formatBytes(snapshot.totalDownload),
-          clients: snapshot.clientCount,
-          networks: snapshot.networkBreakdown.length,
-        });
       } catch (error) {
         console.error('[Dashboard] Failed to store throughput snapshot:', error);
       }
     },
-    [formatBytes]
+    []
   );
 
   const loadHistoricalThroughput = useCallback(async () => {
     try {
-      console.log('[Dashboard] Loading historical throughput data...');
       const snapshots = await throughputService.getSnapshotsForLastMinutes(60);
 
       if (snapshots.length > 0) {
@@ -775,24 +704,14 @@ export function useDashboardData(): DashboardData {
           };
         });
         setThroughputTrend(trend);
-        console.log('[Dashboard] ✓ Loaded historical throughput data:', {
-          snapshots: trend.length,
-          timeRange:
-            trend.length > 0 ? `${trend[0].time} - ${trend[trend.length - 1].time}` : 'N/A',
-          avgTotal:
-            trend.length > 0
-              ? formatBytes(trend.reduce((sum, t) => sum + t.total, 0) / trend.length)
-              : '0 B',
-        });
       } else {
-        console.log('[Dashboard] ⚠ No historical throughput data available yet.');
         setThroughputTrend([]);
       }
     } catch (error) {
       console.error('[Dashboard] ✗ Failed to load historical throughput:', error);
       setThroughputTrend([]);
     }
-  }, [formatBytes]);
+  }, []);
 
   const performVendorLookups = useCallback(
     async (
@@ -812,7 +731,6 @@ export function useDashboardData(): DashboardData {
       if (clients.length === 0) return;
       try {
         setVendorLookupsInProgress(true);
-        console.log('[Dashboard] Starting vendor lookups for', clients.length, 'clients');
         const enrichedClients = await Promise.all(
           clients.map(async (client) => {
             const vendor = await getVendor(client.mac);
@@ -821,7 +739,6 @@ export function useDashboardData(): DashboardData {
           })
         );
         setTopClients(enrichedClients);
-        console.log('[Dashboard] ✓ Vendor lookups complete');
       } catch (error) {
         console.error('[Dashboard] Failed to lookup vendors:', error);
       } finally {
@@ -1074,37 +991,6 @@ export function useDashboardData(): DashboardData {
       setAvgSnr(snrCount > 0 ? Math.round(totalSnr / snrCount) : 0);
       setAvgRssi(rssiCount > 0 ? Math.round(totalRssi / rssiCount) : 0);
 
-      console.log('[Dashboard] Client Stats:', {
-        total: stns.length,
-        authenticated,
-        totalUploadBps: totalUpload,
-        totalDownloadBps: totalDownload,
-      });
-      console.log('[Dashboard] RF Metrics:', {
-        bandCounts,
-        snrCounts,
-        avgSnr: snrCount > 0 ? Math.round(totalSnr / snrCount) : 0,
-        avgRssi: rssiCount > 0 ? Math.round(totalRssi / rssiCount) : 0,
-      });
-
-      if (stns.length > 0) {
-        console.log('[Dashboard] Sample station data:', {
-          serviceName: stns[0].serviceName,
-          ssid: stns[0].ssid,
-          serviceId: stns[0].serviceId,
-          txRate: stns[0].txRate,
-          rxRate: stns[0].rxRate,
-          transmittedRate: stns[0].transmittedRate,
-          receivedRate: stns[0].receivedRate,
-          txBytes: stns[0].txBytes,
-          rxBytes: stns[0].rxBytes,
-          outBytes: stns[0].outBytes,
-          inBytes: stns[0].inBytes,
-          uptime: stns[0].uptime,
-          allFields: Object.keys(stns[0]),
-        });
-      }
-
       loadHistoricalThroughput();
     },
     [performVendorLookups, storeThroughputSnapshot, loadHistoricalThroughput]
@@ -1155,21 +1041,14 @@ export function useDashboardData(): DashboardData {
             : (stationsData ?? {}).stations || [];
           service.clientCount = stationList.length;
         }
-      } catch (error) {
-        console.log(`[Dashboard] Could not fetch report for service ${service.id}:`, error);
+      } catch {
+        /* station fetch failed, skip */
       }
     });
 
     await Promise.allSettled(servicePromises);
     setServiceReports(reports);
     setPoorServices(poor);
-    console.log(
-      '[Dashboard] Processed',
-      svcs.length,
-      'services,',
-      poor.length,
-      'with poor metrics'
-    );
   }, []);
 
   const processNotifications = useCallback((notifs: Notification[]) => {
@@ -1200,7 +1079,6 @@ export function useDashboardData(): DashboardData {
     });
 
     setAlertCounts({ critical, warning, info });
-    console.log('[Dashboard] Alerts:', { critical, warning, info });
   }, []);
 
   const loadDashboardData = useCallback(
@@ -1212,8 +1090,6 @@ export function useDashboardData(): DashboardData {
           setLoading(true);
         }
 
-        console.log('[Dashboard] Loading comprehensive dashboard data...');
-
         const [apsResult, stationsResult, servicesResult] = await Promise.allSettled([
           fetchAccessPoints(),
           fetchStations(),
@@ -1224,29 +1100,14 @@ export function useDashboardData(): DashboardData {
         if (servicesResult.status === 'fulfilled' && servicesResult.value) {
           servicesData = servicesResult.value;
           await processServices(servicesData);
-        } else {
-          console.log(
-            '[Dashboard] Failed to load services:',
-            servicesResult.status === 'rejected' ? servicesResult.reason : 'No data'
-          );
         }
 
         if (apsResult.status === 'fulfilled' && apsResult.value) {
           processAccessPoints(apsResult.value);
-        } else {
-          console.log(
-            '[Dashboard] Failed to load APs:',
-            apsResult.status === 'rejected' ? apsResult.reason : 'No data'
-          );
         }
 
         if (stationsResult.status === 'fulfilled' && stationsResult.value) {
           processStations(stationsResult.value, servicesData);
-        } else {
-          console.log(
-            '[Dashboard] Failed to load stations:',
-            stationsResult.status === 'rejected' ? stationsResult.reason : 'No data'
-          );
         }
 
         setLastUpdate(new Date());
@@ -1256,14 +1117,10 @@ export function useDashboardData(): DashboardData {
             .then((notifs) => {
               if (notifs) processNotifications(notifs);
             })
-            .catch((err) => {
-              console.log('[Dashboard] Failed to load notifications:', err);
-            });
+            .catch(() => {});
         }
 
-        fetchRFQIData().catch((err) => {
-          console.log('[Dashboard] Failed to load RFQI data:', err);
-        });
+        fetchRFQIData().catch(() => {});
 
         // setSites is guarded against re-fetching via sites.length check inside the effect
         apiService
