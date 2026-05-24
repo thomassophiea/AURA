@@ -897,7 +897,6 @@ export async function executeMigration(
 
 const BRAND_PURPLE = [106, 90, 205] as [number, number, number]; // #6a5acd — Extreme purple
 const BRAND_DARK = [30, 30, 46] as [number, number, number];
-const SUCCESS_GREEN = [34, 197, 94] as [number, number, number];
 const WARN_AMBER = [234, 179, 8] as [number, number, number];
 const FAIL_RED = [239, 68, 68] as [number, number, number];
 
