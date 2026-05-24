@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { apiService } from '../services/api';
 
 export interface CortexModel {
   id: string;
@@ -50,13 +51,7 @@ export function useCortexModel() {
 
     async function load() {
       try {
-        const token = (() => {
-          try {
-            return localStorage.getItem('access_token') ?? '';
-          } catch {
-            return '';
-          }
-        })();
+        const token = apiService.getAccessToken() ?? '';
         const resp = await fetch('/api/cortex/models', {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });

@@ -30,9 +30,6 @@ export type PlanStatus =
 
 export type StepStatus = 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
 
-// Re-export CortexPageContext as AssistantUIContext for backward compatibility
-export type { CortexPageContext as AssistantUIContext } from '@/types/cortex';
-
 export interface AgentToolCall {
   id: string;
   tool: string;

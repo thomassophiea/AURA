@@ -8,6 +8,7 @@
  */
 
 import { getGlobalFilters } from '../hooks/useGlobalFilters';
+import { apiService } from './api';
 
 const LS_KEY = 'aura_agent_context';
 
@@ -19,7 +20,7 @@ interface ContextInput {
 
 async function fetchClientCount(): Promise<number | null> {
   try {
-    const token = localStorage.getItem('access_token') ?? '';
+    const token = apiService.getAccessToken() ?? '';
     if (!token) return null;
     const res = await fetch('/api/management/v1/stations?limit=500&fields=mac', {
       headers: { Authorization: `Bearer ${token}` },
@@ -34,7 +35,7 @@ async function fetchClientCount(): Promise<number | null> {
 
 async function fetchAPSummary(): Promise<{ total: number; up: number } | null> {
   try {
-    const token = localStorage.getItem('access_token') ?? '';
+    const token = apiService.getAccessToken() ?? '';
     if (!token) return null;
     const res = await fetch('/api/management/v1/aps/query?fields=status,clientCount&limit=500', {
       headers: { Authorization: `Bearer ${token}` },
@@ -90,7 +91,7 @@ export async function writeAgentContext(input: ContextInput): Promise<void> {
 
   // Write to server so Claude reads it via CLAUDE.md @import at startup
   try {
-    const token = localStorage.getItem('access_token') ?? '';
+    const token = apiService.getAccessToken() ?? '';
     await fetch('/api/cortex/shell/context', {
       method: 'POST',
       headers: {

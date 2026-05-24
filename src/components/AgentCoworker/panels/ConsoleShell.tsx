@@ -5,17 +5,14 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Radar } from 'lucide-react';
 import '@xterm/xterm/css/xterm.css';
 import { cn } from '../../ui/utils';
+import { apiService } from '../../../services/api';
 
 const RECONNECT_DELAY_MS = 1500;
 
 type Status = 'connecting' | 'open' | 'closed' | 'error';
 
 function readAuthToken(): string {
-  try {
-    return localStorage.getItem('access_token') ?? '';
-  } catch {
-    return '';
-  }
+  return apiService.getAccessToken() ?? '';
 }
 
 function buildWsUrl(token: string, cols: number, rows: number): string {
