@@ -7,10 +7,6 @@ interface ServiceInfo {
   vlan: string;
 }
 
-interface RoleInfo {
-  name: string;
-}
-
 class SimpleServiceMappingService {
   private services = new Map<string, ServiceInfo>();
   private roles = new Map<string, string>();
@@ -100,20 +96,19 @@ class SimpleServiceMappingService {
       if (servicesResponse.ok) {
         const servicesData = await servicesResponse.json();
         if (Array.isArray(servicesData)) {
-          servicesData.forEach((service: any) => {
+          servicesData.forEach((service: Record<string, unknown>) => {
             if (service && service.id) {
-              this.services.set(service.id, {
-                ssid: service.ssid || 'N/A',
-                networkName: service.name || 'N/A',
-                vlan: (service.vlan || service.dot1dPortNumber || 'N/A').toString(),
+              this.services.set(service.id as string, {
+                ssid: (service.ssid as string) || 'N/A',
+                networkName: (service.name as string) || 'N/A',
+                vlan: String(service.vlan ?? service.dot1dPortNumber ?? 'N/A'),
               });
             }
           });
-          console.log(`Loaded ${servicesData.length} services for mapping`);
         }
       }
-    } catch (error) {
-      console.log('Services not available for mapping');
+    } catch {
+      // silently suppress — services endpoint may not be available
     }
 
     try {
@@ -126,16 +121,15 @@ class SimpleServiceMappingService {
       if (rolesResponse.ok) {
         const rolesData = await rolesResponse.json();
         if (Array.isArray(rolesData)) {
-          rolesData.forEach((role: any) => {
-            if (role && role.id && role.name) {
-              this.roles.set(role.id, role.name);
+          rolesData.forEach((role: Record<string, unknown>) => {
+            if (role?.id && role?.name) {
+              this.roles.set(role.id as string, role.name as string);
             }
           });
-          console.log(`Loaded ${rolesData.length} roles for mapping`);
         }
       }
-    } catch (error) {
-      // Silently suppress - roles endpoint may not be available on all systems
+    } catch {
+      // silently suppress — roles endpoint may not be available on all systems
     }
 
     this.loaded = true;
