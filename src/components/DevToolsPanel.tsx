@@ -49,11 +49,11 @@ import {
   Flame,
 } from 'lucide-react';
 import { cn } from './ui/utils';
-import { apiService } from '../services/api';
 import { usePersonaContext } from '../contexts/PersonaContext';
 import { useGridMode } from '../contexts/GridModeContext';
 import { PERSONA_MAP } from '../config/personaDefinitions';
 import { PERSONA_DASHBOARD_CONFIG } from '../config/personaDashboardConfig';
+import { apiService } from '../services/api';
 import type { ApiCallLog } from '../types/api';
 
 export type { ApiCallLog };
@@ -334,7 +334,7 @@ export function DevToolsPanel({
       label: 'Copy Auth Token',
       icon: Key,
       action: () => {
-        const t = localStorage.getItem('access_token');
+        const t = apiService.getAccessToken();
         if (t) {
           copyToClipboard(t);
         }

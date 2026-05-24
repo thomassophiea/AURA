@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AgentWorkspace } from './AgentWorkspace';
 
 vi.mock('./panels/ConsoleShell', () => ({
@@ -58,6 +58,13 @@ vi.mock('./ModelSelector', () => ({
   ModelSelector: () => <div>ModelSelector</div>,
 }));
 
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ alerts: [] }) })
+  );
+});
+
 const defaultProps = {
   mode: 'open' as const,
   size: 'standard' as const,
@@ -73,30 +80,31 @@ const defaultProps = {
 };
 
 describe('AgentWorkspace tabs', () => {
-  it('shows Terminal tab content by default', () => {
+  it('shows Terminal tab content by default', async () => {
     render(<AgentWorkspace {...defaultProps} />);
-    expect(screen.getByTestId('red-queen-shell')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('red-queen-shell')).toBeDefined());
   });
 
-  it('shows Ops tab content when primaryTab is ops', () => {
+  it('shows Ops tab content when primaryTab is ops', async () => {
     render(<AgentWorkspace {...defaultProps} primaryTab="ops" />);
-    expect(screen.getByTestId('conversation-stream')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('conversation-stream')).toBeDefined());
   });
 
-  it('calls onSetPrimaryTab when Ops tab is clicked', () => {
+  it('calls onSetPrimaryTab when Ops tab is clicked', async () => {
     const onSetPrimaryTab = vi.fn();
     render(<AgentWorkspace {...defaultProps} onSetPrimaryTab={onSetPrimaryTab} />);
+    await waitFor(() => screen.getByRole('tab', { name: /ops/i }));
     fireEvent.click(screen.getByRole('tab', { name: /ops/i }));
     expect(onSetPrimaryTab).toHaveBeenCalledWith('ops');
   });
 
-  it('shows DriftPanel when activePanel is drift (Ops tab)', () => {
+  it('shows DriftPanel when activePanel is drift (Ops tab)', async () => {
     render(<AgentWorkspace {...defaultProps} primaryTab="ops" activePanel="drift" />);
-    expect(screen.getByTestId('drift-panel')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('drift-panel')).toBeDefined());
   });
 
-  it('shows ValidationPanel when activePanel is validate (Ops tab)', () => {
+  it('shows ValidationPanel when activePanel is validate (Ops tab)', async () => {
     render(<AgentWorkspace {...defaultProps} primaryTab="ops" activePanel="validate" />);
-    expect(screen.getByTestId('validation-panel')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('validation-panel')).toBeDefined());
   });
 });
