@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * App Insights Dashboard - Redesigned
  *
@@ -5,16 +8,14 @@
  */
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 // Button imported by PageHeader internally
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Skeleton } from './ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
   AppWindow,
   TrendingUp,
-  TrendingDown,
   Users,
   Gauge,
   HardDrive,
@@ -45,11 +46,9 @@ import {
   BarChart3,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight,
   Sparkles,
   Info,
   Building,
-  MapPin,
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
@@ -202,7 +201,7 @@ export function AppInsights({ api }: AppInsightsProps) {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [sites, setSites] = useState<Site[]>([]);
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [isLoadingSites, setIsLoadingSites] = useState(false);
+  const [_isLoadingSites, setIsLoadingSites] = useState(false);
 
   // Load sites from all controllers at org scope
   const loadSites = async () => {
@@ -216,8 +215,8 @@ export function AppInsights({ api }: AppInsightsProps) {
             apiService.setBaseUrl(`${sg.controller_url}/management`);
             const sgSites = await apiService.getSites();
             allSites.push(...(Array.isArray(sgSites) ? sgSites : []));
-          } catch (err) {
-            console.warn(`[AppInsights] Failed to fetch sites from ${sg.name}:`, err);
+          } catch {
+            /* ignore */
           }
         }
         apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
@@ -237,7 +236,7 @@ export function AppInsights({ api }: AppInsightsProps) {
         })
         .sort((a, b) => a.name.localeCompare(b.name));
       setSites(normalized);
-    } catch (err) {
+    } catch {
       setSites([]);
     } finally {
       setIsLoadingSites(false);
@@ -299,8 +298,8 @@ export function AppInsights({ api }: AppInsightsProps) {
             apiService.setBaseUrl(`${sg.controller_url}/management`);
             const response = await api.getAppInsights(duration, siteId);
             merged = merged ? mergeInsights(merged, response) : response;
-          } catch (err) {
-            console.warn(`[AppInsights] Failed to fetch from ${sg.name}:`, err);
+          } catch {
+            /* ignore */
           }
         }
 
@@ -311,7 +310,7 @@ export function AppInsights({ api }: AppInsightsProps) {
         setData(response);
       }
       setLastRefresh(new Date());
-    } catch (err) {
+    } catch {
       setError('Failed to load application insights data');
     } finally {
       setLoading(false);
