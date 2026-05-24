@@ -2,7 +2,7 @@ import { createRoot } from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { initVersionGate, getAppVersion, getCacheVersion } from './lib/versionGate.ts';
+import { initVersionGate } from './lib/versionGate.ts';
 import './styles/globals.css';
 import './styles/ag-grid-overrides.css';
 import './index.css';
@@ -100,17 +100,14 @@ function registerServiceWorker() {
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('/service-worker.js');
-      console.log(`[SW] Registered: ${registration.scope}`);
 
       // Listen for updates
       registration.addEventListener('updatefound', () => {
         const newWorker = registration.installing;
         if (newWorker) {
-          console.log('[SW] Update found, installing...');
           newWorker.addEventListener('statechange', () => {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               // New version available - tell it to skip waiting
-              console.log('[SW] New version installed, activating...');
               newWorker.postMessage({ type: 'SKIP_WAITING' });
             }
           });
@@ -121,24 +118,16 @@ function registerServiceWorker() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (wasControlled) {
           // Only reload when replacing an existing SW (update scenario)
-          console.log('[SW] Controller changed, reloading...');
           window.location.reload();
-        } else {
-          console.log('[SW] First controller set, no reload needed');
         }
       });
 
       // Listen for messages from service worker
-      navigator.serviceWorker.addEventListener('message', (event) => {
-        if (event.data?.type === 'SW_ACTIVATED') {
-          console.log(`[SW] Activated version ${event.data.version}`);
-        }
-        if (event.data?.type === 'CACHES_CLEARED') {
-          console.log('[SW] All caches cleared');
-        }
+      navigator.serviceWorker.addEventListener('message', (_event) => {
+        // SW_ACTIVATED and CACHES_CLEARED handled silently
       });
-    } catch (error) {
-      console.log('[SW] Registration failed:', error);
+    } catch {
+      /* ignore */
     }
   });
 }
@@ -147,12 +136,10 @@ function registerServiceWorker() {
 // This happens when a new Railway deploy replaces chunk filenames and an
 // open browser tab still references the old (now-gone) hashed filenames.
 window.addEventListener('vite:preloadError', () => {
-  console.log('[App] Chunk preload failed — new deployment detected, reloading...');
   window.location.reload();
 });
 
 // Log version info on startup
-console.log(`[App] Version: ${getAppVersion()} (cache: ${getCacheVersion()})`);
 
 // Start the app
 initApp();

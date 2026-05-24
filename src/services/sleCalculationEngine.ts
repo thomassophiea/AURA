@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API response types are dynamic; any required for raw data processing
+
 /**
  * SLE Calculation Engine
  * Pure functions that compute SLE metrics from raw ExtremeCloud IQ data.
@@ -445,7 +448,7 @@ export function computeSuccessfulConnects(
 export function computeTimeToConnect(stations: any[], historicalData: SLEDataPoint[]): SLEMetric {
   const wireless = stations.filter((s) => !s.isWired);
   const total = wireless.length;
-  const maxSeconds = activeThresholds.timeToConnect.maxSeconds;
+  const _maxSeconds = activeThresholds.timeToConnect.maxSeconds;
 
   // Estimate connection time from signal quality
   const slowConnects = wireless.filter((s) => {

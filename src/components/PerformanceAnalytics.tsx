@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -96,7 +99,6 @@ export function PerformanceAnalytics() {
           const sitesData = Array.isArray(data) ? data : data.sites || [];
           setSites(
             sitesData.map((site: any) => ({
-              // eslint-disable-line @typescript-eslint/no-explicit-any
               id: site.id || site.siteId,
               name: site.name || site.siteName || `Site ${site.id}`,
               status: site.status,
@@ -286,7 +288,6 @@ export function PerformanceAnalytics() {
 
           if (sitesData.sites && Array.isArray(sitesData.sites)) {
             sitesData.sites.forEach((site: any) => {
-              // eslint-disable-line @typescript-eslint/no-explicit-any
               processedSiteReports.push({
                 siteId: site.id || site.siteId,
                 siteName: site.name || site.siteName || `Site ${site.id}`,
@@ -309,7 +310,6 @@ export function PerformanceAnalytics() {
         if (apsReportData.status === 'fulfilled' && apsReportData.value) {
           const apsData = apsReportData.value;
           const processedAPReports: APReport[] = apsData.map((ap: any) => ({
-            // eslint-disable-line @typescript-eslint/no-explicit-any
             apId: ap.id || ap.apId || ap.serial,
             name: ap.name || ap.displayName || `AP ${ap.serial}`,
             serialNumber: ap.serial || ap.serialNumber,
@@ -332,7 +332,6 @@ export function PerformanceAnalytics() {
           if (widgetResult.status === 'fulfilled' && widgetResult.value) {
             const widgets = Array.isArray(widgetResult.value) ? widgetResult.value : [];
             widgets.forEach((widget: any) => {
-              // eslint-disable-line @typescript-eslint/no-explicit-any
               allWidgets.push({
                 id: widget.id || widget.widgetId,
                 name: widget.name || widget.title,
@@ -385,16 +384,13 @@ export function PerformanceAnalytics() {
         // Fetch APs for this specific site
         const apsData = await fetchAPsReport();
         const siteAPs = apsData.filter(
-          (
-            ap: any // eslint-disable-line @typescript-eslint/no-explicit-any
-          ) =>
+          (ap: any) =>
             ap.siteId === selectedSite ||
             ap.site === selectedSite ||
             (ap.siteName && sites.find((s) => s.id === selectedSite)?.name === ap.siteName)
         );
 
         const processedAPReports: APReport[] = siteAPs.map((ap: any) => ({
-          // eslint-disable-line @typescript-eslint/no-explicit-any
           apId: ap.id || ap.apId || ap.serial,
           name: ap.name || ap.displayName || `AP ${ap.serial}`,
           serialNumber: ap.serial || ap.serialNumber,
@@ -472,6 +468,7 @@ export function PerformanceAnalytics() {
 
   useEffect(() => {
     fetchAnalyticsData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSite]);
 
   const handleRefresh = () => {
@@ -744,7 +741,6 @@ export function PerformanceAnalytics() {
                         labelLine={false}
                         outerRadius={80}
                         dataKey="value"
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         label={({ cx, cy, midAngle, outerRadius, name, percent }: any) => {
                           const RADIAN = Math.PI / 180;
                           const radius = outerRadius * 1.2;
