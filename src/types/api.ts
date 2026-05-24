@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API shapes are dynamic JSON; any is required for interface index signatures
 // Type and interface definitions for the AURA API service.
 // These were extracted from src/services/api.ts for maintainability.
 // src/services/api.ts re-exports everything from here to preserve backward compatibility.
