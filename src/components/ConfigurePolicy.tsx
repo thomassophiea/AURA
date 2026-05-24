@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -15,15 +18,12 @@ import { Label } from './ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
-  AlertTriangle,
   Plus,
   Search,
-  Edit2,
   Trash2,
   Shield,
   Network,
   AlertCircle,
-  CheckCircle,
   RefreshCw,
   Lock,
   Unlock,
@@ -74,18 +74,9 @@ export function ConfigurePolicy() {
   const [selectedCos, setSelectedCos] = useState<any | null>(null);
   const [isCosDetailOpen, setIsCosDetailOpen] = useState(false);
 
-  // Debug: Log dialog state changes
-  useEffect(() => {
-    console.log(
-      '🔧 ConfigurePolicy state - isEditDialogOpen:',
-      isEditDialogOpen,
-      'editingRole:',
-      editingRole?.name || 'null'
-    );
-  }, [isEditDialogOpen, editingRole]);
-
   useEffect(() => {
     loadRoles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /** Generic multi-controller fetch helper */
@@ -165,7 +156,7 @@ export function ConfigurePolicy() {
   const sgTopologies = orgSiteGroupFilter
     ? topologies.filter((t: any) => t._siteGroupId === orgSiteGroupFilter)
     : topologies;
-  const sgCosProfiles = orgSiteGroupFilter
+  const _sgCosProfiles = orgSiteGroupFilter
     ? cosProfiles.filter((c: any) => c._siteGroupId === orgSiteGroupFilter)
     : cosProfiles;
 
@@ -195,31 +186,8 @@ export function ConfigurePolicy() {
   };
 
   const handleCreateRole = () => {
-    console.log('🔧 Create Role button clicked');
     setEditingRole(null);
     setIsEditDialogOpen(true);
-    console.log('🔧 Dialog state set to open');
-  };
-
-  const handleEditRole = (role: Role, e?: React.MouseEvent) => {
-    // Stop propagation if called from a button click
-    if (e) {
-      e.stopPropagation();
-    }
-
-    if (role.canEdit === false) {
-      toast.error('Cannot edit role', {
-        description: 'This role is read-only and cannot be modified.',
-      });
-      return;
-    }
-
-    // Toggle expansion for inline editing
-    if (expandedRoleId === role.id) {
-      setExpandedRoleId(null);
-    } else {
-      setExpandedRoleId(role.id);
-    }
   };
 
   const handleToggleRole = (role: Role) => {
@@ -458,6 +426,7 @@ export function ConfigurePolicy() {
           ) : null,
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [isDeleting]
   );
 
