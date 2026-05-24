@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -90,22 +92,6 @@ interface NetworkConfig {
 
 // Helper function to map auth type from the API privacy object
 const mapAuthType = (service: Service): string => {
-  // Get the service name for logging (handle both name and serviceName fields)
-  const serviceName = service.name || service.serviceName || service.ssid || 'Unknown';
-
-  // Debug: Log what we're checking with FULL privacy object structure
-  console.log(`[ConfigureNetworks] Checking auth for "${serviceName}":`, {
-    hasWpaSaeElement: !!service.WpaSaeElement,
-    hasPrivacyWpaSaeElement: !!service.privacy?.WpaSaeElement,
-    WpaSaeElement: service.WpaSaeElement,
-    privacyWpaSaeElement: service.privacy?.WpaSaeElement,
-    privacyObject: service.privacy,
-    privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
-    privacyFullStructure: service.privacy
-      ? JSON.stringify(service.privacy, null, 2)
-      : 'No privacy object',
-  });
-
   // Priority 1: Check for WPA3-SAE (Simultaneous Authentication of Equals) - WPA3-Personal
   // Check multiple possible locations and field name variations
   const saeElement =
@@ -118,39 +104,16 @@ const mapAuthType = (service: Service): string => {
     service.privacy?.WpaSae;
 
   if (saeElement) {
-    console.log(`[ConfigureNetworks] Found WPA3-SAE for "${serviceName}":`, {
-      saeElement,
-      location: service.WpaSaeElement
-        ? 'service.WpaSaeElement'
-        : service.privacy?.WpaSaeElement
-          ? 'service.privacy.WpaSaeElement'
-          : service.privacy?.wpaSaeElement
-            ? 'service.privacy.wpaSaeElement'
-            : service.privacy?.sae
-              ? 'service.privacy.sae'
-              : service.privacy?.SAE
-                ? 'service.privacy.SAE'
-                : service.WpaSae
-                  ? 'service.WpaSae'
-                  : 'service.privacy.WpaSae',
-    });
-
     // Determine if it's pure WPA3 or transition mode based on PMF and SAE method
     if (saeElement?.pmfMode === 'required' && saeElement?.saeMethod === 'SaeH2e') {
-      console.log(`✅ Returning WPA3-Personal (SAE) for "${serviceName}"`);
       return 'WPA3-Personal (SAE)';
     } else if (saeElement?.pmfMode === 'capable') {
-      console.log(`✅ Returning WPA2/WPA3-Personal (Transition) for "${serviceName}"`);
       return 'WPA2/WPA3-Personal (Transition)';
     }
-    console.log(`✅ Returning WPA3-Personal for "${serviceName}"`);
     return 'WPA3-Personal';
   }
 
-  // Also check for beaconProtection which might indicate WPA3
-  if (service.beaconProtection === true || service.privacy?.beaconProtection === true) {
-    console.log(`🛡️ Found beaconProtection for "${serviceName}" - might be WPA3`);
-  }
+  // Also check for beaconProtection which might indicate WPA3 — no-op currently
 
   // Priority 2: Check WpaEnterpriseElement at the top level (for Enterprise networks)
   if (service.WpaEnterpriseElement?.mode) {
@@ -214,7 +177,6 @@ const mapAuthType = (service: Service): string => {
     service.privacy?.['802.1x'];
 
   if (eapElement) {
-    console.log(`✅ Found 802.1X/EAP element for "${serviceName}":`, eapElement);
     return 'WPA2-Enterprise (802.1X)';
   }
 
@@ -322,7 +284,6 @@ const mapAuthType = (service: Service): string => {
 
   // Priority 12: Check if explicitly marked as open
   if (service.open === true || service.isOpen === true) {
-    console.log(`🔓 "${serviceName}" explicitly marked as Open`);
     return 'Open';
   }
 
@@ -333,10 +294,6 @@ const mapAuthType = (service: Service): string => {
     typeof service.privacy === 'object' &&
     Object.keys(service.privacy).length > 0
   ) {
-    console.log(
-      `🔐 "${serviceName}" has privacy config but unknown type. Privacy keys:`,
-      Object.keys(service.privacy)
-    );
     // Check for any key that suggests enterprise/802.1X authentication
     const privacyKeys = Object.keys(service.privacy).map((k) => k.toLowerCase());
     if (
@@ -362,15 +319,6 @@ const mapAuthType = (service: Service): string => {
   }
 
   // Default to Open only if no auth information is found AND no privacy object
-  console.log(
-    `⚠️ "${serviceName}" defaulting to Open - No security config found. Available fields:`,
-    {
-      topLevelKeys: Object.keys(service),
-      privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
-      hasPrivacy: !!service.privacy,
-      privacyType: typeof service.privacy,
-    }
-  );
   return 'Open';
 };
 
@@ -459,18 +407,6 @@ const transformServiceToNetwork = (
   const defaultTopologyName = resolveDefaultTopologyName(service, topologyById);
 
   // Debug: Always log service mapping for troubleshooting auth type issues
-  console.log(`[ConfigureNetworks] Network: "${networkSSID}" -> Auth: "${authType}"`, {
-    id: service.id,
-    serviceName: service.serviceName,
-    name: service.name,
-    ssid: networkSSID,
-    authType,
-    hasWpaSae: !!(service.WpaSaeElement || service.privacy?.WpaSaeElement),
-    WpaSaeElement: service.WpaSaeElement || service.privacy?.WpaSaeElement,
-    hasWpaPsk: !!(service.WpaPskElement || service.privacy?.WpaPskElement),
-    hasWpaEnterprise: !!(service.WpaEnterpriseElement || service.privacy?.WpaEnterpriseElement),
-    privacyKeys: service.privacy ? Object.keys(service.privacy) : [],
-  });
 
   return {
     ...service, // Include all original service properties first
@@ -500,7 +436,7 @@ export function ConfigureNetworks() {
   const isOrgScope = navigationScope === 'global';
   const [networks, setNetworks] = useState<NetworkConfig[]>([]);
   const [services, setServices] = useState<Service[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
+  const [_roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -549,7 +485,7 @@ export function ConfigureNetworks() {
   };
 
   // Deployment info: site count and AP count per WLAN
-  const [deploymentInfo, setDeploymentInfo] = useState<
+  const [_deploymentInfo, setDeploymentInfo] = useState<
     Record<string, { sites: number; aps: number }>
   >({});
 
@@ -740,10 +676,6 @@ export function ConfigureNetworks() {
         setServiceSiteIds({});
         setSiteIdToName({});
       }
-
-      if (allConfigs.length === 0 && allServices.length === 0) {
-        console.log('[ConfigureNetworks] No networks found');
-      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load networks';
       setError(errorMessage);
@@ -842,8 +774,6 @@ export function ConfigureNetworks() {
 
       // Remove any fields that could cause validation issues
       delete updatePayload.preAuthenticatedIdleTimeout;
-
-      console.log('Updating network with payload:', updatePayload);
 
       // Update the service via API
       await apiService.updateService(networkId, updatePayload);
