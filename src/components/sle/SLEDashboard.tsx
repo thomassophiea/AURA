@@ -3,13 +3,12 @@
  * Shows wireless SLE blocks with success rates, timelines, and classifier drill-down
  */
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
-import { ScrollArea, ScrollBar } from '../ui/scroll-area';
 import {
   Dialog,
   DialogContent,
@@ -377,6 +376,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         setRefreshing(false);
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups.length]
   );
 

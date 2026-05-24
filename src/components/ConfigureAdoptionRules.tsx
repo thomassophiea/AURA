@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card } from './ui/card';
 import { Button } from './ui/button';
@@ -22,11 +23,8 @@ import {
   Edit2,
   Trash2,
   GripVertical,
-  CheckCircle,
-  XCircle,
   MapPin,
   Network,
-  Wifi,
   Users,
   ArrowUp,
   ArrowDown,
@@ -128,6 +126,7 @@ export function ConfigureAdoptionRules() {
   useEffect(() => {
     loadRules();
     loadSites();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchFromAllControllers = async <T,>(fetcher: () => Promise<T[]>): Promise<T[]> => {

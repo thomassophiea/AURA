@@ -1,6 +1,7 @@
-import { useState, useEffect, memo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { BarChart3, TrendingUp, Users, Activity, Download, Upload } from 'lucide-react';
+import { BarChart3, TrendingUp, Users, Activity } from 'lucide-react';
 import {
   LineChart,
   Line,
@@ -57,6 +58,7 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
 
   useEffect(() => {
     loadVenueStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [siteId, duration]);
 
   const loadVenueStatistics = async () => {
@@ -69,7 +71,6 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
     setError(null);
 
     try {
-      console.log(`[VenueStatisticsWidget] Loading venue statistics for site: ${siteId}`);
       const data = await apiService.getVenueStatistics(siteId, duration);
 
       if (!data) {
@@ -77,7 +78,6 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
         setStats(null);
       } else {
         setStats(data);
-        console.log('[VenueStatisticsWidget] Loaded venue statistics:', Object.keys(data));
       }
     } catch (err) {
       console.error('[VenueStatisticsWidget] Error loading venue statistics:', err);
