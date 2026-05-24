@@ -8,26 +8,10 @@
 import React, { useMemo, useState } from 'react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { ScrollArea } from './ui/scroll-area';
-import {
-  AlertTriangle,
-  AlertCircle,
-  Info,
-  Clock,
-  Radio,
-  Wifi,
-  Power,
-  Download,
-  ChevronDown,
-  ChevronRight,
-  Filter,
-  BarChart3,
-  RefreshCw,
-  Zap,
-  Activity,
-} from 'lucide-react';
+import { AlertCircle, Clock, ChevronRight, Filter, BarChart3, RefreshCw } from 'lucide-react';
 import { APAlarm, APAlarmCategory } from '../services/api';
 
 interface APEventsTimelineProps {
@@ -65,20 +49,6 @@ function formatRelativeTime(ts: number): string {
   return formatTimestamp(ts);
 }
 
-// Get icon for event category
-function getEventIcon(category?: string, context?: string) {
-  const cat = (category || '').toLowerCase();
-  const ctx = (context || '').toLowerCase();
-
-  if (cat.includes('channel') || ctx.includes('channel')) return Radio;
-  if (cat.includes('discovery') || ctx.includes('connect')) return Wifi;
-  if (cat.includes('reboot') || ctx.includes('power')) return Power;
-  if (cat.includes('upgrade')) return Download;
-  if (cat.includes('alarm')) return AlertTriangle;
-  if (cat.includes('poll')) return Activity;
-  return Info;
-}
-
 // Get color for severity level
 function getSeverityColor(level?: string): string {
   const l = (level || '').toLowerCase();
@@ -88,21 +58,11 @@ function getSeverityColor(level?: string): string {
   return 'text-muted-foreground';
 }
 
-function getSeverityBg(level?: string): string {
-  const l = (level || '').toLowerCase();
-  if (l === 'critical' || l === 'error')
-    return 'bg-[color:var(--status-error-bg)] border-[color:var(--status-error)]/30';
-  if (l === 'major' || l === 'warning')
-    return 'bg-[color:var(--status-warning-bg)] border-[color:var(--status-warning)]/30';
-  if (l === 'minor') return 'bg-[color:var(--status-info-bg)] border-[color:var(--status-info)]/30';
-  return 'bg-muted/30 border-muted';
-}
-
 export function APEventsTimeline({
   events,
-  categories,
-  apName,
-  serialNumber,
+  categories: _categories,
+  apName: _apName,
+  serialNumber: _serialNumber,
   onRefresh,
   isLoading,
 }: APEventsTimelineProps) {

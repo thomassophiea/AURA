@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -105,7 +106,7 @@ export function PacketCapture() {
   const [activeCaptures, setActiveCaptures] = useState<ActiveCapture[]>([]);
   const [accessPoints, setAccessPoints] = useState<AccessPoint[]>([]);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
-  const [progressTick, setProgressTick] = useState(0); // Force re-render for progress bars
+  const [, setProgressTick] = useState(0); // Force re-render for progress bars
 
   // Protocol options
   const protocols = [
@@ -145,7 +146,6 @@ export function PacketCapture() {
           if (!cancelled && apResponse.ok) {
             const data = await apResponse.json();
             const apList = Array.isArray(data) ? data : data.accessPoints || data.aps || [];
-            console.log('[PacketCapture] Loaded APs:', apList.length);
             setAccessPoints(
               apList.map((ap: any) => ({
                 serialNumber: ap.serialNumber || ap.serial || ap.id,
@@ -193,6 +193,7 @@ export function PacketCapture() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cleanup polling interval on unmount
@@ -289,7 +290,7 @@ export function PacketCapture() {
     try {
       await Promise.all([loadCaptureFiles(), loadActiveCaptures()]);
       toast.success('Packet capture data refreshed');
-    } catch (err) {
+    } catch {
       toast.error('Failed to refresh data');
     } finally {
       setRefreshing(false);
@@ -445,8 +446,6 @@ export function PacketCapture() {
         };
       }
 
-      console.log('[PacketCapture] Starting capture with config:', captureConfig);
-
       // Use new API service method
       const result = await apiService.startPacketCapture(captureConfig);
 
@@ -578,13 +577,6 @@ export function PacketCapture() {
     } catch {
       return dateStr;
     }
-  };
-
-  const getElapsedTime = (startTime: number): string => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const minutes = Math.floor(elapsed / 60);
-    const seconds = elapsed % 60;
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
