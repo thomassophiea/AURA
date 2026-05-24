@@ -5,20 +5,15 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Switch } from './ui/switch';
-import { Separator } from './ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import {
   AlertCircle,
   Save,
   Trash2,
-  Wifi,
   Lock,
   Eye,
   EyeOff,
   Loader2,
-  Network,
-  Shield,
   ChevronDown,
   ChevronUp,
   Clock,
@@ -35,11 +30,15 @@ import {
   DialogFooter,
   DialogClose,
 } from './ui/dialog';
-import { Checkbox } from './ui/checkbox';
 import { Alert, AlertDescription } from './ui/alert';
-import { apiService, Service, Role, Topology, AaaPolicy, ClassOfService } from '../services/api';
+import { apiService, Service } from '../services/api';
 import { WLANAssignmentService } from '../services/wlanAssignment';
 import type { Site, Profile } from '../types/network';
+
+interface DropdownItem {
+  id: string;
+  name: string;
+}
 
 // Legacy manual site-grouping concept used by the WLAN assignment UI (local to this component).
 // The canonical LegacySiteGroup (controller pair) lives in src/types/domain.ts.
@@ -177,18 +176,19 @@ interface NetworkFormData {
   loadBalancing: boolean; // Legacy field
   radiusAccounting: boolean; // Maps to accountingEnabled
   customProperties: Record<string, string>;
-  enabledSchedule?: string;
+  enabledSchedule?: Record<
+    string,
+    { start: { hour: number; minute: number }; stop: { hour: number; minute: number } }
+  > | null;
 }
 
 export function NetworkEditDetail({ serviceId, onSave, isInline = false }: NetworkEditDetailProps) {
   const [service, setService] = useState<Service | null>(null);
-  const [roles, setRoles] = useState<Role[]>([]);
-  const [topologies, setTopologies] = useState<Topology[]>([]);
-  const [aaaPolicies, setAaaPolicies] = useState<AaaPolicy[]>([]);
-  const [cosOptions, setCosOptions] = useState<
-    Array<{ id: string; name: string; [key: string]: any }>
-  >([]);
-  const [eGuestProfiles, setEGuestProfiles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<DropdownItem[]>([]);
+  const [topologies, setTopologies] = useState<DropdownItem[]>([]);
+  const [aaaPolicies, setAaaPolicies] = useState<DropdownItem[]>([]);
+  const [cosOptions, setCosOptions] = useState<DropdownItem[]>([]);
+  const [eGuestProfiles, setEGuestProfiles] = useState<DropdownItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -199,12 +199,11 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
   const [siteGroups, setLegacySiteGroups] = useState<LegacySiteGroup[]>([]);
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [selectedLegacySiteGroups, setSelectedLegacySiteGroups] = useState<string[]>([]);
-  const [loadingSites, setLoadingSites] = useState(false);
-  const [assigningSites, setAssigningSites] = useState(false);
-  const [profilesBySite, setProfilesBySite] = useState<Map<string, Profile[]>>(new Map());
+  const [, setLoadingSites] = useState(false);
+  const [, setAssigningSites] = useState(false);
+  const [, setProfilesBySite] = useState<Map<string, Profile[]>>(new Map());
   const [privacyDialogOpen, setPrivacyDialogOpen] = useState(false);
   const [showPassphrase, setShowPassphrase] = useState(false);
-  const [bottomTab, setBottomTab] = useState('advanced');
   const [showAdvancedCard, setShowAdvancedCard] = useState(false);
   const [showSchedulingCard, setShowSchedulingCard] = useState(false);
   const [formData, setFormData] = useState<NetworkFormData>({
@@ -312,7 +311,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     shutdownOnMeshpointLoss: false,
 
     // Schedule
-    enabledSchedule: null as any,
+    enabledSchedule: null,
 
     // Advanced Settings (Legacy)
     defaultAuthRole: 'none',
@@ -380,8 +379,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       if (serviceResponse.status === 'fulfilled') {
         const serviceData = serviceResponse.value;
         setService(serviceData);
-
-        console.log('Loading service data:', serviceData);
 
         // Get WPA3-SAE configuration
         const saeElement = serviceData.privacy?.WpaSaeElement || serviceData.WpaSaeElement;
@@ -545,8 +542,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
           radiusAccounting: serviceData.accountingEnabled || false,
           customProperties: serviceData.customProperties || {},
         };
-
-        console.log('Mapped form data:', mappedFormData);
         setFormData(mappedFormData);
         baselineFormDataRef.current = mappedFormData;
       } else {
@@ -558,13 +553,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         Object.entries(map).map(([name, id]) => ({ id, name }));
 
       if (rolesResponse.status === 'fulfilled') {
-        setRoles(mapToArray(rolesResponse.value) as any);
+        setRoles(mapToArray(rolesResponse.value));
       } else {
         setRoles([]);
       }
 
       if (topologiesResponse.status === 'fulfilled') {
-        setTopologies(mapToArray(topologiesResponse.value) as any);
+        setTopologies(mapToArray(topologiesResponse.value));
       } else {
         setTopologies([]);
       }
@@ -576,7 +571,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
       }
 
       if (cosResponse.status === 'fulfilled') {
-        setCosOptions(mapToArray(cosResponse.value) as any);
+        setCosOptions(mapToArray(cosResponse.value));
       } else {
         setCosOptions([]);
       }
@@ -653,87 +648,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
     return [...new Set([...selectedSites, ...siteIdsFromGroups])];
   };
 
-  // Toggle site selection
-  const toggleSite = (siteId: string) => {
-    setSelectedSites((prev) =>
-      prev.includes(siteId) ? prev.filter((id) => id !== siteId) : [...prev, siteId]
-    );
-  };
-
-  // Toggle site group selection
-  const toggleLegacySiteGroup = (groupId: string) => {
-    setSelectedLegacySiteGroups((prev) =>
-      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId]
-    );
-  };
-
-  // Assign WLAN to selected sites
-  const handleAssignToSites = async () => {
-    const expandedSiteIds = getExpandedSiteIds();
-    if (expandedSiteIds.length === 0) {
-      toast.error('Please select at least one site or site group');
-      return;
-    }
-
-    setAssigningSites(true);
-    try {
-      const assignmentService = new WLANAssignmentService();
-
-      // Discover profiles for all selected sites
-      const profileMap = await assignmentService.discoverProfilesForSites(expandedSiteIds);
-      const allProfiles = Object.values(profileMap).flat();
-
-      // Deduplicate profiles
-      const uniqueProfiles = allProfiles.filter(
-        (profile, index, self) => index === self.findIndex((p) => p.id === profile.id)
-      );
-
-      if (uniqueProfiles.length === 0) {
-        toast.error('No profiles found at selected sites', {
-          description: 'Ensure sites have device groups with profiles configured',
-        });
-        return;
-      }
-
-      // Assign to each profile
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const profile of uniqueProfiles) {
-        try {
-          await apiService.assignServiceToProfile(serviceId, profile.id);
-          successCount++;
-        } catch (err) {
-          console.error(`Failed to assign to profile ${profile.id}:`, err);
-          failCount++;
-        }
-      }
-
-      // Sync profiles
-      for (const profile of uniqueProfiles) {
-        try {
-          await apiService.syncProfile(profile.id);
-        } catch (err) {
-          console.error(`Failed to sync profile ${profile.id}:`, err);
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`Assigned to ${successCount} profile(s)`, {
-          description:
-            failCount > 0 ? `${failCount} failed` : `Across ${expandedSiteIds.length} site(s)`,
-        });
-      } else {
-        toast.error('Failed to assign to any profiles');
-      }
-    } catch (err) {
-      console.error('Assignment failed:', err);
-      toast.error('Failed to assign WLAN to sites');
-    } finally {
-      setAssigningSites(false);
-    }
-  };
-
   // Load sites when Sites tab is activated
   useEffect(() => {
     if (activeTab === 'sites' && sites.length === 0) {
@@ -779,10 +693,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         setSaving(false);
         return;
       }
-
-      console.log('=== SERVICE UPDATE DEBUG INFO ===');
-      console.log('Service ID:', serviceId);
-      console.log('Form data to save:', formData);
 
       // === CONSTRUCT PRIVACY CONFIGURATION ===
       let privacyConfig = service.privacy;
@@ -875,8 +785,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         // Fallback: use existing privacy config generator
         privacyConfig = generatePrivacyConfig(formData.securityType, formData.passphrase);
       }
-
-      console.log('Generated privacy config:', privacyConfig);
 
       // === BUILD COMPLETE SERVICE PAYLOAD ===
       const completeServiceData: Partial<Service> = {
@@ -984,9 +892,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         }
       });
 
-      console.log('=== COMPLETE SERVICE PAYLOAD ===');
-      console.log(JSON.stringify(completeServiceData, null, 2));
-
       // Validate the complete payload
       const validation = validateServiceData(completeServiceData);
       if (!validation.valid) {
@@ -995,7 +900,6 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
 
       // Send the complete service update
       const updatedService = await apiService.updateService(serviceId, completeServiceData);
-      console.log('Service update successful!');
 
       // Update local service state with response
       setService(updatedService);
@@ -1038,7 +942,7 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
         console.error(
           'Error object values:',
           Object.fromEntries(
-            Object.getOwnPropertyNames(err).map((prop) => [prop, (err as any)[prop]])
+            Object.getOwnPropertyNames(err).map((prop) => [prop, (err as any)[prop]]) // eslint-disable-line @typescript-eslint/no-explicit-any
           )
         );
       }
@@ -1815,13 +1719,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                             value={`${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`}
                             onChange={(e) => {
                               const [h, m] = e.target.value.split(':').map(Number);
-                              handleInputChange(
-                                'enabledSchedule' as any,
-                                {
-                                  ...((formData.enabledSchedule as any) || {}),
+                              setFormData((prev) => ({
+                                ...prev,
+                                enabledSchedule: {
+                                  ...(prev.enabledSchedule || {}),
                                   [day]: { ...ds, start: { hour: h, minute: m } },
-                                } as any
-                              );
+                                },
+                              }));
                             }}
                             className="h-9 text-sm"
                             style={{ width: 110 }}
@@ -1832,13 +1736,13 @@ export function NetworkEditDetail({ serviceId, onSave, isInline = false }: Netwo
                             value={`${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`}
                             onChange={(e) => {
                               const [h, m] = e.target.value.split(':').map(Number);
-                              handleInputChange(
-                                'enabledSchedule' as any,
-                                {
-                                  ...((formData.enabledSchedule as any) || {}),
+                              setFormData((prev) => ({
+                                ...prev,
+                                enabledSchedule: {
+                                  ...(prev.enabledSchedule || {}),
                                   [day]: { ...ds, stop: { hour: h, minute: m } },
-                                } as any
-                              );
+                                },
+                              }));
                             }}
                             className="h-9 text-sm"
                             style={{ width: 110 }}
