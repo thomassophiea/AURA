@@ -284,6 +284,7 @@ const pageInfo = {
 interface DetailPanelState {
   isOpen: boolean;
   type: 'access-point' | 'client' | 'site' | 'site-group' | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any;
 }
 
@@ -375,7 +376,6 @@ export default function App() {
     // Check if user is already authenticated - trust stored tokens
     const initializeAuth = async () => {
       if (apiService.isAuthenticated()) {
-        console.log('[App] ✅ Found valid session - restoring authentication');
         setIsAuthenticated(true);
         setAdminRole(apiService.getAdminRole());
 
@@ -394,11 +394,9 @@ export default function App() {
         }
 
         // Start SLE data collection automatically on successful authentication
-        console.log('[App] Starting SLE data collection service');
         sleDataCollectionService.startCollection();
       } else {
         // No stored session - show login screen
-        console.log('[App] No valid session found - showing login screen');
         setIsAuthenticated(false);
       }
     };
@@ -426,7 +424,6 @@ export default function App() {
 
         // If tokens are missing but we think we're authenticated, log out
         if (!accessToken || !refreshToken) {
-          console.log('[Auth] Authentication tokens missing - logging out');
           handleSessionExpired();
           return;
         }
@@ -435,7 +432,6 @@ export default function App() {
 
     // Listen for session expiration errors
     const handleSessionExpired = () => {
-      console.log('Session expired - logging out user');
       setIsAuthenticated(false);
       setAdminRole(null);
       setCurrentPage('workspace');
@@ -452,7 +448,6 @@ export default function App() {
     // Cancel requests when page becomes hidden (user switches tabs/minimizes)
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('Page hidden, canceling pending requests');
         apiService.cancelAllRequests();
       }
     };
@@ -546,10 +541,6 @@ export default function App() {
         return false;
       }
 
-      // Log legitimate errors for debugging
-      if (!errorMessage.toLowerCase().includes('timeout')) {
-        console.log('Global error caught:', errorMessage);
-      }
       return undefined;
     };
 
@@ -572,7 +563,6 @@ export default function App() {
             errorMessage.includes('Failed to load roles'))
         ) {
           // Allow these to propagate so they trigger logout
-          console.log('Critical session expiration detected:', errorMessage);
           return; // Don't prevent default, let it propagate
         }
 
@@ -661,7 +651,6 @@ export default function App() {
             errorMessage.includes('Failed to load roles');
 
           if (isCoreEndpoint) {
-            console.log('Session expired for core endpoint - forcing logout:', errorMessage);
             handleSessionExpired();
             event.preventDefault();
             return;
@@ -726,7 +715,6 @@ export default function App() {
             errorString.includes('/v1/roles') ||
             errorString.includes('/v1/networks'))
         ) {
-          console.log('Session expired for core endpoint - forcing logout:', errorString);
           handleSessionExpired();
           event.preventDefault();
           return;
@@ -992,13 +980,11 @@ export default function App() {
     }
 
     // Start SLE data collection on login
-    console.log('[App] Starting SLE data collection service after login');
     sleDataCollectionService.startCollection();
   };
 
   const handleLogout = async () => {
     // Stop SLE data collection on logout
-    console.log('[App] Stopping SLE data collection service on logout');
     sleDataCollectionService.stopCollection();
 
     await apiService.logout();
@@ -1013,7 +999,6 @@ export default function App() {
     if (!isPageAllowedByPersona(page)) return;
 
     // Cancel any pending API requests when switching pages
-    console.log(`Switching to page: ${page}, canceling pending requests`);
     apiService.cancelAllRequests();
 
     // Auto-switch scope based on page classification
