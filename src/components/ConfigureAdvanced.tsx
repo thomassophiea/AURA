@@ -1,5 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// API items from Campus Controller have no TypeScript interfaces; shapes vary per endpoint
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Badge } from './ui/badge';
@@ -11,18 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
-import { Alert, AlertDescription } from './ui/alert';
 import {
   Settings,
   RefreshCw,
   Plus,
   Edit,
   Trash2,
-  AlertCircle,
   Network,
   Gauge,
   Layers,
-  Cpu,
   Bluetooth,
   Globe,
   Shield,
@@ -121,6 +120,7 @@ function TopologiesTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -735,8 +735,7 @@ function TopologiesTab() {
 
 // ==================== CoS TAB ====================
 function CoSTab() {
-  const { fetchAll, filterBySg, isOrgScope, siteGroups, navigateToTemplateCreation } =
-    useMultiControllerFetch();
+  const { fetchAll, isOrgScope, navigateToTemplateCreation } = useMultiControllerFetch();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
@@ -754,6 +753,7 @@ function CoSTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -1067,6 +1067,7 @@ function RateLimitersTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -1268,6 +1269,7 @@ function ProfilesTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -1682,6 +1684,7 @@ function IoTTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -2031,6 +2034,7 @@ function MeshpointsTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -2423,6 +2427,7 @@ function LocationServicesTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -2808,6 +2813,7 @@ function RFManagementTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
@@ -3368,6 +3374,7 @@ function ADSPTab() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async () => {
