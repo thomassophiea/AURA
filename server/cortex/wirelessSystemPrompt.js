@@ -89,7 +89,7 @@ function evidenceToText(evidence) {
   return lines.join('\n');
 }
 
-export function buildWirelessPrompt({ question, pageContext, evidence, rootCause, confidence }) {
+export function buildWirelessPrompt({ question, pageContext: _pageContext, evidence, rootCause, confidence }) {
   const systemContent = [
     WIRELESS_SYSTEM_PROMPT,
     '',
