@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * RF Quality Widget (Anchored)
  *
@@ -14,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Alert, AlertDescription } from './ui/alert';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import {
   RefreshCw,
   Radio,
@@ -22,12 +24,9 @@ import {
   Activity,
   Zap,
   Volume2,
-  Wifi,
   Users,
   Lock,
   Unlock,
-  TrendingUp,
-  TrendingDown,
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { useOperationalContext } from '../hooks/useOperationalContext';
@@ -95,6 +94,7 @@ export function RFQualityWidgetAnchored() {
     loadRFQIData();
     const interval = setInterval(() => loadRFQIData(true), 60000); // Refresh every minute for real-time feel
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSiteId, ctx.timeRange]);
 
   const loadRFQIData = async (isRefresh = false) => {
