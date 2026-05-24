@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -16,13 +19,10 @@ import {
   Plus,
   Edit,
   Trash2,
-  Key,
   Copy,
   Eye,
   EyeOff,
   RefreshCw,
-  CheckCircle,
-  AlertCircle,
   AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -83,26 +83,12 @@ export function ApplicationsManagement() {
   const loadApplications = async () => {
     setLoading(true);
     try {
-      console.log(
-        '[ApplicationsManagement] Fetching applications from /platformmanager/v1/apps...'
-      );
-
       const response = await apiService.makeAuthenticatedRequest('/platformmanager/v1/apps', {
         method: 'GET',
       });
 
-      console.log('[ApplicationsManagement] Response status:', response.status);
-      console.log('[ApplicationsManagement] Response ok:', response.ok);
-
       if (response.ok) {
         const data = await response.json();
-        console.log('[ApplicationsManagement] Raw API response:', data);
-        console.log(
-          '[ApplicationsManagement] Response type:',
-          typeof data,
-          'isArray:',
-          Array.isArray(data)
-        );
 
         // Parse applications data with flexible schema detection
         let rawApps: any[] = [];
@@ -122,23 +108,10 @@ export function ApplicationsManagement() {
           ];
           for (const key of possibleKeys) {
             if (data[key] && Array.isArray(data[key])) {
-              console.log('[ApplicationsManagement] Found applications array at key:', key);
               rawApps = data[key];
               break;
             }
           }
-
-          if (rawApps.length === 0) {
-            console.log(
-              '[ApplicationsManagement] No apps found. Available keys:',
-              Object.keys(data)
-            );
-          }
-        }
-
-        console.log('[ApplicationsManagement] Parsed applications count:', rawApps.length);
-        if (rawApps.length > 0) {
-          console.log('[ApplicationsManagement] Sample app:', rawApps[0]);
         }
 
         // Transform Extreme Platform ONE format to our interface
@@ -167,8 +140,6 @@ export function ApplicationsManagement() {
             icon: app.icon || app.iconUrl || undefined,
           };
         });
-
-        console.log('[ApplicationsManagement] Transformed applications:', appList);
 
         setApplications(appList);
         setApiNotAvailable(false);
@@ -284,7 +255,7 @@ export function ApplicationsManagement() {
       }
 
       handleCloseDialog();
-    } catch (error) {
+    } catch {
       toast.error('Failed to save application');
     }
   };
