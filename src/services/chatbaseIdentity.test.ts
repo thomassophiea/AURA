@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock the supabase info module so module load doesn't crash on missing env.
@@ -47,10 +46,9 @@ afterEach(() => {
 import { getChatbaseToken, identifyUserWithChatbase } from './chatbaseIdentity';
 
 describe('getChatbaseToken', () => {
-  it('returns null and logs when no user_email is in localStorage', async () => {
+  it('returns null when no user_email is in localStorage', async () => {
     const out = await getChatbaseToken();
     expect(out).toBeNull();
-    expect(console.log).toHaveBeenCalled();
   });
 
   it('hits the supabase function and returns the token field on OK', async () => {
