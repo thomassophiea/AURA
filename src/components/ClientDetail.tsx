@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is required for client detail fields
 import { ScrollArea } from './ui/scroll-area';
 import {
   Smartphone,
@@ -13,7 +14,6 @@ import {
   Activity,
   Signal,
   MapPin,
-  Globe,
   RefreshCw,
   Ban,
   RotateCcw,
@@ -26,7 +26,6 @@ import {
   ArrowLeft,
   Loader2,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './ui/dialog';
 import { apiService, Station, StationEvent, APEvent, RRMEvent } from '../services/api';
 import { RoamingTrail } from './RoamingTrail';
 import { ClientInsights, ClientInsightsFullScreen } from './ClientInsights';
@@ -82,39 +81,8 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       });
 
       // Debug logging to see what fields are available
-      console.log('Station details for', macAddress, ':', {
-        ssid: details.ssid,
-        networkName: details.networkName,
-        essid: details.essid,
-        network: details.network,
-        profileName: details.profileName,
-        serviceName: details.serviceName,
-        serviceId: details.serviceId, // Added serviceId logging
-        roleId: details.roleId, // Added roleId logging
-        vlan: details.vlan,
-        vlanId: details.vlanId,
-        vlanTag: details.vlanTag,
-        dot1dPortNumber: details.dot1dPortNumber,
-        channel: details.channel,
-        radioChannel: details.radioChannel,
-        channelNumber: details.channelNumber,
-        apName: details.apName,
-        apDisplayName: details.apDisplayName,
-        apHostname: details.apHostname,
-        accessPointName: details.accessPointName,
-        apSerial: details.apSerial,
-        apSerialNumber: details.apSerialNumber,
-        apSn: details.apSn,
-        accessPointSerial: details.accessPointSerial,
-        siteId: details.siteId,
-        siteName: details.siteName,
-        rxRate: details.rxRate,
-        dataRate: details.dataRate,
-        txRate: details.txRate,
-      });
 
       // Log ALL fields to see what's actually available
-      console.log('All station fields:', details);
 
       // Load site name if siteId is available
       if (details.siteId) {
@@ -164,10 +132,8 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const loadServiceDetails = async (serviceId: string) => {
     try {
       setIsLoadingServiceDetails(true);
-      console.log(`ClientDetail: Loading service details for serviceId: ${serviceId}`);
 
       const serviceDetails = await simpleServiceMapping.getServiceDetails(serviceId);
-      console.log(`ClientDetail: Resolved service details: ${serviceId} ->`, serviceDetails);
       setResolvedServiceDetails(serviceDetails);
     } catch (error) {
       console.warn('Failed to resolve service details:', error);
@@ -180,10 +146,8 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const loadRoleName = async (roleId: string) => {
     try {
       setIsLoadingRoleName(true);
-      console.log(`ClientDetail: Loading role name for roleId: ${roleId}`);
 
       const roleName = await simpleServiceMapping.getRoleName(roleId);
-      console.log(`ClientDetail: Resolved role name: ${roleId} -> ${roleName}`);
       setResolvedRoleName(roleName);
     } catch (error) {
       console.warn('Failed to resolve role name:', error);
@@ -209,19 +173,12 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const loadStationEvents = async () => {
     try {
       setIsLoadingEvents(true);
-      console.log('[ClientDetail] Loading station events with correlation for:', macAddress);
 
       // Try to fetch correlated events (station + AP + RRM)
       const correlatedEvents = await apiService.fetchStationEventsWithCorrelation(
         macAddress,
         '24H'
       );
-
-      console.log('[ClientDetail] Loaded correlated events:', {
-        station: correlatedEvents.stationEvents.length,
-        ap: correlatedEvents.apEvents.length,
-        rrm: correlatedEvents.smartRfEvents.length,
-      });
 
       setStationEvents(correlatedEvents.stationEvents);
       setApEvents(correlatedEvents.apEvents);
@@ -246,7 +203,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       await apiService.disassociateStations([macAddress]);
       toast.success('Client disassociated successfully');
       await loadClientDetails();
-    } catch (error) {
+    } catch {
       toast.error('Failed to disassociate client');
     }
   };
@@ -255,7 +212,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     try {
       await apiService.reauthenticateStation(macAddress);
       toast.success('Client reauthentication initiated');
-    } catch (error) {
+    } catch {
       toast.error('Failed to reauthenticate client');
     }
   };
@@ -268,6 +225,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     loadClientDetails();
     loadTrafficStats();
     loadStationEvents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [macAddress]);
 
   if (isLoading) {
@@ -337,17 +295,6 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
     return `${formatted} ${units[unitIndex]}`;
   };
 
-  const formatPackets = (packets?: number) => {
-    if (packets === undefined || packets === null) return 'N/A';
-    if (packets === 0) return '0';
-    return packets.toLocaleString();
-  };
-
-  const formatDuration = (duration?: string) => {
-    if (!duration) return 'N/A';
-    return duration;
-  };
-
   // Format timestamp to readable date and time
   const formatDateTime = (timestamp?: string | number) => {
     if (!timestamp) return 'N/A';
@@ -381,7 +328,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
         second: '2-digit',
         hour12: true,
       });
-    } catch (error) {
+    } catch {
       return 'N/A';
     }
   };
@@ -393,16 +340,6 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
       return resolvedServiceDetails.ssid;
     }
     return client.ssid || client.networkName || client.essid || 'N/A';
-  };
-
-  const getNetwork = (client: Station): string => {
-    // Prioritize resolved service details over client fields
-    if (resolvedServiceDetails?.networkName && resolvedServiceDetails.networkName !== 'N/A') {
-      return resolvedServiceDetails.networkName;
-    }
-    return (
-      client.network || client.networkName || client.profileName || client.serviceName || 'N/A'
-    );
   };
 
   const getVLAN = (client: Station): string => {
@@ -433,12 +370,6 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
   const getAccessPoint = (client: Station): string => {
     return (
       client.apName || client.apDisplayName || client.apHostname || client.accessPointName || 'N/A'
-    );
-  };
-
-  const getAPSerial = (client: Station): string => {
-    return (
-      client.apSerial || client.apSerialNumber || client.apSn || client.accessPointSerial || 'N/A'
     );
   };
 
