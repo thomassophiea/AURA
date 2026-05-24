@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Export data to CSV format
  */
@@ -12,20 +13,18 @@ export function exportToCSV<T extends Record<string, any>>(
   }
 
   // Build header row
-  const header = columns.map(col => `"${col.label}"`).join(',');
+  const header = columns.map((col) => `"${col.label}"`).join(',');
 
   // Build data rows
   const rows = data
-    .map(item =>
+    .map((item) =>
       columns
-        .map(col => {
+        .map((col) => {
           const value = item[col.key];
           // Handle different value types
           if (value === null || value === undefined) return '""';
-          if (typeof value === 'string')
-            return `"${value.replace(/"/g, '""')}"`;
-          if (typeof value === 'object')
-            return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
+          if (typeof value === 'string') return `"${value.replace(/"/g, '""')}"`;
+          if (typeof value === 'object') return `"${JSON.stringify(value).replace(/"/g, '""')}"`;
           return `"${value}"`;
         })
         .join(',')
@@ -94,13 +93,13 @@ export function printReport<T extends Record<string, any>>(
       <div class="meta">Generated: ${new Date().toLocaleString()} | Total: ${data.length} records</div>
       <table>
         <thead>
-          <tr>${columns.map(col => `<th>${col.label}</th>`).join('')}</tr>
+          <tr>${columns.map((col) => `<th>${col.label}</th>`).join('')}</tr>
         </thead>
         <tbody>
           ${data
             .map(
-              item => `
-            <tr>${columns.map(col => `<td>${item[col.key] ?? ''}</td>`).join('')}</tr>
+              (item) => `
+            <tr>${columns.map((col) => `<td>${item[col.key] ?? ''}</td>`).join('')}</tr>
           `
             )
             .join('')}

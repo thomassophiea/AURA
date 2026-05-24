@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SLE Octopus - Organic tentacle visualization
  * Center body = overall score. Each tentacle = one SLE metric.

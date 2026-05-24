@@ -24,12 +24,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from './dialog';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from './tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 import { Label } from './label';
 import { Input } from './input';
 import { Textarea } from './textarea';
@@ -54,7 +49,7 @@ export function ColumnCustomizationDialog({
   customization,
   triggerLabel = 'Customize Columns',
   showTriggerIcon = true,
-  trigger
+  trigger,
 }: ColumnCustomizationDialogProps) {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('columns');
@@ -68,20 +63,20 @@ export function ColumnCustomizationDialog({
     currentView,
     enableViews,
     hasUnsavedChanges,
-    toggleColumn,
+    toggleColumn: _toggleColumn,
     showColumns,
-    hideColumns,
+    hideColumns: _hideColumns,
     resetColumns,
     saveView,
     loadView,
-    deleteView
+    deleteView,
   } = customization;
 
   // Save current configuration as a new view
   const handleSaveView = async () => {
     if (!newViewName.trim()) {
       toast.error('View name required', {
-        description: 'Please enter a name for the view'
+        description: 'Please enter a name for the view',
       });
       return;
     }
@@ -92,11 +87,11 @@ export function ColumnCustomizationDialog({
         description: newViewDescription.trim() || undefined,
         tableId: customization.tableId,
         columns: visibleColumns,
-        createdBy: '' // Will be set by service
+        createdBy: '', // Will be set by service
       });
 
       toast.success('View saved', {
-        description: `"${newViewName}" has been saved successfully`
+        description: `"${newViewName}" has been saved successfully`,
       });
 
       setNewViewName('');
@@ -104,7 +99,7 @@ export function ColumnCustomizationDialog({
       setActiveTab('views');
     } catch (error) {
       toast.error('Failed to save view', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   };
@@ -113,7 +108,7 @@ export function ColumnCustomizationDialog({
   const handleLoadView = (viewId: string) => {
     loadView(viewId);
     toast.success('View loaded', {
-      description: 'Column configuration has been updated'
+      description: 'Column configuration has been updated',
     });
   };
 
@@ -122,11 +117,11 @@ export function ColumnCustomizationDialog({
     try {
       await deleteView(viewId);
       toast.success('View deleted', {
-        description: 'The view has been removed'
+        description: 'The view has been removed',
       });
     } catch (error) {
       toast.error('Failed to delete view', {
-        description: error instanceof Error ? error.message : 'Unknown error'
+        description: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   };
@@ -135,7 +130,7 @@ export function ColumnCustomizationDialog({
   const handleReset = () => {
     resetColumns();
     toast.success('Reset to defaults', {
-      description: 'Column configuration has been reset'
+      description: 'Column configuration has been reset',
     });
   };
 
@@ -146,11 +141,11 @@ export function ColumnCustomizationDialog({
       visibleColumns,
       columnOrder: customization.columnOrder,
       columnWidths: customization.columnWidths,
-      pinnedColumns: customization.pinnedColumns
+      pinnedColumns: customization.pinnedColumns,
     };
 
     const blob = new Blob([JSON.stringify(config, null, 2)], {
-      type: 'application/json'
+      type: 'application/json',
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -160,7 +155,7 @@ export function ColumnCustomizationDialog({
     URL.revokeObjectURL(url);
 
     toast.success('Configuration exported', {
-      description: 'Column configuration has been downloaded'
+      description: 'Column configuration has been downloaded',
     });
   };
 
@@ -178,9 +173,7 @@ export function ColumnCustomizationDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || defaultTrigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger || defaultTrigger}</DialogTrigger>
 
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
@@ -193,13 +186,15 @@ export function ColumnCustomizationDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 overflow-hidden flex flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="flex-1 overflow-hidden flex flex-col"
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="columns">
               Columns
-              {hasUnsavedChanges && (
-                <span className="ml-2 h-2 w-2 rounded-full bg-orange-500" />
-              )}
+              {hasUnsavedChanges && <span className="ml-2 h-2 w-2 rounded-full bg-orange-500" />}
             </TabsTrigger>
             <TabsTrigger value="save" disabled={!enableViews}>
               Save View
@@ -272,9 +267,7 @@ export function ColumnCustomizationDialog({
             {savedViews.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>No saved views yet</p>
-                <p className="text-sm mt-2">
-                  Customize your columns and save them as a view
-                </p>
+                <p className="text-sm mt-2">Customize your columns and save them as a view</p>
               </div>
             ) : (
               savedViews.map((view) => (
@@ -305,9 +298,7 @@ export function ColumnCustomizationDialog({
                         )}
                       </div>
                       {view.description && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {view.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{view.description}</p>
                       )}
                       <div className="text-xs text-muted-foreground mt-2">
                         {view.columns.length} columns
@@ -315,21 +306,13 @@ export function ColumnCustomizationDialog({
                     </div>
                     <div className="flex gap-2">
                       {currentView !== view.id && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleLoadView(view.id)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => handleLoadView(view.id)}>
                           Load
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteView(view.id)}
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => handleDeleteView(view.id)}>
                         Delete
-                        </Button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -349,9 +332,7 @@ export function ColumnCustomizationDialog({
               Export
             </Button>
           </div>
-          <Button onClick={() => setOpen(false)}>
-            Done
-          </Button>
+          <Button onClick={() => setOpen(false)}>Done</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

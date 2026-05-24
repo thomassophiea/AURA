@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SLE Waterfall - Horizontal bar view sorted by success rate
  * Worst-performing SLEs at top. Classifier segments shown in failure portion.

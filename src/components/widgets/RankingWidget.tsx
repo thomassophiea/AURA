@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
 interface RankingItem {
   name: string;
@@ -24,7 +25,7 @@ export const RankingWidget: React.FC<RankingWidgetProps> = ({
   type = 'top',
   maxItems = 10,
   showBar = true,
-  unit
+  unit,
 }) => {
   if (!items || items.length === 0) {
     return (
@@ -41,7 +42,7 @@ export const RankingWidget: React.FC<RankingWidgetProps> = ({
   const displayItems = items.slice(0, maxItems);
 
   // Find max value for bar sizing
-  const maxValue = Math.max(...displayItems.map(item => item.value), 1);
+  const maxValue = Math.max(...displayItems.map((item) => item.value), 1);
 
   const TrendIcon = type === 'top' ? TrendingUp : TrendingDown;
   const trendColor = type === 'top' ? 'text-green-500' : 'text-red-500';

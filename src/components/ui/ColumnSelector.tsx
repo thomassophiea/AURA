@@ -11,19 +11,14 @@
  */
 
 import { useState, useMemo } from 'react';
-import { Check, Search, Eye, EyeOff, Lock } from 'lucide-react';
-import { ColumnConfig, ColumnId, ColumnCategory } from '@/types/table';
+import { Search, Eye, EyeOff, Lock } from 'lucide-react';
+import { ColumnConfig, ColumnId } from '@/types/table';
 import { Button } from './button';
 import { Input } from './input';
 import { Label } from './label';
 import { Checkbox } from './checkbox';
 import { Badge } from './badge';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from './accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './accordion';
 
 interface ColumnSelectorProps {
   /** Available columns */
@@ -51,13 +46,13 @@ export function ColumnSelector({
   onChange,
   groupByCategory = true,
   showSearch = true,
-  showQuickActions = true
+  showQuickActions = true,
 }: ColumnSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
   // Group columns by category
   const columnsByCategory = useMemo(() => {
-    const filtered = columns.filter(col =>
+    const filtered = columns.filter((col) =>
       col.label.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
@@ -65,14 +60,17 @@ export function ColumnSelector({
       return { all: filtered };
     }
 
-    const grouped = filtered.reduce((acc, col) => {
-      const category = col.category || 'other';
-      if (!acc[category]) {
-        acc[category] = [];
-      }
-      acc[category].push(col);
-      return acc;
-    }, {} as Record<string, ColumnConfig[]>);
+    const grouped = filtered.reduce(
+      (acc, col) => {
+        const category = col.category || 'other';
+        if (!acc[category]) {
+          acc[category] = [];
+        }
+        acc[category].push(col);
+        return acc;
+      },
+      {} as Record<string, ColumnConfig[]>
+    );
 
     return grouped;
   }, [columns, searchQuery, groupByCategory]);
@@ -89,7 +87,7 @@ export function ColumnSelector({
       advanced: 'Advanced',
       security: 'Security',
       performance: 'Performance',
-      other: 'Other'
+      other: 'Other',
     };
     return labels[category] || category;
   };
@@ -99,7 +97,7 @@ export function ColumnSelector({
     if (isLocked(columnId)) return;
 
     const newVisible = visibleColumns.includes(columnId)
-      ? visibleColumns.filter(id => id !== columnId)
+      ? visibleColumns.filter((id) => id !== columnId)
       : [...visibleColumns, columnId];
 
     onChange(newVisible);
@@ -107,35 +105,31 @@ export function ColumnSelector({
 
   // Check if column is locked
   const isLocked = (columnId: ColumnId): boolean => {
-    const column = columns.find(c => c.key === columnId);
+    const column = columns.find((c) => c.key === columnId);
     return column?.lockVisible === true;
   };
 
   // Show all columns
   const showAll = () => {
-    const allIds = columns.map(c => c.key);
+    const allIds = columns.map((c) => c.key);
     onChange(allIds);
   };
 
   // Hide all (except locked)
   const hideAll = () => {
-    const lockedIds = columns
-      .filter(c => c.lockVisible === true)
-      .map(c => c.key);
+    const lockedIds = columns.filter((c) => c.lockVisible === true).map((c) => c.key);
     onChange(lockedIds);
   };
 
   // Reset to defaults
   const resetToDefaults = () => {
-    const defaultVisible = columns
-      .filter(c => c.defaultVisible !== false)
-      .map(c => c.key);
+    const defaultVisible = columns.filter((c) => c.defaultVisible !== false).map((c) => c.key);
     onChange(defaultVisible);
   };
 
   // Count visible in category
   const getVisibleCount = (categoryColumns: ColumnConfig[]): number => {
-    return categoryColumns.filter(c => visibleColumns.includes(c.key)).length;
+    return categoryColumns.filter((c) => visibleColumns.includes(c.key)).length;
   };
 
   return (
@@ -157,29 +151,15 @@ export function ColumnSelector({
 
           {showQuickActions && (
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={showAll}
-                className="flex-1"
-              >
+              <Button variant="outline" size="sm" onClick={showAll} className="flex-1">
                 <Eye className="mr-2 h-4 w-4" />
                 Show All
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={hideAll}
-                className="flex-1"
-              >
+              <Button variant="outline" size="sm" onClick={hideAll} className="flex-1">
                 <EyeOff className="mr-2 h-4 w-4" />
                 Hide All
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={resetToDefaults}
-              >
+              <Button variant="outline" size="sm" onClick={resetToDefaults}>
                 Reset
               </Button>
             </div>
@@ -261,14 +241,10 @@ function ColumnItem({ column, isVisible, isLocked, onToggle }: ColumnItemProps) 
         <span className="flex items-center gap-2">
           <span>{column.label}</span>
           {column.tooltip && (
-            <span className="text-xs text-muted-foreground">
-              ({column.tooltip})
-            </span>
+            <span className="text-xs text-muted-foreground">({column.tooltip})</span>
           )}
         </span>
-        {isLocked && (
-          <Lock className="h-3 w-3 text-muted-foreground" />
-        )}
+        {isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
       </Label>
     </div>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * SLE Honeycomb - Hex grid visualization
  * Each hexagon = one SLE metric. Fill level (bottom-up) = success rate.

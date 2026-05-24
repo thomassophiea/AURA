@@ -102,50 +102,53 @@ export function useOfflineCache<T>(
     };
   }, []);
 
-  const fetchData = useCallback(async (isInitialLoad = false) => {
-    if (!navigator.onLine) {
-      const hasCache = await loadFromCache();
-      if (hasCache) {
-        setError('Offline - showing cached data');
-      } else {
-        setError('Offline - no cached data available');
-      }
-      setLoading(false);
-      return;
-    }
-
-    try {
-      // Only show loading on initial load (no existing data)
-      if (isInitialLoad && !data) {
-        setLoading(true);
-      }
-      setError(null);
-      const result = await fetchFnRef.current();
-
-      if (!mountedRef.current) return;
-
-      setData(result);
-      setLastUpdated(new Date());
-      setIsCached(false);
-      setCacheAge(null);
-
-      await saveToCache(result);
-    } catch (e) {
-      if (!mountedRef.current) return;
-
-      const errorMsg = e instanceof Error ? e.message : 'Failed to fetch data';
-      setError(errorMsg);
-
-      const hasCache = await loadFromCache();
-      if (hasCache) {
-        setError(`${errorMsg} - showing cached data`);
-      }
-    } finally {
-      if (mountedRef.current) {
+  const fetchData = useCallback(
+    async (isInitialLoad = false) => {
+      if (!navigator.onLine) {
+        const hasCache = await loadFromCache();
+        if (hasCache) {
+          setError('Offline - showing cached data');
+        } else {
+          setError('Offline - no cached data available');
+        }
         setLoading(false);
+        return;
       }
-    }
-  }, [loadFromCache, saveToCache, data]);
+
+      try {
+        // Only show loading on initial load (no existing data)
+        if (isInitialLoad && !data) {
+          setLoading(true);
+        }
+        setError(null);
+        const result = await fetchFnRef.current();
+
+        if (!mountedRef.current) return;
+
+        setData(result);
+        setLastUpdated(new Date());
+        setIsCached(false);
+        setCacheAge(null);
+
+        await saveToCache(result);
+      } catch (e) {
+        if (!mountedRef.current) return;
+
+        const errorMsg = e instanceof Error ? e.message : 'Failed to fetch data';
+        setError(errorMsg);
+
+        const hasCache = await loadFromCache();
+        if (hasCache) {
+          setError(`${errorMsg} - showing cached data`);
+        }
+      } finally {
+        if (mountedRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [loadFromCache, saveToCache, data]
+  );
 
   useEffect(() => {
     mountedRef.current = true;
@@ -167,6 +170,7 @@ export function useOfflineCache<T>(
       mountedRef.current = false;
       if (interval) clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, refreshInterval, preload]);
 
   useEffect(() => {
@@ -204,7 +208,6 @@ export async function preloadCriticalData(
 
       const data = await fetchFn();
       await offlineStorage.set(key, data, ttl);
-      console.log(`[preloadCriticalData] Preloaded: ${key}`);
     } catch (e) {
       console.error(`[preloadCriticalData] Failed to preload ${key}:`, e);
     }

@@ -27,6 +27,7 @@ export function useSiteContexts() {
     if (!isLoading && contexts.length > 0) {
       saveContexts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contexts, isLoading]);
 
   // Save selected context whenever it changes
@@ -34,6 +35,7 @@ export function useSiteContexts() {
     if (!isLoading) {
       saveSelectedContext();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedContextId, isLoading]);
 
   const loadContexts = () => {
@@ -87,31 +89,37 @@ export function useSiteContexts() {
       id: `custom-${Date.now()}`,
       isCustom: true,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    setContexts(prev => [...prev, newContext]);
+    setContexts((prev) => [...prev, newContext]);
     return newContext;
   }, []);
 
   const updateContext = useCallback((id: string, updates: Partial<SiteContext>) => {
-    setContexts(prev => prev.map(ctx =>
-      ctx.id === id
-        ? { ...ctx, ...updates, updatedAt: new Date().toISOString() }
-        : ctx
-    ));
+    setContexts((prev) =>
+      prev.map((ctx) =>
+        ctx.id === id ? { ...ctx, ...updates, updatedAt: new Date().toISOString() } : ctx
+      )
+    );
   }, []);
 
-  const deleteContext = useCallback((id: string) => {
-    setContexts(prev => prev.filter(ctx => ctx.id !== id));
-    // If the deleted context was selected, reset to 'all'
-    if (selectedContextId === id) {
-      setSelectedContextId('all');
-    }
-  }, [selectedContextId]);
+  const deleteContext = useCallback(
+    (id: string) => {
+      setContexts((prev) => prev.filter((ctx) => ctx.id !== id));
+      // If the deleted context was selected, reset to 'all'
+      if (selectedContextId === id) {
+        setSelectedContextId('all');
+      }
+    },
+    [selectedContextId]
+  );
 
-  const getContext = useCallback((id: string) => {
-    return contexts.find(ctx => ctx.id === id);
-  }, [contexts]);
+  const getContext = useCallback(
+    (id: string) => {
+      return contexts.find((ctx) => ctx.id === id);
+    },
+    [contexts]
+  );
 
   const selectContext = useCallback((id: string) => {
     setSelectedContextId(id);
@@ -122,9 +130,7 @@ export function useSiteContexts() {
     setSelectedContextId('all');
   }, []);
 
-  const selectedContext = selectedContextId === 'all'
-    ? null
-    : getContext(selectedContextId);
+  const selectedContext = selectedContextId === 'all' ? null : getContext(selectedContextId);
 
   return {
     contexts,
@@ -136,6 +142,6 @@ export function useSiteContexts() {
     deleteContext,
     getContext,
     selectContext,
-    resetToDefaults
+    resetToDefaults,
   };
 }

@@ -9,7 +9,7 @@ import type {
   DeploymentMode,
   Profile,
   WLANSiteAssignment,
-  EffectiveProfileSet
+  EffectiveProfileSet,
 } from '../types/network';
 
 /**
@@ -24,15 +24,12 @@ class EffectiveSetCalculatorService {
    * @returns EffectiveProfileSet with selected and excluded profiles
    */
   calculateEffectiveSet(
-    siteAssignment: Pick<WLANSiteAssignment, 'siteId' | 'siteName' | 'deploymentMode' | 'includedProfiles' | 'excludedProfiles'>,
+    siteAssignment: Pick<
+      WLANSiteAssignment,
+      'siteId' | 'siteName' | 'deploymentMode' | 'includedProfiles' | 'excludedProfiles'
+    >,
     allProfilesAtSite: Profile[]
   ): EffectiveProfileSet {
-    console.log('[EffectiveSetCalculator] Calculating effective set:', {
-      siteId: siteAssignment.siteId,
-      mode: siteAssignment.deploymentMode,
-      totalProfiles: allProfilesAtSite.length
-    });
-
     const { deploymentMode, includedProfiles, excludedProfiles } = siteAssignment;
 
     let selectedProfiles: Profile[] = [];
@@ -47,20 +44,20 @@ class EffectiveSetCalculatorService {
 
       case 'INCLUDE_ONLY':
         // Include only specified profiles
-        selectedProfiles = allProfilesAtSite.filter(profile =>
+        selectedProfiles = allProfilesAtSite.filter((profile) =>
           includedProfiles.includes(profile.id)
         );
-        excludedProfilesList = allProfilesAtSite.filter(profile =>
-          !includedProfiles.includes(profile.id)
+        excludedProfilesList = allProfilesAtSite.filter(
+          (profile) => !includedProfiles.includes(profile.id)
         );
         break;
 
       case 'EXCLUDE_SOME':
         // Include all except specified profiles
-        selectedProfiles = allProfilesAtSite.filter(profile =>
-          !excludedProfiles.includes(profile.id)
+        selectedProfiles = allProfilesAtSite.filter(
+          (profile) => !excludedProfiles.includes(profile.id)
         );
-        excludedProfilesList = allProfilesAtSite.filter(profile =>
+        excludedProfilesList = allProfilesAtSite.filter((profile) =>
           excludedProfiles.includes(profile.id)
         );
         break;
@@ -71,18 +68,13 @@ class EffectiveSetCalculatorService {
         excludedProfilesList = [];
     }
 
-    console.log('[EffectiveSetCalculator] Result:', {
-      selected: selectedProfiles.length,
-      excluded: excludedProfilesList.length
-    });
-
     return {
       siteId: siteAssignment.siteId,
       siteName: siteAssignment.siteName,
       deploymentMode,
       allProfiles: allProfilesAtSite,
       selectedProfiles,
-      excludedProfiles: excludedProfilesList
+      excludedProfiles: excludedProfilesList,
     };
   }
 
@@ -94,10 +86,13 @@ class EffectiveSetCalculatorService {
    * @returns Array of effective profile sets
    */
   calculateMultipleEffectiveSets(
-    siteAssignments: Pick<WLANSiteAssignment, 'siteId' | 'siteName' | 'deploymentMode' | 'includedProfiles' | 'excludedProfiles'>[],
+    siteAssignments: Pick<
+      WLANSiteAssignment,
+      'siteId' | 'siteName' | 'deploymentMode' | 'includedProfiles' | 'excludedProfiles'
+    >[],
     profilesBySite: Map<string, Profile[]>
   ): EffectiveProfileSet[] {
-    return siteAssignments.map(siteAssignment => {
+    return siteAssignments.map((siteAssignment) => {
       const profiles = profilesBySite.get(siteAssignment.siteId) || [];
       return this.calculateEffectiveSet(siteAssignment, profiles);
     });
@@ -130,7 +125,10 @@ class EffectiveSetCalculatorService {
    * @returns Validation result with error messages if invalid
    */
   validateSiteAssignment(
-    siteAssignment: Pick<WLANSiteAssignment, 'deploymentMode' | 'includedProfiles' | 'excludedProfiles'>
+    siteAssignment: Pick<
+      WLANSiteAssignment,
+      'deploymentMode' | 'includedProfiles' | 'excludedProfiles'
+    >
   ): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
@@ -189,7 +187,7 @@ class EffectiveSetCalculatorService {
 
     return {
       valid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
@@ -214,7 +212,7 @@ class EffectiveSetCalculatorService {
       total,
       assigned,
       excluded,
-      assignedPercent
+      assignedPercent,
     };
   }
 
@@ -245,7 +243,7 @@ class EffectiveSetCalculatorService {
    * @returns True if profile is in the selected profiles
    */
   isProfileInEffectiveSet(profileId: string, effectiveSet: EffectiveProfileSet): boolean {
-    return effectiveSet.selectedProfiles.some(p => p.id === profileId);
+    return effectiveSet.selectedProfiles.some((p) => p.id === profileId);
   }
 
   /**
@@ -262,13 +260,13 @@ class EffectiveSetCalculatorService {
     if (effectiveSet.deploymentMode === 'ALL_PROFILES_AT_SITE') {
       return {
         explicitlySelected: [],
-        explicitlyExcluded: []
+        explicitlyExcluded: [],
       };
     }
 
     return {
       explicitlySelected: effectiveSet.selectedProfiles,
-      explicitlyExcluded: effectiveSet.excludedProfiles
+      explicitlyExcluded: effectiveSet.excludedProfiles,
     };
   }
 }

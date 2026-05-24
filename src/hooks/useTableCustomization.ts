@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Universal Table Customization Hook
  *
@@ -26,7 +27,7 @@ import {
   ColumnView,
   PreferenceScope,
   TableCustomizationContext,
-  TableCustomizationActions
+  TableCustomizationActions,
 } from '@/types/table';
 
 interface UseTableCustomizationOptions<T = any> {
@@ -67,26 +68,27 @@ export function useTableCustomization<T = any>({
   userId,
   scope = 'user',
   onPreferencesChange,
-  onViewLoad
+  onViewLoad,
 }: UseTableCustomizationOptions<T>) {
   // Compute defaults from column definitions
   const defaultVisibleColumns = useMemo(
-    () => columns.filter(c => c.defaultVisible !== false).map(c => c.key),
+    () => columns.filter((c) => c.defaultVisible !== false).map((c) => c.key),
     [columns]
   );
 
-  const defaultColumnOrder = useMemo(
-    () => columns.map(c => c.key),
-    [columns]
-  );
+  const defaultColumnOrder = useMemo(() => columns.map((c) => c.key), [columns]);
 
   const defaultColumnWidths = useMemo(
-    () => columns.reduce((acc, c) => {
-      if (c.defaultWidth) {
-        acc[c.key] = c.defaultWidth;
-      }
-      return acc;
-    }, {} as Record<string, number>),
+    () =>
+      columns.reduce(
+        (acc, c) => {
+          if (c.defaultWidth) {
+            acc[c.key] = c.defaultWidth;
+          }
+          return acc;
+        },
+        {} as Record<string, number>
+      ),
     [columns]
   );
 
@@ -164,7 +166,15 @@ export function useTableCustomization<T = any>({
     };
 
     loadPreferences();
-  }, [tableId, userId, scope, enablePersistence, enableViews, finalStorageKey, defaultVisibleColumns]);
+  }, [
+    tableId,
+    userId,
+    scope,
+    enablePersistence,
+    enableViews,
+    finalStorageKey,
+    defaultVisibleColumns,
+  ]);
 
   // Save preferences whenever they change
   useEffect(() => {
@@ -180,7 +190,7 @@ export function useTableCustomization<T = any>({
         columnWidths,
         pinnedColumns,
         currentView,
-        lastModified: new Date().toISOString()
+        lastModified: new Date().toISOString(),
       };
 
       // Save to localStorage (always as backup)
@@ -218,23 +228,21 @@ export function useTableCustomization<T = any>({
     scope,
     enablePersistence,
     finalStorageKey,
-    onPreferencesChange
+    onPreferencesChange,
   ]);
 
   // Column operations
   const toggleColumn = useCallback((columnKey: ColumnId) => {
-    setVisibleColumns(prev => {
+    setVisibleColumns((prev) => {
       const isVisible = prev.includes(columnKey);
-      const newVisible = isVisible
-        ? prev.filter(k => k !== columnKey)
-        : [...prev, columnKey];
+      const newVisible = isVisible ? prev.filter((k) => k !== columnKey) : [...prev, columnKey];
       setHasUnsavedChanges(true);
       return newVisible;
     });
   }, []);
 
   const showColumns = useCallback((columnIds: ColumnId[]) => {
-    setVisibleColumns(prev => {
+    setVisibleColumns((prev) => {
       const newVisible = Array.from(new Set([...prev, ...columnIds]));
       setHasUnsavedChanges(true);
       return newVisible;
@@ -242,8 +250,8 @@ export function useTableCustomization<T = any>({
   }, []);
 
   const hideColumns = useCallback((columnIds: ColumnId[]) => {
-    setVisibleColumns(prev => {
-      const newVisible = prev.filter(k => !columnIds.includes(k));
+    setVisibleColumns((prev) => {
+      const newVisible = prev.filter((k) => !columnIds.includes(k));
       setHasUnsavedChanges(true);
       return newVisible;
     });
@@ -259,7 +267,7 @@ export function useTableCustomization<T = any>({
   }, [defaultVisibleColumns, defaultColumnOrder, defaultColumnWidths]);
 
   const setColumnWidth = useCallback((columnKey: ColumnId, width: number) => {
-    setColumnWidths(prev => {
+    setColumnWidths((prev) => {
       const newWidths = { ...prev, [columnKey]: width };
       setHasUnsavedChanges(true);
       return newWidths;
@@ -267,7 +275,7 @@ export function useTableCustomization<T = any>({
   }, []);
 
   const pinColumn = useCallback((columnKey: ColumnId) => {
-    setPinnedColumns(prev => {
+    setPinnedColumns((prev) => {
       if (prev.includes(columnKey)) return prev;
       const newPinned = [...prev, columnKey];
       setHasUnsavedChanges(true);
@@ -276,8 +284,8 @@ export function useTableCustomization<T = any>({
   }, []);
 
   const unpinColumn = useCallback((columnKey: ColumnId) => {
-    setPinnedColumns(prev => {
-      const newPinned = prev.filter(k => k !== columnKey);
+    setPinnedColumns((prev) => {
+      const newPinned = prev.filter((k) => k !== columnKey);
       setHasUnsavedChanges(true);
       return newPinned;
     });
@@ -302,9 +310,9 @@ export function useTableCustomization<T = any>({
           createdBy: userId,
           columns: visibleColumns,
           columnWidths,
-          pinnedColumns
+          pinnedColumns,
         });
-        setSavedViews(prev => [...prev, savedView]);
+        setSavedViews((prev) => [...prev, savedView]);
         setHasUnsavedChanges(false);
         return savedView;
       } catch (error) {
@@ -317,7 +325,7 @@ export function useTableCustomization<T = any>({
 
   const loadView = useCallback(
     (viewId: string) => {
-      const view = savedViews.find(v => v.id === viewId);
+      const view = savedViews.find((v) => v.id === viewId);
       if (view) {
         setVisibleColumns(view.columns);
         if (view.columnWidths) setColumnWidths(view.columnWidths);
@@ -339,7 +347,7 @@ export function useTableCustomization<T = any>({
       try {
         const { tablePreferencesService } = await import('@/services/tablePreferences');
         await tablePreferencesService.deleteView(viewId);
-        setSavedViews(prev => prev.filter(v => v.id !== viewId));
+        setSavedViews((prev) => prev.filter((v) => v.id !== viewId));
         if (currentView === viewId) {
           setCurrentView(undefined);
         }
@@ -361,12 +369,8 @@ export function useTableCustomization<T = any>({
         const { tablePreferencesService } = await import('@/services/tablePreferences');
         await tablePreferencesService.shareView(viewId, userIds);
         // Update local state
-        setSavedViews(prev =>
-          prev.map(v =>
-            v.id === viewId
-              ? { ...v, isShared: true, sharedWith: userIds }
-              : v
-          )
+        setSavedViews((prev) =>
+          prev.map((v) => (v.id === viewId ? { ...v, isShared: true, sharedWith: userIds } : v))
         );
       } catch (error) {
         console.error('Failed to share view:', error);
@@ -386,10 +390,10 @@ export function useTableCustomization<T = any>({
         const { tablePreferencesService } = await import('@/services/tablePreferences');
         await tablePreferencesService.setDefaultView(tableId, viewId, userId);
         // Update local state
-        setSavedViews(prev =>
-          prev.map(v => ({
+        setSavedViews((prev) =>
+          prev.map((v) => ({
             ...v,
-            isDefault: v.id === viewId
+            isDefault: v.id === viewId,
           }))
         );
       } catch (error) {
@@ -403,16 +407,14 @@ export function useTableCustomization<T = any>({
   // Compute visible column configs in order
   const visibleColumnConfigs = useMemo(() => {
     return columnOrder
-      .filter(key => visibleColumns.includes(key))
-      .map(key => columns.find(c => c.key === key))
+      .filter((key) => visibleColumns.includes(key))
+      .map((key) => columns.find((c) => c.key === key))
       .filter((c): c is ColumnConfig<T> => c !== undefined);
   }, [columnOrder, visibleColumns, columns]);
 
   // Compute fields for API projection
   const projectionFields = useMemo(() => {
-    return visibleColumnConfigs
-      .map(c => c.fieldPath || c.key)
-      .filter(Boolean);
+    return visibleColumnConfigs.map((c) => c.fieldPath || c.key).filter(Boolean);
   }, [visibleColumnConfigs]);
 
   // Build context object
@@ -427,7 +429,7 @@ export function useTableCustomization<T = any>({
     currentView,
     enableViews,
     enablePersistence,
-    isLoading
+    isLoading,
   };
 
   // Build actions object
@@ -444,7 +446,7 @@ export function useTableCustomization<T = any>({
     loadView,
     deleteView,
     shareView,
-    setDefaultView
+    setDefaultView,
   };
 
   return {
@@ -455,7 +457,7 @@ export function useTableCustomization<T = any>({
     hasUnsavedChanges,
 
     // Actions
-    ...actions
+    ...actions,
   };
 }
 

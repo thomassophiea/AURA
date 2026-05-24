@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Workspace Persistence Service
  *
@@ -116,7 +117,7 @@ export function saveWidgetToWorkspace(widget: PersistedWidgetReference): boolean
   }
 
   // Check if already exists
-  const existingIndex = state.widgets.findIndex(w => w.widget_id === widget.widget_id);
+  const existingIndex = state.widgets.findIndex((w) => w.widget_id === widget.widget_id);
 
   if (existingIndex >= 0) {
     // Update existing
@@ -142,7 +143,7 @@ export function removeWidgetFromWorkspace(widgetId: string): boolean {
   if (!state) return true; // Nothing to remove
 
   const initialLength = state.widgets.length;
-  state.widgets = state.widgets.filter(w => w.widget_id !== widgetId);
+  state.widgets = state.widgets.filter((w) => w.widget_id !== widgetId);
 
   if (state.widgets.length !== initialLength) {
     return saveWorkspaceState(state);
@@ -158,7 +159,7 @@ export function isWidgetSavedToWorkspace(widgetId: string): boolean {
   const state = loadWorkspaceState();
   if (!state) return false;
 
-  return state.widgets.some(w => w.widget_id === widgetId);
+  return state.widgets.some((w) => w.widget_id === widgetId);
 }
 
 /**
@@ -179,7 +180,7 @@ export function updateSavedWidget(
   const state = loadWorkspaceState();
   if (!state) return false;
 
-  const widgetIndex = state.widgets.findIndex(w => w.widget_id === widgetId);
+  const widgetIndex = state.widgets.findIndex((w) => w.widget_id === widgetId);
   if (widgetIndex < 0) return false;
 
   state.widgets[widgetIndex] = {
@@ -194,12 +195,10 @@ export function updateSavedWidget(
 /**
  * Convert a persisted widget reference to a WorkspaceWidget for rendering
  */
-export function hydrateWidgetFromReference(
-  ref: PersistedWidgetReference
-): WorkspaceWidget | null {
+export function hydrateWidgetFromReference(ref: PersistedWidgetReference): WorkspaceWidget | null {
   // Try to find matching catalog item
   const catalogItem = ref.catalog_id
-    ? WIDGET_CATALOG.find(c => c.id === ref.catalog_id)
+    ? WIDGET_CATALOG.find((c) => c.id === ref.catalog_id)
     : findCatalogItemByEndpoint(ref.data_endpoint_refs[0]);
 
   if (!catalogItem) {
@@ -285,12 +284,15 @@ function validateWidgetForSave(widget: PersistedWidgetReference): boolean {
     'contextual_insights',
   ];
 
-  const hasValidEndpoint = widget.data_endpoint_refs.some(ref =>
-    validPrefixes.some(prefix => ref.startsWith(prefix))
+  const hasValidEndpoint = widget.data_endpoint_refs.some((ref) =>
+    validPrefixes.some((prefix) => ref.startsWith(prefix))
   );
 
   if (!hasValidEndpoint) {
-    console.warn('[WorkspacePersistence] Widget does not use wireless endpoints:', widget.data_endpoint_refs);
+    console.warn(
+      '[WorkspacePersistence] Widget does not use wireless endpoints:',
+      widget.data_endpoint_refs
+    );
     return false;
   }
 
@@ -298,7 +300,7 @@ function validateWidgetForSave(widget: PersistedWidgetReference): boolean {
 }
 
 function findCatalogItemByEndpoint(endpointRef: string): WidgetCatalogItem | undefined {
-  return WIDGET_CATALOG.find(item => item.dataBinding.endpointRef === endpointRef);
+  return WIDGET_CATALOG.find((item) => item.dataBinding.endpointRef === endpointRef);
 }
 
 function createGenericWidget(ref: PersistedWidgetReference): WorkspaceWidget {
