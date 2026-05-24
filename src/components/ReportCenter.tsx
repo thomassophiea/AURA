@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+// Campus Controller API responses are untyped JSON; any is pervasive throughout this component
+
 /**
  * Extreme Report Studio
  *
@@ -10,7 +13,6 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Skeleton } from './ui/skeleton';
-import { ScrollArea } from './ui/scroll-area';
 import {
   FileText,
   Wifi,
@@ -30,10 +32,7 @@ import {
   Plus,
   Copy,
   Trash2,
-  RotateCcw,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   Settings,
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -47,7 +46,6 @@ import { ReportWidgetRenderer, type ReportMetrics } from './report/ReportWidgetR
 import { ReportEditorDialog } from './report/ReportEditorDialog';
 import { ReportShareDialog } from './report/ReportShareDialog';
 import { toast } from 'sonner';
-import { formatBitsPerSecond, formatBytes } from '../lib/units';
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   FileText,
