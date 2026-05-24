@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { metricsStorage } from '../services/metricsStorage';
-import { toast } from 'sonner';
 
 interface ServiceMetrics {
   serviceId: string;
@@ -33,11 +32,7 @@ export function useMetricsCollection(
   getCurrentMetrics: () => ServiceMetrics | null,
   options: UseMetricsCollectionOptions = {}
 ) {
-  const {
-    enabled = true,
-    intervalMinutes = 15,
-    onCollectionComplete
-  } = options;
+  const { enabled = true, intervalMinutes = 15, onCollectionComplete } = options;
 
   const [isCollecting, setIsCollecting] = useState(false);
   const [lastCollectionTime, setLastCollectionTime] = useState<Date | null>(null);
@@ -56,7 +51,9 @@ export function useMetricsCollection(
     setSupabaseAvailable(available);
 
     if (!available && !hasShownToast.current) {
-      console.warn('[MetricsCollection] Supabase not configured - historical data will not be saved');
+      console.warn(
+        '[MetricsCollection] Supabase not configured - historical data will not be saved'
+      );
       hasShownToast.current = true;
     }
   };
@@ -82,18 +79,17 @@ export function useMetricsCollection(
         service_id: currentMetrics.serviceId,
         service_name: currentMetrics.serviceName,
         timestamp,
-        metrics: currentMetrics.metrics
+        metrics: currentMetrics.metrics,
       });
 
       setLastCollectionTime(new Date());
-      setCollectionCount(prev => prev + 1);
+      setCollectionCount((prev) => prev + 1);
 
       console.log(`[MetricsCollection] Collected metrics for ${currentMetrics.serviceName}`);
 
       if (onCollectionComplete) {
         onCollectionComplete();
       }
-
     } catch (error) {
       console.error('[MetricsCollection] Error collecting metrics:', error);
     } finally {
@@ -107,15 +103,20 @@ export function useMetricsCollection(
       return;
     }
 
-    console.log(`[MetricsCollection] Starting periodic collection every ${intervalMinutes} minutes`);
+    console.log(
+      `[MetricsCollection] Starting periodic collection every ${intervalMinutes} minutes`
+    );
 
     // Collect immediately on mount
     collectMetrics();
 
     // Set up interval for periodic collection
-    intervalRef.current = setInterval(() => {
-      collectMetrics();
-    }, intervalMinutes * 60 * 1000);
+    intervalRef.current = setInterval(
+      () => {
+        collectMetrics();
+      },
+      intervalMinutes * 60 * 1000
+    );
 
     // Cleanup on unmount
     return () => {
@@ -137,6 +138,6 @@ export function useMetricsCollection(
     lastCollectionTime,
     collectionCount,
     supabaseAvailable,
-    triggerCollection
+    triggerCollection,
   };
 }

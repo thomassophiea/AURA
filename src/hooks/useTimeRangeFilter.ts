@@ -6,7 +6,7 @@
  * timestamp extractor. Persisted to sessionStorage.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,10 @@ export interface TimeRangeFilterResult {
   timeRange: TimeRange;
   setPreset: (preset: TimePreset) => void;
   setCustomRange: (from: Date, to: Date) => void;
-  filterByTime: <T>(rows: T[], getTimestamp: (item: T) => Date | string | number | null | undefined) => T[];
+  filterByTime: <T>(
+    rows: T[],
+    getTimestamp: (item: T) => Date | string | number | null | undefined
+  ) => T[];
   clearTimeRange: () => void;
   hasActiveTimeFilter: boolean;
   label: string;
@@ -44,7 +47,7 @@ const PRESET_LABELS: Record<TimePreset, string> = {
   '24h': 'Last 24 hours',
   '7d': 'Last 7 days',
   '30d': 'Last 30 days',
-  'custom': 'Custom range',
+  custom: 'Custom range',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -74,18 +77,25 @@ function loadState(key: string): TimeRange {
         to: parsed.to ? new Date(parsed.to) : undefined,
       };
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { preset: '24h' };
 }
 
 function saveState(key: string, range: TimeRange) {
   try {
-    sessionStorage.setItem(key, JSON.stringify({
-      preset: range.preset,
-      from: range.from?.toISOString(),
-      to: range.to?.toISOString(),
-    }));
-  } catch { /* quota exceeded */ }
+    sessionStorage.setItem(
+      key,
+      JSON.stringify({
+        preset: range.preset,
+        from: range.from?.toISOString(),
+        to: range.to?.toISOString(),
+      })
+    );
+  } catch {
+    /* quota exceeded */
+  }
 }
 
 // ── Hook ───────────────────────────────────────────────────────────────────
@@ -93,17 +103,23 @@ function saveState(key: string, range: TimeRange) {
 export function useTimeRangeFilter(storageKey: string): TimeRangeFilterResult {
   const [timeRange, setTimeRange] = useState<TimeRange>(() => loadState(storageKey));
 
-  const setPreset = useCallback((preset: TimePreset) => {
-    const next: TimeRange = { preset };
-    setTimeRange(next);
-    saveState(storageKey, next);
-  }, [storageKey]);
+  const setPreset = useCallback(
+    (preset: TimePreset) => {
+      const next: TimeRange = { preset };
+      setTimeRange(next);
+      saveState(storageKey, next);
+    },
+    [storageKey]
+  );
 
-  const setCustomRange = useCallback((from: Date, to: Date) => {
-    const next: TimeRange = { preset: 'custom', from, to };
-    setTimeRange(next);
-    saveState(storageKey, next);
-  }, [storageKey]);
+  const setCustomRange = useCallback(
+    (from: Date, to: Date) => {
+      const next: TimeRange = { preset: 'custom', from, to };
+      setTimeRange(next);
+      saveState(storageKey, next);
+    },
+    [storageKey]
+  );
 
   const clearTimeRange = useCallback(() => {
     setPreset('24h');
@@ -113,28 +129,36 @@ export function useTimeRangeFilter(storageKey: string): TimeRangeFilterResult {
 
   const label = PRESET_LABELS[timeRange.preset];
 
-  const filterByTime = useCallback(<T,>(
-    rows: T[],
-    getTimestamp: (item: T) => Date | string | number | null | undefined,
-  ): T[] => {
-    const now = Date.now();
-    let fromMs: number;
-    let toMs: number = now;
+  const filterByTime = useCallback(
+    <T>(rows: T[], getTimestamp: (item: T) => Date | string | number | null | undefined): T[] => {
+      const now = Date.now();
+      let fromMs: number;
+      let toMs: number = now;
 
-    if (timeRange.preset === 'custom') {
-      if (!timeRange.from || !timeRange.to) return rows;
-      fromMs = timeRange.from.getTime();
-      toMs = timeRange.to.getTime();
-    } else {
-      fromMs = now - PRESET_MS[timeRange.preset];
-    }
+      if (timeRange.preset === 'custom') {
+        if (!timeRange.from || !timeRange.to) return rows;
+        fromMs = timeRange.from.getTime();
+        toMs = timeRange.to.getTime();
+      } else {
+        fromMs = now - PRESET_MS[timeRange.preset];
+      }
 
-    return rows.filter(row => {
-      const ts = parseTimestamp(getTimestamp(row));
-      if (ts === null) return true; // Keep rows with no timestamp
-      return ts >= fromMs && ts <= toMs;
-    });
-  }, [timeRange]);
+      return rows.filter((row) => {
+        const ts = parseTimestamp(getTimestamp(row));
+        if (ts === null) return true; // Keep rows with no timestamp
+        return ts >= fromMs && ts <= toMs;
+      });
+    },
+    [timeRange]
+  );
 
-  return { timeRange, setPreset, setCustomRange, filterByTime, clearTimeRange, hasActiveTimeFilter, label };
+  return {
+    timeRange,
+    setPreset,
+    setCustomRange,
+    filterByTime,
+    clearTimeRange,
+    hasActiveTimeFilter,
+    label,
+  };
 }
