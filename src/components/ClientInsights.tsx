@@ -14,8 +14,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import {
   AreaChart,
   Area,
-  LineChart,
-  Line,
   BarChart,
   Bar,
   PieChart,
@@ -31,8 +29,6 @@ import {
   ReferenceArea,
 } from 'recharts';
 import {
-  Activity,
-  Signal,
   BarChart3,
   ChevronDown,
   ChevronRight,
@@ -40,8 +36,6 @@ import {
   RefreshCw,
   ArrowLeft,
   Clock,
-  Wifi,
-  Gauge,
 } from 'lucide-react';
 import {
   apiService,
@@ -195,13 +189,15 @@ const DONUT_COLORS = [
   '#14b8a6',
 ];
 
-export function ClientInsights({ macAddress, clientName, onOpenFullScreen }: ClientInsightsProps) {
+export function ClientInsights({
+  macAddress,
+  clientName: _clientName,
+  onOpenFullScreen,
+}: ClientInsightsProps) {
   const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
-
-  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
   useEffect(() => {
     let cancelled = false;
@@ -412,8 +408,6 @@ export function ClientInsightsFullScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const durationOption = DURATION_OPTIONS.find((d) => d.value === duration) || DURATION_OPTIONS[0];
 
   const handleRefresh = () => setRefreshKey((k) => k + 1);
 
