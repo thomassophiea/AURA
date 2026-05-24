@@ -5,12 +5,10 @@
  * Each card shows: what happened, why it matters, evidence, and recommended action.
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
-import { Button } from './ui/button';
 import { ScrollArea } from './ui/scroll-area';
-import { Alert, AlertDescription } from './ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 import {
   Brain,
@@ -25,13 +23,10 @@ import {
   Users,
   Wifi,
   Clock,
-  ExternalLink,
   Lightbulb,
   CheckCircle2,
   TrendingUp,
-  TrendingDown,
   Target,
-  Wrench,
   BarChart3,
   ArrowUp,
   ArrowDown,
@@ -40,21 +35,12 @@ import {
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { useOperationalContext } from '../hooks/useOperationalContext';
-import {
-  generateInsights,
-  getInsightsSummary,
-  getInsightsByGroup,
-  INSIGHT_GROUP_META,
-  type InsightCard,
-  type MetricsSnapshot,
-  type InsightGroup,
-} from '../services/aiInsights';
+import { generateInsights, getInsightsSummary, type MetricsSnapshot } from '../services/aiInsights';
 import { getEnvironmentProfile } from '../config/environmentProfiles';
 
 interface AIInsightsPanelProps {
   metrics: MetricsSnapshot;
   className?: string;
-  groupedView?: boolean;
 }
 
 const categoryIcons: Record<string, React.ElementType> = {
@@ -68,20 +54,6 @@ const categoryIcons: Record<string, React.ElementType> = {
   trending: BarChart3,
   predictive: Timer,
   historical: Clock,
-};
-
-const groupIcons: Record<InsightGroup, React.ElementType> = {
-  network_health: Activity,
-  capacity_planning: TrendingUp,
-  anomaly_detection: AlertTriangle,
-  predictive_maintenance: Wrench,
-};
-
-const groupColors: Record<InsightGroup, string> = {
-  network_health: 'blue',
-  capacity_planning: 'purple',
-  anomaly_detection: 'amber',
-  predictive_maintenance: 'red',
 };
 
 const severityStyles: Record<string, { bg: string; border: string; icon: React.ElementType }> = {
@@ -195,7 +167,7 @@ export function AIInsightsPanel({ metrics, className }: AIInsightsPanelProps) {
       <CardContent className="p-0">
         <ScrollArea className="h-[400px]">
           <div className="p-4 pt-0 space-y-3">
-            {insights.map((insight, index) => {
+            {insights.map((insight) => {
               const styles = severityStyles[insight.severity];
               const CategoryIcon = categoryIcons[insight.category] || AlertTriangle;
               const isExpanded = expandedIds.has(insight.id);
