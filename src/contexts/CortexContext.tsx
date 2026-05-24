@@ -79,7 +79,6 @@ export interface CortexContextValue {
   isOpen: boolean;
   openCortex: () => void;
   closeCortex: () => void;
-  toggleCortex: () => void;
 
   // Session/conversation state
   sessionId: string | null;
@@ -478,7 +477,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
 
   const openCortex = useCallback(() => setIsOpen(true), []);
   const closeCortex = useCallback(() => setIsOpen(false), []);
-  const toggleCortex = useCallback(() => setIsOpen((prev) => !prev), []);
 
   // ============================================
   // Context updaters
@@ -551,7 +549,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       isOpen,
       openCortex,
       closeCortex,
-      toggleCortex,
       sessionId,
       messages,
       pendingPlan,
@@ -585,7 +582,6 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
       isOpen,
       openCortex,
       closeCortex,
-      toggleCortex,
       sessionId,
       messages,
       pendingPlan,
@@ -636,7 +632,6 @@ export function useCortex(): Pick<
   | 'isOpen'
   | 'openCortex'
   | 'closeCortex'
-  | 'toggleCortex'
   | 'sessionId'
   | 'messages'
   | 'suggestedPrompts'
@@ -650,7 +645,6 @@ export function useCortex(): Pick<
     isOpen,
     openCortex,
     closeCortex,
-    toggleCortex,
     sessionId,
     messages,
     suggestedPrompts,
@@ -665,7 +659,6 @@ export function useCortex(): Pick<
     isOpen,
     openCortex,
     closeCortex,
-    toggleCortex,
     sessionId,
     messages,
     suggestedPrompts,

@@ -1,3 +1,5 @@
+import { apiService } from './api';
+
 // Simple service mapping without any complex error handling or recursion
 interface ServiceInfo {
   ssid: string;
@@ -38,7 +40,7 @@ class SimpleServiceMappingService {
     return {
       ssid: `Service ${shortId}`,
       networkName: `Service ${shortId}`,
-      vlan: 'N/A'
+      vlan: 'N/A',
     };
   }
 
@@ -70,7 +72,7 @@ class SimpleServiceMappingService {
   private async loadData(): Promise<void> {
     if (this.loaded) return;
 
-    const accessToken = localStorage.getItem('access_token');
+    const accessToken = apiService.getAccessToken();
     if (!accessToken) {
       this.loaded = true;
       return;
@@ -84,15 +86,15 @@ class SimpleServiceMappingService {
     }
 
     const headers = {
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json'
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
     };
 
     try {
       // Load services
       const servicesResponse = await fetch(`${controllerUrl}/management/v1/services`, {
         headers,
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(5000),
       });
 
       if (servicesResponse.ok) {
@@ -103,7 +105,7 @@ class SimpleServiceMappingService {
               this.services.set(service.id, {
                 ssid: service.ssid || 'N/A',
                 networkName: service.name || 'N/A',
-                vlan: (service.vlan || service.dot1dPortNumber || 'N/A').toString()
+                vlan: (service.vlan || service.dot1dPortNumber || 'N/A').toString(),
               });
             }
           });
@@ -118,7 +120,7 @@ class SimpleServiceMappingService {
       // Load roles
       const rolesResponse = await fetch(`${controllerUrl}/management/roles`, {
         headers,
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(5000),
       });
 
       if (rolesResponse.ok) {
@@ -144,7 +146,7 @@ class SimpleServiceMappingService {
     return {
       loaded: this.loaded,
       servicesCount: this.services.size,
-      rolesCount: this.roles.size
+      rolesCount: this.roles.size,
     };
   }
 }

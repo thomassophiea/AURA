@@ -100,16 +100,16 @@ describe('CortexContext', () => {
     expect(result.current.isOpen).toBe(false);
   });
 
-  it('toggleCortex flips isOpen state', () => {
+  it('openCortex and closeCortex flip isOpen state', () => {
     const { result } = renderHook(() => useCortexContext(), { wrapper });
 
     act(() => {
-      result.current.toggleCortex();
+      result.current.openCortex();
     });
     expect(result.current.isOpen).toBe(true);
 
     act(() => {
-      result.current.toggleCortex();
+      result.current.closeCortex();
     });
     expect(result.current.isOpen).toBe(false);
   });
