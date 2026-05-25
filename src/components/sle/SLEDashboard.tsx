@@ -35,6 +35,7 @@ import {
 import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
+import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
 import { computeAllWirelessSLEs, setActiveThresholds } from '../../services/sleCalculationEngine';
 import { SLERadialMap } from './SLERadialMap';
@@ -197,6 +198,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall'>(
     'honeycomb'
   );
+  const devMode = useDevModeUnlock();
 
   // SLE threshold editing state
   const [thresholdDialogOpen, setThresholdDialogOpen] = useState(false);
@@ -520,8 +522,8 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             </TabsTrigger>
           </TabsList>
 
-          {/* View toggle */}
-          {activeTab === 'wireless' && (
+          {/* View toggle — dev mode only */}
+          {activeTab === 'wireless' && devMode.isUnlocked && (
             <div className="flex items-center rounded-md border border-border/50 p-0.5 bg-muted/30 gap-0.5">
               {(
                 [
