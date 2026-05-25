@@ -962,6 +962,7 @@ export default function App() {
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setAdminRole(apiService.getAdminRole());
+    setCurrentPage('service-levels');
 
     // Prefetch critical components for faster navigation
     prefetchCriticalComponents();
