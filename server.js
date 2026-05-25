@@ -1821,18 +1821,21 @@ app.post('/api/cortex/message', requireAuth, cortexRateLimit, jsonParser, async 
     if (!cortexOrchestrator.hasSession(sessionId)) {
       return res.status(404).json({ error: 'Session not found or expired' });
     }
+    // Validate the requested model; if it is unavailable (e.g. stale Ollama
+    // model in localStorage from a different machine) silently fall back to
+    // the server default rather than hard-failing the whole request.
+    let resolvedModel = model ?? undefined;
     if (model) {
       const ollamaIds = (await discoverOllamaModels()).map((m) => m.id);
       if (!isModelAllowed(model, ollamaIds)) {
-        return res
-          .status(400)
-          .json({ error: `Model '${model}' is not in the allowlist for any configured provider` });
+        console.warn(`[Cortex] Requested model '${model}' unavailable — falling back to default`);
+        resolvedModel = undefined;
       }
     }
     const controllerUrl = req.headers['x-controller-url'] ?? DEFAULT_CONTROLLER_URL ?? '';
     const authToken = req.headers['x-controller-auth'] ?? req.headers['authorization'] ?? '';
     const reply = await cortexOrchestrator.processMessage(sessionId, message, context ?? {}, {
-      model: model ?? undefined,
+      model: resolvedModel,
       authToken,
       controllerUrl,
     });

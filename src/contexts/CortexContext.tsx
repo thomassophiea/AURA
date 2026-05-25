@@ -348,12 +348,32 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           sessionIdRef.current = newId;
         }
 
-        const reply = await sendCortexMessage(
-          sid,
-          message,
-          cortexContextRef.current,
-          getSelectedCortexModel()
-        );
+        let reply;
+        try {
+          reply = await sendCortexMessage(
+            sid,
+            message,
+            cortexContextRef.current,
+            getSelectedCortexModel()
+          );
+        } catch (err) {
+          // Session may have expired on the server (e.g. after a deploy).
+          // Auto-recreate once and retry before giving up.
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes('404') || msg.includes('Session not found')) {
+            const { sessionId: freshId } = await createCortexSession(cortexContextRef.current);
+            setSessionId(freshId);
+            sessionIdRef.current = freshId;
+            reply = await sendCortexMessage(
+              freshId,
+              message,
+              cortexContextRef.current,
+              getSelectedCortexModel()
+            );
+          } else {
+            throw err;
+          }
+        }
         setMessages((prev) => [...prev, reply]);
 
         // Surface tool calls in the API timeline so the user can see
@@ -370,11 +390,13 @@ export function CortexContextProvider({ pageContext, children }: CortexContextPr
           }));
           setApiTimeline((prev) => [...entries, ...prev].slice(0, 50));
         }
-      } catch {
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        console.error('[Cortex] sendMessage failed:', detail);
         const errorMsg: AgentMessage = {
           id: `agent-${Date.now()}`,
           role: 'agent',
-          content: 'Unable to get a response. Please check your connection and try again.',
+          content: `Unable to get a response: ${detail}`,
           timestamp: new Date(),
         };
         setMessages((prev) => [...prev, errorMsg]);
