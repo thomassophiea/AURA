@@ -290,7 +290,7 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('service-levels');
+  const [currentPage, setCurrentPage] = useState('sle-dashboard');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'ep1' | 'dev'>('ep1');
@@ -962,7 +962,7 @@ export default function App() {
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setAdminRole(apiService.getAdminRole());
-    setCurrentPage('service-levels');
+    setCurrentPage('sle-dashboard');
 
     // Prefetch critical components for faster navigation
     prefetchCriticalComponents();
