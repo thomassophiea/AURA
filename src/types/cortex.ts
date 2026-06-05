@@ -181,8 +181,8 @@ export interface CortexPageAnalysis {
  */
 export const CORTEX_PAGE_NAMES: Record<string, string> = {
   workspace: 'Dashboard',
+  insights: 'Insights',
   'service-levels': 'Service Levels',
-  'sle-dashboard': 'Service Level Dashboard',
   'app-insights': 'App Insights',
   'access-points': 'Access Points',
   'connected-clients': 'Connected Clients',
@@ -226,8 +226,8 @@ export const CORTEX_PAGE_NAMES: Record<string, string> = {
  */
 export const CORTEX_PAGE_TYPES: Record<string, CortexPageType> = {
   workspace: 'dashboard',
+  insights: 'insights',
   'service-levels': 'service-levels',
-  'sle-dashboard': 'service-levels',
   'app-insights': 'insights',
   'access-points': 'devices',
   'connected-clients': 'clients',

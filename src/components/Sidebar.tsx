@@ -58,7 +58,7 @@ interface SidebarProps {
 
 // ── Org-level navigation (primary scope) ──
 const monitoringItems = [
-  { id: 'service-levels', label: 'Insights', icon: Brain },
+  { id: 'insights', label: 'Insights', icon: Brain },
   { id: 'app-insights', label: 'App Analytics', icon: AppWindow },
   { id: 'access-points', label: 'Access Points', icon: Wifi },
   { id: 'connected-clients', label: 'Clients', icon: Users },
@@ -317,18 +317,18 @@ export function Sidebar({
           {navigationScope === 'global' && (
             <>
               {/* Service Levels — top-level item */}
-              {isPageAllowed('sle-dashboard') && (
+              {isPageAllowed('service-levels') && (
                 <Button
                   variant="ghost"
                   className={cn(
                     'w-full h-10',
                     isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
-                    currentPage === 'sle-dashboard'
+                    currentPage === 'service-levels'
                       ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                   )}
-                  onClick={() => handlePageChange('sle-dashboard')}
-                  onMouseEnter={() => prefetchComponent('sle-dashboard')}
+                  onClick={() => handlePageChange('service-levels')}
+                  onMouseEnter={() => prefetchComponent('service-levels')}
                   title={isCollapsed ? 'Service Levels' : undefined}
                 >
                   <TrendingUp className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />

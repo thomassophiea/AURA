@@ -13,8 +13,8 @@
 export const ORG_PAGES = new Set([
   // Monitoring
   'workspace',
+  'insights',
   'service-levels',
-  'sle-dashboard',
   'app-insights',
   'connected-clients',
   'access-points',

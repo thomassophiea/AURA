@@ -29,7 +29,8 @@ describe('PageSkeleton', () => {
 describe('getSkeletonVariant', () => {
   it('maps dashboard pages to "dashboard"', () => {
     expect(getSkeletonVariant('dashboard')).toBe('dashboard');
-    expect(getSkeletonVariant('sle-dashboard')).toBe('dashboard');
+    expect(getSkeletonVariant('service-levels')).toBe('dashboard');
+    expect(getSkeletonVariant('insights')).toBe('dashboard');
     expect(getSkeletonVariant('reports')).toBe('dashboard');
     expect(getSkeletonVariant('security-dashboard')).toBe('dashboard');
   });

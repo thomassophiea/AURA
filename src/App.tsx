@@ -161,11 +161,11 @@ const pageInfo = {
     title: 'Workspace',
     description: 'Create custom widgets for Devices, Clients, Licensing, and Alerts',
   },
-  'service-levels': {
+  insights: {
     title: 'Insights',
     description: 'Context-aware network monitoring and analytics',
   },
-  'sle-dashboard': {
+  'service-levels': {
     title: 'Service Levels',
     description: 'SLE metrics with drill-down classifier analysis',
   },
@@ -290,7 +290,7 @@ interface DetailPanelState {
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentPage, setCurrentPage] = useState('sle-dashboard');
+  const [currentPage, setCurrentPage] = useState('service-levels');
   const [navigationScope, setNavigationScope] = useState<NavigationScope>('global');
   const [adminRole, setAdminRole] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'ep1' | 'dev'>('ep1');
@@ -962,7 +962,7 @@ export default function App() {
   const handleLoginSuccess = async () => {
     setIsAuthenticated(true);
     setAdminRole(apiService.getAdminRole());
-    setCurrentPage('sle-dashboard');
+    setCurrentPage('service-levels');
 
     // Prefetch critical components for faster navigation
     prefetchCriticalComponents();
@@ -1102,9 +1102,9 @@ export default function App() {
     switch (currentPage) {
       case 'workspace':
         return <ReportCenter />;
-      case 'service-levels':
+      case 'insights':
         return <DashboardEnhanced />;
-      case 'sle-dashboard':
+      case 'service-levels':
         return <SLEDashboard onClientClick={handleShowClientDetail} />;
       case 'app-insights':
         return <AppInsights api={apiService} />;
@@ -1209,7 +1209,7 @@ export default function App() {
       case 'api-test':
         return <ApiTestTool />;
       case 'api-documentation':
-        return <ApiDocumentation onBack={() => setCurrentPage('service-levels')} />;
+        return <ApiDocumentation onBack={() => setCurrentPage('insights')} />;
       case 'help':
         return <HelpPage />;
       default: {

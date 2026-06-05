@@ -1,4 +1,4 @@
-import { Skeleton } from "./skeleton";
+import { Skeleton } from './skeleton';
 
 type SkeletonVariant = 'dashboard' | 'table' | 'cards' | 'default';
 
@@ -101,8 +101,8 @@ export function PageSkeleton({ variant = 'default' }: PageSkeletonProps) {
 
 export function getSkeletonVariant(page: string): SkeletonVariant {
   switch (page) {
-    case 'sle-dashboard':
     case 'service-levels':
+    case 'insights':
     case 'dashboard':
     case 'reports':
     case 'app-insights':
