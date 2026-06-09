@@ -3839,23 +3839,9 @@ button.sle-node-bubble.sle-node-poor,
   color: #babcce !important;
 }
 
-/* --- Tabs: TabsList and TabsTrigger --- */
-.ep1 [data-slot="tabs-list"] {
-  background-color: #2d2f3e !important;
-  border: 1px solid #4d4f63 !important;
-}
-.ep1 [data-slot="tabs-trigger"] {
-  color: #babcce !important;
-}
-.ep1 [data-slot="tabs-trigger"][data-state="active"] {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
-  border-color: transparent !important;
-}
-.ep1 [data-slot="tabs-trigger"]:hover:not([data-state="active"]) {
-  color: #f8f8fb !important;
-  background-color: #333548 !important;
-}
+/* Tabs are styled above as flat underline tabs (see ".ep1 [data-slot=\"tabs-trigger\"]").
+   The previous pill override here set active-tab text to near-black #1e1a46 on a purple
+   fill — unreadable in the dark theme — so it was removed in favor of the flat design. */
 
 /* --- Popover Content (UserMenu, datepickers, etc.) --- */
 .ep1 [data-slot="popover-content"],
