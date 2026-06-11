@@ -15,6 +15,7 @@ import {
   SelectValue,
   SelectGroup,
   SelectLabel,
+  SelectSeparator,
 } from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import {
@@ -464,6 +465,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   ))}
                 </SelectGroup>
               )}
+              {sites.length > 0 && xiqSites.length > 0 && <SelectSeparator />}
               {xiqSites.length > 0 && (
                 <SelectGroup>
                   <SelectLabel>XIQ</SelectLabel>
@@ -471,12 +473,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                     const value = buildXiqSiteValue(site.siteGroupId, site.id);
                     return (
                       <SelectItem key={value} value={value}>
-                        <span className="flex items-center gap-2">
-                          <span>{site.name}</span>
-                          <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-500">
-                            XIQ
-                          </span>
-                        </span>
+                        {site.name}
                       </SelectItem>
                     );
                   })}
