@@ -879,15 +879,30 @@ class ApiService {
         }
 
         const sites = await response.json();
-        const arr = Array.isArray(sites) ? sites : [];
+        // Tolerate both bare arrays and enveloped/paginated responses — some
+        // controllers (e.g. Platform ONE) wrap the list under data/items/etc.
+        const arr: Site[] = Array.isArray(sites)
+          ? sites
+          : (sites?.data ??
+              sites?.items ??
+              sites?.results ??
+              sites?.sites ??
+              sites?.siteList ??
+              sites?.content ??
+              []);
         logger.log(`Fetched ${arr.length} sites from ${endpoint}`);
 
-        // Trust a 200 OK — cache and return even when empty so concurrent
-        // callers short-circuit instead of stampeding the fallback list.
-        if (!options) {
-          cacheService.set(cacheKey, arr, CACHE_TTL.MEDIUM);
+        // A non-empty list is authoritative: cache and return it. An empty
+        // result is NOT cached and falls through to the next endpoint so a
+        // single empty/enveloped 200 can't hide real sites for the TTL.
+        if (arr.length > 0) {
+          if (!options) {
+            cacheService.set(cacheKey, arr, CACHE_TTL.MEDIUM);
+          }
+          return arr;
         }
-        return arr;
+        logger.log(`${endpoint} returned 0 sites, trying next...`);
+        continue;
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         logger.log(`Sites endpoint ${endpoint} threw: ${msg}, trying next...`);

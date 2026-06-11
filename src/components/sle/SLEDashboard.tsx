@@ -278,14 +278,44 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     loadData(true);
   };
 
-  // Load sites for filter. Re-fetch when the active site group (controller)
-  // changes so newly-added sites and other controllers' sites appear.
+  // Load sites for the filter dropdown. In org scope we aggregate sites across
+  // every controller so "All Sites" can drill into any site group's sites;
+  // otherwise we load the active controller's sites. Re-runs when the active
+  // site group changes so newly-added / other-controller sites appear.
   useEffect(() => {
-    apiService
-      .getSites()
-      .then(setSites)
-      .catch(() => {});
-  }, [siteGroup?.id]);
+    let cancelled = false;
+    const loadSites = async () => {
+      const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
+      try {
+        if (isOrgScope) {
+          const originalBaseUrl = apiService.getBaseUrl();
+          const byId = new Map<string, Site>();
+          for (const sg of siteGroups) {
+            try {
+              apiService.setBaseUrl(`${sg.controller_url}/management`);
+              const sgSites = await apiService.getSites();
+              for (const s of sgSites) {
+                if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
+              }
+            } catch (err) {
+              console.warn(`[SLEDashboard] Failed to load sites from ${sg.name}:`, err);
+            }
+          }
+          apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
+          if (!cancelled) setSites(Array.from(byId.values()));
+        } else {
+          const list = await apiService.getSites();
+          if (!cancelled) setSites(list);
+        }
+      } catch {
+        /* leave existing sites in place on failure */
+      }
+    };
+    loadSites();
+    return () => {
+      cancelled = true;
+    };
+  }, [siteGroup?.id, navigationScope, siteGroups]);
 
   // Load data — the active site context selects the provider (controller vs XIQ).
   const loadData = useCallback(
