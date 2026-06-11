@@ -63,11 +63,15 @@ class XIQService {
     region: XIQRegion,
     siteGroupId: string
   ): Promise<XIQStoredToken> {
-    // Route through the Express proxy to avoid browser CORS restrictions
+    // Route through the Express proxy to avoid browser CORS restrictions.
+    // When email/password are empty, the body carries only the region and the
+    // server may supply lab/demo credentials from env (see /xiq/login).
+    const hasCreds = Boolean(email && password);
+    const body = hasCreds ? { username: email.trim(), password, region } : { region };
     const response = await fetch('/xiq/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ username: email.trim(), password, region }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(20000),
     });
 

@@ -1646,7 +1646,17 @@ const XIQ_REGION_URLS = {
 };
 
 app.post('/xiq/login', rateLimit({ windowMs: 60_000, max: 10 }), jsonParser, (req, res) => {
-  const { username, password, region = 'global' } = req.body || {};
+  let { username, password } = req.body || {};
+  const region = (req.body && req.body.region) || 'global';
+
+  // Lab/demo opt-in: when the client sends no credentials, fall back to
+  // server-side env credentials (XIQ_DEMO_EMAIL / XIQ_DEMO_PASSWORD). This keeps
+  // demo creds out of the frontend bundle and the repo. The feature is OFF
+  // unless those env vars are configured on the server.
+  if ((!username || !password) && process.env.XIQ_DEMO_EMAIL && process.env.XIQ_DEMO_PASSWORD) {
+    username = process.env.XIQ_DEMO_EMAIL;
+    password = process.env.XIQ_DEMO_PASSWORD;
+  }
 
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });

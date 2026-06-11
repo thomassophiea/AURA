@@ -6,12 +6,14 @@
  * stored XIQ token, so the SLE site selector can offer XIQ sites alongside
  * gateway (OS-ONE) sites.
  *
- * Includes a clearly-marked DEMO auto-connect: when a site group has no XIQ
- * token yet, we log in with lab credentials so XIQ sites appear without the
- * separate connect flow. This is lab/demo only — see DEMO_XIQ below.
+ * Lab/demo auto-connect: when a site group has no XIQ token yet, we attempt a
+ * credential-less login. The server (/xiq/login) supplies lab credentials from
+ * env (XIQ_DEMO_EMAIL / XIQ_DEMO_PASSWORD) when configured, so no credentials
+ * live in the frontend bundle or the repo. With no env configured the login
+ * 400s and we simply surface no XIQ sites. Region defaults to 'global'.
  */
 
-import { xiqService, type XIQRegion } from '../xiqService';
+import { xiqService } from '../xiqService';
 
 export interface XiqSite {
   /** XIQ location id (numeric, stringified). */
@@ -22,28 +24,18 @@ export interface XiqSite {
 }
 
 /**
- * DEMO ONLY — lab XIQ credentials used to auto-connect when no token exists.
- * Do NOT use in production; replace with the inline "Connect XIQ" flow.
- * Toggle off by setting enabled: false.
+ * Ensure a site group has an XIQ session. Uses an existing token if present,
+ * otherwise attempts the server-mediated lab/demo auto-connect (no client-side
+ * credentials). Returns false when no session can be established.
  */
-const DEMO_XIQ: { enabled: boolean; email: string; password: string; region: XIQRegion } = {
-  enabled: true,
-  email: 'mblack+1@extremenetworks.com',
-  password: 'FNSchj182!',
-  region: 'global',
-};
-
-/** Ensure a site group has an XIQ session, auto-connecting demo creds if needed. */
 export async function ensureXiqSession(siteGroupId: string): Promise<boolean> {
   if (xiqService.getToken(siteGroupId)) return true;
-  if (!DEMO_XIQ.enabled) return false;
   try {
-    // eslint-disable-next-line no-console
-    console.warn('[SLE] Auto-connecting XIQ with DEMO credentials for site group', siteGroupId);
-    await xiqService.login(DEMO_XIQ.email, DEMO_XIQ.password, DEMO_XIQ.region, siteGroupId);
+    // Empty creds -> server may inject lab/demo creds from env (opt-in).
+    await xiqService.login('', '', 'global', siteGroupId);
     return true;
-  } catch (err) {
-    console.warn('[SLE] XIQ demo auto-connect failed:', err);
+  } catch {
+    // No env-configured demo session and no stored token — no XIQ sites.
     return false;
   }
 }
