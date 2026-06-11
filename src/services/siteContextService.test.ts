@@ -3,6 +3,7 @@ import {
   deriveSiteSource,
   resolveSiteContext,
   buildXiqSiteValue,
+  buildXiqAllSitesValue,
   parseXiqSiteValue,
 } from './siteContextService';
 import type { SiteGroup } from '../types/domain';
@@ -131,5 +132,19 @@ describe('XIQ site value encode/decode', () => {
   it('returns null for non-XIQ values', () => {
     expect(parseXiqSiteValue('all')).toBeNull();
     expect(parseXiqSiteValue('84b3642f-a5d7-4dc9-b162-a6156c97b8f0')).toBeNull();
+  });
+
+  it('"All XIQ Sites" resolves to the XIQ source with no location filter', () => {
+    const value = buildXiqAllSitesValue('sg-xiq');
+    expect(parseXiqSiteValue(value)).toEqual({ siteGroupId: 'sg-xiq', locationId: '' });
+    const ctx = resolveSiteContext({
+      siteGroup: null,
+      navigationScope: 'site-group',
+      siteGroups: [{ id: 'sg-xiq', org_id: 'o', name: 'Cloud', controller_url: '', connection_status: 'connected', is_default: false }],
+      selectedSiteId: value,
+    });
+    expect(ctx.source).toBe('xiq');
+    expect(ctx.siteGroupId).toBe('sg-xiq');
+    expect(ctx.xiqLocationId).toBeNull(); // no per-site scoping = whole account
   });
 });

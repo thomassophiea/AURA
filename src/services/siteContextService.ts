@@ -35,6 +35,11 @@ export function buildXiqSiteValue(siteGroupId: string, locationId: string): stri
   return `${XIQ_SITE_PREFIX}${siteGroupId}:${locationId}`;
 }
 
+/** Build the "All XIQ Sites" selector value (XIQ source, no location filter). */
+export function buildXiqAllSitesValue(siteGroupId: string): string {
+  return buildXiqSiteValue(siteGroupId, '');
+}
+
 /** Parse an XIQ site selector value, or null if it isn't one. */
 export function parseXiqSiteValue(
   value: string
@@ -91,7 +96,8 @@ export function resolveSiteContext(input: ResolveSiteContextInput): SLESiteConte
       siteId: selectedSiteId,
       siteName: siteName ?? null,
       xiqRegion: owner?.xiq_region ?? null,
-      xiqLocationId: xiqSel.locationId,
+      // Empty locationId == "All XIQ Sites" (no per-location filter).
+      xiqLocationId: xiqSel.locationId || null,
       controllerUrl: null,
       isOrgScope: false,
     };

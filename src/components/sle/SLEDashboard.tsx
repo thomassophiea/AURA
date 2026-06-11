@@ -46,7 +46,11 @@ import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
-import { resolveSiteContext, buildXiqSiteValue } from '../../services/siteContextService';
+import {
+  resolveSiteContext,
+  buildXiqSiteValue,
+  buildXiqAllSitesValue,
+} from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
 import { loadXiqSites, type XiqSite } from '../../services/sle/xiqSites';
 import { SLERadialMap } from './SLERadialMap';
@@ -454,27 +458,30 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               <SelectValue placeholder="Select Site" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Sites</SelectItem>
-              {sites.length > 0 && (
-                <SelectGroup>
-                  <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500">
-                    <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
-                    OS-ONE
-                  </SelectLabel>
-                  {sites.map((site) => (
-                    <SelectItem key={site.id} value={site.id}>
-                      {site.name || site.siteName || site.id}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              )}
-              {sites.length > 0 && xiqSites.length > 0 && <SelectSeparator />}
+              {/* OS-ONE and XIQ are separate aggregates — their metrics differ,
+                  so there is no single combined "All Sites". */}
+              <SelectGroup>
+                <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500">
+                  <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                  OS-ONE
+                </SelectLabel>
+                <SelectItem value="all">All OS-ONE Sites</SelectItem>
+                {sites.map((site) => (
+                  <SelectItem key={site.id} value={site.id}>
+                    {site.name || site.siteName || site.id}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+              {xiqSites.length > 0 && <SelectSeparator />}
               {xiqSites.length > 0 && (
                 <SelectGroup>
                   <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-cyan-500">
                     <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
                     XIQ
                   </SelectLabel>
+                  <SelectItem value={buildXiqAllSitesValue(xiqSites[0].siteGroupId)}>
+                    All XIQ Sites
+                  </SelectItem>
                   {xiqSites.map((site) => {
                     const value = buildXiqSiteValue(site.siteGroupId, site.id);
                     return (
