@@ -457,7 +457,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               <SelectItem value="all">All Sites</SelectItem>
               {sites.length > 0 && (
                 <SelectGroup>
-                  <SelectLabel>OS-ONE</SelectLabel>
+                  <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-violet-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                    OS-ONE
+                  </SelectLabel>
                   {sites.map((site) => (
                     <SelectItem key={site.id} value={site.id}>
                       {site.name || site.siteName || site.id}
@@ -468,7 +471,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               {sites.length > 0 && xiqSites.length > 0 && <SelectSeparator />}
               {xiqSites.length > 0 && (
                 <SelectGroup>
-                  <SelectLabel>XIQ</SelectLabel>
+                  <SelectLabel className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-cyan-500">
+                    <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
+                    XIQ
+                  </SelectLabel>
                   {xiqSites.map((site) => {
                     const value = buildXiqSiteValue(site.siteGroupId, site.id);
                     return (
