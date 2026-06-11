@@ -47,7 +47,7 @@ import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
 import { SLE_SOURCE_LABELS } from '../../types/sleContext';
 import type { SLESourceSystem } from '../../types/sleContext';
-import { Cloud, Server } from 'lucide-react';
+import { Cloud } from 'lucide-react';
 import { toast } from 'sonner';
 
 // SLE threshold configuration per metric
@@ -446,18 +446,17 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
       {/* Summary Bar */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Source / context indicator — same page, context-driven */}
-        <div
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/30 border border-border/50"
-          title={`Service Levels sourced from ${SLE_SOURCE_LABELS[source]}`}
-        >
-          {source === 'xiq' ? (
+        {/* Context indicator — only shown for XIQ so the controller view stays
+            the plain Service Levels page (no "Controller" label). */}
+        {source === 'xiq' && (
+          <div
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/30 border border-border/50"
+            title={`Service Levels sourced from ${SLE_SOURCE_LABELS[source]}`}
+          >
             <Cloud className="h-4 w-4 text-cyan-400" />
-          ) : (
-            <Server className="h-4 w-4 text-purple-400" />
-          )}
-          <span className="text-xs font-medium">{SLE_SOURCE_LABELS[source]}</span>
-        </div>
+            <span className="text-xs font-medium">{SLE_SOURCE_LABELS[source]}</span>
+          </div>
+        )}
 
         {/* Overall score */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
