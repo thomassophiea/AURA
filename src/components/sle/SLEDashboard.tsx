@@ -37,13 +37,17 @@ import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
-import { computeAllWirelessSLEs, setActiveThresholds } from '../../services/sleCalculationEngine';
+import { resolveSiteContext } from '../../services/siteContextService';
+import { getSleProvider } from '../../services/sle/sleProviderFactory';
 import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
+import { SLE_SOURCE_LABELS } from '../../types/sleContext';
+import type { SLESourceSystem } from '../../types/sleContext';
+import { Cloud, Server } from 'lucide-react';
 import { toast } from 'sonner';
 
 // SLE threshold configuration per metric
@@ -182,12 +186,14 @@ const saveSiteThresholds = (siteId: string, thresholds: SLEThresholds) => {
 
 export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const { filters, updateFilter } = useGlobalFilters();
-  const { navigationScope, siteGroups } = useAppContext();
+  const { navigationScope, siteGroups, siteGroup } = useAppContext();
 
   const [wirelessSLEs, setWirelessSLEs] = useState<SLEMetric[]>([]);
   const [stations, setStations] = useState<any[]>([]);
   const [aps, setAps] = useState<any[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [source, setSource] = useState<SLESourceSystem>('controller');
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -272,101 +278,48 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     loadData(true);
   };
 
-  // Load sites for filter
+  // Load sites for filter. Re-fetch when the active site group (controller)
+  // changes so newly-added sites and other controllers' sites appear.
   useEffect(() => {
     apiService
       .getSites()
       .then(setSites)
       .catch(() => {});
-  }, []);
+  }, [siteGroup?.id]);
 
-  // Load data
+  // Load data — the active site context selects the provider (controller vs XIQ).
   const loadData = useCallback(
     async (isRefresh = false) => {
       try {
         if (isRefresh) setRefreshing(true);
         else setLoading(true);
 
-        const siteFilter = selectedSite !== 'all' ? selectedSite : undefined;
-        const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
+        const siteName =
+          selectedSite !== 'all'
+            ? sites.find((s) => s.id === selectedSite)?.name || null
+            : null;
 
-        let stationsArr: any[] = [];
-        let apsArr: any[] = [];
-
-        if (isOrgScope) {
-          // Org scope: fetch from all controllers and aggregate
-          const originalBaseUrl = apiService.getBaseUrl();
-          for (const sg of siteGroups) {
-            try {
-              apiService.setBaseUrl(`${sg.controller_url}/management`);
-              const [sgStations, sgAps] = await Promise.all([
-                apiService.getStations(),
-                apiService.getAccessPoints(),
-              ]);
-              stationsArr.push(...(Array.isArray(sgStations) ? sgStations : []));
-              apsArr.push(...(Array.isArray(sgAps) ? sgAps : []));
-            } catch (err) {
-              console.warn(`[SLEDashboard] Failed to fetch from ${sg.name}:`, err);
-            }
-          }
-          apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
-        } else {
-          // Single controller
-          const [stationsData, apsData] = await Promise.all([
-            siteFilter
-              ? apiService
-                  .makeAuthenticatedRequest(
-                    `/v3/sites/${siteFilter}/stations`,
-                    { method: 'GET' },
-                    15000
-                  )
-                  .then((r) => (r.ok ? r.json() : null))
-                  .then((d) =>
-                    d ? (Array.isArray(d) ? d : d.stations || d.clients || d.data || []) : []
-                  )
-                  .catch(() =>
-                    apiService
-                      .getStations()
-                      .then((all) => {
-                        return apiService.getSiteById(siteFilter!).then((site) => {
-                          const name = site?.name || site?.siteName || siteFilter;
-                          return all.filter(
-                            (s: any) =>
-                              s.siteName === name ||
-                              s.siteId === siteFilter ||
-                              s.siteName === siteFilter
-                          );
-                        });
-                      })
-                      .catch(() => [])
-                  )
-              : apiService.getStations(),
-            siteFilter
-              ? apiService.getAccessPointsBySite(siteFilter)
-              : apiService.getAccessPoints(),
-          ]);
-          stationsArr = Array.isArray(stationsData) ? stationsData : [];
-          apsArr = Array.isArray(apsData) ? apsData : [];
-        }
-
-        setStations(stationsArr);
-        setAps(apsArr);
-
-        // Get historical data from SLE collection service
-        const timeRangeMs =
-          timeRange === '1h' ? 3600000 : timeRange === '7d' ? 604800000 : 86400000;
-        const historicalData = sleDataCollectionService.getFilteredData({
-          siteId: selectedSite,
-          scope: 'wireless',
-          startTimestamp: Date.now() - timeRangeMs,
+        // selectedSite -> siteType -> dataSource -> SLE model -> metrics -> honeycombs
+        const context = resolveSiteContext({
+          siteGroup,
+          navigationScope,
+          siteGroups,
+          selectedSiteId: selectedSite,
+          siteName,
         });
 
-        // Set active thresholds before computing SLEs
-        setActiveThresholds(siteThresholds);
+        const provider = getSleProvider(context);
+        const model = await provider.load(context, {
+          timeRange,
+          thresholds: siteThresholds,
+          siteGroups,
+        });
 
-        // Compute all SLEs
-        const sles = computeAllWirelessSLEs(stationsArr, apsArr, historicalData);
-        setWirelessSLEs(sles);
+        setSource(model.source);
+        setStations(model.stations as any[]);
+        setAps(model.aps as any[]);
+        setWirelessSLEs(model.sles);
+        setWarnings(model.warnings);
         setLastUpdate(new Date());
 
         if (isRefresh) toast.success('SLE data refreshed');
@@ -379,7 +332,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups.length]
+    [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups, siteGroup]
   );
 
   // Initial load + auto-refresh
@@ -463,6 +416,19 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
       {/* Summary Bar */}
       <div className="flex items-center gap-2 flex-wrap">
+        {/* Source / context indicator — same page, context-driven */}
+        <div
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/30 border border-border/50"
+          title={`Service Levels sourced from ${SLE_SOURCE_LABELS[source]}`}
+        >
+          {source === 'xiq' ? (
+            <Cloud className="h-4 w-4 text-cyan-400" />
+          ) : (
+            <Server className="h-4 w-4 text-purple-400" />
+          )}
+          <span className="text-xs font-medium">{SLE_SOURCE_LABELS[source]}</span>
+        </div>
+
         {/* Overall score */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
           <Target className="h-4 w-4 text-purple-400" />
@@ -501,6 +467,13 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           </button>
         ))}
       </div>
+
+      {/* Context notices (e.g. an SLE unavailable for the active source) */}
+      {warnings.length > 0 && wirelessSLEs.length > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-600 dark:text-amber-400">
+          {warnings.join(' ')}
+        </div>
+      )}
 
       {/* Tabs: Wireless / Wired */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -556,8 +529,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               <Wifi className="h-12 w-12 text-muted-foreground/40 mb-4" />
               <h3 className="text-base font-medium text-foreground mb-1">No SLE data available</h3>
               <p className="text-sm text-muted-foreground max-w-sm">
-                SLE metrics require connected clients and access points. Try selecting a different
-                site or time range, or wait for data to be collected.
+                {warnings.length > 0
+                  ? warnings.join(' ')
+                  : 'SLE metrics require connected clients and access points. Try selecting a different site or time range, or wait for data to be collected.'}
               </p>
               <button
                 onClick={() => loadData(true)}

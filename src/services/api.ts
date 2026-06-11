@@ -845,8 +845,10 @@ class ApiService {
 
   // Sites API methods with fallback endpoints
   async getSites(options?: QueryOptions): Promise<Site[]> {
-    // Check cache first (skip caching if custom query options are used)
-    const cacheKey = 'sites';
+    // Check cache first (skip caching if custom query options are used).
+    // Scope the cache key to the active controller — otherwise a multi-controller
+    // setup serves one controller's site list for all of them.
+    const cacheKey = `sites:${getDynamicControllerUrl() ?? 'default'}`;
     if (!options) {
       const cached = cacheService.get<Site[]>(cacheKey);
       if (cached) {

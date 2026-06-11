@@ -51,6 +51,12 @@ export interface SiteGroup {
   xiq_authenticated?: boolean;
   /** XIQ region key (global | eu | apac | ca) for this site group's XIQ account. */
   xiq_region?: string;
+  /**
+   * Authoritative source system for this site group's data (drives the SLE provider).
+   * Optional — when absent it is derived from controller_url / xiq_authenticated.
+   * 'controller' and 'gateway' both resolve to the Campus Controller data path.
+   */
+  source?: 'controller' | 'gateway' | 'xiq';
 }
 
 export interface Site {
