@@ -1784,6 +1784,64 @@ app.get('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), (req, res) => {
   xiqReq.end();
 });
 
+// XIQ API proxy (POST) — forwards authenticated POST requests with a JSON body.
+// Needed for the dashboard grid endpoints (e.g. /dashboard/wireless/*/grid).
+app.post('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), jsonParser, (req, res) => {
+  const token = req.headers['x-xiq-token'];
+  const region = req.headers['x-xiq-region'] || 'global';
+
+  if (!token) return res.status(401).json({ error: 'X-XIQ-Token header required' });
+
+  const baseUrl = XIQ_REGION_URLS[region];
+  if (!baseUrl) return res.status(400).json({ error: `Unknown XIQ region: ${region}` });
+
+  const xiqPath = req.path.replace(/^\/xiq\/api/, '');
+  const search = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+  const url = new URL(`${baseUrl}${xiqPath}${search}`);
+  const postData = JSON.stringify(req.body ?? {});
+
+  console.log(`[XIQ API Proxy] POST ${url.hostname}${url.pathname}${url.search}`);
+
+  const options = {
+    hostname: url.hostname,
+    port: 443,
+    path: url.pathname + url.search,
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(postData),
+    },
+    timeout: 20000,
+  };
+
+  const xiqReq = https.request(options, (xiqRes) => {
+    let raw = '';
+    xiqRes.on('data', (chunk) => {
+      raw += chunk;
+    });
+    xiqRes.on('end', () => {
+      res.status(xiqRes.statusCode);
+      try {
+        res.json(JSON.parse(raw));
+      } catch {
+        res.send(raw);
+      }
+    });
+  });
+
+  xiqReq.on('timeout', () => {
+    xiqReq.destroy();
+    if (!res.headersSent) res.status(504).json({ error: 'XIQ request timed out' });
+  });
+  xiqReq.on('error', (err) => {
+    if (!res.headersSent) res.status(502).json({ error: err.message || 'XIQ proxy error' });
+  });
+  xiqReq.write(postData);
+  xiqReq.end();
+});
+
 // ==================== Validation Engine Routes ====================
 // Must appear before the /api proxy middleware so requests are handled server-side.
 // requireAuth is scoped to the validation engine prefixes only — mounting it on

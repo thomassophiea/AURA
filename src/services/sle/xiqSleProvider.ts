@@ -2,19 +2,15 @@
 /**
  * XIQ SLE Provider
  *
- * Loads SLE data for an XIQ-backed site group. Fetches active clients + devices
- * from ExtremeCloud IQ through the existing `/xiq/api/*` proxy (same path the
- * migration tool uses), adapts them into the controller station/AP shape, then
- * runs the shared `computeAllWirelessSLEs` engine so the page renders identically.
- *
- * Metrics with no direct XIQ equivalent (time-to-connect, successful-connects,
- * roaming) are still computed from the active-client snapshot but are flagged as
- * limited-fidelity so the UI can communicate that gracefully.
+ * Loads XIQ-native Service Levels for an XIQ-backed site (or the whole account).
+ * Pulls three XIQ dashboard grids through the /xiq/api proxy and computes the
+ * same 7 wireless SLEs the OS-ONE page shows (see xiqSleEngine), scoped to the
+ * selected XIQ site by name. Output is the shared SLEPageModel so the page
+ * renders identically.
  */
 
 import { xiqService, type XIQStoredToken } from '../xiqService';
-import { computeAllWirelessSLEs, setActiveThresholds } from '../sleCalculationEngine';
-import { adaptXiqData, clientHasRateData } from './xiqSleAdapter';
+import { computeXiqWirelessSLEs } from './xiqSleEngine';
 import type { SLESiteContext } from '../../types/sleContext';
 import {
   emptySLEPageModel,
@@ -23,71 +19,53 @@ import {
   type SLEProvider,
 } from '../../types/slePageModel';
 
-// SLEs whose fidelity is limited when sourced from the XIQ active-client snapshot
-// (XIQ's public API does not expose per-attempt connect/roam failure data here).
-const XIQ_LIMITED_METRICS = ['time_to_connect', 'successful_connects', 'roaming'];
+const GRIDS = {
+  client: '/dashboard/wireless/client-health/grid',
+  device: '/dashboard/wireless/device-health/grid',
+  capacity: '/dashboard/wireless/usage-capacity/grid',
+} as const;
 
-async function xiqGet(token: XIQStoredToken, path: string): Promise<unknown> {
-  const res = await fetch(`/xiq/api${path}`, {
-    method: 'GET',
-    headers: {
-      'X-XIQ-Token': token.access_token,
-      'X-XIQ-Region': token.region,
-      Accept: 'application/json',
-    },
-    signal: AbortSignal.timeout(30000),
-  });
-  if (!res.ok) {
-    let msg = `XIQ ${path} failed (${res.status})`;
-    try {
-      const b = (await res.json()) as Record<string, string>;
-      if (b.error || b.message) msg = b.error || b.message;
-    } catch {
-      /* ignore */
-    }
-    throw new Error(msg);
+async function xiqPostPaged(
+  token: XIQStoredToken,
+  path: string,
+  query: string
+): Promise<Record<string, any>[]> {
+  const out: Record<string, any>[] = [];
+  const MAX_PAGES = 30;
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const res = await fetch(`/xiq/api${path}?page=${page}&limit=100&${query}`, {
+      method: 'POST',
+      headers: {
+        'X-XIQ-Token': token.access_token,
+        'X-XIQ-Region': token.region,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: '{}',
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) break;
+    const data: any = await res.json();
+    const items: any[] = Array.isArray(data) ? data : (data.data ?? data.items ?? data.results ?? []);
+    if (items.length === 0) break;
+    out.push(...items);
+    const totalPages = Number(data?.total_pages ?? data?.totalPages ?? 1);
+    if (page >= totalPages || items.length < 100) break;
   }
-  return res.json();
+  return out;
 }
 
-async function xiqGetPaginated(
-  token: XIQStoredToken,
-  endpoint: string,
-  extraQuery = ''
-): Promise<Record<string, any>[]> {
-  const all: Record<string, any>[] = [];
-  let page = 1;
-  // Hard cap so a misbehaving upstream can't loop forever.
-  const MAX_PAGES = 50;
-  const suffix = extraQuery ? `&${extraQuery}` : '';
-  while (page <= MAX_PAGES) {
-    const result = await xiqGet(token, `${endpoint}?page=${page}&limit=100${suffix}`);
-    let items: Record<string, any>[] = [];
-    if (Array.isArray(result)) {
-      items = result as Record<string, any>[];
-    } else if (result && typeof result === 'object') {
-      const r = result as Record<string, unknown>;
-      items = (r.data ?? r.items ?? r.results ?? []) as Record<string, any>[];
-    }
-    if (items.length === 0) break;
-    all.push(...items);
-    const totalPages =
-      result && typeof result === 'object'
-        ? Number(
-            (result as Record<string, unknown>).total_pages ??
-              (result as Record<string, unknown>).totalPages ??
-              1
-          )
-        : 1;
-    if (page >= totalPages || items.length < 100) break;
-    page++;
-  }
-  return all;
+/** Keep only rows belonging to the selected site (by name). */
+function scopeToSite(rows: Record<string, any>[], siteName: string | null): Record<string, any>[] {
+  if (!siteName) return rows;
+  return rows.filter(
+    (r) => r.site === siteName || r.building === siteName || r.floor === siteName
+  );
 }
 
 async function loadXiqData(
   context: SLESiteContext,
-  options: SLELoadOptions
+  _options: SLELoadOptions
 ): Promise<SLEPageModel> {
   const siteGroupId = context.siteGroupId;
   const token = siteGroupId ? xiqService.getToken(siteGroupId) : null;
@@ -98,15 +76,16 @@ async function loadXiqData(
     ]);
   }
 
-  let clients: Record<string, any>[] = [];
-  let devices: Record<string, any>[] = [];
+  let clientRows: Record<string, any>[] = [];
+  let deviceRows: Record<string, any>[] = [];
+  let capacityRows: Record<string, any>[] = [];
   const warnings: string[] = [];
 
   try {
-    [clients, devices] = await Promise.all([
-      // views=FULL is required for rssi/snr/channel/health + AP linkage fields.
-      xiqGetPaginated(token, '/clients/active', 'views=FULL'),
-      xiqGetPaginated(token, '/devices'),
+    [clientRows, deviceRows, capacityRows] = await Promise.all([
+      xiqPostPaged(token, GRIDS.client, 'sortField=CLIENT_TYPE&sortOrder=ASC&includeUnassigned=false'),
+      xiqPostPaged(token, GRIDS.device, 'sortOrder=ASC&includeUnassigned=false'),
+      xiqPostPaged(token, GRIDS.capacity, 'sortOrder=ASC&includeUnassigned=false'),
     ]);
   } catch (err) {
     return emptySLEPageModel('xiq', context, [
@@ -114,48 +93,31 @@ async function loadXiqData(
     ]);
   }
 
-  // Scope to a specific XIQ site (location) when one is selected.
-  const locId = context.xiqLocationId;
-  if (locId) {
-    const inLocation = (rec: Record<string, any>): boolean => {
-      if (String(rec.location_id ?? '') === locId) return true;
-      const locs = rec.locations;
-      return Array.isArray(locs) && locs.some((l) => String(l?.id ?? '') === locId);
-    };
-    clients = clients.filter(inLocation);
-    devices = devices.filter(inLocation);
-  }
+  // Scope to the selected XIQ site (when a specific site is chosen).
+  const siteName = context.xiqLocationId ? context.siteName : null;
+  const clients = scopeToSite(clientRows, siteName);
+  const devices = scopeToSite(deviceRows, siteName);
+  const capacity = scopeToSite(capacityRows, siteName);
 
-  const { stations, aps } = adaptXiqData(clients, devices);
+  const sles = computeXiqWirelessSLEs(clients, devices, capacity);
 
-  setActiveThresholds(options.thresholds);
-  // XIQ does not feed the controller historical-collection service, so the
-  // timeseries sparklines start empty and fill once collection covers XIQ.
-  let sles = computeAllWirelessSLEs(stations, aps, []);
-
-  const unavailableMetrics: string[] = [];
-
-  // Throughput needs PHY-rate data. When the tenant exposes none, drop the
-  // metric rather than report a misleading 100% from all-zero rates.
-  const hasRateData = clients.some(clientHasRateData);
-  if (!hasRateData && stations.length > 0) {
-    sles = sles.filter((s) => s.id !== 'throughput');
-    unavailableMetrics.push('throughput');
-    warnings.push('Throughput is unavailable from this XIQ account (no PHY-rate data).');
-  }
-
-  if (stations.length === 0 && aps.length === 0) {
-    warnings.push('No active clients or devices returned from XIQ for this account.');
+  if (clients.length === 0 && devices.length === 0) {
+    warnings.push(
+      siteName
+        ? `No XIQ wireless data for "${siteName}".`
+        : 'No XIQ wireless data returned for this account.'
+    );
   }
 
   return {
     source: 'xiq',
     context,
     sles,
-    stations,
-    aps,
+    // Raw grid rows back the honeycomb drill-down / client click-through.
+    stations: clients,
+    aps: devices,
     generatedAt: Date.now(),
-    unavailableMetrics,
+    unavailableMetrics: [],
     warnings,
   };
 }
@@ -164,5 +126,3 @@ export const xiqSleProvider: SLEProvider = {
   source: 'xiq',
   load: loadXiqData,
 };
-
-export { XIQ_LIMITED_METRICS };
