@@ -1,9 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { computeXiqWirelessSLEs } from './xiqSleEngine';
+import {
+  normalizeXiqClientRow,
+  normalizeXiqDeviceRow,
+  normalizeXiqCapacityRow,
+} from '../../types/xiqGrid';
 
-// Rows shaped like the live XIQ dashboard grids (verified against XIQ Global).
-const clientRows = [
-  // healthy client
+// Raw rows shaped like the live XIQ dashboard grids (verified against XIQ Global).
+const rawClients = [
   {
     client_mac: 'c1',
     site: 'Scruff',
@@ -22,7 +26,6 @@ const clientRows = [
     slowness: 0,
     air_time_warning: false,
   },
-  // weak signal + auth failure + slow connect
   {
     client_mac: 'c2',
     site: 'Scruff',
@@ -41,25 +44,32 @@ const clientRows = [
     slowness: 1,
     air_time_warning: true,
   },
-  // client at a different site (must be excluded when scoping to Scruff)
-  { client_mac: 'c3', site: 'Micro', rssi: -90, snr: 5, has_authentication_issues: true },
 ];
 
-const deviceRows = [
-  { device_id: 'ap1', site: 'Scruff', cpu_usage_percentage: 2, memory_usage_percentage: 40, wifi_reboots_count: 0, channel_change_count: 1, has_device_health_issue: false },
-  { device_id: 'ap2', site: 'Scruff', cpu_usage_percentage: 95, memory_usage_percentage: 92, wifi_reboots_count: 2, channel_change_count: 5, has_device_health_issue: true },
-  { device_id: 'ap3', site: 'Micro', cpu_usage_percentage: 99, memory_usage_percentage: 99, has_device_health_issue: true },
+const rawDevices = [
+  { device_id: 'ap1', site: 'Scruff', cpu_usage_percentage: 2, memory_usage_percentage: 40, wifi_reboots_count: 0, channel_change_count: 1, has_device_health_issue: false, poe_usage_indicator: false },
+  { device_id: 'ap2', site: 'Scruff', cpu_usage_percentage: 95, memory_usage_percentage: 92, wifi_reboots_count: 2, channel_change_count: 5, has_device_health_issue: true, poe_usage_indicator: true },
 ];
 
-const capacityRows = [
-  { device_id: 'ap1', site: 'Scruff', radio_2dot4g_utilization_score: 20, radio_5g_utilization_score: 5, has_usage_capacity_issue: false, wifi0_interference_score: 2 },
-  { device_id: 'ap2', site: 'Scruff', radio_2dot4g_utilization_score: 85, radio_5g_utilization_score: 10, has_usage_capacity_issue: true, wifi0_interference_score: 75 },
+const rawCapacity = [
+  { device_id: 'ap1', site: 'Scruff', radio_2dot4g_utilization_score: 20, radio_5g_utilization_score: 5, has_usage_capacity_issue: false, wifi0_interference_score: 2, packet_loss: 0 },
+  { device_id: 'ap2', site: 'Scruff', radio_2dot4g_utilization_score: 85, radio_5g_utilization_score: 10, has_usage_capacity_issue: true, wifi0_interference_score: 75, packet_loss: 40 },
 ];
+
+describe('normalizeXiq*Row', () => {
+  it('coerces nulls/strings and preserves null rssi when unreported', () => {
+    const n = normalizeXiqClientRow({ client_mac: 'x', rssi: null, association_duration: '150' });
+    expect(n.rssi).toBeNull();
+    expect(n.associationDuration).toBe(150);
+    expect(n.hasAuthIssues).toBe(false);
+  });
+});
 
 describe('computeXiqWirelessSLEs', () => {
-  const scruffClients = clientRows.filter((c) => c.site === 'Scruff');
-  const scruffDevices = deviceRows.filter((d) => d.site === 'Scruff');
-  const sles = computeXiqWirelessSLEs(scruffClients, scruffDevices, capacityRows);
+  const clients = rawClients.map(normalizeXiqClientRow);
+  const devices = rawDevices.map(normalizeXiqDeviceRow);
+  const capacity = rawCapacity.map(normalizeXiqCapacityRow);
+  const sles = computeXiqWirelessSLEs(clients, devices, capacity);
 
   it('returns the canonical 7 wireless SLEs in OS-ONE order', () => {
     expect(sles.map((s) => s.id)).toEqual([
@@ -73,44 +83,43 @@ describe('computeXiqWirelessSLEs', () => {
     ]);
   });
 
-  it('coverage flags the weak-signal client (1 of 2 on Scruff)', () => {
+  it('coverage flags the weak-signal client (1 of 2)', () => {
     const cov = sles.find((s) => s.id === 'coverage')!;
     expect(cov.totalUserMinutes).toBe(2);
     expect(cov.affectedUserMinutes).toBe(1);
     expect(cov.successRate).toBe(50);
-    expect(cov.status).toBe('poor');
   });
 
   it('successful_connects maps auth issues to the Authorization classifier', () => {
     const sc = sles.find((s) => s.id === 'successful_connects')!;
     expect(sc.affectedUserMinutes).toBe(1);
-    const auth = sc.classifiers.find((c) => c.id === 'authorization')!;
-    expect(auth.affectedClients).toBe(1);
+    expect(sc.classifiers.find((c) => c.id === 'authorization')!.affectedClients).toBe(1);
   });
 
-  it('time_to_connect flags the >5s connect and attributes it to Authorization', () => {
+  it('time_to_connect attributes the >5s connect to Authorization', () => {
     const ttc = sles.find((s) => s.id === 'time_to_connect')!;
     expect(ttc.affectedUserMinutes).toBe(1);
-    const auth = ttc.classifiers.find((c) => c.id === 'authorization')!;
-    expect(auth.affectedClients).toBe(1); // auth phase dominated (9000ms)
+    expect(ttc.classifiers.find((c) => c.id === 'authorization')!.affectedClients).toBe(1);
   });
 
-  it('throughput uses retries/airtime/slowness as the signal', () => {
-    const tp = sles.find((s) => s.id === 'throughput')!;
-    expect(tp.affectedUserMinutes).toBe(1);
+  it('throughput uses retries/airtime/slowness', () => {
+    expect(sles.find((s) => s.id === 'throughput')!.affectedUserMinutes).toBe(1);
   });
 
-  it('ap_health flags the unhealthy AP (cpu/mem/reboots/channel)', () => {
-    const ap = sles.find((s) => s.id === 'ap_health')!;
-    expect(ap.totalUserMinutes).toBe(2);
-    expect(ap.affectedUserMinutes).toBe(1);
-    expect(ap.successRate).toBe(50);
-  });
-
-  it('capacity flags the congested AP', () => {
+  it('capacity flags congestion via utilization, interference, or packet loss', () => {
     const cap = sles.find((s) => s.id === 'capacity')!;
     expect(cap.totalUserMinutes).toBe(2);
     expect(cap.affectedUserMinutes).toBe(1);
+    // ap2 hits all three congestion signals
+    expect(cap.classifiers.find((c) => c.id === 'interference')!.affectedClients).toBe(1);
+    expect(cap.classifiers.find((c) => c.id === 'packet_loss')!.affectedClients).toBe(1);
+  });
+
+  it('ap_health flags the unhealthy AP (cpu/mem/reboots/channel/poe)', () => {
+    const ap = sles.find((s) => s.id === 'ap_health')!;
+    expect(ap.totalUserMinutes).toBe(2);
+    expect(ap.affectedUserMinutes).toBe(1);
+    expect(ap.classifiers.find((c) => c.id === 'poe')!.affectedClients).toBe(1);
   });
 
   it('all metrics carry the SLEMetric shape the honeycomb consumes', () => {

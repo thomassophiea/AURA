@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * XIQ-native SLE engine.
  *
@@ -7,17 +6,21 @@
  * `SLEMetric` shape so the existing honeycomb / classifier / scoring UI renders
  * identically — only the data source and calculations differ.
  *
- * Inputs (per selected site) come from three XIQ grids:
- *   /dashboard/wireless/client-health/grid   -> per-client: rssi, snr, auth/assoc/dhcp
- *                                               issues + timings, roaming, retries
- *   /dashboard/wireless/device-health/grid   -> per-AP: cpu, memory, reboots, channel changes
- *   /dashboard/wireless/usage-capacity/grid  -> per-AP: radio utilization, interference
+ * Inputs are normalized rows (see types/xiqGrid) from three XIQ grids:
+ *   client-health   -> rssi, snr, auth/assoc/dhcp issues + timings, roaming, retries
+ *   device-health   -> cpu, memory, reboots, channel changes, PoE
+ *   usage-capacity   -> radio utilization, interference, packet loss
  *
  * Thresholds/weights follow the anomaly-detection reference implementation.
  */
 
 import type { SLEMetric, SLEClassifier } from '../../types/sle';
 import { getSLEStatus } from '../../types/sle';
+import type {
+  XiqClientHealthRow,
+  XiqDeviceHealthRow,
+  XiqCapacityRow,
+} from '../../types/xiqGrid';
 
 // ── Thresholds (from the anomaly-detection reference) ──────────────────────
 const COVERAGE_WARNING_RSSI = -70; // dBm; below this is weak
@@ -25,21 +28,14 @@ const COVERAGE_WARNING_SNR = 15; // dB; below this is poor
 const TTC_WARN_MS = 5000; // time-to-connect above this is slow
 const ROAM_BAD_MS = 3000; // roam duration above this is bad
 const RADIO_UTIL_THRESHOLD = 70; // % radio utilization considered congested
+const INTERFERENCE_THRESHOLD = 50; // interference score considered high
+const PACKET_LOSS_THRESHOLD = 5; // % packet loss considered impacting
 const AP_CPU_THRESHOLD = 85;
 const AP_MEMORY_THRESHOLD = 90;
 const RETRY_FRACTION_THRESHOLD = 0.2; // tx+rx client retry fraction considered high
 
 function pct(count: number, total: number): number {
   return total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
-}
-
-function num(v: unknown): number {
-  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
-  return Number.isFinite(n) ? n : 0;
-}
-
-function bool(v: unknown): boolean {
-  return v === true || String(v).toLowerCase() === 'true';
 }
 
 function metric(
@@ -67,95 +63,72 @@ function metric(
   };
 }
 
+const classifier = (id: string, name: string, count: number, failCount: number): SLEClassifier => ({
+  id,
+  name,
+  impactPercent: failCount > 0 ? pct(count, failCount) : 0,
+  affectedClients: count,
+});
+
 // ── Coverage ───────────────────────────────────────────────────────────────
-function computeCoverage(clients: any[]): SLEMetric {
+function computeCoverage(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const weakSignal = clients.filter((c) => c.rssi != null && num(c.rssi) < COVERAGE_WARNING_RSSI);
-  const lowSnr = clients.filter((c) => c.snr != null && num(c.snr) < COVERAGE_WARNING_SNR);
+  const weakSignal = clients.filter((c) => c.rssi != null && c.rssi < COVERAGE_WARNING_RSSI);
+  const lowSnr = clients.filter((c) => c.snr != null && c.snr < COVERAGE_WARNING_SNR);
   const failed = new Set<string>([
-    ...weakSignal.map((c) => String(c.client_mac)),
-    ...lowSnr.map((c) => String(c.client_mac)),
+    ...weakSignal.map((c) => c.clientMac),
+    ...lowSnr.map((c) => c.clientMac),
   ]);
-  const failCount = failed.size;
   return metric(
     'coverage',
     'Coverage',
     'percent',
     total,
-    failCount,
+    failed.size,
     [
-      {
-        id: 'weak_signal',
-        name: 'Weak Signal',
-        impactPercent: failCount > 0 ? pct(weakSignal.length, failCount) : 0,
-        affectedClients: weakSignal.length,
-      },
-      {
-        id: 'low_snr',
-        name: 'Low SNR',
-        impactPercent: failCount > 0 ? pct(lowSnr.length, failCount) : 0,
-        affectedClients: lowSnr.length,
-      },
+      classifier('weak_signal', 'Weak Signal', weakSignal.length, failed.size),
+      classifier('low_snr', 'Low SNR', lowSnr.length, failed.size),
     ],
     'Percentage of clients with adequate signal strength (RSSI/SNR)'
   );
 }
 
 // ── Throughput (client experience proxy: retries / airtime / slowness) ──────
-function computeThroughput(clients: any[]): SLEMetric {
+function computeThroughput(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const highRetries = clients.filter(
-    (c) => num(c.tx_client_retries) + num(c.rx_client_retries) >= RETRY_FRACTION_THRESHOLD
-  );
-  const airtime = clients.filter((c) => bool(c.air_time_warning));
-  const slow = clients.filter((c) => num(c.slowness) > 0);
+  const highRetries = clients.filter((c) => c.txRetries + c.rxRetries >= RETRY_FRACTION_THRESHOLD);
+  const airtime = clients.filter((c) => c.airtimeWarning);
+  const slow = clients.filter((c) => c.slowness > 0);
   const failed = new Set<string>([
-    ...highRetries.map((c) => String(c.client_mac)),
-    ...airtime.map((c) => String(c.client_mac)),
-    ...slow.map((c) => String(c.client_mac)),
+    ...highRetries.map((c) => c.clientMac),
+    ...airtime.map((c) => c.clientMac),
+    ...slow.map((c) => c.clientMac),
   ]);
-  const failCount = failed.size;
   return metric(
     'throughput',
     'Throughput',
     'percent',
     total,
-    failCount,
+    failed.size,
     [
-      {
-        id: 'client_retries',
-        name: 'Client Retries',
-        impactPercent: failCount > 0 ? pct(highRetries.length, failCount) : 0,
-        affectedClients: highRetries.length,
-      },
-      {
-        id: 'airtime',
-        name: 'Airtime Saturation',
-        impactPercent: failCount > 0 ? pct(airtime.length, failCount) : 0,
-        affectedClients: airtime.length,
-      },
-      {
-        id: 'slowness',
-        name: 'Slowness',
-        impactPercent: failCount > 0 ? pct(slow.length, failCount) : 0,
-        affectedClients: slow.length,
-      },
+      classifier('client_retries', 'Client Retries', highRetries.length, failed.size),
+      classifier('airtime', 'Airtime Saturation', airtime.length, failed.size),
+      classifier('slowness', 'Slowness', slow.length, failed.size),
     ],
     'Percentage of clients without retry/airtime/slowness degradation'
   );
 }
 
 // ── Time to Connect ─────────────────────────────────────────────────────────
-function computeTimeToConnect(clients: any[]): SLEMetric {
+function computeTimeToConnect(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const ttc = (c: any) =>
-    num(c.association_duration) + num(c.authentication_response_time) + num(c.dhcp_ip_assignation_time);
+  const ttc = (c: XiqClientHealthRow) => c.associationDuration + c.authResponseTime + c.dhcpAssignTime;
   const slow = clients.filter((c) => ttc(c) > TTC_WARN_MS);
   const failCount = slow.length;
-  // Attribute the slow connects to the dominant phase.
-  const assocHeavy = slow.filter((c) => num(c.association_duration) >= num(c.authentication_response_time) && num(c.association_duration) >= num(c.dhcp_ip_assignation_time));
-  const authHeavy = slow.filter((c) => num(c.authentication_response_time) > num(c.association_duration) && num(c.authentication_response_time) >= num(c.dhcp_ip_assignation_time));
-  const dhcpHeavy = slow.filter((c) => num(c.dhcp_ip_assignation_time) > num(c.association_duration) && num(c.dhcp_ip_assignation_time) > num(c.authentication_response_time));
+  // Attribute each slow connect to its dominant phase.
+  const assoc = slow.filter((c) => c.associationDuration >= c.authResponseTime && c.associationDuration >= c.dhcpAssignTime);
+  const auth = slow.filter((c) => c.authResponseTime > c.associationDuration && c.authResponseTime >= c.dhcpAssignTime);
+  const dhcp = slow.filter((c) => c.dhcpAssignTime > c.associationDuration && c.dhcpAssignTime > c.authResponseTime);
   return metric(
     'time_to_connect',
     'Time to Connect',
@@ -163,119 +136,78 @@ function computeTimeToConnect(clients: any[]): SLEMetric {
     total,
     failCount,
     [
-      {
-        id: 'association',
-        name: 'Association',
-        impactPercent: failCount > 0 ? pct(assocHeavy.length, failCount) : 0,
-        affectedClients: assocHeavy.length,
-      },
-      {
-        id: 'authorization',
-        name: 'Authorization',
-        impactPercent: failCount > 0 ? pct(authHeavy.length, failCount) : 0,
-        affectedClients: authHeavy.length,
-      },
-      {
-        id: 'dhcp',
-        name: 'DHCP',
-        impactPercent: failCount > 0 ? pct(dhcpHeavy.length, failCount) : 0,
-        affectedClients: dhcpHeavy.length,
-      },
+      classifier('association', 'Association', assoc.length, failCount),
+      classifier('authorization', 'Authorization', auth.length, failCount),
+      classifier('dhcp', 'DHCP', dhcp.length, failCount),
     ],
     'Percentage of clients connecting within the time threshold'
   );
 }
 
 // ── Successful Connects ──────────────────────────────────────────────────────
-function computeSuccessfulConnects(clients: any[]): SLEMetric {
+function computeSuccessfulConnects(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const authFail = clients.filter((c) => bool(c.has_authentication_issues));
-  const assocFail = clients.filter((c) => bool(c.has_association_issues));
-  const dhcpFail = clients.filter((c) => bool(c.has_ip_address_issues));
+  const authFail = clients.filter((c) => c.hasAuthIssues);
+  const assocFail = clients.filter((c) => c.hasAssocIssues);
+  const dhcpFail = clients.filter((c) => c.hasIpIssues);
   const failed = new Set<string>([
-    ...authFail.map((c) => String(c.client_mac)),
-    ...assocFail.map((c) => String(c.client_mac)),
-    ...dhcpFail.map((c) => String(c.client_mac)),
+    ...authFail.map((c) => c.clientMac),
+    ...assocFail.map((c) => c.clientMac),
+    ...dhcpFail.map((c) => c.clientMac),
   ]);
-  const failCount = failed.size;
   return metric(
     'successful_connects',
     'Successful Connects',
     'percent',
     total,
-    failCount,
+    failed.size,
     [
-      {
-        id: 'authorization',
-        name: 'Authorization',
-        impactPercent: failCount > 0 ? pct(authFail.length, failCount) : 0,
-        affectedClients: authFail.length,
-      },
-      {
-        id: 'association',
-        name: 'Association',
-        impactPercent: failCount > 0 ? pct(assocFail.length, failCount) : 0,
-        affectedClients: assocFail.length,
-      },
-      {
-        id: 'dhcp',
-        name: 'DHCP',
-        impactPercent: failCount > 0 ? pct(dhcpFail.length, failCount) : 0,
-        affectedClients: dhcpFail.length,
-      },
+      classifier('authorization', 'Authorization', authFail.length, failed.size),
+      classifier('association', 'Association', assocFail.length, failed.size),
+      classifier('dhcp', 'DHCP', dhcpFail.length, failed.size),
     ],
     'Percentage of connection attempts that succeed (auth / association / DHCP)'
   );
 }
 
 // ── Roaming ──────────────────────────────────────────────────────────────────
-function computeRoaming(clients: any[]): SLEMetric {
+function computeRoaming(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const issueFlag = clients.filter((c) => bool(c.has_roaming_issues));
-  const slowRoam = clients.filter((c) => num(c.roaming_time) > ROAM_BAD_MS);
+  const issueFlag = clients.filter((c) => c.hasRoamingIssues);
+  const slowRoam = clients.filter((c) => c.roamingTime > ROAM_BAD_MS);
   const failed = new Set<string>([
-    ...issueFlag.map((c) => String(c.client_mac)),
-    ...slowRoam.map((c) => String(c.client_mac)),
+    ...issueFlag.map((c) => c.clientMac),
+    ...slowRoam.map((c) => c.clientMac),
   ]);
-  const failCount = failed.size;
   return metric(
     'roaming',
     'Roaming',
     'percent',
     total,
-    failCount,
+    failed.size,
     [
-      {
-        id: 'signal_quality',
-        name: 'Signal Quality',
-        impactPercent: failCount > 0 ? pct(issueFlag.length, failCount) : 0,
-        affectedClients: issueFlag.length,
-      },
-      {
-        id: 'latency',
-        name: 'Latency',
-        impactPercent: failCount > 0 ? pct(slowRoam.length, failCount) : 0,
-        affectedClients: slowRoam.length,
-      },
+      classifier('signal_quality', 'Signal Quality', issueFlag.length, failed.size),
+      classifier('latency', 'Latency', slowRoam.length, failed.size),
     ],
     'Percentage of successful and timely AP transitions'
   );
 }
 
 // ── Capacity (per AP, usage-capacity grid) ───────────────────────────────────
-function computeCapacity(aps: any[]): SLEMetric {
+function computeCapacity(aps: XiqCapacityRow[]): SLEMetric {
   const total = aps.length;
-  const congested = (ap: any) =>
-    Math.max(
-      num(ap.radio_2dot4g_utilization_score),
-      num(ap.radio_5g_utilization_score),
-      num(ap.radio_6g_utilization_score)
-    ) >= RADIO_UTIL_THRESHOLD;
-  const overloaded = aps.filter((ap) => bool(ap.has_usage_capacity_issue) || congested(ap));
-  const failCount = overloaded.length;
-  const band24 = aps.filter((ap) => num(ap.radio_2dot4g_utilization_score) >= RADIO_UTIL_THRESHOLD);
-  const band5 = aps.filter((ap) => num(ap.radio_5g_utilization_score) >= RADIO_UTIL_THRESHOLD);
-  const interference = aps.filter((ap) => num(ap.wifi0_interference_score) >= RADIO_UTIL_THRESHOLD);
+  const congested = aps.filter(
+    (ap) =>
+      ap.hasCapacityIssue ||
+      Math.max(ap.util24, ap.util5, ap.util6) >= RADIO_UTIL_THRESHOLD ||
+      ap.interference >= INTERFERENCE_THRESHOLD ||
+      ap.packetLoss >= PACKET_LOSS_THRESHOLD
+  );
+  const failCount = congested.length;
+  const band24 = aps.filter((ap) => ap.util24 >= RADIO_UTIL_THRESHOLD);
+  const band5 = aps.filter((ap) => ap.util5 >= RADIO_UTIL_THRESHOLD);
+  const interference = aps.filter((ap) => ap.interference >= INTERFERENCE_THRESHOLD);
+  const loss = aps.filter((ap) => ap.packetLoss >= PACKET_LOSS_THRESHOLD);
   return metric(
     'capacity',
     'Capacity',
@@ -283,44 +215,36 @@ function computeCapacity(aps: any[]): SLEMetric {
     total,
     failCount,
     [
-      {
-        id: 'utilization_24',
-        name: '2.4 GHz Utilization',
-        impactPercent: failCount > 0 ? pct(band24.length, failCount) : 0,
-        affectedClients: band24.length,
-      },
-      {
-        id: 'utilization_5',
-        name: '5 GHz Utilization',
-        impactPercent: failCount > 0 ? pct(band5.length, failCount) : 0,
-        affectedClients: band5.length,
-      },
-      {
-        id: 'interference',
-        name: 'Interference',
-        impactPercent: failCount > 0 ? pct(interference.length, failCount) : 0,
-        affectedClients: interference.length,
-      },
+      classifier('utilization_24', '2.4 GHz Utilization', band24.length, failCount),
+      classifier('utilization_5', '5 GHz Utilization', band5.length, failCount),
+      classifier('interference', 'Interference', interference.length, failCount),
+      classifier('packet_loss', 'Packet Loss', loss.length, failCount),
     ],
     'Percentage of APs operating within capacity limits'
   );
 }
 
 // ── AP Health (per AP, device-health grid) ───────────────────────────────────
-function computeAPHealth(aps: any[]): SLEMetric {
+function computeAPHealth(aps: XiqDeviceHealthRow[]): SLEMetric {
   const total = aps.length;
-  const flagged = aps.filter((ap) => bool(ap.has_device_health_issue));
-  const highCpu = aps.filter((ap) => num(ap.cpu_usage_percentage) >= AP_CPU_THRESHOLD);
-  const highMem = aps.filter((ap) => num(ap.memory_usage_percentage) >= AP_MEMORY_THRESHOLD);
-  const reboots = aps.filter((ap) => num(ap.wifi_reboots_count) >= 1);
-  const channelChanges = aps.filter((ap) => num(ap.channel_change_count) >= 3);
-  const unhealthy = new Set<string>([
-    ...flagged.map((ap) => String(ap.device_id ?? ap.hostname)),
-    ...highCpu.map((ap) => String(ap.device_id ?? ap.hostname)),
-    ...highMem.map((ap) => String(ap.device_id ?? ap.hostname)),
-    ...reboots.map((ap) => String(ap.device_id ?? ap.hostname)),
-    ...channelChanges.map((ap) => String(ap.device_id ?? ap.hostname)),
-  ]);
+  const highCpu = aps.filter((ap) => ap.cpu >= AP_CPU_THRESHOLD);
+  const highMem = aps.filter((ap) => ap.memory >= AP_MEMORY_THRESHOLD);
+  const reboots = aps.filter((ap) => ap.reboots >= 1);
+  const channelChanges = aps.filter((ap) => ap.channelChanges >= 3);
+  const poe = aps.filter((ap) => ap.poeStrained);
+  const unhealthy = new Set<string>(
+    aps
+      .filter(
+        (ap) =>
+          ap.hasHealthIssue ||
+          ap.cpu >= AP_CPU_THRESHOLD ||
+          ap.memory >= AP_MEMORY_THRESHOLD ||
+          ap.reboots >= 1 ||
+          ap.channelChanges >= 3 ||
+          ap.poeStrained
+      )
+      .map((ap) => ap.deviceId)
+  );
   const failCount = unhealthy.size;
   return metric(
     'ap_health',
@@ -329,43 +253,24 @@ function computeAPHealth(aps: any[]): SLEMetric {
     total,
     failCount,
     [
-      {
-        id: 'cpu',
-        name: 'High CPU',
-        impactPercent: failCount > 0 ? pct(highCpu.length, failCount) : 0,
-        affectedClients: highCpu.length,
-      },
-      {
-        id: 'memory',
-        name: 'High Memory',
-        impactPercent: failCount > 0 ? pct(highMem.length, failCount) : 0,
-        affectedClients: highMem.length,
-      },
-      {
-        id: 'reboots',
-        name: 'Reboots',
-        impactPercent: failCount > 0 ? pct(reboots.length, failCount) : 0,
-        affectedClients: reboots.length,
-      },
-      {
-        id: 'channel_changes',
-        name: 'Channel Changes',
-        impactPercent: failCount > 0 ? pct(channelChanges.length, failCount) : 0,
-        affectedClients: channelChanges.length,
-      },
+      classifier('cpu', 'High CPU', highCpu.length, failCount),
+      classifier('memory', 'High Memory', highMem.length, failCount),
+      classifier('reboots', 'Reboots', reboots.length, failCount),
+      classifier('channel_changes', 'Channel Changes', channelChanges.length, failCount),
+      classifier('poe', 'PoE Strain', poe.length, failCount),
     ],
     'Percentage of access points operating in a healthy state'
   );
 }
 
 /**
- * Compute all 7 wireless SLEs from XIQ grid data. Order matches the OS-ONE
- * engine so the honeycomb lays out identically.
+ * Compute all 7 wireless SLEs from normalized XIQ grid rows. Order matches the
+ * OS-ONE engine so the honeycomb lays out identically.
  */
 export function computeXiqWirelessSLEs(
-  clientRows: any[],
-  deviceRows: any[],
-  capacityRows: any[]
+  clientRows: XiqClientHealthRow[],
+  deviceRows: XiqDeviceHealthRow[],
+  capacityRows: XiqCapacityRow[]
 ): SLEMetric[] {
   return [
     computeTimeToConnect(clientRows),

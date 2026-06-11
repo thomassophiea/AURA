@@ -11,6 +11,11 @@
 
 import { xiqService, type XIQStoredToken } from '../xiqService';
 import { computeXiqWirelessSLEs } from './xiqSleEngine';
+import {
+  normalizeXiqClientRow,
+  normalizeXiqDeviceRow,
+  normalizeXiqCapacityRow,
+} from '../../types/xiqGrid';
 import type { SLESiteContext } from '../../types/sleContext';
 import {
   emptySLEPageModel,
@@ -99,7 +104,11 @@ async function loadXiqData(
   const devices = scopeToSite(deviceRows, siteName);
   const capacity = scopeToSite(capacityRows, siteName);
 
-  const sles = computeXiqWirelessSLEs(clients, devices, capacity);
+  const sles = computeXiqWirelessSLEs(
+    clients.map(normalizeXiqClientRow),
+    devices.map(normalizeXiqDeviceRow),
+    capacity.map(normalizeXiqCapacityRow)
+  );
 
   if (clients.length === 0 && devices.length === 0) {
     warnings.push(
