@@ -17,6 +17,7 @@ interface SLEWaterfallProps {
   stations: any[];
   aps: any[];
   onClientClick?: (mac: string) => void;
+  rootCauseBuilder?: typeof buildRootCause;
 }
 
 const STATUS_DETAIL_BG: Record<string, string> = {
@@ -30,7 +31,7 @@ const STATUS_NODE_BORDER: Record<string, string> = {
   poor: 'rgba(239, 68, 68, 0.6)',
 };
 
-export function SLEWaterfall({ sles, stations, aps, onClientClick }: SLEWaterfallProps) {
+export function SLEWaterfall({ sles, stations, aps, onClientClick, rootCauseBuilder = buildRootCause }: SLEWaterfallProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
 
@@ -154,7 +155,7 @@ export function SLEWaterfall({ sles, stations, aps, onClientClick }: SLEWaterfal
                 <div className="px-3 pb-4">
                   <SLESankeyFlow
                     sle={sle}
-                    onClassifierClick={(c) => setRootCause(buildRootCause(c, sle, stations, aps))}
+                    onClassifierClick={(c) => setRootCause(rootCauseBuilder(c, sle, stations, aps))}
                   />
                 </div>
               </div>

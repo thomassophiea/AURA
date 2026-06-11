@@ -40,9 +40,10 @@ interface SLERadialMapProps {
   stations: any[];
   aps: any[];
   onClientClick?: (mac: string) => void;
+  rootCauseBuilder?: typeof buildRootCause;
 }
 
-export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMapProps) {
+export function SLERadialMap({ sles, stations, aps, onClientClick, rootCauseBuilder = buildRootCause }: SLERadialMapProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -250,7 +251,7 @@ export function SLERadialMap({ sles, stations, aps, onClientClick }: SLERadialMa
             <SLESankeyFlow
               sle={selected}
               onClassifierClick={(c) => {
-                setRootCause(buildRootCause(c, selected, stations, aps));
+                setRootCause(rootCauseBuilder(c, selected, stations, aps));
               }}
             />
           </div>

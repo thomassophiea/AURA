@@ -17,6 +17,7 @@ interface SLEOctopusProps {
   stations: any[];
   aps: any[];
   onClientClick?: (mac: string) => void;
+  rootCauseBuilder?: typeof buildRootCause;
 }
 
 /** Evaluate quadratic bezier at parameter t */
@@ -44,7 +45,7 @@ const STATUS_NODE_BORDER: Record<string, string> = {
   poor: 'rgba(239, 68, 68, 0.6)',
 };
 
-export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusProps) {
+export function SLEOctopus({ sles, stations, aps, onClientClick, rootCauseBuilder = buildRootCause }: SLEOctopusProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -272,7 +273,7 @@ export function SLEOctopus({ sles, stations, aps, onClientClick }: SLEOctopusPro
           <div className="px-3 pb-4">
             <SLESankeyFlow
               sle={selected}
-              onClassifierClick={(c) => setRootCause(buildRootCause(c, selected, stations, aps))}
+              onClassifierClick={(c) => setRootCause(rootCauseBuilder(c, selected, stations, aps))}
             />
           </div>
         </div>

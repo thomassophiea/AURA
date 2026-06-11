@@ -17,6 +17,8 @@ interface SLEHoneycombProps {
   stations: any[];
   aps: any[];
   onClientClick?: (mac: string) => void;
+  /** Override the root-cause builder (e.g. the XIQ-aware one). Defaults to the OS-ONE builder. */
+  rootCauseBuilder?: typeof buildRootCause;
 }
 
 /** Generate pointy-top hexagon vertex string */
@@ -38,7 +40,13 @@ const STATUS_NODE_BORDER: Record<string, string> = {
   poor: 'rgba(239, 68, 68, 0.6)',
 };
 
-export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycombProps) {
+export function SLEHoneycomb({
+  sles,
+  stations,
+  aps,
+  onClientClick,
+  rootCauseBuilder = buildRootCause,
+}: SLEHoneycombProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [rootCause, setRootCause] = useState<SLERootCause | null>(null);
@@ -222,7 +230,7 @@ export function SLEHoneycomb({ sles, stations, aps, onClientClick }: SLEHoneycom
           <div className="px-3 pb-4">
             <SLESankeyFlow
               sle={selected}
-              onClassifierClick={(c) => setRootCause(buildRootCause(c, selected, stations, aps))}
+              onClassifierClick={(c) => setRootCause(rootCauseBuilder(c, selected, stations, aps))}
             />
           </div>
         </div>

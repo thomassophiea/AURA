@@ -53,6 +53,8 @@ import {
 } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
 import { loadXiqSites, type XiqSite } from '../../services/sle/xiqSites';
+import { buildXiqRootCause } from './xiqRootCause';
+import type { SLESourceSystem } from '../../types/sleContext';
 import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
@@ -204,6 +206,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [aps, setAps] = useState<any[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
+  const [source, setSource] = useState<SLESourceSystem>('controller');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -388,6 +391,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           siteGroups,
         });
 
+        setSource(model.source);
         setStations(model.stations as any[]);
         setAps(model.aps as any[]);
         setWirelessSLEs(model.sles);
@@ -636,6 +640,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
+                  rootCauseBuilder={source === 'xiq' ? buildXiqRootCause : undefined}
                 />
               )}
               {viewMode === 'octopus' && (
@@ -644,6 +649,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
+                  rootCauseBuilder={source === 'xiq' ? buildXiqRootCause : undefined}
                 />
               )}
               {viewMode === 'honeycomb' && (
@@ -652,6 +658,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
+                  rootCauseBuilder={source === 'xiq' ? buildXiqRootCause : undefined}
                 />
               )}
               {viewMode === 'waterfall' && (
@@ -660,6 +667,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
+                  rootCauseBuilder={source === 'xiq' ? buildXiqRootCause : undefined}
                 />
               )}
             </>

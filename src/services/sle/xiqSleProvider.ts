@@ -11,6 +11,7 @@
 
 import { xiqService, type XIQStoredToken } from '../xiqService';
 import { computeXiqWirelessSLEs } from './xiqSleEngine';
+import { attachXiqHistory } from './xiqSleHistory';
 import {
   normalizeXiqClientRow,
   normalizeXiqDeviceRow,
@@ -104,11 +105,25 @@ async function loadXiqData(
   const devices = scopeToSite(deviceRows, siteName);
   const capacity = scopeToSite(capacityRows, siteName);
 
-  const sles = computeXiqWirelessSLEs(
+  const computed = computeXiqWirelessSLEs(
     clients.map(normalizeXiqClientRow),
     devices.map(normalizeXiqDeviceRow),
     capacity.map(normalizeXiqCapacityRow)
   );
+
+  // Trend sparklines: snapshot scores per site context and replay history.
+  const contextKey = `${siteGroupId}:${context.xiqLocationId ?? 'all'}`;
+  const sles = attachXiqHistory(contextKey, computed, Date.now());
+
+  // Merge usage-capacity fields into the device rows by id so the XIQ
+  // root-cause drill-down resolves both AP-health and capacity classifiers.
+  const capById = new Map(
+    capacity.map((r) => [String(r.device_id ?? r.mac_address ?? r.hostname ?? ''), r])
+  );
+  const mergedAps = devices.map((d) => ({
+    ...(capById.get(String(d.device_id ?? d.hostname ?? '')) ?? {}),
+    ...d,
+  }));
 
   if (clients.length === 0 && devices.length === 0) {
     warnings.push(
@@ -124,7 +139,7 @@ async function loadXiqData(
     sles,
     // Raw grid rows back the honeycomb drill-down / client click-through.
     stations: clients,
-    aps: devices,
+    aps: mergedAps,
     generatedAt: Date.now(),
     unavailableMetrics: [],
     warnings,
