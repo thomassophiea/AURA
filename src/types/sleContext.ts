@@ -36,7 +36,9 @@ export interface SLESiteContext {
   siteName: string | null;
   /** XIQ region for this site group's account, when source === 'xiq'. */
   xiqRegion: string | null;
-  /** Resolved controller base URL, when controller-backed. */
+  /** Selected XIQ location id to scope the data to, when an XIQ site is picked. */
+  xiqLocationId: string | null;
+  /** Resolved controller base URL, when gateway-backed. */
   controllerUrl: string | null;
   /** True when navigation is org-wide and should aggregate across controllers. */
   isOrgScope: boolean;

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { deriveSiteSource, resolveSiteContext } from './siteContextService';
+import {
+  deriveSiteSource,
+  resolveSiteContext,
+  buildXiqSiteValue,
+  parseXiqSiteValue,
+} from './siteContextService';
 import type { SiteGroup } from '../types/domain';
 
 function makeSiteGroup(overrides: Partial<SiteGroup> = {}): SiteGroup {
@@ -96,5 +101,35 @@ describe('resolveSiteContext', () => {
       selectedSiteId: '',
     });
     expect(ctx.siteId).toBe('all');
+  });
+
+  it('routes an explicitly-selected XIQ site to the XIQ source regardless of site group', () => {
+    // Active site group is a normal controller, but the picked site is XIQ.
+    const value = buildXiqSiteValue('sg-xiq', '2159213203790830');
+    const ctx = resolveSiteContext({
+      siteGroup: makeSiteGroup(), // controller-backed
+      navigationScope: 'site-group',
+      siteGroups: [makeSiteGroup(), makeSiteGroup({ id: 'sg-xiq', name: 'Cloud', xiq_region: 'eu' })],
+      selectedSiteId: value,
+      siteName: 'Audio Alterations',
+    });
+    expect(ctx.source).toBe('xiq');
+    expect(ctx.type).toBe('xiq');
+    expect(ctx.siteGroupId).toBe('sg-xiq');
+    expect(ctx.siteGroupName).toBe('Cloud');
+    expect(ctx.xiqLocationId).toBe('2159213203790830');
+    expect(ctx.xiqRegion).toBe('eu');
+  });
+});
+
+describe('XIQ site value encode/decode', () => {
+  it('round-trips siteGroupId + locationId', () => {
+    const v = buildXiqSiteValue('sg-1', '12345');
+    expect(parseXiqSiteValue(v)).toEqual({ siteGroupId: 'sg-1', locationId: '12345' });
+  });
+
+  it('returns null for non-XIQ values', () => {
+    expect(parseXiqSiteValue('all')).toBeNull();
+    expect(parseXiqSiteValue('84b3642f-a5d7-4dc9-b162-a6156c97b8f0')).toBeNull();
   });
 });

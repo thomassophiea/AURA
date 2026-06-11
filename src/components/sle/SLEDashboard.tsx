@@ -7,7 +7,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectGroup,
+  SelectLabel,
+} from '../ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import {
   Dialog,
@@ -37,8 +45,9 @@ import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
-import { resolveSiteContext } from '../../services/siteContextService';
+import { resolveSiteContext, buildXiqSiteValue } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
+import { loadXiqSites, type XiqSite } from '../../services/sle/xiqSites';
 import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
@@ -192,6 +201,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [stations, setStations] = useState<any[]>([]);
   const [aps, setAps] = useState<any[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
+  const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
   const [source, setSource] = useState<SLESourceSystem>('controller');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,6 +320,23 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       } catch {
         /* leave existing sites in place on failure */
       }
+
+      // XIQ sites (auto-connects demo creds when no token exists). Pulled per
+      // site group so the selector can offer an "XIQ" section alongside OS-ONE.
+      try {
+        const groups =
+          navigationScope === 'global' && siteGroups.length > 0
+            ? siteGroups
+            : siteGroup
+              ? [siteGroup]
+              : siteGroups;
+        const lists = await Promise.all(
+          groups.map((sg) => loadXiqSites(sg.id).catch(() => [] as XiqSite[]))
+        );
+        if (!cancelled) setXiqSites(lists.flat());
+      } catch {
+        /* no XIQ sites available */
+      }
     };
     loadSites();
     return () => {
@@ -326,7 +353,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
         const siteName =
           selectedSite !== 'all'
-            ? sites.find((s) => s.id === selectedSite)?.name || null
+            ? sites.find((s) => s.id === selectedSite)?.name ||
+              sites.find((s) => s.id === selectedSite)?.siteName ||
+              xiqSites.find((s) => buildXiqSiteValue(s.siteGroupId, s.id) === selectedSite)?.name ||
+              null
             : null;
 
         // selectedSite -> siteType -> dataSource -> SLE model -> metrics -> honeycombs
@@ -362,7 +392,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups, siteGroup]
+    [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups, siteGroup, xiqSites]
   );
 
   // Initial load + auto-refresh
@@ -417,11 +447,29 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sites</SelectItem>
-              {sites.map((site) => (
-                <SelectItem key={site.id} value={site.id}>
-                  {site.name || site.siteName || site.id}
-                </SelectItem>
-              ))}
+              {sites.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>OS-ONE</SelectLabel>
+                  {sites.map((site) => (
+                    <SelectItem key={site.id} value={site.id}>
+                      {site.name || site.siteName || site.id}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              )}
+              {xiqSites.length > 0 && (
+                <SelectGroup>
+                  <SelectLabel>XIQ</SelectLabel>
+                  {xiqSites.map((site) => {
+                    const value = buildXiqSiteValue(site.siteGroupId, site.id);
+                    return (
+                      <SelectItem key={value} value={value}>
+                        {site.name}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectGroup>
+              )}
             </SelectContent>
           </Select>
 

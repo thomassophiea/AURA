@@ -114,6 +114,18 @@ async function loadXiqData(
     ]);
   }
 
+  // Scope to a specific XIQ site (location) when one is selected.
+  const locId = context.xiqLocationId;
+  if (locId) {
+    const inLocation = (rec: Record<string, any>): boolean => {
+      if (String(rec.location_id ?? '') === locId) return true;
+      const locs = rec.locations;
+      return Array.isArray(locs) && locs.some((l) => String(l?.id ?? '') === locId);
+    };
+    clients = clients.filter(inLocation);
+    devices = devices.filter(inLocation);
+  }
+
   const { stations, aps } = adaptXiqData(clients, devices);
 
   setActiveThresholds(options.thresholds);

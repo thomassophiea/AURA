@@ -21,10 +21,29 @@ export interface ResolveSiteContextInput {
   navigationScope: string;
   /** All site groups available in the org (for org-scope aggregation). */
   siteGroups: SiteGroup[];
-  /** Selected site id from the page selector, or 'all'. */
+  /** Selected site id from the page selector, or 'all'. May be an XIQ value. */
   selectedSiteId: string;
   /** Resolved display name for the selected site, if known. */
   siteName?: string | null;
+}
+
+/** Prefix marking an encoded XIQ site selection: `xiq:<siteGroupId>:<locationId>`. */
+const XIQ_SITE_PREFIX = 'xiq:';
+
+/** Build the selector value for an XIQ site. */
+export function buildXiqSiteValue(siteGroupId: string, locationId: string): string {
+  return `${XIQ_SITE_PREFIX}${siteGroupId}:${locationId}`;
+}
+
+/** Parse an XIQ site selector value, or null if it isn't one. */
+export function parseXiqSiteValue(
+  value: string
+): { siteGroupId: string; locationId: string } | null {
+  if (!value.startsWith(XIQ_SITE_PREFIX)) return null;
+  const rest = value.slice(XIQ_SITE_PREFIX.length);
+  const idx = rest.indexOf(':');
+  if (idx < 0) return null;
+  return { siteGroupId: rest.slice(0, idx), locationId: rest.slice(idx + 1) };
 }
 
 /**
@@ -59,6 +78,25 @@ function deriveType(
 export function resolveSiteContext(input: ResolveSiteContextInput): SLESiteContext {
   const { siteGroup, navigationScope, siteGroups, selectedSiteId, siteName } = input;
 
+  // An explicitly-selected XIQ site overrides site-group derivation: the
+  // selected site itself determines the source (selectedSite -> siteType -> source).
+  const xiqSel = parseXiqSiteValue(selectedSiteId || '');
+  if (xiqSel) {
+    const owner = siteGroups.find((sg) => sg.id === xiqSel.siteGroupId) ?? siteGroup;
+    return {
+      type: 'xiq',
+      source: 'xiq',
+      siteGroupId: xiqSel.siteGroupId,
+      siteGroupName: owner?.name ?? null,
+      siteId: selectedSiteId,
+      siteName: siteName ?? null,
+      xiqRegion: owner?.xiq_region ?? null,
+      xiqLocationId: xiqSel.locationId,
+      controllerUrl: null,
+      isOrgScope: false,
+    };
+  }
+
   const source = deriveSiteSource(siteGroup);
   const isOrgScope = navigationScope === 'global' && (siteGroups?.length ?? 0) > 0;
   const type = deriveType(siteGroup, source, isOrgScope);
@@ -71,6 +109,7 @@ export function resolveSiteContext(input: ResolveSiteContextInput): SLESiteConte
     siteId: selectedSiteId || 'all',
     siteName: siteName ?? null,
     xiqRegion: siteGroup?.xiq_region ?? null,
+    xiqLocationId: null,
     controllerUrl: siteGroup?.controller_url ?? null,
     isOrgScope,
   };
