@@ -54,9 +54,6 @@ import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
-import { SLE_SOURCE_LABELS } from '../../types/sleContext';
-import type { SLESourceSystem } from '../../types/sleContext';
-import { Cloud } from 'lucide-react';
 import { toast } from 'sonner';
 
 // SLE threshold configuration per metric
@@ -202,7 +199,6 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [aps, setAps] = useState<any[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
-  const [source, setSource] = useState<SLESourceSystem>('controller');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -297,25 +293,37 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     const loadSites = async () => {
       const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
       try {
+        const byId = new Map<string, Site>();
+
+        // Always include the active controller's sites — the most reliable path
+        // and what shows when a single site group is selected.
+        try {
+          const active = await apiService.getSites();
+          for (const s of active) if (s?.id) byId.set(s.id, s);
+        } catch (err) {
+          console.warn('[SLEDashboard] active controller getSites failed:', err);
+        }
+
+        // In org scope, also aggregate sites from every other controller.
         if (isOrgScope) {
           const originalBaseUrl = apiService.getBaseUrl();
-          const byId = new Map<string, Site>();
           for (const sg of siteGroups) {
+            if (!sg.controller_url) continue; // skip XIQ-only / unbacked groups
             try {
               apiService.setBaseUrl(`${sg.controller_url}/management`);
               const sgSites = await apiService.getSites();
-              for (const s of sgSites) {
-                if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
-              }
+              for (const s of sgSites) if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
             } catch (err) {
               console.warn(`[SLEDashboard] Failed to load sites from ${sg.name}:`, err);
             }
           }
           apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
-          if (!cancelled) setSites(Array.from(byId.values()));
-        } else {
-          const list = await apiService.getSites();
-          if (!cancelled) setSites(list);
+        }
+
+        if (!cancelled) {
+          const list = Array.from(byId.values());
+          console.info(`[SLEDashboard] OS-ONE sites loaded: ${list.length}`);
+          setSites(list);
         }
       } catch {
         /* leave existing sites in place on failure */
@@ -375,7 +383,6 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           siteGroups,
         });
 
-        setSource(model.source);
         setStations(model.stations as any[]);
         setAps(model.aps as any[]);
         setWirelessSLEs(model.sles);
@@ -464,7 +471,12 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                     const value = buildXiqSiteValue(site.siteGroupId, site.id);
                     return (
                       <SelectItem key={value} value={value}>
-                        {site.name}
+                        <span className="flex items-center gap-2">
+                          <span>{site.name}</span>
+                          <span className="rounded bg-cyan-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-cyan-500">
+                            XIQ
+                          </span>
+                        </span>
                       </SelectItem>
                     );
                   })}
@@ -494,18 +506,6 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
       {/* Summary Bar */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Context indicator — only shown for XIQ so the controller view stays
-            the plain Service Levels page (no "Controller" label). */}
-        {source === 'xiq' && (
-          <div
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/30 border border-border/50"
-            title={`Service Levels sourced from ${SLE_SOURCE_LABELS[source]}`}
-          >
-            <Cloud className="h-4 w-4 text-cyan-400" />
-            <span className="text-xs font-medium">{SLE_SOURCE_LABELS[source]}</span>
-          </div>
-        )}
-
         {/* Overall score */}
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
           <Target className="h-4 w-4 text-purple-400" />
