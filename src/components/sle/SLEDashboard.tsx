@@ -53,6 +53,7 @@ import {
 } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
 import { loadXiqSites, type XiqSite } from '../../services/sle/xiqSites';
+import { readCachedSites, writeCachedSites } from '../../services/sle/sleSitesCache';
 import { buildXiqRootCause } from './xiqRootCause';
 import type { SLESourceSystem } from '../../types/sleContext';
 import { SLERadialMap } from './SLERadialMap';
@@ -204,7 +205,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [wirelessSLEs, setWirelessSLEs] = useState<SLEMetric[]>([]);
   const [stations, setStations] = useState<any[]>([]);
   const [aps, setAps] = useState<any[]>([]);
-  const [sites, setSites] = useState<Site[]>([]);
+  // Stable per-scope key for caching the last-known-good site list.
+  const sitesCacheKey = navigationScope === 'global' ? 'org' : (siteGroup?.id ?? 'default');
+  const [sites, setSites] = useState<Site[]>(() => readCachedSites(sitesCacheKey));
   const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
   const [source, setSource] = useState<SLESourceSystem>('controller');
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -299,6 +302,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   useEffect(() => {
     let cancelled = false;
     const loadSites = async () => {
+      // Show the last-known-good list immediately for this scope.
+      const cached = readCachedSites(sitesCacheKey);
+      if (cached.length > 0) setSites(cached);
+
       const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
       try {
         const byId = new Map<string, Site>();
@@ -331,7 +338,12 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         if (!cancelled) {
           const list = Array.from(byId.values());
           console.info(`[SLEDashboard] OS-ONE sites loaded: ${list.length}`);
-          setSites(list);
+          // Only replace the list when we actually got sites — a transient
+          // empty result (token refresh, base-URL switch) must not blank it out.
+          if (list.length > 0) {
+            setSites(list);
+            writeCachedSites(sitesCacheKey, list);
+          }
         }
       } catch {
         /* leave existing sites in place on failure */
@@ -358,7 +370,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     return () => {
       cancelled = true;
     };
-  }, [siteGroup?.id, navigationScope, siteGroups]);
+  }, [siteGroup?.id, navigationScope, siteGroups, sitesCacheKey]);
 
   // Load data — the active site context selects the provider (controller vs XIQ).
   const loadData = useCallback(
