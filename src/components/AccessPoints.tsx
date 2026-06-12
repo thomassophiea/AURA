@@ -511,7 +511,7 @@ function getAPSite(ap: AccessPoint): string {
 }
 
 interface AccessPointsProps {
-  onShowDetail?: (serialNumber: string, displayName?: string) => void;
+  onShowDetail?: (serialNumber: string, displayName?: string, apData?: AccessPoint) => void;
   onShowClientDetail?: (macAddress: string, hostName?: string) => void;
 }
 
@@ -2756,7 +2756,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => {
                             if (onShowDetail) {
-                              onShowDetail(ap.serialNumber, getAPName(ap));
+                              onShowDetail(ap.serialNumber, getAPName(ap), ap);
                             } else {
                               loadAPDetails(ap.serialNumber);
                             }

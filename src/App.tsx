@@ -1029,11 +1029,16 @@ export default function App() {
     handlePageChange('global-templates');
   };
 
-  const handleShowAccessPointDetail = (serialNumber: string, displayName?: string) => {
+  const handleShowAccessPointDetail = (
+    serialNumber: string,
+    displayName?: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    apData?: any
+  ) => {
     setDetailPanel({
       isOpen: true,
       type: 'access-point',
-      data: { serialNumber, displayName },
+      data: { serialNumber, displayName, apData },
     });
   };
 
@@ -1256,7 +1261,10 @@ export default function App() {
             <Suspense
               fallback={<div className="flex items-center justify-center p-8">Loading...</div>}
             >
-              <AccessPointDetail serialNumber={detailPanel.data.serialNumber} />
+              <AccessPointDetail
+                serialNumber={detailPanel.data.serialNumber}
+                apData={detailPanel.data.apData}
+              />
             </Suspense>
           </DetailSlideOut>
         );

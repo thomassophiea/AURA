@@ -351,9 +351,14 @@ function analyzeCableHealth(apDetails: APDetails): CableHealthResult {
 
 interface AccessPointDetailProps {
   serialNumber: string;
+  // When the AP came from XIQ, the row data is passed so the panel renders from
+  // it directly (XIQ APs aren't on the controller, so /v1/aps/{serial} 404s).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apData?: any;
 }
 
-export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
+export function AccessPointDetail({ serialNumber, apData }: AccessPointDetailProps) {
+  const isXiq = apData?._source === 'xiq';
   const [apDetails, setApDetails] = useState<APDetails | null>(null);
   const [stations, setStations] = useState<APStation[]>([]);
   const [events, setEvents] = useState<APAlarm[]>([]);
@@ -371,6 +376,32 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
   const [showInsightsFullScreen, setShowInsightsFullScreen] = useState(false);
 
   const loadApDetails = async () => {
+    // XIQ APs aren't managed by the controller — render from the row data.
+    if (isXiq) {
+      const d = apData;
+      setApDetails({
+        apName: d.apName || d.displayName || d.hostname,
+        serialNumber: d.serialNumber,
+        model: d.model || d.hardwareType,
+        hardwareType: d.hardwareType,
+        macAddress: d.macAddress,
+        ipAddress: d.ipAddress,
+        status: d.status,
+        hostSite: d.hostSite || d.siteName,
+        softwareVersion: d.softwareVersion,
+        cpuUsage: d.cpuUsage,
+        memoryUsage: d.memoryUsage,
+        uptime: d._xiq?.system_up_time ? formatUptime(d._xiq.system_up_time) : undefined,
+        radios: [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any);
+      setStations([]);
+      setEvents([]);
+      setEventCategories([]);
+      setLastRefreshTime(new Date());
+      setIsLoading(false);
+      return;
+    }
     try {
       setIsLoading(true);
       const [details, stationsData] = await Promise.all([
@@ -409,6 +440,7 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
   };
 
   const loadEvents = async () => {
+    if (isXiq) return; // XIQ APs have no controller alarm endpoint
     try {
       setIsLoadingEvents(true);
       const categories = await apiService.getAccessPointEvents(serialNumber, eventDuration);
@@ -934,12 +966,14 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         </Card>
       )}
 
-      {/* AP Insights */}
-      <APInsights
-        serialNumber={serialNumber}
-        apName={apDetails.apName || 'Unknown AP'}
-        onOpenFullScreen={() => setShowInsightsFullScreen(true)}
-      />
+      {/* AP Insights (controller time-series — not available for XIQ APs) */}
+      {!isXiq && (
+        <APInsights
+          serialNumber={serialNumber}
+          apName={apDetails.apName || 'Unknown AP'}
+          onOpenFullScreen={() => setShowInsightsFullScreen(true)}
+        />
+      )}
 
       {/* Events Section */}
       <Card>
@@ -1239,56 +1273,48 @@ export function AccessPointDetail({ serialNumber }: AccessPointDetailProps) {
         </CardContent>
       </Card>
 
-      {/* Management Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Settings className="h-4 w-4" />
-            <span>Management Actions</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start"
-              onClick={async () => {
-                try {
-                  await apiService.rebootAP(serialNumber);
-                  toast.success('Access point reboot initiated');
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : 'Failed to reboot access point');
-                }
-              }}
-            >
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Reboot Access Point
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start"
-              onClick={() => {
-                // Open AP configuration in detail view
-                toast.info('Configuration settings coming soon');
-              }}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Configure Settings
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start"
-              onClick={() => setShowEventsTimeline(true)}
-            >
-              <Activity className="h-4 w-4 mr-2" />
-              View Performance Logs
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Management Actions — controller-managed APs only (not XIQ) */}
+      {!isXiq && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Settings className="h-4 w-4" />
+              <span>Management Actions</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-start"
+                onClick={async () => {
+                  try {
+                    await apiService.rebootAP(serialNumber);
+                    toast.success('Access point reboot initiated');
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : 'Failed to reboot access point'
+                    );
+                  }
+                }}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reboot Access Point
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-start"
+                onClick={() => setShowEventsTimeline(true)}
+              >
+                <Activity className="h-4 w-4 mr-2" />
+                View Performance Logs
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Full-Screen AP Events Timeline */}
       {showEventsTimeline && (
