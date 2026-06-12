@@ -41,16 +41,14 @@ export function AuditLogs() {
   // Audit/event data is sparse and historical, so default to a wide window.
   const [timeRange, setTimeRange] = useState<string>('30d');
   // The dedicated local service account — its entries are flagged "Local" and
-  // highlighted; every other user is "Cloud" (changed through AURA).
+  // highlighted; every other user is "Cloud" (changed through AURA). Defaults to
+  // "ServiceAccount"; editable + persisted. (v2 key intentionally ignores the
+  // earlier default that inherited the AURA login.)
   const [localAccount, setLocalAccount] = useState<string>(
-    () =>
-      (localStorage.getItem('audit_local_account') ||
-        localStorage.getItem('aura_service_account') ||
-        localStorage.getItem('user_email') ||
-        '').trim()
+    () => localStorage.getItem('audit_local_account_v2') ?? 'ServiceAccount'
   );
   useEffect(() => {
-    localStorage.setItem('audit_local_account', localAccount.trim());
+    localStorage.setItem('audit_local_account_v2', localAccount.trim());
   }, [localAccount]);
   const [logs, setLogs] = useState<NormalizedAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
