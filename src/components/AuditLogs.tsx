@@ -31,13 +31,15 @@ const RANGE_MS: Record<string, number> = {
   '24h': 86_400_000,
   '7d': 604_800_000,
   '30d': 2_592_000_000,
+  '90d': 7_776_000_000,
 };
 
 export function AuditLogs() {
   const { navigationScope, siteGroups } = useAppContext();
   const { sites, xiqSites } = useSourceSites();
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [timeRange, setTimeRange] = useState<string>('7d');
+  // Audit/event data is sparse and historical, so default to a wide window.
+  const [timeRange, setTimeRange] = useState<string>('30d');
   // Controller account dedicated to AURA — entries by this user are tagged
   // "via AURA". Defaults to the account AURA is currently logged in as.
   const [auraAccount, setAuraAccount] = useState<string>(
@@ -152,6 +154,7 @@ export function AuditLogs() {
               <SelectItem value="24h">Last 24 Hours</SelectItem>
               <SelectItem value="7d">Last 7 Days</SelectItem>
               <SelectItem value="30d">Last 30 Days</SelectItem>
+              <SelectItem value="90d">Last 90 Days</SelectItem>
             </SelectContent>
           </Select>
           <Button
