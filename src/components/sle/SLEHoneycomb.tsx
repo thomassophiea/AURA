@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { SLESankeyFlow } from './SLESankeyFlow';
 import { SLERootCausePanel } from './SLERootCausePanel';
 import { buildRootCause } from './sleRootCause';
-import { SLE_STATUS_COLORS, getSLEStatus } from '../../types/sle';
+import { SLE_STATUS_COLORS, SLE_NODATA_COLOR, getSLEStatus } from '../../types/sle';
 import type { SLEMetric, SLERootCause } from '../../types/sle';
 
 interface SLEHoneycombProps {
@@ -54,8 +54,11 @@ export function SLEHoneycomb({
   const [containerW, setContainerW] = useState(800);
 
   const selected = sles.find((s) => s.id === selectedId) || null;
+  // Overall reflects only metrics that actually have data — empty metrics
+  // (no clients/APs) are excluded rather than counted as a perfect 100%.
+  const measured = sles.filter((s) => s.hasData !== false);
   const overallScore =
-    sles.length > 0 ? sles.reduce((sum, s) => sum + s.successRate, 0) / sles.length : 0;
+    measured.length > 0 ? measured.reduce((sum, s) => sum + s.successRate, 0) / measured.length : 0;
   const overallStatus = getSLEStatus(overallScore);
 
   useEffect(() => {
@@ -124,7 +127,7 @@ export function SLEHoneycomb({
               );
             })}
             {hexPositions.map(({ sle, hcx, hcy }) => {
-              const fillH = hexH * (sle.successRate / 100);
+              const fillH = sle.hasData === false ? 0 : hexH * (sle.successRate / 100);
               const clipY = hcy + hexR - fillH;
               return (
                 <clipPath key={`hcClip-${sle.id}`} id={`hcClip-${sle.id}`}>
@@ -137,7 +140,8 @@ export function SLEHoneycomb({
           {hexPositions.map(({ sle, hcx, hcy }) => {
             const isSelected = sle.id === selectedId;
             const isHovered = sle.id === hoveredId;
-            const color = SLE_STATUS_COLORS[sle.status].hex;
+            const noData = sle.hasData === false;
+            const color = noData ? SLE_NODATA_COLOR.hex : SLE_STATUS_COLORS[sle.status].hex;
             const pts = hexPoints(hcx, hcy, hexR - 2);
             const active = isSelected || isHovered;
 
@@ -177,17 +181,17 @@ export function SLEHoneycomb({
                 >
                   {sle.name}
                 </text>
-                {/* Score */}
+                {/* Score (or No data) */}
                 <text
                   x={hcx}
                   y={hcy + hexR * 0.22}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  fontSize={Math.max(14, hexR * 0.33)}
+                  fontSize={noData ? Math.max(9, hexR * 0.18) : Math.max(14, hexR * 0.33)}
                   fontWeight="bold"
                   fill={color}
                 >
-                  {sle.successRate.toFixed(1)}%
+                  {noData ? 'No data' : `${sle.successRate.toFixed(1)}%`}
                 </text>
               </g>
             );

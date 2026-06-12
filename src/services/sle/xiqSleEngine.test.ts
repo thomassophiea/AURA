@@ -122,6 +122,15 @@ describe('computeXiqWirelessSLEs', () => {
     expect(ap.classifiers.find((c) => c.id === 'poe')!.affectedClients).toBe(1);
   });
 
+  it('flags client-based metrics as no-data when there are zero clients', () => {
+    // A site with no clients but some APs: client SLEs = no data, AP SLEs = real.
+    const empty = computeXiqWirelessSLEs([], devices, capacity);
+    const coverage = empty.find((s) => s.id === 'coverage')!;
+    expect(coverage.hasData).toBe(false); // not a fabricated 100%
+    const apHealth = empty.find((s) => s.id === 'ap_health')!;
+    expect(apHealth.hasData).toBe(true); // APs present -> real measurement
+  });
+
   it('all metrics carry the SLEMetric shape the honeycomb consumes', () => {
     for (const s of sles) {
       expect(s).toMatchObject({

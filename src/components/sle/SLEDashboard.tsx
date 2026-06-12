@@ -437,10 +437,12 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     }
   }, []);
 
-  // Overall score (average of all SLEs)
+  // Overall score — average of SLEs that actually have data (no-data metrics,
+  // e.g. a site with zero clients, are excluded rather than counted as 100%).
+  const measuredSLEs = wirelessSLEs.filter((s) => s.hasData !== false);
   const overallScore =
-    wirelessSLEs.length > 0
-      ? wirelessSLEs.reduce((sum, s) => sum + s.successRate, 0) / wirelessSLEs.length
+    measuredSLEs.length > 0
+      ? measuredSLEs.reduce((sum, s) => sum + s.successRate, 0) / measuredSLEs.length
       : 0;
 
   if (loading) {
@@ -562,9 +564,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             </span>
             <span
               className="text-xs font-bold"
-              style={{ color: SLE_STATUS_COLORS[sle.status].hex }}
+              style={{ color: sle.hasData === false ? '#6b7280' : SLE_STATUS_COLORS[sle.status].hex }}
             >
-              {sle.successRate.toFixed(1)}%
+              {sle.hasData === false ? '—' : `${sle.successRate.toFixed(1)}%`}
             </span>
             <Settings2 className="h-3 w-3 text-muted-foreground/0 group-hover:text-muted-foreground transition-all" />
           </button>

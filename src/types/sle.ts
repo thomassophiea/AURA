@@ -14,7 +14,24 @@ export interface SLEMetric {
   timeSeries: SLETimeSeriesPoint[];
   classifiers: SLEClassifier[];
   description: string;
+  /**
+   * False when there was nothing to measure (no clients/APs in scope). Such a
+   * metric must NOT be shown as a healthy 100% — an empty site is "no data",
+   * not "perfect". Defaults to true (treated as data-bearing) when absent.
+   */
+  hasData?: boolean;
 }
+
+/**
+ * Flag metrics with no measured entities as no-data, so empty sites don't render
+ * as a fabricated 100%. Keeps non-empty metrics untouched.
+ */
+export function markSLEDataPresence(sles: SLEMetric[]): SLEMetric[] {
+  return sles.map((s) => ({ ...s, hasData: s.totalUserMinutes > 0 }));
+}
+
+/** Gray treatment for no-data metrics. */
+export const SLE_NODATA_COLOR = { text: 'text-muted-foreground', hex: '#6b7280' } as const;
 
 export interface SLETimeSeriesPoint {
   timestamp: number;

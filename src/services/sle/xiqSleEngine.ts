@@ -15,7 +15,7 @@
  */
 
 import type { SLEMetric, SLEClassifier } from '../../types/sle';
-import { getSLEStatus } from '../../types/sle';
+import { getSLEStatus, markSLEDataPresence } from '../../types/sle';
 import type {
   XiqClientHealthRow,
   XiqDeviceHealthRow,
@@ -272,7 +272,7 @@ export function computeXiqWirelessSLEs(
   deviceRows: XiqDeviceHealthRow[],
   capacityRows: XiqCapacityRow[]
 ): SLEMetric[] {
-  return [
+  return markSLEDataPresence([
     computeTimeToConnect(clientRows),
     computeSuccessfulConnects(clientRows),
     computeCoverage(clientRows),
@@ -280,5 +280,5 @@ export function computeXiqWirelessSLEs(
     computeThroughput(clientRows),
     computeCapacity(capacityRows),
     computeAPHealth(deviceRows),
-  ];
+  ]);
 }

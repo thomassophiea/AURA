@@ -15,6 +15,7 @@
 import { apiService } from '../api';
 import { sleDataCollectionService } from '../sleDataCollection';
 import { computeAllWirelessSLEs, setActiveThresholds } from '../sleCalculationEngine';
+import { markSLEDataPresence } from '../../types/sle';
 import type { SLESiteContext } from '../../types/sleContext';
 import type { SLELoadOptions, SLEPageModel, SLEProvider } from '../../types/slePageModel';
 
@@ -92,7 +93,7 @@ async function loadControllerData(
   // Set active thresholds before computing SLEs
   setActiveThresholds(thresholds);
 
-  const sles = computeAllWirelessSLEs(stationsArr, apsArr, historicalData);
+  const sles = markSLEDataPresence(computeAllWirelessSLEs(stationsArr, apsArr, historicalData));
 
   return {
     source: 'controller',
