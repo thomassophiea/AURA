@@ -38,6 +38,15 @@ export function AuditLogs() {
   const { sites, xiqSites } = useSourceSites();
   const [selectedSite, setSelectedSite] = useState<string>('all');
   const [timeRange, setTimeRange] = useState<string>('7d');
+  // Controller account dedicated to AURA — entries by this user are tagged
+  // "via AURA". Defaults to the account AURA is currently logged in as.
+  const [auraAccount, setAuraAccount] = useState<string>(
+    () =>
+      (localStorage.getItem('aura_service_account') || localStorage.getItem('user_email') || '').trim()
+  );
+  useEffect(() => {
+    localStorage.setItem('aura_service_account', auraAccount.trim());
+  }, [auraAccount]);
   const [logs, setLogs] = useState<NormalizedAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -125,6 +134,15 @@ export function AuditLogs() {
             xiqSites={xiqSites}
             triggerClassName="w-[180px] h-9"
           />
+          {!isXiq && (
+            <Input
+              value={auraAccount}
+              onChange={(e) => setAuraAccount(e.target.value)}
+              placeholder="AURA service account"
+              title="Controller account dedicated to AURA — its entries are tagged 'via AURA'"
+              className="w-44 h-9"
+            />
+          )}
           <Select value={timeRange} onValueChange={setTimeRange}>
             <SelectTrigger className="w-40 h-9">
               <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
@@ -190,6 +208,7 @@ export function AuditLogs() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-44">Time</TableHead>
+                    {!isXiq && <TableHead className="w-24">Origin</TableHead>}
                     <TableHead className="w-44">User</TableHead>
                     <TableHead className="w-32">Action</TableHead>
                     <TableHead className="w-32">Category</TableHead>
@@ -197,11 +216,30 @@ export function AuditLogs() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filtered.map((l) => (
+                  {filtered.map((l) => {
+                    const viaAura =
+                      !isXiq &&
+                      auraAccount.trim() !== '' &&
+                      l.user.trim().toLowerCase() === auraAccount.trim().toLowerCase();
+                    return (
                     <TableRow key={l.id}>
                       <TableCell className="text-xs tabular-nums text-muted-foreground">
                         {fmtTime(l.timestamp)}
                       </TableCell>
+                      {!isXiq && (
+                        <TableCell className="text-xs">
+                          <Badge
+                            variant="outline"
+                            className={
+                              viaAura
+                                ? 'border-violet-500/40 text-violet-500'
+                                : 'border-border text-muted-foreground'
+                            }
+                          >
+                            {viaAura ? 'AURA' : 'Local'}
+                          </Badge>
+                        </TableCell>
+                      )}
                       <TableCell className="text-xs">{l.user || '—'}</TableCell>
                       <TableCell className="text-xs">
                         {l.action ? <Badge variant="outline">{l.action}</Badge> : '—'}
@@ -211,7 +249,8 @@ export function AuditLogs() {
                       </TableCell>
                       <TableCell className="text-xs">{l.description || '—'}</TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </ScrollArea>
