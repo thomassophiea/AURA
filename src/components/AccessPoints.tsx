@@ -1339,29 +1339,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
 
   // Summary-card stats derived from the currently-visible APs (respects the
   // selected site and source — OS-ONE or XIQ — not the full unfiltered set).
-  const cardStats = useMemo(() => {
-    const wifiGen: Record<WifiGen, number> = {
-      'Wi-Fi 7': 0,
-      'Wi-Fi 6E': 0,
-      'Wi-Fi 6': 0,
-      'Wi-Fi 5': 0,
-      Unknown: 0,
-    };
-    let online = 0;
-    let clients = 0;
-    const models = new Set<string>();
-    filteredAccessPoints.forEach((ap) => {
-      wifiGen[getWifiGeneration(ap.model || ap.hardwareType || (ap as any).apModel || (ap as any).platformName)]++;
-      if (isAPOnline(ap)) online++;
-      clients += Number(getClientCount(ap)) || 0;
-      const m = ap.hardwareType || ap.model;
-      if (m) models.add(m);
-    });
-    const total = filteredAccessPoints.length;
-    return { total, wifiGen, online, offline: total - online, clients, models: models.size };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredAccessPoints, clientCounts]);
-
   // E911: Download BSSIDs for emergency location services
   const handleDownloadBSSIDs = () => {
     try {
@@ -1568,6 +1545,32 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
 
     return 0;
   };
+
+  // Summary-card stats derived from the currently-visible APs (respects the
+  // selected site and source — OS-ONE or XIQ). Declared after getClientCount
+  // since it calls it during render (avoids a use-before-init crash).
+  const cardStats = useMemo(() => {
+    const wifiGen: Record<WifiGen, number> = {
+      'Wi-Fi 7': 0,
+      'Wi-Fi 6E': 0,
+      'Wi-Fi 6': 0,
+      'Wi-Fi 5': 0,
+      Unknown: 0,
+    };
+    let online = 0;
+    let clients = 0;
+    const models = new Set<string>();
+    filteredAccessPoints.forEach((ap) => {
+      wifiGen[getWifiGeneration(ap.model || ap.hardwareType || (ap as any).apModel || (ap as any).platformName)]++;
+      if (isAPOnline(ap)) online++;
+      clients += Number(getClientCount(ap)) || 0;
+      const m = ap.hardwareType || ap.model;
+      if (m) models.add(m);
+    });
+    const total = filteredAccessPoints.length;
+    return { total, wifiGen, online, offline: total - online, clients, models: models.size };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredAccessPoints, clientCounts]);
 
   // Helper function to format time ago
   const getTimeAgo = () => {
