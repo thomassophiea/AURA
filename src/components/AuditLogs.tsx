@@ -56,7 +56,9 @@ export function AuditLogs() {
       try {
         let rows: NormalizedAuditLog[] = [];
         if (xiqSel) {
-          rows = await loadXiqAuditLogs(xiqSel.siteGroupId, start, end);
+          // Scope device events to the chosen XIQ site (admin audit stays account-wide).
+          const siteName = xiqSites.find((s) => s.id === xiqSel.locationId)?.name ?? null;
+          rows = await loadXiqAuditLogs(xiqSel.siteGroupId, start, end, siteName);
         } else if (navigationScope === 'global' && siteGroups.length > 0) {
           // Org scope: aggregate controller audit logs across every controller.
           const original = apiService.getBaseUrl();
@@ -93,7 +95,7 @@ export function AuditLogs() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSite, timeRange, navigationScope, siteGroups]);
+  }, [selectedSite, timeRange, navigationScope, siteGroups, xiqSites]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

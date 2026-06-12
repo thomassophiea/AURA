@@ -77,6 +77,18 @@ function num(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Parse an epoch-ms number or an ISO timestamp string into epoch ms. */
+function parseTs(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n) && v.trim() !== '') return n;
+    const p = Date.parse(v);
+    return Number.isNaN(p) ? 0 : p;
+  }
+  return 0;
+}
+
 // ── Audit logs ───────────────────────────────────────────────────────────────
 
 /** Normalized audit row consumed by the Audit Logs page (both sources). */
@@ -91,26 +103,50 @@ export interface NormalizedAuditLog {
 }
 
 /**
- * XIQ account audit logs over a time window. XIQ audit is account/admin-level
- * (not per-site), so the selected XIQ site doesn't scope it further.
+ * XIQ activity log over a time window. Combines two XIQ sources:
+ *  - /logs/audit  → admin/config audit (account-level, not site-scoped)
+ *  - /alerts      → device/AP events (disconnects, etc.), scoped by site when a
+ *                   specific XIQ site is selected. This is where AP activity lives;
+ *                   /logs/audit alone is admin-only.
  */
 export async function loadXiqAuditLogs(
   siteGroupId: string,
   startMs: number,
-  endMs: number
+  endMs: number,
+  siteName?: string | null
 ): Promise<NormalizedAuditLog[]> {
   const token = await tokenFor(siteGroupId);
   if (!token) return [];
-  const rows = await xiqGetPaged(token, '/logs/audit', `startTime=${startMs}&endTime=${endMs}`);
-  return rows.map((r, i) => ({
-    id: String(r.id ?? `${r.timestamp ?? i}-${i}`),
-    timestamp: num(r.timestamp),
+
+  const [auditRows, alertRows] = await Promise.all([
+    xiqGetPaged(token, '/logs/audit', `startTime=${startMs}&endTime=${endMs}`).catch(() => []),
+    xiqGetPaged(token, '/alerts', `startTime=${startMs}&endTime=${endMs}`).catch(() => []),
+  ]);
+
+  const audit: NormalizedAuditLog[] = auditRows.map((r, i) => ({
+    id: String(r.id ?? `audit-${r.timestamp ?? i}-${i}`),
+    timestamp: parseTs(r.timestamp),
     user: String(r.username ?? r.user_id ?? ''),
     action: String(r.category ?? r.code ?? ''),
-    category: String(r.category ?? ''),
+    category: String(r.category ?? 'Admin'),
     description: String(r.description ?? ''),
     source: 'XIQ' as const,
   }));
+
+  // Device/AP events. Scope to the selected XIQ site when one is chosen.
+  const events: NormalizedAuditLog[] = alertRows
+    .filter((a) => !siteName || a.site_name === siteName)
+    .map((a, i) => ({
+      id: String(a.id ?? `alert-${a.timestamp ?? i}-${i}`),
+      timestamp: parseTs(a.timestamp),
+      user: String(a.source?.source_name ?? a.acknowledged_username ?? ''),
+      action: String(a.message_metadata_name ?? a.severity_name ?? ''),
+      category: String(a.category_name ?? 'Device'),
+      description: String(a.summary ?? ''),
+      source: 'XIQ' as const,
+    }));
+
+  return [...audit, ...events];
 }
 
 /** Normalize a controller audit-log row into the same shape. */
