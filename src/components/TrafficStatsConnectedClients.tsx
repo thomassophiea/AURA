@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
 import type { ColDef } from 'ag-grid-community';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
@@ -20,12 +19,15 @@ import {
   Shuffle,
   FileDown,
   Columns,
-  Building,
 } from 'lucide-react';
 import { Alert, AlertDescription } from './ui/alert';
 import { Skeleton } from './ui/skeleton';
-import { apiService, Station, Site } from '../services/api';
+import { apiService, Station } from '../services/api';
 import { trafficService } from '../services/traffic';
+import { useSourceSites } from '../hooks/useSourceSites';
+import { SourceSiteSelector } from './SourceSiteSelector';
+import { parseXiqSiteValue } from '../services/siteContextService';
+import { loadXiqClients } from '../services/xiqInventory';
 import { isRandomizedMac } from '../services/macAddressUtils';
 import { toast } from 'sonner';
 import { ExportButton } from './ExportButton';
@@ -48,7 +50,12 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [sites, setSites] = useState<Site[]>([]);
+  // Source-aware site list (OS-ONE + XIQ) for the grouped selector.
+  const { sites, xiqSites } = useSourceSites();
+  // XIQ clients (loaded when an XIQ site is selected); separate from controller stations.
+  const [xiqRows, setXiqRows] = useState<Station[]>([]);
+  const xiqSel = parseXiqSiteValue(selectedSite);
+  const isXiq = !!xiqSel;
 
   const {
     query: searchQuery,
@@ -120,45 +127,37 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     enablePersistence: true,
   });
 
-  const loadSites = async () => {
-    try {
-      let allSites: Site[] = [];
-      if (navigationScope === 'global' && siteGroups.length > 0) {
-        const originalBaseUrl = apiService.getBaseUrl();
-        for (const sg of siteGroups) {
-          try {
-            apiService.setBaseUrl(`${sg.controller_url}/management`);
-            const sgSites = await apiService.getSites();
-            allSites.push(...(Array.isArray(sgSites) ? sgSites : []));
-          } catch (err) {
-            console.warn(`[ConnectedClients] Failed to fetch sites from ${sg.name}:`, err);
-          }
-        }
-        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
-      } else {
-        const sitesData = await apiService.getSites();
-        allSites = Array.isArray(sitesData) ? sitesData : [];
-      }
-      // Normalize name and deduplicate
-      const seen = new Set<string>();
-      const normalized = allSites
-        .map((s) => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
-        .filter((s) => {
-          if (seen.has(s.name)) return false;
-          seen.add(s.name);
-          return true;
-        })
-        .sort((a, b) => a.name.localeCompare(b.name));
-      setSites(normalized);
-    } catch (err) {
-      console.warn('[ConnectedClients] Failed to load sites:', err);
-    }
-  };
-
   useEffect(() => {
     loadStations();
-    loadSites();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load XIQ clients when an XIQ site is selected (cleared otherwise).
+  useEffect(() => {
+    let cancelled = false;
+    if (!xiqSel) {
+      setXiqRows([]);
+      return;
+    }
+    const siteName = xiqSites.find((s) => s.id === xiqSel.locationId)?.name ?? null;
+    setIsLoading(true);
+    loadXiqClients(xiqSel.siteGroupId, siteName)
+      .then((rows) => {
+        if (!cancelled) setXiqRows(rows as Station[]);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn('[ConnectedClients] XIQ clients load failed:', err);
+          setXiqRows([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSite, xiqSites]);
 
   const loadStations = async () => {
     // Check authentication before loading
@@ -257,12 +256,15 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  // Filter stations by site group (org scope), site, compound search, and time range
-  const siteGroupFiltered = orgSiteGroupFilter
-    ? stations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter) // eslint-disable-line @typescript-eslint/no-explicit-any
-    : stations;
+  // XIQ rows are already scoped to the selected XIQ site; controller rows are
+  // filtered client-side by site group (org scope) and selected site name.
+  const baseStations = isXiq ? xiqRows : stations;
+  const siteGroupFiltered =
+    !isXiq && orgSiteGroupFilter
+      ? baseStations.filter((s: any) => s._siteGroupId === orgSiteGroupFilter) // eslint-disable-line @typescript-eslint/no-explicit-any
+      : baseStations;
   const siteFiltered =
-    selectedSite !== 'all'
+    !isXiq && selectedSite !== 'all'
       ? siteGroupFiltered.filter((s) => s.siteName === selectedSite)
       : siteGroupFiltered;
   // Use site-filtered stations for all stat calculations
@@ -522,20 +524,13 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Select value={selectedSite} onValueChange={setSelectedSite}>
-            <SelectTrigger className="w-[145px] h-8 text-xs">
-              <Building className="h-3.5 w-3.5 mr-1.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sites</SelectItem>
-              {sites.map((site) => (
-                <SelectItem key={site.id || site.name} value={site.name}>
-                  {site.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SourceSiteSelector
+            value={selectedSite}
+            onValueChange={setSelectedSite}
+            sites={sites}
+            xiqSites={xiqSites}
+            triggerClassName="w-[180px] h-8 text-xs"
+          />
           <Button onClick={loadStations} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh Clients

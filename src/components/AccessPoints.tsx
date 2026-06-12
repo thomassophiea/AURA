@@ -9,6 +9,10 @@ import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
+import { useSourceSites } from '../hooks/useSourceSites';
+import { SourceSiteSelector } from './SourceSiteSelector';
+import { parseXiqSiteValue } from '../services/siteContextService';
+import { loadXiqAccessPoints } from '../services/xiqInventory';
 import { DetailSlideOut } from './DetailSlideOut';
 import {
   DropdownMenu,
@@ -72,7 +76,7 @@ import { useGridMode } from '@/contexts/GridModeContext';
 import { useCortexContext } from '@/contexts/CortexContext';
 import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
 import type { ColDef, GridApi } from 'ag-grid-community';
-import { Server, Building } from 'lucide-react';
+import { Server } from 'lucide-react';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -528,6 +532,11 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   const [apStates, setApStates] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>('');
   const [selectedSite, setSelectedSite] = useState<string>('all');
+  // Source-aware site list (OS-ONE + XIQ) + XIQ access points when an XIQ site is selected.
+  const { sites: srcSites, xiqSites } = useSourceSites();
+  const [xiqRows, setXiqRows] = useState<AccessPoint[]>([]);
+  const xiqSel = parseXiqSiteValue(selectedSite);
+  const isXiq = !!xiqSel;
 
   // Compound tokenized AND search (replaces old single-term search + site filter)
   const {
@@ -1073,27 +1082,45 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   };
 
   // Derive unique site names from loaded APs
-  const availableSites = useMemo(() => {
-    const siteSet = new Set<string>();
-    accessPoints.forEach((ap) => {
-      const site = getAPSite(ap);
-      if (site) siteSet.add(site);
-    });
-    return Array.from(siteSet).sort();
-  }, [accessPoints]);
+  // Load XIQ access points when an XIQ site is selected (cleared otherwise).
+  useEffect(() => {
+    let cancelled = false;
+    if (!xiqSel) {
+      setXiqRows([]);
+      return;
+    }
+    const siteName = xiqSites.find((s) => s.id === xiqSel.locationId)?.name ?? null;
+    loadXiqAccessPoints(xiqSel.siteGroupId, siteName)
+      .then((rows) => {
+        if (!cancelled) setXiqRows(rows as AccessPoint[]);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn('[AccessPoints] XIQ AP load failed:', err);
+          setXiqRows([]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSite, xiqSites]);
 
-  // Apply org-level site group filter, then site filter, then search
+  // Apply org-level site group filter, then site filter, then search. XIQ rows
+  // are already scoped to the selected XIQ site, so skip the controller filters.
   const filteredAccessPoints = useMemo(() => {
-    const siteGroupFiltered = orgSiteGroupFilter
-      ? accessPoints.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
-      : accessPoints;
+    const base = isXiq ? xiqRows : accessPoints;
+    const siteGroupFiltered =
+      !isXiq && orgSiteGroupFilter
+        ? base.filter((ap: any) => ap._siteGroupId === orgSiteGroupFilter)
+        : base;
     const siteFiltered =
-      selectedSite !== 'all'
+      !isXiq && selectedSite !== 'all'
         ? siteGroupFiltered.filter((ap) => getAPSite(ap) === selectedSite)
         : siteGroupFiltered;
     return filterBySearch(siteFiltered);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessPoints, orgSiteGroupFilter, selectedSite, searchQuery]);
+  }, [accessPoints, xiqRows, isXiq, orgSiteGroupFilter, selectedSite, searchQuery]);
 
   // Check if AP is an AFC anchor (6 GHz Standard Power)
   const isAfcAnchor = (ap: AccessPoint): boolean => {
@@ -2264,20 +2291,13 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           )}
         </div>
         <div className="flex items-center space-x-2">
-          <Select value={selectedSite} onValueChange={setSelectedSite}>
-            <SelectTrigger className="w-[145px] h-8 text-xs">
-              <Building className="h-3.5 w-3.5 mr-1.5" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sites</SelectItem>
-              {availableSites.map((site) => (
-                <SelectItem key={site} value={site}>
-                  {site}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SourceSiteSelector
+            value={selectedSite}
+            onValueChange={setSelectedSite}
+            sites={srcSites}
+            xiqSites={xiqSites}
+            triggerClassName="w-[180px] h-8 text-xs"
+          />
           <Button
             onClick={() => {
               loadData();
