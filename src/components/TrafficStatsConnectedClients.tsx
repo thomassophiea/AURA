@@ -53,6 +53,7 @@ const XIQ_CLIENT_VISIBLE_KEYS = [
   'network',
   'apName',
   'rss',
+  'traffic',
   'deviceType',
   'vlan',
 ];
