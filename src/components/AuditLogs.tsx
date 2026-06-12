@@ -40,15 +40,18 @@ export function AuditLogs() {
   const [selectedSite, setSelectedSite] = useState<string>('all');
   // Audit/event data is sparse and historical, so default to a wide window.
   const [timeRange, setTimeRange] = useState<string>('30d');
-  // Controller account dedicated to AURA — entries by this user are tagged
-  // "via AURA". Defaults to the account AURA is currently logged in as.
-  const [auraAccount, setAuraAccount] = useState<string>(
+  // The dedicated local service account — its entries are flagged "Local" and
+  // highlighted; every other user is "Cloud" (changed through AURA).
+  const [localAccount, setLocalAccount] = useState<string>(
     () =>
-      (localStorage.getItem('aura_service_account') || localStorage.getItem('user_email') || '').trim()
+      (localStorage.getItem('audit_local_account') ||
+        localStorage.getItem('aura_service_account') ||
+        localStorage.getItem('user_email') ||
+        '').trim()
   );
   useEffect(() => {
-    localStorage.setItem('aura_service_account', auraAccount.trim());
-  }, [auraAccount]);
+    localStorage.setItem('audit_local_account', localAccount.trim());
+  }, [localAccount]);
   const [logs, setLogs] = useState<NormalizedAuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -138,10 +141,10 @@ export function AuditLogs() {
           />
           {!isXiq && (
             <Input
-              value={auraAccount}
-              onChange={(e) => setAuraAccount(e.target.value)}
-              placeholder="AURA service account"
-              title="Controller account dedicated to AURA — its entries are tagged 'via AURA'"
+              value={localAccount}
+              onChange={(e) => setLocalAccount(e.target.value)}
+              placeholder="Local service account"
+              title="This controller account's changes are flagged 'Local' and highlighted; all others are 'Cloud'"
               className="w-44 h-9"
             />
           )}
@@ -220,12 +223,12 @@ export function AuditLogs() {
                 </TableHeader>
                 <TableBody>
                   {filtered.map((l) => {
-                    const viaAura =
+                    const isLocal =
                       !isXiq &&
-                      auraAccount.trim() !== '' &&
-                      l.user.trim().toLowerCase() === auraAccount.trim().toLowerCase();
+                      localAccount.trim() !== '' &&
+                      l.user.trim().toLowerCase() === localAccount.trim().toLowerCase();
                     return (
-                    <TableRow key={l.id}>
+                    <TableRow key={l.id} className={isLocal ? 'bg-amber-500/5' : undefined}>
                       <TableCell className="text-xs tabular-nums text-muted-foreground">
                         {fmtTime(l.timestamp)}
                       </TableCell>
@@ -234,12 +237,12 @@ export function AuditLogs() {
                           <Badge
                             variant="outline"
                             className={
-                              viaAura
-                                ? 'border-violet-500/40 text-violet-500'
+                              isLocal
+                                ? 'border-amber-500/50 bg-amber-500/15 text-amber-500 font-semibold'
                                 : 'border-border text-muted-foreground'
                             }
                           >
-                            {viaAura ? 'AURA' : 'Local'}
+                            {isLocal ? 'Local' : 'Cloud'}
                           </Badge>
                         </TableCell>
                       )}
