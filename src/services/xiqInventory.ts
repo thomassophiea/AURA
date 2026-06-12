@@ -125,7 +125,9 @@ function deviceToAccessPoint(dev: any, health?: any): any {
     hardwareType: dev.product_type ?? '',
     ipAddress: dev.ip_address ?? health?.device_ip ?? '',
     macAddress: dev.mac_address ?? '',
-    status: connected ? 'connected' : 'disconnected',
+    // 'online'/'offline' — NOT 'connected'/'disconnected' (the latter trips
+    // substring checks like "disconnected".includes("connected") === true).
+    status: connected ? 'online' : 'offline',
     hostSite: health?.site ?? (Array.isArray(dev.locations) ? dev.locations[dev.locations.length - 1]?.name : '') ?? '',
     siteName: health?.site ?? '',
     clientCount: num(dev.active_clients),

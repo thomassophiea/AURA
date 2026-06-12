@@ -706,20 +706,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   const visibleColumns = isXiq ? XIQ_AP_VISIBLE_KEYS : customization.visibleColumns;
 
   // Wi-Fi generation breakdown counts
-  const wifiGenCounts = useMemo(() => {
-    const counts: Record<WifiGen, number> = {
-      'Wi-Fi 7': 0,
-      'Wi-Fi 6E': 0,
-      'Wi-Fi 6': 0,
-      'Wi-Fi 5': 0,
-      Unknown: 0,
-    };
-    accessPoints.forEach((ap) => {
-      counts[getWifiGeneration(ap.model || ap.hardwareType || ap.apModel || ap.platformName)]++;
-    });
-    return counts;
-  }, [accessPoints]);
-
   // Compute cable health for all APs (memoized for performance)
   const cableHealthMap = useMemo(() => {
     const healthMap: Record<string, CableHealthResult> = {};
@@ -1284,11 +1270,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     getSortValue: (ap: AccessPoint, key: string) => any;
   } | null>(null);
 
-  const getUniqueHardwareTypes = () => {
-    const types = new Set(accessPoints.map((ap) => ap.hardwareType).filter(Boolean));
-    return Array.from(types);
-  };
-
   // Helper function to get AP name from various possible field names
   const getAPName = (ap: AccessPoint | null | undefined) => {
     if (!ap) {
@@ -1355,6 +1336,31 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       (!status && isUp !== false && isOnline !== false)
     );
   };
+
+  // Summary-card stats derived from the currently-visible APs (respects the
+  // selected site and source — OS-ONE or XIQ — not the full unfiltered set).
+  const cardStats = useMemo(() => {
+    const wifiGen: Record<WifiGen, number> = {
+      'Wi-Fi 7': 0,
+      'Wi-Fi 6E': 0,
+      'Wi-Fi 6': 0,
+      'Wi-Fi 5': 0,
+      Unknown: 0,
+    };
+    let online = 0;
+    let clients = 0;
+    const models = new Set<string>();
+    filteredAccessPoints.forEach((ap) => {
+      wifiGen[getWifiGeneration(ap.model || ap.hardwareType || (ap as any).apModel || (ap as any).platformName)]++;
+      if (isAPOnline(ap)) online++;
+      clients += Number(getClientCount(ap)) || 0;
+      const m = ap.hardwareType || ap.model;
+      if (m) models.add(m);
+    });
+    const total = filteredAccessPoints.length;
+    return { total, wifiGen, online, offline: total - online, clients, models: models.size };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredAccessPoints, clientCounts]);
 
   // E911: Download BSSIDs for emergency location services
   const handleDownloadBSSIDs = () => {
@@ -1561,11 +1567,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
     }
 
     return 0;
-  };
-
-  const getTotalClientCount = () => {
-    // Sum all client counts from our accurate clientCounts state
-    return Object.values(clientCounts).reduce((total, count) => total + count, 0);
   };
 
   // Helper function to format time ago
@@ -2458,15 +2459,15 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">{accessPoints.length}</div>
+            <div className="text-2xl font-bold text-foreground">{cardStats.total}</div>
             <p className="text-xs text-muted-foreground mb-2">Managed devices</p>
             <div className="space-y-0.5">
               {(['Wi-Fi 7', 'Wi-Fi 6E', 'Wi-Fi 6', 'Wi-Fi 5'] as const).map(
                 (gen) =>
-                  wifiGenCounts[gen] > 0 && (
+                  cardStats.wifiGen[gen] > 0 && (
                     <div key={gen} className="flex items-center justify-between text-xs">
                       <span className="text-muted-foreground">{gen}</span>
-                      <span className="font-medium tabular-nums">{wifiGenCounts[gen]}</span>
+                      <span className="font-medium tabular-nums">{cardStats.wifiGen[gen]}</span>
                     </div>
                   )
               )}
@@ -2489,13 +2490,11 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                   <span className="text-sm font-medium">Online</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-bold text-foreground">
-                    {accessPoints.filter((ap) => isAPOnline(ap)).length}
-                  </span>
+                  <span className="text-xl font-bold text-foreground">{cardStats.online}</span>
                   <span className="text-xs text-muted-foreground">
                     (
-                    {accessPoints.length > 0
-                      ? `${Math.round((accessPoints.filter((ap) => isAPOnline(ap)).length / accessPoints.length) * 100)}%`
+                    {cardStats.total > 0
+                      ? `${Math.round((cardStats.online / cardStats.total) * 100)}%`
                       : '0%'}
                     )
                   </span>
@@ -2508,12 +2507,12 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xl font-bold text-[color:var(--status-error)]">
-                    {accessPoints.filter((ap) => !isAPOnline(ap)).length}
+                    {cardStats.offline}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     (
-                    {accessPoints.length > 0
-                      ? `${Math.round((accessPoints.filter((ap) => !isAPOnline(ap)).length / accessPoints.length) * 100)}%`
+                    {cardStats.total > 0
+                      ? `${Math.round((cardStats.offline / cardStats.total) * 100)}%`
                       : '0%'}
                     )
                   </span>
@@ -2532,7 +2531,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           </CardHeader>
           <CardContent className="relative">
             <div className="flex items-center space-x-2">
-              <div className="text-2xl font-bold text-foreground">{getTotalClientCount()}</div>
+              <div className="text-2xl font-bold text-foreground">{cardStats.clients}</div>
               {isLoadingClients && (
                 <div className="animate-pulse">
                   <Activity className="h-4 w-4 text-muted-foreground" />
@@ -2551,9 +2550,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
             </div>
           </CardHeader>
           <CardContent className="relative">
-            <div className="text-2xl font-bold text-foreground">
-              {getUniqueHardwareTypes().length}
-            </div>
+            <div className="text-2xl font-bold text-foreground">{cardStats.models}</div>
             <p className="text-xs text-muted-foreground">Different models</p>
           </CardContent>
         </Card>
