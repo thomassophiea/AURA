@@ -2321,34 +2321,21 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
           />
           <Button
             onClick={() => {
+              // Refresh APs, client counts, and AP metrics together.
               loadData();
               setIsAutoRefreshing(true);
               loadAccessPoints({ silent: true }).finally(() => setIsAutoRefreshing(false));
+              loadClientCounts(accessPoints);
+              loadAPMetrics(accessPoints);
             }}
             variant="outline"
             size="sm"
-            disabled={isAutoRefreshing}
+            disabled={isAutoRefreshing || isLoadingClients || isLoadingMetrics}
           >
-            <RefreshCw className={`mr-2 h-4 w-4 ${isAutoRefreshing ? 'animate-spin' : ''}`} />
-            Refresh APs
-          </Button>
-          <Button
-            onClick={() => loadClientCounts(accessPoints)}
-            variant="outline"
-            size="sm"
-            disabled={isLoadingClients}
-          >
-            <Users className="mr-2 h-4 w-4" />
-            {isLoadingClients ? 'Loading...' : 'Refresh Clients'}
-          </Button>
-          <Button
-            onClick={() => loadAPMetrics(accessPoints)}
-            variant="outline"
-            size="sm"
-            disabled={isLoadingMetrics}
-          >
-            <Cpu className="mr-2 h-4 w-4" />
-            {isLoadingMetrics ? 'Loading...' : 'Refresh Metrics'}
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${isAutoRefreshing || isLoadingClients || isLoadingMetrics ? 'animate-spin' : ''}`}
+            />
+            {isAutoRefreshing || isLoadingClients || isLoadingMetrics ? 'Refreshing…' : 'Refresh'}
           </Button>
           <ColumnCustomizationDialog
             customization={
