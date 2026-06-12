@@ -29,6 +29,9 @@ export interface XiqClientHealthRow {
   rxRetries: number;
   slowness: number;
   airtimeWarning: boolean;
+  /** XIQ native assurance scores (0-100), merged from /clients/active?views=FULL. */
+  radioHealth: number | null;
+  clientHealth: number | null;
 }
 
 export interface XiqDeviceHealthRow {
@@ -100,6 +103,8 @@ export function normalizeXiqClientRow(r: Record<string, any>): XiqClientHealthRo
     rxRetries: num(r.rx_client_retries),
     slowness: num(r.slowness),
     airtimeWarning: bool(r.air_time_warning),
+    radioHealth: numOrNull(r.radio_health),
+    clientHealth: numOrNull(r.client_health),
   };
 }
 

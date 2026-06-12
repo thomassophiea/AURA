@@ -32,7 +32,11 @@ const INTERFERENCE_THRESHOLD = 50; // interference score considered high
 const PACKET_LOSS_THRESHOLD = 5; // % packet loss considered impacting
 const AP_CPU_THRESHOLD = 85;
 const AP_MEMORY_THRESHOLD = 90;
-const RETRY_FRACTION_THRESHOLD = 0.2; // tx+rx client retry fraction considered high
+// XIQ client retries are a PERCENTAGE (0-100), not a 0-1 fraction; flag a client
+// only when its tx or rx retry rate is genuinely high.
+const RETRY_PCT_THRESHOLD = 20;
+// XIQ native assurance score (0-100) below which RF/coverage is considered poor.
+const HEALTH_POOR = 60;
 
 function pct(count: number, total: number): number {
   return total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
@@ -75,9 +79,12 @@ function computeCoverage(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
   const weakSignal = clients.filter((c) => c.rssi != null && c.rssi < COVERAGE_WARNING_RSSI);
   const lowSnr = clients.filter((c) => c.snr != null && c.snr < COVERAGE_WARNING_SNR);
+  // XIQ's own RF assessment, where available.
+  const poorRf = clients.filter((c) => c.radioHealth != null && c.radioHealth < HEALTH_POOR);
   const failed = new Set<string>([
     ...weakSignal.map((c) => c.clientMac),
     ...lowSnr.map((c) => c.clientMac),
+    ...poorRf.map((c) => c.clientMac),
   ]);
   return metric(
     'coverage',
@@ -88,21 +95,23 @@ function computeCoverage(clients: XiqClientHealthRow[]): SLEMetric {
     [
       classifier('weak_signal', 'Weak Signal', weakSignal.length, failed.size),
       classifier('low_snr', 'Low SNR', lowSnr.length, failed.size),
+      classifier('poor_rf_health', 'Poor RF Health', poorRf.length, failed.size),
     ],
-    'Percentage of clients with adequate signal strength (RSSI/SNR)'
+    'Percentage of clients with adequate signal strength (RSSI / SNR / XIQ RF health)'
   );
 }
 
 // ── Throughput (client experience proxy: retries / airtime / slowness) ──────
 function computeThroughput(clients: XiqClientHealthRow[]): SLEMetric {
   const total = clients.length;
-  const highRetries = clients.filter((c) => c.txRetries + c.rxRetries >= RETRY_FRACTION_THRESHOLD);
+  // Retries are a percentage; flag a client when either direction is high.
+  const highRetries = clients.filter(
+    (c) => Math.max(c.txRetries, c.rxRetries) >= RETRY_PCT_THRESHOLD
+  );
   const airtime = clients.filter((c) => c.airtimeWarning);
-  const slow = clients.filter((c) => c.slowness > 0);
   const failed = new Set<string>([
     ...highRetries.map((c) => c.clientMac),
     ...airtime.map((c) => c.clientMac),
-    ...slow.map((c) => c.clientMac),
   ]);
   return metric(
     'throughput',
@@ -111,11 +120,10 @@ function computeThroughput(clients: XiqClientHealthRow[]): SLEMetric {
     total,
     failed.size,
     [
-      classifier('client_retries', 'Client Retries', highRetries.length, failed.size),
+      classifier('client_retries', 'High Retries', highRetries.length, failed.size),
       classifier('airtime', 'Airtime Saturation', airtime.length, failed.size),
-      classifier('slowness', 'Slowness', slow.length, failed.size),
     ],
-    'Percentage of clients without retry/airtime/slowness degradation'
+    'Percentage of clients without high retry rates or airtime saturation'
   );
 }
 

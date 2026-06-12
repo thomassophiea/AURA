@@ -61,6 +61,32 @@ async function xiqPostPaged(
   return out;
 }
 
+/** Paginated GET through the proxy (for /clients/active health scores). */
+async function xiqGetPaged(token: XIQStoredToken, path: string, query = ''): Promise<Record<string, any>[]> {
+  const out: Record<string, any>[] = [];
+  for (let page = 1; page <= 30; page++) {
+    const res = await fetch(`/xiq/api${path}?page=${page}&limit=100${query ? `&${query}` : ''}`, {
+      method: 'GET',
+      headers: {
+        'X-XIQ-Token': token.access_token,
+        'X-XIQ-Region': token.region,
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!res.ok) break;
+    const data: any = await res.json();
+    const items: any[] = Array.isArray(data) ? data : (data.data ?? data.items ?? data.results ?? []);
+    if (items.length === 0) break;
+    out.push(...items);
+    const totalPages = Number(data?.total_pages ?? data?.totalPages ?? 1);
+    if (page >= totalPages || items.length < 100) break;
+  }
+  return out;
+}
+
+const macKey = (m: unknown) => String(m ?? '').replace(/[:-]/g, '').toUpperCase();
+
 /** Keep only rows belonging to the selected site (by name). */
 function scopeToSite(rows: Record<string, any>[], siteName: string | null): Record<string, any>[] {
   if (!siteName) return rows;
@@ -87,16 +113,30 @@ async function loadXiqData(
   let capacityRows: Record<string, any>[] = [];
   const warnings: string[] = [];
 
+  let healthRows: Record<string, any>[] = [];
   try {
-    [clientRows, deviceRows, capacityRows] = await Promise.all([
+    [clientRows, deviceRows, capacityRows, healthRows] = await Promise.all([
       xiqPostPaged(token, GRIDS.client, 'sortField=CLIENT_TYPE&sortOrder=ASC&includeUnassigned=false'),
       xiqPostPaged(token, GRIDS.device, 'sortOrder=ASC&includeUnassigned=false'),
       xiqPostPaged(token, GRIDS.capacity, 'sortOrder=ASC&includeUnassigned=false'),
+      // XIQ native per-client assurance scores (radio/client health).
+      xiqGetPaged(token, '/clients/active', 'views=FULL').catch(() => []),
     ]);
   } catch (err) {
     return emptySLEPageModel('xiq', context, [
       `Failed to load XIQ data: ${err instanceof Error ? err.message : String(err)}`,
     ]);
+  }
+
+  // Merge native health scores into the client-health rows by MAC.
+  const healthByMac = new Map<string, any>();
+  for (const h of healthRows) healthByMac.set(macKey(h.mac_address ?? h.macAddress), h);
+  for (const r of clientRows) {
+    const h = healthByMac.get(macKey(r.client_mac));
+    if (h) {
+      r.radio_health = h.radio_health;
+      r.client_health = h.client_health;
+    }
   }
 
   // Scope to the selected XIQ site (when a specific site is chosen).

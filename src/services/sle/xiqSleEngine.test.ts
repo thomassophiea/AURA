@@ -39,10 +39,11 @@ const rawClients = [
     has_ip_address_issues: false,
     has_roaming_issues: true,
     roaming_time: 4000,
-    tx_client_retries: 0.3,
-    rx_client_retries: 0.1,
-    slowness: 1,
+    tx_client_retries: 35, // percent — high
+    rx_client_retries: 2,
+    slowness: 0,
     air_time_warning: true,
+    radio_health: 40, // XIQ RF health poor
   },
 ];
 
@@ -83,11 +84,12 @@ describe('computeXiqWirelessSLEs', () => {
     ]);
   });
 
-  it('coverage flags the weak-signal client (1 of 2)', () => {
+  it('coverage flags the weak-signal client (1 of 2) incl. poor RF health', () => {
     const cov = sles.find((s) => s.id === 'coverage')!;
     expect(cov.totalUserMinutes).toBe(2);
     expect(cov.affectedUserMinutes).toBe(1);
     expect(cov.successRate).toBe(50);
+    expect(cov.classifiers.find((c) => c.id === 'poor_rf_health')!.affectedClients).toBe(1);
   });
 
   it('successful_connects maps auth issues to the Authorization classifier', () => {
@@ -102,8 +104,10 @@ describe('computeXiqWirelessSLEs', () => {
     expect(ttc.classifiers.find((c) => c.id === 'authorization')!.affectedClients).toBe(1);
   });
 
-  it('throughput uses retries/airtime/slowness', () => {
-    expect(sles.find((s) => s.id === 'throughput')!.affectedUserMinutes).toBe(1);
+  it('throughput flags high retry % (not low fractions) + airtime', () => {
+    const tp = sles.find((s) => s.id === 'throughput')!;
+    expect(tp.affectedUserMinutes).toBe(1);
+    expect(tp.classifiers.find((c) => c.id === 'client_retries')!.affectedClients).toBe(1);
   });
 
   it('capacity flags congestion via utilization, interference, or packet loss', () => {
