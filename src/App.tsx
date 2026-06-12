@@ -93,6 +93,9 @@ const SiteDetail = lazy(() =>
 const AppInsights = lazy(() =>
   import('./components/AppInsights').then((m) => ({ default: m.AppInsights }))
 );
+const AuditLogs = lazy(() =>
+  import('./components/AuditLogs').then((m) => ({ default: m.AuditLogs }))
+);
 const PCIReport = lazy(() =>
   import('./components/PCIReport').then((m) => ({ default: m.PCIReport }))
 );
@@ -172,6 +175,10 @@ const pageInfo = {
   'app-insights': {
     title: 'App Insights',
     description: 'Application visibility and traffic analytics',
+  },
+  'audit-logs': {
+    title: 'Audit Logs',
+    description: 'User and system activity across OS-ONE and XIQ',
   },
   'connected-clients': {
     title: 'Connected Clients',
@@ -1119,6 +1126,8 @@ export default function App() {
         return <TrafficStatsConnectedClients onShowDetail={handleShowClientDetail} />;
       case 'performance-analytics':
         return <PerformanceAnalytics />;
+      case 'audit-logs':
+        return <AuditLogs />;
       case 'report-widgets':
         return <ReportWidgets />;
       case 'pci-report':

@@ -48,11 +48,14 @@ import {
   ArrowUpRight,
   Sparkles,
   Info,
-  Building,
   ChevronUp,
   ChevronDown,
 } from 'lucide-react';
-import { Site, apiService } from '../services/api';
+import { apiService } from '../services/api';
+import { useSourceSites } from '../hooks/useSourceSites';
+import { SourceSiteSelector } from './SourceSiteSelector';
+import { parseXiqSiteValue } from '../services/siteContextService';
+import { loadXiqAppInsights } from '../services/xiqInsights';
 import { PageHeader } from './PageHeader';
 import { SaveToWorkspace } from './SaveToWorkspace';
 import { useAppContext } from '@/contexts/AppContext';
@@ -199,49 +202,9 @@ export function AppInsights({ api }: AppInsightsProps) {
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState<string>('14D');
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
-  const [sites, setSites] = useState<Site[]>([]);
+  // Source-aware site list (OS-ONE + XIQ) for the shared grouped selector.
+  const { sites, xiqSites } = useSourceSites();
   const [selectedSite, setSelectedSite] = useState<string>('all');
-  const [_isLoadingSites, setIsLoadingSites] = useState(false);
-
-  // Load sites from all controllers at org scope
-  const loadSites = async () => {
-    setIsLoadingSites(true);
-    try {
-      let allSites: Site[] = [];
-      if (navigationScope === 'global' && siteGroups.length > 0) {
-        const originalBaseUrl = apiService.getBaseUrl();
-        for (const sg of siteGroups) {
-          try {
-            apiService.setBaseUrl(`${sg.controller_url}/management`);
-            const sgSites = await apiService.getSites();
-            allSites.push(...(Array.isArray(sgSites) ? sgSites : []));
-          } catch {
-            /* ignore */
-          }
-        }
-        apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
-      } else {
-        const sitesData = await api.getSites();
-        allSites = Array.isArray(sitesData) ? sitesData : [];
-      }
-      // Normalize name and deduplicate by id
-      const seen = new Set<string>();
-      const normalized = allSites
-        .map((s) => ({ ...s, name: s.name || s.siteName || 'Unnamed Site' }))
-        .filter((s) => {
-          const key = s.id || s.name;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        })
-        .sort((a, b) => a.name.localeCompare(b.name));
-      setSites(normalized);
-    } catch {
-      setSites([]);
-    } finally {
-      setIsLoadingSites(false);
-    }
-  };
 
   // Merge two AppInsightsData by summing distributionStats values per id
   const mergeInsights = (a: AppInsightsData, b: AppInsightsData): AppInsightsData => {
@@ -286,6 +249,24 @@ export function AppInsights({ api }: AppInsightsProps) {
     setLoading(true);
     setError(null);
     try {
+      // XIQ site selected → application usage from XIQ (grouped by category).
+      const xiqSel = parseXiqSiteValue(selectedSite);
+      if (xiqSel) {
+        const durMs: Record<string, number> = {
+          '1D': 86_400_000,
+          '7D': 604_800_000,
+          '14D': 1_209_600_000,
+          '30D': 2_592_000_000,
+        };
+        const end = Date.now();
+        const start = end - (durMs[duration] ?? durMs['14D']);
+        const xiqData = await loadXiqAppInsights(xiqSel.siteGroupId, start, end);
+        setData(xiqData as unknown as AppInsightsData);
+        setLastRefresh(new Date());
+        setLoading(false);
+        return;
+      }
+
       const siteId = selectedSite !== 'all' ? selectedSite : undefined;
       const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
 
@@ -317,9 +298,6 @@ export function AppInsights({ api }: AppInsightsProps) {
     }
   }, [api, duration, selectedSite, navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    loadSites();
-  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
   }, [fetchData]);
@@ -615,20 +593,14 @@ export function AppInsights({ api }: AppInsightsProps) {
         refreshing={loading}
         actions={
           <>
-            <Select value={selectedSite} onValueChange={setSelectedSite}>
-              <SelectTrigger className="w-[145px] h-8 text-xs">
-                <Building className="h-3.5 w-3.5 mr-1.5" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Sites</SelectItem>
-                {sites.map((site) => (
-                  <SelectItem key={site.id} value={site.id}>
-                    {site.name || site.id}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SourceSiteSelector
+              value={selectedSite}
+              onValueChange={setSelectedSite}
+              sites={sites}
+              xiqSites={xiqSites}
+              osSiteValue="id"
+              triggerClassName="w-[170px] h-8 text-xs"
+            />
 
             <Select value={duration} onValueChange={setDuration}>
               <SelectTrigger className="w-[120px] h-8 text-xs">

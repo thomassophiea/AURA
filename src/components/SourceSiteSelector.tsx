@@ -31,6 +31,12 @@ interface SourceSiteSelectorProps {
   sites: Site[];
   xiqSites: XiqSite[];
   triggerClassName?: string;
+  /**
+   * What an OS-ONE site option uses as its value: the site name (default —
+   * for pages that filter rows by name) or the site id (for pages that fetch
+   * per-site by id, e.g. App Insights / SLE).
+   */
+  osSiteValue?: 'name' | 'id';
 }
 
 export function SourceSiteSelector({
@@ -39,6 +45,7 @@ export function SourceSiteSelector({
   sites,
   xiqSites,
   triggerClassName = 'w-48',
+  osSiteValue = 'name',
 }: SourceSiteSelectorProps) {
   return (
     <Select value={value} onValueChange={onValueChange}>
@@ -56,8 +63,9 @@ export function SourceSiteSelector({
           <SelectItem value="all">All OS-ONE Sites</SelectItem>
           {sites.map((site) => {
             const name = site.name || site.siteName || site.id;
+            const val = osSiteValue === 'id' ? site.id : name;
             return (
-              <SelectItem key={site.id || name} value={name}>
+              <SelectItem key={site.id || name} value={val}>
                 {name}
               </SelectItem>
             );
