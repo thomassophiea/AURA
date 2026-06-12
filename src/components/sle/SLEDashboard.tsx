@@ -41,7 +41,6 @@ import {
   AlignLeft,
   Settings2,
 } from 'lucide-react';
-import { apiService, Site } from '../../services/api';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
@@ -52,8 +51,7 @@ import {
   buildXiqAllSitesValue,
 } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
-import { loadXiqSites, type XiqSite } from '../../services/sle/xiqSites';
-import { readCachedSites, writeCachedSites } from '../../services/sle/sleSitesCache';
+import { useSourceSites } from '../../hooks/useSourceSites';
 import { buildXiqRootCause } from './xiqRootCause';
 import type { SLESourceSystem } from '../../types/sleContext';
 import { SLERadialMap } from './SLERadialMap';
@@ -205,10 +203,8 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [wirelessSLEs, setWirelessSLEs] = useState<SLEMetric[]>([]);
   const [stations, setStations] = useState<any[]>([]);
   const [aps, setAps] = useState<any[]>([]);
-  // Stable per-scope key for caching the last-known-good site list.
-  const sitesCacheKey = navigationScope === 'global' ? 'org' : (siteGroup?.id ?? 'default');
-  const [sites, setSites] = useState<Site[]>(() => readCachedSites(sitesCacheKey));
-  const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
+  // Shared OS-ONE + XIQ site loader (cached, org-aggregating, empty-safe).
+  const { sites, xiqSites } = useSourceSites();
   const [source, setSource] = useState<SLESourceSystem>('controller');
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -294,83 +290,6 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     // Reload data with new thresholds
     loadData(true);
   };
-
-  // Load sites for the filter dropdown. In org scope we aggregate sites across
-  // every controller so "All Sites" can drill into any site group's sites;
-  // otherwise we load the active controller's sites. Re-runs when the active
-  // site group changes so newly-added / other-controller sites appear.
-  useEffect(() => {
-    let cancelled = false;
-    const loadSites = async () => {
-      // Show the last-known-good list immediately for this scope.
-      const cached = readCachedSites(sitesCacheKey);
-      if (cached.length > 0) setSites(cached);
-
-      const isOrgScope = navigationScope === 'global' && siteGroups.length > 0;
-      try {
-        const byId = new Map<string, Site>();
-
-        // Always include the active controller's sites — the most reliable path
-        // and what shows when a single site group is selected.
-        try {
-          const active = await apiService.getSites();
-          for (const s of active) if (s?.id) byId.set(s.id, s);
-        } catch (err) {
-          console.warn('[SLEDashboard] active controller getSites failed:', err);
-        }
-
-        // In org scope, also aggregate sites from every other controller.
-        if (isOrgScope) {
-          const originalBaseUrl = apiService.getBaseUrl();
-          for (const sg of siteGroups) {
-            if (!sg.controller_url) continue; // skip XIQ-only / unbacked groups
-            try {
-              apiService.setBaseUrl(`${sg.controller_url}/management`);
-              const sgSites = await apiService.getSites();
-              for (const s of sgSites) if (s?.id && !byId.has(s.id)) byId.set(s.id, s);
-            } catch (err) {
-              console.warn(`[SLEDashboard] Failed to load sites from ${sg.name}:`, err);
-            }
-          }
-          apiService.setBaseUrl(originalBaseUrl === '/api/management' ? null : originalBaseUrl);
-        }
-
-        if (!cancelled) {
-          const list = Array.from(byId.values());
-          console.info(`[SLEDashboard] OS-ONE sites loaded: ${list.length}`);
-          // Only replace the list when we actually got sites — a transient
-          // empty result (token refresh, base-URL switch) must not blank it out.
-          if (list.length > 0) {
-            setSites(list);
-            writeCachedSites(sitesCacheKey, list);
-          }
-        }
-      } catch {
-        /* leave existing sites in place on failure */
-      }
-
-      // XIQ sites (auto-connects demo creds when no token exists). Pulled per
-      // site group so the selector can offer an "XIQ" section alongside OS-ONE.
-      try {
-        const groups =
-          navigationScope === 'global' && siteGroups.length > 0
-            ? siteGroups
-            : siteGroup
-              ? [siteGroup]
-              : siteGroups;
-        const lists = await Promise.all(
-          groups.map((sg) => loadXiqSites(sg.id).catch(() => [] as XiqSite[]))
-        );
-        if (!cancelled) setXiqSites(lists.flat());
-      } catch {
-        /* no XIQ sites available */
-      }
-    };
-    loadSites();
-    return () => {
-      cancelled = true;
-    };
-  }, [siteGroup?.id, navigationScope, siteGroups, sitesCacheKey]);
 
   // Load data — the active site context selects the provider (controller vs XIQ).
   const loadData = useCallback(

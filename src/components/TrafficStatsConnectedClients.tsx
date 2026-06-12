@@ -43,6 +43,20 @@ interface ConnectedClientsProps {
   onShowDetail?: (macAddress: string, hostName?: string) => void;
 }
 
+/** Columns XIQ populates for a client — used when an XIQ site is selected. */
+const XIQ_CLIENT_VISIBLE_KEYS = [
+  'status',
+  'hostname',
+  'macAddress',
+  'ipAddress',
+  'siteName',
+  'network',
+  'apName',
+  'rss',
+  'deviceType',
+  'vlan',
+];
+
 export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { setWirelessContext } = useCortexContext();
@@ -847,7 +861,10 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                       } as ColDef,
                     ]
                   : []),
-                ...columnCustomization.visibleColumnConfigs.map((column): ColDef => {
+                ...(isXiq
+                  ? DEVICE_MONITORING_COLUMNS.filter((c) => XIQ_CLIENT_VISIBLE_KEYS.includes(c.key))
+                  : columnCustomization.visibleColumnConfigs
+                ).map((column): ColDef => {
                   const sizing = colSizing[column.key] || {};
                   const align = sizing.align || 'left';
                   const justifyContent =
@@ -885,6 +902,20 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                       : undefined,
                   };
                 }),
+                // XIQ-only signal not present in the controller column set.
+                ...(isXiq
+                  ? [
+                      {
+                        colId: 'snr',
+                        headerName: 'SNR (dB)',
+                        field: 'snr' as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+                        width: 100,
+                        sortable: true,
+                        headerClass: 'ag-header-right',
+                        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' },
+                      } as ColDef,
+                    ]
+                  : []),
               ];
               return (
                 <AGGridWrapper

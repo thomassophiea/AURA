@@ -515,6 +515,21 @@ interface AccessPointsProps {
   onShowClientDetail?: (macAddress: string, hostName?: string) => void;
 }
 
+/** Columns XIQ populates for an access point — used when an XIQ site is selected. */
+const XIQ_AP_VISIBLE_KEYS = [
+  'connection',
+  'apName',
+  'serialNumber',
+  'hostSite',
+  'model',
+  'ipAddress',
+  'macAddress',
+  'clients',
+  'cpuUsage',
+  'memoryUsage',
+  'softwareVersion',
+];
+
 export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsProps) {
   const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();
   const { agGridEnabled } = useGridMode();
@@ -686,7 +701,9 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   });
 
   // Derive visible column keys from the customization hook
-  const visibleColumns = customization.visibleColumns;
+  // For an XIQ site, show only the columns XIQ actually populates (intentional,
+  // not a controller layout with blank cells). OS-ONE uses the saved columns.
+  const visibleColumns = isXiq ? XIQ_AP_VISIBLE_KEYS : customization.visibleColumns;
 
   // Wi-Fi generation breakdown counts
   const wifiGenCounts = useMemo(() => {
