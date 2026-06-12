@@ -139,16 +139,69 @@ function deviceToAccessPoint(dev: any, health?: any): any {
   };
 }
 
+/**
+ * Fetch per-client traffic (bytes) over a time window via /clients/usage.
+ * Keyed by client_device_id (== the usage API's client_id). Chunked to keep
+ * the query string bounded. Returns a Map id -> usage bytes.
+ */
+async function fetchXiqClientUsage(
+  token: XIQStoredToken,
+  ids: string[],
+  startTime: number,
+  endTime: number
+): Promise<Map<string, number>> {
+  const usage = new Map<string, number>();
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  for (let i = 0; i < unique.length; i += 50) {
+    const chunk = unique.slice(i, i + 50).join(',');
+    try {
+      const res = await xiqGet(
+        token,
+        `/clients/usage?clientIds=${chunk}&startTime=${startTime}&endTime=${endTime}`
+      );
+      const items: any[] = Array.isArray(res) ? res : (res?.data ?? []);
+      for (const it of items) {
+        if (it?.client_id != null) usage.set(String(it.client_id), Number(it.usage) || 0);
+      }
+    } catch {
+      /* usage is best-effort; leave those clients without a byte total */
+    }
+  }
+  return usage;
+}
+
 /** Load XIQ clients (optionally scoped to a site name) as Station rows. */
 export async function loadXiqClients(siteGroupId: string, siteName: string | null): Promise<any[]> {
   const token = await tokenFor(siteGroupId);
   if (!token) return [];
-  const rows = await xiqPostPaged(
+  const rows = (
+    await xiqPostPaged(
+      token,
+      '/dashboard/wireless/client-health/grid',
+      'sortField=CLIENT_TYPE&sortOrder=ASC&includeUnassigned=false'
+    )
+  ).filter((r) => inSite(r, siteName));
+
+  // Attach per-client traffic (last 24h) so the Total Traffic card + Traffic
+  // column populate for XIQ (the health grid carries no byte counts).
+  const end = Date.now();
+  const start = end - 86_400_000;
+  const usage = await fetchXiqClientUsage(
     token,
-    '/dashboard/wireless/client-health/grid',
-    'sortField=CLIENT_TYPE&sortOrder=ASC&includeUnassigned=false'
+    rows.map((r) => String(r.client_device_id ?? '')),
+    start,
+    end
   );
-  return rows.filter((r) => inSite(r, siteName)).map(clientToStation);
+
+  return rows.map((r) => {
+    const station = clientToStation(r);
+    const bytes = usage.get(String(r.client_device_id ?? ''));
+    if (bytes != null) {
+      station.clientBandwidthBytes = bytes;
+      station.inBytes = bytes;
+    }
+    return station;
+  });
 }
 
 /** Load XIQ access points (optionally scoped to a site name) as AccessPoint rows. */
