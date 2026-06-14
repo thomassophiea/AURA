@@ -169,8 +169,8 @@ const pageInfo = {
     description: 'Context-aware network monitoring and analytics',
   },
   'service-levels': {
-    title: 'Service Levels',
-    description: 'SLE metrics with drill-down classifier analysis',
+    title: 'Sentinel',
+    description: 'Service levels & infrastructure health monitoring',
   },
   'app-insights': {
     title: 'App Insights',

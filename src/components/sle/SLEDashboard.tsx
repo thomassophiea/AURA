@@ -35,11 +35,12 @@ import {
   Clock,
   Target,
   Wifi,
-  Cable,
+  ShieldCheck,
   Network,
   Hexagon,
   AlignLeft,
   Settings2,
+  AlertCircle,
 } from 'lucide-react';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { useAppContext } from '@/contexts/AppContext';
@@ -58,6 +59,9 @@ import { SLERadialMap } from './SLERadialMap';
 import { SLEOctopus } from './SLEOctopus';
 import { SLEHoneycomb } from './SLEHoneycomb';
 import { SLEWaterfall } from './SLEWaterfall';
+import { SentinelInfraTab } from './SentinelInfraTab';
+import type { SentinelBadgeData } from './SentinelInfraTab';
+import { getStatus as getSentinelStatus } from '../../services/sentinelService';
 import { SLE_STATUS_COLORS, DEFAULT_SLE_THRESHOLDS } from '../../types/sle';
 import type { SLEMetric, SLEThresholds } from '../../types/sle';
 import { toast } from 'sonner';
@@ -219,6 +223,24 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   );
   const devMode = useDevModeUnlock();
 
+  // Sentinel badge state (lightweight poll for tab badge)
+  const [sentinelBadge, setSentinelBadge] = useState<SentinelBadgeData>({ alertCount: 0, maxSeverity: 'ok' });
+
+  useEffect(() => {
+    const fetchBadge = async () => {
+      try {
+        const s = await getSentinelStatus();
+        const severity: SentinelBadgeData['maxSeverity'] = s.activeAlerts > 0 ? 'warning' : 'ok';
+        setSentinelBadge({ alertCount: s.activeAlerts, maxSeverity: severity });
+      } catch {
+        // Sentinel may not be running — ignore
+      }
+    };
+    fetchBadge();
+    const timer = setInterval(fetchBadge, 30_000);
+    return () => clearInterval(timer);
+  }, []);
+
   // SLE threshold editing state
   const [thresholdDialogOpen, setThresholdDialogOpen] = useState(false);
   const [editingMetric, setEditingMetric] = useState<string | null>(null);
@@ -369,7 +391,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-3 text-muted-foreground">
           <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading Service Levels...</span>
+          <span>Loading Sentinel...</span>
         </div>
       </div>
     );
@@ -380,9 +402,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Service Levels</h2>
+          <h2 className="text-3xl tracking-tight">Sentinel</h2>
           <p className="text-muted-foreground text-sm">
-            SLE metrics with drill-down classifier analysis
+            Service levels &amp; infrastructure health monitoring
             {lastUpdate && (
               <span className="ml-2">- Updated {lastUpdate.toLocaleTimeString()}</span>
             )}
@@ -510,12 +532,24 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
                 {wirelessSLEs.length}
               </Badge>
             </TabsTrigger>
-            <TabsTrigger value="wired" className="flex items-center gap-1.5" disabled>
-              <Cable className="h-3.5 w-3.5" />
-              Wired
-              <Badge variant="outline" className="text-xs ml-1">
-                Coming Soon
-              </Badge>
+            <TabsTrigger value="infrastructure" className="flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Infrastructure
+              {sentinelBadge.alertCount > 0 ? (
+                <Badge
+                  variant="outline"
+                  className={`text-xs ml-1 ${
+                    sentinelBadge.maxSeverity === 'critical'
+                      ? 'bg-red-500/15 text-red-500 border-red-500/30'
+                      : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+                  }`}
+                >
+                  {sentinelBadge.maxSeverity === 'critical' && (
+                    <AlertCircle className="h-3 w-3 mr-0.5 animate-pulse" />
+                  )}
+                  {sentinelBadge.alertCount}
+                </Badge>
+              ) : null}
             </TabsTrigger>
           </TabsList>
 
@@ -607,16 +641,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
           )}
         </TabsContent>
 
-        <TabsContent value="wired" className="mt-4">
-          <div className="flex items-center justify-center py-16 text-muted-foreground">
-            <div className="text-center">
-              <Cable className="mx-auto h-12 w-12 mb-3 opacity-50" />
-              <h3 className="text-lg font-medium mb-1">Wired SLEs Coming Soon</h3>
-              <p className="text-sm">
-                Switch Health, Throughput, Successful Connect, and Switch Bandwidth
-              </p>
-            </div>
-          </div>
+        <TabsContent value="infrastructure" className="mt-4">
+          <SentinelInfraTab
+            onBadgeUpdate={(data) => setSentinelBadge(data)}
+          />
         </TabsContent>
       </Tabs>
 

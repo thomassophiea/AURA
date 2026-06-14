@@ -27,7 +27,7 @@ import {
   Bell,
   HardDrive,
   LayoutDashboard,
-  TrendingUp,
+  ShieldCheck,
   CircuitBoard,
   Building2,
   Globe,
@@ -318,7 +318,7 @@ export function Sidebar({
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
           {navigationScope === 'global' && (
             <>
-              {/* Service Levels — top-level item */}
+              {/* Sentinel — top-level item */}
               {isPageAllowed('service-levels') && (
                 <Button
                   variant="ghost"
@@ -331,10 +331,10 @@ export function Sidebar({
                   )}
                   onClick={() => handlePageChange('service-levels')}
                   onMouseEnter={() => prefetchComponent('service-levels')}
-                  title={isCollapsed ? 'Service Levels' : undefined}
+                  title={isCollapsed ? 'Sentinel' : undefined}
                 >
-                  <TrendingUp className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
-                  {!isCollapsed && <span>Service Levels</span>}
+                  <ShieldCheck className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
+                  {!isCollapsed && <span>Sentinel</span>}
                 </Button>
               )}
 
