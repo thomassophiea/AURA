@@ -248,37 +248,75 @@ function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 
 function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
   const wlans = (evidence.wlansChecked ?? []) as Array<{ ssid: string; vlanId: number; topologyName: string }>;
-  const aps = (evidence.apsScanned ?? []) as string[];
+  const topos = (evidence.topologiesFound ?? []) as Array<{ id: string; name: string; vlanid: number }>;
+  const svcs = (evidence.servicesFound ?? []) as Array<{ name: string; defaultTopology: string | null }>;
   const lldp = (evidence.lldpResults ?? []) as Array<{ apSerial: string; neighborCount: number }>;
   return (
     <div className="space-y-2">
-      {wlans.length > 0 && (
+      {/* Services -> Topology mapping */}
+      {svcs.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            WLANs Checked ({wlans.length})
+            Services ({svcs.length}) &rarr; Topology Mapping
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">SSID</th>
-              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
-              <th className="text-left px-2.5 py-1 font-medium">Topology</th>
+              <th className="text-left px-2.5 py-1 font-medium">WLAN</th>
+              <th className="text-left px-2.5 py-1 font-medium">Topology Ref</th>
+              <th className="text-center px-2.5 py-1 font-medium">Resolved</th>
             </tr></thead>
             <tbody>
-              {wlans.map((w) => (
-                <tr key={`${w.ssid}-${w.vlanId}`} className="border-t border-border/20">
-                  <td className="px-2.5 py-1 font-mono">{w.ssid}</td>
-                  <td className="px-2.5 py-1 text-center">{w.vlanId}</td>
-                  <td className="px-2.5 py-1 text-muted-foreground">{w.topologyName}</td>
+              {svcs.map((s) => {
+                const matched = wlans.find((w) => w.ssid === s.name);
+                return (
+                  <tr key={s.name} className="border-t border-border/20">
+                    <td className="px-2.5 py-1 font-mono">{s.name}</td>
+                    <td className="px-2.5 py-1 text-muted-foreground font-mono text-[10px] truncate max-w-[180px]">
+                      {s.defaultTopology ?? <span className="italic text-amber-500">none</span>}
+                    </td>
+                    <td className="px-2.5 py-1 text-center">
+                      {matched
+                        ? <span className="text-emerald-500">VLAN {matched.vlanId}</span>
+                        : <span className="text-amber-500">--</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Topologies */}
+      {topos.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Topologies ({topos.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1 font-medium">Name</th>
+              <th className="text-center px-2.5 py-1 font-medium">VLAN ID</th>
+              <th className="text-left px-2.5 py-1 font-medium">UUID</th>
+            </tr></thead>
+            <tbody>
+              {topos.map((t) => (
+                <tr key={t.id} className="border-t border-border/20">
+                  <td className="px-2.5 py-1 font-mono">{t.name}</td>
+                  <td className="px-2.5 py-1 text-center">{t.vlanid}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground font-mono text-[10px] truncate max-w-[180px]">{t.id}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+
+      {/* LLDP results */}
       {lldp.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            AP LLDP Results ({lldp.length} of {(evidence.totalAps as number) ?? aps.length})
+            AP LLDP Results ({lldp.length} of {(evidence.totalAps as number) ?? 0})
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">

@@ -15,20 +15,32 @@ function apSerial(ap) {
  * Map each WLAN to its topology's VLAN ID.
  */
 function mapWlansToVlans(services, topologies) {
-  const topoMap = new Map(); // topology id or name -> vlanid
+  const topoById = new Map();   // topology UUID -> { name, vlanid }
+  const topoByName = new Map(); // topology name  -> { name, vlanid }
   for (const t of toArray(topologies)) {
-    if (t.id) topoMap.set(String(t.id), t.vlanid);
-    if (t.name) topoMap.set(t.name, t.vlanid);
+    const entry = { name: t.name, vlanid: t.vlanid };
+    if (t.id) topoById.set(String(t.id), entry);
+    if (t.name) topoByName.set(t.name, entry);
   }
 
   const wlanVlans = []; // { ssid, vlanId, topologyName }
   for (const svc of toArray(services)) {
-    const ssid = svc.name ?? svc.ssid;
-    const topoId = svc.topologyId ?? svc.topology;
-    const topoName = svc.topologyName ?? svc.topology;
-    const vlanId = topoMap.get(String(topoId)) ?? topoMap.get(topoName);
-    if (vlanId != null) {
-      wlanVlans.push({ ssid, vlanId, topologyName: topoName ?? topoId });
+    const ssid = svc.serviceName ?? svc.name ?? svc.ssid;
+
+    // Campus Controller uses `defaultTopology` (UUID string)
+    const topoRef = svc.defaultTopology ?? svc.topologyId ?? svc.topology;
+    if (!topoRef) continue;
+
+    // defaultTopology can be a UUID string or an embedded topology object
+    let topo;
+    if (typeof topoRef === 'object' && topoRef !== null) {
+      topo = { name: topoRef.name, vlanid: topoRef.vlanid };
+    } else {
+      topo = topoById.get(String(topoRef)) ?? topoByName.get(String(topoRef));
+    }
+
+    if (topo && topo.vlanid != null) {
+      wlanVlans.push({ ssid, vlanId: topo.vlanid, topologyName: topo.name ?? String(topoRef) });
     }
   }
   return wlanVlans;
@@ -62,11 +74,18 @@ export async function runVlanTrunkCheck(opts) {
     fetchXcc('/v1/aps', opts),
   ]);
 
+  const serviceList = toArray(services);
+  const topoList = toArray(topologies);
   const wlanVlans = mapWlansToVlans(services, topologies);
   const apList = toArray(aps);
 
   const evidence = {
     wlansChecked: wlanVlans.map((w) => ({ ssid: w.ssid, vlanId: w.vlanId, topologyName: w.topologyName })),
+    topologiesFound: topoList.map((t) => ({ id: t.id, name: t.name, vlanid: t.vlanid })),
+    servicesFound: serviceList.map((s) => ({
+      name: s.serviceName ?? s.name ?? s.ssid,
+      defaultTopology: s.defaultTopology ?? null,
+    })),
     apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => apSerial(ap)),
     totalAps: apList.length,
     lldpResults: [],
@@ -74,7 +93,7 @@ export async function runVlanTrunkCheck(opts) {
   };
 
   if (!wlanVlans.length) {
-    evidence.summary = 'No WLANs with topology VLAN mappings found — nothing to check.';
+    evidence.summary = `${serviceList.length} WLAN(s) and ${topoList.length} topology(s) found, but no VLAN mappings resolved. Check that services have a defaultTopology field pointing to a topology with a vlanid.`;
     return { alerts: [], evidence };
   }
 
