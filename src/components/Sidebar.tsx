@@ -331,10 +331,10 @@ export function Sidebar({
                   )}
                   onClick={() => handlePageChange('service-levels')}
                   onMouseEnter={() => prefetchComponent('service-levels')}
-                  title={isCollapsed ? 'Sentinel' : undefined}
+                  title={isCollapsed ? 'Operational Insights' : undefined}
                 >
                   <ShieldCheck className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
-                  {!isCollapsed && <span>Sentinel</span>}
+                  {!isCollapsed && <span>Operational Insights</span>}
                 </Button>
               )}
 

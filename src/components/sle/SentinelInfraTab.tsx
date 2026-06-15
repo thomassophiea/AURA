@@ -541,10 +541,10 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     try {
       if (value === '0') {
         await stop();
-        toast.info('Sentinel polling stopped');
+        toast.info('Operational Insights polling stopped');
       } else {
         await configure({ intervalMs: parseInt(value, 10), siteId });
-        toast.success(`Sentinel polling set to ${SCHEDULE_OPTIONS.find((o) => o.value === value)?.label}`);
+        toast.success(`Operational Insights polling set to ${SCHEDULE_OPTIONS.find((o) => o.value === value)?.label}`);
       }
     } catch (err) {
       toast.error(`Failed to update schedule: ${(err as Error).message}`);
@@ -579,14 +579,14 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
     try {
       const result = await triggerPoll(siteId);
       if ('error' in result.results && result.results.error === 'auth_expired') {
-        toast.error('Sentinel: controller auth expired. Re-login required.');
+        toast.error('Operational Insights: controller auth expired. Re-login required.');
       } else {
-        toast.success('Sentinel poll complete');
+        toast.success('Operational Insights poll complete');
         // Clear cached evidence so next click fetches fresh data
         setEvidenceData({});
       }
     } catch (err) {
-      toast.error(`Sentinel poll failed: ${(err as Error).message}`);
+      toast.error(`Operational Insights poll failed: ${(err as Error).message}`);
     } finally {
       setPollRunning(false);
     }
@@ -808,7 +808,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
       {loading && !data && (
         <div className="flex items-center justify-center py-8 text-muted-foreground text-sm">
           <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-          Loading Sentinel data...
+          Loading Operational Insights data...
         </div>
       )}
 
@@ -887,7 +887,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
       {!loading && !status?.lastPollAt && (
         <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
           <Shield className="h-10 w-10 mb-2 opacity-40" />
-          <div className="text-sm font-medium">Sentinel Not Started</div>
+          <div className="text-sm font-medium">Not Started</div>
           <div className="text-xs">Click &quot;Run Now&quot; to run infrastructure checks or set a schedule.</div>
         </div>
       )}

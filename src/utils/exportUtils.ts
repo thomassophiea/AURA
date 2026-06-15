@@ -137,7 +137,7 @@ export function printSentinelReport(snapshot: {
     .map(([name, e]) => `<div class="evidence"><strong>${name}</strong> <span class="meta">(${new Date(e.collectedAt).toLocaleString()})</span><p>${e.summary}</p></div>`)
     .join('');
 
-  const html = `<!DOCTYPE html><html><head><title>Sentinel Report</title><style>
+  const html = `<!DOCTYPE html><html><head><title>Operational Insights Report</title><style>
     body{font-family:Arial,sans-serif;padding:20px;font-size:13px}
     h1{font-size:18px;margin-bottom:4px} h2{font-size:15px;margin-top:24px}
     .meta{font-size:11px;color:#666;margin-bottom:16px}
@@ -149,7 +149,7 @@ export function printSentinelReport(snapshot: {
     .evidence p{margin:4px 0 0;color:#444}
     @media print{body{padding:0}}
   </style></head><body>
-    <h1>Sentinel Infrastructure Report</h1>
+    <h1>Operational Insights Infrastructure Report</h1>
     <div class="meta">Generated: ${new Date().toLocaleString()}</div>
 
     <h2>Check Summary</h2>

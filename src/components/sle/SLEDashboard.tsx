@@ -398,7 +398,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       <div className="flex items-center justify-center h-64">
         <div className="flex items-center gap-3 text-muted-foreground">
           <RefreshCw className="h-5 w-5 animate-spin" />
-          <span>Loading Sentinel...</span>
+          <span>Loading Operational Insights...</span>
         </div>
       </div>
     );
@@ -409,7 +409,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl tracking-tight">Sentinel</h2>
+          <h2 className="text-3xl tracking-tight">Operational Insights</h2>
           <p className="text-muted-foreground text-sm">
             Service levels &amp; infrastructure health monitoring
             {lastUpdate && (

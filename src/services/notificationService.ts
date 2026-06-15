@@ -275,7 +275,7 @@ class NotificationService {
       const label = CHECK_LABELS[alert.checkName] ?? alert.checkName;
       this.addNotification({
         type,
-        title: `Sentinel: ${label}`,
+        title: `Operational Insights: ${label}`,
         message: alert.message,
         data: { source: 'sentinel', checkName: alert.checkName, target: alert.target, alertId: alert.id },
       });

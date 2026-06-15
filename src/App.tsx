@@ -171,7 +171,7 @@ const pageInfo = {
     description: 'Context-aware network monitoring and analytics',
   },
   'service-levels': {
-    title: 'Sentinel',
+    title: 'Operational Insights',
     description: 'Service levels & infrastructure health monitoring',
   },
   'app-insights': {
