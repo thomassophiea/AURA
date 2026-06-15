@@ -26,11 +26,15 @@ import {
   CheckCircle2,
   Clock,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  FileSearch,
 } from 'lucide-react';
 import { useRealtimePolling } from '../../hooks/useRealtimePolling';
 import {
   getStatus,
   getAlerts,
+  getEvidence,
   triggerPoll,
   configure,
   stop,
@@ -40,6 +44,7 @@ import type {
   SentinelStatus,
   SentinelAlert,
   SentinelCheckStatus,
+  CheckEvidence,
 } from '../../services/sentinelService';
 import { toast } from 'sonner';
 
@@ -114,9 +119,199 @@ interface SentinelInfraTabProps {
   onBadgeUpdate?: (data: SentinelBadgeData) => void;
 }
 
+// ── Evidence renderers per check type ──
+
+function EvidencePanel({ checkId, evidence }: { checkId: string; evidence: CheckEvidence }) {
+  return (
+    <div className="mt-3 border-t border-border/30 pt-3 space-y-2 text-xs animate-in slide-in-from-top-1 duration-200">
+      <div className="flex items-center gap-1.5 text-muted-foreground">
+        <FileSearch className="h-3.5 w-3.5" />
+        <span className="font-medium">Evidence</span>
+        <span className="ml-auto text-[10px]">
+          {new Date(evidence.collectedAt).toLocaleString()}
+        </span>
+      </div>
+
+      <div className="text-[11px] text-foreground/80 bg-muted/30 rounded px-2.5 py-1.5">
+        {evidence.summary}
+      </div>
+
+      {checkId === 'dhcp_reachability' && <DhcpEvidence evidence={evidence} />}
+      {checkId === 'radius_reachability' && <RadiusEvidence evidence={evidence} />}
+      {checkId === 'client_dhcp_failure' && <ClientDhcpEvidence evidence={evidence} />}
+      {checkId === 'vlan_trunk' && <VlanTrunkEvidence evidence={evidence} />}
+    </div>
+  );
+}
+
+function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const results = (evidence.pingResults ?? []) as Array<{ host: string; vlanNames: string[]; reachable: boolean }>;
+  if (!results.length) return null;
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <table className="w-full text-[11px]">
+        <thead><tr className="bg-muted/40 text-muted-foreground">
+          <th className="text-left px-2.5 py-1.5 font-medium">DHCP Server</th>
+          <th className="text-left px-2.5 py-1.5 font-medium">VLANs</th>
+          <th className="text-center px-2.5 py-1.5 font-medium">Ping</th>
+        </tr></thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={r.host} className="border-t border-border/20">
+              <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
+              <td className="px-2.5 py-1.5 text-muted-foreground">{r.vlanNames.join(', ')}</td>
+              <td className="px-2.5 py-1.5 text-center">
+                {r.reachable
+                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                  : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const results = (evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; reachable: boolean }>;
+  if (!results.length) return null;
+  return (
+    <div className="rounded border border-border/30 overflow-hidden">
+      <table className="w-full text-[11px]">
+        <thead><tr className="bg-muted/40 text-muted-foreground">
+          <th className="text-left px-2.5 py-1.5 font-medium">RADIUS Server</th>
+          <th className="text-center px-2.5 py-1.5 font-medium">Port</th>
+          <th className="text-left px-2.5 py-1.5 font-medium">Policies</th>
+          <th className="text-center px-2.5 py-1.5 font-medium">TCP</th>
+        </tr></thead>
+        <tbody>
+          {results.map((r) => (
+            <tr key={`${r.host}:${r.port}`} className="border-t border-border/20">
+              <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
+              <td className="px-2.5 py-1.5 text-center text-muted-foreground">{r.port}</td>
+              <td className="px-2.5 py-1.5 text-muted-foreground">{r.policyNames.join(', ')}</td>
+              <td className="px-2.5 py-1.5 text-center">
+                {r.reachable
+                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                  : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const breakdown = (evidence.ssidBreakdown ?? []) as Array<{ ssid: string; total: number; noIp: number; rate: number; status: string }>;
+  const thresholds = evidence.thresholds as { warning: string; critical: string } | undefined;
+  if (!breakdown.length) return null;
+  return (
+    <div className="space-y-1.5">
+      {thresholds && (
+        <div className="text-[10px] text-muted-foreground">
+          Thresholds: warning {'>='} {thresholds.warning}, critical {'>='} {thresholds.critical}
+        </div>
+      )}
+      <div className="rounded border border-border/30 overflow-hidden">
+        <table className="w-full text-[11px]">
+          <thead><tr className="bg-muted/40 text-muted-foreground">
+            <th className="text-left px-2.5 py-1.5 font-medium">SSID</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">Clients</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">No IP</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">Rate</th>
+            <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
+          </tr></thead>
+          <tbody>
+            {breakdown.map((r) => (
+              <tr key={r.ssid} className="border-t border-border/20">
+                <td className="px-2.5 py-1.5 font-mono">{r.ssid}</td>
+                <td className="px-2.5 py-1.5 text-center">{r.total}</td>
+                <td className="px-2.5 py-1.5 text-center">{r.noIp}</td>
+                <td className="px-2.5 py-1.5 text-center">{r.rate}%</td>
+                <td className="px-2.5 py-1.5 text-center">
+                  {r.status === 'ok' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />}
+                  {r.status === 'warning' && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />}
+                  {r.status === 'critical' && <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                  {r.status === 'skipped' && <span className="text-muted-foreground">-</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
+  const wlans = (evidence.wlansChecked ?? []) as Array<{ ssid: string; vlanId: number; topologyName: string }>;
+  const aps = (evidence.apsScanned ?? []) as string[];
+  const lldp = (evidence.lldpResults ?? []) as Array<{ apSerial: string; neighborCount: number }>;
+  return (
+    <div className="space-y-2">
+      {wlans.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            WLANs Checked ({wlans.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1 font-medium">SSID</th>
+              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+              <th className="text-left px-2.5 py-1 font-medium">Topology</th>
+            </tr></thead>
+            <tbody>
+              {wlans.map((w) => (
+                <tr key={`${w.ssid}-${w.vlanId}`} className="border-t border-border/20">
+                  <td className="px-2.5 py-1 font-mono">{w.ssid}</td>
+                  <td className="px-2.5 py-1 text-center">{w.vlanId}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground">{w.topologyName}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {lldp.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            AP LLDP Results ({lldp.length} of {(evidence.totalAps as number) ?? aps.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1 font-medium">AP Serial</th>
+              <th className="text-center px-2.5 py-1 font-medium">LLDP Neighbors</th>
+            </tr></thead>
+            <tbody>
+              {lldp.map((l) => (
+                <tr key={l.apSerial} className="border-t border-border/20">
+                  <td className="px-2.5 py-1 font-mono">{l.apSerial}</td>
+                  <td className="px-2.5 py-1 text-center">
+                    {l.neighborCount > 0
+                      ? <span className="text-emerald-500">{l.neighborCount}</span>
+                      : <span className="text-muted-foreground">0</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Component ──
+
 export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
   const [pollRunning, setPollRunning] = useState(false);
   const [schedule, setSchedule] = useState('0');
+  const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
+  const [evidenceData, setEvidenceData] = useState<Record<string, CheckEvidence>>({});
+  const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
 
   // Fetch status + alerts together
   const fetcher = useCallback(async () => {
@@ -150,22 +345,6 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
 
   // ── Handlers ──
 
-  const handleRunNow = async () => {
-    setPollRunning(true);
-    try {
-      const result = await triggerPoll();
-      if ('error' in result.results && result.results.error === 'auth_expired') {
-        toast.error('Sentinel: controller auth expired. Re-login required.');
-      } else {
-        toast.success('Sentinel poll complete');
-      }
-    } catch (err) {
-      toast.error(`Sentinel poll failed: ${(err as Error).message}`);
-    } finally {
-      setPollRunning(false);
-    }
-  };
-
   const handleScheduleChange = async (value: string) => {
     setSchedule(value);
     try {
@@ -178,6 +357,47 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
       }
     } catch (err) {
       toast.error(`Failed to update schedule: ${(err as Error).message}`);
+    }
+  };
+
+  const handleCardClick = async (checkId: string) => {
+    if (expandedCheck === checkId) {
+      setExpandedCheck(null);
+      return;
+    }
+    setExpandedCheck(checkId);
+    // Fetch evidence if not already cached
+    if (!evidenceData[checkId]) {
+      setEvidenceLoading(checkId);
+      try {
+        const { evidence } = await getEvidence(checkId);
+        if (evidence) {
+          setEvidenceData((prev) => ({ ...prev, [checkId]: evidence }));
+        }
+      } catch {
+        // silently fail — card will show "no evidence"
+      } finally {
+        setEvidenceLoading(null);
+      }
+    }
+  };
+
+  // Refresh evidence cache after a poll completes
+  const handleRunNowWithEvidence = async () => {
+    setPollRunning(true);
+    try {
+      const result = await triggerPoll();
+      if ('error' in result.results && result.results.error === 'auth_expired') {
+        toast.error('Sentinel: controller auth expired. Re-login required.');
+      } else {
+        toast.success('Sentinel poll complete');
+        // Clear cached evidence so next click fetches fresh data
+        setEvidenceData({});
+      }
+    } catch (err) {
+      toast.error(`Sentinel poll failed: ${(err as Error).message}`);
+    } finally {
+      setPollRunning(false);
     }
   };
 
@@ -218,7 +438,7 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRunNow}
+            onClick={handleRunNowWithEvidence}
             disabled={pollRunning}
           >
             {pollRunning ? (
@@ -275,12 +495,17 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
         {Object.entries(CHECK_CONFIG).map(([checkId, config]) => {
           const Icon = config.icon;
           const checkStatus = status?.checks?.[checkId];
-          const checkAlerts = alertsByCheck[checkId];
+          const checkAlertData = alertsByCheck[checkId];
+          const isExpanded = expandedCheck === checkId;
+          const hasRun = checkStatus?.status === 'ok' || checkStatus?.status === 'error';
 
           return (
             <div
               key={checkId}
-              className="rounded-lg border border-border/50 bg-card p-4 space-y-3"
+              className={`rounded-lg border bg-card p-4 space-y-3 transition-colors ${
+                isExpanded ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border/50'
+              } ${hasRun ? 'cursor-pointer hover:border-primary/30' : ''}`}
+              onClick={hasRun ? () => handleCardClick(checkId) : undefined}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -292,25 +517,32 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
                     <div className="text-[11px] text-muted-foreground">{config.description}</div>
                   </div>
                 </div>
-                {checkStatus && checkStatusBadge(checkStatus.status)}
+                <div className="flex items-center gap-1.5">
+                  {checkStatus && checkStatusBadge(checkStatus.status)}
+                  {hasRun && (
+                    isExpanded
+                      ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                      : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 text-xs">
-                {checkAlerts ? (
+                {checkAlertData ? (
                   <>
-                    {checkAlerts.critical > 0 && (
+                    {checkAlertData.critical > 0 && (
                       <span className="flex items-center gap-1 text-red-500">
                         <AlertCircle className="h-3 w-3" />
-                        {checkAlerts.critical} critical
+                        {checkAlertData.critical} critical
                       </span>
                     )}
-                    {checkAlerts.warning > 0 && (
+                    {checkAlertData.warning > 0 && (
                       <span className="flex items-center gap-1 text-amber-500">
                         <AlertTriangle className="h-3 w-3" />
-                        {checkAlerts.warning} warning
+                        {checkAlertData.warning} warning
                       </span>
                     )}
-                    {checkAlerts.total === 0 && (
+                    {checkAlertData.total === 0 && (
                       <span className="flex items-center gap-1 text-emerald-500">
                         <CheckCircle2 className="h-3 w-3" />
                         All clear
@@ -334,6 +566,22 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
               {checkStatus?.error && (
                 <div className="text-[11px] text-red-400 bg-red-500/10 rounded px-2 py-1 truncate">
                   {checkStatus.error}
+                </div>
+              )}
+
+              {/* Evidence panel */}
+              {isExpanded && evidenceLoading === checkId && (
+                <div className="mt-3 border-t border-border/30 pt-3 flex items-center gap-2 text-xs text-muted-foreground">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Loading evidence...
+                </div>
+              )}
+              {isExpanded && evidenceData[checkId] && (
+                <EvidencePanel checkId={checkId} evidence={evidenceData[checkId]} />
+              )}
+              {isExpanded && !evidenceLoading && !evidenceData[checkId] && (
+                <div className="mt-3 border-t border-border/30 pt-3 text-xs text-muted-foreground">
+                  No evidence available. Run a poll first.
                 </div>
               )}
             </div>

@@ -26,14 +26,19 @@ export async function runClientDhcpFailureCheck(opts) {
   }
 
   const alerts = [];
+  const ssidBreakdown = [];
 
   for (const [ssid, { total, noIp }] of bySsid) {
-    if (total < 2) continue; // skip SSIDs with too few clients to be meaningful
-    const rate = noIp / total;
+    const rate = total > 0 ? noIp / total : 0;
+    const pct = (rate * 100).toFixed(1);
+    const status = total < 2 ? 'skipped' : rate >= CRITICAL_THRESHOLD ? 'critical' : rate >= WARNING_THRESHOLD ? 'warning' : 'ok';
+
+    ssidBreakdown.push({ ssid, total, noIp, rate: parseFloat(pct), status });
+
+    if (total < 2) continue;
     if (rate < WARNING_THRESHOLD) continue;
 
     const severity = rate >= CRITICAL_THRESHOLD ? 'critical' : 'warning';
-    const pct = (rate * 100).toFixed(1);
 
     alerts.push({
       id: `client_dhcp_failure:${ssid}`,
@@ -45,5 +50,15 @@ export async function runClientDhcpFailureCheck(opts) {
     });
   }
 
-  return alerts;
+  const evidence = {
+    totalClients: arr.length,
+    ssidsFound: bySsid.size,
+    ssidBreakdown: ssidBreakdown.sort((a, b) => b.rate - a.rate),
+    thresholds: { warning: `${WARNING_THRESHOLD * 100}%`, critical: `${CRITICAL_THRESHOLD * 100}%` },
+    summary: arr.length === 0
+      ? 'No connected clients found.'
+      : `${arr.length} client(s) across ${bySsid.size} SSID(s). ${alerts.length} SSID(s) above failure threshold.`,
+  };
+
+  return { alerts, evidence };
 }

@@ -63,11 +63,32 @@ export async function runVlanTrunkCheck(opts) {
   ]);
 
   const wlanVlans = mapWlansToVlans(services, topologies);
-  if (!wlanVlans.length) return [];
+  const apList = toArray(aps);
+
+  const evidence = {
+    wlansChecked: wlanVlans.map((w) => ({ ssid: w.ssid, vlanId: w.vlanId, topologyName: w.topologyName })),
+    apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => apSerial(ap)),
+    totalAps: apList.length,
+    lldpResults: [],
+    summary: '',
+  };
+
+  if (!wlanVlans.length) {
+    evidence.summary = 'No WLANs with topology VLAN mappings found — nothing to check.';
+    return { alerts: [], evidence };
+  }
 
   // Fetch LLDP once for the batch of APs
   const lldpByAp = await fetchLldpBatched(aps, opts);
-  if (!lldpByAp.length) return [];
+  evidence.lldpResults = lldpByAp.map(({ apSerial: serial, neighbors }) => ({
+    apSerial: serial,
+    neighborCount: neighbors.length,
+  }));
+
+  if (!lldpByAp.length) {
+    evidence.summary = `No LLDP data retrieved from ${apList.length} APs.`;
+    return { alerts: [], evidence };
+  }
 
   const alerts = [];
 
@@ -76,7 +97,6 @@ export async function runVlanTrunkCheck(opts) {
     if (result.result === 'pass') continue;
 
     for (const affected of result.affectedAps) {
-      // Parse "serial(port:Ge1)" or "serial:no-neighbors" format
       const [apPart] = affected.split('(');
       const portMatch = affected.match(/port:([^)]+)/);
       const switchMatch = affected.match(/switch:([^)]+)/);
@@ -102,5 +122,9 @@ export async function runVlanTrunkCheck(opts) {
     }
   }
 
-  return alerts;
+  evidence.summary = alerts.length
+    ? `${alerts.length} trunk issue(s) found across ${wlanVlans.length} WLAN(s) and ${lldpByAp.length} AP(s).`
+    : `All ${wlanVlans.length} WLAN VLAN(s) verified on ${lldpByAp.length} AP trunk(s). No issues.`;
+
+  return { alerts, evidence };
 }

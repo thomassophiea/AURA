@@ -21,6 +21,7 @@ export class SentinelEngine {
     radius_reachability: { status: 'idle', lastRunAt: null, error: null },
     client_dhcp_failure: { status: 'idle', lastRunAt: null, error: null },
   };
+  #checkEvidence = {};
 
   configure({ authToken, controllerUrl, fetchFn } = {}) {
     if (authToken) this.#authToken = authToken;
@@ -55,9 +56,13 @@ export class SentinelEngine {
     for (const { name, fn } of checks) {
       try {
         this.#checkStatus[name].status = 'running';
-        const alerts = await fn(opts);
-        const activeIds = new Set();
+        const result = await fn(opts);
 
+        // Checks return { alerts, evidence } or plain alerts array (backwards compat)
+        const alerts = Array.isArray(result) ? result : result.alerts ?? [];
+        const evidence = Array.isArray(result) ? null : result.evidence ?? null;
+
+        const activeIds = new Set();
         for (const alert of alerts) {
           this.#alertStore.upsert(alert);
           activeIds.add(alert.id);
@@ -65,6 +70,10 @@ export class SentinelEngine {
 
         // Auto-resolve alerts from this check that were not seen
         this.#alertStore.resolveAbsent(name, activeIds);
+
+        if (evidence) {
+          this.#checkEvidence[name] = { ...evidence, collectedAt: new Date().toISOString() };
+        }
 
         this.#checkStatus[name] = {
           status: 'ok',
@@ -125,6 +134,11 @@ export class SentinelEngine {
 
   clearAlerts() {
     this.#alertStore.clear();
+  }
+
+  getEvidence(checkName) {
+    if (checkName) return this.#checkEvidence[checkName] ?? null;
+    return { ...this.#checkEvidence };
   }
 
   getStatus() {

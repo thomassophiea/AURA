@@ -46,10 +46,12 @@ export async function runDhcpReachabilityCheck(opts) {
   const topologies = await fetchXcc('/v1/topologies', opts);
   const servers = extractDhcpRelayServers(topologies);
   const alerts = [];
+  const pingResults = [];
 
   await Promise.all(
     [...servers.entries()].map(async ([ip, { host, vlanNames }]) => {
       const reachable = await pingHost(host);
+      pingResults.push({ host, vlanNames, reachable });
       if (!reachable) {
         alerts.push({
           id: `dhcp_reachability:${ip}`,
@@ -63,5 +65,14 @@ export async function runDhcpReachabilityCheck(opts) {
     }),
   );
 
-  return alerts;
+  const reachableCount = pingResults.filter((r) => r.reachable).length;
+  const evidence = {
+    serversFound: servers.size,
+    pingResults: pingResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
+    summary: servers.size === 0
+      ? 'No DHCP relay servers configured in any topology.'
+      : `${reachableCount}/${servers.size} DHCP relay server(s) reachable via ICMP ping.`,
+  };
+
+  return { alerts, evidence };
 }

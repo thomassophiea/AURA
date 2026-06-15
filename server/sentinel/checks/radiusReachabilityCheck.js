@@ -58,10 +58,12 @@ export async function runRadiusReachabilityCheck(opts) {
   const policies = await fetchXcc('/v1/aaapolicy', opts);
   const servers = extractRadiusServers(policies);
   const alerts = [];
+  const connectResults = [];
 
   await Promise.all(
     [...servers.entries()].map(async ([key, { host, port, policyNames }]) => {
       const reachable = await tcpConnect(host, port);
+      connectResults.push({ host, port, policyNames, reachable });
       if (!reachable) {
         alerts.push({
           id: `radius_reachability:${key}`,
@@ -75,5 +77,15 @@ export async function runRadiusReachabilityCheck(opts) {
     }),
   );
 
-  return alerts;
+  const reachableCount = connectResults.filter((r) => r.reachable).length;
+  const evidence = {
+    serversFound: servers.size,
+    policiesScanned: Array.isArray(policies?.data) ? policies.data.length : Array.isArray(policies) ? policies.length : 0,
+    connectResults: connectResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
+    summary: servers.size === 0
+      ? 'No RADIUS servers configured in any AAA policy.'
+      : `${reachableCount}/${servers.size} RADIUS server(s) reachable via TCP connect (port ${DEFAULT_RADIUS_PORT}).`,
+  };
+
+  return { alerts, evidence };
 }

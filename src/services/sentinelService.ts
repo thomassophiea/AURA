@@ -110,3 +110,15 @@ export async function stop(): Promise<{ ok: boolean; status: SentinelStatus }> {
 export async function clearAlerts(): Promise<{ cleared: boolean }> {
   return sentinelFetch('/api/sentinel/alerts', { method: 'DELETE' });
 }
+
+// ── Evidence ──
+
+export interface CheckEvidence {
+  summary: string;
+  collectedAt: string;
+  [key: string]: unknown;
+}
+
+export async function getEvidence(checkId: string): Promise<{ evidence: CheckEvidence | null }> {
+  return sentinelFetch(`/api/sentinel/evidence/${encodeURIComponent(checkId)}`);
+}

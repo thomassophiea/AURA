@@ -22,6 +22,20 @@ export function createSentinelRouter() {
     res.json({ alerts: sentinelEngine.getAllAlerts({ severity, check }) });
   });
 
+  // GET /sentinel/evidence/:checkId — detailed evidence from last run of a check
+  router.get('/sentinel/evidence/:checkId', (req, res) => {
+    const evidence = sentinelEngine.getEvidence(req.params.checkId);
+    if (!evidence) {
+      return res.json({ evidence: null, message: 'No evidence available. Run a poll first.' });
+    }
+    res.json({ evidence });
+  });
+
+  // GET /sentinel/evidence — all check evidence
+  router.get('/sentinel/evidence', (_req, res) => {
+    res.json({ evidence: sentinelEngine.getEvidence() });
+  });
+
   // POST /sentinel/configure — set auth token + controller URL, start polling
   router.post('/sentinel/configure', jsonBody, (req, res) => {
     const { authToken, controllerUrl, intervalMs } = req.body ?? {};
