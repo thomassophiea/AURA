@@ -361,7 +361,7 @@ export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
     <div
       key={notification.id}
       className={`
-        p-4 rounded-lg border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50
+        p-3 rounded-lg border transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50
         ${
           notification.isRead
             ? 'bg-background border-border/50 hover:border-border'
@@ -389,23 +389,23 @@ export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 mt-0.5">{getNotificationIcon(notification.type)}</div>
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
+          <div className="flex items-start gap-2 mb-1">
             <h4
               className={`
-              font-medium text-sm leading-tight
+              font-medium text-sm leading-tight truncate flex-1 min-w-0
               ${notification.isRead ? 'text-muted-foreground' : 'text-foreground'}
             `}
             >
               {notification.title}
             </h4>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 shrink-0">
               {!notification.isRead && (
                 <div className="w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
               )}
               <Badge
                 variant="outline"
                 className={`
-                  text-xs px-2 py-0.5 font-medium
+                  text-[10px] px-1.5 py-0 font-medium whitespace-nowrap
                   ${
                     notification.type === 'critical'
                       ? 'bg-destructive/10 text-destructive border-destructive/20'
@@ -497,38 +497,24 @@ export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
           {/* Filter Tabs */}
           <div className="px-4 pb-3">
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid grid-cols-4 w-full">
-                <TabsTrigger value="all" className="text-xs">
-                  <span className="flex items-center gap-1">
-                    All
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                      {totalCount}
-                    </Badge>
-                  </span>
+              <TabsList className="flex w-full">
+                <TabsTrigger value="all" className="flex-1 text-[11px] px-2">
+                  All
+                  <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">
+                    {totalCount}
+                  </Badge>
                 </TabsTrigger>
-                <TabsTrigger value="critical" className="text-xs">
-                  <span className="flex items-center gap-1">
-                    Critical
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                      {criticalCount}
-                    </Badge>
-                  </span>
+                <TabsTrigger value="critical" className="flex-1 text-[11px] px-2">
+                  <AlertTriangle className="h-3 w-3 mr-1 shrink-0" />
+                  {criticalCount}
                 </TabsTrigger>
-                <TabsTrigger value="non-critical" className="text-xs">
-                  <span className="flex items-center gap-1">
-                    Non-Critical
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                      {nonCriticalCount}
-                    </Badge>
-                  </span>
+                <TabsTrigger value="non-critical" className="flex-1 text-[11px] px-2">
+                  <AlertCircle className="h-3 w-3 mr-1 shrink-0" />
+                  {nonCriticalCount}
                 </TabsTrigger>
-                <TabsTrigger value="information" className="text-xs">
-                  <span className="flex items-center gap-1">
-                    Information
-                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                      {informationCount}
-                    </Badge>
-                  </span>
+                <TabsTrigger value="information" className="flex-1 text-[11px] px-2">
+                  <Info className="h-3 w-3 mr-1 shrink-0" />
+                  {informationCount}
                 </TabsTrigger>
               </TabsList>
 
