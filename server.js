@@ -23,6 +23,8 @@ import { attachConsoleShell } from './server/consoleShell.js';
 import { createValidationRouter } from './server/validationEngine/validationRouter.js';
 import { driftMonitor } from './server/validationEngine/driftMonitor.js';
 import { registerResolver } from './server/cortex/toolDispatcher.js';
+import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
+import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +35,12 @@ const app = express();
 registerResolver('getDriftAlerts', () => ({
   alerts: driftMonitor.getAlerts(),
   status: driftMonitor.getStatus(),
+}));
+
+// Wire getSentinelAlerts Cortex tool to the sentinel engine
+registerResolver('getSentinelAlerts', () => ({
+  alerts: sentinelEngine.getAlerts(),
+  status: sentinelEngine.getStatus(),
 }));
 
 const PORT = process.env.PORT || 3000;
@@ -1848,6 +1856,10 @@ app.post('/xiq/api/*', rateLimit({ windowMs: 60_000, max: 120 }), jsonParser, (r
 // the whole /api namespace would block /api/management/v1/oauth2/token (login).
 app.use(['/api/validate', '/api/drift', '/api/rollback'], requireAuth);
 app.use('/api', createValidationRouter());
+
+// ==================== Sentinel Engine Routes ====================
+app.use(['/api/sentinel'], requireAuth);
+app.use('/api', createSentinelRouter());
 
 // ==================== Cortex AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are
