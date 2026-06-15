@@ -457,15 +457,16 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
     return new Date(b.lastSeenAt).getTime() - new Date(a.lastSeenAt).getTime();
   });
 
-  // Count alerts per check
-  const alertsByCheck: Record<string, { total: number; critical: number; warning: number }> = {};
+  // Count alerts per check (separate actionable from informational)
+  const alertsByCheck: Record<string, { total: number; critical: number; warning: number; info: number }> = {};
   for (const alert of alerts) {
     if (!alertsByCheck[alert.checkName]) {
-      alertsByCheck[alert.checkName] = { total: 0, critical: 0, warning: 0 };
+      alertsByCheck[alert.checkName] = { total: 0, critical: 0, warning: 0, info: 0 };
     }
     alertsByCheck[alert.checkName].total++;
     if (alert.severity === 'critical') alertsByCheck[alert.checkName].critical++;
     if (alert.severity === 'warning') alertsByCheck[alert.checkName].warning++;
+    if (alert.severity === 'info') alertsByCheck[alert.checkName].info++;
   }
 
   return (
@@ -580,7 +581,13 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
                         {checkAlertData.warning} warning
                       </span>
                     )}
-                    {checkAlertData.total === 0 && (
+                    {checkAlertData.info > 0 && checkAlertData.critical === 0 && checkAlertData.warning === 0 && (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Info className="h-3 w-3" />
+                        {checkAlertData.info} note{checkAlertData.info > 1 ? 's' : ''}
+                      </span>
+                    )}
+                    {checkAlertData.critical === 0 && checkAlertData.warning === 0 && checkAlertData.info === 0 && (
                       <span className="flex items-center gap-1 text-emerald-500">
                         <CheckCircle2 className="h-3 w-3" />
                         All clear
@@ -635,42 +642,75 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
         </div>
       )}
 
-      {sortedAlerts.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-muted-foreground">Active Alerts</h4>
-          <div className="max-h-80 overflow-y-auto space-y-1.5 pr-1">
-            {sortedAlerts.map((alert) => (
-              <div
-                key={alert.id}
-                className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2"
-              >
-                <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
-                <div className="flex-1 min-w-0 space-y-0.5">
-                  <div className="text-sm leading-tight">{alert.message}</div>
-                  <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
-                    <Badge variant="outline" className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}>
-                      {alert.severity}
-                    </Badge>
-                    <span>{alert.target}</span>
-                    {alert.occurrences > 1 && (
-                      <span className="font-medium">{alert.occurrences}x</span>
-                    )}
-                    <span>
-                      {new Date(alert.lastSeenAt).toLocaleTimeString()}
-                    </span>
-                  </div>
+      {sortedAlerts.length > 0 && (() => {
+        const actionable = sortedAlerts.filter((a) => a.severity !== 'info');
+        const informational = sortedAlerts.filter((a) => a.severity === 'info');
+        return (
+          <div className="space-y-3">
+            {actionable.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">Alerts</h4>
+                <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+                  {actionable.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-start gap-2.5 rounded-lg border border-border/40 bg-card/50 px-3 py-2"
+                    >
+                      <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="text-sm leading-tight">{alert.message}</div>
+                        <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted-foreground">
+                          <Badge variant="outline" className={`${severityBadgeClass(alert.severity)} text-[10px] px-1.5 py-0`}>
+                            {alert.severity}
+                          </Badge>
+                          <span>{alert.target}</span>
+                          {alert.occurrences > 1 && (
+                            <span className="font-medium">{alert.occurrences}x</span>
+                          )}
+                          <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+            {informational.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Informational ({informational.length})
+                </h4>
+                <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                  {informational.map((alert) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-start gap-2 rounded-md border border-border/20 bg-muted/20 px-2.5 py-1.5"
+                    >
+                      <div className="mt-0.5 shrink-0">{severityIcon(alert.severity)}</div>
+                      <div className="flex-1 min-w-0 space-y-0.5">
+                        <div className="text-[12px] leading-tight text-muted-foreground">{alert.message}</div>
+                        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground/70">
+                          <span>{alert.target}</span>
+                          {alert.occurrences > 1 && (
+                            <span className="font-medium">{alert.occurrences}x</span>
+                          )}
+                          <span>{new Date(alert.lastSeenAt).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {!loading && sortedAlerts.length === 0 && status?.lastPollAt && (
         <div className="flex flex-col items-center py-8 text-center text-muted-foreground">
           <CheckCircle2 className="h-10 w-10 mb-2 opacity-40" />
           <div className="text-sm font-medium">Infrastructure Healthy</div>
-          <div className="text-xs">No active alerts. All checks passed.</div>
+          <div className="text-xs">No findings. All checks passed.</div>
         </div>
       )}
 

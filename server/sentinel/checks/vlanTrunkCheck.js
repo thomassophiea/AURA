@@ -120,15 +120,25 @@ export async function runVlanTrunkCheck(opts) {
       const portMatch = affected.match(/port:([^)]+)/);
       const switchMatch = affected.match(/switch:([^)]+)/);
 
-      const severity = affected.includes('no-neighbors') || affected.includes('no-vlanMembership')
-        ? 'info'
-        : 'warning';
+      const noNeighbors = affected.includes('no-neighbors');
+      const noMembership = affected.includes('no-vlanMembership');
+      const severity = (noNeighbors || noMembership) ? 'info' : 'warning';
+
+      // Use descriptive messages that distinguish real issues from incomplete data
+      let message;
+      if (noNeighbors) {
+        message = `AP ${apPart} has no LLDP neighbors — cannot verify VLAN ${vlanId} trunk for SSID ${ssid}`;
+      } else if (noMembership) {
+        message = `AP ${apPart} — LLDP neighbor lacks VLAN membership data for VLAN ${vlanId} (SSID ${ssid})`;
+      } else {
+        message = `AP ${apPart} missing VLAN ${vlanId} on uplink trunk for SSID ${ssid}`;
+      }
 
       alerts.push({
         id: `vlan_trunk:${apPart}:${vlanId}`,
         severity,
         checkName: 'vlan_trunk',
-        message: `AP ${apPart} missing VLAN ${vlanId} on uplink trunk for SSID ${ssid}`,
+        message,
         target: apPart,
         context: {
           apSerial: apPart,
@@ -141,9 +151,15 @@ export async function runVlanTrunkCheck(opts) {
     }
   }
 
-  evidence.summary = alerts.length
-    ? `${alerts.length} trunk issue(s) found across ${wlanVlans.length} WLAN(s) and ${lldpByAp.length} AP(s).`
-    : `All ${wlanVlans.length} WLAN VLAN(s) verified on ${lldpByAp.length} AP trunk(s). No issues.`;
+  const warnings = alerts.filter((a) => a.severity === 'warning').length;
+  const infos = alerts.filter((a) => a.severity === 'info').length;
+  if (warnings > 0) {
+    evidence.summary = `${warnings} trunk mismatch(es) found across ${wlanVlans.length} WLAN(s) and ${lldpByAp.length} AP(s).${infos ? ` ${infos} informational (incomplete LLDP data).` : ''}`;
+  } else if (infos > 0) {
+    evidence.summary = `No trunk mismatches. ${infos} AP(s) have incomplete LLDP data — cannot fully verify. ${wlanVlans.length} WLAN(s), ${lldpByAp.length} AP(s) checked.`;
+  } else {
+    evidence.summary = `All ${wlanVlans.length} WLAN VLAN(s) verified on ${lldpByAp.length} AP trunk(s). No mismatches found.`;
+  }
 
   return { alerts, evidence };
 }
