@@ -153,7 +153,7 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
         <thead><tr className="bg-muted/40 text-muted-foreground">
           <th className="text-left px-2.5 py-1.5 font-medium">DHCP Server</th>
           <th className="text-left px-2.5 py-1.5 font-medium">VLANs</th>
-          <th className="text-center px-2.5 py-1.5 font-medium">Ping</th>
+          <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
         </tr></thead>
         <tbody>
           {results.map((r) => (
@@ -174,8 +174,9 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const results = (evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; type?: string; reachable: boolean }>;
+  const results = (evidence.probeResults ?? evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; role?: string; reachable: boolean }>;
   const policiesFound = (evidence.policiesFound ?? []) as Array<{ name: string; authServers: number; acctServers: number }>;
+  const skipped = (evidence.skippedLoopback ?? 0) as number;
   return (
     <div className="space-y-2">
       {/* Policies scanned */}
@@ -203,23 +204,21 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
         </div>
       )}
 
-      {/* Connect results */}
+      {/* Reachability results */}
       {results.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/40 text-muted-foreground">
-              <th className="text-left px-2.5 py-1.5 font-medium">RADIUS Server</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">Port</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Policies</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">TCP</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Role</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Policy</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
             </tr></thead>
             <tbody>
               {results.map((r) => (
                 <tr key={`${r.host}:${r.port}`} className="border-t border-border/20">
                   <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
-                  <td className="px-2.5 py-1.5 text-center text-muted-foreground">{r.port}</td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.type ?? 'auth'}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.role ?? 'Authentication'}</td>
                   <td className="px-2.5 py-1.5 text-muted-foreground">{r.policyNames.join(', ')}</td>
                   <td className="px-2.5 py-1.5 text-center">
                     {r.reachable
@@ -230,6 +229,12 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {skipped > 0 && (
+        <div className="text-[10px] text-muted-foreground/70">
+          {skipped} loopback server{skipped > 1 ? 's' : ''} excluded from verification.
         </div>
       )}
     </div>
