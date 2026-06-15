@@ -643,7 +643,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
 
         <TabsContent value="infrastructure" className="mt-4">
           <SentinelInfraTab
-            onBadgeUpdate={(data) => setSentinelBadge(data)}
+            onBadgeUpdate={setSentinelBadge}
           />
         </TabsContent>
       </Tabs>

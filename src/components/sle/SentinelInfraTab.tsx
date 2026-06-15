@@ -3,7 +3,7 @@
  * Shows check cards, controls (Run Now, schedule), and an alert timeline.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import {
@@ -137,14 +137,16 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
   const alerts = data?.alerts ?? [];
 
   // Push badge data to parent whenever data changes
-  if (onBadgeUpdate && status) {
-    const maxSeverity = alerts.some((a) => a.severity === 'critical')
-      ? 'critical'
-      : alerts.some((a) => a.severity === 'warning')
-        ? 'warning'
-        : 'ok';
-    onBadgeUpdate({ alertCount: status.activeAlerts, maxSeverity });
-  }
+  useEffect(() => {
+    if (onBadgeUpdate && status) {
+      const maxSeverity = alerts.some((a) => a.severity === 'critical')
+        ? 'critical'
+        : alerts.some((a) => a.severity === 'warning')
+          ? 'warning'
+          : 'ok';
+      onBadgeUpdate({ alertCount: status.activeAlerts, maxSeverity });
+    }
+  }, [status, alerts, onBadgeUpdate]);
 
   // ── Handlers ──
 
