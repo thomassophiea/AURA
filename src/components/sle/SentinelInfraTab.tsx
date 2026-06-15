@@ -54,7 +54,7 @@ const CHECK_CONFIG: Record<
   string,
   { label: string; icon: React.ComponentType<{ className?: string }>; description: string }
 > = {
-  vlan_trunk: { label: 'VLAN Trunk', icon: Network, description: 'Validates trunk VLAN presence on APs' },
+  vlan_trunk: { label: 'Missing VLAN', icon: Network, description: 'Validates VLAN presence on AP uplink trunks' },
   dhcp_reachability: { label: 'DHCP Reachability', icon: Server, description: 'Tests DHCP server reachability' },
   radius_reachability: { label: 'RADIUS Reachability', icon: Shield, description: 'Tests RADIUS server reachability' },
   client_dhcp_failure: { label: 'Client DHCP Failure', icon: Users, description: 'Monitors per-SSID DHCP failure rates' },
