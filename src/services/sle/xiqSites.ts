@@ -44,7 +44,19 @@ export async function ensureXiqSession(siteGroupId: string): Promise<boolean> {
     }
   }
 
-  // 3. Server-mediated lab/demo login (creds from env XIQ_DEMO_*; opt-in).
+  // 3. Pending credentials entered at login — apply to this site group + persist.
+  const pending = xiqService.getPendingCredentials();
+  if (pending?.email && pending?.password) {
+    try {
+      await xiqService.login(pending.email, pending.password, pending.region || 'global', siteGroupId);
+      xiqService.saveCredentials(siteGroupId, pending.email, pending.password, pending.region || 'global');
+      return true;
+    } catch {
+      /* fall through to env-mediated login */
+    }
+  }
+
+  // 4. Server-mediated lab/demo login (creds from env XIQ_DEMO_*; opt-in).
   try {
     await xiqService.login('', '', 'global', siteGroupId);
     return true;

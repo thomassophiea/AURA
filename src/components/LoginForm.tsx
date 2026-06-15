@@ -19,6 +19,7 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import extremeNetworksLogo from 'figma:asset/f6780e138108fdbc214f37376d5cea1e3356ac35.png';
 import { apiService } from '../services/api';
 import { tenantService, Controller } from '../services/tenantService';
+import { xiqService, XIQ_REGION_LABELS, XIQ_REGION_ORDER, type XIQRegion } from '../services/xiqService';
 import { toast } from 'sonner';
 
 interface LoginFormProps {
@@ -131,6 +132,12 @@ export function LoginForm({
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Optional XIQ (ExtremeCloud IQ) credentials — applied to site groups after login.
+  const [showXiq, setShowXiq] = useState(false);
+  const [xiqEmail, setXiqEmail] = useState('');
+  const [xiqPassword, setXiqPassword] = useState('');
+  const [xiqRegion, setXiqRegion] = useState<XIQRegion>('global');
 
   // Load controllers on mount
   useEffect(() => {
@@ -327,6 +334,12 @@ export function LoginForm({
           connection_status: 'connected',
           last_connected_at: new Date().toISOString(),
         });
+      }
+
+      // Optional XIQ: stash credentials so they're applied to site groups once
+      // they load (ensureXiqSession uses them, then persists per site group).
+      if (xiqEmail.trim() && xiqPassword) {
+        xiqService.savePendingCredentials(xiqEmail.trim(), xiqPassword, xiqRegion);
       }
 
       onLoginSuccess();
@@ -586,6 +599,57 @@ export function LoginForm({
                     disabled={isLoading}
                     autoComplete="current-password"
                   />
+
+                  {/* Optional XIQ (ExtremeCloud IQ) login */}
+                  <div className="rounded-md border border-border/60 bg-muted/20">
+                    <button
+                      type="button"
+                      onClick={() => setShowXiq((s) => !s)}
+                      className="flex w-full items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Globe className="h-3.5 w-3.5 text-cyan-500" />
+                        Connect ExtremeCloud IQ (optional)
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide">
+                        {showXiq ? 'Hide' : 'Add'}
+                      </span>
+                    </button>
+                    {showXiq && (
+                      <div className="space-y-3 px-3 pb-3 pt-1">
+                        <FloatingInput
+                          id="xiqEmail"
+                          label="XIQ Email"
+                          value={xiqEmail}
+                          onChange={(e) => setXiqEmail(e.target.value)}
+                          disabled={isLoading}
+                          autoComplete="off"
+                        />
+                        <FloatingInput
+                          id="xiqPassword"
+                          type="password"
+                          label="XIQ Password"
+                          value={xiqPassword}
+                          onChange={(e) => setXiqPassword(e.target.value)}
+                          disabled={isLoading}
+                          autoComplete="off"
+                        />
+                        <select
+                          value={xiqRegion}
+                          onChange={(e) => setXiqRegion(e.target.value as XIQRegion)}
+                          disabled={isLoading}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          aria-label="XIQ Region"
+                        >
+                          {XIQ_REGION_ORDER.map((r) => (
+                            <option key={r} value={r}>
+                              {XIQ_REGION_LABELS[r]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
 
                   {error && (
                     <Alert variant="destructive">

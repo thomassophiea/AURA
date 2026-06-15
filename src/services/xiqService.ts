@@ -158,6 +158,31 @@ class XIQService {
     }
   }
 
+  // ── Pending credentials (entered at login, applied to site groups lazily) ──
+  private readonly PENDING_KEY = 'xiq_pending_creds';
+
+  savePendingCredentials(email: string, password: string, region: XIQRegion): void {
+    try {
+      localStorage.setItem(this.PENDING_KEY, btoa(JSON.stringify({ email, password, region })));
+    } catch {
+      // ignore
+    }
+  }
+
+  getPendingCredentials(): XIQSavedCredentials | null {
+    try {
+      const raw = localStorage.getItem(this.PENDING_KEY);
+      if (!raw) return null;
+      return JSON.parse(atob(raw)) as XIQSavedCredentials;
+    } catch {
+      return null;
+    }
+  }
+
+  clearPendingCredentials(): void {
+    localStorage.removeItem(this.PENDING_KEY);
+  }
+
   clearCredentials(siteGroupId: string): void {
     localStorage.removeItem(`${this.CREDS_PREFIX}${siteGroupId}`);
     this.clearToken(siteGroupId);
