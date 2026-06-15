@@ -13,7 +13,15 @@
  * 400s and we simply surface no XIQ sites. Region defaults to 'global'.
  */
 
-import { xiqService } from '../xiqService';
+import { xiqService, type XIQRegion } from '../xiqService';
+
+// DEMO auto-connect — lab credentials so XIQ "just works" with no env/UI setup.
+// Lab/demo only; remove (or move to env) for production.
+const DEMO_XIQ: { email: string; password: string; region: XIQRegion } = {
+  email: 'mblack+1@extremenetworks.com',
+  password: 'FNSchj182!',
+  region: 'global',
+};
 
 export interface XiqSite {
   /** XIQ location id (numeric, stringified). */
@@ -56,9 +64,9 @@ export async function ensureXiqSession(siteGroupId: string): Promise<boolean> {
     }
   }
 
-  // 4. Server-mediated lab/demo login (creds from env XIQ_DEMO_*; opt-in).
+  // 4. DEMO auto-connect with hardcoded lab credentials (works with no env/UI).
   try {
-    await xiqService.login('', '', 'global', siteGroupId);
+    await xiqService.login(DEMO_XIQ.email, DEMO_XIQ.password, DEMO_XIQ.region, siteGroupId);
     return true;
   } catch {
     return false;
