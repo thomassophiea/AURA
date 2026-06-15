@@ -110,8 +110,24 @@ function extractRadiusServers(policies) {
  * Run RADIUS reachability checks. Returns array of alert descriptors.
  */
 export async function runRadiusReachabilityCheck(opts) {
-  const policies = await fetchXcc('/v1/aaapolicy', opts);
+  const [policies, services] = await Promise.all([
+    fetchXcc('/v1/aaapolicy', opts),
+    fetchXcc('/v1/services', opts),
+  ]);
   const policyArr = Array.isArray(policies?.data) ? policies.data : Array.isArray(policies) ? policies : [];
+  const svcArr = Array.isArray(services?.data) ? services.data : Array.isArray(services) ? services : [];
+
+  // Map policy ID/name -> WLANs that reference it
+  const wlansByPolicy = new Map();
+  for (const svc of svcArr) {
+    const svcName = svc.serviceName ?? svc.name ?? svc.ssid;
+    const policyRef = svc.aaaPolicyId ?? svc.aaaPolicy ?? svc.aaaProfileId;
+    if (policyRef) {
+      const key = String(policyRef);
+      if (!wlansByPolicy.has(key)) wlansByPolicy.set(key, []);
+      wlansByPolicy.get(key).push(svcName);
+    }
+  }
   const servers = extractRadiusServers(policies);
   const alerts = [];
   const probeResults = [];
@@ -142,14 +158,24 @@ export async function runRadiusReachabilityCheck(opts) {
 
   const evidence = {
     serversFound: servers.size,
-    policiesScanned: policyArr.length,
     skippedLoopback: skippedCount,
-    policiesFound: policyArr.map((p) => ({
-      name: p.name ?? p.id,
-      authServers: (p.authenticationRadiusServers ?? []).length,
-      acctServers: (p.accountingRadiusServers ?? []).length,
+    policies: policyArr.map((p) => {
+      const pName = p.name ?? p.id;
+      const wlans = wlansByPolicy.get(String(p.id)) ?? wlansByPolicy.get(pName) ?? [];
+      return {
+        name: pName,
+        authServers: (p.authenticationRadiusServers ?? []).length,
+        acctServers: (p.accountingRadiusServers ?? []).length,
+        usedByWlans: wlans.length > 0 ? wlans.join(', ') : 'Not assigned',
+      };
+    }),
+    reachabilityResults: probeResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)).map((r) => ({
+      server: r.host,
+      port: r.port,
+      role: r.role,
+      policy: r.policyNames.join(', '),
+      reachable: r.reachable,
     })),
-    probeResults: probeResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
     summary: servers.size === 0
       ? `${policyArr.length} AAA policy(s) scanned.${skippedCount ? ` ${skippedCount} loopback server(s) excluded.` : ''} No external RADIUS servers to verify.`
       : `${reachableCount}/${servers.size} RADIUS server(s) verified reachable.${skippedCount ? ` ${skippedCount} loopback excluded.` : ''}`,

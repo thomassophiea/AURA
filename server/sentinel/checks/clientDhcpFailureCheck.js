@@ -8,13 +8,25 @@ const CRITICAL_THRESHOLD = 0.15; // 15%
  * Groups by SSID and calculates failure rate.
  */
 export async function runClientDhcpFailureCheck(opts) {
-  const stations = await fetchXcc('/v1/stations', opts);
+  const [stations, services] = await Promise.all([
+    fetchXcc('/v1/stations', opts),
+    fetchXcc('/v1/services', opts),
+  ]);
   const arr = Array.isArray(stations?.data) ? stations.data : Array.isArray(stations) ? stations : [];
+  const svcArr = Array.isArray(services?.data) ? services.data : Array.isArray(services) ? services : [];
+
+  // Build serviceId -> SSID name lookup
+  const ssidById = new Map();
+  for (const svc of svcArr) {
+    if (svc.id) ssidById.set(String(svc.id), svc.serviceName ?? svc.name ?? svc.ssid);
+  }
 
   // Group clients by SSID
   const bySsid = new Map(); // ssid -> { total, noIp }
   for (const client of arr) {
-    const ssid = client.ssid ?? client.serviceName ?? 'unknown';
+    const ssid = client.ssid ?? client.serviceName
+      ?? (client.serviceId ? ssidById.get(String(client.serviceId)) : null)
+      ?? client.accessPointName ?? client.macAddress ?? 'Unassociated';
     if (!bySsid.has(ssid)) bySsid.set(ssid, { total: 0, noIp: 0 });
     const bucket = bySsid.get(ssid);
     bucket.total += 1;

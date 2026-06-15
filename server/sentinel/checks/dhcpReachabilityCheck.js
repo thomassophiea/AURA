@@ -82,20 +82,22 @@ export async function runDhcpReachabilityCheck(opts) {
   );
 
   const reachableCount = pingResults.filter((r) => r.reachable).length;
+  const relayCount = topoArr.filter((t) => t.dhcpMode === 'DHCPRelay' || t.dhcpMode === 'DHCP Relay').length;
   const evidence = {
     serversFound: servers.size,
-    topologiesScanned: topoArr.length,
-    topologiesFound: topoArr.map((t) => ({
-      name: t.name,
-      vlanid: t.vlanid,
-      dhcpMode: t.dhcpMode ?? 'unknown',
-      dhcpServers: t.dhcpServers ?? null,
-      foreignIpAddress: t.foreignIpAddress ?? null,
+    networks: topoArr.map((t) => ({
+      name: t.name ?? `VLAN ${t.vlanid}`,
+      vlanId: t.vlanid,
+      dhcpMode: t.dhcpMode === 'DHCPRelay' || t.dhcpMode === 'DHCP Relay' ? 'Relay' : t.dhcpMode === 'DHCPServer' ? 'Server' : t.dhcpMode ?? 'Local',
     })),
-    pingResults: pingResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
+    reachabilityResults: pingResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)).map((r) => ({
+      server: r.host,
+      usedBy: r.vlanNames.join(', '),
+      reachable: r.reachable,
+    })),
     summary: servers.size === 0
-      ? `${topoArr.length} topology(s) scanned. No DHCP relay servers found. ${topoArr.filter((t) => t.dhcpMode === 'DHCPRelay').length} topology(s) in relay mode.`
-      : `${reachableCount}/${servers.size} DHCP relay server(s) reachable via ICMP ping.`,
+      ? `${topoArr.length} network(s) scanned. ${relayCount} use DHCP relay. No external relay servers to verify.`
+      : `${reachableCount}/${servers.size} DHCP relay server(s) verified reachable.`,
   };
 
   return { alerts, evidence };

@@ -145,58 +145,93 @@ function EvidencePanel({ checkId, evidence }: { checkId: string; evidence: Check
 }
 
 function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const results = (evidence.pingResults ?? []) as Array<{ host: string; vlanNames: string[]; reachable: boolean }>;
-  if (!results.length) return null;
+  const networks = (evidence.networks ?? []) as Array<{ name: string; vlanId: number; dhcpMode: string }>;
+  const results = (evidence.reachabilityResults ?? []) as Array<{ server: string; usedBy: string; reachable: boolean }>;
   return (
-    <div className="rounded border border-border/30 overflow-hidden">
-      <table className="w-full text-[11px]">
-        <thead><tr className="bg-muted/40 text-muted-foreground">
-          <th className="text-left px-2.5 py-1.5 font-medium">DHCP Server</th>
-          <th className="text-left px-2.5 py-1.5 font-medium">VLANs</th>
-          <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
-        </tr></thead>
-        <tbody>
-          {results.map((r) => (
-            <tr key={r.host} className="border-t border-border/20">
-              <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
-              <td className="px-2.5 py-1.5 text-muted-foreground">{r.vlanNames.join(', ')}</td>
-              <td className="px-2.5 py-1.5 text-center">
-                {r.reachable
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                  : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-2">
+      {/* Network DHCP modes */}
+      {networks.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Networks ({networks.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1 font-medium">Network</th>
+              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+              <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
+            </tr></thead>
+            <tbody>
+              {networks.map((n) => (
+                <tr key={n.name} className="border-t border-border/20">
+                  <td className="px-2.5 py-1">{n.name}</td>
+                  <td className="px-2.5 py-1 text-center">{n.vlanId}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground">{n.dhcpMode}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Relay server reachability */}
+      {results.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Relay Server Reachability
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Used By</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
+            </tr></thead>
+            <tbody>
+              {results.map((r) => (
+                <tr key={r.server} className="border-t border-border/20">
+                  <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.usedBy}</td>
+                  <td className="px-2.5 py-1.5 text-center">
+                    {r.reachable
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
 
 function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const results = (evidence.probeResults ?? evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; role?: string; reachable: boolean }>;
-  const policiesFound = (evidence.policiesFound ?? []) as Array<{ name: string; authServers: number; acctServers: number }>;
+  const policies = (evidence.policies ?? []) as Array<{ name: string; authServers: number; acctServers: number; usedByWlans: string }>;
+  const results = (evidence.reachabilityResults ?? []) as Array<{ server: string; port: number; role: string; policy: string; reachable: boolean }>;
   const skipped = (evidence.skippedLoopback ?? 0) as number;
   return (
     <div className="space-y-2">
-      {/* Policies scanned */}
-      {policiesFound.length > 0 && (
+      {/* Policies with WLAN assignments */}
+      {policies.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            AAA Policies ({policiesFound.length})
+            AAA Policies ({policies.length})
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
               <th className="text-left px-2.5 py-1 font-medium">Policy</th>
               <th className="text-center px-2.5 py-1 font-medium">Auth Servers</th>
               <th className="text-center px-2.5 py-1 font-medium">Acct Servers</th>
+              <th className="text-left px-2.5 py-1 font-medium">Used By</th>
             </tr></thead>
             <tbody>
-              {policiesFound.map((p) => (
+              {policies.map((p) => (
                 <tr key={p.name} className="border-t border-border/20">
-                  <td className="px-2.5 py-1 font-mono">{p.name}</td>
+                  <td className="px-2.5 py-1">{p.name}</td>
                   <td className="px-2.5 py-1 text-center">{p.authServers}</td>
                   <td className="px-2.5 py-1 text-center">{p.acctServers}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground">{p.usedByWlans}</td>
                 </tr>
               ))}
             </tbody>
@@ -207,8 +242,11 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
       {/* Reachability results */}
       {results.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Server Reachability
+          </div>
           <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/40 text-muted-foreground">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
               <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
               <th className="text-left px-2.5 py-1.5 font-medium">Role</th>
               <th className="text-left px-2.5 py-1.5 font-medium">Policy</th>
@@ -216,10 +254,10 @@ function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
             </tr></thead>
             <tbody>
               {results.map((r) => (
-                <tr key={`${r.host}:${r.port}`} className="border-t border-border/20">
-                  <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.role ?? 'Authentication'}</td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.policyNames.join(', ')}</td>
+                <tr key={`${r.server}:${r.port}`} className="border-t border-border/20">
+                  <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.role}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.policy}</td>
                   <td className="px-2.5 py-1.5 text-center">
                     {r.reachable
                       ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
@@ -284,64 +322,60 @@ function ClientDhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const wlans = (evidence.wlansChecked ?? []) as Array<{ ssid: string; vlanId: number; topologyName: string }>;
-  const topos = (evidence.topologiesFound ?? []) as Array<{ id: string; name: string; vlanid: number }>;
-  const svcs = (evidence.servicesFound ?? []) as Array<{ name: string; defaultTopology: string | null }>;
-  const lldp = (evidence.lldpResults ?? []) as Array<{ apSerial: string; apName?: string; neighborCount: number }>;
+  const mappings = (evidence.wlanMappings ?? []) as Array<{ wlan: string; network: string | null; vlanId: number | null }>;
+  const networks = (evidence.networks ?? []) as Array<{ name: string; vlanId: number; dhcpMode: string }>;
+  const lldp = (evidence.lldpResults ?? []) as Array<{ accessPoint: string; neighbors: number }>;
   return (
     <div className="space-y-2">
-      {/* Services -> Topology mapping */}
-      {svcs.length > 0 && (
+      {/* WLAN -> Network -> VLAN mapping */}
+      {mappings.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Services ({svcs.length}) &rarr; Topology Mapping
+            WLAN Assignments ({mappings.length})
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
               <th className="text-left px-2.5 py-1 font-medium">WLAN</th>
-              <th className="text-left px-2.5 py-1 font-medium">Topology Ref</th>
-              <th className="text-center px-2.5 py-1 font-medium">Resolved</th>
+              <th className="text-left px-2.5 py-1 font-medium">Network</th>
+              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
             </tr></thead>
             <tbody>
-              {svcs.map((s) => {
-                const matched = wlans.find((w) => w.ssid === s.name);
-                return (
-                  <tr key={s.name} className="border-t border-border/20">
-                    <td className="px-2.5 py-1 font-mono">{s.name}</td>
-                    <td className="px-2.5 py-1 text-muted-foreground font-mono text-[10px] truncate max-w-[180px]">
-                      {s.defaultTopology ?? <span className="italic text-amber-500">none</span>}
-                    </td>
-                    <td className="px-2.5 py-1 text-center">
-                      {matched
-                        ? <span className="text-emerald-500">VLAN {matched.vlanId}</span>
-                        : <span className="text-amber-500">--</span>}
-                    </td>
-                  </tr>
-                );
-              })}
+              {mappings.map((m) => (
+                <tr key={m.wlan} className="border-t border-border/20">
+                  <td className="px-2.5 py-1">{m.wlan}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground">
+                    {m.network ?? <span className="italic text-amber-500">Not assigned</span>}
+                  </td>
+                  <td className="px-2.5 py-1 text-center">
+                    {m.vlanId != null
+                      ? <span className="text-emerald-500">{m.vlanId}</span>
+                      : <span className="text-amber-500">--</span>}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Topologies */}
-      {topos.length > 0 && (
+      {/* Networks */}
+      {networks.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Topologies ({topos.length})
+            Networks ({networks.length})
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">Name</th>
-              <th className="text-center px-2.5 py-1 font-medium">VLAN ID</th>
-              <th className="text-left px-2.5 py-1 font-medium">UUID</th>
+              <th className="text-left px-2.5 py-1 font-medium">Network</th>
+              <th className="text-center px-2.5 py-1 font-medium">VLAN</th>
+              <th className="text-left px-2.5 py-1 font-medium">DHCP Mode</th>
             </tr></thead>
             <tbody>
-              {topos.map((t) => (
-                <tr key={t.id} className="border-t border-border/20">
-                  <td className="px-2.5 py-1 font-mono">{t.name}</td>
-                  <td className="px-2.5 py-1 text-center">{t.vlanid}</td>
-                  <td className="px-2.5 py-1 text-muted-foreground font-mono text-[10px] truncate max-w-[180px]">{t.id}</td>
+              {networks.map((n) => (
+                <tr key={n.name} className="border-t border-border/20">
+                  <td className="px-2.5 py-1">{n.name}</td>
+                  <td className="px-2.5 py-1 text-center">{n.vlanId}</td>
+                  <td className="px-2.5 py-1 text-muted-foreground">{n.dhcpMode}</td>
                 </tr>
               ))}
             </tbody>
@@ -353,20 +387,20 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
       {lldp.length > 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            AP LLDP Results ({lldp.length} of {(evidence.totalAps as number) ?? 0})
+            Access Points Scanned ({lldp.length} of {(evidence.totalAps as number) ?? 0})
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
               <th className="text-left px-2.5 py-1 font-medium">Access Point</th>
-              <th className="text-center px-2.5 py-1 font-medium">LLDP Neighbors</th>
+              <th className="text-center px-2.5 py-1 font-medium">Uplink Neighbors</th>
             </tr></thead>
             <tbody>
               {lldp.map((l) => (
-                <tr key={l.apSerial} className="border-t border-border/20">
-                  <td className="px-2.5 py-1 font-mono">{l.apName ?? l.apSerial}</td>
+                <tr key={l.accessPoint} className="border-t border-border/20">
+                  <td className="px-2.5 py-1">{l.accessPoint}</td>
                   <td className="px-2.5 py-1 text-center">
-                    {l.neighborCount > 0
-                      ? <span className="text-emerald-500">{l.neighborCount}</span>
+                    {l.neighbors > 0
+                      ? <span className="text-emerald-500">{l.neighbors}</span>
                       : <span className="text-muted-foreground">0</span>}
                   </td>
                 </tr>

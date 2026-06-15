@@ -92,15 +92,31 @@ export async function runVlanTrunkCheck(opts) {
   }
   const displayAp = (serial) => nameBySerial.get(serial) ?? serial;
 
+  // Resolve service -> topology name for friendly display
+  const topoById = new Map();
+  for (const t of topoList) {
+    if (t.id) topoById.set(String(t.id), t.name ?? `VLAN ${t.vlanid}`);
+  }
+
   const evidence = {
-    wlansChecked: wlanVlans.map((w) => ({ ssid: w.ssid, vlanId: w.vlanId, topologyName: w.topologyName })),
-    topologiesFound: topoList.map((t) => ({ id: t.id, name: t.name, vlanid: t.vlanid })),
-    servicesFound: serviceList.map((s) => ({
-      name: s.serviceName ?? s.name ?? s.ssid,
-      defaultTopology: s.defaultTopology ?? null,
+    wlansChecked: wlanVlans.map((w) => ({ ssid: w.ssid, vlanId: w.vlanId, network: w.topologyName })),
+    networks: topoList.map((t) => ({
+      name: t.name ?? `VLAN ${t.vlanid}`,
+      vlanId: t.vlanid,
+      dhcpMode: t.dhcpMode ?? 'Local',
     })),
+    wlanMappings: serviceList.map((s) => {
+      const svcName = s.serviceName ?? s.name ?? s.ssid;
+      const topoRef = s.defaultTopology ?? s.topologyId ?? s.topology;
+      const topoName = topoRef ? (typeof topoRef === 'object' ? topoRef.name : topoById.get(String(topoRef))) : null;
+      const matched = wlanVlans.find((w) => w.ssid === svcName);
+      return {
+        wlan: svcName,
+        network: topoName ?? null,
+        vlanId: matched?.vlanId ?? null,
+      };
+    }),
     apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => ({
-      serial: apSerial(ap),
       name: apName(ap) ?? apSerial(ap),
     })),
     totalAps: apList.length,
@@ -116,9 +132,8 @@ export async function runVlanTrunkCheck(opts) {
   // Fetch LLDP once for the batch of APs
   const lldpByAp = await fetchLldpBatched(aps, opts);
   evidence.lldpResults = lldpByAp.map(({ apSerial: serial, neighbors }) => ({
-    apSerial: serial,
-    apName: displayAp(serial),
-    neighborCount: neighbors.length,
+    accessPoint: displayAp(serial),
+    neighbors: neighbors.length,
   }));
 
   if (!lldpByAp.length) {
