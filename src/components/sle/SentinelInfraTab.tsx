@@ -62,11 +62,11 @@ const CHECK_CONFIG: Record<
 
 const SCHEDULE_OPTIONS = [
   { value: '0', label: 'Off' },
-  { value: '60000', label: '1 min' },
-  { value: '120000', label: '2 min' },
-  { value: '300000', label: '5 min' },
-  { value: '600000', label: '10 min' },
-  { value: '1800000', label: '30 min' },
+  { value: '3600000', label: 'Hourly' },
+  { value: '43200000', label: '12 hours' },
+  { value: '86400000', label: '24 hours' },
+  { value: '604800000', label: '7 days' },
+  { value: '2592000000', label: '30 days' },
 ];
 
 // ── Severity helpers ──

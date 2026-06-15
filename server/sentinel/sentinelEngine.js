@@ -53,9 +53,13 @@ export class SentinelEngine {
       { name: 'vlan_trunk', fn: runVlanTrunkCheck },
     ];
 
+    // Mark ALL checks as running upfront so the UI shows them all spinning
+    for (const { name } of checks) {
+      this.#checkStatus[name] = { ...this.#checkStatus[name], status: 'running' };
+    }
+
     for (const { name, fn } of checks) {
       try {
-        this.#checkStatus[name].status = 'running';
         const result = await fn(opts);
 
         // Checks return { alerts, evidence } or plain alerts array (backwards compat)
