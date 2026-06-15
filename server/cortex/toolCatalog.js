@@ -276,6 +276,17 @@ export const TOOLS = {
     method: 'RESOLVER',
     buildPath: () => '',
   },
+
+  getSentinelAlerts: {
+    spec: {
+      name: 'getSentinelAlerts',
+      description:
+        'Return active Sentinel infrastructure alerts — continuous background monitoring of VLAN trunks (LLDP), DHCP server reachability, RADIUS server reachability, and client DHCP failure rates. Use when operator asks about infrastructure health, "are there any issues", "is DHCP working", "any RADIUS problems", or "VLAN trunk status".',
+      parameters: { type: 'object', properties: {}, additionalProperties: false },
+    },
+    method: 'RESOLVER',
+    buildPath: () => '',
+  },
 };
 
 /** OpenAI-compatible tool definitions for createLlmProvider({ tools }). */
