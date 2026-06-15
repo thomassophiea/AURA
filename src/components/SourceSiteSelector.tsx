@@ -10,7 +10,8 @@
  *   <xiq site>       = buildXiqSiteValue(siteGroupId, locationId)
  */
 
-import { Building } from 'lucide-react';
+import { useState } from 'react';
+import { Building, Cloud } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -22,6 +23,8 @@ import {
   SelectValue,
 } from './ui/select';
 import { buildXiqSiteValue, buildXiqAllSitesValue } from '../services/siteContextService';
+import { useAppContext } from '@/contexts/AppContext';
+import { ConnectXiqDialog } from './ConnectXiqDialog';
 import type { Site } from '../services/api';
 import type { XiqSite } from '../services/sle/xiqSites';
 
@@ -47,8 +50,22 @@ export function SourceSiteSelector({
   triggerClassName = 'w-48',
   osSiteValue = 'name',
 }: SourceSiteSelectorProps) {
+  const { siteGroups, siteGroup } = useAppContext();
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  // A selector value can't open a dialog directly; use a sentinel.
+  const CONNECT_XIQ = '__connect_xiq__';
+  const handleChange = (v: string) => {
+    if (v === CONNECT_XIQ) {
+      setConnectOpen(true);
+      return;
+    }
+    onValueChange(v);
+  };
+
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <>
+    <Select value={value} onValueChange={handleChange}>
       <SelectTrigger className={triggerClassName}>
         <Building className="mr-2 h-4 w-4" />
         <SelectValue placeholder="Select Site" />
@@ -91,7 +108,25 @@ export function SourceSiteSelector({
             })}
           </SelectGroup>
         )}
+        {siteGroups.length > 0 && (
+          <>
+            <SelectSeparator />
+            <SelectItem value={CONNECT_XIQ} className="text-cyan-500">
+              <span className="flex items-center gap-1.5">
+                <Cloud className="h-3.5 w-3.5" />
+                {xiqSites.length > 0 ? 'Reconnect XIQ…' : 'Connect XIQ…'}
+              </span>
+            </SelectItem>
+          </>
+        )}
       </SelectContent>
     </Select>
+    <ConnectXiqDialog
+      open={connectOpen}
+      onOpenChange={setConnectOpen}
+      siteGroups={siteGroups}
+      defaultSiteGroupId={siteGroup?.id}
+    />
+    </>
   );
 }

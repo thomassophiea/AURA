@@ -23,6 +23,14 @@ export function useSourceSites(): SourceSites {
   const sitesCacheKey = navigationScope === 'global' ? 'org' : (siteGroup?.id ?? 'default');
   const [sites, setSites] = useState<Site[]>(() => readCachedSites(sitesCacheKey));
   const [xiqSites, setXiqSites] = useState<XiqSite[]>([]);
+  // Bumped when XIQ is connected via the UI so the XIQ site list reloads.
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const onConnected = () => setRefreshTick((t) => t + 1);
+    window.addEventListener('xiq-connected', onConnected);
+    return () => window.removeEventListener('xiq-connected', onConnected);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -84,7 +92,7 @@ export function useSourceSites(): SourceSites {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteGroup?.id, navigationScope, siteGroups, sitesCacheKey]);
+  }, [siteGroup?.id, navigationScope, siteGroups, sitesCacheKey, refreshTick]);
 
   return { sites, xiqSites };
 }
