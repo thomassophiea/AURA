@@ -10,6 +10,7 @@ export class SentinelEngine {
   #alertStore = new AlertStore();
   #authToken = null;
   #controllerUrl = null;
+  #siteId = null;
   #fetchFn = null;
   #timer = null;
   #authExpired = false;
@@ -23,9 +24,10 @@ export class SentinelEngine {
   };
   #checkEvidence = {};
 
-  configure({ authToken, controllerUrl, fetchFn } = {}) {
+  configure({ authToken, controllerUrl, siteId, fetchFn } = {}) {
     if (authToken) this.#authToken = authToken;
     if (controllerUrl) this.#controllerUrl = controllerUrl;
+    if (siteId !== undefined) this.#siteId = siteId || null;
     if (fetchFn) this.#fetchFn = fetchFn;
     this.#authExpired = false;
   }
@@ -34,6 +36,7 @@ export class SentinelEngine {
     return {
       authToken: this.#authToken,
       controllerUrl: this.#controllerUrl,
+      siteId: this.#siteId,
       fetchFn: this.#fetchFn ?? null,
     };
   }
@@ -76,7 +79,11 @@ export class SentinelEngine {
         this.#alertStore.resolveAbsent(name, activeIds);
 
         if (evidence) {
-          this.#checkEvidence[name] = { ...evidence, collectedAt: new Date().toISOString() };
+          this.#checkEvidence[name] = {
+            ...evidence,
+            collectedAt: new Date().toISOString(),
+            ...(this.#siteId ? { siteScoped: true } : {}),
+          };
         }
 
         this.#checkStatus[name] = {
@@ -149,6 +156,7 @@ export class SentinelEngine {
     return {
       configured: !!this.#controllerUrl,
       polling: this.#timer !== null,
+      siteId: this.#siteId,
       lastPollAt: this.#lastPollAt,
       authExpired: this.#authExpired,
       activeAlerts: this.#alertStore.getActive().length,

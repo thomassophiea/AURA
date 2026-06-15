@@ -644,6 +644,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         <TabsContent value="infrastructure" className="mt-4">
           <SentinelInfraTab
             onBadgeUpdate={setSentinelBadge}
+            siteId={selectedSite !== 'all' ? selectedSite : undefined}
           />
         </TabsContent>
       </Tabs>

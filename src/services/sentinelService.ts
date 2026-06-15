@@ -92,15 +92,18 @@ export async function getAllAlerts(
   return sentinelFetch(`/api/sentinel/alerts/all${qs ? `?${qs}` : ''}`);
 }
 
-export async function configure(opts: { intervalMs?: number }): Promise<{ ok: boolean; status: SentinelStatus }> {
+export async function configure(opts: { intervalMs?: number; siteId?: string }): Promise<{ ok: boolean; status: SentinelStatus }> {
   return sentinelFetch('/api/sentinel/configure', {
     method: 'POST',
     body: JSON.stringify(opts),
   });
 }
 
-export async function triggerPoll(): Promise<{ results: Record<string, unknown>; status: SentinelStatus }> {
-  return sentinelFetch('/api/sentinel/poll', { method: 'POST' });
+export async function triggerPoll(siteId?: string): Promise<{ results: Record<string, unknown>; status: SentinelStatus }> {
+  return sentinelFetch('/api/sentinel/poll', {
+    method: 'POST',
+    body: JSON.stringify(siteId ? { siteId } : {}),
+  });
 }
 
 export async function stop(): Promise<{ ok: boolean; status: SentinelStatus }> {

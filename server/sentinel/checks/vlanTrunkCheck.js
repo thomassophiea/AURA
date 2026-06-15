@@ -72,10 +72,11 @@ async function fetchLldpBatched(aps, opts) {
  * Run VLAN trunk checks across all WLANs. Returns array of alert descriptors.
  */
 export async function runVlanTrunkCheck(opts) {
+  const apsPath = opts.siteId ? `/v1/state/sites/${encodeURIComponent(opts.siteId)}/aps` : '/v1/aps';
   const [services, topologies, aps] = await Promise.all([
     fetchXcc('/v1/services', opts),
     fetchXcc('/v1/topologies', opts),
-    fetchXcc('/v1/aps', opts),
+    fetchXcc(apsPath, opts),
   ]);
 
   const serviceList = toArray(services);

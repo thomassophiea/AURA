@@ -117,6 +117,7 @@ export interface SentinelBadgeData {
 
 interface SentinelInfraTabProps {
   onBadgeUpdate?: (data: SentinelBadgeData) => void;
+  siteId?: string;
 }
 
 // ── Evidence renderers per check type ──
@@ -415,7 +416,7 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
 
 // ── Component ──
 
-export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
+export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProps) {
   const [pollRunning, setPollRunning] = useState(false);
   const [schedule, setSchedule] = useState('0');
   const [expandedCheck, setExpandedCheck] = useState<string | null>(null);
@@ -461,7 +462,7 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
         await stop();
         toast.info('Sentinel polling stopped');
       } else {
-        await configure({ intervalMs: parseInt(value, 10) });
+        await configure({ intervalMs: parseInt(value, 10), siteId });
         toast.success(`Sentinel polling set to ${SCHEDULE_OPTIONS.find((o) => o.value === value)?.label}`);
       }
     } catch (err) {
@@ -495,7 +496,7 @@ export function SentinelInfraTab({ onBadgeUpdate }: SentinelInfraTabProps) {
   const handleRunNowWithEvidence = async () => {
     setPollRunning(true);
     try {
-      const result = await triggerPoll();
+      const result = await triggerPoll(siteId);
       if ('error' in result.results && result.results.error === 'auth_expired') {
         toast.error('Sentinel: controller auth expired. Re-login required.');
       } else {
