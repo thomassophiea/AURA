@@ -11,6 +11,10 @@ function apSerial(ap) {
   return ap.apSerialNum ?? ap.serialNumber ?? ap.id;
 }
 
+function apName(ap) {
+  return ap.apName ?? ap.name ?? ap.hostName ?? ap.hostname ?? null;
+}
+
 /**
  * Map each WLAN to its topology's VLAN ID.
  */
@@ -79,6 +83,15 @@ export async function runVlanTrunkCheck(opts) {
   const wlanVlans = mapWlansToVlans(services, topologies);
   const apList = toArray(aps);
 
+  // Build serial -> name lookup
+  const nameBySerial = new Map();
+  for (const ap of apList) {
+    const serial = apSerial(ap);
+    const name = apName(ap);
+    if (serial && name) nameBySerial.set(serial, name);
+  }
+  const displayAp = (serial) => nameBySerial.get(serial) ?? serial;
+
   const evidence = {
     wlansChecked: wlanVlans.map((w) => ({ ssid: w.ssid, vlanId: w.vlanId, topologyName: w.topologyName })),
     topologiesFound: topoList.map((t) => ({ id: t.id, name: t.name, vlanid: t.vlanid })),
@@ -86,7 +99,10 @@ export async function runVlanTrunkCheck(opts) {
       name: s.serviceName ?? s.name ?? s.ssid,
       defaultTopology: s.defaultTopology ?? null,
     })),
-    apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => apSerial(ap)),
+    apsScanned: apList.slice(0, LLDP_BATCH_SIZE).map((ap) => ({
+      serial: apSerial(ap),
+      name: apName(ap) ?? apSerial(ap),
+    })),
     totalAps: apList.length,
     lldpResults: [],
     summary: '',
@@ -101,6 +117,7 @@ export async function runVlanTrunkCheck(opts) {
   const lldpByAp = await fetchLldpBatched(aps, opts);
   evidence.lldpResults = lldpByAp.map(({ apSerial: serial, neighbors }) => ({
     apSerial: serial,
+    apName: displayAp(serial),
     neighborCount: neighbors.length,
   }));
 
@@ -124,14 +141,16 @@ export async function runVlanTrunkCheck(opts) {
       const noMembership = affected.includes('no-vlanMembership');
       const severity = (noNeighbors || noMembership) ? 'info' : 'warning';
 
+      const apDisplay = displayAp(apPart);
+
       // Use descriptive messages that distinguish real issues from incomplete data
       let message;
       if (noNeighbors) {
-        message = `AP ${apPart} has no LLDP neighbors — cannot verify VLAN ${vlanId} trunk for SSID ${ssid}`;
+        message = `${apDisplay} has no LLDP neighbors — cannot verify VLAN ${vlanId} trunk for SSID ${ssid}`;
       } else if (noMembership) {
-        message = `AP ${apPart} — LLDP neighbor lacks VLAN membership data for VLAN ${vlanId} (SSID ${ssid})`;
+        message = `${apDisplay} — LLDP neighbor lacks VLAN membership data for VLAN ${vlanId} (SSID ${ssid})`;
       } else {
-        message = `AP ${apPart} missing VLAN ${vlanId} on uplink trunk for SSID ${ssid}`;
+        message = `${apDisplay} missing VLAN ${vlanId} on uplink trunk for SSID ${ssid}`;
       }
 
       alerts.push({
@@ -139,9 +158,10 @@ export async function runVlanTrunkCheck(opts) {
         severity,
         checkName: 'vlan_trunk',
         message,
-        target: apPart,
+        target: apDisplay,
         context: {
           apSerial: apPart,
+          apName: apDisplay,
           vlanId,
           ssid,
           port: portMatch?.[1] ?? null,

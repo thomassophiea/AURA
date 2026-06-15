@@ -250,7 +250,7 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
   const wlans = (evidence.wlansChecked ?? []) as Array<{ ssid: string; vlanId: number; topologyName: string }>;
   const topos = (evidence.topologiesFound ?? []) as Array<{ id: string; name: string; vlanid: number }>;
   const svcs = (evidence.servicesFound ?? []) as Array<{ name: string; defaultTopology: string | null }>;
-  const lldp = (evidence.lldpResults ?? []) as Array<{ apSerial: string; neighborCount: number }>;
+  const lldp = (evidence.lldpResults ?? []) as Array<{ apSerial: string; apName?: string; neighborCount: number }>;
   return (
     <div className="space-y-2">
       {/* Services -> Topology mapping */}
@@ -320,13 +320,13 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
           </div>
           <table className="w-full text-[11px]">
             <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1 font-medium">AP Serial</th>
+              <th className="text-left px-2.5 py-1 font-medium">Access Point</th>
               <th className="text-center px-2.5 py-1 font-medium">LLDP Neighbors</th>
             </tr></thead>
             <tbody>
               {lldp.map((l) => (
                 <tr key={l.apSerial} className="border-t border-border/20">
-                  <td className="px-2.5 py-1 font-mono">{l.apSerial}</td>
+                  <td className="px-2.5 py-1 font-mono">{l.apName ?? l.apSerial}</td>
                   <td className="px-2.5 py-1 text-center">
                     {l.neighborCount > 0
                       ? <span className="text-emerald-500">{l.neighborCount}</span>
