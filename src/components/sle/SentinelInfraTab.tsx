@@ -174,32 +174,64 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
 }
 
 function RadiusEvidence({ evidence }: { evidence: CheckEvidence }) {
-  const results = (evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; reachable: boolean }>;
-  if (!results.length) return null;
+  const results = (evidence.connectResults ?? []) as Array<{ host: string; port: number; policyNames: string[]; type?: string; reachable: boolean }>;
+  const policiesFound = (evidence.policiesFound ?? []) as Array<{ name: string; authServers: number; acctServers: number }>;
   return (
-    <div className="rounded border border-border/30 overflow-hidden">
-      <table className="w-full text-[11px]">
-        <thead><tr className="bg-muted/40 text-muted-foreground">
-          <th className="text-left px-2.5 py-1.5 font-medium">RADIUS Server</th>
-          <th className="text-center px-2.5 py-1.5 font-medium">Port</th>
-          <th className="text-left px-2.5 py-1.5 font-medium">Policies</th>
-          <th className="text-center px-2.5 py-1.5 font-medium">TCP</th>
-        </tr></thead>
-        <tbody>
-          {results.map((r) => (
-            <tr key={`${r.host}:${r.port}`} className="border-t border-border/20">
-              <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
-              <td className="px-2.5 py-1.5 text-center text-muted-foreground">{r.port}</td>
-              <td className="px-2.5 py-1.5 text-muted-foreground">{r.policyNames.join(', ')}</td>
-              <td className="px-2.5 py-1.5 text-center">
-                {r.reachable
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                  : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-2">
+      {/* Policies scanned */}
+      {policiesFound.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            AAA Policies ({policiesFound.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1 font-medium">Policy</th>
+              <th className="text-center px-2.5 py-1 font-medium">Auth Servers</th>
+              <th className="text-center px-2.5 py-1 font-medium">Acct Servers</th>
+            </tr></thead>
+            <tbody>
+              {policiesFound.map((p) => (
+                <tr key={p.name} className="border-t border-border/20">
+                  <td className="px-2.5 py-1 font-mono">{p.name}</td>
+                  <td className="px-2.5 py-1 text-center">{p.authServers}</td>
+                  <td className="px-2.5 py-1 text-center">{p.acctServers}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Connect results */}
+      {results.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/40 text-muted-foreground">
+              <th className="text-left px-2.5 py-1.5 font-medium">RADIUS Server</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Port</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Type</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Policies</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">TCP</th>
+            </tr></thead>
+            <tbody>
+              {results.map((r) => (
+                <tr key={`${r.host}:${r.port}`} className="border-t border-border/20">
+                  <td className="px-2.5 py-1.5 font-mono">{r.host}</td>
+                  <td className="px-2.5 py-1.5 text-center text-muted-foreground">{r.port}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.type ?? 'auth'}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.policyNames.join(', ')}</td>
+                  <td className="px-2.5 py-1.5 text-center">
+                    {r.reachable
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

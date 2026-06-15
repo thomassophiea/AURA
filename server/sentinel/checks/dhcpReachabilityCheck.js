@@ -18,6 +18,8 @@ async function pingHost(host) {
 
 /**
  * Extract unique DHCP relay server IPs from topologies with DHCPRelay mode.
+ * XCC API: topology.dhcpServers is a comma-separated string (not an array).
+ * Also checks foreignIpAddress as a fallback relay target.
  */
 function extractDhcpRelayServers(topologies) {
   const servers = new Map(); // ip -> { host, vlanNames[] }
@@ -25,14 +27,27 @@ function extractDhcpRelayServers(topologies) {
 
   for (const topo of arr) {
     if (topo.dhcpMode !== 'DHCPRelay' && topo.dhcpMode !== 'DHCP Relay') continue;
-    const relays = topo.dhcpRelayServers ?? topo.dhcpServers ?? [];
-    for (const relay of relays) {
-      const host = typeof relay === 'string' ? relay : relay.ip ?? relay.host ?? relay.address;
-      if (!host) continue;
+    const vlanLabel = topo.name ?? `VLAN ${topo.vlanid}`;
+
+    // dhcpServers can be a comma-separated string or an array
+    const raw = topo.dhcpRelayServers ?? topo.dhcpServers;
+    let hosts = [];
+    if (typeof raw === 'string' && raw.trim()) {
+      hosts = raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    } else if (Array.isArray(raw)) {
+      hosts = raw.map((r) => (typeof r === 'string' ? r : r.ip ?? r.host ?? r.address)).filter(Boolean);
+    }
+
+    // Fallback: foreignIpAddress (relay target on some topologies)
+    if (!hosts.length && topo.foreignIpAddress && topo.foreignIpAddress !== '0.0.0.0') {
+      hosts.push(topo.foreignIpAddress);
+    }
+
+    for (const host of hosts) {
       if (servers.has(host)) {
-        servers.get(host).vlanNames.push(topo.name ?? `VLAN ${topo.vlanid}`);
+        servers.get(host).vlanNames.push(vlanLabel);
       } else {
-        servers.set(host, { host, vlanNames: [topo.name ?? `VLAN ${topo.vlanid}`] });
+        servers.set(host, { host, vlanNames: [vlanLabel] });
       }
     }
   }
@@ -44,6 +59,7 @@ function extractDhcpRelayServers(topologies) {
  */
 export async function runDhcpReachabilityCheck(opts) {
   const topologies = await fetchXcc('/v1/topologies', opts);
+  const topoArr = Array.isArray(topologies?.data) ? topologies.data : Array.isArray(topologies) ? topologies : [];
   const servers = extractDhcpRelayServers(topologies);
   const alerts = [];
   const pingResults = [];
@@ -68,9 +84,17 @@ export async function runDhcpReachabilityCheck(opts) {
   const reachableCount = pingResults.filter((r) => r.reachable).length;
   const evidence = {
     serversFound: servers.size,
+    topologiesScanned: topoArr.length,
+    topologiesFound: topoArr.map((t) => ({
+      name: t.name,
+      vlanid: t.vlanid,
+      dhcpMode: t.dhcpMode ?? 'unknown',
+      dhcpServers: t.dhcpServers ?? null,
+      foreignIpAddress: t.foreignIpAddress ?? null,
+    })),
     pingResults: pingResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
     summary: servers.size === 0
-      ? 'No DHCP relay servers configured in any topology.'
+      ? `${topoArr.length} topology(s) scanned. No DHCP relay servers found. ${topoArr.filter((t) => t.dhcpMode === 'DHCPRelay').length} topology(s) in relay mode.`
       : `${reachableCount}/${servers.size} DHCP relay server(s) reachable via ICMP ping.`,
   };
 
