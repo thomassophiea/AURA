@@ -29,13 +29,26 @@ export interface XiqSite {
  * credentials). Returns false when no session can be established.
  */
 export async function ensureXiqSession(siteGroupId: string): Promise<boolean> {
+  // 1. Valid token already cached.
   if (xiqService.getToken(siteGroupId)) return true;
+
+  // 2. Saved credentials (connected once via the UI) — survives token expiry
+  //    and redeploys without depending on server env.
+  const saved = xiqService.getCredentials(siteGroupId);
+  if (saved?.email && saved?.password) {
+    try {
+      await xiqService.login(saved.email, saved.password, saved.region || 'global', siteGroupId);
+      return true;
+    } catch {
+      /* fall through to env-mediated login */
+    }
+  }
+
+  // 3. Server-mediated lab/demo login (creds from env XIQ_DEMO_*; opt-in).
   try {
-    // Empty creds -> server may inject lab/demo creds from env (opt-in).
     await xiqService.login('', '', 'global', siteGroupId);
     return true;
   } catch {
-    // No env-configured demo session and no stored token — no XIQ sites.
     return false;
   }
 }
