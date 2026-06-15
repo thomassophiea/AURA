@@ -16,6 +16,8 @@ import { Input } from './ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { ScrollArea } from './ui/scroll-area';
 import { apiService } from '../services/api';
+import { notificationService } from '../services/notificationService';
+import type { AppNotification } from '../services/notificationService';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useContextScope } from '../hooks/useContextScope';
@@ -59,6 +61,7 @@ interface NotificationItem {
   message: string;
   timestamp: string;
   isRead: boolean;
+  source?: 'sentinel' | 'api';
 }
 
 const getNotificationIcon = (type: NotificationItem['type']) => {
@@ -87,7 +90,11 @@ const getNotificationTypeLabel = (type: NotificationItem['type']) => {
   }
 };
 
-export function NotificationsMenu() {
+interface NotificationsMenuProps {
+  onNavigate?: (page: string) => void;
+}
+
+export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
   const { filters } = useGlobalFilters();
   const scope = useContextScope();
   const [isOpen, setIsOpen] = useState(false);
@@ -105,6 +112,31 @@ export function NotificationsMenu() {
     loadNotifications();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters.site]); // Reload when site context changes
+
+  // Subscribe to notificationService for Sentinel alerts
+  useEffect(() => {
+    const unsubscribe = notificationService.subscribe((appNotifications: AppNotification[]) => {
+      const sentinelItems: NotificationItem[] = appNotifications
+        .filter((n) => n.type === 'sentinel_critical' || n.type === 'sentinel_warning')
+        .map((n) => ({
+          id: n.id,
+          type: n.type === 'sentinel_critical' ? 'critical' as const : 'non-critical' as const,
+          title: n.title,
+          message: n.message,
+          timestamp: formatTimestamp(n.timestamp),
+          isRead: n.read,
+          source: 'sentinel' as const,
+        }));
+
+      setNotifications((prev) => {
+        // Remove old sentinel items and merge fresh ones
+        const nonSentinel = prev.filter((item) => item.source !== 'sentinel');
+        return [...sentinelItems, ...nonSentinel];
+      });
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -336,7 +368,14 @@ export function NotificationsMenu() {
             : 'bg-accent/20 border-accent hover:border-accent/50'
         }
       `}
-      onClick={() => handleMarkAsRead(notification.id)}
+      onClick={() => {
+        handleMarkAsRead(notification.id);
+        if (notification.source === 'sentinel') {
+          onNavigate?.('service-levels');
+          window.dispatchEvent(new CustomEvent('aura:navigate-sentinel'));
+          setIsOpen(false);
+        }
+      }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

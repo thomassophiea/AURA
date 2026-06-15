@@ -114,6 +114,18 @@ export async function clearAlerts(): Promise<{ cleared: boolean }> {
   return sentinelFetch('/api/sentinel/alerts', { method: 'DELETE' });
 }
 
+// ── Trends ──
+
+export interface TrendEntry {
+  ts: string;
+  alertCount: number;
+  status: 'ok' | 'error';
+}
+
+export async function getTrends(): Promise<{ trends: Record<string, TrendEntry[]> }> {
+  return sentinelFetch('/api/sentinel/trends');
+}
+
 // ── Evidence ──
 
 export interface CheckEvidence {
@@ -124,4 +136,8 @@ export interface CheckEvidence {
 
 export async function getEvidence(checkId: string): Promise<{ evidence: CheckEvidence | null }> {
   return sentinelFetch(`/api/sentinel/evidence/${encodeURIComponent(checkId)}`);
+}
+
+export async function getAllEvidence(): Promise<{ evidence: Record<string, CheckEvidence> }> {
+  return sentinelFetch('/api/sentinel/evidence');
 }

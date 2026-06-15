@@ -8,6 +8,7 @@ export interface NotificationPreferences {
   apOffline: boolean;
   sleDrops: boolean;
   highClientCount: boolean;
+  sentinelAlerts: boolean;
   sleThreshold: number;
   clientCountThreshold: number;
   enabled: boolean;
@@ -15,7 +16,7 @@ export interface NotificationPreferences {
 
 export interface AppNotification {
   id: string;
-  type: 'ap_offline' | 'sle_drop' | 'high_clients' | 'info';
+  type: 'ap_offline' | 'sle_drop' | 'high_clients' | 'info' | 'sentinel_critical' | 'sentinel_warning';
   title: string;
   message: string;
   timestamp: number;
@@ -33,6 +34,7 @@ const defaultPreferences: NotificationPreferences = {
   apOffline: true,
   sleDrops: true,
   highClientCount: false,
+  sentinelAlerts: true,
   sleThreshold: 70,
   clientCountThreshold: 100,
   enabled: true,
@@ -44,6 +46,7 @@ class NotificationService {
   private notifications: AppNotification[] = [];
   private seenAPOffline: Set<string> = new Set();
   private seenSLEDrops: Set<string> = new Set();
+  private seenSentinelAlerts: Set<string> = new Set();
 
   constructor() {
     this.preferences = this.loadPreferences();
@@ -243,6 +246,40 @@ class NotificationService {
     }
 
     return [];
+  }
+
+  checkSentinelAlerts(
+    alerts: Array<{
+      id: string;
+      severity: 'critical' | 'warning' | 'info';
+      checkName: string;
+      message: string;
+      target: string;
+    }>
+  ): void {
+    if (!this.preferences.enabled || !this.preferences.sentinelAlerts) return;
+
+    const CHECK_LABELS: Record<string, string> = {
+      vlan_trunk: 'Missing VLAN',
+      dhcp_reachability: 'DHCP Reachability',
+      radius_reachability: 'RADIUS Reachability',
+      client_dhcp_failure: 'Client DHCP Failure',
+    };
+
+    for (const alert of alerts) {
+      if (alert.severity !== 'critical' && alert.severity !== 'warning') continue;
+      if (this.seenSentinelAlerts.has(alert.id)) continue;
+
+      this.seenSentinelAlerts.add(alert.id);
+      const type = alert.severity === 'critical' ? 'sentinel_critical' : 'sentinel_warning';
+      const label = CHECK_LABELS[alert.checkName] ?? alert.checkName;
+      this.addNotification({
+        type,
+        title: `Sentinel: ${label}`,
+        message: alert.message,
+        data: { source: 'sentinel', checkName: alert.checkName, target: alert.target, alertId: alert.id },
+      });
+    }
   }
 
   getUnreadNotifications(): AppNotification[] {

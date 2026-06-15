@@ -241,6 +241,13 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     return () => clearInterval(timer);
   }, []);
 
+  // Listen for sentinel navigation events from notification bell
+  useEffect(() => {
+    const handler = () => setActiveTab('infrastructure');
+    window.addEventListener('aura:navigate-sentinel', handler);
+    return () => window.removeEventListener('aura:navigate-sentinel', handler);
+  }, []);
+
   // SLE threshold editing state
   const [thresholdDialogOpen, setThresholdDialogOpen] = useState(false);
   const [editingMetric, setEditingMetric] = useState<string | null>(null);

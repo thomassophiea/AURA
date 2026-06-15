@@ -5,6 +5,7 @@ import { runClientDhcpFailureCheck } from './checks/clientDhcpFailureCheck.js';
 import { runVlanTrunkCheck } from './checks/vlanTrunkCheck.js';
 
 const DEFAULT_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
+const MAX_TREND_POINTS = 100;
 
 export class SentinelEngine {
   #alertStore = new AlertStore();
@@ -16,6 +17,7 @@ export class SentinelEngine {
   #authExpired = false;
   #lastPollAt = null;
   #polling = false;
+  #trendStore = {};
   #checkStatus = {
     vlan_trunk: { status: 'idle', lastRunAt: null, error: null },
     dhcp_reachability: { status: 'idle', lastRunAt: null, error: null },
@@ -92,6 +94,7 @@ export class SentinelEngine {
           error: null,
           alertCount: alerts.length,
         };
+        this.#pushTrend(name, { ts: new Date().toISOString(), alertCount: alerts.length, status: 'ok' });
         results[name] = { ok: true, alerts: alerts.length };
       } catch (err) {
         if (err.message?.startsWith('401')) {
@@ -106,6 +109,7 @@ export class SentinelEngine {
           lastRunAt: new Date().toISOString(),
           error: err.message,
         };
+        this.#pushTrend(name, { ts: new Date().toISOString(), alertCount: 0, status: 'error' });
         results[name] = { ok: false, error: err.message };
       }
     }
@@ -162,6 +166,22 @@ export class SentinelEngine {
       activeAlerts: this.#alertStore.getActive().length,
       checks: { ...this.#checkStatus },
     };
+  }
+
+  #pushTrend(checkName, entry) {
+    if (!this.#trendStore[checkName]) this.#trendStore[checkName] = [];
+    this.#trendStore[checkName].push(entry);
+    if (this.#trendStore[checkName].length > MAX_TREND_POINTS) {
+      this.#trendStore[checkName].shift();
+    }
+  }
+
+  getTrend(checkName) {
+    return this.#trendStore[checkName] ?? [];
+  }
+
+  getAllTrends() {
+    return { ...this.#trendStore };
   }
 
   destroy() {

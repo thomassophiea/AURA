@@ -35,6 +35,8 @@ import {
   getStatus,
   getAlerts,
   getEvidence,
+  getAllEvidence,
+  getTrends,
   triggerPoll,
   configure,
   stop,
@@ -45,7 +47,18 @@ import type {
   SentinelAlert,
   SentinelCheckStatus,
   CheckEvidence,
+  TrendEntry,
 } from '../../services/sentinelService';
+import { MicroSparkline } from '../ui/MicroSparkline';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Download } from 'lucide-react';
+import { exportToCSV, exportToJSON } from '../../utils/exportUtils';
+import { printSentinelReport } from '../../utils/exportUtils';
 import { toast } from 'sonner';
 
 // ── Check card config ──
@@ -416,6 +429,72 @@ function VlanTrunkEvidence({ evidence }: { evidence: CheckEvidence }) {
 
 // ── Component ──
 
+function SentinelExportButton({
+  disabled,
+  status,
+  alerts,
+}: {
+  disabled: boolean;
+  status: SentinelStatus | null;
+  alerts: SentinelAlert[];
+}) {
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = async (format: 'csv' | 'json' | 'print') => {
+    setExporting(true);
+    try {
+      const { evidence } = await getAllEvidence();
+      const snapshot = {
+        checks: status?.checks ?? {},
+        alerts,
+        evidence: evidence ?? {},
+        exportedAt: new Date().toISOString(),
+      };
+
+      if (format === 'csv') {
+        const rows = Object.entries(snapshot.checks).map(([name, c]) => ({
+          check: name,
+          label: CHECK_CONFIG[name]?.label ?? name,
+          status: c.status,
+          lastRunAt: c.lastRunAt ?? '',
+          alertCount: c.alertCount ?? 0,
+        }));
+        exportToCSV(rows, [
+          { key: 'check', label: 'Check ID' },
+          { key: 'label', label: 'Check Name' },
+          { key: 'status', label: 'Status' },
+          { key: 'lastRunAt', label: 'Last Run' },
+          { key: 'alertCount', label: 'Alerts' },
+        ], 'sentinel-report');
+      } else if (format === 'json') {
+        exportToJSON([snapshot], 'sentinel-report');
+      } else {
+        printSentinelReport(snapshot);
+      }
+    } catch (err) {
+      toast.error(`Export failed: ${(err as Error).message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="sm" disabled={disabled || exporting}>
+          <Download className="mr-1.5 h-3.5 w-3.5" />
+          Export
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        <DropdownMenuItem onClick={() => handleExport('csv')}>Export CSV</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExport('json')}>Export JSON</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => handleExport('print')}>Print Report</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProps) {
   const [pollRunning, setPollRunning] = useState(false);
   const [schedule, setSchedule] = useState('0');
@@ -423,15 +502,16 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
   const [evidenceData, setEvidenceData] = useState<Record<string, CheckEvidence>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
 
-  // Fetch status + alerts together
+  // Fetch status + alerts + trends together
   const fetcher = useCallback(async () => {
-    const [statusData, alertsData] = await Promise.all([getStatus(), getAlerts()]);
-    return { status: statusData, alerts: alertsData.alerts };
+    const [statusData, alertsData, trendsData] = await Promise.all([getStatus(), getAlerts(), getTrends()]);
+    return { status: statusData, alerts: alertsData.alerts, trends: trendsData.trends };
   }, []);
 
   const { data, loading } = useRealtimePolling<{
     status: SentinelStatus;
     alerts: SentinelAlert[];
+    trends: Record<string, TrendEntry[]>;
   }>(fetcher, {
     key: 'sentinel-status',
     activeInterval: 10_000,
@@ -440,6 +520,7 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
 
   const status = data?.status ?? null;
   const alerts = data?.alerts ?? [];
+  const trends = data?.trends ?? {};
 
   // Push badge data to parent whenever data changes
   useEffect(() => {
@@ -580,6 +661,8 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
               Clear
             </Button>
           )}
+
+          <SentinelExportButton disabled={!status?.lastPollAt} status={status} alerts={alerts} />
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -677,6 +760,21 @@ export function SentinelInfraTab({ onBadgeUpdate, siteId }: SentinelInfraTabProp
                   <span className="text-muted-foreground ml-auto">
                     {new Date(checkStatus.lastRunAt).toLocaleTimeString()}
                   </span>
+                )}
+                {trends[checkId] && trends[checkId].length >= 2 && (
+                  <MicroSparkline
+                    data={trends[checkId].map((e) => e.alertCount)}
+                    width={48}
+                    height={16}
+                    stroke={
+                      checkAlertData?.critical
+                        ? '#ef4444'
+                        : checkAlertData?.warning
+                          ? '#f59e0b'
+                          : '#10b981'
+                    }
+                    ariaLabel={`${config.label} alert trend`}
+                  />
                 )}
               </div>
 

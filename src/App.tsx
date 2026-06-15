@@ -148,6 +148,8 @@ import { DevModePinDialog } from './components/DevModePinDialog';
 import { useDevModeUnlock } from './hooks/useDevModeUnlock';
 import { NotificationsMenu } from './components/NotificationsMenu';
 import { tenantService } from './services/tenantService';
+import { notificationService } from './services/notificationService';
+import { getAlerts as getSentinelAlerts } from './services/sentinelService';
 import { DevToolsPanel } from './components/DevToolsPanel';
 import { SiteGroupFilterDropdown } from './components/SiteGroupFilterDropdown';
 import { PersonaProvider, readStoredPersona, PERSONA_STORAGE_KEY } from './contexts/PersonaContext';
@@ -895,6 +897,22 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Poll Sentinel alerts → feed into notification service for bell menu integration
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const poll = async () => {
+      try {
+        const { alerts } = await getSentinelAlerts();
+        notificationService.checkSentinelAlerts(alerts);
+      } catch {
+        // Sentinel may not be running — ignore
+      }
+    };
+    poll();
+    const timer = setInterval(poll, 30_000);
+    return () => clearInterval(timer);
+  }, [isAuthenticated]);
+
   // Helper function to apply theme to document
   const applyTheme = (newTheme: 'light' | 'ep1' | 'dev') => {
     const root = document.documentElement;
@@ -1482,7 +1500,7 @@ export default function App() {
                         </Button>
                       </>
                     )}
-                    {!device.isMobile && <NotificationsMenu />}
+                    {!device.isMobile && <NotificationsMenu onNavigate={setCurrentPage} />}
                     {!device.isMobile && <AppsMenu />}
                     <UserMenu
                       onLogout={handleLogout}

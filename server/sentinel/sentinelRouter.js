@@ -22,6 +22,16 @@ export function createSentinelRouter() {
     res.json({ alerts: sentinelEngine.getAllAlerts({ severity, check }) });
   });
 
+  // GET /sentinel/trends — trend history for all checks
+  router.get('/sentinel/trends', (_req, res) => {
+    res.json({ trends: sentinelEngine.getAllTrends() });
+  });
+
+  // GET /sentinel/trends/:checkId — trend history for a single check
+  router.get('/sentinel/trends/:checkId', (req, res) => {
+    res.json({ trend: sentinelEngine.getTrend(req.params.checkId) });
+  });
+
   // GET /sentinel/evidence/:checkId — detailed evidence from last run of a check
   router.get('/sentinel/evidence/:checkId', (req, res) => {
     const evidence = sentinelEngine.getEvidence(req.params.checkId);
