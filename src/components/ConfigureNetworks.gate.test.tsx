@@ -27,16 +27,22 @@ const { } = vi.hoisted(() => {
   return {};
 });
 
-const ctx: any = {
-  navigationScope: 'global',
-  siteGroups: [{ id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' }],
-  orgSiteGroupFilter: null,
-  setOrgSiteGroupFilter: vi.fn(),
-  navigateToTemplateCreation: vi.fn(),
-  activeControllerIdentity: null,
-  refreshControllerIdentity: vi.fn(),
-  siteGroup: null,
-};
+function makeCtx(overrides: Record<string, any> = {}): any {
+  return {
+    navigationScope: 'global',
+    siteGroups: [{ id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' }],
+    orgSiteGroupFilter: null,
+    setOrgSiteGroupFilter: vi.fn(),
+    navigateToTemplateCreation: vi.fn(),
+    activeControllerIdentity: null,
+    refreshControllerIdentity: vi.fn(),
+    siteGroup: null,
+    ...overrides,
+  };
+}
+
+// Mutable, per-test context. The mock reads the *current* value at render time.
+let ctx: any = makeCtx();
 
 vi.mock('@/contexts/AppContext', () => ({ useAppContext: () => ctx }));
 
@@ -103,8 +109,26 @@ vi.mock('@/components/ui/AGGridWrapper', () => ({
 import { ConfigureNetworks } from './ConfigureNetworks';
 
 describe('ConfigureNetworks org-scope gate', () => {
-  it('shows the empty-state prompt when no Site Group is chosen', () => {
+  it('shows the empty-state prompt when multiple Site Groups exist and none is chosen', () => {
+    ctx = makeCtx({
+      siteGroups: [
+        { id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' },
+        { id: 'sg2', name: 'NorthWest', controller_url: 'https://5.6.7.8' },
+      ],
+      orgSiteGroupFilter: null,
+    });
     render(<ConfigureNetworks />);
     expect(screen.getByText(/Select a Site Group to configure its controller/i)).toBeInTheDocument();
+  });
+
+  it('auto-selects the sole Site Group at org scope (no empty-state prompt)', () => {
+    ctx = makeCtx({
+      siteGroups: [{ id: 'sg1', name: 'SouthEast', controller_url: 'https://1.2.3.4' }],
+      orgSiteGroupFilter: null,
+    });
+    render(<ConfigureNetworks />);
+    expect(
+      screen.queryByText(/Select a Site Group to configure its controller/i)
+    ).toBeNull();
   });
 });

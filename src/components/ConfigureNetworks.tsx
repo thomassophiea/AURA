@@ -445,8 +445,12 @@ export function ConfigureNetworks() {
   } = useAppContext();
   const isOrgScope = navigationScope === 'global';
 
-  const chosenOrgGroup = isOrgScope && orgSiteGroupFilter
-    ? siteGroups.find((s) => s.id === orgSiteGroupFilter) ?? null
+  const chosenOrgGroup = isOrgScope
+    ? orgSiteGroupFilter
+      ? siteGroups.find((s) => s.id === orgSiteGroupFilter) ?? null
+      : siteGroups.length === 1
+        ? siteGroups[0]
+        : null
     : null;
   const needsGroupSelection = isOrgScope && !chosenOrgGroup;
 
