@@ -30,6 +30,10 @@ export interface Controller {
   connection_status: 'connected' | 'disconnected' | 'error' | 'unknown';
   settings?: Record<string, any>;
   created_at?: string;
+  /** Controller host name, cached from /system/info on first connect. */
+  hostname?: string;
+  /** Controller Locking ID (stable license identity), cached from /system/info. */
+  locking_id?: string;
 }
 
 /**
@@ -49,6 +53,10 @@ export interface SiteGroup {
   last_connected_at?: string;
   is_default: boolean;
   created_at?: string;
+  /** Controller host name, cached from /system/info. */
+  hostname?: string;
+  /** Controller Locking ID (stable license identity), cached from /system/info. */
+  locking_id?: string;
 }
 
 export interface UserOrganization {
@@ -636,6 +644,8 @@ class TenantService {
       last_connected_at: c.last_connected_at,
       is_default: c.is_default,
       created_at: c.created_at,
+      hostname: c.hostname,
+      locking_id: c.locking_id,
     };
   }
 

@@ -122,6 +122,21 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
     try {
       const identity = await apiService.getControllerIdentity(sg.controller_url);
       setActiveControllerIdentity(identity);
+      // Persist identity onto the controller record so the picker can show
+      // hostname + Locking ID for every controller without a live fetch
+      // (scales to hundreds). Only cache successful reads.
+      if (identity.status === 'ok') {
+        tenantService
+          .updateController(sg.id, { hostname: identity.hostname, locking_id: identity.lockingId })
+          .catch(() => {});
+        setSiteGroups((groups) =>
+          groups.map((g) =>
+            g.id === sg.id
+              ? { ...g, hostname: identity.hostname, locking_id: identity.lockingId }
+              : g
+          )
+        );
+      }
     } finally {
       // Restore prior base URL. '/api/management' is the proxy/default sentinel → null.
       apiService.setBaseUrl(prev === '/api/management' ? null : prev);

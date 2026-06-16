@@ -42,6 +42,10 @@ export interface SiteGroup {
   connection_status: 'connected' | 'disconnected' | 'error' | 'unknown';
   last_connected_at?: string;
   is_default: boolean;
+  /** Controller host name, cached from /system/info. */
+  hostname?: string;
+  /** Controller Locking ID (stable license identity), cached from /system/info. */
+  locking_id?: string;
   region?: string;
   tags?: string[];
   site_count?: number;
