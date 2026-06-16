@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { useAppContext } from '@/contexts/AppContext';
 
 export function SiteGroupFilterDropdown() {
-  const { siteGroups, orgSiteGroupFilter, setOrgSiteGroupFilter } = useAppContext();
+  const { siteGroups, orgSiteGroupFilter, setOrgSiteGroupFilter, activeControllerIdentity } = useAppContext();
 
   // Don't render if there's only one site group — no filtering needed
   if (siteGroups.length <= 1) return null;
@@ -35,6 +35,11 @@ export function SiteGroupFilterDropdown() {
           ))}
         </SelectContent>
       </Select>
+      {orgSiteGroupFilter && activeControllerIdentity?.status === 'ok' && (
+        <span className="text-[11px] text-muted-foreground" data-testid="sg-host-hint">
+          {activeControllerIdentity.hostname}
+        </span>
+      )}
     </div>
   );
 }

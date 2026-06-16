@@ -6,6 +6,7 @@ const ctx = vi.hoisted(() => ({
     siteGroups: [] as Array<{ id: string; name: string }>,
     orgSiteGroupFilter: null as string | null,
     setOrgSiteGroupFilter: vi.fn(),
+    activeControllerIdentity: null as { hostname: string; lockingId: string; fetchedAt: string; status: 'ok' | 'unreachable' } | null,
   },
 }));
 
@@ -32,6 +33,7 @@ beforeEach(() => {
     siteGroups: [],
     orgSiteGroupFilter: null,
     setOrgSiteGroupFilter: vi.fn(),
+    activeControllerIdentity: null,
   };
 });
 
@@ -65,5 +67,53 @@ describe('SiteGroupFilterDropdown', () => {
     ctx.current.orgSiteGroupFilter = 'sg-2';
     render(<SiteGroupFilterDropdown />);
     expect(screen.getByText('EU')).toBeTruthy();
+  });
+
+  it('shows the active controller hostname hint when a group is selected and identity is ok', () => {
+    ctx.current.siteGroups = [
+      { id: 'sg1', name: 'SouthEast' },
+      { id: 'sg2', name: 'NorthWest' },
+    ];
+    ctx.current.orgSiteGroupFilter = 'sg1';
+    ctx.current.activeControllerIdentity = {
+      hostname: 'xcc-lab-01',
+      lockingId: '1A2B',
+      fetchedAt: 'x',
+      status: 'ok',
+    };
+    render(<SiteGroupFilterDropdown />);
+    expect(screen.getByText(/xcc-lab-01/)).toBeInTheDocument();
+  });
+
+  it('does not show a hostname hint when identity status is unreachable', () => {
+    ctx.current.siteGroups = [
+      { id: 'sg1', name: 'SouthEast' },
+      { id: 'sg2', name: 'NorthWest' },
+    ];
+    ctx.current.orgSiteGroupFilter = 'sg1';
+    ctx.current.activeControllerIdentity = {
+      hostname: 'xcc-lab-01',
+      lockingId: '1A2B',
+      fetchedAt: 'x',
+      status: 'unreachable',
+    };
+    render(<SiteGroupFilterDropdown />);
+    expect(screen.queryByText(/xcc-lab-01/)).toBeNull();
+  });
+
+  it('does not show a hostname hint when no group is selected', () => {
+    ctx.current.siteGroups = [
+      { id: 'sg1', name: 'SouthEast' },
+      { id: 'sg2', name: 'NorthWest' },
+    ];
+    ctx.current.orgSiteGroupFilter = null;
+    ctx.current.activeControllerIdentity = {
+      hostname: 'xcc-lab-01',
+      lockingId: '1A2B',
+      fetchedAt: 'x',
+      status: 'ok',
+    };
+    render(<SiteGroupFilterDropdown />);
+    expect(screen.queryByText(/xcc-lab-01/)).toBeNull();
   });
 });
