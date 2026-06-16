@@ -7,6 +7,7 @@ vi.mock('../services/api', () => ({
   apiService: {
     isAuthenticated: () => true,
     setBaseUrl: vi.fn(),
+    getBaseUrl: vi.fn(() => '/api/management'),
     getControllerIdentity: vi.fn(),
   },
 }));
@@ -43,5 +44,6 @@ describe('AppContext activeControllerIdentity', () => {
     );
     await act(async () => { screen.getByText('enter').click(); });
     await waitFor(() => expect(screen.getByTestId('host')).toHaveTextContent('xcc-lab-01'));
+    expect(apiService.setBaseUrl).toHaveBeenCalledWith('https://1.2.3.4/management');
   });
 });

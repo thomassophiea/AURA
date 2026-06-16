@@ -586,7 +586,7 @@ export function ConfigureNetworks() {
 
   useEffect(() => {
     loadNetworks();
-  }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [navigationScope, siteGroups.length, orgSiteGroupFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (chosenOrgGroup) {
@@ -657,6 +657,7 @@ export function ConfigureNetworks() {
   };
 
   const loadNetworks = async () => {
+    if (needsGroupSelection) return;
     try {
       setLoading(true);
       setError(null);

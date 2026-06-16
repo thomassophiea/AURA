@@ -117,8 +117,15 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
 
   const refreshControllerIdentity = useCallback(async (sg: SiteGroup) => {
     if (!sg) return;
-    const identity = await apiService.getControllerIdentity(sg.controller_url);
-    setActiveControllerIdentity(identity);
+    const prev = apiService.getBaseUrl();
+    apiService.setBaseUrl(`${sg.controller_url}/management`);
+    try {
+      const identity = await apiService.getControllerIdentity(sg.controller_url);
+      setActiveControllerIdentity(identity);
+    } finally {
+      // Restore prior base URL. '/api/management' is the proxy/default sentinel → null.
+      apiService.setBaseUrl(prev === '/api/management' ? null : prev);
+    }
   }, []);
 
   const enterSiteGroup = useCallback((sg: SiteGroup) => {

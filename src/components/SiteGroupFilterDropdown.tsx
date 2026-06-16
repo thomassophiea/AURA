@@ -17,7 +17,7 @@ export function SiteGroupFilterDropdown() {
   if (siteGroups.length <= 1) return null;
 
   return (
-    <div className="flex items-center gap-1.5" style={{ flexShrink: 0 }}>
+    <div className="flex items-center gap-1.5 shrink-0">
       <Server className="h-3.5 w-3.5 text-muted-foreground" />
       <Select
         value={orgSiteGroupFilter ?? '__all__'}
