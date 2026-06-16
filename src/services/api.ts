@@ -5343,6 +5343,12 @@ class ApiService {
       });
     }
 
+    // Parse host name
+    const hostMatch = result.match(/Host Name:\s*(.+)/i);
+    if (hostMatch) {
+      parsed.hostName = hostMatch[1].trim();
+    }
+
     return parsed;
   }
 

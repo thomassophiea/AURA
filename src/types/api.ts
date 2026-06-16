@@ -778,6 +778,8 @@ export interface OSOnePortInterface {
  */
 export interface OSOneSystemInfo {
   raw: string;
+  /** Controller host name parsed from "Host Name:" line, when present. */
+  hostName?: string;
   externalServices: OSOneExternalService[];
   lastUpgrade?: number;
   sysUptime?: number;
