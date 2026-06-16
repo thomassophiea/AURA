@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { Organization, SiteGroup, Site, Device } from '../types/domain';
 import type { NavigationScope } from '../config/navigationScopes';
 import type { GlobalElementType } from '../types/globalElements';
+import type { ControllerIdentity } from '../types/controllerIdentity';
 import { tenantService } from '../services/tenantService';
 import { apiService } from '../services/api';
 
@@ -11,6 +12,10 @@ interface AppContextValue {
   siteGroup: SiteGroup | null;
   site: Site | null;
   device: Device | null;
+  /** Identity (hostname + Locking ID) of the active Site Group's controller. */
+  activeControllerIdentity: ControllerIdentity | null;
+  /** Re-fetch controller identity for a given Site Group (live /system/info). */
+  refreshControllerIdentity: (siteGroup: SiteGroup) => Promise<void>;
   isLoadingOrg: boolean;
   navigationScope: NavigationScope;
   /** Org-level site group filter — null means "all site groups". */
@@ -46,6 +51,7 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
   const [activeDevice, setActiveDeviceState] = useState<Device | null>(null);
   const [isLoadingOrg, setIsLoadingOrg] = useState(true);
   const [orgSiteGroupFilter, setOrgSiteGroupFilter] = useState<string | null>(null);
+  const [activeControllerIdentity, setActiveControllerIdentity] = useState<ControllerIdentity | null>(null);
 
   const loadOrgContext = useCallback(async () => {
     if (!apiService.isAuthenticated()) {
@@ -109,6 +115,12 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
     setSiteGroups(groups);
   }, []);
 
+  const refreshControllerIdentity = useCallback(async (sg: SiteGroup) => {
+    if (!sg) return;
+    const identity = await apiService.getControllerIdentity(sg.controller_url);
+    setActiveControllerIdentity(identity);
+  }, []);
+
   const enterSiteGroup = useCallback((sg: SiteGroup) => {
     setActiveSiteGroupState(sg);
     setActiveSiteState(null);
@@ -116,11 +128,14 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
     if (sg) {
       apiService.setBaseUrl(`${sg.controller_url}/management`);
     }
+    setActiveControllerIdentity(null); // clear stale identity before fetch
+    void refreshControllerIdentity(sg);
     onNavigationScopeChange('site-group');
     onPageChange?.('system-backup');
-  }, [onNavigationScopeChange, onPageChange]);
+  }, [onNavigationScopeChange, onPageChange, refreshControllerIdentity]);
 
   const exitSiteGroup = useCallback(() => {
+    setActiveControllerIdentity(null);
     onNavigationScopeChange('global');
     onPageChange?.('workspace');
   }, [onNavigationScopeChange, onPageChange]);
@@ -140,6 +155,8 @@ export function AppContextProvider({ children, navigationScope, onNavigationScop
       siteGroup: activeSiteGroup,
       site: activeSite,
       device: activeDevice,
+      activeControllerIdentity,
+      refreshControllerIdentity,
       isLoadingOrg,
       navigationScope,
       orgSiteGroupFilter,
