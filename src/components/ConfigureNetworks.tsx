@@ -54,6 +54,8 @@ import { AGGridWrapper } from '@/components/ui/AGGridWrapper';
 import type { ColDef } from 'ag-grid-community';
 import { tenantService } from '../services/tenantService';
 import { DevEpicBadge } from './DevEpicBadge';
+import { ControllerIdentityBadge } from './ControllerIdentityBadge';
+import { SiteGroupFilterDropdown } from './SiteGroupFilterDropdown';
 
 interface BulkOperationProgress {
   total: number;
@@ -431,9 +433,23 @@ const transformServiceToNetwork = (
 };
 
 export function ConfigureNetworks() {
-  const { navigationScope, siteGroups, orgSiteGroupFilter, navigateToTemplateCreation } =
-    useAppContext();
+  const {
+    navigationScope,
+    siteGroups,
+    orgSiteGroupFilter,
+    setOrgSiteGroupFilter: _setOrgSiteGroupFilter,
+    navigateToTemplateCreation,
+    activeControllerIdentity,
+    refreshControllerIdentity,
+    siteGroup: _siteGroup,
+  } = useAppContext();
   const isOrgScope = navigationScope === 'global';
+
+  const chosenOrgGroup = isOrgScope && orgSiteGroupFilter
+    ? siteGroups.find((s) => s.id === orgSiteGroupFilter) ?? null
+    : null;
+  const needsGroupSelection = isOrgScope && !chosenOrgGroup;
+
   const [networks, setNetworks] = useState<NetworkConfig[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [_roles, setRoles] = useState<Role[]>([]);
@@ -567,6 +583,12 @@ export function ConfigureNetworks() {
   useEffect(() => {
     loadNetworks();
   }, [navigationScope, siteGroups.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (chosenOrgGroup) {
+      void refreshControllerIdentity(chosenOrgGroup);
+    }
+  }, [chosenOrgGroup?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Fetch services from a single controller and transform to NetworkConfig[] */
   const fetchAndTransformServices = async (sgTag?: {
@@ -1111,6 +1133,30 @@ export function ConfigureNetworks() {
     }
   };
 
+  if (needsGroupSelection) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Configure Networks</CardTitle>
+          <CardDescription>Direct Mode — changes apply on save</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+          <Server className="h-10 w-10 text-muted-foreground" />
+          <div className="space-y-1">
+            <p className="text-base font-medium text-high-emphasis">
+              Select a Site Group to configure its controller
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Direct Config writes to one controller at a time. Choose the Site Group
+              (controller / gateway) you want to configure.
+            </p>
+          </div>
+          <SiteGroupFilterDropdown />
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -1237,6 +1283,12 @@ export function ConfigureNetworks() {
                   />
                   DIRECT MODE
                 </span>
+                {activeControllerIdentity && (
+                  <ControllerIdentityBadge
+                    identity={activeControllerIdentity}
+                    className="ml-3"
+                  />
+                )}
               </CardTitle>
               <CardDescription>
                 Manage and configure wireless networks, SSIDs, and security policies — changes apply
