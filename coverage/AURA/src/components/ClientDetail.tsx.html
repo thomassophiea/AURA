@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/884</span>
+                <span class='fraction'>0/892</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/884</span>
+                <span class='fraction'>0/892</span>
             </div>
         
             
@@ -1363,7 +1363,15 @@
 <a name='L1298'></a><a href='#L1298'>1298</a>
 <a name='L1299'></a><a href='#L1299'>1299</a>
 <a name='L1300'></a><a href='#L1300'>1300</a>
-<a name='L1301'></a><a href='#L1301'>1301</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L1301'></a><a href='#L1301'>1301</a>
+<a name='L1302'></a><a href='#L1302'>1302</a>
+<a name='L1303'></a><a href='#L1303'>1303</a>
+<a name='L1304'></a><a href='#L1304'>1304</a>
+<a name='L1305'></a><a href='#L1305'>1305</a>
+<a name='L1306'></a><a href='#L1306'>1306</a>
+<a name='L1307'></a><a href='#L1307'>1307</a>
+<a name='L1308'></a><a href='#L1308'>1308</a>
+<a name='L1309'></a><a href='#L1309'>1309</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1401,16 +1409,9 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1420,8 +1421,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1432,6 +1433,21 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -2701,12 +2717,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 <span class="cstat-no" title="statement not covered" >import { toast } from 'sonner';</span>
 <span class="cstat-no" title="statement not covered" >import { formatCompactNumber } from '../lib/units';</span>
 <span class="cstat-no" title="statement not covered" >import { resolveClientIdentity } from '../lib/clientIdentity';</span>
+<span class="cstat-no" title="statement not covered" >import { useCortexContext } from '../contexts/CortexContext';</span>
 &nbsp;
 interface ClientDetailProps {
   macAddress: string;
 }
 &nbsp;
 <span class="cstat-no" title="statement not covered" >export function ClientDetail({ macAddress }: ClientDetailProps) {</span>
+<span class="cstat-no" title="statement not covered" >  const { setWirelessContext } = useCortexContext();</span>
 <span class="cstat-no" title="statement not covered" >  const [clientDetails, setClientDetails] = useState&lt;Station | null&gt;(null);</span>
 <span class="cstat-no" title="statement not covered" >  const [trafficStats, setTrafficStats] = useState&lt;StationTrafficStats | null&gt;(null);</span>
 <span class="cstat-no" title="statement not covered" >  const [resolvedSiteName, setResolvedSiteName] = useState&lt;string | null&gt;(null);</span>
@@ -2737,6 +2755,12 @@ interface ClientDetailProps {
 <span class="cstat-no" title="statement not covered" >      setIsLoading(true);</span>
 <span class="cstat-no" title="statement not covered" >      const details = await apiService.getStation(macAddress);</span>
 <span class="cstat-no" title="statement not covered" >      setClientDetails(details);</span>
+<span class="cstat-no" title="statement not covered" >      setWirelessContext({</span>
+<span class="cstat-no" title="statement not covered" >        clientMac: details.macAddress,</span>
+<span class="cstat-no" title="statement not covered" >        apSerial: details.apSerial ?? details.apSerialNumber,</span>
+<span class="cstat-no" title="statement not covered" >        apName: details.apName,</span>
+<span class="cstat-no" title="statement not covered" >        ssid: details.ssid ?? details.essid,</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >      // Debug logging to see what fields are available</span>
 <span class="cstat-no" title="statement not covered" >      console.log('Station details for', macAddress, ':', {</span>
@@ -3970,7 +3994,7 @@ interface ClientDetailProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

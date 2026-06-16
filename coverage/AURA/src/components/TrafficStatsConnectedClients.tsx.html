@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/1005</span>
+                <span class='fraction'>0/1013</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/1005</span>
+                <span class='fraction'>0/1013</span>
             </div>
         
             
@@ -1408,7 +1408,15 @@
 <a name='L1343'></a><a href='#L1343'>1343</a>
 <a name='L1344'></a><a href='#L1344'>1344</a>
 <a name='L1345'></a><a href='#L1345'>1345</a>
-<a name='L1346'></a><a href='#L1346'>1346</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L1346'></a><a href='#L1346'>1346</a>
+<a name='L1347'></a><a href='#L1347'>1347</a>
+<a name='L1348'></a><a href='#L1348'>1348</a>
+<a name='L1349'></a><a href='#L1349'>1349</a>
+<a name='L1350'></a><a href='#L1350'>1350</a>
+<a name='L1351'></a><a href='#L1351'>1351</a>
+<a name='L1352'></a><a href='#L1352'>1352</a>
+<a name='L1353'></a><a href='#L1353'>1353</a>
+<a name='L1354'></a><a href='#L1354'>1354</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -1480,12 +1488,14 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -2530,6 +2540,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -2825,6 +2841,7 @@ import { SaveToWorkspace } from './SaveToWorkspace';
 <span class="cstat-no" title="statement not covered" >import { DetailSlideOut } from './DetailSlideOut';</span>
 <span class="cstat-no" title="statement not covered" >import { DEVICE_MONITORING_COLUMNS } from '../config/deviceMonitoringColumns';</span>
 <span class="cstat-no" title="statement not covered" >import { useAppContext } from '@/contexts/AppContext';</span>
+<span class="cstat-no" title="statement not covered" >import { useCortexContext } from '@/contexts/CortexContext';</span>
 import { Server } from 'lucide-react';
 &nbsp;
 interface ConnectedClientsProps {
@@ -2833,6 +2850,7 @@ interface ConnectedClientsProps {
 &nbsp;
 <span class="cstat-no" title="statement not covered" >export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsProps) {</span>
 <span class="cstat-no" title="statement not covered" >  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();</span>
+<span class="cstat-no" title="statement not covered" >  const { setWirelessContext } = useCortexContext();</span>
 <span class="cstat-no" title="statement not covered" >  const [stations, setStations] = useState&lt;Station[]&gt;([]);</span>
 <span class="cstat-no" title="statement not covered" >  const [isLoading, setIsLoading] = useState(true);</span>
 <span class="cstat-no" title="statement not covered" >  const [error, setError] = useState&lt;string&gt;('');</span>
@@ -3933,6 +3951,12 @@ interface ConnectedClientsProps {
 <span class="cstat-no" title="statement not covered" >                    },</span>
 <span class="cstat-no" title="statement not covered" >                    onRowClicked: (e) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >                      if (!e.data) return;</span>
+<span class="cstat-no" title="statement not covered" >                      setWirelessContext({</span>
+<span class="cstat-no" title="statement not covered" >                        clientMac: e.data.macAddress,</span>
+<span class="cstat-no" title="statement not covered" >                        apSerial: e.data.apSerial || e.data.apSerialNumber,</span>
+<span class="cstat-no" title="statement not covered" >                        apName: e.data.apName,</span>
+<span class="cstat-no" title="statement not covered" >                        ssid: e.data.ssid,</span>
+<span class="cstat-no" title="statement not covered" >                      });</span>
 <span class="cstat-no" title="statement not covered" >                      if (onShowDetail) onShowDetail(e.data.macAddress, e.data.hostName);</span>
 <span class="cstat-no" title="statement not covered" >                      else {</span>
 <span class="cstat-no" title="statement not covered" >                        setSelectedStation(e.data);</span>
@@ -4105,7 +4129,7 @@ interface ConnectedClientsProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

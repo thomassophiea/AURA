@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">37.37% </span>
+                <span class="strong">37.44% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>185/495</span>
+                <span class='fraction'>185/494</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">78.37% </span>
+                <span class="strong">74.35% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>29/37</span>
+                <span class='fraction'>29/39</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">37.37% </span>
+                <span class="strong">37.44% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>185/495</span>
+                <span class='fraction'>185/494</span>
             </div>
         
             
@@ -726,8 +726,7 @@
 <a name='L661'></a><a href='#L661'>661</a>
 <a name='L662'></a><a href='#L662'>662</a>
 <a name='L663'></a><a href='#L663'>663</a>
-<a name='L664'></a><a href='#L664'>664</a>
-<a name='L665'></a><a href='#L665'>665</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
+<a name='L664'></a><a href='#L664'>664</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -830,7 +829,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -844,8 +842,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -855,8 +853,8 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -1396,7 +1394,7 @@
  * Manages organizations, controllers, and user access
  */
 &nbsp;
-import { supabase } from './supabaseClient';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 &nbsp;
 // Types
 export interface Organization {
@@ -1492,8 +1490,7 @@ class TenantService {
 &nbsp;
   /** Check if Supabase is actually configured (not using placeholder). */
 <span class="fstat-no" title="function not covered" >  private _isSupabaseConfigured(): boolean {</span>
-<span class="cstat-no" title="statement not covered" >    const url = import.meta.env.VITE_SUPABASE_URL;</span>
-<span class="cstat-no" title="statement not covered" >    return !!url &amp;&amp; !url.includes('placeholder');</span>
+<span class="cstat-no" title="statement not covered" >    return isSupabaseConfigured;</span>
 <span class="cstat-no" title="statement not covered" >  }</span>
 &nbsp;
   constructor() {
@@ -1508,8 +1505,8 @@ class TenantService {
 <span class="cstat-no" title="statement not covered" >        this.currentController = JSON.parse(savedController);</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >      const savedOrg = localStorage.getItem(STORAGE_KEYS.CURRENT_ORG);</span>
-<span class="cstat-no" title="statement not covered" >      if (savedOrg) {</span>
+      const savedOrg = localStorage.getItem(STORAGE_KEYS.CURRENT_ORG);
+      if (savedOrg) <span class="branch-0 cbranch-no" title="branch not covered" >{</span>
 <span class="cstat-no" title="statement not covered" >        this.currentOrg = JSON.parse(savedOrg);</span>
 <span class="cstat-no" title="statement not covered" >        // Migrate stale org name from previous default</span>
 <span class="cstat-no" title="statement not covered" >        if (this.currentOrg &amp;&amp; this.currentOrg.name === 'AURA Organization') {</span>
@@ -1518,9 +1515,9 @@ class TenantService {
 <span class="cstat-no" title="statement not covered" >          this.saveToStorage();</span>
 <span class="cstat-no" title="statement not covered" >        }</span>
 <span class="cstat-no" title="statement not covered" >      }</span>
-    } catch (error) {
-      console.error('Failed to load tenant state from storage:', error);
-    }
+    } <span class="branch-0 cbranch-no" title="branch not covered" >catch (error) {</span>
+<span class="cstat-no" title="statement not covered" >      console.error('Failed to load tenant state from storage:', error);</span>
+<span class="cstat-no" title="statement not covered" >    }</span>
   }
 &nbsp;
   // Save state to localStorage
@@ -2062,7 +2059,7 @@ export const tenantService = new TenantService();
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

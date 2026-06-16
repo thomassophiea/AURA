@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/207</span>
+                <span class='fraction'>0/218</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/207</span>
+                <span class='fraction'>0/218</span>
             </div>
         
             
@@ -337,7 +337,21 @@
 <a name='L272'></a><a href='#L272'>272</a>
 <a name='L273'></a><a href='#L273'>273</a>
 <a name='L274'></a><a href='#L274'>274</a>
-<a name='L275'></a><a href='#L275'>275</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L275'></a><a href='#L275'>275</a>
+<a name='L276'></a><a href='#L276'>276</a>
+<a name='L277'></a><a href='#L277'>277</a>
+<a name='L278'></a><a href='#L278'>278</a>
+<a name='L279'></a><a href='#L279'>279</a>
+<a name='L280'></a><a href='#L280'>280</a>
+<a name='L281'></a><a href='#L281'>281</a>
+<a name='L282'></a><a href='#L282'>282</a>
+<a name='L283'></a><a href='#L283'>283</a>
+<a name='L284'></a><a href='#L284'>284</a>
+<a name='L285'></a><a href='#L285'>285</a>
+<a name='L286'></a><a href='#L286'>286</a>
+<a name='L287'></a><a href='#L287'>287</a>
+<a name='L288'></a><a href='#L288'>288</a>
+<a name='L289'></a><a href='#L289'>289</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -366,6 +380,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -384,17 +413,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -415,6 +433,16 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -624,7 +652,7 @@
   Building2,
   Moon,
   Sun,
-  Braces,
+  Lock,
 } from 'lucide-react';
 <span class="cstat-no" title="statement not covered" >import { Button } from './ui/button';</span>
 <span class="cstat-no" title="statement not covered" >import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';</span>
@@ -636,6 +664,9 @@ interface UserMenuProps {
   onLogout: () =&gt; void;
   theme: string;
   onThemeToggle: () =&gt; void;
+  // Provided only when dev mode is currently unlocked. Renders a "Lock dev
+  // mode" item that calls back to clear the unlock flag.
+  onDevLock?: () =&gt; void;
   userEmail?: string;
   onNavigateTo?: (page: string) =&gt; void;
 }
@@ -644,6 +675,7 @@ interface UserMenuProps {
 <span class="cstat-no" title="statement not covered" >  onLogout,</span>
 <span class="cstat-no" title="statement not covered" >  theme,</span>
 <span class="cstat-no" title="statement not covered" >  onThemeToggle,</span>
+<span class="cstat-no" title="statement not covered" >  onDevLock,</span>
 <span class="cstat-no" title="statement not covered" >  userEmail,</span>
 <span class="cstat-no" title="statement not covered" >  onNavigateTo,</span>
 <span class="cstat-no" title="statement not covered" >}: UserMenuProps) {</span>
@@ -766,11 +798,21 @@ interface UserMenuProps {
 <span class="cstat-no" title="statement not covered" >    },</span>
 <span class="cstat-no" title="statement not covered" >    {</span>
 <span class="cstat-no" title="statement not covered" >      type: 'item',</span>
-<span class="cstat-no" title="statement not covered" >      label: `Theme: ${theme === 'ep1' ? 'Dark' : theme === 'dev' ? 'Dev' : 'Light'}`,</span>
-<span class="cstat-no" title="statement not covered" >      icon: theme === 'ep1' ? Moon : theme === 'dev' ? Braces : Sun,</span>
+<span class="cstat-no" title="statement not covered" >      label: `Theme: ${theme === 'ep1' || theme === 'dev' ? 'Dark' : 'Light'}`,</span>
+<span class="cstat-no" title="statement not covered" >      icon: theme === 'light' ? Sun : Moon,</span>
 <span class="cstat-no" title="statement not covered" >      action: onThemeToggle,</span>
 <span class="cstat-no" title="statement not covered" >      keepOpen: true,</span>
 <span class="cstat-no" title="statement not covered" >    },</span>
+<span class="cstat-no" title="statement not covered" >    ...(onDevLock</span>
+<span class="cstat-no" title="statement not covered" >      ? [</span>
+<span class="cstat-no" title="statement not covered" >          {</span>
+<span class="cstat-no" title="statement not covered" >            type: 'item' as const,</span>
+<span class="cstat-no" title="statement not covered" >            label: 'Lock dev mode',</span>
+<span class="cstat-no" title="statement not covered" >            icon: Lock,</span>
+<span class="cstat-no" title="statement not covered" >            action: onDevLock,</span>
+<span class="cstat-no" title="statement not covered" >          },</span>
+<span class="cstat-no" title="statement not covered" >        ]</span>
+<span class="cstat-no" title="statement not covered" >      : []),</span>
 <span class="cstat-no" title="statement not covered" >    {</span>
 <span class="cstat-no" title="statement not covered" >      type: 'separator',</span>
 <span class="cstat-no" title="statement not covered" >    },</span>
@@ -892,7 +934,7 @@ interface UserMenuProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

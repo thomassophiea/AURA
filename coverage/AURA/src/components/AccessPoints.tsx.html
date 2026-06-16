@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/2794</span>
+                <span class='fraction'>0/2800</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/2794</span>
+                <span class='fraction'>0/2800</span>
             </div>
         
             
@@ -3816,7 +3816,13 @@
 <a name='L3751'></a><a href='#L3751'>3751</a>
 <a name='L3752'></a><a href='#L3752'>3752</a>
 <a name='L3753'></a><a href='#L3753'>3753</a>
-<a name='L3754'></a><a href='#L3754'>3754</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L3754'></a><a href='#L3754'>3754</a>
+<a name='L3755'></a><a href='#L3755'>3755</a>
+<a name='L3756'></a><a href='#L3756'>3756</a>
+<a name='L3757'></a><a href='#L3757'>3757</a>
+<a name='L3758'></a><a href='#L3758'>3758</a>
+<a name='L3759'></a><a href='#L3759'>3759</a>
+<a name='L3760'></a><a href='#L3760'>3760</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -3893,6 +3899,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -4339,6 +4346,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -4888,6 +4896,10 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -7645,6 +7657,7 @@
 <span class="cstat-no" title="statement not covered" >import { AP_TABLE_COLUMNS } from '@/config/apTableColumns';</span>
 <span class="cstat-no" title="statement not covered" >import { useAppContext } from '@/contexts/AppContext';</span>
 <span class="cstat-no" title="statement not covered" >import { useGridMode } from '@/contexts/GridModeContext';</span>
+<span class="cstat-no" title="statement not covered" >import { useCortexContext } from '@/contexts/CortexContext';</span>
 <span class="cstat-no" title="statement not covered" >import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';</span>
 import type { ColDef, GridApi } from 'ag-grid-community';
 <span class="cstat-no" title="statement not covered" >import { Server, Building } from 'lucide-react';</span>
@@ -8089,6 +8102,7 @@ interface AccessPointsProps {
 <span class="cstat-no" title="statement not covered" >export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsProps) {</span>
 <span class="cstat-no" title="statement not covered" >  const { navigationScope, siteGroups, orgSiteGroupFilter } = useAppContext();</span>
 <span class="cstat-no" title="statement not covered" >  const { agGridEnabled } = useGridMode();</span>
+<span class="cstat-no" title="statement not covered" >  const { setWirelessContext } = useCortexContext();</span>
 <span class="cstat-no" title="statement not covered" >  const [accessPoints, setAccessPoints] = useState&lt;AccessPoint[]&gt;([]);</span>
 <span class="cstat-no" title="statement not covered" >  const [clientCounts, setClientCounts] = useState&lt;Record&lt;string, number&gt;&gt;({});</span>
 <span class="cstat-no" title="statement not covered" >  const [apMetrics, setApMetrics] = useState&lt;</span>
@@ -8644,6 +8658,10 @@ interface AccessPointsProps {
 <span class="cstat-no" title="statement not covered" >      setSelectedAP(apDetails);</span>
 <span class="cstat-no" title="statement not covered" >      setApStations(stations);</span>
 <span class="cstat-no" title="statement not covered" >      setIsModalOpen(true);</span>
+<span class="cstat-no" title="statement not covered" >      setWirelessContext({</span>
+<span class="cstat-no" title="statement not covered" >        apSerial: apDetails.serialNumber,</span>
+<span class="cstat-no" title="statement not covered" >        apName: apDetails.name ?? apDetails.displayName ?? apDetails.hostname,</span>
+<span class="cstat-no" title="statement not covered" >      });</span>
 <span class="cstat-no" title="statement not covered" >    } catch (err) {</span>
 <span class="cstat-no" title="statement not covered" >      console.error('Error loading AP details:', err);</span>
 <span class="cstat-no" title="statement not covered" >      setError(err instanceof Error ? err.message : 'Failed to load AP details');</span>
@@ -11329,7 +11347,7 @@ interface AccessPointsProps {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

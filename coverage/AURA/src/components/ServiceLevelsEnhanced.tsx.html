@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/1275</span>
+                <span class='fraction'>0/1283</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/1275</span>
+                <span class='fraction'>0/1283</span>
             </div>
         
             
@@ -1985,7 +1985,15 @@
 <a name='L1920'></a><a href='#L1920'>1920</a>
 <a name='L1921'></a><a href='#L1921'>1921</a>
 <a name='L1922'></a><a href='#L1922'>1922</a>
-<a name='L1923'></a><a href='#L1923'>1923</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
+<a name='L1923'></a><a href='#L1923'>1923</a>
+<a name='L1924'></a><a href='#L1924'>1924</a>
+<a name='L1925'></a><a href='#L1925'>1925</a>
+<a name='L1926'></a><a href='#L1926'>1926</a>
+<a name='L1927'></a><a href='#L1927'>1927</a>
+<a name='L1928'></a><a href='#L1928'>1928</a>
+<a name='L1929'></a><a href='#L1929'>1929</a>
+<a name='L1930'></a><a href='#L1930'>1930</a>
+<a name='L1931'></a><a href='#L1931'>1931</a></td><td class="line-coverage quiet"><span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -2027,6 +2035,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -2134,6 +2143,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -3479,6 +3489,12 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -3948,6 +3964,7 @@
 <span class="cstat-no" title="statement not covered" >import { toast } from 'sonner';</span>
 <span class="cstat-no" title="statement not covered" >import { useGlobalFilters } from '../hooks/useGlobalFilters';</span>
 <span class="cstat-no" title="statement not covered" >import { useContextScope } from '../hooks/useContextScope';</span>
+<span class="cstat-no" title="statement not covered" >import { useCortexContext } from '../contexts/CortexContext';</span>
 <span class="cstat-no" title="statement not covered" >import {</span>
   LineChart,
   Line,
@@ -4060,6 +4077,7 @@ interface Station {
 <span class="cstat-no" title="statement not covered" >  // Sync with global site filter for consistent context scoping</span>
 <span class="cstat-no" title="statement not covered" >  const { filters, updateFilter } = useGlobalFilters();</span>
 <span class="cstat-no" title="statement not covered" >  const scope = useContextScope();</span>
+<span class="cstat-no" title="statement not covered" >  const { setWirelessContext } = useCortexContext();</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >  const [loading, setLoading] = useState(true);</span>
 <span class="cstat-no" title="statement not covered" >  const [refreshing, setRefreshing] = useState(false);</span>
@@ -5407,6 +5425,12 @@ interface Station {
 <span class="cstat-no" title="statement not covered" >                          onClick={() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >                            setSelectedClient(station);</span>
 <span class="cstat-no" title="statement not covered" >                            setIsClientDialogOpen(true);</span>
+<span class="cstat-no" title="statement not covered" >                            setWirelessContext({</span>
+<span class="cstat-no" title="statement not covered" >                              clientMac: station.macAddress,</span>
+<span class="cstat-no" title="statement not covered" >                              apSerial: station.apSerialNumber,</span>
+<span class="cstat-no" title="statement not covered" >                              apName: station.apName,</span>
+<span class="cstat-no" title="statement not covered" >                              ssid: station.ssid,</span>
+<span class="cstat-no" title="statement not covered" >                            });</span>
 <span class="cstat-no" title="statement not covered" >                          }}</span>
 <span class="cstat-no" title="statement not covered" >                          className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 cursor-pointer transition-colors"</span>
                         &gt;
@@ -5836,7 +5860,7 @@ interface Station {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-05-08T02:19:31.207Z
+                at 2026-05-24T13:43:53.962Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>
