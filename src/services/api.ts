@@ -40,6 +40,7 @@ import type {
   StationEventsResponse,
   Topology,
 } from '../types/api';
+import type { ControllerIdentity } from '../types/controllerIdentity';
 
 // Use proxy in production, direct connection in development.
 // `VITE_USE_PROXY=true` forces proxy mode in dev too — useful when the
@@ -5281,6 +5282,45 @@ class ApiService {
     } catch (error) {
       logger.error('[API] Failed to fetch complete OS ONE info:', error);
       return null;
+    }
+  }
+
+  /**
+   * Resolve the active controller's identity (hostname + Locking ID) from
+   * /system/info. Live fetch only — never persisted. Falls back the hostname
+   * to the controller URL host, and reports 'unreachable' on failure.
+   *
+   * @param controllerBaseUrl Optional explicit controller base URL (e.g. a
+   *   non-active Site Group's controller_url). Used only to derive the host
+   *   fallback; the underlying calls use the current API base URL.
+   */
+  async getControllerIdentity(controllerBaseUrl?: string): Promise<ControllerIdentity> {
+    const hostFallback = (() => {
+      try {
+        return controllerBaseUrl ? new URL(controllerBaseUrl).hostname : '';
+      } catch {
+        return controllerBaseUrl ?? '';
+      }
+    })();
+
+    try {
+      const info = await this.getOSOneInfo();
+      const hostname = info?.system?.hostName?.trim() || hostFallback;
+      const lockingId = info?.manufacturing?.lockingId?.trim() || '';
+      return {
+        hostname,
+        lockingId,
+        fetchedAt: new Date().toISOString(),
+        status: 'ok',
+      };
+    } catch (error) {
+      logger.error('[API] getControllerIdentity failed:', error);
+      return {
+        hostname: hostFallback,
+        lockingId: '',
+        fetchedAt: new Date().toISOString(),
+        status: 'unreachable',
+      };
     }
   }
 
