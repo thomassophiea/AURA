@@ -60,7 +60,7 @@ async function sentinelFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!resp.ok) {
     const msg = await resp.text().catch(() => resp.statusText);
-    throw new Error(`Sentinel API error ${resp.status}: ${msg}`);
+    throw new Error(`Operational Insights API error ${resp.status}: ${msg}`);
   }
 
   return resp.json() as Promise<T>;
