@@ -55,7 +55,7 @@ import type { ColDef } from 'ag-grid-community';
 import { tenantService } from '../services/tenantService';
 import { DevEpicBadge } from './DevEpicBadge';
 import { ControllerIdentityBadge } from './ControllerIdentityBadge';
-import { SiteGroupFilterDropdown } from './SiteGroupFilterDropdown';
+import { SiteGroupSitePicker } from './SiteGroupSitePicker';
 
 interface BulkOperationProgress {
   total: number;
@@ -1156,7 +1156,11 @@ export function ConfigureNetworks() {
               (controller / gateway) you want to configure.
             </p>
           </div>
-          <SiteGroupFilterDropdown />
+          <SiteGroupSitePicker
+            sites={availableSites}
+            selectedSite={selectedSite}
+            onSelectSite={setSelectedSite}
+          />
         </CardContent>
       </Card>
     );
@@ -1498,20 +1502,11 @@ export function ConfigureNetworks() {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedSite} onValueChange={setSelectedSite}>
-                <SelectTrigger className="w-[145px] h-8 text-xs">
-                  <Building className="h-3.5 w-3.5 mr-1.5" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Sites</SelectItem>
-                  {availableSites.map((site) => (
-                    <SelectItem key={site} value={site}>
-                      {site}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SiteGroupSitePicker
+                sites={availableSites}
+                selectedSite={selectedSite}
+                onSelectSite={setSelectedSite}
+              />
 
               <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-full sm:w-[120px]">
