@@ -719,23 +719,18 @@ export function ConfigureNetworks() {
     ? networks.filter((n: any) => n._siteGroupId === orgSiteGroupFilter)
     : networks;
 
-  const availableSites = useMemo(() => {
-    const siteSet = new Set<string>();
-    sgFilteredNetworks.forEach((network) => {
-      const ids = serviceSiteIds[network.id] || [];
-      ids.forEach((siteId) => {
-        const siteName = siteIdToName[siteId] || siteId;
-        if (siteName) siteSet.add(siteName);
-      });
-    });
-    return Array.from(siteSet).sort();
-  }, [sgFilteredNetworks, serviceSiteIds, siteIdToName]);
+  // Every site on the selected gateway (from getSites), not just those a network
+  // is assigned to — the picker lists all of the gateway's sites.
+  const allSiteNames = useMemo(
+    () => Array.from(new Set(Object.values(siteIdToName))).sort(),
+    [siteIdToName]
+  );
 
   useEffect(() => {
-    if (selectedSite !== 'all' && !availableSites.includes(selectedSite)) {
+    if (selectedSite !== 'all' && !allSiteNames.includes(selectedSite)) {
       setSelectedSite('all');
     }
-  }, [availableSites, selectedSite]);
+  }, [allSiteNames, selectedSite]);
 
   const siteFilteredNetworks =
     selectedSite === 'all'
@@ -1149,15 +1144,15 @@ export function ConfigureNetworks() {
           <Server className="h-10 w-10 text-muted-foreground" />
           <div className="space-y-1">
             <p className="text-base font-medium text-high-emphasis">
-              Select a Site Group to configure its controller
+              Select a Gateway to configure
             </p>
             <p className="text-sm text-muted-foreground">
-              Direct Config writes to one controller at a time. Choose the Site Group
-              (controller / gateway) you want to configure.
+              Direct Config writes to one gateway at a time. Choose the gateway you
+              want to configure.
             </p>
           </div>
           <SiteGroupSitePicker
-            sites={availableSites}
+            sites={allSiteNames}
             selectedSite={selectedSite}
             onSelectSite={setSelectedSite}
           />
@@ -1503,7 +1498,7 @@ export function ConfigureNetworks() {
               </Select>
 
               <SiteGroupSitePicker
-                sites={availableSites}
+                sites={allSiteNames}
                 selectedSite={selectedSite}
                 onSelectSite={setSelectedSite}
               />

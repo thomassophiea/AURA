@@ -118,7 +118,7 @@ describe('ConfigureNetworks org-scope gate', () => {
       orgSiteGroupFilter: null,
     });
     render(<ConfigureNetworks />);
-    expect(screen.getByText(/Select a Site Group to configure its controller/i)).toBeInTheDocument();
+    expect(screen.getByText(/Select a Gateway to configure/i)).toBeInTheDocument();
   });
 
   it('auto-selects the sole Site Group at org scope (no empty-state prompt)', () => {
@@ -128,7 +128,7 @@ describe('ConfigureNetworks org-scope gate', () => {
     });
     render(<ConfigureNetworks />);
     expect(
-      screen.queryByText(/Select a Site Group to configure its controller/i)
+      screen.queryByText(/Select a Gateway to configure/i)
     ).toBeNull();
   });
 });
