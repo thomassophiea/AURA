@@ -68,7 +68,7 @@ const CHECK_CONFIG: Record<
   { label: string; icon: React.ComponentType<{ className?: string }>; description: string }
 > = {
   vlan_trunk: { label: 'Missing VLAN', icon: Network, description: 'Validates VLAN presence on AP uplink trunks' },
-  dhcp_reachability: { label: 'DHCP Reachability', icon: Server, description: 'Tests DHCP server reachability' },
+  dhcp_reachability: { label: 'DHCP Reachability', icon: Server, description: 'Validates local DHCP pools and relay server reachability' },
   radius_reachability: { label: 'RADIUS Reachability', icon: Shield, description: 'Tests RADIUS server reachability' },
   client_dhcp_failure: { label: 'Client DHCP Failure', icon: Users, description: 'Monitors per-SSID DHCP failure rates' },
 };
@@ -160,11 +160,81 @@ function EvidencePanel({ checkId, evidence }: { checkId: string; evidence: Check
 
 function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
   const networks = (evidence.networks ?? []) as Array<{ name: string; vlanId: number; dhcpMode: string }>;
-  const results = (evidence.reachabilityResults ?? []) as Array<{ server: string; usedBy: string; reachable: boolean }>;
+  const localServers = (evidence.localServers ?? []) as Array<{
+    label: string; vlanId: number; pool: string | null; gateway: string | null;
+    gatewayReachable: boolean | null; hasPool: boolean; issues: string[];
+  }>;
+  const relayResults = (evidence.reachabilityResults ?? []) as Array<{ server: string; usedBy: string; reachable: boolean }>;
   return (
     <div className="space-y-2">
-      {/* Network DHCP modes */}
-      {networks.length > 0 && (
+      {/* Local DHCP Server pools */}
+      {localServers.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Local DHCP Servers ({localServers.length})
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1.5 font-medium">Network</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">IP Pool</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Gateway</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Status</th>
+            </tr></thead>
+            <tbody>
+              {localServers.map((r) => (
+                <tr key={r.vlanId} className="border-t border-border/20">
+                  <td className="px-2.5 py-1.5">{r.label}</td>
+                  <td className="px-2.5 py-1.5 font-mono text-[10px]">
+                    {r.pool ?? <span className="text-amber-500">Not set</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 font-mono text-[10px]">
+                    {r.gateway ?? <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-2.5 py-1.5 text-center">
+                    {r.issues.length === 0
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                      : r.issues.some((i) => i.includes('gateway')) && r.hasPool
+                        ? <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />
+                        : <AlertTriangle className="h-3.5 w-3.5 text-amber-500 inline" />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Relay server reachability */}
+      {relayResults.length > 0 && (
+        <div className="rounded border border-border/30 overflow-hidden">
+          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+            Relay Server Reachability
+          </div>
+          <table className="w-full text-[11px]">
+            <thead><tr className="bg-muted/20 text-muted-foreground">
+              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
+              <th className="text-left px-2.5 py-1.5 font-medium">Used By</th>
+              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
+            </tr></thead>
+            <tbody>
+              {relayResults.map((r) => (
+                <tr key={r.server} className="border-t border-border/20">
+                  <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
+                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.usedBy}</td>
+                  <td className="px-2.5 py-1.5 text-center">
+                    {r.reachable
+                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
+                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Network DHCP mode summary */}
+      {networks.length > 0 && localServers.length === 0 && relayResults.length === 0 && (
         <div className="rounded border border-border/30 overflow-hidden">
           <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
             Networks ({networks.length})
@@ -181,35 +251,6 @@ function DhcpEvidence({ evidence }: { evidence: CheckEvidence }) {
                   <td className="px-2.5 py-1">{n.name}</td>
                   <td className="px-2.5 py-1 text-center">{n.vlanId}</td>
                   <td className="px-2.5 py-1 text-muted-foreground">{n.dhcpMode}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Relay server reachability */}
-      {results.length > 0 && (
-        <div className="rounded border border-border/30 overflow-hidden">
-          <div className="bg-muted/40 px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
-            Relay Server Reachability
-          </div>
-          <table className="w-full text-[11px]">
-            <thead><tr className="bg-muted/20 text-muted-foreground">
-              <th className="text-left px-2.5 py-1.5 font-medium">Server</th>
-              <th className="text-left px-2.5 py-1.5 font-medium">Used By</th>
-              <th className="text-center px-2.5 py-1.5 font-medium">Reachable</th>
-            </tr></thead>
-            <tbody>
-              {results.map((r) => (
-                <tr key={r.server} className="border-t border-border/20">
-                  <td className="px-2.5 py-1.5 font-mono">{r.server}</td>
-                  <td className="px-2.5 py-1.5 text-muted-foreground">{r.usedBy}</td>
-                  <td className="px-2.5 py-1.5 text-center">
-                    {r.reachable
-                      ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 inline" />
-                      : <AlertCircle className="h-3.5 w-3.5 text-red-500 inline" />}
-                  </td>
                 </tr>
               ))}
             </tbody>

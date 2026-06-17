@@ -4,9 +4,6 @@ import { fetchXcc } from '../../validationEngine/xccClient.js';
 
 const execAsync = promisify(exec);
 
-/**
- * ICMP ping a host. Returns true if at least one reply received.
- */
 async function pingHost(host) {
   try {
     const { stdout } = await execAsync(`ping -c 2 -W 3 ${host}`, { timeout: 10000 });
@@ -16,88 +13,147 @@ async function pingHost(host) {
   }
 }
 
-/**
- * Extract unique DHCP relay server IPs from topologies with DHCPRelay mode.
- * XCC API: topology.dhcpServers is a comma-separated string (not an array).
- * Also checks foreignIpAddress as a fallback relay target.
- */
-function extractDhcpRelayServers(topologies) {
-  const servers = new Map(); // ip -> { host, vlanNames[] }
-  const arr = Array.isArray(topologies?.data) ? topologies.data : Array.isArray(topologies) ? topologies : [];
+function toArray(val) {
+  return Array.isArray(val?.data) ? val.data : Array.isArray(val) ? val : [];
+}
 
-  for (const topo of arr) {
-    if (topo.dhcpMode !== 'DHCPRelay' && topo.dhcpMode !== 'DHCP Relay') continue;
-    const vlanLabel = topo.name ?? `VLAN ${topo.vlanid}`;
+function isValidIp(ip) {
+  return typeof ip === 'string' && /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) && ip !== '0.0.0.0';
+}
 
-    // dhcpServers can be a comma-separated string or an array
-    const raw = topo.dhcpRelayServers ?? topo.dhcpServers;
+export async function runDhcpReachabilityCheck(opts) {
+  const topologies = await fetchXcc('/v1/topologies', opts);
+  const topoArr = toArray(topologies);
+
+  const alerts = [];
+
+  // ── Local DHCP Server topologies ──
+  const localServerTopos = topoArr.filter(
+    (t) => t.dhcpMode === 'DHCPServer' || t.dhcpMode === 'Local'
+  );
+
+  const localResults = await Promise.all(
+    localServerTopos.map(async (t) => {
+      const label = t.name ?? `VLAN ${t.vlanid}`;
+      const hasPool = isValidIp(t.dhcpStartIpRange) && isValidIp(t.dhcpEndIpRange);
+      const gateway = t.gateway;
+      const hasGateway = isValidIp(gateway);
+
+      let gatewayReachable = null;
+      if (hasGateway) {
+        gatewayReachable = await pingHost(gateway);
+      }
+
+      const issues = [];
+      if (!hasPool) issues.push('no IP pool configured');
+      if (hasGateway && gatewayReachable === false) issues.push('gateway unreachable');
+
+      return {
+        label,
+        vlanId: t.vlanid,
+        pool: hasPool ? `${t.dhcpStartIpRange} – ${t.dhcpEndIpRange}` : null,
+        gateway: gateway ?? null,
+        gatewayReachable,
+        hasPool,
+        issues,
+      };
+    })
+  );
+
+  for (const r of localResults) {
+    if (!r.hasPool) {
+      alerts.push({
+        id: `dhcp_reachability:local:${r.vlanId}:no_pool`,
+        severity: 'warning',
+        checkName: 'dhcp_reachability',
+        message: `${r.label} (VLAN ${r.vlanId}) has DHCPServer mode but no IP pool configured`,
+        target: r.label,
+        context: { vlanId: r.vlanId, mode: 'local' },
+      });
+    }
+    if (r.gatewayReachable === false) {
+      alerts.push({
+        id: `dhcp_reachability:local:${r.vlanId}:gw_down`,
+        severity: 'critical',
+        checkName: 'dhcp_reachability',
+        message: `${r.label} (VLAN ${r.vlanId}) gateway ${r.gateway} is unreachable`,
+        target: r.gateway,
+        context: { vlanId: r.vlanId, gateway: r.gateway, mode: 'local' },
+      });
+    }
+  }
+
+  // ── DHCPRelay topologies ──
+  const relayServers = new Map(); // ip -> { host, vlanNames[] }
+  for (const t of topoArr) {
+    if (t.dhcpMode !== 'DHCPRelay' && t.dhcpMode !== 'DHCP Relay') continue;
+    const vlanLabel = t.name ?? `VLAN ${t.vlanid}`;
+    const raw = t.dhcpRelayServers ?? t.dhcpServers;
     let hosts = [];
     if (typeof raw === 'string' && raw.trim()) {
       hosts = raw.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
     } else if (Array.isArray(raw)) {
       hosts = raw.map((r) => (typeof r === 'string' ? r : r.ip ?? r.host ?? r.address)).filter(Boolean);
     }
-
-    // Fallback: foreignIpAddress (relay target on some topologies)
-    if (!hosts.length && topo.foreignIpAddress && topo.foreignIpAddress !== '0.0.0.0') {
-      hosts.push(topo.foreignIpAddress);
+    if (!hosts.length && isValidIp(t.foreignIpAddress)) {
+      hosts.push(t.foreignIpAddress);
     }
-
     for (const host of hosts) {
-      if (servers.has(host)) {
-        servers.get(host).vlanNames.push(vlanLabel);
+      if (relayServers.has(host)) {
+        relayServers.get(host).vlanNames.push(vlanLabel);
       } else {
-        servers.set(host, { host, vlanNames: [vlanLabel] });
+        relayServers.set(host, { host, vlanNames: [vlanLabel] });
       }
     }
   }
-  return servers;
-}
 
-/**
- * Run DHCP reachability checks. Returns array of alert descriptors.
- */
-export async function runDhcpReachabilityCheck(opts) {
-  const topologies = await fetchXcc('/v1/topologies', opts);
-  const topoArr = Array.isArray(topologies?.data) ? topologies.data : Array.isArray(topologies) ? topologies : [];
-  const servers = extractDhcpRelayServers(topologies);
-  const alerts = [];
-  const pingResults = [];
-
-  await Promise.all(
-    [...servers.entries()].map(async ([ip, { host, vlanNames }]) => {
+  const relayResults = await Promise.all(
+    [...relayServers.entries()].map(async ([ip, { host, vlanNames }]) => {
       const reachable = await pingHost(host);
-      pingResults.push({ host, vlanNames, reachable });
       if (!reachable) {
         alerts.push({
-          id: `dhcp_reachability:${ip}`,
+          id: `dhcp_reachability:relay:${ip}`,
           severity: 'critical',
           checkName: 'dhcp_reachability',
-          message: `DHCP relay server ${host} unreachable (used by VLAN ${vlanNames.join(', ')})`,
+          message: `DHCP relay server ${host} unreachable (used by ${vlanNames.join(', ')})`,
           target: ip,
-          context: { host, vlanNames },
+          context: { host, vlanNames, mode: 'relay' },
         });
       }
-    }),
+      return { server: host, usedBy: vlanNames.join(', '), reachable };
+    })
   );
 
-  const reachableCount = pingResults.filter((r) => r.reachable).length;
-  const relayCount = topoArr.filter((t) => t.dhcpMode === 'DHCPRelay' || t.dhcpMode === 'DHCP Relay').length;
+  // ── Evidence ──
+  const localOk = localResults.filter((r) => r.issues.length === 0).length;
+  const relayOk = relayResults.filter((r) => r.reachable).length;
+
+  let summary = '';
+  if (localServerTopos.length === 0 && relayServers.size === 0) {
+    summary = `${topoArr.length} network(s) scanned. No DHCP server or relay configuration found.`;
+  } else {
+    const parts = [];
+    if (localServerTopos.length > 0) {
+      parts.push(`${localOk}/${localServerTopos.length} local DHCP server network(s) OK`);
+    }
+    if (relayServers.size > 0) {
+      parts.push(`${relayOk}/${relayServers.size} relay server(s) reachable`);
+    }
+    summary = parts.join('; ') + '.';
+  }
+
   const evidence = {
-    serversFound: servers.size,
     networks: topoArr.map((t) => ({
       name: t.name ?? `VLAN ${t.vlanid}`,
       vlanId: t.vlanid,
-      dhcpMode: t.dhcpMode === 'DHCPRelay' || t.dhcpMode === 'DHCP Relay' ? 'Relay' : t.dhcpMode === 'DHCPServer' ? 'Server' : t.dhcpMode ?? 'Local',
+      dhcpMode:
+        t.dhcpMode === 'DHCPRelay' || t.dhcpMode === 'DHCP Relay' ? 'Relay'
+        : t.dhcpMode === 'DHCPServer' || t.dhcpMode === 'Local' ? 'Server'
+        : t.dhcpMode ?? 'None',
     })),
-    reachabilityResults: pingResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)).map((r) => ({
-      server: r.host,
-      usedBy: r.vlanNames.join(', '),
-      reachable: r.reachable,
-    })),
-    summary: servers.size === 0
-      ? `${topoArr.length} network(s) scanned. ${relayCount} use DHCP relay. No external relay servers to verify.`
-      : `${reachableCount}/${servers.size} DHCP relay server(s) verified reachable.`,
+    localServers: localResults,
+    reachabilityResults: relayResults.sort((a, b) => Number(a.reachable) - Number(b.reachable)),
+    summary,
   };
 
   return { alerts, evidence };
