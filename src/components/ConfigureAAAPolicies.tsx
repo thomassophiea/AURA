@@ -597,9 +597,9 @@ export function ConfigureAAAPolicies() {
           <Card className="border-border">
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div>
-                <h3 className="font-medium">Controller AAA Policies</h3>
+                <h3 className="font-medium">Gateway AAA Policies</h3>
                 <p className="text-sm text-muted-foreground">
-                  RADIUS authentication policies from the Campus Controller
+                  RADIUS authentication policies from the Campus Gateway
                 </p>
               </div>
               {isOrgScope ? (
@@ -623,7 +623,7 @@ export function ConfigureAAAPolicies() {
                 <div className="text-center py-12">
                   <Shield className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground">
-                    No AAA policies configured on the controller
+                    No AAA policies configured on the gateway
                   </p>
                   {isOrgScope ? (
                     <Button

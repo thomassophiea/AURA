@@ -31,7 +31,7 @@ export function SiteGroupSitePicker({
   selectedSite,
   onSelectSite,
   className,
-}: SiteGroupSitePickerProps): JSX.Element {
+}: SiteGroupSitePickerProps): React.ReactElement {
   const { siteGroups, orgSiteGroupFilter, setOrgSiteGroupFilter } = useAppContext();
   const [open, setOpen] = React.useState(false);
 

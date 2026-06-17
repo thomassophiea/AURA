@@ -760,7 +760,7 @@ export function ClientDetail({ macAddress }: ClientDetailProps) {
               <p className="text-sm text-muted-foreground mb-2">Station {macAddress}</p>
               <div className="text-xs text-muted-foreground max-w-md mx-auto space-y-1 mt-4">
                 <p>Station events may be unavailable if:</p>
-                <p>• Your controller doesn't support the station events API</p>
+                <p>• Your gateway doesn't support the station events API</p>
                 <p>• No events have been logged for this station in the last 30 days</p>
                 <p>• Audit logging is not enabled</p>
               </div>

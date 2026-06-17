@@ -253,7 +253,7 @@ const pageInfo = {
   },
   'configure-sites-groups': {
     title: 'Sites & Groups',
-    description: 'Manage site groups, controller pairs, and network sites',
+    description: 'Manage site groups, gateway pairs, and network sites',
   },
   'configure-networks': {
     title: 'Configure Networks',
@@ -680,7 +680,7 @@ export default function App() {
         ) {
           console.warn('Request timeout detected:', errorMessage);
           toast.error('Request timed out', {
-            description: 'The controller took too long to respond.',
+            description: 'The gateway took too long to respond.',
             duration: 4000,
           });
           event.preventDefault();
@@ -1324,7 +1324,7 @@ export default function App() {
             isOpen={detailPanel.isOpen}
             onClose={handleCloseDetailPanel}
             title={detailPanel.data.siteGroupName || 'Site Group Details'}
-            description="Controller pair details and site assignments"
+            description="Gateway pair details and site assignments"
             width="lg"
           >
             {/* Site group detail is rendered inline in SiteGroupsPage */}

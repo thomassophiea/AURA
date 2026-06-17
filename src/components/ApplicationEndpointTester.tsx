@@ -184,7 +184,7 @@ export function ApplicationEndpointTester() {
         {!testing && results.length > 0 && successfulEndpoints.length === 0 && (
           <div className="mt-4 p-4 bg-[color:var(--status-error-bg)] border border-[color:var(--status-error)]/30 rounded-lg">
             <p className="text-sm text-[color:var(--status-error)]">
-              No working endpoints found. The controller may not have an application analytics API
+              No working endpoints found. The gateway may not have an application analytics API
               available.
             </p>
           </div>

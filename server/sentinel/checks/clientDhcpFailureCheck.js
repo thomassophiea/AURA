@@ -8,7 +8,8 @@ const CRITICAL_THRESHOLD = 0.15; // 15%
  * Groups by SSID and calculates failure rate.
  */
 export async function runClientDhcpFailureCheck(opts) {
-  const stationsPath = opts.siteId ? `/v3/sites/${encodeURIComponent(opts.siteId)}/stations` : '/v1/stations';
+  const osSiteId = opts.siteId && !opts.siteId.startsWith('xiq:') ? opts.siteId : null;
+  const stationsPath = osSiteId ? `/v3/sites/${encodeURIComponent(osSiteId)}/stations` : '/v1/stations';
   const [stations, services] = await Promise.all([
     fetchXcc(stationsPath, opts),
     fetchXcc('/v1/services', opts),

@@ -370,7 +370,7 @@ function TopologiesTab() {
                       No topologies configured
                     </span>
                     <span className="text-xs">
-                      VLAN topologies defined on the controller will appear here.
+                      VLAN topologies defined on the gateway will appear here.
                     </span>
                   </div>
                 </TableCell>
@@ -417,7 +417,7 @@ function TopologiesTab() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="BridgedAtAp">Bridged at AP</SelectItem>
-                    <SelectItem value="BridgedAtAc">Bridged at Controller</SelectItem>
+                    <SelectItem value="BridgedAtAc">Bridged at Gateway</SelectItem>
                     <SelectItem value="Physical">Physical</SelectItem>
                     <SelectItem value="Management">Management</SelectItem>
                     <SelectItem value="FabricAttach">Fabric Attach</SelectItem>

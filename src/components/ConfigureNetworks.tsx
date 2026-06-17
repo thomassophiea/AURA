@@ -719,18 +719,23 @@ export function ConfigureNetworks() {
     ? networks.filter((n: any) => n._siteGroupId === orgSiteGroupFilter)
     : networks;
 
-  // Every site on the selected gateway (from getSites), not just those a network
-  // is assigned to — the picker lists all of the gateway's sites.
-  const allSiteNames = useMemo(
-    () => Array.from(new Set(Object.values(siteIdToName))).sort(),
-    [siteIdToName]
-  );
+  const availableSites = useMemo(() => {
+    const siteSet = new Set<string>();
+    sgFilteredNetworks.forEach((network) => {
+      const ids = serviceSiteIds[network.id] || [];
+      ids.forEach((siteId) => {
+        const siteName = siteIdToName[siteId] || siteId;
+        if (siteName) siteSet.add(siteName);
+      });
+    });
+    return Array.from(siteSet).sort();
+  }, [sgFilteredNetworks, serviceSiteIds, siteIdToName]);
 
   useEffect(() => {
-    if (selectedSite !== 'all' && !allSiteNames.includes(selectedSite)) {
+    if (selectedSite !== 'all' && !availableSites.includes(selectedSite)) {
       setSelectedSite('all');
     }
-  }, [allSiteNames, selectedSite]);
+  }, [availableSites, selectedSite]);
 
   const siteFilteredNetworks =
     selectedSite === 'all'
@@ -1107,7 +1112,7 @@ export function ConfigureNetworks() {
       await globalElementsService.createTemplate({
         org_id: org.id,
         name: `${network.ssid || network.name} (promoted)`,
-        description: `Promoted from ${(network as any)._siteGroupName || 'controller'} — ${network.ssid}`,
+        description: `Promoted from ${(network as any)._siteGroupName || 'gateway'} — ${network.ssid}`,
         element_type: 'service',
         config_payload: configPayload,
         is_active: true,
@@ -1144,15 +1149,15 @@ export function ConfigureNetworks() {
           <Server className="h-10 w-10 text-muted-foreground" />
           <div className="space-y-1">
             <p className="text-base font-medium text-high-emphasis">
-              Select a Gateway to configure
+              Select a Site Group to configure its gateway
             </p>
             <p className="text-sm text-muted-foreground">
-              Direct Config writes to one gateway at a time. Choose the gateway you
-              want to configure.
+              Direct Config writes to one gateway at a time. Choose the Site Group
+              (gateway) you want to configure.
             </p>
           </div>
           <SiteGroupSitePicker
-            sites={allSiteNames}
+            sites={availableSites}
             selectedSite={selectedSite}
             onSelectSite={setSelectedSite}
           />
@@ -1498,7 +1503,7 @@ export function ConfigureNetworks() {
               </Select>
 
               <SiteGroupSitePicker
-                sites={allSiteNames}
+                sites={availableSites}
                 selectedSite={selectedSite}
                 onSelectSite={setSelectedSite}
               />

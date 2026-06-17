@@ -1598,7 +1598,7 @@ export function AFCRadioHeightCalculator() {
         <AlertCircle className="h-4 w-4" />
         <AlertDescription className="text-sm">
           <strong>Standard Power (SP)</strong> APs require AFC. Heights are entered directly —
-          matching the values in the controller's <strong>Professional Install</strong> dialog.
+          matching the values in the gateway's <strong>Professional Install</strong> dialog.
           Outdoor APs (Environment = Outdoor) default to SP; indoor APs default to LP (no AFC
           needed).
         </AlertDescription>
@@ -2199,7 +2199,7 @@ export function AFCRadioHeightCalculator() {
                                                       </Select>
                                                       {ap.autoDeployment !== ap.deployment && (
                                                         <span
-                                                          title={`Controller env: ${ap.autoDeployment}`}
+                                                          title={`Gateway env: ${ap.autoDeployment}`}
                                                           className="text-[color:var(--status-warning)] text-xs"
                                                         >
                                                           *
@@ -2299,7 +2299,7 @@ export function AFCRadioHeightCalculator() {
                   <CardTitle className="text-base">Floor Heights Above Ground</CardTitle>
                   <CardDescription>
                     Enter the height of each floor above ground — exactly as it appears in the
-                    controller's Professional Install dialog. Use the formula helper for multi-floor
+                    gateway's Professional Install dialog. Use the formula helper for multi-floor
                     buildings.
                   </CardDescription>
                 </div>
@@ -2685,12 +2685,12 @@ export function AFCRadioHeightCalculator() {
                 <AlertDescription className="text-sm space-y-1">
                   <p>
                     <strong>Deployment</strong> is read from the AP's Environment field on the
-                    controller (Outdoor → SP default, Indoor → LP default). An asterisk (*)
+                    gateway (Outdoor → SP default, Indoor → LP default). An asterisk (*)
                     indicates the value was manually changed.
                   </p>
                   <p>
                     <strong>Floor Height Above Ground</strong> is entered directly — the same value
-                    you see in the controller's Professional Install dialog (not computed from a
+                    you see in the gateway's Professional Install dialog (not computed from a
                     floor number formula).
                   </p>
                   <p>
