@@ -243,7 +243,7 @@ export function ApplicationWidgets({
           <Alert className="border-2 border-[color:var(--status-warning)]/30 bg-[color:var(--status-warning-bg)]">
             <AlertTriangle className="h-4 w-4 text-[color:var(--status-warning)]" />
             <AlertDescription className="text-[color:var(--status-warning)]">
-              Application analytics API endpoints are not available on this controller version. This
+              Application analytics API endpoints are not available on this gateway version. This
               feature requires API v1/applications support.
             </AlertDescription>
           </Alert>

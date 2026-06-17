@@ -839,7 +839,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         setError(errorMessage);
       } else {
         setError(
-          'Loading access points is taking longer than expected. The controller may be slow to respond.'
+          'Loading access points is taking longer than expected. The gateway may be slow to respond.'
         );
       }
     } finally {
@@ -2962,7 +2962,7 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                                     e.stopPropagation();
                                     if (
                                       confirm(
-                                        `Delete ${getAPName(ap)}? This will remove the AP from the controller.`
+                                        `Delete ${getAPName(ap)}? This will remove the AP from the gateway.`
                                       )
                                     ) {
                                       try {

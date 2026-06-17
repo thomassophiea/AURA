@@ -642,7 +642,7 @@ const apiCategories: ApiCategory[] = [
   {
     name: 'Switches',
     icon: Router,
-    description: 'Manage switch controllers',
+    description: 'Manage switch gateways',
     endpoints: [
       { method: 'GET', path: '/v1/switches', description: 'Get list of all switches' },
       { method: 'POST', path: '/v1/switches', description: 'Create/register a switch' },
@@ -1854,7 +1854,7 @@ export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
           <div>
             <h1 className="text-2xl font-bold">AURA REST API</h1>
             <p className="text-muted-foreground">
-              Complete API documentation for the controller • {apiCategories.length} categories •{' '}
+              Complete API documentation for the gateway • {apiCategories.length} categories •{' '}
               {totalEndpoints} endpoints
             </p>
           </div>
@@ -1875,7 +1875,7 @@ export function ApiDocumentation({ onBack }: ApiDocumentationProps) {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            The Extreme Campus Controller REST API Gateway provides a single entry point for
+            The Extreme Campus Gateway REST API provides a single entry point for
             managing wireless networks, access points, clients, and network services. The API uses
             OAuth 2.0 bearer token authentication.
           </p>

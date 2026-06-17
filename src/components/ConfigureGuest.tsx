@@ -799,7 +799,7 @@ export function ConfigureGuest() {
                   <AlertCircle className="mx-auto h-12 w-12 text-amber-500 opacity-70" />
                   <h3 className="mt-4 text-lg">Guest accounts unavailable</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    The guest accounts API (/v1/guests) is not available on this controller. This
+                    The guest accounts API (/v1/guests) is not available on this gateway. This
                     endpoint is not part of the standard Swagger specification.
                   </p>
                 </div>

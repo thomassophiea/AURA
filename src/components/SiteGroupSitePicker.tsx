@@ -31,7 +31,7 @@ export function SiteGroupSitePicker({
   selectedSite,
   onSelectSite,
   className,
-}: SiteGroupSitePickerProps): JSX.Element {
+}: SiteGroupSitePickerProps): React.ReactElement {
   const { siteGroups, orgSiteGroupFilter, setOrgSiteGroupFilter } = useAppContext();
   const [open, setOpen] = React.useState(false);
 
@@ -41,7 +41,7 @@ export function SiteGroupSitePicker({
 
   const triggerLabel = selectedSiteGroup
     ? `${controllerLabel(selectedSiteGroup)} — ${siteLabel}`
-    : 'Select controller';
+    : 'Select gateway';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -50,7 +50,7 @@ export function SiteGroupSitePicker({
           variant="outline"
           size="sm"
           role="button"
-          className={cn('flex items-center justify-between gap-2 min-w-[200px]', className)}
+          className={cn('flex items-center justify-between gap-2 w-full sm:w-[260px]', className)}
         >
           <Server className="h-4 w-4 shrink-0 opacity-70" />
           <span className="flex-1 truncate text-left">{triggerLabel}</span>
@@ -60,12 +60,12 @@ export function SiteGroupSitePicker({
 
       <PopoverContent className="w-[360px] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search controllers or sites…" />
+          <CommandInput placeholder="Search gateways or sites…" />
           <CommandList>
             <CommandEmpty>No matches.</CommandEmpty>
 
-            {/* Controllers group */}
-            <CommandGroup heading="Controllers">
+            {/* Gateways group */}
+            <CommandGroup heading="Gateways">
               {siteGroups.map((sg) => {
                 const isSelected = sg.id === orgSiteGroupFilter;
                 const searchValue = `${sg.name} ${sg.hostname ?? ''} ${sg.locking_id ?? ''}`;
@@ -99,7 +99,7 @@ export function SiteGroupSitePicker({
             <CommandGroup heading="Sites">
               {sites.length === 0 ? (
                 <CommandItem disabled value="__no-sites__" className="text-muted-foreground italic">
-                  No sites loaded — select a controller
+                  No sites loaded — select a gateway
                 </CommandItem>
               ) : (
                 <>
@@ -123,8 +123,8 @@ export function SiteGroupSitePicker({
                     <CommandItem
                       key={site}
                       value={site}
-                      onSelect={(value) => {
-                        onSelectSite(value);
+                      onSelect={() => {
+                        onSelectSite(site);
                         setOpen(false);
                       }}
                     >

@@ -1112,7 +1112,7 @@ export function ConfigureNetworks() {
       await globalElementsService.createTemplate({
         org_id: org.id,
         name: `${network.ssid || network.name} (promoted)`,
-        description: `Promoted from ${(network as any)._siteGroupName || 'controller'} — ${network.ssid}`,
+        description: `Promoted from ${(network as any)._siteGroupName || 'gateway'} — ${network.ssid}`,
         element_type: 'service',
         config_payload: configPayload,
         is_active: true,
@@ -1149,11 +1149,11 @@ export function ConfigureNetworks() {
           <Server className="h-10 w-10 text-muted-foreground" />
           <div className="space-y-1">
             <p className="text-base font-medium text-high-emphasis">
-              Select a Site Group to configure its controller
+              Select a Site Group to configure its gateway
             </p>
             <p className="text-sm text-muted-foreground">
-              Direct Config writes to one controller at a time. Choose the Site Group
-              (controller / gateway) you want to configure.
+              Direct Config writes to one gateway at a time. Choose the Site Group
+              (gateway) you want to configure.
             </p>
           </div>
           <SiteGroupSitePicker

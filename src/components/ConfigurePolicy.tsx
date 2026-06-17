@@ -749,7 +749,7 @@ export function ConfigurePolicy() {
                 topologySearchTerm ? 'No matching topologies' : 'No VLAN topologies configured',
                 topologySearchTerm
                   ? `No topologies match "${topologySearchTerm}". Try clearing the search.`
-                  : 'VLAN topologies define network segmentation. Configure them on the Campus Controller and they will appear here.',
+                  : 'VLAN topologies define network segmentation. Configure them on the Campus Gateway and they will appear here.',
                 <Layers className="h-12 w-12" />
               )
             ) : (
@@ -828,7 +828,7 @@ export function ConfigurePolicy() {
             ) : cosProfiles.length === 0 ? (
               renderEmptyState(
                 'No CoS profiles configured',
-                'Class of Service profiles prioritize network traffic for different application types. Create them on the Campus Controller.',
+                'Class of Service profiles prioritize network traffic for different application types. Create them on the Campus Gateway.',
                 <Gauge className="h-12 w-12" />
               )
             ) : (
@@ -1247,8 +1247,8 @@ export function ConfigurePolicy() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="bridged-at-ap">Bridged at AP</SelectItem>
-                    <SelectItem value="bridged-at-controller">Bridged at Controller</SelectItem>
-                    <SelectItem value="tunnel-to-controller">Tunnel to Controller</SelectItem>
+                    <SelectItem value="bridged-at-controller">Bridged at Gateway</SelectItem>
+                    <SelectItem value="tunnel-to-controller">Tunnel to Gateway</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

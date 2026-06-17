@@ -37,7 +37,7 @@ export function ControllerIdentityBadge({ identity, className }: ControllerIdent
       </TooltipTrigger>
       <TooltipContent>
         <div className="text-xs">
-          <div>Controller: {hostname}</div>
+          <div>Gateway: {hostname}</div>
           {lockingId && <div>Locking ID: {lockingId}</div>}
           <div className="text-muted-foreground">Fetched: {fetchedAt}</div>
         </div>

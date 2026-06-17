@@ -142,7 +142,7 @@ export function AuditLogs() {
               value={localAccount}
               onChange={(e) => setLocalAccount(e.target.value)}
               placeholder="Local service account"
-              title="This controller account's changes are flagged 'Local' and highlighted; all others are 'Cloud'"
+              title="This gateway account's changes are flagged 'Local' and highlighted; all others are 'Cloud'"
               className="w-44 h-9"
             />
           )}

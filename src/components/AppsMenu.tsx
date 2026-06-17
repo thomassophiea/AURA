@@ -59,7 +59,7 @@ function buildApps(): App[] {
       id: 'xiq-edge-migration',
       name: 'XIQ Edge Migration',
       description:
-        'Automated migration tool for transitioning Edge Services configurations from XIQ to the controller',
+        'Automated migration tool for transitioning Edge Services configurations from XIQ to the gateway',
       isActive: false,
       icon: Layers,
       url: 'https://xiq-migration.up.railway.app/',
