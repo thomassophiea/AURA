@@ -31,7 +31,7 @@ const prefetchCriticalComponents = () => {
   prefetchOnIdle(() => import('./components/AccessPoints'));
   prefetchOnIdle(() => import('./components/TrafficStatsConnectedClients'));
   prefetchOnIdle(() => import('./components/ReportWidgets'));
-  prefetchOnIdle(() => import('./components/ConfigureNetworks'));
+  prefetchOnIdle(() => import('./components/configure/networks'));
 };
 const SLEDashboard = lazy(() =>
   import('./components/sle/SLEDashboard').then((m) => ({ default: m.SLEDashboard }))
@@ -39,32 +39,47 @@ const SLEDashboard = lazy(() =>
 const ReportWidgets = lazy(() =>
   import('./components/ReportWidgets').then((m) => ({ default: m.ReportWidgets }))
 );
+// EPB-125 Configure surface — full-depth controller-parity pages (configure/*).
+// These replace the prior Configure* components (Networks/Policy/AAA/Guest/
+// AdoptionRules/Profiles/RRM/Advanced), wiring live controller CRUD.
+const ConfigureCatalog = lazy(() =>
+  import('./components/configure/catalog').then((m) => ({ default: m.ConfigureCatalogPage }))
+);
 const ConfigureNetworks = lazy(() =>
-  import('./components/ConfigureNetworks').then((m) => ({ default: m.ConfigureNetworks }))
+  import('./components/configure/networks').then((m) => ({ default: m.NetworksPage }))
 );
 const SitesAndGroupsPage = lazy(() =>
   import('./components/SitesAndGroupsPage').then((m) => ({ default: m.SitesAndGroupsPage }))
 );
 const ConfigurePolicy = lazy(() =>
-  import('./components/ConfigurePolicy').then((m) => ({ default: m.ConfigurePolicy }))
+  import('./components/configure/policy').then((m) => ({ default: m.PolicyPage }))
 );
 const ConfigureAAAPolicies = lazy(() =>
-  import('./components/ConfigureAAAPolicies').then((m) => ({ default: m.ConfigureAAAPolicies }))
+  import('./components/configure/aaa').then((m) => ({ default: m.AaaPage }))
 );
 const ConfigureAdoptionRules = lazy(() =>
-  import('./components/ConfigureAdoptionRules').then((m) => ({ default: m.ConfigureAdoptionRules }))
+  import('./components/configure/adoption').then((m) => ({ default: m.AdoptionPage }))
 );
 const ConfigureGuest = lazy(() =>
-  import('./components/ConfigureGuest').then((m) => ({ default: m.ConfigureGuest }))
-);
-const ConfigureAdvanced = lazy(() =>
-  import('./components/ConfigureAdvanced').then((m) => ({ default: m.ConfigureAdvanced }))
+  import('./components/configure/guest').then((m) => ({ default: m.GuestPage }))
 );
 const ConfigureProfiles = lazy(() =>
-  import('./components/ConfigureProfiles').then((m) => ({ default: m.ConfigureProfiles }))
+  import('./components/configure/profiles').then((m) => ({ default: m.ProfilesPage }))
 );
 const ConfigureRRM = lazy(() =>
-  import('./components/ConfigureRRM').then((m) => ({ default: m.ConfigureRRM }))
+  import('./components/configure/rf').then((m) => ({ default: m.RfPage }))
+);
+const ConfigureAccessPoints = lazy(() =>
+  import('./components/configure/aps').then((m) => ({ default: m.ApsPage }))
+);
+const ConfigureMeshpoints = lazy(() =>
+  import('./components/configure/meshpoints').then((m) => ({ default: m.MeshpointsPage }))
+);
+const ConfigureServiceProfiles = lazy(() =>
+  import('./components/configure/serviceprofiles').then((m) => ({ default: m.ServiceProfilesPage }))
+);
+const ConfigureSystem = lazy(() =>
+  import('./components/configure/system').then((m) => ({ default: m.SystemPage }))
 );
 const GlobalElementsPage = lazy(() =>
   import('./components/global-elements/GlobalElementsPage').then((m) => ({
@@ -251,6 +266,10 @@ const pageInfo = {
     title: 'API Documentation',
     description: 'AURA Mobility Core REST API reference',
   },
+  'configure-catalog': {
+    title: 'Configuration',
+    description: 'Feature catalog and architecture view of gateway configuration',
+  },
   'configure-sites-groups': {
     title: 'Sites & Groups',
     description: 'Manage site groups, gateway pairs, and network sites',
@@ -267,9 +286,21 @@ const pageInfo = {
     title: 'RF Management',
     description: 'Configure RF Management (RRM) profiles and assignment',
   },
-  'configure-advanced': {
-    title: 'Advanced Configuration',
-    description: 'Topologies, QoS, AP Profiles, IoT, Mesh, Access Control, and Location Services',
+  'configure-access-points': {
+    title: 'Access Points',
+    description: 'Per-AP configuration and profile overrides',
+  },
+  'configure-meshpoints': {
+    title: 'Meshpoints',
+    description: 'Wireless mesh backhaul configuration',
+  },
+  'configure-service-profiles': {
+    title: 'Service Profiles',
+    description: 'IoT, ESL, RTLS, Positioning, Analytics, and Air Defense profiles',
+  },
+  'configure-system': {
+    title: 'System & Security',
+    description: 'Access control, SNMP, global settings, and administrators',
   },
   'global-templates': {
     title: 'Global Templates',
@@ -1197,6 +1228,8 @@ export default function App() {
             <GuestManagement />
           </ErrorBoundary>
         );
+      case 'configure-catalog':
+        return <ConfigureCatalog onNavigate={setCurrentPage} />;
       case 'configure-networks':
         return <ConfigureNetworks />;
       case 'configure-policy':
@@ -1211,8 +1244,14 @@ export default function App() {
         return <ConfigureProfiles />;
       case 'configure-rrm':
         return <ConfigureRRM />;
-      case 'configure-advanced':
-        return <ConfigureAdvanced />;
+      case 'configure-access-points':
+        return <ConfigureAccessPoints />;
+      case 'configure-meshpoints':
+        return <ConfigureMeshpoints />;
+      case 'configure-service-profiles':
+        return <ConfigureServiceProfiles />;
+      case 'configure-system':
+        return <ConfigureSystem />;
       case 'global-templates':
         return (
           <GlobalElementsPage

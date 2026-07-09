@@ -41,6 +41,7 @@ import type {
   Topology,
 } from '../types/api';
 import type { ControllerIdentity } from '../types/controllerIdentity';
+import type { ApRegistrationSettings } from '../types/configure/apRegistration';
 
 // Use proxy in production, direct connection in development.
 // `VITE_USE_PROXY=true` forces proxy mode in dev too — useful when the
@@ -3792,14 +3793,36 @@ class ApiService {
     }
   }
 
+  // The current controller answers /v3/adsp; /v4/adsp is kept as a fallback
+  // for builds that expose it (EPB-125 endpoint verification).
+  private adspBasePath: string | null = null;
+
+  private async resolveAdspBasePath(): Promise<string> {
+    if (this.adspBasePath) return this.adspBasePath;
+    for (const base of ['/v3/adsp', '/v4/adsp']) {
+      try {
+        const probe = await this.makeAuthenticatedRequest(base, {}, 8000);
+        if (probe.status !== 404) {
+          this.adspBasePath = base;
+          return base;
+        }
+      } catch {
+        // network/timeout — try the next candidate
+      }
+    }
+    this.adspBasePath = '/v3/adsp';
+    return this.adspBasePath;
+  }
+
   /**
    * Get all ADSP profiles
-   * Endpoint: GET /v4/adsp
+   * Endpoint: GET /v3/adsp (fallback /v4/adsp)
    */
   async getADSPProfiles(): Promise<any[]> {
     try {
       logger.log('[API] Fetching ADSP profiles');
-      const response = await this.makeAuthenticatedRequest('/v4/adsp', {}, 10000);
+      const base = await this.resolveAdspBasePath();
+      const response = await this.makeAuthenticatedRequest(base, {}, 10000);
 
       if (!response.ok) {
         logger.warn(`ADSP profiles API returned ${response.status}`);
@@ -3816,7 +3839,7 @@ class ApiService {
   }
 
   async createADSPProfile(profileData: any): Promise<any> {
-    const response = await this.makeAuthenticatedRequest('/v4/adsp', {
+    const response = await this.makeAuthenticatedRequest(await this.resolveAdspBasePath(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(profileData),
@@ -3830,7 +3853,7 @@ class ApiService {
 
   async updateADSPProfile(profileId: string, profileData: any): Promise<any> {
     const response = await this.makeAuthenticatedRequest(
-      `/v4/adsp/${encodeURIComponent(profileId)}`,
+      `${await this.resolveAdspBasePath()}/${encodeURIComponent(profileId)}`,
       {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -3846,7 +3869,7 @@ class ApiService {
 
   async deleteADSPProfile(profileId: string): Promise<void> {
     const response = await this.makeAuthenticatedRequest(
-      `/v4/adsp/${encodeURIComponent(profileId)}`,
+      `${await this.resolveAdspBasePath()}/${encodeURIComponent(profileId)}`,
       {
         method: 'DELETE',
       }
@@ -5897,6 +5920,9 @@ class ApiService {
   /**
    * Get all adoption rules
    * Endpoint: GET /v1/adoption-rules, /v1/adoption/rules, /v1/config/adoption-rules
+   * @deprecated These paths 404 on real XCC controllers, so this silently
+   * returns []. The real adoption surface is GET/PUT /v1/aps/registration —
+   * see getApRegistrationSettings / services/configure/adoptionService.
    */
   async getAdoptionRules(): Promise<any[]> {
     try {
@@ -6099,6 +6125,53 @@ class ApiService {
       logger.error('[API] Failed to toggle adoption rule:', error);
       throw error;
     }
+  }
+
+  // ============================================================================
+  // AP ADOPTION / REGISTRATION SETTINGS (REAL ENDPOINT)
+  // The adoption-rules methods above probe speculative paths that 404 on every
+  // modern controller. XCC's actual adoption surface is the singleton
+  // /v1/aps/registration document (EPB-125). The old methods are kept only
+  // until ConfigureAdoptionRules.tsx is rewired; prefer
+  // services/configure/adoptionService for new code.
+  // ============================================================================
+
+  /**
+   * Get AP adoption/registration settings.
+   * Endpoint: GET /v1/aps/registration
+   */
+  async getApRegistrationSettings(): Promise<ApRegistrationSettings> {
+    const response = await this.makeAuthenticatedRequest('/v1/aps/registration', {}, 10000);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch AP registration settings: ${response.status} - ${errorText}`);
+    }
+    return (await response.json()) as ApRegistrationSettings;
+  }
+
+  /**
+   * Update AP adoption/registration settings.
+   * Endpoint: PUT /v1/aps/registration
+   */
+  async updateApRegistrationSettings(
+    settings: ApRegistrationSettings
+  ): Promise<ApRegistrationSettings> {
+    const response = await this.makeAuthenticatedRequest(
+      '/v1/aps/registration',
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      },
+      20000
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to update AP registration settings: ${response.status} - ${errorText}`
+      );
+    }
+    return (await response.json()) as ApRegistrationSettings;
   }
 
   // ============================================================================

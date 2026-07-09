@@ -34,6 +34,9 @@ import {
   Cpu,
   Radio,
   ScrollText,
+  Share2,
+  Radar,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -66,15 +69,19 @@ const monitoringItems = [
 ];
 
 const configureItems = [
+  { id: 'configure-catalog', label: 'Feature Catalog', icon: LayoutGrid },
   { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
+  { id: 'configure-access-points', label: 'Access Points', icon: Wifi },
   { id: 'configure-rrm', label: 'RF Management', icon: Radio },
+  { id: 'configure-meshpoints', label: 'Meshpoints', icon: Share2 },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },
   { id: 'configure-guest', label: 'Guest', icon: UserPlus },
-  { id: 'configure-advanced', label: 'Advanced', icon: Settings },
+  { id: 'configure-service-profiles', label: 'Service Profiles', icon: Radar },
   { id: 'configure-adoption-rules', label: 'Adoption Rules', icon: Zap },
+  { id: 'configure-system', label: 'System & Security', icon: Settings },
 ];
 
 // Templates, variables, and assignments form an intent-based config layer that
@@ -357,7 +364,11 @@ export function Sidebar({
                   items: filteredConfigureItems,
                   isActive: isConfigureActive,
                   isExpanded: isConfigureExpanded,
-                  onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
+                  onToggle: () => {
+                    // Configure header opens the Feature Catalog landing and expands the section.
+                    if (!isConfigureExpanded) handlePageChange('configure-catalog');
+                    setIsConfigureExpanded(!isConfigureExpanded);
+                  },
                 })}
 
               {/* Global Elements Section — intent-based config */}

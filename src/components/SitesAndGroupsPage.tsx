@@ -4,12 +4,13 @@
  */
 
 import { useState, useCallback } from 'react';
-import { Server, Building2 } from 'lucide-react';
+import { Server, Building2, SlidersHorizontal } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { SiteGroupsPage } from './SiteGroupsPage';
 import { SitesPage } from './SitesPage';
+import { SitesPage as SiteConfigPage } from './configure/sites';
 
-type TabId = 'site-groups' | 'sites';
+type TabId = 'site-groups' | 'sites' | 'site-config';
 
 interface SitesAndGroupsPageProps {
   initialTab?: TabId;
@@ -42,6 +43,10 @@ export function SitesAndGroupsPage({ initialTab = 'site-groups', onShowSiteDetai
             <Building2 className="h-4 w-4" />
             Sites
           </TabsTrigger>
+          <TabsTrigger value="site-config" className="gap-2">
+            <SlidersHorizontal className="h-4 w-4" />
+            Site Configuration
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="site-groups" className="mt-0">
@@ -54,6 +59,12 @@ export function SitesAndGroupsPage({ initialTab = 'site-groups', onShowSiteDetai
             onClearFilter={handleClearFilter}
             onShowDetail={onShowSiteDetail}
           />
+        </TabsContent>
+
+        {/* Full-depth per-site controller config (EPB-125): device groups, SNMP,
+            MAC ACLs, AFC, Centralized/Distributed, clone/delete. */}
+        <TabsContent value="site-config" className="mt-0">
+          <SiteConfigPage />
         </TabsContent>
       </Tabs>
     </div>
