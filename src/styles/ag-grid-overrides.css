@@ -158,6 +158,19 @@
   border: none !important;
   border-radius: 0 !important;
 }
+/* CardContent's [&:last-child]:pb-6 outranks a p-0 override, leaving a
+   dead band under the pagination bar — zero it whenever it hosts a grid. */
+[data-slot='card-content']:has(.ag-root-wrapper) {
+  padding: 0 !important;
+}
+
+/* ── Grid surfaces match the card surface (no tonal seam) ───── */
+.ag-root-wrapper,
+.ag-header,
+.ag-row,
+.ag-paging-panel {
+  background-color: var(--card) !important;
+}
 
 /* ── Row separators ──────────────────────────────────────────── */
 .ag-row,
@@ -207,6 +220,9 @@
 }
 
 /* ── Row hover & selection visual ───────────────────────────── */
+.ag-row-hover:not(.ag-row-selected)::before {
+  background-color: color-mix(in srgb, var(--primary) 8%, transparent) !important;
+}
 .ag-row-selected,
 .ag-row-selected::before {
   background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;

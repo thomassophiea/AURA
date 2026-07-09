@@ -15,7 +15,7 @@ const STORAGE_PREFIX = 'aura.grid-state.';
 // Theme vars hold hex values (e.g. #1e1f2a), so pass them straight through —
 // wrapping in hsl() produces invalid CSS and silently reverts to Quartz defaults.
 const darkTheme = themeQuartz.withParams({
-  backgroundColor: 'var(--background)',
+  backgroundColor: 'var(--card)',
   foregroundColor: 'var(--foreground)',
   borderColor: 'var(--border)',
   chromeBackgroundColor: 'var(--card)',
