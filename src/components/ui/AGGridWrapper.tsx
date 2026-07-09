@@ -34,8 +34,10 @@ const darkTheme = themeQuartz.withParams({
   checkboxIndeterminateShapeColor: 'var(--primary-foreground)',
   checkboxBorderRadius: 4,
   checkboxBorderWidth: 1.5,
+  columnBorder: false,
+  headerColumnBorder: false,
   fontFamily: 'inherit',
-  fontSize: 12,
+  fontSize: 13,
   rowHeight: ROW_HEIGHT,
   headerHeight: HEADER_HEIGHT,
   borderRadius: 6,
@@ -191,7 +193,6 @@ function AGGridWrapperInner<TData>(
       className={className}
       style={{
         height: resolvedHeight,
-        border: '1px solid rgba(255,255,255,0.12)',
         borderRadius: 8,
         overflow: 'hidden',
       }}
@@ -218,6 +219,12 @@ function AGGridWrapperInner<TData>(
         paginationPageSize={50}
         paginationPageSizeSelector={[25, 50, 100, 250]}
         popupParent={typeof document !== 'undefined' ? document.body : undefined}
+        suppressCellFocus
+        // Fill the full grid width (no dead right gutter) — but never fight
+        // column widths the user has resized and persisted.
+        autoSizeStrategy={
+          savedStateRef.current?.columnSizing ? undefined : { type: 'fitGridWidth' }
+        }
         {...gridOptions}
         selectionColumnDef={selectionColumnDef}
         {...persistedHandlers}
