@@ -458,13 +458,13 @@ export function ClientExperienceHero({
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0.1} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="time" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis domain={[0, 100]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="time" stroke="var(--muted-foreground)" fontSize={12} />
+                <YAxis domain={[0, 100]} stroke="var(--muted-foreground)" fontSize={12} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
+                    backgroundColor: 'var(--popover)',
+                    border: '1px solid var(--border)',
                     borderRadius: '6px',
                   }}
                 />

@@ -761,10 +761,10 @@ export function PerformanceAnalytics() {
                       ></Pie>
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
                     </PieChart>
@@ -786,14 +786,14 @@ export function PerformanceAnalytics() {
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={apReports.slice(0, 10)}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="name" tick={{ fill: 'hsl(var(--foreground))' }} />
-                      <YAxis tick={{ fill: 'hsl(var(--foreground))' }} />
+                      <XAxis dataKey="name" tick={{ fill: 'var(--foreground)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground)' }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
                       <Bar dataKey="clientCount" fill={CHART_COLORS[1]} name="Clients" />

@@ -12,15 +12,26 @@ const PAGINATION_HEIGHT = 48;
 
 const STORAGE_PREFIX = 'aura.grid-state.';
 
+// Theme vars hold hex values (e.g. #1e1f2a), so pass them straight through —
+// wrapping in hsl() produces invalid CSS and silently reverts to Quartz defaults.
 const darkTheme = themeQuartz.withParams({
-  backgroundColor: 'hsl(var(--background))',
-  foregroundColor: 'hsl(var(--foreground))',
-  borderColor: 'hsl(var(--border))',
-  chromeBackgroundColor: 'hsl(var(--card))',
-  headerBackgroundColor: 'hsl(var(--card))',
-  headerTextColor: 'hsl(var(--muted-foreground))',
-  rowHoverColor: 'hsl(var(--accent))',
-  selectedRowBackgroundColor: 'hsl(var(--primary) / 0.15)',
+  backgroundColor: 'var(--background)',
+  foregroundColor: 'var(--foreground)',
+  borderColor: 'var(--border)',
+  chromeBackgroundColor: 'var(--card)',
+  headerBackgroundColor: 'var(--card)',
+  headerTextColor: 'var(--muted-foreground)',
+  accentColor: 'var(--primary)',
+  rowHoverColor: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+  selectedRowBackgroundColor: 'color-mix(in srgb, var(--primary) 15%, transparent)',
+  checkboxCheckedBackgroundColor: 'var(--primary)',
+  checkboxCheckedBorderColor: 'var(--primary)',
+  checkboxCheckedShapeColor: 'var(--primary-foreground)',
+  checkboxUncheckedBackgroundColor: 'transparent',
+  checkboxUncheckedBorderColor: 'var(--muted-foreground)',
+  checkboxIndeterminateBackgroundColor: 'var(--primary)',
+  checkboxIndeterminateBorderColor: 'var(--primary)',
+  checkboxIndeterminateShapeColor: 'var(--primary-foreground)',
   fontFamily: 'inherit',
   fontSize: 12,
   rowHeight: ROW_HEIGHT,
