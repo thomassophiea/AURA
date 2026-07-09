@@ -107,17 +107,59 @@
   background-color: var(--card) !important;
 }
 
-/* ── Row separators ──────────────────────────────────────────── */
+/* ── Row separators — half-strength so data, not lines, leads ── */
 .ag-row,
 .ag-row-odd,
 .ag-row-even {
-  border-bottom: 1px solid var(--border) !important;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent) !important;
   border-top: none !important;
 }
 
 /* Last row: the paging panel below draws its own top border — one line, not two */
 .ag-row-last {
   border-bottom: none !important;
+}
+
+/* ── Quiet header: controls appear on intent, not by default ── */
+/* Filter/menu buttons and resize pipes stay hidden until the header is
+   hovered; a column with an active filter keeps its icon as a status. */
+.ag-header-cell-menu-button,
+.ag-header-cell-filter-button {
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+.ag-header-cell:hover .ag-header-cell-menu-button,
+.ag-header-cell:hover .ag-header-cell-filter-button,
+.ag-header-cell.ag-header-cell-filtered .ag-header-cell-filter-button,
+.ag-header-cell-menu-button:focus-visible,
+.ag-header-cell-filter-button:focus-visible {
+  opacity: 1 !important;
+}
+.ag-header-cell-resize::after {
+  background-color: transparent !important;
+}
+.ag-header-cell:hover .ag-header-cell-resize::after {
+  background-color: color-mix(in srgb, var(--border) 70%, transparent) !important;
+}
+
+/* ── Pinned selection column: no divider wall ────────────────── */
+.ag-pinned-left-header,
+.ag-cell.ag-cell-last-left-pinned,
+.ag-pinned-left-cols-container .ag-cell {
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* ── Pagination: quiet muted footer ──────────────────────────── */
+.ag-paging-panel {
+  color: var(--muted-foreground) !important;
+  font-size: 12px !important;
+  border-top: 1px solid var(--border) !important;
+  gap: 16px;
+}
+.ag-paging-panel .ag-picker-field-wrapper {
+  background-color: transparent !important;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent) !important;
 }
 
 /* ── Header alignment helpers ───────────────────────────────── */
