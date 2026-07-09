@@ -32,6 +32,8 @@ const darkTheme = themeQuartz.withParams({
   checkboxIndeterminateBackgroundColor: 'var(--primary)',
   checkboxIndeterminateBorderColor: 'var(--primary)',
   checkboxIndeterminateShapeColor: 'var(--primary-foreground)',
+  checkboxBorderRadius: 4,
+  checkboxBorderWidth: 1.5,
   fontFamily: 'inherit',
   fontSize: 12,
   rowHeight: ROW_HEIGHT,

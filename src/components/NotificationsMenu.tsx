@@ -432,7 +432,7 @@ export function NotificationsMenu({ onNavigate }: NotificationsMenuProps = {}) {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           className="h-9 w-9 p-0 flex items-center justify-center relative"
           title="Notifications"

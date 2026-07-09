@@ -91,7 +91,7 @@ export function AppsMenu() {
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           className="h-9 w-9 p-0 flex items-center justify-center"
           title="Platform information"

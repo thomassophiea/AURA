@@ -77,75 +77,10 @@
 }
 
 /* ── Checkboxes (row + header select-all) ───────────────────── */
-.ag-checkbox-input-wrapper {
-  position: relative !important;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
-  border-radius: 4px !important;
-  border: 1.5px solid var(--muted-foreground) !important;
-  background-color: transparent !important;
-  background-image: none !important;
-  box-shadow: none !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  font-size: 0 !important;
-  line-height: 0 !important;
-  transition:
-    border-color 0.15s,
-    background-color 0.15s !important;
-}
-
-.ag-checkbox-input-wrapper input {
-  opacity: 0 !important;
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  cursor: pointer !important;
-}
-
-.ag-checkbox-input-wrapper::before,
-.ag-checkbox-input-wrapper::after {
-  content: none !important;
-}
-
-.ag-checkbox-input-wrapper:hover {
-  border-color: var(--primary) !important;
-}
-
-.ag-checkbox-input-wrapper.ag-checked {
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
-}
-
-.ag-checkbox-input-wrapper.ag-checked::after {
-  content: '' !important;
-  display: block !important;
-  width: 9px !important;
-  height: 5px !important;
-  border-left: 2px solid var(--primary-foreground, #fff) !important;
-  border-bottom: 2px solid var(--primary-foreground, #fff) !important;
-  transform: rotate(-45deg) translateY(-1px) !important;
-}
-
-.ag-checkbox-input-wrapper.ag-indeterminate {
-  background-color: var(--primary) !important;
-  border-color: var(--primary) !important;
-}
-
-.ag-checkbox-input-wrapper.ag-indeterminate::after {
-  content: '' !important;
-  display: block !important;
-  width: 8px !important;
-  height: 2px !important;
-  background: var(--primary-foreground, #fff) !important;
-  border-radius: 1px !important;
-}
+/* Rendered natively by AG's checkbox-style part — colors, size, and
+   radius come from the themeQuartz params in AGGridWrapper.tsx. Do NOT
+   hand-draw the check here: custom ::before/::after collide with AG's
+   mask-icon rendering and produce corrupted glyphs. */
 
 /* ── Grid inside a Card: single box, not box-in-box ─────────── */
 /* The grid draws its own bordered, rounded wrapper. When it's embedded
