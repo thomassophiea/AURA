@@ -213,3 +213,95 @@ describe('validateWlan — controller required/pattern/range rules', () => {
     expect(validateWlan(formFor(withRole), false).unauthenticatedRole).toBeUndefined();
   });
 });
+
+describe('controller UI-model blocks round-trip (selectedCpConfig / aaaConf / openRoamingModel)', () => {
+  it('hydrates the ui block from a persisted selectedCpConfig', () => {
+    const record = {
+      ...structuredClone(SKYNET),
+      enableCaptivePortal: true,
+      captivePortalType: 'External',
+      selectedCpConfig: {
+        name: 'default',
+        selectedPortalInterface: 'topo-1',
+        cpRedirectPorts: [8080, 8443],
+        wallGardenRole: {
+          cpRedirect: 'https://portal.example.com',
+          cpIdentity: 'guest-op',
+          cpSharedKey: 'sup3rsecret',
+          cpRedirectUrlSelect: 'URLCUSTOMIZED',
+          cpDefaultRedirectUrl: 'https://example.com/welcome',
+          cpHttp: false,
+          cpUseFQDN: true,
+          rules: [{ domain: 'cdn.example.com', ip: '', port: '443' }],
+        },
+      },
+    };
+    const { ui } = createFormState(record);
+    expect(ui.cpRedirect).toBe('https://portal.example.com');
+    expect(ui.cpIdentity).toBe('guest-op');
+    expect(ui.cpSharedKey).toBe('sup3rsecret');
+    expect(ui.cpRedirectUrlSelect).toBe('URLCUSTOMIZED');
+    expect(ui.cpDefaultRedirectUrl).toBe('https://example.com/welcome');
+    expect(ui.cpHttps).toBe(false);
+    expect(ui.cpUseFqdn).toBe(true);
+    expect(ui.cpRedirectPorts).toEqual([8080, 8443]);
+    expect(ui.walledGardenRules).toEqual([{ domain: 'cdn.example.com', ip: '', port: '443' }]);
+    expect(ui.portalName).toBe('default');
+    expect(ui.portalInterface).toBe('topo-1');
+  });
+
+  it('serializes the captive-portal ui block on save when a portal is enabled', () => {
+    const record = {
+      ...structuredClone(SKYNET),
+      enableCaptivePortal: true,
+      captivePortalType: 'External',
+    };
+    const payload = buildWlanPayload(
+      formFor(record, undefined, {
+        cpRedirect: 'https://portal.example.com',
+        cpIdentity: 'guest-op',
+        cpRedirectPorts: [8080],
+        walledGardenRules: [{ domain: 'cdn.example.com', ip: '', port: '' }],
+      })
+    ) as ReturnType<typeof buildWlanPayload> & {
+      selectedCpConfig?: { wallGardenRole?: Record<string, unknown>; cpRedirectPorts?: number[] };
+    };
+    expect(payload.selectedCpConfig?.wallGardenRole).toMatchObject({
+      cpRedirect: 'https://portal.example.com',
+      cpIdentity: 'guest-op',
+    });
+    expect(payload.selectedCpConfig?.cpRedirectPorts).toEqual([8080]);
+  });
+
+  it('omits selectedCpConfig for clean records without a portal (byte-safe)', () => {
+    const payload = buildWlanPayload(formFor(structuredClone(SKYNET)));
+    expect(payload).not.toHaveProperty('selectedCpConfig');
+    expect(payload).not.toHaveProperty('aaaConf');
+    expect(payload).not.toHaveProperty('openRoamingModel');
+  });
+
+  it('persists openRoamingModel for WBA OpenRoaming networks', () => {
+    const record = { ...structuredClone(SKYNET), hotspotType: 'OpenRoaming' };
+    const payload = buildWlanPayload(
+      formFor(record, 'WPA3-Enterprise (802.1X/EAP)', { trustPoint: 'tp-1', wbaId: 'WBA-42' })
+    ) as ReturnType<typeof buildWlanPayload> & { openRoamingModel?: Record<string, unknown> };
+    expect(payload.openRoamingModel).toEqual({ trustPoint: 'tp-1', wbaId: 'WBA-42' });
+  });
+
+  it('persists aaaConf once a proxy-RADIUS method is configured', () => {
+    const record = withPrivacy('WpaEnterpriseElement', { pmfMode: 'enabled' });
+    const payload = buildWlanPayload(
+      formFor(record, 'WPA2-Enterprise (802.1X/EAP)', {
+        authMethod: 'Proxy RADIUS (Failover)',
+        radiusServers: ['10.0.0.10', '', '', ''],
+      })
+    ) as ReturnType<typeof buildWlanPayload> & { aaaConf?: Record<string, unknown> };
+    expect(payload.aaaConf).toMatchObject({
+      selectedAuthMethod: 'Proxy RADIUS (Failover)',
+      radiusServers: ['10.0.0.10', '', '', ''],
+    });
+    // Default/untouched enterprise records stay unchanged on the wire.
+    const untouched = buildWlanPayload(formFor(record, 'WPA2-Enterprise (802.1X/EAP)'));
+    expect(untouched).not.toHaveProperty('aaaConf');
+  });
+});
