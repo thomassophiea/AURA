@@ -147,6 +147,18 @@
   border-radius: 1px !important;
 }
 
+/* ── Grid inside a Card: single box, not box-in-box ─────────── */
+/* The grid draws its own bordered, rounded wrapper. When it's embedded
+   in a Card the two borders nest visibly, so drop the grid's chrome and
+   let the Card be the one container (clipping the grid's corners). */
+[data-slot='card']:has(.ag-root-wrapper) {
+  overflow: hidden;
+}
+[data-slot='card'] .ag-root-wrapper {
+  border: none !important;
+  border-radius: 0 !important;
+}
+
 /* ── Row separators ──────────────────────────────────────────── */
 .ag-row,
 .ag-row-odd,
