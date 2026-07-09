@@ -180,6 +180,11 @@
   border-top: none !important;
 }
 
+/* Last row: the paging panel below draws its own top border — one line, not two */
+.ag-row-last {
+  border-bottom: none !important;
+}
+
 /* ── Header alignment helpers ───────────────────────────────── */
 .ag-header-center .ag-header-cell-label {
   justify-content: center !important;
