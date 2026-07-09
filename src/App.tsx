@@ -46,7 +46,7 @@ const ConfigureNetworks = lazy(() =>
   import('./components/configure/networks').then((m) => ({ default: m.NetworksPage }))
 );
 const SitesAndGroupsPage = lazy(() =>
-  import('./components/configure/sites').then((m) => ({ default: m.SitesPage }))
+  import('./components/SitesAndGroupsPage').then((m) => ({ default: m.SitesAndGroupsPage }))
 );
 const ConfigurePolicy = lazy(() =>
   import('./components/configure/policy').then((m) => ({ default: m.PolicyPage }))
@@ -1258,7 +1258,7 @@ export default function App() {
       case 'site-group-settings':
         return <SiteGroupSettingsPage />;
       case 'configure-sites-groups':
-        return <SitesAndGroupsPage />;
+        return <SitesAndGroupsPage onShowSiteDetail={handleShowSiteDetail} />;
       case 'tools':
         return <Tools />;
       case 'administration':
