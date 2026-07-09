@@ -36,6 +36,7 @@ import {
   ScrollText,
   Share2,
   Radar,
+  LayoutGrid,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -68,6 +69,7 @@ const monitoringItems = [
 ];
 
 const configureItems = [
+  { id: 'configure-catalog', label: 'Feature Catalog', icon: LayoutGrid },
   { id: 'configure-sites-groups', label: 'Sites & Groups', icon: Building2 },
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
@@ -362,7 +364,11 @@ export function Sidebar({
                   items: filteredConfigureItems,
                   isActive: isConfigureActive,
                   isExpanded: isConfigureExpanded,
-                  onToggle: () => setIsConfigureExpanded(!isConfigureExpanded),
+                  onToggle: () => {
+                    // Configure header opens the Feature Catalog landing and expands the section.
+                    if (!isConfigureExpanded) handlePageChange('configure-catalog');
+                    setIsConfigureExpanded(!isConfigureExpanded);
+                  },
                 })}
 
               {/* Global Elements Section — intent-based config */}

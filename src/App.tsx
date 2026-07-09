@@ -42,6 +42,9 @@ const ReportWidgets = lazy(() =>
 // EPB-125 Configure surface — full-depth controller-parity pages (configure/*).
 // These replace the prior Configure* components (Networks/Policy/AAA/Guest/
 // AdoptionRules/Profiles/RRM/Advanced), wiring live controller CRUD.
+const ConfigureCatalog = lazy(() =>
+  import('./components/configure/catalog').then((m) => ({ default: m.ConfigureCatalogPage }))
+);
 const ConfigureNetworks = lazy(() =>
   import('./components/configure/networks').then((m) => ({ default: m.NetworksPage }))
 );
@@ -262,6 +265,10 @@ const pageInfo = {
   'api-documentation': {
     title: 'API Documentation',
     description: 'AURA Mobility Core REST API reference',
+  },
+  'configure-catalog': {
+    title: 'Configuration',
+    description: 'Feature catalog and architecture view of gateway configuration',
   },
   'configure-sites-groups': {
     title: 'Sites & Groups',
@@ -1221,6 +1228,8 @@ export default function App() {
             <GuestManagement />
           </ErrorBoundary>
         );
+      case 'configure-catalog':
+        return <ConfigureCatalog onNavigate={setCurrentPage} />;
       case 'configure-networks':
         return <ConfigureNetworks />;
       case 'configure-policy':
