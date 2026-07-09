@@ -76,6 +76,7 @@ export function NetworksPage() {
         field: 'status',
         headerName: 'Status',
         width: 110,
+        type: 'status',
         valueFormatter: (params) => (params.value === 'enabled' ? 'Enabled' : 'Disabled'),
       },
       {
@@ -105,7 +106,7 @@ export function NetworksPage() {
         field: 'sessionTimeout',
         headerName: 'Session Timeout',
         width: 140,
-        type: 'rightAligned',
+        type: 'numeric',
       },
     ],
     [refs.topologies, openEditor]

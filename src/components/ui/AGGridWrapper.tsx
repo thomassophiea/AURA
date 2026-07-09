@@ -45,6 +45,72 @@ const darkTheme = themeQuartz.withParams({
   cellHorizontalPaddingScale: 0.75,
 });
 
+/* Shared column types — opt in via `type: 'numeric'` / `type: 'status'` on a ColDef.
+   numeric: right-aligned quantities in tabular numerals (identifiers stay left).
+   status:  dot + label; map values with STATUS_TONES or pass cellRendererParams.toneOf. */
+const COLUMN_TYPES: NonNullable<GridOptions['columnTypes']> = {
+  numeric: {
+    headerClass: 'ag-header-right',
+    cellClass: 'ag-cell-numeric',
+    cellStyle: {
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      height: '100%',
+      overflow: 'hidden',
+    },
+  },
+  status: {
+    cellRenderer: StatusCellRenderer,
+  },
+};
+
+const STATUS_TONES: Record<string, string> = {
+  // tone -> css color; keys matched case-insensitively by StatusCellRenderer
+  connected: 'var(--success, #75bf63)',
+  online: 'var(--success, #75bf63)',
+  up: 'var(--success, #75bf63)',
+  active: 'var(--success, #75bf63)',
+  enabled: 'var(--success, #75bf63)',
+  healthy: 'var(--success, #75bf63)',
+  approved: 'var(--success, #75bf63)',
+  warning: 'var(--warning, #E5B85C)',
+  degraded: 'var(--warning, #E5B85C)',
+  pending: 'var(--warning, #E5B85C)',
+  disconnected: 'var(--destructive, #ed5f56)',
+  offline: 'var(--destructive, #ed5f56)',
+  down: 'var(--destructive, #ed5f56)',
+  critical: 'var(--destructive, #ed5f56)',
+  failed: 'var(--destructive, #ed5f56)',
+  denied: 'var(--destructive, #ed5f56)',
+  disabled: 'var(--muted-foreground, #babcce)',
+  inactive: 'var(--muted-foreground, #babcce)',
+  unknown: 'var(--muted-foreground, #babcce)',
+};
+
+/** Dot + label status cell. Unmapped values render with a muted dot. */
+export function StatusCellRenderer(params: { value?: unknown }) {
+  const label = params.value == null || params.value === '' ? '—' : String(params.value);
+  const tone =
+    STATUS_TONES[label.toLowerCase()] ?? 'var(--muted-foreground, #babcce)';
+  if (label === '—') return <span style={{ color: 'var(--muted-foreground)' }}>—</span>;
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          backgroundColor: tone,
+          flexShrink: 0,
+        }}
+      />
+      {label}
+    </span>
+  );
+}
+
 const DEFAULT_SELECTION_COL_DEF: NonNullable<GridOptions['selectionColumnDef']> = {
   width: 48,
   minWidth: 48,
@@ -219,6 +285,7 @@ function AGGridWrapperInner<TData>(
         paginationPageSize={50}
         paginationPageSizeSelector={[25, 50, 100, 250]}
         popupParent={typeof document !== 'undefined' ? document.body : undefined}
+        columnTypes={COLUMN_TYPES}
         suppressCellFocus
         // Fill the full grid width (no dead right gutter) — but never fight
         // column widths the user has resized and persisted.

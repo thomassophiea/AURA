@@ -39,7 +39,7 @@ export function AnalyticsPage() {
           ) : null,
       },
       { headerName: 'Collector Address', field: 'destAddr', flex: 1 },
-      { headerName: 'Export Interval (s)', field: 'reportFreq', width: 170 },
+      { headerName: 'Export Interval (s)', field: 'reportFreq', width: 170, type: 'numeric' },
     ],
     []
   );

@@ -86,6 +86,7 @@ export function MeshpointsPage() {
       {
         headerName: 'Status',
         width: 130,
+        type: 'status',
         valueGetter: (p) => (p.data?.status === 'disabled' ? 'Disabled' : 'Enabled'),
       },
       {

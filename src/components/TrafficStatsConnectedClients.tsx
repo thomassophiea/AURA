@@ -813,6 +813,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                   minWidth?: number;
                   flex?: number;
                   align?: 'center' | 'left' | 'right';
+                  numeric?: boolean;
                 }
               > = {
                 status: { width: 100, align: 'center' },
@@ -832,15 +833,16 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                 rss: { width: 110, align: 'center' },
                 channel: { width: 90, align: 'right' },
                 protocol: { width: 110 },
-                rxRate: { width: 110, align: 'right' },
-                txRate: { width: 110, align: 'right' },
-                spatialStreams: { width: 110, align: 'right' },
+                rxRate: { width: 110, numeric: true },
+                txRate: { width: 110, numeric: true },
+                spatialStreams: { width: 110, numeric: true },
                 capabilities: { width: 200 },
                 traffic: { width: 150 },
-                inBytes: { width: 130, align: 'right' },
-                outBytes: { width: 130, align: 'right' },
-                inPackets: { width: 130, align: 'right' },
-                outPackets: { width: 130, align: 'right' },
+                inBytes: { width: 130, numeric: true },
+                outBytes: { width: 130, numeric: true },
+                inPackets: { width: 130, numeric: true },
+                outPackets: { width: 130, numeric: true },
+                dlLostRetriesPackets: { numeric: true },
                 deviceType: { width: 180 },
                 manufacturer: { width: 150 },
               };
@@ -878,19 +880,22 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                     width: sizing.width,
                     minWidth: sizing.minWidth,
                     flex: sizing.flex,
+                    type: sizing.numeric ? 'numeric' : undefined,
                     headerClass:
                       align === 'center'
                         ? 'ag-header-center'
                         : align === 'right'
                           ? 'ag-header-right'
                           : undefined,
-                    cellStyle: {
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent,
-                      height: '100%',
-                      overflow: 'hidden',
-                    },
+                    cellStyle: sizing.numeric
+                      ? undefined
+                      : {
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent,
+                          height: '100%',
+                          overflow: 'hidden',
+                        },
                     cellRenderer: column.renderCell
                       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         (p: any) => {
@@ -912,8 +917,7 @@ export function TrafficStatsConnectedClients({ onShowDetail }: ConnectedClientsP
                         field: 'snr' as any, // eslint-disable-line @typescript-eslint/no-explicit-any
                         width: 100,
                         sortable: true,
-                        headerClass: 'ag-header-right',
-                        cellStyle: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' },
+                        type: 'numeric',
                       } as ColDef,
                     ]
                   : []),

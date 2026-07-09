@@ -66,6 +66,7 @@ export function SitesPage() {
       {
         headerName: 'Device Groups',
         width: 140,
+        type: 'numeric',
         valueGetter: (p) => p.data?.deviceGroups?.length ?? 0,
       },
     ],
