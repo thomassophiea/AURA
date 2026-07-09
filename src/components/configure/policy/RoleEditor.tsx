@@ -1,44 +1,27 @@
 /**
  * Role editor (controller role_config.html parity):
  *  - Default Action Allow / Deny / Contain to VLAN (required VLAN target with
- *    inline VLAN add/edit/delete via the real VLAN editor)
- *  - CoS Bandwidth Limit: existing-CoS mode or CIR mode (128–500000 Kbps input
- *    + slider); saving CIR mode synthesizes the role CoS + rate-limiter pair on
- *    the controller exactly like its internal `Role_1_COS`
+ *    inline VLAN add/edit/delete — RoleVlanField)
+ *  - CoS Bandwidth Limit: existing-CoS mode or CIR mode (RoleBandwidthField);
+ *    saving CIR mode synthesizes the role CoS + rate-limiter pair on the
+ *    controller exactly like its internal `Role_1_COS`
  *  - Captive-portal redirection block gated on a FILTERACTION_REDIRECT rule
- *    (redirect URL, use-existing-settings, ECP Advanced modal, walled-garden
- *    Add Allow Rules, portal identity + masked shared secret)
+ *    (RoleCpSection: redirect URL, use-existing, ECP Advanced, walled garden)
  *  - Four rule groups as collapsible sections with ordered, editable rows
  */
 import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '../../ui/button';
-import { Checkbox } from '../../ui/checkbox';
 import { Input } from '../../ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '../../ui/dialog';
-import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
-import { Slider } from '../../ui/slider';
-import { Pencil, Plus, X } from 'lucide-react';
-import { ConfirmDialog, EditorSheet, FieldRow, MaskedInput, RuleList, Section, useDefaults } from '../_kit';
-import { EnumSelect, IconAction, NumInput } from './fields';
+import { Pencil } from 'lucide-react';
+import { EditorSheet, FieldRow, RuleList, Section } from '../_kit';
+import { IconAction } from './fields';
 import { RoleRuleDialog } from './RoleRuleDialog';
-import { EcpAdvancedDialog, GardenRuleDialog, ProfilesDialog } from './RoleDialogs';
-import { VlanEditor } from './VlanEditor';
-import {
-  CIR_MAX,
-  CIR_MIN,
-  NO_COS_ID,
-  ROLE_DEFAULT_ACTIONS,
-  ROLE_RULE_GROUPS,
-  type Opt,
-} from './constants';
+import { ProfilesDialog } from './RoleDialogs';
+import { RoleBandwidthField } from './RoleBandwidthField';
+import { RoleCpSection } from './RoleCpSection';
+import { RoleVlanField } from './RoleVlanField';
+import { CIR_MAX, CIR_MIN, NO_COS_ID, ROLE_RULE_GROUPS, type Opt } from './constants';
 import {
   hasRedirectRule,
   inRange,
@@ -52,13 +35,9 @@ import {
 } from './policyUtils';
 import { useDraft } from './useDraft';
 import { getUserFriendlyMessage } from '../../../services/errorHandler';
-import {
-  cosService,
-  rateLimitersService,
-  topologiesService,
-} from '../../../services/configure';
+import { cosService, rateLimitersService } from '../../../services/configure';
 import type { Cos, Role, Topology } from '../../../types/configure';
-import type { RoleRuleDraft, RoleRuleGroupKey, TopologyDraft } from './localTypes';
+import type { RoleRuleDraft, RoleRuleGroupKey } from './localTypes';
 
 interface RuleModalState {
   key: RoleRuleGroupKey;
@@ -112,16 +91,8 @@ export function RoleEditor({
   };
 
   const [ruleModal, setRuleModal] = useState<RuleModalState | null>(null);
-  const [ecpOpen, setEcpOpen] = useState(false);
-  const [gardenOpen, setGardenOpen] = useState(false);
-  const [cosAdvOpen, setCosAdvOpen] = useState(false);
   const [profilesOpen, setProfilesOpen] = useState(false);
-  const [vlanModal, setVlanModal] = useState<{ record: Topology | null } | null>(null);
-  const [vlanSaving, setVlanSaving] = useState(false);
-  const [vlanDel, setVlanDel] = useState<Topology | null>(null);
   const [synthesizing, setSynthesizing] = useState(false);
-  const topoDefaults = useDefaults<Topology>(topologiesService.getDefault, 'VLAN');
-  const [vlanSeed, setVlanSeed] = useState<TopologyDraft | null>(null);
 
   const vlanOptions: Opt[] = topologies.map((t) => ({ id: t.id, label: vlanOptionLabel(t) }));
   const cosOptions: Opt[] = cos.map((c) => ({ id: c.id, label: c.cosName }));
@@ -147,44 +118,6 @@ export function RoleEditor({
   /* redirect panel is gated on the role actually having a redirect rule */
   const redirectVisible = hasRedirectRule(form);
   const redirectRoles = roles.filter((r) => r.cpRedirect && r.id !== form.id);
-
-  /* inline VLAN add/edit/delete from the VLAN ID row */
-  const openVlanCreate = async () => {
-    const seed = await topoDefaults.load();
-    if (!seed) return;
-    const { id: _id, ...rest } = seed as Topology;
-    setVlanSeed(rest as TopologyDraft);
-    setVlanModal({ record: null });
-  };
-  const submitInlineVlan = async (payload: TopologyDraft, id?: string) => {
-    setVlanSaving(true);
-    try {
-      const saved = id
-        ? await topologiesService.update(id, payload as Partial<Topology>)
-        : await topologiesService.create(payload as Partial<Topology>);
-      toast.success(id ? `Updated VLAN "${saved.name}"` : `Created VLAN "${saved.name}"`);
-      await reloadTopologies();
-      upd('topology', saved.id);
-      setVlanModal(null);
-    } catch (error) {
-      toast.error('Failed to save VLAN', { description: getUserFriendlyMessage(error) });
-    } finally {
-      setVlanSaving(false);
-    }
-  };
-  const deleteInlineVlan = async () => {
-    if (!vlanDel) return;
-    try {
-      await topologiesService.remove(vlanDel.id);
-      toast.success(`Deleted VLAN "${vlanDel.name}"`);
-      await reloadTopologies();
-      if (form.topology === vlanDel.id) upd('topology', null);
-    } catch (error) {
-      toast.error('Failed to delete VLAN', { description: getUserFriendlyMessage(error) });
-    } finally {
-      setVlanDel(null);
-    }
-  };
 
   /**
    * Save. CIR mode synthesizes the role rate limiter + CoS on the controller
@@ -253,113 +186,26 @@ export function RoleEditor({
               />
             </FieldRow>
 
-            <FieldRow label="CoS Bandwidth Limit" error={bw.enabled && bw.mode === 'cir' && bw.cirKbps !== '' ? errs.cir : undefined}>
-              <div className="flex flex-wrap items-center gap-3">
-                <Checkbox
-                  checked={bw.enabled}
-                  aria-label="Enable CoS bandwidth limit"
-                  onCheckedChange={(checked) => setBwState({ enabled: checked === true })}
-                />
-                {bw.enabled && bw.mode === 'existing' && (
-                  <>
-                    <span className="text-sm text-muted-foreground">
-                      Class of Service: {cosName}
-                    </span>
-                    <IconAction
-                      title="Clear CoS"
-                      onClick={() => {
-                        upd('defaultCos', NO_COS_ID);
-                        setBwState({ mode: 'cir', cirKbps: '' });
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </IconAction>
-                  </>
-                )}
-                {bw.enabled && bw.mode === 'cir' && (
-                  <>
-                    <NumInput
-                      value={bw.cirKbps}
-                      min={CIR_MIN}
-                      max={CIR_MAX}
-                      placeholder="CIR Kbps"
-                      aria-label="CIR Kbps"
-                      onChange={(v) => setBwState({ cirKbps: v })}
-                      className="w-32"
-                    />
-                    <Slider
-                      value={[inRange(bw.cirKbps, CIR_MIN, CIR_MAX) ? Number(bw.cirKbps) : CIR_MIN]}
-                      min={CIR_MIN}
-                      max={CIR_MAX}
-                      step={1}
-                      className="w-44"
-                      onValueChange={([v]) => setBwState({ cirKbps: v })}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      Kbps ({CIR_MIN}–{CIR_MAX})
-                    </span>
-                  </>
-                )}
-                {bw.enabled && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCosAdvOpen(true)}
-                  >
-                    Configure CoS
-                  </Button>
-                )}
-              </div>
-            </FieldRow>
+            <RoleBandwidthField
+              bw={bw}
+              onBwChange={setBwState}
+              cosName={cosName}
+              hasRealCos={hasRealCos}
+              defaultCos={form.defaultCos}
+              cosOptions={cosOptions}
+              onDefaultCosChange={(id) => upd('defaultCos', id)}
+              cirError={errs.cir}
+            />
 
-            <FieldRow label="Default Action" error={errs.topology}>
-              <div className="flex flex-wrap items-center gap-4">
-                <EnumSelect
-                  value={String(form.defaultAction || 'deny')}
-                  options={ROLE_DEFAULT_ACTIONS}
-                  onChange={(v) => upd('defaultAction', v)}
-                  className="w-44"
-                  aria-label="Default action"
-                />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm text-muted-foreground">VLAN ID</span>
-                  <EnumSelect
-                    value={String(form.topology ?? '')}
-                    options={[{ id: '', label: 'Use default VLAN of Network' }, ...vlanOptions]}
-                    onChange={(v) => upd('topology', v || null)}
-                    className="w-60"
-                    aria-label="Default VLAN"
-                  />
-                  <IconAction title="Add VLAN" onClick={() => void openVlanCreate()}>
-                    <Plus className="h-4 w-4" />
-                  </IconAction>
-                  {form.topology && (
-                    <>
-                      <IconAction
-                        title="Edit VLAN"
-                        onClick={() => {
-                          const rec = topologies.find((t) => t.id === form.topology);
-                          if (rec) setVlanModal({ record: rec });
-                        }}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </IconAction>
-                      <IconAction
-                        title="Delete VLAN"
-                        destructive
-                        onClick={() => {
-                          const rec = topologies.find((t) => t.id === form.topology);
-                          if (rec) setVlanDel(rec);
-                        }}
-                      >
-                        <X className="h-4 w-4" />
-                      </IconAction>
-                    </>
-                  )}
-                </div>
-              </div>
-            </FieldRow>
+            <RoleVlanField
+              defaultAction={String(form.defaultAction || 'deny')}
+              onDefaultActionChange={(v) => upd('defaultAction', v)}
+              topologyId={form.topology}
+              onTopologyChange={(id) => upd('topology', id)}
+              topologies={topologies}
+              reloadTopologies={reloadTopologies}
+              error={errs.topology}
+            />
 
             <FieldRow label="Associated Profiles">
               <div className="flex items-center gap-3">
@@ -377,78 +223,12 @@ export function RoleEditor({
 
           {/* ── Captive portal redirection — gated on a redirect rule ── */}
           {redirectVisible && (
-            <Section
-              title="Captive Portal Redirection"
-              description={'"token=<int>&dest=<url>" is appended to the redirect URL'}
-            >
-              {redirectRoles.length > 0 && (
-                <FieldRow label="Use Existing Settings">
-                  <EnumSelect
-                    value=""
-                    placeholder="— Select —"
-                    options={[
-                      { id: '', label: '— Select —' },
-                      ...redirectRoles.map((r) => ({
-                        id: r.id,
-                        label: `${r.cpRedirect} (${r.name})`,
-                      })),
-                    ]}
-                    onChange={(v) => {
-                      const src = redirectRoles.find((r) => r.id === v);
-                      if (src) upd('cpRedirect', src.cpRedirect);
-                    }}
-                    className="w-80"
-                    aria-label="Use existing redirect settings"
-                  />
-                </FieldRow>
-              )}
-              <FieldRow label="Redirect URL">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    value={String(form.cpRedirect ?? '')}
-                    placeholder="https://portal.example.com/login"
-                    onChange={(e) => upd('cpRedirect', e.target.value)}
-                    className="w-80"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEcpOpen(true)}
-                  >
-                    Advanced
-                  </Button>
-                  {form.cpRedirect && (
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      onClick={() => setGardenOpen(true)}
-                    >
-                      Add Allow Rules
-                    </Button>
-                  )}
-                </div>
-              </FieldRow>
-              {form.cpRedirect && (
-                <>
-                  <FieldRow label="Portal Identity">
-                    <Input
-                      value={String(form.cpIdentity ?? '')}
-                      onChange={(e) => upd('cpIdentity', e.target.value)}
-                      className="w-60"
-                    />
-                  </FieldRow>
-                  <FieldRow label="Shared Secret">
-                    <MaskedInput
-                      value={String(form.cpSharedKey ?? '')}
-                      onChange={(v) => upd('cpSharedKey', v)}
-                      className="w-60"
-                    />
-                  </FieldRow>
-                </>
-              )}
-            </Section>
+            <RoleCpSection
+              form={form}
+              upd={upd}
+              redirectRoles={redirectRoles}
+              onAddAllowRules={(rules) => upd('l3Filters', [...rulesOf('l3Filters'), ...rules])}
+            />
           )}
 
           {/* ── Rule groups ── */}
@@ -465,9 +245,7 @@ export function RoleEditor({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    setRuleModal({ key, label, idx: null, draft: newRuleDraft(key) })
-                  }
+                  onClick={() => setRuleModal({ key, label, idx: null, draft: newRuleDraft(key) })}
                 >
                   New Rule
                 </Button>
@@ -516,107 +294,11 @@ export function RoleEditor({
         />
       )}
 
-      {/* ECP advanced / walled garden / profiles */}
-      <EcpAdvancedDialog open={ecpOpen} onOpenChange={setEcpOpen} form={form} upd={upd} />
-      <GardenRuleDialog
-        open={gardenOpen}
-        onOpenChange={setGardenOpen}
-        onAddRules={(rules) => upd('l3Filters', [...rulesOf('l3Filters'), ...rules])}
-      />
       <ProfilesDialog
         open={profilesOpen}
         onOpenChange={setProfilesOpen}
         selectedIds={(form.profiles as string[] | undefined) ?? []}
         onChange={(ids) => upd('profiles', ids)}
-      />
-
-      {/* roleCosAdvanced: existing CoS vs role-specific rate limit */}
-      <Dialog open={cosAdvOpen} onOpenChange={setCosAdvOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Configure Class of Service</DialogTitle>
-            <DialogDescription>
-              Use an existing CoS or create a role-specific rate-limited CoS.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <RadioGroup
-              value={bw.mode}
-              onValueChange={(m) => setBwState({ mode: m as 'existing' | 'cir' })}
-              className="space-y-3"
-            >
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="existing" /> Use an existing Class of Service
-              </label>
-              {bw.mode === 'existing' && (
-                <FieldRow label="Class of Service">
-                  <EnumSelect
-                    value={hasRealCos ? String(form.defaultCos) : ''}
-                    options={[{ id: '', label: 'None' }, ...cosOptions]}
-                    onChange={(v) => upd('defaultCos', v || NO_COS_ID)}
-                    className="w-64"
-                  />
-                </FieldRow>
-              )}
-              <label className="flex items-center gap-2 text-sm">
-                <RadioGroupItem value="cir" /> Advanced settings (create a role-specific CoS)
-              </label>
-              {bw.mode === 'cir' && (
-                <FieldRow
-                  label="Average Rate (CIR)"
-                  error={bw.cirKbps !== '' ? errs.cir : undefined}
-                  description="Kbps"
-                >
-                  <NumInput
-                    value={bw.cirKbps}
-                    min={CIR_MIN}
-                    max={CIR_MAX}
-                    onChange={(v) => setBwState({ cirKbps: v })}
-                    className="w-36"
-                  />
-                </FieldRow>
-              )}
-            </RadioGroup>
-          </div>
-          <DialogFooter>
-            <Button type="button" onClick={() => setCosAdvOpen(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* inline VLAN editor + delete confirm */}
-      {vlanModal && (
-        <VlanEditor
-          key={vlanModal.record?.id ?? 'new'}
-          open
-          onOpenChange={(next) => !next && setVlanModal(null)}
-          initial={(vlanModal.record as TopologyDraft) ?? vlanSeed ?? {}}
-          isNew={!vlanModal.record}
-          saving={vlanSaving}
-          onSubmit={submitInlineVlan}
-          topologies={topologies}
-        />
-      )}
-      <ConfirmDialog
-        open={vlanDel !== null}
-        onOpenChange={(next) => !next && setVlanDel(null)}
-        title={`Delete VLAN "${vlanDel?.name ?? ''}"?`}
-        description={
-          vlanDel?.canDelete === false
-            ? `"${vlanDel.name}" cannot be deleted (predefined or in use).`
-            : 'This permanently removes the VLAN from the controller. This action cannot be undone.'
-        }
-        confirmLabel="Delete"
-        destructive
-        onConfirm={() => {
-          if (vlanDel?.canDelete === false) {
-            setVlanDel(null);
-            return;
-          }
-          void deleteInlineVlan();
-        }}
       />
     </>
   );

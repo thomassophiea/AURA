@@ -8,6 +8,7 @@
  *    (OUTBOUND "From User" / INBOUND "To User"), unprefixed action enum
  *  - L7: application group/name (39xx note)
  * Per-rule CoS is ALWAYS offered; VLAN reveal only on Contain to VLAN (required).
+ * Field blocks live in RoleRuleFields.tsx.
  */
 import React, { useState } from 'react';
 import {
@@ -24,17 +25,17 @@ import { FieldRow } from '../_kit';
 import { EnumSelect, NumInput } from './fields';
 import { TosDscpDialog, TosRow } from './TosDscpDialog';
 import {
-  PORT_RANGE,
-  RULE_ACTIONS,
+  ActionFields,
+  DirectionFields,
+  L3PortFields,
+  SrcDestEndpointFields,
+} from './RoleRuleFields';
+import {
   RULE_ETHERTYPES,
-  RULE_FILTER_DIRS,
   RULE_MAC,
   RULE_MASKS,
-  RULE_PORT,
   RULE_PROTO,
   RULE_SUBNET,
-  SRC_DEST_ACTIONS,
-  SRC_DEST_DIRECTIONS,
   type Opt,
 } from './constants';
 import {
@@ -43,9 +44,8 @@ import {
   isSrcDest,
   ruleErrors,
   ruleProtocolName,
-  wellKnownPortLabel,
+  setIn,
 } from './policyUtils';
-import { setIn } from './policyUtils';
 import type { RoleRuleDraft, RoleRuleGroupKey } from './localTypes';
 
 export interface RoleRuleDialogProps {
@@ -85,66 +85,17 @@ export function RoleRuleDialog({
   const proto = ruleProtocolName(draft, groupKey);
   const isIcmp = proto === 'icmp' || proto === 'icmpv6';
 
-  /* From User / To User pair for L2/L3/L7; single Direction for src-dest. */
-  const directionBlock = sd ? (
-    <FieldRow label="Direction">
-      <EnumSelect
-        value={str('direction') || 'OUTBOUND'}
-        options={SRC_DEST_DIRECTIONS}
-        onChange={(v) => set('direction', v)}
-      />
-    </FieldRow>
-  ) : (
-    <>
-      <FieldRow label="From User">
-        <EnumSelect
-          value={str('outFromNetwork') || 'sourceAddr'}
-          options={RULE_FILTER_DIRS}
-          onChange={(v) => set('outFromNetwork', v)}
-          className="w-64"
-        />
-      </FieldRow>
-      <FieldRow label="To User">
-        <EnumSelect
-          value={str('intoNetwork') || 'destAddr'}
-          options={RULE_FILTER_DIRS}
-          onChange={(v) => set('intoNetwork', v)}
-          className="w-64"
-        />
-      </FieldRow>
-    </>
-  );
-
+  const blockProps = { draft, set, errs };
+  const directionBlock = <DirectionFields {...blockProps} sd={sd} />;
   const actionBlock = (
-    <>
-      <FieldRow label="Action">
-        <EnumSelect
-          value={str('action') || (sd ? 'DENY' : 'FILTERACTION_DENY')}
-          options={sd ? SRC_DEST_ACTIONS : RULE_ACTIONS}
-          onChange={(v) => set('action', v)}
-        />
-      </FieldRow>
-      {contain && (
-        <FieldRow label="Contain to VLAN" required error={errs.topology}>
-          <EnumSelect
-            value={str('topologyId')}
-            options={[{ id: '', label: '— VLAN —' }, ...vlanOptions]}
-            onChange={(v) => set('topologyId', v || null)}
-            className="w-64"
-          />
-        </FieldRow>
-      )}
-      <FieldRow label="Class of Service">
-        <EnumSelect
-          value={str('cosId')}
-          options={[{ id: '', label: 'None' }, ...cosOptions]}
-          onChange={(v) => set('cosId', v || null)}
-          className="w-64"
-        />
-      </FieldRow>
-    </>
+    <ActionFields
+      {...blockProps}
+      sd={sd}
+      contain={contain}
+      vlanOptions={vlanOptions}
+      cosOptions={cosOptions}
+    />
   );
-
   const tosBlock = (
     <FieldRow label="ToS/DSCP">
       <TosRow
@@ -157,141 +108,6 @@ export function RoleRuleDialog({
       />
     </FieldRow>
   );
-
-  /* Flat L3 port block — REAL API keys port/portLow/portHigh. */
-  const l3PortBlock = isIcmp ? (
-    // Port column hidden for ICMP; type/code editor instead (icmp.html)
-    <>
-      <FieldRow label="ICMP Type">
-        <NumInput
-          value={draft.portLow ?? ''}
-          min={0}
-          max={255}
-          placeholder="0–255"
-          onChange={(v) => set('portLow', v)}
-        />
-      </FieldRow>
-      <FieldRow label="ICMP Code">
-        <NumInput
-          value={draft.portHigh ?? ''}
-          min={0}
-          max={255}
-          placeholder="0–255"
-          onChange={(v) => set('portHigh', v)}
-        />
-      </FieldRow>
-    </>
-  ) : (
-    <>
-      <FieldRow label="Port">
-        <EnumSelect
-          value={str('port') || 'any'}
-          options={RULE_PORT}
-          onChange={(v) => {
-            set('port', v);
-            const range = PORT_RANGE[v];
-            if (range) {
-              set('portLow', range[0]);
-              set('portHigh', range[1]);
-            }
-          }}
-        />
-      </FieldRow>
-      {draft.port === 'userDefined' && (
-        <>
-          <FieldRow label="Port From" error={errs.port}>
-            <NumInput
-              value={draft.portLow ?? ''}
-              min={0}
-              max={65535}
-              placeholder="e.g. 1024"
-              onChange={(v) => set('portLow', v)}
-            />
-          </FieldRow>
-          <FieldRow label="Port To">
-            <NumInput
-              value={draft.portHigh ?? ''}
-              min={0}
-              max={65535}
-              placeholder="e.g. 2048"
-              onChange={(v) => set('portHigh', v)}
-            />
-          </FieldRow>
-        </>
-      )}
-      {draft.port && draft.port !== 'userDefined' && draft.port !== 'any' && (
-        <FieldRow label="Port Range">
-          <span className="text-sm text-muted-foreground">
-            {draft.portLow != null && draft.portLow !== ''
-              ? `${draft.portLow}–${draft.portHigh}`
-              : wellKnownPortLabel(draft.port)}
-          </span>
-        </FieldRow>
-      )}
-    </>
-  );
-
-  /* Src-dest nested endpoint (source/destination { subnetType, address, port.known/.low/.high }). */
-  const endpointBlock = (title: 'Source' | 'Destination', base: 'source' | 'destination') => {
-    const subnetType = str(`${base}.subnetType`) || 'anyIpAddress';
-    const known = str(`${base}.port.known`) || 'any';
-    return (
-      <div className="space-y-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </h4>
-        <FieldRow label="Subnet Type">
-          <EnumSelect
-            value={subnetType}
-            options={RULE_SUBNET}
-            onChange={(v) => set(`${base}.subnetType`, v)}
-          />
-        </FieldRow>
-        {subnetType !== 'anyIpAddress' && (
-          <FieldRow label="Address" error={errs[`${base}Addr`]}>
-            <Input
-              value={str(`${base}.address`)}
-              placeholder={subnetType === 'hostName' ? 'host.example.com' : '10.0.0.0/24'}
-              onChange={(e) => set(`${base}.address`, e.target.value)}
-              className="w-64"
-            />
-          </FieldRow>
-        )}
-        {!isIcmp && (
-          <>
-            <FieldRow label="Port" error={errs[base]}>
-              <EnumSelect
-                value={known}
-                options={RULE_PORT}
-                onChange={(v) => set(`${base}.port.known`, v)}
-              />
-            </FieldRow>
-            {known === 'userDefined' && (
-              <div className="flex gap-4">
-                <FieldRow label="Port From">
-                  <NumInput
-                    value={(getIn(draft, `${base}.port.low`) as number | '') ?? ''}
-                    min={0}
-                    max={65535}
-                    onChange={(v) => set(`${base}.port.low`, v)}
-                  />
-                </FieldRow>
-                <FieldRow label="Port To">
-                  <NumInput
-                    value={(getIn(draft, `${base}.port.high`) as number | '') ?? ''}
-                    min={0}
-                    max={65535}
-                    onChange={(v) => set(`${base}.port.high`, v)}
-                  />
-                </FieldRow>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-    );
-  };
-
   const nameRow = (
     <FieldRow label="Rule Name" error={errs.name}>
       <Input
@@ -404,8 +220,13 @@ export function RoleRuleDialog({
             </FieldRow>
           </div>
         )}
-        {endpointBlock('Source', 'source')}
-        {endpointBlock('Destination', 'destination')}
+        <SrcDestEndpointFields {...blockProps} isIcmp={isIcmp} title="Source" base="source" />
+        <SrcDestEndpointFields
+          {...blockProps}
+          isIcmp={isIcmp}
+          title="Destination"
+          base="destination"
+        />
         {tosBlock}
         {directionBlock}
         {actionBlock}
@@ -439,7 +260,7 @@ export function RoleRuleDialog({
             />
           </FieldRow>
         )}
-        {l3PortBlock}
+        <L3PortFields {...blockProps} isIcmp={isIcmp} />
         {tosBlock}
         {directionBlock}
         {actionBlock}
