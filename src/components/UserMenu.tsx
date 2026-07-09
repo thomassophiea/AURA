@@ -189,7 +189,7 @@ export function UserMenu({
         <Button
           variant="ghost"
           size="sm"
-          className="h-10 w-10 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20"
+          className="h-10 w-10 rounded-lg hover:bg-primary/10"
         >
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-primary text-primary-foreground font-medium">
