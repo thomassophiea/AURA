@@ -65,8 +65,8 @@ const DURATION_OPTIONS = [
 
 // Compact tooltip styling for consistency
 const COMPACT_TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(var(--background) / 0.9)',
-  border: '1px solid hsl(var(--border) / 0.3)',
+  backgroundColor: 'color-mix(in srgb, var(--background) 90%, transparent)',
+  border: '1px solid color-mix(in srgb, var(--border) 30%, transparent)',
   borderRadius: '4px',
   padding: '4px 6px',
   fontSize: '9px',
@@ -166,8 +166,8 @@ function hasActualChartData(data: any[]): boolean {
 
 // Chart colors
 const CHART_COLORS = {
-  primary: 'hsl(var(--primary))',
-  secondary: 'hsl(var(--muted-foreground))',
+  primary: 'var(--primary)',
+  secondary: 'var(--muted-foreground)',
   success: '#22c55e',
   warning: '#f59e0b',
   error: '#ef4444',
@@ -721,9 +721,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -839,9 +839,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1007,9 +1007,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1109,9 +1109,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1224,9 +1224,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1339,9 +1339,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1459,9 +1459,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1574,9 +1574,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1689,9 +1689,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1816,9 +1816,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}
@@ -1941,9 +1941,9 @@ export function ClientInsightsFullScreen({
                       <ReferenceArea
                         x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
                         x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="hsl(var(--primary))"
+                        fill="var(--primary)"
                         fillOpacity={0.15}
-                        stroke="hsl(var(--primary))"
+                        stroke="var(--primary)"
                         strokeOpacity={0.3}
                       />
                     )}

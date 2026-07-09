@@ -292,7 +292,7 @@ export function Sidebar({
       {/* Sidebar */}
       <div
         className={cn(
-          'bg-sidebar border-r border-sidebar-border h-full flex flex-col transition-all duration-300',
+          'app-sidebar bg-sidebar border-r border-sidebar-border h-full flex flex-col transition-all duration-300',
           // Desktop behavior
           !device.isMobile && (isCollapsed ? 'w-16' : 'w-64'),
           // Mobile behavior

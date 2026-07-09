@@ -219,22 +219,22 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
             </h4>
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={stats.ulDlUsageTimeseries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={formatTimestamp}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--muted-foreground)"
                   fontSize={12}
                 />
                 <YAxis
                   tickFormatter={(value) => formatBytes(value)}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--muted-foreground)"
                   fontSize={12}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
+                    backgroundColor: 'var(--popover)',
+                    border: '1px solid var(--border)',
                     borderRadius: '6px',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}
@@ -276,22 +276,22 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
             </h4>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={stats.ulDlThroughputTimeseries}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis
                   dataKey="timestamp"
                   tickFormatter={formatTimestamp}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--muted-foreground)"
                   fontSize={12}
                 />
                 <YAxis
                   tickFormatter={(value) => formatBps(value)}
-                  stroke="hsl(var(--muted-foreground))"
+                  stroke="var(--muted-foreground)"
                   fontSize={12}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
+                    backgroundColor: 'var(--popover)',
+                    border: '1px solid var(--border)',
                     borderRadius: '6px',
                   }}
                   labelFormatter={(label) => formatTimestamp(Number(label))}

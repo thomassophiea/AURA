@@ -1145,10 +1145,10 @@ export function ServiceLevelsEnhanced() {
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
                     </RadarChart>
@@ -1180,17 +1180,17 @@ export function ServiceLevelsEnhanced() {
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={timeSeries}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="time" tick={{ fill: 'hsl(var(--foreground))' }} />
-                      <YAxis tick={{ fill: 'hsl(var(--foreground))' }} />
+                      <XAxis dataKey="time" tick={{ fill: 'var(--foreground)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground)' }} />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
-                      <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
+                      <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Line
                         type="monotone"
                         dataKey="clientCount"
@@ -1214,18 +1214,18 @@ export function ServiceLevelsEnhanced() {
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={timeSeries}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="time" tick={{ fill: 'hsl(var(--foreground))' }} />
-                      <YAxis tick={{ fill: 'hsl(var(--foreground))' }} />
+                      <XAxis dataKey="time" tick={{ fill: 'var(--foreground)' }} />
+                      <YAxis tick={{ fill: 'var(--foreground)' }} />
                       <Tooltip
                         formatter={(value) => `${Number(value).toFixed(2)} ms`}
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
-                      <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
+                      <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Line
                         type="monotone"
                         dataKey="latency"
@@ -1249,18 +1249,18 @@ export function ServiceLevelsEnhanced() {
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={timeSeries}>
                       <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                      <XAxis dataKey="time" tick={{ fill: 'hsl(var(--foreground))' }} />
-                      <YAxis domain={[90, 100]} tick={{ fill: 'hsl(var(--foreground))' }} />
+                      <XAxis dataKey="time" tick={{ fill: 'var(--foreground)' }} />
+                      <YAxis domain={[90, 100]} tick={{ fill: 'var(--foreground)' }} />
                       <Tooltip
                         formatter={(value) => `${Number(value).toFixed(2)}%`}
                         contentStyle={{
-                          backgroundColor: 'hsl(var(--background))',
-                          border: '1px solid hsl(var(--border))',
+                          backgroundColor: 'var(--background)',
+                          border: '1px solid var(--border)',
                           borderRadius: '6px',
-                          color: 'hsl(var(--foreground))',
+                          color: 'var(--foreground)',
                         }}
                       />
-                      <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
+                      <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
                       <Area
                         type="monotone"
                         dataKey="reliability"

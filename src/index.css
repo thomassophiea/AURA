@@ -334,7 +334,7 @@ html {
 .aura-checkbox[data-state='unchecked'] {
   border-color: #ffffffcc !important;
   background: #ffffff1a !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+  box-shadow: none;
 }
 .aura-checkbox[data-state='unchecked']:hover {
   border-color: var(--primary, #bb86fc) !important;
@@ -344,7 +344,8 @@ html {
 .aura-checkbox[data-state='checked'] {
   border-color: var(--primary, #bb86fc) !important;
   background: var(--primary, #bb86fc) !important;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primary, #bb86fc) 30%, transparent);
+  color: var(--primary-foreground, #000000de) !important;
+  box-shadow: none;
 }
 /* Light theme — dark border for unchecked */
 .theme-light .aura-checkbox[data-state='unchecked'],

@@ -348,10 +348,10 @@ function PerformanceSectionImpl({
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: 'hsl(var(--background))',
-                      border: '1px solid hsl(var(--border))',
+                      backgroundColor: 'var(--background)',
+                      border: '1px solid var(--border)',
                       borderRadius: '6px',
-                      color: 'hsl(var(--foreground))',
+                      color: 'var(--foreground)',
                     }}
                   />
                 </RadarChart>
@@ -498,10 +498,10 @@ function PerformanceSectionImpl({
                         </Pie>
                         <Tooltip
                           contentStyle={{
-                            backgroundColor: 'hsl(var(--background))',
-                            border: '1px solid hsl(var(--border))',
+                            backgroundColor: 'var(--background)',
+                            border: '1px solid var(--border)',
                             borderRadius: '6px',
-                            color: 'hsl(var(--foreground))',
+                            color: 'var(--foreground)',
                           }}
                         />
                       </PieChart>

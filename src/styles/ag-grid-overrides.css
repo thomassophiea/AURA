@@ -79,12 +79,12 @@
 /* ── Checkboxes (row + header select-all) ───────────────────── */
 .ag-checkbox-input-wrapper {
   position: relative !important;
-  width: 15px !important;
-  height: 15px !important;
-  min-width: 15px !important;
-  min-height: 15px !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
   border-radius: 4px !important;
-  border: 1px solid var(--muted-foreground) !important;
+  border: 1.5px solid var(--muted-foreground) !important;
   background-color: transparent !important;
   background-image: none !important;
   box-shadow: none !important;
@@ -126,12 +126,11 @@
 .ag-checkbox-input-wrapper.ag-checked::after {
   content: '' !important;
   display: block !important;
-  width: 7px !important;
-  height: 3.5px !important;
-  border-left: 1.5px solid #fff !important;
-  border-bottom: 1.5px solid #fff !important;
-  transform: rotate(-45deg) translate(0.5px, -1px) !important;
-  margin-top: -1px !important;
+  width: 9px !important;
+  height: 5px !important;
+  border-left: 2px solid var(--primary-foreground, #fff) !important;
+  border-bottom: 2px solid var(--primary-foreground, #fff) !important;
+  transform: rotate(-45deg) translateY(-1px) !important;
 }
 
 .ag-checkbox-input-wrapper.ag-indeterminate {
@@ -142,9 +141,9 @@
 .ag-checkbox-input-wrapper.ag-indeterminate::after {
   content: '' !important;
   display: block !important;
-  width: 7px !important;
-  height: 1.5px !important;
-  background: #fff !important;
+  width: 8px !important;
+  height: 2px !important;
+  background: var(--primary-foreground, #fff) !important;
   border-radius: 1px !important;
 }
 
@@ -198,7 +197,7 @@
 /* ── Row hover & selection visual ───────────────────────────── */
 .ag-row-selected,
 .ag-row-selected::before {
-  background-color: hsl(var(--primary) / 0.12) !important;
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent) !important;
 }
 
 /* ── Scrollbar suppression ───────────────────────────────────── */
