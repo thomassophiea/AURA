@@ -79,6 +79,7 @@ export function VlanGroupsPage() {
           {
             headerName: 'Member VLANs',
             minWidth: 130,
+            type: 'numeric',
             valueGetter: (p) => (p.data?.members ?? []).length,
           },
         ],

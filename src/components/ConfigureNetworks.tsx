@@ -1623,13 +1623,7 @@ export function ConfigureNetworks() {
                   headerName: 'Clients',
                   field: 'currentClients',
                   width: 110,
-                  headerClass: 'ag-header-right',
-                  cellStyle: {
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'flex-end',
-                    height: '100%',
-                  },
+                  type: 'numeric',
                   valueGetter: (p) => p.data?.currentClients ?? 0,
                 },
                 {

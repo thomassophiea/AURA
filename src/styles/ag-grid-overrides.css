@@ -170,6 +170,11 @@
   justify-content: flex-end !important;
 }
 
+/* ── Numeric columns: tabular numerals so digits align ──────── */
+.ag-cell-numeric {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Header typography polish ───────────────────────────────── */
 .ag-header-cell-text {
   font-weight: 600 !important;

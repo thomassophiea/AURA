@@ -2069,7 +2069,13 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   const agColDefs = useMemo<ColDef<AccessPoint>[]>(() => {
     const colSizing: Record<
       string,
-      { width?: number; minWidth?: number; flex?: number; align?: 'center' | 'left' | 'right' }
+      {
+        width?: number;
+        minWidth?: number;
+        flex?: number;
+        align?: 'center' | 'left' | 'right';
+        numeric?: boolean;
+      }
     > = {
       connection: { width: 88, align: 'center' },
       apName: { flex: 2, minWidth: 200 },
@@ -2080,10 +2086,10 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       clients: { width: 130, align: 'center' },
       macAddress: { width: 160 },
       uptime: { width: 120 },
-      cpuUsage: { width: 90, align: 'right' },
-      memoryUsage: { width: 100, align: 'right' },
-      pwrUsage: { width: 110, align: 'right' },
-      channelUtilization: { width: 130, align: 'right' },
+      cpuUsage: { width: 90, numeric: true },
+      memoryUsage: { width: 100, numeric: true },
+      pwrUsage: { width: 110, numeric: true },
+      channelUtilization: { width: 130, numeric: true },
       softwareVersion: { width: 150 },
       status: { width: 110 },
     };
@@ -2118,19 +2124,22 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         width: sizing.width,
         minWidth: sizing.minWidth,
         flex: sizing.flex,
+        type: sizing.numeric ? 'numeric' : undefined,
         headerClass:
           align === 'center'
             ? 'ag-header-center'
             : align === 'right'
               ? 'ag-header-right'
               : undefined,
-        cellStyle: {
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent,
-          height: '100%',
-          overflow: 'hidden',
-        },
+        cellStyle: sizing.numeric
+          ? undefined
+          : {
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent,
+              height: '100%',
+              overflow: 'hidden',
+            },
         cellRenderer: (params: any) => {
           const handlers = cellHandlersRef.current!;
           const content = handlers.renderColumnContent(columnKey, params.data);

@@ -53,7 +53,7 @@ export function AdministratorsTab() {
           ) : null,
       },
       { headerName: 'Role', width: 150, valueGetter: (p) => roleLabel(p.data?.adminRole ?? '') },
-      { headerName: 'State', width: 130, field: 'accountState' },
+      { headerName: 'State', width: 130, field: 'accountState', type: 'status' },
       {
         headerName: 'Enabled',
         width: 110,
@@ -62,6 +62,7 @@ export function AdministratorsTab() {
       {
         headerName: 'Idle Timeout (s)',
         width: 150,
+        type: 'numeric',
         valueGetter: (p) => p.data?.idleTimeout ?? '',
       },
     ],

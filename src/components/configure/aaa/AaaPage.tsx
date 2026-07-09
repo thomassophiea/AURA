@@ -69,11 +69,13 @@ export function AaaPage() {
       {
         headerName: 'Auth Servers',
         width: 130,
+        type: 'numeric',
         valueGetter: (p) => p.data?.authenticationRadiusServers?.length ?? 0,
       },
       {
         headerName: 'Acct Servers',
         width: 130,
+        type: 'numeric',
         valueGetter: (p) => p.data?.accountingRadiusServers?.length ?? 0,
       },
     ],

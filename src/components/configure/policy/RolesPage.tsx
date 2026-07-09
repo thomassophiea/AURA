@@ -76,26 +76,31 @@ export function RolesPage() {
         {
           headerName: 'Profiles',
           minWidth: 100,
+          type: 'numeric',
           valueGetter: (p) => (p.data?.profiles ?? []).length,
         },
         {
           headerName: 'L2 Rules',
           minWidth: 100,
+          type: 'numeric',
           valueGetter: (p) => (p.data?.l2Filters ?? []).length,
         },
         {
           headerName: 'L3/L4 Rules',
           minWidth: 110,
+          type: 'numeric',
           valueGetter: (p) => (p.data?.l3Filters ?? []).length,
         },
         {
           headerName: 'L3/L4 SD Rules',
           minWidth: 130,
+          type: 'numeric',
           valueGetter: (p) => (p.data?.l3SrcDestFilters ?? []).length,
         },
         {
           headerName: 'L7 Rules',
           minWidth: 100,
+          type: 'numeric',
           valueGetter: (p) => (p.data?.l7Filters ?? []).length,
         },
       ],

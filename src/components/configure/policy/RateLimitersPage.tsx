@@ -41,7 +41,13 @@ export function RateLimitersPage() {
       withRowClick<RateLimiter>(
         [
           { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 200, sort: 'asc' },
-          { field: 'cirKbps', headerName: 'Average Rate (CIR) Kbps', flex: 1, minWidth: 180 },
+          {
+            field: 'cirKbps',
+            headerName: 'Average Rate (CIR) Kbps',
+            flex: 1,
+            minWidth: 180,
+            type: 'numeric',
+          },
         ],
         (row) => setEditor({ record: row, seed: null })
       ),

@@ -104,12 +104,14 @@ export function ProfilesPage() {
         colId: 'radios',
         headerName: 'Radios',
         width: 100,
+        type: 'numeric',
         valueGetter: (p: { data?: ApProfile }) => p.data?.radios?.length ?? 0,
       },
       {
         colId: 'networks',
         headerName: 'Networks',
         width: 110,
+        type: 'numeric',
         valueGetter: (p: { data?: ApProfile }) => (p.data ? networkCount(p.data) : 0),
       },
       {

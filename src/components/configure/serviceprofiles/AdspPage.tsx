@@ -45,6 +45,7 @@ export function AdspPage() {
       {
         headerName: 'Servers',
         width: 110,
+        type: 'numeric',
         valueGetter: (p) => (Array.isArray(p.data?.svrAddr) ? p.data.svrAddr.length : 0),
       },
       {
