@@ -1447,7 +1447,7 @@ export default function App() {
                   >
                     <span style={{ fontWeight: 700 }}>Extreme</span>{' '}
                     <span className="text-muted-foreground" style={{ fontWeight: 400 }}>
-                      Platform ONE™ | Integration
+                      Platform ONE™ | Gabriel's Custom Dashboard
                     </span>
                   </span>
                   <div style={{ flex: 1 }} />
