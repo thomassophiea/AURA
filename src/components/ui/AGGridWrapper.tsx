@@ -3,6 +3,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import type { ColDef, GridApi, GridOptions, GridReadyEvent } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry, themeQuartz } from 'ag-grid-community';
 import { AgGridReact } from 'ag-grid-react';
+import { useDragScroll } from '@/hooks/useDragScroll';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -195,6 +196,25 @@ function AGGridWrapperInner<TData>(
 
   const apiRef = useRef<GridApi | null>(null);
 
+  // Root wrapper element — used to locate AG Grid's horizontally scrolling
+  // viewport so we can attach drag-to-scroll to it.
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // The horizontally scrolling viewport in AG Grid v32 is
+  // `.ag-center-cols-viewport` (its scrollLeft moves the columns). Fall back
+  // to `.ag-body-viewport` defensively. Queried lazily since it mounts async;
+  // useDragScroll polls until it appears and re-queries as data updates.
+  const getScrollViewport = (): HTMLElement | null => {
+    const root = rootRef.current;
+    if (!root) return null;
+    return (
+      root.querySelector<HTMLElement>('.ag-center-cols-viewport') ??
+      root.querySelector<HTMLElement>('.ag-body-viewport')
+    );
+  };
+
+  useDragScroll(getScrollViewport);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -256,6 +276,7 @@ function AGGridWrapperInner<TData>(
 
   return (
     <div
+      ref={rootRef}
       className={className}
       style={{
         height: resolvedHeight,

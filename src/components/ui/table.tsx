@@ -3,10 +3,15 @@
 import * as React from "react";
 
 import { cn } from "./utils";
+import { useDragScroll } from "@/hooks/useDragScroll";
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  useDragScroll(() => containerRef.current);
+
   return (
     <div
+      ref={containerRef}
       data-slot="table-container"
       className="relative w-full overflow-x-auto"
     >
