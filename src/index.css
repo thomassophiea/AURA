@@ -66,6 +66,12 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* Soft, layered shadows for dark UI depth ("depth via light, not lines").
+     Drives the shadow-sm / shadow-md / shadow-lg utilities. */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px -6px rgba(0, 0, 0, 0.45), 0 1px 3px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 32px -12px rgba(0, 0, 0, 0.55), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* Tell v4 where to scan for utility classes. The plugin auto-detects
@@ -123,7 +129,7 @@
   --chart-3: #ffb74d;
   --chart-4: #cf6679;
   --chart-5: #81c784;
-  --radius: 0.25rem;
+  --radius: 0.625rem;
   --sidebar: #121212;
   --sidebar-foreground: #ffffffde;
   --sidebar-primary: #bb86fc;

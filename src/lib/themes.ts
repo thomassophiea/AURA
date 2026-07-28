@@ -257,7 +257,7 @@ export const themes: Record<ThemeMode, Theme> = {
       accentForeground: '#1e1a46',
       destructive: '#ed5f56',      // rgba(237,95,86)
       destructiveForeground: '#f8f8fb',
-      border: '#999cb3',           // rgba(153,156,179)
+      border: 'rgba(255,255,255,0.09)', // soft hairline (was #999cb3)
       input: 'transparent',
       ring: '#8981e5',
       // Semantic tokens — template-matched
@@ -277,8 +277,8 @@ export const themes: Record<ThemeMode, Theme> = {
       textMuted: '#babcce',
       textInverse: '#1e1a46',
       textOnBrand: '#1e1a46',
-      borderDefault: '#4d4f63',    // sidebar-border
-      borderSubtle: '#3a3e5c',
+      borderDefault: 'rgba(255,255,255,0.11)', // structural hairline (was #4d4f63)
+      borderSubtle: 'rgba(255,255,255,0.06)',  // was #3a3e5c
       borderFocus: '#8981e5',
       statusSuccess: '#75bf63',    // rgba(117,191,99) — template chart-3
       statusSuccessBg: '#1E3D1A',
@@ -290,11 +290,11 @@ export const themes: Record<ThemeMode, Theme> = {
       statusInfoBg: '#1e1a46',
       tableHeaderBg: '#30344B',
       tableHeaderText: '#D7D9E6',
-      tableHeaderBorder: '#4d4f63',
+      tableHeaderBorder: 'rgba(255,255,255,0.08)',
       tableRowBg: '#2E3248',
       tableRowHover: '#3A3E58',
       tableRowSelected: '#3d3b6a',
-      tableRowBorder: '#3a3e5c',
+      tableRowBorder: 'rgba(255,255,255,0.06)',
       tableCellText: '#f8f8fb',
       tableCellMuted: '#babcce',
       buttonPrimaryBg: '#8981e5',
@@ -312,12 +312,12 @@ export const themes: Record<ThemeMode, Theme> = {
       navTextMuted: '#babcce',
       navItemHover: '#8981e5',
       navItemActive: '#8981e5',
-      navBorder: '#4d4f63',
+      navBorder: 'rgba(255,255,255,0.08)',
       formLabelText: '#D7D9E6',
       formLabelRequired: '#ed5f56',
       inputBg: 'transparent',
-      inputBorder: '#4d4f63',
-      inputBorderHover: '#999cb3',
+      inputBorder: 'rgba(255,255,255,0.12)',
+      inputBorderHover: 'rgba(255,255,255,0.20)',
       inputBorderFocus: '#8981e5',
       inputText: '#f8f8fb',
       inputPlaceholder: '#babcce',

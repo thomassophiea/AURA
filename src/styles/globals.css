@@ -80,7 +80,7 @@
   --chart-9: #a5d6a7; /* Green light */
   --chart-10: #90caf9; /* Blue light */
 
-  --radius: 0.25rem; /* Material Design border radius (4px) */
+  --radius: 0.625rem; /* Soft/layered depth refresh (~10px) */
 
   /* Material Design Sidebar */
   --sidebar: #121212; /* Same as background */
@@ -3058,8 +3058,8 @@ body.ep1 {
   --info: #8981e5 !important;
   --info-foreground: #1e1a46 !important;
 
-  /* Borders — template: rgba(153,156,179) = #999cb3 general; #4d4f63 for sidebar */
-  --border: #999cb3 !important;
+  /* Borders — soft hairlines for calm, layered depth (was #999cb3 / #4d4f63) */
+  --border: rgba(255, 255, 255, 0.09) !important;
   --input: transparent !important;
   --input-background: transparent !important;
   --switch-background: #4d4f63 !important;
@@ -3077,8 +3077,8 @@ body.ep1 {
   --chart-9: #a5d6a7 !important;
   --chart-10: #90caf9 !important;
 
-  /* Radius — template: 4px */
-  --radius: 0.25rem !important;
+  /* Radius — soft/layered depth refresh (~10px) */
+  --radius: 0.625rem !important;
 
   /* Sidebar — template exact values */
   --sidebar: #2d2f3e !important;
@@ -3087,7 +3087,7 @@ body.ep1 {
   --sidebar-primary-foreground: #1e1a46 !important; /* dark text on active */
   --sidebar-accent: #8981e5 !important; /* hover bg */
   --sidebar-accent-foreground: #1e1a46 !important; /* dark text on hover */
-  --sidebar-border: #4d4f63 !important; /* rgba(77,79,99) */
+  --sidebar-border: rgba(255, 255, 255, 0.08) !important; /* soft hairline */
   --sidebar-ring: #8981e5 !important;
 
   /* Font weights — template light mode */
@@ -3126,8 +3126,8 @@ body.ep1 {
   --text-inverse: #1e1a46 !important;
   --text-on-brand: #1e1a46 !important;
 
-  --border-default: #4d4f63 !important;
-  --border-subtle: #3a3e5c !important;
+  --border-default: rgba(255, 255, 255, 0.11) !important;
+  --border-subtle: rgba(255, 255, 255, 0.06) !important;
   --border-focus: #8981e5 !important;
 
   --status-success: #75bf63 !important;
@@ -3141,11 +3141,11 @@ body.ep1 {
 
   --table-header-bg: #30344b !important;
   --table-header-text: #d7d9e6 !important;
-  --table-header-border: #4d4f63 !important;
+  --table-header-border: rgba(255, 255, 255, 0.08) !important;
   --table-row-bg: #2e3248 !important;
   --table-row-hover: #3a3e58 !important;
   --table-row-selected: #3d3b6a !important;
-  --table-row-border: #3a3e5c !important;
+  --table-row-border: rgba(255, 255, 255, 0.06) !important;
   --table-cell-text: #f8f8fb !important;
   --table-cell-muted: #babcce !important;
 
@@ -3165,13 +3165,13 @@ body.ep1 {
   --nav-text-muted: #babcce !important;
   --nav-item-hover: #8981e5 !important;
   --nav-item-active: #8981e5 !important;
-  --nav-border: #4d4f63 !important;
+  --nav-border: rgba(255, 255, 255, 0.08) !important;
 
   --form-label-text: #d7d9e6 !important;
   --form-label-required: #ed5f56 !important;
   --input-bg: transparent !important;
-  --input-border: #4d4f63 !important;
-  --input-border-hover: #999cb3 !important;
+  --input-border: rgba(255, 255, 255, 0.12) !important;
+  --input-border-hover: rgba(255, 255, 255, 0.2) !important;
   --input-border-focus: #8981e5 !important;
   --input-text: #f8f8fb !important;
   --input-placeholder: #babcce !important;
@@ -3225,7 +3225,7 @@ html.dark.ep1 {
   --accent-foreground: #1e1a46 !important;
   --destructive: #ed5f56 !important;
   --destructive-foreground: #f8f8fb !important;
-  --border: #4d4f63 !important;
+  --border: rgba(255, 255, 255, 0.09) !important;
   --input: transparent !important;
   --input-background: transparent !important;
   --ring: #8981e5 !important;
@@ -3246,11 +3246,11 @@ html.dark.ep1 {
   --sidebar-primary-foreground: #1e1a46 !important;
   --sidebar-accent: #8981e5 !important;
   --sidebar-accent-foreground: #1e1a46 !important;
-  --sidebar-border: #4d4f63 !important;
+  --sidebar-border: rgba(255, 255, 255, 0.08) !important;
   --sidebar-ring: #8981e5 !important;
   --font-weight-medium: 600 !important;
   --font-weight-normal: 400 !important;
-  --radius: 0.25rem !important;
+  --radius: 0.625rem !important;
   /* EP1 semantic status tokens */
   --status-success: #75bf63 !important;
   --status-success-bg: rgba(117, 191, 99, 0.12) !important;
@@ -3277,21 +3277,21 @@ html.ep1 [data-slot='app'] {
   background-color: #1e1f2a !important;
 }
 
-/* --- EP1 Cards & Panels — surface: #2d2f3e, border: #4d4f63, radius: 4px --- */
+/* --- EP1 Cards & Panels — surface: #2d2f3e, soft hairline border, radius: 10px --- */
 .ep1 .card,
 .ep1 [data-slot='card'] {
   background-color: #2d2f3e !important;
-  border: 1px solid #4d4f63 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow:
     0px 8px 8px 0px rgba(30, 31, 42, 0.24),
     0px 4px 4px 0px rgba(30, 31, 42, 0.24),
     0px 2px 2px 0px rgba(30, 31, 42, 0.24) !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 .ep1 .card:hover,
 .ep1 [data-slot='card']:hover {
-  border-color: #999cb3 !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
   box-shadow:
     0px 16px 16px 0px rgba(30, 31, 42, 0.24),
     0px 8px 8px 0px rgba(30, 31, 42, 0.24),
@@ -3305,18 +3305,18 @@ html.ep1 [data-slot='app'] {
   border-right: none !important;
 }
 
-/* Active nav item — template: sidebar-primary = #8981e5, foreground = #1e1a46 */
+/* Active nav item — calm low-opacity accent wash + accent text (no bold pill) */
 .ep1 [data-active='true'],
 .ep1 [aria-current='page'] {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  background-color: rgba(137, 129, 229, 0.15) !important;
+  color: #aba3fb !important;
 }
 
-/* Hover nav item — template: sidebar-accent = #8981e5 */
+/* Hover nav item — subtle white wash, keep text light */
 .ep1 .app-sidebar a:hover,
 .ep1 .app-sidebar button:hover {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #f8f8fb !important;
 }
 
 /* --- EP1 Header Bar — matches app bar: bg-[#2d2f3e] per template --- */
@@ -3325,7 +3325,7 @@ html.ep1 [data-slot='app'] {
 .ep1 nav[class*='top'],
 .ep1 .header {
   background-color: #2d2f3e !important;
-  border-bottom: 1px solid #4d4f63 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow:
     0px 8px 8px 0px rgba(30, 31, 42, 0.24),
     0px 4px 4px 0px rgba(30, 31, 42, 0.24) !important;
@@ -3345,7 +3345,7 @@ html.ep1 [data-slot='app'] {
 .ep1 thead th {
   color: #d7d9e6 !important;
   background-color: #30344b !important;
-  border-bottom: 1px solid #4d4f63 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   font-weight: 500 !important;
   letter-spacing: 0.02em !important;
   text-transform: none !important;
@@ -3353,7 +3353,7 @@ html.ep1 [data-slot='app'] {
 
 .ep1 tbody tr {
   background-color: #2e3248 !important;
-  border-bottom: 1px solid #3a3e5c !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   transition: background-color 150ms ease !important;
 }
 
@@ -3368,7 +3368,7 @@ html.ep1 [data-slot='app'] {
 
 .ep1 tbody td {
   color: #f8f8fb !important;
-  border-bottom: 1px solid #3a3e5c !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 /* --- EP1 Inputs & Search — elevated surface with visible border --- */
@@ -3376,9 +3376,9 @@ html.ep1 [data-slot='app'] {
 .ep1 textarea,
 .ep1 select {
   background-color: #2d2f3e !important;
-  border-color: #6b6d8a !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #f8f8fb !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 .ep1 select option {
@@ -3393,7 +3393,7 @@ html.ep1 [data-slot='app'] {
 
 .ep1 input:hover:not(:disabled),
 .ep1 textarea:hover:not(:disabled) {
-  border-color: #999cb3 !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
 }
 
 .ep1 input:focus,
@@ -3409,7 +3409,7 @@ html.ep1 [data-slot='app'] {
 .ep1 button.bg-primary {
   background-color: #8981e5 !important;
   color: #1e1a46 !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 .ep1 [data-slot='button'][class*='bg-primary']:hover,
@@ -3426,7 +3426,7 @@ html.ep1 [data-slot='app'] {
   background-image: none !important;
   border-radius: 0 !important;
   padding: 0 !important;
-  border-bottom: 1px solid #4d4f63 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   height: auto !important;
   gap: 0 !important;
 }
@@ -3469,12 +3469,12 @@ html.ep1 [data-slot='app'] {
 .ep1 [role='menu'],
 .ep1 [role='listbox'] {
   background-color: #2d2f3e !important;
-  border: 1px solid #4d4f63 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow:
     0px_8px_8px_0px rgba(30, 31, 42, 0.24),
     0px 4px 4px 0px rgba(30, 31, 42, 0.24),
     0px 2px 2px 0px rgba(30, 31, 42, 0.24) !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 /* --- EP1 Menu Items — template accent hover: #8981e5 with white text --- */
@@ -3504,7 +3504,7 @@ html.ep1 [data-slot='app'] {
 .ep1 [class*='chip'] {
   background-color: #4d4f63 !important;
   color: #f8f8fb !important;
-  border: 1px solid #4d4f63 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   border-radius: 40px !important; /* template --radius-chip: 40px */
 }
 
@@ -3553,7 +3553,7 @@ html.ep1 [data-slot='app'] {
 .ep1 [class*='border-t'],
 .ep1 hr,
 .ep1 [class*='separator'] {
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- EP1 Interactive States --- */
@@ -3581,12 +3581,12 @@ html.ep1 [data-slot='app'] {
 /* --- EP1 Modals — border-radius follows --radius: 4px --- */
 .ep1 [role='dialog'][data-state='open'] {
   background-color: #2d2f3e !important;
-  border: 1px solid #4d4f63 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   box-shadow:
     0px 16px 16px 0px rgba(30, 31, 42, 0.24),
     0px 8px 8px 0px rgba(30, 31, 42, 0.24),
     0px 4px 4px 0px rgba(30, 31, 42, 0.24) !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 .ep1 [data-slot='dialog-overlay'],
@@ -3639,20 +3639,20 @@ html.ep1 [data-slot='app'] {
   box-shadow: none !important;
 }
 
-/* Active sidebar item — template sidebar-primary: #8981e5, foreground: #1e1a46 */
+/* Active sidebar item — calm low-opacity accent wash + accent text */
 .ep1 button[class*='bg-sidebar-primary'],
 .ep1 a[class*='bg-sidebar-primary'] {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
-  border-radius: 4px !important;
+  background-color: rgba(137, 129, 229, 0.15) !important;
+  color: #aba3fb !important;
+  border-radius: 10px !important;
 }
 
-/* Hover state — template sidebar-accent: #8981e5 */
+/* Hover state — subtle white wash, keep text light */
 .ep1 nav button:hover:not([class*='bg-sidebar-primary']),
 .ep1 nav a:hover:not([class*='bg-sidebar-primary']),
 .ep1 button[class*='hover:bg-sidebar-accent']:hover {
-  background-color: #8981e5 !important;
-  color: #1e1a46 !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: #f8f8fb !important;
 }
 
 /* --- SANDBOX / beta badge: EP1 chip style — #4d4f63 bg, muted text --- */
@@ -3712,7 +3712,7 @@ html.ep1 [data-slot='app'] {
   background-color: #4d4f63 !important;
 }
 
-/* --- Override hardcoded Tailwind border colors on cards — template border: #4d4f63 --- */
+/* --- Override hardcoded Tailwind border colors on cards — soft hairline border --- */
 .ep1 .card[class*='border-blue-'],
 .ep1 .card[class*='border-violet-'],
 .ep1 .card[class*='border-emerald-'],
@@ -3720,7 +3720,7 @@ html.ep1 [data-slot='app'] {
 .ep1 .card[class*='border-green-'],
 .ep1 .card[class*='border-red-'],
 .ep1 .card[class*='border-orange-'] {
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Teal info/status boxes (dark: variants fire because EP1 has .dark) --- */
@@ -3728,7 +3728,7 @@ html.ep1 [data-slot='app'] {
   background-color: rgba(137, 129, 229, 0.15) !important;
 }
 .ep1 [class*='border-teal-'] {
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 .ep1 [class*='text-teal-'] {
   color: #8981e5 !important;
@@ -3739,8 +3739,8 @@ html.ep1 [data-slot='app'] {
 .ep1 [data-slot='button'][class*='bg-secondary'] {
   background-color: transparent !important;
   color: #aba3fb !important;
-  border: 1px solid #4d4f63 !important;
-  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
 }
 .ep1 button[class*='bg-secondary']:hover {
   background-color: #4d4f63 !important;
@@ -3769,7 +3769,7 @@ html.ep1 [data-slot='app'] {
   background-color: #8981e5 !important;
 }
 
-/* --- Dividers in sidebar and content — template sidebar-border: #4d4f63 --- */
+/* --- Dividers in sidebar and content — soft hairline sidebar-border --- */
 .ep1 [data-slot='separator'],
 .ep1 .separator {
   background-color: #4d4f63 !important;
@@ -3779,9 +3779,9 @@ html.ep1 [data-slot='app'] {
 .ep1 [data-slot='select-trigger'],
 .ep1 button[role='combobox'] {
   background-color: #333548 !important;
-  border: 1px solid #6b6d8a !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #f8f8fb !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 .ep1 [data-slot='select-trigger']:hover,
 .ep1 button[role='combobox']:hover {
@@ -3793,7 +3793,7 @@ html.ep1 [data-slot='app'] {
 .ep1 [data-slot='select-content'],
 .ep1 [role='listbox'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Select items — template accent hover: #8981e5 --- */
@@ -3816,7 +3816,7 @@ html.ep1 [data-slot='app'] {
 .ep1 [data-slot='alert'],
 .ep1 [role='alert'] {
   background-color: #2d2f3e !important;
-  border-color: #3a3e5c !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
   color: #f8f8fb !important;
 }
 .ep1 [data-slot='alert-description'] {
@@ -3885,7 +3885,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 textarea,
 .ep1 [class*='input']:not([class*='text-input']):not([class*='input-']):not([class^='ag-']) {
   background-color: #2d2f3e !important;
-  border-color: #6b6d8a !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
   color: #f8f8fb !important;
 }
 .ep1 input::placeholder,
@@ -3896,7 +3896,7 @@ button.sle-node-bubble.sle-node-poor,
 /* --- Select Trigger: elevated surface so it's visible against #2d2f3e card/page bg --- */
 .ep1 [data-slot='select-trigger'] {
   background-color: #333548 !important;
-  border: 1px solid #6b6d8a !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
   color: #f8f8fb !important;
 }
 .ep1 [data-slot='select-trigger']:hover {
@@ -3907,7 +3907,7 @@ button.sle-node-bubble.sle-node-poor,
 /* --- Select Content (dropdown panel) --- */
 .ep1 [data-slot='select-content'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 .ep1 [data-slot='select-item'] {
@@ -3926,7 +3926,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [data-slot='dropdown-menu-content'],
 .ep1 [role='menu'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 .ep1 [role='menuitem'],
@@ -3954,7 +3954,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [data-slot='popover-content'],
 .ep1 [data-radix-popper-content-wrapper] > div {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 
@@ -3962,7 +3962,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [data-slot='dialog-content'],
 .ep1 [role='dialog'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 .ep1 [data-slot='dialog-title'],
@@ -3976,14 +3976,14 @@ button.sle-node-bubble.sle-node-poor,
 /* --- Alert Dialog --- */
 .ep1 [data-slot='alert-dialog-content'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 
 /* --- Sheet (side panels) --- */
 .ep1 [data-slot='sheet-content'] {
   background-color: #2d2f3e !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #f8f8fb !important;
 }
 
@@ -4031,7 +4031,7 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [role='tooltip'] {
   background-color: #4d4f63 !important;
   color: #f8f8fb !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Badges in dark mode: ensure readable text --- */
@@ -4047,7 +4047,7 @@ button.sle-node-bubble.sle-node-poor,
   color: #f8f8fb !important;
 }
 .ep1 [data-slot='badge'][class*='outline'] {
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
   color: #babcce !important;
 }
 
@@ -4056,12 +4056,12 @@ button.sle-node-bubble.sle-node-poor,
 .ep1 [data-slot='table-head'] {
   background-color: #30344b !important;
   color: #d7d9e6 !important;
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 .ep1 tbody td,
 .ep1 [data-slot='table-cell'] {
   color: #f8f8fb !important;
-  border-color: #3a3e5c !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
 }
 .ep1 tbody tr:hover td {
   background-color: #3a3e58 !important;
@@ -4120,7 +4120,7 @@ button.sle-node-bubble.sle-node-poor,
 }
 .ep1 .border-gray-200,
 .ep1 .border-gray-300 {
-  border-color: #4d4f63 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
 }
 
 /* --- Zinc / Slate utility overrides --- */
@@ -4823,9 +4823,9 @@ html.dev #root {
 /* EP1 mode: tooltip */
 .ep1 .recharts-default-tooltip {
   background-color: #323650 !important;
-  border: 1px solid #4d4f63 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
   color: #f8f8fb !important;
-  border-radius: 4px !important;
+  border-radius: 10px !important;
 }
 
 /* Dev mode: tooltip */

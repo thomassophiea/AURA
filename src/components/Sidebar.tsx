@@ -206,8 +206,8 @@ export function Sidebar({
           className={cn(
             'w-full justify-center h-10 px-0',
             isActive
-              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-              : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+              ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+              : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
           )}
           onClick={onToggle}
           title={label}
@@ -221,8 +221,8 @@ export function Sidebar({
             className={cn(
               'w-full justify-start h-10 px-3',
               isActive
-                ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
             )}
             onClick={onToggle}
           >
@@ -245,8 +245,8 @@ export function Sidebar({
                     className={cn(
                       'w-full justify-start h-9 text-sm px-3',
                       currentPage === item.id
-                        ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                        : 'text-sidebar-foreground/80 hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
                     )}
                     onClick={() => handlePageChange(item.id)}
                     onMouseEnter={() => prefetchComponent(item.id)}
@@ -337,8 +337,8 @@ export function Sidebar({
                     'w-full h-10',
                     isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
                     currentPage === 'service-levels'
-                      ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                      : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                      ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                      : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
                   )}
                   onClick={() => handlePageChange('service-levels')}
                   onMouseEnter={() => prefetchComponent('service-levels')}
@@ -393,8 +393,8 @@ export function Sidebar({
                   'w-full h-10',
                   isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
                   currentPage === 'workspace'
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                    : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
                 )}
                 onClick={() => handlePageChange('workspace')}
                 onMouseEnter={() => prefetchComponent('workspace')}
@@ -426,8 +426,8 @@ export function Sidebar({
                         'w-full h-10',
                         isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
                         currentPage === 'tools'
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                          : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
                       )}
                       onClick={() => handlePageChange('tools')}
                       title={isCollapsed ? 'Tools' : undefined}
@@ -443,8 +443,8 @@ export function Sidebar({
                         'w-full h-10',
                         isCollapsed ? 'justify-center px-0' : 'justify-start px-3',
                         currentPage === 'administration'
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                          ? 'bg-sidebar-primary/15 text-sidebar-primary rounded-lg'
+                          : 'text-sidebar-foreground hover:bg-white/5 hover:text-sidebar-foreground rounded-lg'
                       )}
                       onClick={() => handlePageChange('administration')}
                       title={isCollapsed ? 'Administration' : undefined}
