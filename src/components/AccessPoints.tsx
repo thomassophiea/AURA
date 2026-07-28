@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { SearchFilterBar } from './SearchFilterBar';
 import { useCompoundSearch } from '../hooks/useCompoundSearch';
 import { useSourceSites } from '../hooks/useSourceSites';
+import { dedupeAccessPointsBySerial } from '../lib/dedupeAccessPoints';
 import { SourceSiteSelector } from './SourceSiteSelector';
 import { parseXiqSiteValue } from '../services/siteContextService';
 import { loadXiqAccessPoints } from '../services/xiqInventory';
@@ -804,6 +805,13 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         accessPointsArray = Array.isArray(apsData) ? apsData : [];
       }
 
+      // De-dupe by serialNumber. The org-scope loop above fetches from every
+      // site group's controller; site groups that resolve to the same physical
+      // controller each return the full fleet, so the same AP is concatenated
+      // more than once. Without this, AG Grid (getRowId = serialNumber) collapses
+      // the duplicate serials into blank phantom rows and the footer over-counts.
+      accessPointsArray = dedupeAccessPointsBySerial(accessPointsArray);
+
       // Map sysUptime to uptime field and format it
       const enrichedAPs = accessPointsArray.map((ap) => ({
         ...ap,
@@ -856,35 +864,33 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
 
     const clientCountsByAP: Record<string, number> = {};
 
-    // Initialize all APs with 0 clients
+    // Initialize all APs with 0 clients (an AP with no stations stays 0)
     aps.forEach((ap) => {
       clientCountsByAP[ap.serialNumber] = 0;
     });
 
     try {
-      // Load all client counts in parallel instead of sequentially
-      const promises = aps.map(async (ap) => {
-        try {
-          const stations = await apiService.getAccessPointStations(ap.serialNumber);
-          const count = Array.isArray(stations) ? stations.length : 0;
-          return { serialNumber: ap.serialNumber, count };
-        } catch {
-          // Return 0 for failed APs
-          return { serialNumber: ap.serialNumber, count: 0 };
+      // The AP list/query record has no wireless client-count field, so fetch
+      // /v1/stations ONCE and group by AP serial client-side (one bulk call
+      // instead of N per-AP requests). Stations expose the owning AP serial
+      // under several field names depending on endpoint/firmware.
+      const stations = await apiService.getAllStations();
+      (Array.isArray(stations) ? stations : []).forEach((station: any) => {
+        const serial =
+          station.accessPointSerialNumber ||
+          station.apSerialNumber ||
+          station.apSerial ||
+          station.accessPointSerial ||
+          station.apSn;
+        if (serial && serial in clientCountsByAP) {
+          clientCountsByAP[serial] += 1;
         }
-      });
-
-      // Wait for all requests to complete in parallel
-      const results = await Promise.all(promises);
-
-      // Update counts
-      results.forEach(({ serialNumber, count }) => {
-        clientCountsByAP[serialNumber] = count;
       });
 
       // Set final state once
       setClientCounts(clientCountsByAP);
     } catch (err) {
+      // Resilient: degrade to the zero-initialized map rather than crashing.
       console.error('Error loading client counts:', err);
       setClientCounts(clientCountsByAP);
     } finally {
