@@ -12,6 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { PCheck } from '../controls';
 import { radioIfOf, wiredIfOf, strArr } from '../helpers';
 import type { ProfileTabContext } from '../types';
+import { ehtBands } from '../../../wifi7/wifi7Model';
+import { BandBadge } from '../../../wifi7/wifi7Viz';
 
 export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
   const { form, radios, F, pools, toggleInArr, mut } = ctx;
@@ -152,6 +154,26 @@ export function NetworksTab({ ctx }: { ctx: ProfileTabContext }) {
               ))}
             </TableBody>
           </Table>
+        </div>
+      )}
+
+      {showMlo && (
+        <div className="rounded-md border border-indigo-500/30 bg-indigo-500/5 p-3 text-xs">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <span className="font-semibold text-indigo-600 dark:text-indigo-400">
+              Wi-Fi 7 · MLO link capability
+            </span>
+            {ehtBands(radios).length > 0 ? (
+              ehtBands(radios).map((b) => <BandBadge key={b} band={b} eht />)
+            ) : (
+              <span className="text-muted-foreground">no 802.11be radios in this profile</span>
+            )}
+          </div>
+          <p className="text-muted-foreground">
+            {mlo.length > 0
+              ? `${mlo.length} network${mlo.length > 1 ? 's' : ''} grouped for Multi-Link Operation — combined across the EHT links above.`
+              : 'Tick MLO on two or more networks to combine them across this profile’s 802.11be links.'}
+          </p>
         </div>
       )}
 

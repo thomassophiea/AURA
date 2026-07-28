@@ -23,7 +23,6 @@ export const ORG_PAGES = new Set([
   // Configure
   'configure-sites-groups',
   'configure-networks',
-  'configure-wifi7',
   'configure-policy',
   'configure-aaa-policies',
   'configure-adoption-rules',

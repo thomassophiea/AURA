@@ -83,12 +83,15 @@ preserves state (idempotent round-trip tested on `ap5050-lab-afc`, 2026-07-28).
 Follow ai-first discipline: GET → mutate radio/`mloServiceIDs` → PUT → re-GET verify.
 Set the corresponding `*Ovr` flag (`pwrMode6Ovr`) when overriding an inherited value.
 
-## AURA build mapping
+## AURA build mapping (integrated into existing Configure pages)
 
-| Surface | Endpoint(s) | AURA artifact |
+MLO and AFC are surfaced where the controller itself organizes them, not on a
+standalone page. Writes ride the existing editor PUTs (full-record `/v1/aps/{s}`
+and `/v3/profiles/{id}`), so no bespoke write service is needed.
+
+| Surface | Where in AURA | Persistence |
 |---|---|---|
-| Read snapshot | `GET /v1/aps` + `/v1/aps/{s}` + `/v1/services` + `/v1/stations` | `wifi7Service.getWifi7Snapshot()` |
-| AFC config write | `PUT /v1/aps/{s}` (radio `afc`/`pwrMode6`) | `wifi7Service.updateRadioAfc()` |
-| MLO binding write | `PUT /v1/aps/{s}` (`mloServiceIDs`) | `wifi7Service.updateApMlo()` |
-| Geolocation write | `PUT /v1/aps/{s}` (`ftm.wgs84`/`elevation`) | `wifi7Service.updateApGeo()` |
-| Dead code to retire | `GET /v1/afc/plans` (404) | `AFCPlanningTool.tsx` — flag, replace with per-radio AFC |
+| AFC config (radio `afc` + `pwrMode6`) | Configure → Access Points → radio editor (`ApRadioCard.tsx`, Band6 block) + inline `AfcPowerBar` | AP editor `PUT /v1/aps/{s}` (full record) |
+| MLO grouping (`mloServiceIDs`) | Configure → Device Profiles → Networks (`NetworksTab.tsx` MLO column) + inline 802.11be capability strip; per-AP override in `WlanOvrDialog.tsx` | profile `PUT /v3/profiles/{id}` / AP `PUT /v1/aps/{s}` |
+| EHT capability / power-mode badges | shared `src/components/wifi7/wifi7Viz.tsx` + `wifi7Model.ts` (`projectApRadio`, `ehtBands`, `isEht`) | read-only projection |
+| Dead code to retire | `AFCPlanningTool.tsx` calls `GET /v1/afc/plans` (404) | flag / replace with the per-radio AFC surface above |

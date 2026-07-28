@@ -20,6 +20,9 @@ import {
   RADIO_MODE_LABEL,
 } from './apHelpers';
 import type { ApRadio } from '../../../types/configure';
+import { POWER_MODE6, POWER_MODE6_VALUES } from '../../../types/wifi7';
+import { AfcPowerBar } from '../../wifi7/wifi7Viz';
+import { projectApRadio } from '../../wifi7/wifi7Model';
 
 export interface ApRadioCardProps {
   radio: ApRadio;
@@ -196,6 +199,29 @@ export function ApRadioCard({
             </>
           )}
         </>
+      )}
+
+      {band === 'Band6' && (
+        <div className="space-y-3 rounded-md border border-indigo-500/30 bg-indigo-500/5 p-3">
+          <p className="text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+            Wi-Fi 7 · AFC (Automated Frequency Coordination)
+          </p>
+          <Row label="AFC Standard-Power coordination">
+            <Switch checked={!!r.afc} onCheckedChange={(v) => set('afc', v)} />
+          </Row>
+          <Row label="6 GHz Power Mode">
+            <ApSelect
+              className="w-full"
+              value={r.pwrMode6 || 'LPI'}
+              options={POWER_MODE6_VALUES.map((m) => ({ id: m, label: POWER_MODE6[m].label }))}
+              onChange={(v) => {
+                set('pwrMode6', v);
+                set('pwrMode6Ovr', true);
+              }}
+            />
+          </Row>
+          <AfcPowerBar radio={projectApRadio(r)} />
+        </div>
       )}
 
       {!isBg && (
