@@ -23,7 +23,8 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // Anchored header band + a slightly firmer bottom rule so columns read as a header.
+      className={cn("bg-muted/40 [&_tr]:border-b [&_tr]:border-border", className)}
       {...props}
     />
   );
@@ -33,7 +34,11 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return (
     <tbody
       data-slot="table-body"
-      className={cn("[&_tr:last-child]:border-0", className)}
+      // Subtle zebra striping gives data rows rhythm without heavy grid lines.
+      className={cn(
+        "[&_tr:last-child]:border-0 [&_tr:nth-child(even)]:bg-muted/[0.14]",
+        className,
+      )}
       {...props}
     />
   );
@@ -57,7 +62,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "hover:bg-muted/40 data-[state=selected]:bg-muted border-b transition-colors",
+        "border-b border-border/70 transition-colors hover:bg-muted/50 data-[state=selected]:bg-primary/10",
         className,
       )}
       {...props}
@@ -70,8 +75,9 @@ function TableHead({ className, scope = "col", ...props }: React.ComponentProps<
     <th
       data-slot="table-head"
       scope={scope}
+      // Even 44px header row, centered content, muted uppercase-friendly label color.
       className={cn(
-        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "text-muted-foreground h-11 px-3 text-left align-middle text-xs font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
@@ -83,8 +89,10 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
+      // Consistent vertical padding + align-middle so every cell (checkbox, badge,
+      // icon) sits on the same centerline — fixes staggered checkbox columns.
       className={cn(
-        "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        "px-3 py-2.5 align-middle [&:has([role=checkbox])]:pr-0",
         className,
       )}
       {...props}
