@@ -6,8 +6,8 @@ import { AgGridReact } from 'ag-grid-react';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-const ROW_HEIGHT = 40;
-const HEADER_HEIGHT = 36;
+const ROW_HEIGHT = 44;
+const HEADER_HEIGHT = 44;
 const PAGINATION_HEIGHT = 48;
 
 const STORAGE_PREFIX = 'aura.grid-state.';

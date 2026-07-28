@@ -2083,21 +2083,21 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         numeric?: boolean;
       }
     > = {
-      connection: { width: 88, align: 'center' },
+      connection: { width: 88, minWidth: 80, align: 'center' },
       apName: { flex: 2, minWidth: 200 },
-      serialNumber: { width: 170 },
+      serialNumber: { width: 170, minWidth: 150 },
       hostSite: { flex: 1.2, minWidth: 160 },
-      model: { width: 130 },
-      ipAddress: { width: 150 },
-      clients: { width: 130, align: 'center' },
-      macAddress: { width: 160 },
-      uptime: { width: 120 },
+      model: { width: 130, minWidth: 110 },
+      ipAddress: { width: 160, minWidth: 150 },
+      clients: { width: 130, minWidth: 110, align: 'center' },
+      macAddress: { width: 165, minWidth: 150 },
+      uptime: { width: 120, minWidth: 100 },
       cpuUsage: { width: 90, numeric: true },
       memoryUsage: { width: 100, numeric: true },
       pwrUsage: { width: 110, numeric: true },
       channelUtilization: { width: 130, numeric: true },
-      softwareVersion: { width: 150 },
-      status: { width: 110 },
+      softwareVersion: { width: 150, minWidth: 130 },
+      status: { width: 110, minWidth: 100 },
     };
     const defs: ColDef<AccessPoint>[] = [];
     if (navigationScope === 'global' && siteGroups.length > 1) {
@@ -2223,7 +2223,10 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
       sortable: false,
       filter: false,
       resizable: false,
-      width: 90,
+      width: 92,
+      minWidth: 92,
+      maxWidth: 92,
+      suppressSizeToFit: true,
       pinned: 'right',
       cellStyle: {
         display: 'flex',
@@ -2713,7 +2716,6 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
                   ref={agGridHandleRef}
                   rowData={sortedAccessPoints}
                   columnDefs={agColDefs}
-                  height={600}
                   storageKey="access-points"
                   gridOptions={{
                     getRowId: (p) => p.data.serialNumber,

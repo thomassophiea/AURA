@@ -101,10 +101,24 @@
 
 /* ── Grid surfaces match the card surface (no tonal seam) ───── */
 .ag-root-wrapper,
-.ag-header,
 .ag-row,
 .ag-paging-panel {
   background-color: var(--card) !important;
+}
+
+/* ── Header band: subtle lift off the card so columns read as a header ── */
+.ag-header,
+.ag-pinned-left-header,
+.ag-pinned-right-header {
+  background-color: color-mix(in srgb, var(--muted) 45%, var(--card)) !important;
+}
+
+/* ── Zebra striping — quiet rhythm without heavy grid lines ──── */
+.ag-row-even {
+  background-color: var(--card) !important;
+}
+.ag-row-odd {
+  background-color: color-mix(in srgb, var(--muted) 32%, var(--card)) !important;
 }
 
 /* ── Row separators — half-strength so data, not lines, leads ── */
@@ -204,6 +218,19 @@
 .ag-header-cell[col-id='ag-Grid-SelectionColumn'] {
   padding-left: 8px !important;
   padding-right: 8px !important;
+}
+
+/* Put every checkbox on a common centerline — the cell content and the
+   checkbox wrappers all flex-center vertically & horizontally so the select
+   column never reads as staggered. */
+.ag-cell[col-id='ag-Grid-SelectionColumn'],
+.ag-header-cell[col-id='ag-Grid-SelectionColumn'] .ag-header-cell-comp-wrapper,
+.ag-selection-checkbox,
+.ag-header-select-all {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
 }
 
 /* ── Row hover & selection visual ───────────────────────────── */
