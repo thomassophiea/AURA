@@ -72,6 +72,9 @@ const ConfigureRRM = lazy(() =>
 const ConfigureAccessPoints = lazy(() =>
   import('./components/configure/aps').then((m) => ({ default: m.ApsPage }))
 );
+const ConfigureSiteAfcGeo = lazy(() =>
+  import('./components/configure/siteafc').then((m) => ({ default: m.SiteAfcGeoPage }))
+);
 const ConfigureMeshpoints = lazy(() =>
   import('./components/configure/meshpoints').then((m) => ({ default: m.MeshpointsPage }))
 );
@@ -289,6 +292,10 @@ const pageInfo = {
   'configure-access-points': {
     title: 'Access Points',
     description: 'Per-AP configuration and profile overrides',
+  },
+  'configure-site-afc-geo': {
+    title: 'Site AFC & Geo',
+    description: 'Site configuration, AFC eligibility, and geo-diagnostics',
   },
   'configure-meshpoints': {
     title: 'Meshpoints',
@@ -1246,6 +1253,8 @@ export default function App() {
         return <ConfigureRRM />;
       case 'configure-access-points':
         return <ConfigureAccessPoints />;
+      case 'configure-site-afc-geo':
+        return <ConfigureSiteAfcGeo />;
       case 'configure-meshpoints':
         return <ConfigureMeshpoints />;
       case 'configure-service-profiles':

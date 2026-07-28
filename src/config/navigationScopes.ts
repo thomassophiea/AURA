@@ -22,6 +22,7 @@ export const ORG_PAGES = new Set([
   'performance-analytics',
   // Configure
   'configure-sites-groups',
+  'configure-site-afc-geo',
   'configure-networks',
   'configure-policy',
   'configure-aaa-policies',

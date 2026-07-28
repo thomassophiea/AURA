@@ -37,6 +37,7 @@ import {
   Share2,
   Radar,
   LayoutGrid,
+  SatelliteDish,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -74,6 +75,7 @@ const configureItems = [
   { id: 'configure-networks', label: 'Networks', icon: Network },
   { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
   { id: 'configure-access-points', label: 'Access Points', icon: Wifi },
+  { id: 'configure-site-afc-geo', label: 'Site AFC & Geo', icon: SatelliteDish },
   { id: 'configure-rrm', label: 'RF Management', icon: Radio },
   { id: 'configure-meshpoints', label: 'Meshpoints', icon: Share2 },
   { id: 'configure-policy', label: 'Policy', icon: Shield },

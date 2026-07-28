@@ -28,6 +28,7 @@ const componentImports: Record<string, () => Promise<unknown>> = {
   'configure-networks': () => import('../components/configure/networks'),
   'configure-profiles': () => import('../components/configure/profiles'),
   'configure-access-points': () => import('../components/configure/aps'),
+  'configure-site-afc-geo': () => import('../components/configure/siteafc'),
   'configure-rrm': () => import('../components/configure/rf'),
   'configure-meshpoints': () => import('../components/configure/meshpoints'),
   'configure-policy': () => import('../components/configure/policy'),
