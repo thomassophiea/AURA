@@ -135,6 +135,9 @@ const EventAlarmDashboard = lazy(() =>
 const SecurityDashboard = lazy(() =>
   import('./components/SecurityDashboard').then((m) => ({ default: m.SecurityDashboard }))
 );
+const DiagnosticsSystemHealth = lazy(() =>
+  import('./components/diagnostics').then((m) => ({ default: m.DiagnosticsPage }))
+);
 const GuestManagement = lazy(() =>
   import('./components/GuestManagement').then((m) => ({ default: m.GuestManagement }))
 );
@@ -255,6 +258,10 @@ const pageInfo = {
   'security-dashboard': {
     title: 'Security Dashboard',
     description: 'Rogue AP detection and security threat monitoring',
+  },
+  'diagnostics-system-health': {
+    title: 'System Health & Diagnostics',
+    description: 'Computed controller health checks and network health',
   },
   'guest-management': {
     title: 'Guest Access',
@@ -1227,6 +1234,12 @@ export default function App() {
         return (
           <ErrorBoundary fallbackTitle="Security Dashboard Error">
             <SecurityDashboard />
+          </ErrorBoundary>
+        );
+      case 'diagnostics-system-health':
+        return (
+          <ErrorBoundary fallbackTitle="System Health & Diagnostics Error">
+            <DiagnosticsSystemHealth />
           </ErrorBoundary>
         );
       case 'guest-management':

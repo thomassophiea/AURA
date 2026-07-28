@@ -38,6 +38,7 @@ import {
   Radar,
   LayoutGrid,
   SatelliteDish,
+  Stethoscope,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -97,6 +98,7 @@ const globalElementsItems = [
 const operationsItems = [
   { id: 'event-alarm-dashboard', label: 'Events & Alarms', icon: Bell },
   { id: 'security-dashboard', label: 'Security', icon: Shield },
+  { id: 'diagnostics-system-health', label: 'System Health', icon: Stethoscope },
   { id: 'audit-logs', label: 'Audit Logs', icon: ScrollText },
   { id: 'report-widgets', label: 'Report Widgets', icon: BarChart3 },
   { id: 'pci-report', label: 'PCI DSS Report', icon: FileCheck },

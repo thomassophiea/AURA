@@ -36,6 +36,7 @@ export const ORG_PAGES = new Set([
   // Operations
   'event-alarm-dashboard',
   'security-dashboard',
+  'diagnostics-system-health',
   'pci-report',
   // Admin & Tools
   'tools',
