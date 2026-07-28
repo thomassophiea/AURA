@@ -37,6 +37,7 @@ import {
   Share2,
   Radar,
   LayoutGrid,
+  Waypoints,
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Separator } from './ui/separator';
@@ -75,6 +76,7 @@ const configureItems = [
   { id: 'configure-profiles', label: 'Device Profiles', icon: Cpu },
   { id: 'configure-access-points', label: 'Access Points', icon: Wifi },
   { id: 'configure-rrm', label: 'RF Management', icon: Radio },
+  { id: 'configure-wifi7', label: 'Wi-Fi 7 (MLO/AFC)', icon: Waypoints },
   { id: 'configure-meshpoints', label: 'Meshpoints', icon: Share2 },
   { id: 'configure-policy', label: 'Policy', icon: Shield },
   { id: 'configure-aaa-policies', label: 'AAA Policies', icon: UserCheck },

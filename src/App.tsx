@@ -75,6 +75,9 @@ const ConfigureAccessPoints = lazy(() =>
 const ConfigureMeshpoints = lazy(() =>
   import('./components/configure/meshpoints').then((m) => ({ default: m.MeshpointsPage }))
 );
+const ConfigureWifi7 = lazy(() =>
+  import('./components/wifi7/Wifi7Page').then((m) => ({ default: m.Wifi7Page }))
+);
 const ConfigureServiceProfiles = lazy(() =>
   import('./components/configure/serviceprofiles').then((m) => ({ default: m.ServiceProfilesPage }))
 );
@@ -293,6 +296,10 @@ const pageInfo = {
   'configure-meshpoints': {
     title: 'Meshpoints',
     description: 'Wireless mesh backhaul configuration',
+  },
+  'configure-wifi7': {
+    title: 'Wi-Fi 7 (MLO / AFC)',
+    description: 'Multi-Link Operation and Automated Frequency Coordination',
   },
   'configure-service-profiles': {
     title: 'Service Profiles',
@@ -1248,6 +1255,8 @@ export default function App() {
         return <ConfigureAccessPoints />;
       case 'configure-meshpoints':
         return <ConfigureMeshpoints />;
+      case 'configure-wifi7':
+        return <ConfigureWifi7 />;
       case 'configure-service-profiles':
         return <ConfigureServiceProfiles />;
       case 'configure-system':
