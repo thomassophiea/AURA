@@ -21,30 +21,16 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
     defaultVisible: true,
     sortable: true,
   },
+  // Best-practice default order: identity → hardware → network → location →
+  // key operational metric. Serial Number is demoted to on-demand (available
+  // via the column chooser and the AP detail panel) — it's a wide identifier
+  // with low daily-scan value.
   {
     key: 'apName',
     label: 'AP Name',
     category: 'basic',
     dataType: 'string',
     fieldPath: 'apName',
-    defaultVisible: true,
-    sortable: true,
-  },
-  {
-    key: 'serialNumber',
-    label: 'Serial Number',
-    category: 'basic',
-    dataType: 'string',
-    fieldPath: 'serialNumber',
-    defaultVisible: true,
-    sortable: true,
-  },
-  {
-    key: 'hostSite',
-    label: 'Site/Location',
-    category: 'basic',
-    dataType: 'string',
-    fieldPath: 'hostSite',
     defaultVisible: true,
     sortable: true,
   },
@@ -67,12 +53,30 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
     sortable: true,
   },
   {
+    key: 'hostSite',
+    label: 'Site/Location',
+    category: 'basic',
+    dataType: 'string',
+    fieldPath: 'hostSite',
+    defaultVisible: true,
+    sortable: true,
+  },
+  {
     key: 'clients',
     label: 'Connected Clients',
     category: 'basic',
     dataType: 'number',
     fieldPath: 'clientCount',
     defaultVisible: true,
+    sortable: true,
+  },
+  {
+    key: 'serialNumber',
+    label: 'Serial Number',
+    category: 'basic',
+    dataType: 'string',
+    fieldPath: 'serialNumber',
+    defaultVisible: false,
     sortable: true,
   },
 
@@ -220,7 +224,7 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
     label: 'Firmware Version',
     category: 'hardware',
     dataType: 'string',
-    defaultVisible: false,
+    defaultVisible: true,
     sortable: true,
   },
   {
