@@ -55,6 +55,12 @@ export interface Station {
   uptime?: number;
   authenticated?: boolean | number;
   connectionTime?: number;
+  // Fields present on the raw controller record but not always surfaced elsewhere.
+  // Additive-only — used by ClientProtocolWidget for per-protocol/band breakdown.
+  protocol?: string;
+  radioId?: number;
+  channel?: string | number;
+  rss?: number;
   [key: string]: any;
 }
 

@@ -11,6 +11,7 @@ import { OperationalContextSummary } from '../OperationalContextSummary';
 import { CoreActivitySection } from './CoreActivitySection';
 import { PerformanceSection } from './PerformanceSection';
 import { TopClientsSection } from './TopClientsSection';
+import { ClientProtocolWidget } from './ClientProtocolWidget';
 import { ServicesHealthSection } from './ServicesHealthSection';
 import { RecentAlertsSection } from './RecentAlertsSection';
 import { BestPracticesWidget } from '../BestPracticesWidget';
@@ -155,6 +156,11 @@ function NetworkDashboardViewComponent({
           }}
         />
       )}
+
+      {/* Client Protocols — breakdown of connected clients by Wi-Fi generation.
+          No matching persona section key, so rendered in the clients area whenever
+          there are clients to describe. */}
+      {stations.length > 0 && <ClientProtocolWidget stations={stations} />}
 
       {showSection('services-health') && poorServices.length > 0 && (
         <ServicesHealthSection poorServices={poorServices} />
