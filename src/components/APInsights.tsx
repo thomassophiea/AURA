@@ -162,18 +162,21 @@ function hasActualChartData(data: any[]): boolean {
   });
 }
 
-// Chart colors
+// Chart colors - standardized from centralized palette
+import { CHART_COLORS as PALETTE_COLORS, TIMELINE_COLORS } from '../config/colorPalette';
+
 const CHART_COLORS = {
   primary: 'var(--primary)',
   secondary: 'var(--muted-foreground)',
-  success: '#22c55e',
-  warning: '#f59e0b',
-  error: '#ef4444',
-  blue: '#3b82f6',
-  purple: '#8b5cf6',
-  cyan: '#06b6d4',
-  orange: '#f97316',
-  pink: '#ec4899',
+  ...PALETTE_COLORS.series,
+  success: PALETTE_COLORS.success,
+  warning: PALETTE_COLORS.warning,
+  error: PALETTE_COLORS.error,
+  blue: PALETTE_COLORS.blue,
+  purple: PALETTE_COLORS.purple,
+  cyan: PALETTE_COLORS.cyan,
+  orange: PALETTE_COLORS.series.available,
+  pink: PALETTE_COLORS.pink,
 };
 
 export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: APInsightsProps) {
@@ -638,9 +641,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -741,9 +744,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -830,9 +833,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -952,9 +955,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1097,9 +1100,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1251,9 +1254,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
@@ -1385,9 +1388,9 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                     {timeline.currentTime !== null && (
                       <ReferenceLine
                         x={timeline.currentTime}
-                        stroke={timeline.isLocked ? '#8b5cf6' : '#3b82f6'}
+                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
                         strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? undefined : '4 4'}
+                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
                       />
                     )}
                     {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (

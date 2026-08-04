@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Radio, Users } from 'lucide-react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import type { Station } from '../../hooks/useDashboardData';
+import { PROTOCOL_COLORS } from '../../config/colorPalette';
 
 type ProtocolKey = 'be' | 'ax' | 'ac' | 'n' | 'legacy' | 'other';
 
@@ -19,15 +20,15 @@ interface ProtocolMeta {
   color: string;
 }
 
-// Fixed generation registry — order is the display/priority order, colours are
-// theme-consistent with the existing AURA band/SNR chart palette.
+// Fixed generation registry — uses standardized PROTOCOL_COLORS from centralized palette
+// Ensures visual consistency across all protocol visualizations in AURA
 export const PROTOCOL_META: Record<ProtocolKey, ProtocolMeta> = {
-  be: { gen: 'Wi‑Fi 7', code: 'BE', color: '#8981e5' }, // violet/indigo (EP1 accent)
-  ax: { gen: 'Wi‑Fi 6', code: 'AX', color: '#3b82f6' }, // blue
-  ac: { gen: 'Wi‑Fi 5', code: 'AC', color: '#14b8a6' }, // teal
-  n: { gen: 'Wi‑Fi 4', code: 'N', color: '#f59e0b' }, // amber
-  legacy: { gen: 'Legacy', code: 'A/B/G', color: '#9ca3af' }, // gray
-  other: { gen: 'Other', code: '—', color: '#6b7280' }, // dark gray
+  be: { gen: 'Wi‑Fi 7', code: 'BE', color: PROTOCOL_COLORS.be }, // Violet/Indigo
+  ax: { gen: 'Wi‑Fi 6', code: 'AX', color: PROTOCOL_COLORS.ax }, // Blue
+  ac: { gen: 'Wi‑Fi 5', code: 'AC', color: PROTOCOL_COLORS.ac }, // Teal
+  n: { gen: 'Wi‑Fi 4', code: 'N', color: PROTOCOL_COLORS.n }, // Amber
+  legacy: { gen: 'Legacy', code: 'A/B/G', color: PROTOCOL_COLORS.legacy }, // Gray
+  other: { gen: 'Other', code: '—', color: PROTOCOL_COLORS.other }, // Dark Gray
 };
 
 const PROTOCOL_ORDER: ProtocolKey[] = ['be', 'ax', 'ac', 'n', 'legacy', 'other'];
