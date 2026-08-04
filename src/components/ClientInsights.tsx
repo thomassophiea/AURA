@@ -39,6 +39,7 @@ import {
   RefreshCw,
   ArrowLeft,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   apiService,
@@ -199,6 +200,7 @@ export function ClientInsights({
 }: ClientInsightsProps) {
   const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
 
@@ -208,6 +210,7 @@ export function ClientInsights({
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
         const data = await apiService.getClientInsights(
           macAddress,
@@ -217,9 +220,15 @@ export function ClientInsights({
         );
         if (!cancelled) {
           setInsights(data);
+          setError(null);
         }
       } catch (error) {
-        console.error('Failed to load Client insights:', error);
+        if (!cancelled) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load Client insights';
+          console.error('Failed to load Client insights:', error);
+          setError(errorMessage);
+          setInsights(null);
+        }
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -409,6 +418,7 @@ export function ClientInsightsFullScreen({
 }: ClientInsightsFullScreenProps) {
   const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -432,13 +442,20 @@ export function ClientInsightsFullScreen({
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
         const data = await apiService.getClientInsights(macAddress, duration, resolution, 'all');
         if (!cancelled) {
           setInsights(data);
+          setError(null);
         }
       } catch (error) {
-        console.error('Failed to load Client insights:', error);
+        if (!cancelled) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load Client insights';
+          console.error('Failed to load Client insights:', error);
+          setError(errorMessage);
+          setInsights(null);
+        }
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -2033,6 +2050,18 @@ export function ClientInsightsFullScreen({
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <AlertTriangle className="h-16 w-16 text-destructive/30 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Error Loading Insights</h3>
+                <p className="text-sm text-muted-foreground max-w-md mb-4">
+                  {error}
+                </p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-6">

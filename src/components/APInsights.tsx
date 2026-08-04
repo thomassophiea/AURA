@@ -36,6 +36,7 @@ import {
   RefreshCw,
   ArrowLeft,
   Clock,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   apiService,
@@ -379,6 +380,7 @@ interface APInsightsFullScreenProps {
 export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsightsFullScreenProps) {
   const [insights, setInsights] = useState<APInsightsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -402,13 +404,20 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
         const data = await apiService.getAccessPointInsights(serialNumber, duration, resolution);
         if (!cancelled) {
           setInsights(data);
+          setError(null);
         }
       } catch (error) {
-        console.error('Failed to load AP insights:', error);
+        if (!cancelled) {
+          const errorMessage = error instanceof Error ? error.message : 'Failed to load AP insights';
+          console.error('Failed to load AP insights:', error);
+          setError(errorMessage);
+          setInsights(null);
+        }
       } finally {
         if (!cancelled) {
           setIsLoading(false);
@@ -1487,6 +1496,18 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                   <span>Loading AP insights...</span>
                 </div>
               </div>
+            ) : error ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <AlertTriangle className="h-16 w-16 text-destructive/30 mb-4" />
+                <h3 className="text-lg font-medium mb-2">Error Loading Insights</h3>
+                <p className="text-sm text-muted-foreground max-w-md mb-4">
+                  {error}
+                </p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again
+                </Button>
+              </div>
             ) : chartConfigs.some((c) => c.hasData) ? (
               <div className="grid grid-cols-2 gap-6">
                 {chartConfigs.map((config) => renderChart(config))}
@@ -1495,10 +1516,14 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <BarChart3 className="h-16 w-16 text-muted-foreground/30 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Insights Data Available</h3>
-                <p className="text-sm text-muted-foreground max-w-md">
+                <p className="text-sm text-muted-foreground max-w-md mb-4">
                   No performance data is available for this access point in the selected time
                   period. Try selecting a different duration or check back later.
                 </p>
+                <Button onClick={handleRefresh} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
               </div>
             )}
           </div>
