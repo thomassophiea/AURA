@@ -172,9 +172,10 @@ const CHART_COLORS = {
   success: PALETTE_COLORS.success,
   warning: PALETTE_COLORS.warning,
   error: PALETTE_COLORS.error,
-  blue: PALETTE_COLORS.blue,
+  // Local chart-slot names; values come from the EP1 ramp (slate is its blue, teal its cyan).
+  blue: PALETTE_COLORS.slate,
   purple: PALETTE_COLORS.purple,
-  cyan: PALETTE_COLORS.cyan,
+  cyan: PALETTE_COLORS.teal,
   orange: PALETTE_COLORS.series.available,
   pink: PALETTE_COLORS.pink,
 };

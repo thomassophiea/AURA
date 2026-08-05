@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+// fireEvent rather than @testing-library/user-event: user-event is not a dependency of
+// this project, and a plain click needs no simulated pointer sequence.
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { APInsightsFullScreen } from './APInsights';
 import * as apiService from '../services/api';
 
@@ -164,7 +165,7 @@ describe('APInsightsFullScreen', () => {
         sysUptime: 100000,
       });
 
-    const { rerender } = render(
+    render(
       <APInsightsFullScreen
         serialNumber={mockSerialNumber}
         apName={mockApName}
@@ -179,7 +180,7 @@ describe('APInsightsFullScreen', () => {
 
     // Click "Try Again"
     const tryAgainButton = screen.getByText('Try Again');
-    await userEvent.click(tryAgainButton);
+    fireEvent.click(tryAgainButton);
 
     // The component should retry and succeed this time
     await waitFor(() => {

@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
+import { DONUT_COLORS } from '../config/colorPalette';
 
 interface Site {
   id: string;
@@ -74,7 +75,8 @@ interface APReport {
   throughput?: number;
 }
 
-const CHART_COLORS = ['#8b5cf6', '#1dd1a1', '#06b6d4', '#f59e0b', '#ef4444'];
+// First five of the shared EP1 categorical ramp — see config/colorPalette.
+const CHART_COLORS = DONUT_COLORS.slice(0, 5);
 
 export function PerformanceAnalytics() {
   const [sites, setSites] = useState<Site[]>([]);

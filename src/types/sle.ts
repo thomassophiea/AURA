@@ -2,6 +2,8 @@
  * Service Level Expectations (SLE) Type Definitions
  */
 
+import { STATUS_COLORS } from '../config/colorPalette';
+
 export interface SLEMetric {
   id: string;
   name: string;
@@ -84,8 +86,18 @@ export function getSLEStatus(rate: number): 'good' | 'warn' | 'poor' {
   return 'poor';
 }
 
+/**
+ * SLE health colors, drawn from the EP1 brand palette.
+ *
+ * These are the EP1 base values — SLE views render on dark surfaces, which is what they
+ * are tuned for. For a light-theme surface use `resolveStatusColor(token, theme)` from
+ * `src/config/colorPalette` instead; the base hues fail contrast on white.
+ *
+ * Previously also carried `text`/`bg` Tailwind class strings. Nothing consumed them —
+ * all 28 call sites read `.hex` — so they were removed rather than maintained.
+ */
 export const SLE_STATUS_COLORS = {
-  good: { text: 'text-green-500', bg: 'bg-green-500', hex: '#22c55e' },
-  warn: { text: 'text-amber-500', bg: 'bg-amber-500', hex: '#f59e0b' },
-  poor: { text: 'text-red-500', bg: 'bg-red-500', hex: '#ef4444' },
+  good: { hex: STATUS_COLORS.success },
+  warn: { hex: STATUS_COLORS.warning },
+  poor: { hex: STATUS_COLORS.critical },
 } as const;

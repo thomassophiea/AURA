@@ -46,17 +46,10 @@ import { Skeleton } from '../ui/skeleton';
 import { parseTimeseriesData, parseRankingData } from '../../services/widgetService';
 import { formatBitsPerSecond, formatBytes } from '../../lib/units';
 import type { ReportWidgetConfig } from '../../types/reportConfig';
+import { DONUT_COLORS } from '../../config/colorPalette';
 
-const CHART_COLORS = [
-  '#6366f1',
-  '#22d3ee',
-  '#f59e0b',
-  '#ef4444',
-  '#10b981',
-  '#ec4899',
-  '#8b5cf6',
-  '#f97316',
-];
+// First eight of the shared EP1 categorical ramp — see config/colorPalette.
+const CHART_COLORS = DONUT_COLORS.slice(0, 8);
 
 function fmtNum(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

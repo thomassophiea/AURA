@@ -72,6 +72,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { formatBytes } from '../lib/units';
+import { resolveCategoricalColor, type PaletteTheme } from '../config/colorPalette';
+import { usePaletteTheme } from '../hooks/usePaletteTheme';
 
 // Types for app insights data
 interface AppGroupStat {
@@ -98,45 +100,38 @@ interface AppInsightsData {
   worstAppGroupsByThroughputReport: AppGroupReport[];
 }
 
-// Chart color palette — works across dark, light, and dev themes
-// Uses mid-saturation values that read well on both white and dark surfaces
-const CHART_COLORS = [
-  '#7c6fcd', // Indigo — readable on light + dark
-  '#9066e0', // Violet
-  '#d6568f', // Pink
-  '#0d9488', // Teal 600 — deeper for light mode readability
-  '#ea7025', // Orange
-  '#c9a009', // Yellow/gold — darker for light readability
-  '#16a34a', // Green 600
-  '#0891b2', // Cyan 600
-  '#2563eb', // Blue 600
-  '#9333ea', // Purple 600
-];
-
-// Category color mapping — mid-saturation for cross-theme readability
-const CATEGORY_COLORS: Record<string, string> = {
-  streaming: '#d6568f', // Pink — entertainment
-  storage: '#2563eb', // Blue 600 — data/storage
-  cloud: '#0891b2', // Cyan 600 — cloud services
-  social: '#9066e0', // Violet — social
-  gaming: '#ea7025', // Orange — gaming
-  web: '#16a34a', // Green 600 — web
-  search: '#c9a009', // Gold — search
-  communication: '#7c6fcd', // Indigo — comms
-  business: '#0d9488', // Teal 600 — business
-  security: '#dc2626', // Red 600 — security
-  realtime: '#9333ea', // Purple 600 — realtime
-  corporate: '#64748b', // Slate 500 — corporate
-  content: '#0284c7', // Sky 600 — content
-  applications: '#059669', // Emerald 600 — apps
+/**
+ * Stable slot in the shared EP1 categorical ramp for each app category.
+ *
+ * Indices, not hex values, so the color follows the active theme — the EP1 base hues
+ * are tuned for dark surfaces and fail contrast on white, so `resolveCategoricalColor`
+ * swaps in the darkened variants for the light theme.
+ *
+ * Each category keeps a distinct slot; the ramp has 14 and there are 14 categories.
+ */
+const CATEGORY_SLOTS: Record<string, number> = {
+  streaming: 7, // pink — entertainment
+  storage: 8, // slate — data/storage
+  cloud: 4, // teal — cloud services
+  social: 12, // violet — social
+  gaming: 6, // orange — gaming
+  web: 1, // green — web
+  search: 2, // amber — search
+  communication: 0, // brand purple — comms
+  business: 10, // mint — business
+  security: 3, // red — security
+  realtime: 5, // lilac — realtime
+  corporate: 11, // sky — corporate
+  content: 9, // orchid — content
+  applications: 13, // rose — apps
 };
 
-const getCategoryColor = (category: string, index: number): string => {
+const getCategoryColor = (category: string, index: number, theme: PaletteTheme): string => {
   const name = category.toLowerCase();
-  for (const [key, color] of Object.entries(CATEGORY_COLORS)) {
-    if (name.includes(key)) return color;
+  for (const [key, slot] of Object.entries(CATEGORY_SLOTS)) {
+    if (name.includes(key)) return resolveCategoricalColor(slot, theme);
   }
-  return CHART_COLORS[index % CHART_COLORS.length];
+  return resolveCategoricalColor(index, theme);
 };
 
 // Category icon mapping
@@ -197,6 +192,7 @@ interface AppInsightsProps {
 
 export function AppInsights({ api }: AppInsightsProps) {
   const { navigationScope, siteGroups } = useAppContext();
+  const paletteTheme = usePaletteTheme();
   const [data, setData] = useState<AppInsightsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -439,7 +435,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             {topData.slice(0, 5).map((item: any, index: number) => {
               const percentage = maxTop > 0 ? (item.value / maxTop) * 100 : 0;
               const CategoryIcon = getCategoryIcon(item.name);
-              const itemColor = getCategoryColor(item.name, index);
+              const itemColor = getCategoryColor(item.name, index, paletteTheme);
 
               return (
                 <div key={item.id} className="space-y-1">
@@ -483,7 +479,7 @@ export function AppInsights({ api }: AppInsightsProps) {
             {bottomData.slice(0, 5).map((item: any, index: number) => {
               const percentage = maxBottom > 0 ? (item.value / maxBottom) * 100 : 0;
               const CategoryIcon = getCategoryIcon(item.name);
-              const itemColor = getCategoryColor(item.name, index + 5);
+              const itemColor = getCategoryColor(item.name, index + 5, paletteTheme);
 
               return (
                 <div
@@ -775,7 +771,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                       {chartData.topUsage.slice(0, 6).map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
-                          fill={getCategoryColor(entry.name, index)}
+                          fill={getCategoryColor(entry.name, index, paletteTheme)}
                           stroke="transparent"
                         />
                       ))}
@@ -797,7 +793,7 @@ export function AppInsights({ api }: AppInsightsProps) {
               {/* Legend grid — two columns, no overlap possible */}
               <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-2 px-1">
                 {chartData.topUsage.slice(0, 6).map((entry, index) => {
-                  const color = getCategoryColor(entry.name, index);
+                  const color = getCategoryColor(entry.name, index, paletteTheme);
                   const pct =
                     stats.totalUsage > 0
                       ? ((entry.value / stats.totalUsage) * 100).toFixed(0)
@@ -897,7 +893,7 @@ export function AppInsights({ api }: AppInsightsProps) {
                       }}
                     >
                       {chartData.topThroughput.slice(0, 8).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index)} />
+                        <Cell key={`cell-${index}`} fill={getCategoryColor(entry.name, index, paletteTheme)} />
                       ))}
                     </Bar>
                   </BarChart>

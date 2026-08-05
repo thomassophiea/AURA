@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { DEFAULT_SLE_THRESHOLDS, getSLEStatus, SLE_STATUS_COLORS } from './sle';
+import { STATUS_COLORS } from '../config/colorPalette';
 
 describe('DEFAULT_SLE_THRESHOLDS', () => {
   it('exposes all 7 SLE categories with sensible defaults', () => {
@@ -27,12 +28,15 @@ describe('getSLEStatus', () => {
 });
 
 describe('SLE_STATUS_COLORS', () => {
-  it('has good/warn/poor entries with text/bg/hex', () => {
+  it('has good/warn/poor entries with a hex value', () => {
     for (const status of ['good', 'warn', 'poor'] as const) {
-      const color = SLE_STATUS_COLORS[status];
-      expect(color.text).toMatch(/^text-/);
-      expect(color.bg).toMatch(/^bg-/);
-      expect(color.hex).toMatch(/^#[0-9a-f]{6}$/i);
+      expect(SLE_STATUS_COLORS[status].hex).toMatch(/^#[0-9a-f]{6}$/i);
     }
+  });
+
+  it('is wired to the EP1 brand palette', () => {
+    expect(SLE_STATUS_COLORS.good.hex).toBe(STATUS_COLORS.success);
+    expect(SLE_STATUS_COLORS.warn.hex).toBe(STATUS_COLORS.warning);
+    expect(SLE_STATUS_COLORS.poor.hex).toBe(STATUS_COLORS.critical);
   });
 });
