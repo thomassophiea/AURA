@@ -14,6 +14,7 @@ import { Radio, Play, MapPin, Wifi, BarChart3, AlertCircle, CheckCircle, Zap } f
 import { apiService } from '../services/api';
 import { toast } from 'sonner';
 import { ExportButton } from './ExportButton';
+import { CHART_COLORS, STATUS_COLORS } from '../config/colorPalette';
 
 interface AFCPlan {
   id: string;
@@ -697,7 +698,7 @@ export function AFCPlanningTool() {
                           cx="400"
                           cy="200"
                           r="8"
-                          fill="#3b82f6"
+                          fill={CHART_COLORS.primary}
                           stroke="white"
                           strokeWidth="2"
                         />
@@ -724,14 +725,14 @@ export function AFCPlanningTool() {
                             return (
                               <g key={idx}>
                                 {/* Coverage Circle */}
-                                <circle cx={x} cy={y} r="30" fill="#22c55e" opacity="0.2" />
-                                <circle cx={x} cy={y} r="20" fill="#22c55e" opacity="0.3" />
+                                <circle cx={x} cy={y} r="30" fill={STATUS_COLORS.success} opacity="0.2" />
+                                <circle cx={x} cy={y} r="20" fill={STATUS_COLORS.success} opacity="0.3" />
                                 {/* AP Icon */}
                                 <circle
                                   cx={x}
                                   cy={y}
                                   r="6"
-                                  fill="#22c55e"
+                                  fill={STATUS_COLORS.success}
                                   stroke="white"
                                   strokeWidth="2"
                                 />

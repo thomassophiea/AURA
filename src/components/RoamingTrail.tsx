@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo, useState, useEffect } from 'react';
+import { STATUS_COLORS } from '../config/colorPalette';
 import { Badge } from './ui/badge';
 import {
   MapPin,
@@ -1160,7 +1161,7 @@ export function RoamingTrail({
                   y1="1"
                   x2="16"
                   y2="1"
-                  stroke="#ef4444"
+                  stroke={STATUS_COLORS.critical}
                   strokeWidth="2"
                   strokeDasharray="3,2"
                 />
@@ -1288,9 +1289,9 @@ export function RoamingTrail({
                         y2={y2}
                         stroke={
                           isFailedConnection
-                            ? '#ef4444'
+                            ? STATUS_COLORS.critical
                             : isBandSteering
-                              ? '#ef4444'
+                              ? STATUS_COLORS.critical
                               : 'currentColor'
                         }
                         strokeWidth="2"
@@ -1422,7 +1423,7 @@ export function RoamingTrail({
                           <svg width="12" height="8" viewBox="0 0 12 8">
                             <path
                               d="M 6 0 L 11 7 L 1 7 Z"
-                              fill="#ef4444"
+                              fill={STATUS_COLORS.critical}
                               stroke="#fff"
                               strokeWidth="1"
                             />
