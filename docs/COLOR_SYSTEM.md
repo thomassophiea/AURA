@@ -24,9 +24,17 @@ it does not belong in the palette.
 > **A note on history.** Prior to August 2026 this palette was Tailwind CSS's default
 > colors (`green-500`, `amber-500`, `red-500`, `blue-500`, …) documented as though it
 > were the Extreme Design System, complete with contrast figures that had never been
-> computed — one pair was published at 14.85:1 when it measures 2.18:1. If you find a
-> stray `#22c55e` or `#3b82f6`, it is a leftover from that period, not a brand value.
-> `colorPalette.test.ts` guards against the palette regressing to those values.
+> computed — one pair was published at 14.85:1 when it measures 2.18:1.
+>
+> The supporting "EDS reference" documents behind that work were an *extraction from
+> AURA's own source files*. The main one states `**Source:** AURA Platform` and lists the
+> files it read: `colorPalette.ts`, `themes.ts`, `ui-constants.ts`. None of the three
+> cites a Figma export, an npm package, brand guidelines, or any external URL. So the
+> exercise documented AURA's colors, retitled them as the design system, and then
+> validated AURA against them — which is why applying it changed nothing.
+>
+> If you find a stray `#22c55e` or `#3b82f6`, it is a leftover from that period, not a
+> brand value. `colorPalette.test.ts` guards against regressing to those values.
 
 ## The EP1 brand primitives
 
