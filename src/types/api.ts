@@ -87,6 +87,11 @@ export interface AccessPoint {
   environment?: string;
   profileName?: string;
 
+  // Ambient light sensor (onboard JSA-1141). Out-of-band side-channel merged in
+  // AccessPoints.tsx from AURA's /api/light-sensor/states feed — not from the controller.
+  lightState?: 'light' | 'dark' | 'unknown';
+  lightData?: number;
+
   // Mesh topology role (populated by getMeshAPRoles)
   meshRole?: 'BASE' | 'RELAY' | null;
 

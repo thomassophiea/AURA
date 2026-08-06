@@ -78,6 +78,7 @@ import { useCortexContext } from '@/contexts/CortexContext';
 import { AGGridWrapper, type AGGridWrapperHandle } from '@/components/ui/AGGridWrapper';
 import type { ColDef, GridApi } from 'ag-grid-community';
 import { Server } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 
 // Cable health detection utilities
 interface CableHealthResult {
@@ -704,7 +705,17 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
   // Derive visible column keys from the customization hook
   // For an XIQ site, show only the columns XIQ actually populates (intentional,
   // not a controller layout with blank cells). OS-ONE uses the saved columns.
-  const visibleColumns = isXiq ? XIQ_AP_VISIBLE_KEYS : customization.visibleColumns;
+  const rawVisibleColumns = isXiq ? XIQ_AP_VISIBLE_KEYS : customization.visibleColumns;
+  // Ensure the ambient-light (sun/moon) column surfaces even for users whose saved
+  // column layout predates it. Placed just after 'model' for a natural position.
+  const visibleColumns = useMemo(() => {
+    if (rawVisibleColumns.includes('light')) return rawVisibleColumns;
+    const out = [...rawVisibleColumns];
+    const at = out.indexOf('model');
+    if (at >= 0) out.splice(at + 1, 0, 'light');
+    else out.push('light');
+    return out;
+  }, [rawVisibleColumns]);
 
   // Wi-Fi generation breakdown counts
   // Compute cable health for all APs (memoized for performance)
@@ -828,7 +839,32 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
             : undefined,
       }));
 
-      setAccessPoints(enrichedAPs);
+      // Merge ambient-light state (out-of-band side-channel, keyed by AP serial).
+      // Sourced from AURA's own /api/light-sensor/states feed — each AP's lightguard
+      // posts its state — so it rides in the AP payload with no controller change.
+      let apsWithLight = enrichedAPs;
+      try {
+        const lightResp = await fetch('/api/light-sensor/states');
+        if (lightResp.ok) {
+          const states = (await lightResp.json()) as Record<
+            string,
+            { state?: string; data?: number; stale?: boolean }
+          >;
+          apsWithLight = enrichedAPs.map((ap) => {
+            const s = states[ap.serialNumber];
+            if (!s || s.stale) return ap;
+            return {
+              ...ap,
+              lightState: (s.state as AccessPoint['lightState']) ?? 'unknown',
+              lightData: s.data,
+            };
+          });
+        }
+      } catch {
+        // side-channel is optional; ignore if the feed is unavailable
+      }
+
+      setAccessPoints(apsWithLight);
 
       // Update last refresh time on successful load
       setLastRefreshTime(new Date());
@@ -1174,6 +1210,8 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         return (getAPSite(ap) || '').toLowerCase();
       case 'model':
         return (ap.model || ap.hardwareType || '').toLowerCase();
+      case 'light':
+        return ap.lightState === 'light' ? 2 : ap.lightState === 'dark' ? 1 : 0;
       case 'ipAddress':
         return ap.ipAddress || '';
       case 'clients':
@@ -1715,6 +1753,29 @@ export function AccessPoints({ onShowDetail, onShowClientDetail }: AccessPointsP
         );
       case 'model':
         return <span>{ap.model || ap.hardwareType || '-'}</span>;
+      case 'light': {
+        const ls = ap.lightState;
+        const suffix = ap.lightData != null ? ` (${ap.lightData})` : '';
+        if (ls === 'dark')
+          return (
+            <span
+              title={`Room dark${suffix}`}
+              className="inline-flex items-center gap-1 text-slate-400"
+            >
+              <Moon className="h-4 w-4" />
+            </span>
+          );
+        if (ls === 'light')
+          return (
+            <span
+              title={`Room lit${suffix}`}
+              className="inline-flex items-center gap-1 text-amber-500"
+            >
+              <Sun className="h-4 w-4" />
+            </span>
+          );
+        return <span className="text-muted-foreground">—</span>;
+      }
       case 'ipAddress':
         return <span className="font-mono text-sm">{ap.ipAddress || '-'}</span>;
       case 'clients': {

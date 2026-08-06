@@ -44,6 +44,15 @@ export const AP_TABLE_COLUMNS: ColumnConfig<AccessPoint>[] = [
     sortable: true,
   },
   {
+    key: 'light',
+    label: 'Light',
+    category: 'basic',
+    dataType: 'string',
+    fieldPath: 'lightState',
+    defaultVisible: true,
+    sortable: true,
+  },
+  {
     key: 'ipAddress',
     label: 'IP Address',
     category: 'basic',

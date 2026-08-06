@@ -851,6 +851,34 @@ app.post(
 // ==================== Events & Alarms ====================
 // Controller doesn't expose event/alarm endpoints via REST API
 
+// ---- Ambient light sensor side-channel (out-of-band AP state for AURA) ----
+// Each AP's `lightguard` POSTs its ambient-light state here; AURA merges it into
+// the AP inventory payload so the AP list can render a sun/moon. No controller change.
+const lightSensorStates = new Map(); // serial -> { state, data, ts }
+const LIGHT_SENSOR_TTL_MS = 120000;
+app.post('/api/light-sensor/report', express.json({ limit: '4kb' }), (req, res) => {
+  const token = process.env.LIGHT_SENSOR_TOKEN;
+  if (token && req.get('X-Light-Token') !== token) {
+    return res.status(401).json({ error: 'invalid token' });
+  }
+  const { serial, state, data } = req.body || {};
+  if (!serial) return res.status(400).json({ error: 'serial required' });
+  lightSensorStates.set(String(serial), {
+    state: state === 'light' || state === 'dark' ? state : 'unknown',
+    data: Number(data) || 0,
+    ts: Date.now(),
+  });
+  res.json({ ok: true });
+});
+app.get('/api/light-sensor/states', (_req, res) => {
+  const now = Date.now();
+  const out = {};
+  for (const [serial, v] of lightSensorStates) {
+    out[serial] = { ...v, stale: now - v.ts > LIGHT_SENSOR_TTL_MS };
+  }
+  res.json(out);
+});
+
 app.get('/api/management/v1/events', requireAuth, (_req, res) => {
   res.json(eventStore);
 });
