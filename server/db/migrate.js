@@ -21,8 +21,23 @@ const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations');
 // Arbitrary but fixed: all migration runs contend for this one key.
 const MIGRATION_LOCK_KEY = 8_270_119_004_461_001n;
 
+/**
+ * List migration files.
+ *
+ * A missing directory is reported as "nothing to apply" rather than thrown. Some
+ * deployment images do not carry `migrations/`, and an absent directory must not
+ * be able to fail a process that something else depends on — that turned into a
+ * boot crash loop once already. `runMigrations` surfaces it as `missingDir` so
+ * callers can still complain loudly.
+ */
 async function listMigrations(dir) {
-  const entries = await readdir(dir);
+  let entries;
+  try {
+    entries = await readdir(dir);
+  } catch (error) {
+    if (error.code === 'ENOENT') return null;
+    throw error;
+  }
   return entries
     .filter((name) => name.endsWith('.sql') && !name.startsWith('._'))
     .sort((a, b) => a.localeCompare(b));
@@ -47,6 +62,14 @@ export async function runMigrations({ dir = MIGRATIONS_DIR, logger = console } =
   assertDatabaseConfigured();
 
   const files = await listMigrations(dir);
+  if (files === null) {
+    logger.warn(
+      `[migrate] ⚠  No migrations directory at ${dir}. Nothing was applied. ` +
+        'If this is a deployed image, the schema must be migrated separately.'
+    );
+    return { applied: [], skipped: [], missingDir: true };
+  }
+
   const client = await getPool().connect();
   const applied = [];
   const skipped = [];
@@ -80,7 +103,7 @@ export async function runMigrations({ dir = MIGRATIONS_DIR, logger = console } =
       }
     }
 
-    return { applied, skipped };
+    return { applied, skipped, missingDir: false };
   } finally {
     await client
       .query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY.toString()])

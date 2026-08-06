@@ -26,10 +26,19 @@ phases.build.cmds = [
 ]
 
 [deploy]
-# Migrations run before the server starts, so the schema is always ahead of the
-# code that queries it. The runner is advisory-locked and idempotent, so several
-# instances booting at once is safe.
-startCommand = "node server/db/migrate.js && node server.js"
+# Migrations are NOT chained into the start command.
+#
+# They were, briefly, and it took the service down: the deployed image does not
+# contain `migrations/`, so `migrate.js` exited non-zero and the server never
+# started — a crash loop on every boot. Coupling the web server's liveness to a
+# migration step means any migration problem becomes a full outage, which is a
+# bad trade for a step that needs to run once per schema change.
+#
+# Run migrations as a separate, explicit step instead:
+#   railway run --service <svc> npm run migrate
+# or from a one-off/release service. `migrate.js` is advisory-locked and
+# idempotent, so running it repeatedly or concurrently is safe.
+startCommand = "node server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
 
