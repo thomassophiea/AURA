@@ -56,10 +56,12 @@ const failResponse = (status, errorClass) => ({
 });
 
 const SITES = [{ id: 'site-1', siteName: 'HQ' }];
+// APs come from the controller-wide query and link to a site by NAME via
+// hostSite — there is no per-site AP endpoint on XCC.
+const AP_QUERY_ROWS = [{ serialNumber: 'AP-1', hostSite: 'HQ', status: 'InService' }];
 const STATIONS = [
   { macAddress: 'AA:BB:CC:00:00:01', isWired: false, rssi: -55, txRate: 1e8, rxRate: 1e8, authenticated: true },
 ];
-const APS = [{ serialNumber: 'AP-1', status: 'connected' }];
 
 /** Recording stubs for every dependency collectSource touches. */
 function makeDeps(overrides = {}) {
@@ -105,7 +107,7 @@ function makeDeps(overrides = {}) {
 
 const healthyRoutes = {
   '/v3/sites/site-1/stations': okResponse(STATIONS),
-  '/v3/sites/site-1/aps': okResponse(APS),
+  '/v1/aps/query': okResponse(AP_QUERY_ROWS),
   '/v3/sites/site-1/report/venue': okResponse({
     ulDlThroughputTimeseries: [
       {
@@ -294,7 +296,7 @@ describe('collectSource', () => {
       routes: {
         '/v3/sites': okResponse(SITES),
         '/v3/sites/site-1/stations': okResponse('this is not a list'),
-        '/v3/sites/site-1/aps': okResponse({ unexpected: true }),
+        '/v1/aps/query': okResponse({ unexpected: true }),
         '/v3/sites/site-1/report/venue': okResponse({ garbage: 'value' }),
       },
     }));
@@ -307,9 +309,8 @@ describe('collectSource', () => {
     ({ deps, calls } = makeDeps({
       routes: {
         '/v3/sites/site-1/stations': failResponse(500, 'upstream_server_error'),
-        '/v3/sites/site-1/aps': failResponse(500, 'upstream_server_error'),
         '/v3/sites/site-2/stations': okResponse(STATIONS),
-        '/v3/sites/site-2/aps': okResponse(APS),
+        '/v1/aps/query': okResponse([]),
         '/v3/sites/site-1/report/venue': failResponse(500, 'upstream_server_error'),
         '/v3/sites/site-2/report/venue': okResponse({}),
         '/v3/sites': okResponse([{ id: 'site-1' }, { id: 'site-2' }]),

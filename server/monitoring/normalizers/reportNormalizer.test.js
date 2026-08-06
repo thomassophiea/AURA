@@ -127,6 +127,51 @@ describe('normalizeReportResponse', () => {
     expect(skipped.nullValues).toBe(3);
   });
 
+  it('skips a "nodata" marker instead of storing it as a zero metric', () => {
+    // Exactly what the venue report returns for a site with nothing to report
+    // (observed live on XCC 10.18.1.0-011R).
+    const payload = {
+      ulDlThroughputTimeseries: [
+        {
+          reportName: 'Throughput',
+          reportType: 'Timeseries',
+          band: 'all',
+          statistics: [
+            { statName: 'nodata', unit: 'bps', values: [{ timestamp: 1, value: '0' }] },
+          ],
+        },
+      ],
+    };
+    const { samples, skipped } = normalizeReportResponse(payload, BASE);
+    expect(samples).toEqual([]);
+    expect(skipped.noDataMarkers).toBe(1);
+  });
+
+  it('does not create a metric name ending in .nodata', () => {
+    const payload = {
+      ulDlUsageTimeseries: [
+        {
+          reportName: 'Usage',
+          statistics: [
+            { statName: 'nodata', unit: 'bps', values: [{ timestamp: 1, value: '0' }] },
+            { statName: 'Download', unit: 'bps', values: [{ timestamp: 1, value: '500' }] },
+          ],
+        },
+      ],
+    };
+    const { samples } = normalizeReportResponse(payload, BASE);
+    expect(samples.map((s) => s.metricName)).toEqual(['ulDlUsageTimeseries.download']);
+  });
+
+  it('treats no-data marker spellings case-insensitively', () => {
+    for (const statName of ['nodata', 'NoData', 'NODATA', 'no_data']) {
+      const payload = {
+        r: [{ reportName: 'R', statistics: [{ statName, unit: 'bps', values: [{ timestamp: 1, value: '0' }] }] }],
+      };
+      expect(normalizeReportResponse(payload, BASE).samples).toEqual([]);
+    }
+  });
+
   it('drops non-numeric values rather than coercing them to 0', () => {
     const payload = {
       throughputReport: [

@@ -23,6 +23,17 @@ import { classifyMetric } from '../metricRegistry.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Statistic names that are markers for "this report has no data", not metrics.
+ *
+ * The venue report returns `statName: "nodata"` with `value: 0` for a site with
+ * nothing to report. Storing that produces a metric called
+ * `ulDlThroughputTimeseries.nodata` pinned at 0 — an absence of data recorded as
+ * a zero measurement, which is precisely what this subsystem exists to prevent.
+ * Observed live on XCC 10.18.1.0-011R.
+ */
+const NO_DATA_STAT_NAMES = new Set(['nodata', 'no_data', 'nodatafound']);
+
 /** `'Power Consumption'` -> `'power_consumption'`; `'Rss Base '` -> `'rss_base'`. */
 export function slugifyStatName(statName) {
   return String(statName ?? '')
@@ -75,7 +86,7 @@ function parseValue(raw) {
  */
 export function normalizeReportResponse(payload, context) {
   const samples = [];
-  const skipped = { nullValues: 0, nonNumeric: 0 };
+  const skipped = { nullValues: 0, nonNumeric: 0, noDataMarkers: 0 };
 
   if (!payload || typeof payload !== 'object') return { samples, skipped };
 
@@ -113,7 +124,16 @@ export function normalizeReportResponse(payload, context) {
         const values = Array.isArray(stat.values) ? stat.values : null;
         if (!values) continue;
 
-        const metricName = `${reportKey}.${slugifyStatName(stat.statName)}`;
+        const slug = slugifyStatName(stat.statName);
+
+        // A "no data" marker means the report is empty for this scope. Skip it
+        // so the absence stays an absence instead of becoming a zero series.
+        if (NO_DATA_STAT_NAMES.has(slug)) {
+          skipped.noDataMarkers += values.length || 1;
+          continue;
+        }
+
+        const metricName = `${reportKey}.${slug}`;
         const unit = stat.unit ?? null;
         const metricKind = classifyMetric({ family: metricFamily, name: metricName, unit });
 
