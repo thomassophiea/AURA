@@ -2200,6 +2200,35 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(buildPath, 'index.html'));
 });
 
+// ==================== Process role dispatch ====================
+// Railway runs every service in a project from one repository with one start
+// command, and the start command cannot be overridden per service from the CLI.
+// So the role is chosen by an environment variable instead, which keeps the
+// whole topology reproducible from the repo and needs no manual UI field:
+//
+//   MONITORING_ROLE unset | 'web'  -> this HTTP server (default)
+//   MONITORING_ROLE=collector      -> the collector worker, no HTTP listener
+//   MONITORING_ROLE=cleanup        -> one retention sweep, then exit
+//
+// Defaulting to 'web' means an unset variable behaves exactly as before.
+const PROCESS_ROLE = (process.env.MONITORING_ROLE || 'web').trim().toLowerCase();
+
+if (PROCESS_ROLE === 'collector') {
+  console.log('[Proxy Server] MONITORING_ROLE=collector — starting the collector worker instead of the HTTP server');
+  await import('./worker.js');
+} else if (PROCESS_ROLE === 'cleanup') {
+  console.log('[Proxy Server] MONITORING_ROLE=cleanup — running one retention sweep, then exiting');
+  await import('./scripts/monitoring-cleanup.js');
+} else {
+  if (PROCESS_ROLE !== 'web') {
+    console.warn(
+      `[Proxy Server] ⚠  Unknown MONITORING_ROLE="${PROCESS_ROLE}" — defaulting to the web server.`
+    );
+  }
+  startWebServer();
+}
+
+function startWebServer() {
 const httpServer = http.createServer(app);
 attachConsoleShell(httpServer);
 
@@ -2243,5 +2272,5 @@ async function shutdown(signal) {
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
-
 process.on('SIGINT', () => shutdown('SIGINT'));
+} // end startWebServer
