@@ -52,6 +52,9 @@ import {
   buildXiqAllSitesValue,
 } from '../../services/siteContextService';
 import { getSleProvider } from '../../services/sle/sleProviderFactory';
+import { mergeSleHistory, SLE_METRIC_FAMILY } from '../../services/sle/sleHistoryMerge';
+import { useMonitoringHistory } from '../../hooks/useMonitoringHistory';
+import { DataFreshnessBadge } from '../monitoring/DataFreshnessBadge';
 import { useSourceSites } from '../../hooks/useSourceSites';
 import { buildXiqRootCause } from './xiqRootCause';
 import type { SLESourceSystem } from '../../types/sleContext';
@@ -214,7 +217,10 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [timeRange, setTimeRange] = useState('24h');
+  // Seven days by default: the backend retains a rolling week, and the trend
+  // now comes from PostgreSQL rather than from whatever this browser happened
+  // to accumulate while the tab was open.
+  const [timeRange, setTimeRange] = useState('7d');
   const selectedSite = filters.site || 'all';
   const setSelectedSite = (value: string) => updateFilter('site', value);
   const [activeTab, setActiveTab] = useState('wireless');
@@ -378,6 +384,34 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     return () => clearInterval(interval);
   }, [loadData]);
 
+  // Persisted SLE history from the AURA backend. This is the authoritative
+  // trend: it survives reloads, redeploys, and a different browser, and it keeps
+  // showing the preceding days while a gateway is unreachable. A failed fetch
+  // here leaves the previously loaded series on screen rather than clearing it.
+  const {
+    series: historySeries,
+    sources: historySources,
+    worstSourceState,
+    lastSuccessfulCollectionAt,
+    neverCollected: historyNeverCollected,
+    error: historyError,
+  } = useMonitoringHistory({
+    preset: timeRange,
+    siteId: selectedSite !== 'all' ? selectedSite : undefined,
+    metricFamily: SLE_METRIC_FAMILY,
+    refreshIntervalMs: 60_000,
+    // Only the controller path has a persisted collector; XIQ has no reachable
+    // time-series API through the proxy.
+    enabled: source === 'controller',
+  });
+
+  const { sles: slesWithHistory } = mergeSleHistory(wirelessSLEs, historySeries);
+
+  // Whether to say anything about stored-data freshness at all. With no
+  // registered source there is nothing to report, and a badge would be noise.
+  const showFreshness = source === 'controller' && historySources.length > 0;
+  const freshnessState = historyNeverCollected ? 'never_collected' : worstSourceState;
+
   // Ensure SLE collection is running
   useEffect(() => {
     if (!sleDataCollectionService.isCollectionActive()) {
@@ -477,6 +511,20 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
+
+          {/* Says plainly where the trend came from and how current it is.
+              Informational only — it never hides or clears the data below. */}
+          {showFreshness && (
+            <DataFreshnessBadge
+              state={freshnessState}
+              lastSuccessfulCollectionAt={lastSuccessfulCollectionAt}
+              detail={
+                historyError
+                  ? 'The last attempt to read stored history failed; showing the previously loaded data.'
+                  : null
+              }
+            />
+          )}
         </div>
       </div>
 
@@ -500,7 +548,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         </div>
 
         {/* Per-SLE pills - clickable to edit thresholds */}
-        {wirelessSLEs.map((sle) => (
+        {slesWithHistory.map((sle) => (
           <button
             key={sle.id}
             onClick={() => handleSLEClick(sle.id)}
@@ -610,7 +658,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             <>
               {viewMode === 'radial' && (
                 <SLERadialMap
-                  sles={wirelessSLEs}
+                  sles={slesWithHistory}
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
@@ -619,7 +667,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               )}
               {viewMode === 'octopus' && (
                 <SLEOctopus
-                  sles={wirelessSLEs}
+                  sles={slesWithHistory}
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
@@ -628,7 +676,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               )}
               {viewMode === 'honeycomb' && (
                 <SLEHoneycomb
-                  sles={wirelessSLEs}
+                  sles={slesWithHistory}
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}
@@ -637,7 +685,7 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               )}
               {viewMode === 'waterfall' && (
                 <SLEWaterfall
-                  sles={wirelessSLEs}
+                  sles={slesWithHistory}
                   stations={stations}
                   aps={aps}
                   onClientClick={onClientClick}

@@ -26,6 +26,26 @@ phases.build.cmds = [
 ]
 
 [deploy]
-startCommand = "node server.js"
+# Migrations run before the server starts, so the schema is always ahead of the
+# code that queries it. The runner is advisory-locked and idempotent, so several
+# instances booting at once is safe.
+startCommand = "node server/db/migrate.js && node server.js"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+# ---------------------------------------------------------------------------
+# Additional Railway services from this same repository. Railway configures
+# these in its UI, not from this file — the commands are recorded here so the
+# deployment is reproducible from the repo. See docs/MONITORING_PERSISTENCE.md.
+#
+#   Collector worker service
+#     Start command: npm run collector
+#     Variables:     DATABASE_URL, CAMPUS_CONTROLLER_URL,
+#                    MONITORING_CONTROLLER_USERNAME / _PASSWORD
+#                    (or CAMPUS_CONTROLLER_USER / _PASSWORD)
+#
+#   Retention cleanup service (scheduled)
+#     Start command: npm run monitoring:cleanup
+#     Cron schedule: 17 * * * *      # hourly at :17; avoids midnight pile-ups
+#     Variables:     DATABASE_URL, MONITORING_RETENTION_DAYS
+# ---------------------------------------------------------------------------

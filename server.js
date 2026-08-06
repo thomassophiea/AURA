@@ -25,6 +25,25 @@ import { driftMonitor } from './server/validationEngine/driftMonitor.js';
 import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
+import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
+import {
+  loadMonitoringConfig,
+  describeMonitoringConfig,
+} from './server/monitoring/config.js';
+import { describeReadiness, seedDefaultSource } from './server/monitoring/bootstrap.js';
+import { startCollector } from './server/monitoring/collectorRunner.js';
+import { checkDatabaseHealth, isDatabaseConfigured } from './server/db/pool.js';
+import {
+  getSourceByBaseUrl as getMonitoringSourceByBaseUrl,
+  normalizeBaseUrl as normalizeMonitoringBaseUrl,
+} from './server/monitoring/sourceRepository.js';
+import { sanitizeError as sanitizeMonitoringError } from './server/monitoring/errorSanitizer.js';
+import {
+  storeSnapshot,
+  fetchSnapshots,
+  aggregateSnapshots,
+  networkTrends,
+} from './server/monitoring/throughputStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -114,6 +133,39 @@ if (process.env.NODE_ENV === 'production') {
     console.warn(
       '[Proxy Server] ⚠  WARNING: CORS_ORIGINS contains wildcard in production — this is a security risk'
     );
+  }
+}
+
+// ==================== Monitoring Persistence ====================
+// PostgreSQL is the authoritative store for the rolling monitoring/SLE history.
+// In production a missing DATABASE_URL is fatal: silently continuing would mean
+// serving volatile data that looks persistent, which is the exact failure this
+// subsystem exists to remove.
+let monitoringConfig = null;
+try {
+  monitoringConfig = loadMonitoringConfig();
+} catch (error) {
+  console.error(`[Proxy Server] ❌ Invalid monitoring configuration: ${error.message}`);
+  process.exit(1);
+}
+
+if (!isDatabaseConfigured()) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      '[Proxy Server] ❌ CRITICAL: DATABASE_URL is required in production. ' +
+        'Monitoring history cannot be persisted without it. Attach a Railway PostgreSQL service.'
+    );
+    process.exit(1);
+  }
+  console.warn(
+    '[Proxy Server] ⚠  DATABASE_URL not set (dev) — monitoring history APIs are disabled.'
+  );
+  monitoringConfig = null;
+} else {
+  console.log('[Proxy Server] ✓ DATABASE_URL configured');
+  console.log('[Proxy Server] Monitoring:', JSON.stringify(describeMonitoringConfig(monitoringConfig)));
+  for (const problem of describeReadiness(monitoringConfig)) {
+    console.warn(`[Proxy Server] ⚠  ${problem}`);
   }
 }
 
@@ -217,9 +269,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check endpoint.
+// Readiness includes a `SELECT 1` against PostgreSQL — cheap, and deliberately
+// no controller calls, so a health probe never hammers a gateway.
+app.get('/health', async (_req, res) => {
+  const database = monitoringConfig
+    ? await checkDatabaseHealth()
+    : { ok: false, reason: 'not_configured' };
+
+  const ready = !monitoringConfig || database.ok;
+  res.status(ready ? 200 : 503).json({
+    status: ready ? 'ok' : 'degraded',
+    timestamp: new Date().toISOString(),
+    database,
+    monitoring: monitoringConfig
+      ? {
+          collectorEnabled: monitoringConfig.collectorEnabled,
+          collectorInProcess: monitoringConfig.collectorInProcess,
+          retentionDays: monitoringConfig.retentionDays,
+        }
+      : { enabled: false },
+  });
 });
 
 // Version check endpoint - proves which commit is deployed
@@ -1093,93 +1163,136 @@ app.get('/api/management/platformmanager/v1/packetcapture/status/:id', (req, res
   res.json(capture);
 });
 
-// ==================== Throughput Metrics (Local replacement for Supabase) ====================
-// Replaces Supabase-hosted throughput edge function with local in-memory store
+// ==================== Throughput Metrics (PostgreSQL-backed) ====================
+// Previously a module-scope array capped at 1000 entries: shared across every
+// tenant and wiped on every redeploy. Snapshots now persist to metric_samples
+// under the `throughput` family and expire on the normal retention schedule.
+// Response shapes are unchanged, so src/services/throughput.ts is unaffected.
 
-const throughputStore = [];
-
-app.post('/api/throughput/snapshot', jsonParser, (req, res) => {
-  const snapshot = { ...req.body, id: crypto.randomUUID(), storedAt: Date.now() };
-  throughputStore.push(snapshot);
-  // Keep only last 1000 snapshots
-  if (throughputStore.length > 1000) throughputStore.splice(0, throughputStore.length - 1000);
-  res.json({ success: true });
-});
-
-app.get('/api/throughput/snapshots', (req, res) => {
-  const { startTime, endTime, limit } = req.query;
-  let results = [...throughputStore];
-  if (startTime) results = results.filter((s) => s.timestamp >= parseInt(startTime));
-  if (endTime) results = results.filter((s) => s.timestamp <= parseInt(endTime));
-  if (limit) results = results.slice(-parseInt(limit));
-  res.json({ snapshots: results });
-});
-
-app.get('/api/throughput/latest', (req, res) => {
-  const snapshot = throughputStore.length > 0 ? throughputStore[throughputStore.length - 1] : null;
-  res.json({ snapshot });
-});
-
-app.get('/api/throughput/aggregated', (req, res) => {
-  const { startTime, endTime } = req.query;
-  let results = [...throughputStore];
-  if (startTime) results = results.filter((s) => s.timestamp >= parseInt(startTime));
-  if (endTime) results = results.filter((s) => s.timestamp <= parseInt(endTime));
-
-  if (results.length === 0) {
-    return res.json({
-      avgUpload: 0,
-      avgDownload: 0,
-      avgTotal: 0,
-      maxUpload: 0,
-      maxDownload: 0,
-      maxTotal: 0,
-      avgClientCount: 0,
-      snapshotCount: 0,
-    });
+// Resolve the source a throughput snapshot belongs to. Snapshots are pushed by
+// the browser rather than polled, so they are attributed to the controller the
+// caller is talking to.
+async function resolveThroughputScope(req, res) {
+  if (!monitoringConfig) {
+    res.status(503).json({ error: 'Monitoring persistence is not configured' });
+    return null;
   }
+  const requested = req.headers['x-controller-url'] || DEFAULT_CONTROLLER_URL;
+  const baseUrl = normalizeMonitoringBaseUrl(requested);
+  if (!baseUrl) {
+    res.status(400).json({ error: 'No controller specified' });
+    return null;
+  }
+  try {
+    const source = await getMonitoringSourceByBaseUrl(baseUrl);
+    if (!source) {
+      res.status(404).json({ error: 'Controller is not registered for monitoring' });
+      return null;
+    }
+    return source;
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Monitoring store unavailable', errorClass });
+    return null;
+  }
+}
 
-  res.json({
-    avgUpload: results.reduce((s, r) => s + (r.totalUpload || 0), 0) / results.length,
-    avgDownload: results.reduce((s, r) => s + (r.totalDownload || 0), 0) / results.length,
-    avgTotal: results.reduce((s, r) => s + (r.totalTraffic || 0), 0) / results.length,
-    maxUpload: Math.max(...results.map((r) => r.totalUpload || 0)),
-    maxDownload: Math.max(...results.map((r) => r.totalDownload || 0)),
-    maxTotal: Math.max(...results.map((r) => r.totalTraffic || 0)),
-    avgClientCount: results.reduce((s, r) => s + (r.clientCount || 0), 0) / results.length,
-    snapshotCount: results.length,
+app.post('/api/throughput/snapshot', requireAuth, jsonParser, async (req, res) => {
+  const source = await resolveThroughputScope(req, res);
+  if (!source) return;
+  try {
+    await storeSnapshot(req.body ?? {}, {
+      sourceId: source.id,
+      retentionDays: monitoringConfig.retentionDays,
+      now: new Date(),
+    });
+    res.json({ success: true });
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Could not store snapshot', errorClass });
+  }
+});
+
+app.get('/api/throughput/snapshots', requireAuth, async (req, res) => {
+  const source = await resolveThroughputScope(req, res);
+  if (!source) return;
+  try {
+    const snapshots = await fetchSnapshots({
+      sourceIds: [source.id],
+      startTime: req.query.startTime,
+      endTime: req.query.endTime,
+      limit: req.query.limit,
+      retentionDays: monitoringConfig.retentionDays,
+      maxPoints: monitoringConfig.maxQueryPoints,
+    });
+    res.json({ snapshots });
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Could not read snapshots', errorClass });
+  }
+});
+
+app.get('/api/throughput/latest', requireAuth, async (req, res) => {
+  const source = await resolveThroughputScope(req, res);
+  if (!source) return;
+  try {
+    const snapshots = await fetchSnapshots({
+      sourceIds: [source.id],
+      retentionDays: monitoringConfig.retentionDays,
+      maxPoints: monitoringConfig.maxQueryPoints,
+    });
+    res.json({ snapshot: snapshots.length > 0 ? snapshots[snapshots.length - 1] : null });
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Could not read snapshots', errorClass });
+  }
+});
+
+app.get('/api/throughput/aggregated', requireAuth, async (req, res) => {
+  const source = await resolveThroughputScope(req, res);
+  if (!source) return;
+  try {
+    const snapshots = await fetchSnapshots({
+      sourceIds: [source.id],
+      startTime: req.query.startTime,
+      endTime: req.query.endTime,
+      retentionDays: monitoringConfig.retentionDays,
+      maxPoints: monitoringConfig.maxQueryPoints,
+    });
+    res.json(aggregateSnapshots(snapshots));
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Could not aggregate snapshots', errorClass });
+  }
+});
+
+app.get('/api/throughput/network/:name', requireAuth, async (req, res) => {
+  const source = await resolveThroughputScope(req, res);
+  if (!source) return;
+  try {
+    const snapshots = await fetchSnapshots({
+      sourceIds: [source.id],
+      startTime: req.query.startTime,
+      endTime: req.query.endTime,
+      retentionDays: monitoringConfig.retentionDays,
+      maxPoints: monitoringConfig.maxQueryPoints,
+    });
+    res.json({ trends: networkTrends(snapshots, decodeURIComponent(req.params.name)) });
+  } catch (error) {
+    const { errorClass } = sanitizeMonitoringError(error);
+    res.status(503).json({ error: 'Could not read network trends', errorClass });
+  }
+});
+
+// Deliberately not implemented against PostgreSQL: this used to wipe a shared
+// in-memory array. Bulk deletion of persisted monitoring history is a retention
+// concern, handled by the cleanup command against expires_at.
+app.delete('/api/throughput/clear', requireAuth, (_req, res) => {
+  res.status(405).json({
+    error: 'Not supported',
+    detail:
+      'Throughput history is persisted and expires under MONITORING_RETENTION_DAYS. Use the retention cleanup command instead of clearing it manually.',
   });
-});
-
-app.get('/api/throughput/network/:name', (req, res) => {
-  const networkName = decodeURIComponent(req.params.name);
-  const { startTime, endTime } = req.query;
-  let results = [...throughputStore];
-  if (startTime) results = results.filter((s) => s.timestamp >= parseInt(startTime));
-  if (endTime) results = results.filter((s) => s.timestamp <= parseInt(endTime));
-
-  const trends = results
-    .map((s) => {
-      const nb = (s.networkBreakdown || []).find((n) => n.network === networkName);
-      return nb
-        ? {
-            timestamp: s.timestamp,
-            upload: nb.upload,
-            download: nb.download,
-            total: nb.total,
-            clients: nb.clients,
-          }
-        : null;
-    })
-    .filter(Boolean);
-
-  res.json({ trends });
-});
-
-app.delete('/api/throughput/clear', (req, res) => {
-  const count = throughputStore.length;
-  throughputStore.length = 0;
-  res.json({ deletedCount: count });
 });
 
 // ==================== OUI Vendor Lookup (Local replacement for Supabase) ====================
@@ -1861,6 +1974,16 @@ app.use('/api', createValidationRouter());
 app.use(['/api/sentinel'], requireAuth);
 app.use('/api', createSentinelRouter());
 
+// ==================== Monitoring Persistence Routes ====================
+// Historical monitoring/SLE data served from PostgreSQL. These routes carry
+// their own authorization (requireControllerScope validates the caller's token
+// against the controller and derives the readable source set from it) — the
+// presence-only requireAuth above is not sufficient for cross-controller data.
+if (monitoringConfig) {
+  app.use('/api', createMonitoringRouter({ config: monitoringConfig }));
+  console.log('[Proxy Server] ✓ Monitoring history API mounted at /api/monitoring/*');
+}
+
 // ==================== Cortex AI Copilot Routes ====================
 // These must appear before the /api proxy middleware so they are
 // handled server-side rather than forwarded to the controller.
@@ -2090,20 +2213,43 @@ app.get('*', (req, res) => {
 const httpServer = http.createServer(app);
 attachConsoleShell(httpServer);
 
-httpServer.listen(PORT, '0.0.0.0', () => {
+// Optional in-process collector, for deployments that run a single Railway
+// service. It takes the same per-source advisory lock as the standalone worker,
+// so having both running is safe — and splitting them later needs no code change.
+let inProcessCollector = null;
+
+httpServer.listen(PORT, '0.0.0.0', async () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
   console.log(`[Proxy Server] Proxying /api/* to ${DEFAULT_CONTROLLER_URL} (with dynamic routing)`);
   console.log(`[Proxy Server] AURA Agent shell WS: ws://0.0.0.0:${PORT}/api/cortex/shell/ws`);
   console.log(`[Proxy Server] Health check available at http://localhost:${PORT}/health`);
+
+  if (!monitoringConfig) return;
+
+  try {
+    const seeded = await seedDefaultSource(monitoringConfig);
+    if (seeded) console.log(`[Proxy Server] ✓ Monitoring source registered: ${seeded.baseUrl}`);
+  } catch (error) {
+    console.warn(`[Proxy Server] ⚠  Could not seed monitoring source: ${error.message}`);
+  }
+
+  if (monitoringConfig.collectorInProcess && monitoringConfig.collectorEnabled) {
+    inProcessCollector = startCollector({ config: monitoringConfig });
+    console.log('[Proxy Server] ✓ In-process monitoring collector started');
+  } else {
+    console.log(
+      '[Proxy Server] In-process collector disabled (run the `collector` service, or set MONITORING_COLLECTOR_IN_PROCESS=true)'
+    );
+  }
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('[Proxy Server] SIGTERM received, shutting down gracefully');
+async function shutdown(signal) {
+  console.log(`[Proxy Server] ${signal} received, shutting down gracefully`);
+  if (inProcessCollector) await inProcessCollector.stop().catch(() => undefined);
   process.exit(0);
-});
+}
 
-process.on('SIGINT', () => {
-  console.log('[Proxy Server] SIGINT received, shutting down gracefully');
-  process.exit(0);
-});
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+
+process.on('SIGINT', () => shutdown('SIGINT'));
