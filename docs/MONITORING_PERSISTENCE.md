@@ -21,7 +21,7 @@ Refreshing the browser, redeploying, or replacing a Railway instance lost everyt
 
 ```
 Controller / Gateway APIs
-  └─ Collector (worker.js, or in-process behind an advisory lock)
+  └─ Collector (server/collectorWorker.js, or in-process behind an advisory lock)
        └─ PostgreSQL  ← authoritative 7-day store
             └─ Aura backend API  (/api/monitoring/*)
                  └─ Aura React UI
@@ -41,16 +41,31 @@ The browser **reads** history from the backend. It never maintains it.
    transaction per batch.
 4. **Serve** — `monitoringRouter.js` answers bounded range queries scoped to the caller's
    authorized sources.
-5. **Expire** — `scripts/monitoring-cleanup.js` deletes rows past `expires_at`.
+5. **Expire** — `server/retentionCleanup.js` deletes rows past `expires_at`.
 
 ## Railway services
 
-| Service | Start command | Purpose |
+Every service runs the same start command (`node server.js`) and differs only by
+`MONITORING_ROLE` — see below.
+
+| Service | `MONITORING_ROLE` | Purpose |
 |---|---|---|
 | PostgreSQL | — | Authoritative store. Provides `DATABASE_URL`. |
-| Aura web/API | `node server/db/migrate.js && node server.js` | UI + `/api/monitoring/*`. |
-| Collector | `npm run collector` | Polls controllers 24/7. |
-| Cleanup (cron `17 * * * *`) | `npm run monitoring:cleanup` | Retention sweep. |
+| Aura web/API | unset | UI + `/api/monitoring/*`. |
+| `aura-collector` | `collector` | Polls controllers 24/7. |
+| `aura-cleanup` (cron `17 * * * *`) | `cleanup` | Retention sweep, then exits. |
+
+Migrations are deliberately **not** chained into the web start command. They were once, and
+it took the service down — any migration problem became a full outage. Run them explicitly:
+`railway run --service <svc> npm run migrate`.
+
+### Files must live under `server/`
+
+The deployed image contains only `build/`, `node_modules/`, `package*.json`, `server/`, and
+`server.js`. Anything at another top level — a root `worker.js`, a `scripts/` directory, a
+root `migrations/` directory — is **absent at runtime** and fails with
+`ERR_MODULE_NOT_FOUND` or `ENOENT`. That is why the worker, the cleanup command, and the
+migration SQL all live under `server/`. Keep new runtime files there.
 
 ### Choosing the role
 
@@ -76,7 +91,7 @@ neither is the default.
 ## Commands
 
 ```bash
-npm run migrate             # apply migrations/*.sql (idempotent, advisory-locked)
+npm run migrate             # apply server/db/migrations/*.sql (idempotent, advisory-locked)
 npm start                   # web + API
 npm run collector           # collector worker
 npm run monitoring:cleanup  # one-shot retention sweep; exits 0
@@ -100,7 +115,7 @@ variable carries a secret; anything `VITE_`-prefixed is compiled into the browse
 
 ## Schema
 
-`migrations/0001_monitoring.sql`.
+`server/db/migrations/0001_monitoring.sql`.
 
 | Table | Purpose |
 |---|---|
@@ -291,7 +306,7 @@ what was not exercised, so a green run never implies coverage that did not happe
 Verified against the live Railway PostgreSQL (**18.4**) in project *EDGE Services*, using
 throwaway databases so no production table was touched:
 
-- `migrations/0001_monitoring.sql` applies cleanly, and re-applies cleanly to a database
+- `server/db/migrations/0001_monitoring.sql` applies cleanly, and re-applies cleanly to a database
   that already has it while preserving existing rows.
 - 15 SQL-contract assertions pass, including the load-bearing one: `ON CONFLICT` correctly
   infers the unique index built over **generated** columns. Had that inference silently

@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { getPool, assertDatabaseConfigured, closePool } from './pool.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = path.resolve(__dirname, '../../migrations');
+const MIGRATIONS_DIR = path.resolve(__dirname, 'migrations');
 
 // Arbitrary but fixed: all migration runs contend for this one key.
 const MIGRATION_LOCK_KEY = 8_270_119_004_461_001n;

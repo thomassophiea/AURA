@@ -11,11 +11,11 @@
  * service — cannot double-ingest.
  */
 
-import { loadMonitoringConfig, assertPersistenceReady, describeMonitoringConfig } from './server/monitoring/config.js';
-import { startCollector } from './server/monitoring/collectorRunner.js';
-import { seedDefaultSource } from './server/monitoring/bootstrap.js';
-import { checkDatabaseHealth, closePool } from './server/db/pool.js';
-import { runMigrations } from './server/db/migrate.js';
+import { loadMonitoringConfig, assertPersistenceReady, describeMonitoringConfig } from './monitoring/config.js';
+import { startCollector } from './monitoring/collectorRunner.js';
+import { seedDefaultSource } from './monitoring/bootstrap.js';
+import { checkDatabaseHealth, closePool } from './db/pool.js';
+import { runMigrations } from './db/migrate.js';
 
 function log(level, event, fields = {}) {
   const line = JSON.stringify({ ts: new Date().toISOString(), level, event, ...fields });

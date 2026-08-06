@@ -2216,10 +2216,10 @@ const PROCESS_ROLE = (process.env.MONITORING_ROLE || 'web').trim().toLowerCase()
 
 if (PROCESS_ROLE === 'collector') {
   console.log('[Proxy Server] MONITORING_ROLE=collector — starting the collector worker instead of the HTTP server');
-  await import('./worker.js');
+  await import('./server/collectorWorker.js');
 } else if (PROCESS_ROLE === 'cleanup') {
   console.log('[Proxy Server] MONITORING_ROLE=cleanup — running one retention sweep, then exiting');
-  await import('./scripts/monitoring-cleanup.js');
+  await import('./server/retentionCleanup.js');
 } else {
   if (PROCESS_ROLE !== 'web') {
     console.warn(

@@ -12,9 +12,9 @@
  * nothing must not report as failed.
  */
 
-import { loadMonitoringConfig, assertPersistenceReady } from '../server/monitoring/config.js';
-import { runRetentionCleanup } from '../server/monitoring/retention.js';
-import { closePool } from '../server/db/pool.js';
+import { loadMonitoringConfig, assertPersistenceReady } from './monitoring/config.js';
+import { runRetentionCleanup } from './monitoring/retention.js';
+import { closePool } from './db/pool.js';
 
 async function main() {
   const config = loadMonitoringConfig();
