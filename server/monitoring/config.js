@@ -83,6 +83,15 @@ export function loadMonitoringConfig(env = process.env) {
     collectorEnabled: readBool(env, 'MONITORING_COLLECTOR_ENABLED', true),
     cleanupEnabled: readBool(env, 'MONITORING_CLEANUP_ENABLED', true),
     collectorInProcess: readBool(env, 'MONITORING_COLLECTOR_IN_PROCESS', false),
+    // Run the retention sweep on a timer inside the web service, for
+    // deployments that cannot add a scheduled service. Safe alongside a real
+    // cron service: the sweep takes an advisory lock, so whichever runs second
+    // exits immediately as 'locked'.
+    cleanupInProcess: readBool(env, 'MONITORING_CLEANUP_IN_PROCESS', false),
+    cleanupIntervalSeconds: readInt(env, 'MONITORING_CLEANUP_INTERVAL_SECONDS', 3600, {
+      min: 300,
+      max: 86_400,
+    }),
     // AP-level report collection is the volume driver; opt-in.
     apReportsEnabled: readBool(env, 'MONITORING_AP_REPORTS_ENABLED', false),
     persistClientIdentifiers: readBool(env, 'MONITORING_PERSIST_CLIENT_IDENTIFIERS', false),
@@ -156,6 +165,7 @@ export function describeMonitoringConfig(config) {
     collectorEnabled: config.collectorEnabled,
     collectorInProcess: config.collectorInProcess,
     cleanupEnabled: config.cleanupEnabled,
+    cleanupInProcess: config.cleanupInProcess,
     apReportsEnabled: config.apReportsEnabled,
     persistClientIdentifiers: config.persistClientIdentifiers,
     databaseConfigured: Boolean(config.databaseUrl),

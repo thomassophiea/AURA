@@ -32,6 +32,7 @@ import {
 } from './server/monitoring/config.js';
 import { describeReadiness, seedDefaultSource } from './server/monitoring/bootstrap.js';
 import { startCollector } from './server/monitoring/collectorRunner.js';
+import { startRetentionSchedule } from './server/monitoring/retention.js';
 import { checkDatabaseHealth, isDatabaseConfigured } from './server/db/pool.js';
 import { createRequireControllerScope } from './server/monitoring/requireControllerScope.js';
 import { sanitizeError as sanitizeMonitoringError } from './server/monitoring/errorSanitizer.js';
@@ -2236,6 +2237,7 @@ attachConsoleShell(httpServer);
 // service. It takes the same per-source advisory lock as the standalone worker,
 // so having both running is safe — and splitting them later needs no code change.
 let inProcessCollector = null;
+let inProcessRetention = null;
 
 httpServer.listen(PORT, '0.0.0.0', async () => {
   console.log(`[Proxy Server] Running on port ${PORT}`);
@@ -2250,6 +2252,16 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
     if (seeded) console.log(`[Proxy Server] ✓ Monitoring source registered: ${seeded.baseUrl}`);
   } catch (error) {
     console.warn(`[Proxy Server] ⚠  Could not seed monitoring source: ${error.message}`);
+  }
+
+  // Retention must actually run or the rolling window never trims. When no
+  // scheduled service exists, run it here — it is advisory-locked, so adding a
+  // cron service later is safe and needs no change.
+  if (monitoringConfig.cleanupInProcess && monitoringConfig.cleanupEnabled) {
+    inProcessRetention = startRetentionSchedule({ config: monitoringConfig });
+    console.log(
+      `[Proxy Server] ✓ In-process retention sweep every ${monitoringConfig.cleanupIntervalSeconds}s`
+    );
   }
 
   if (monitoringConfig.collectorInProcess && monitoringConfig.collectorEnabled) {
@@ -2268,6 +2280,7 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
 async function shutdown(signal) {
   console.log(`[Proxy Server] ${signal} received, shutting down gracefully`);
   if (inProcessCollector) await inProcessCollector.stop().catch(() => undefined);
+  if (inProcessRetention) inProcessRetention.stop();
   process.exit(0);
 }
 

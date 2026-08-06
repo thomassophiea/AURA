@@ -28,6 +28,56 @@ function log(event, fields = {}) {
 }
 
 /**
+ * Schedule the retention sweep on a timer inside a long-running process.
+ *
+ * For deployments that cannot add a scheduled Railway service. Safe to run
+ * alongside a real cron service — the sweep is advisory-locked, so whichever
+ * starts second returns `{ ran: false, reason: 'locked' }` and does nothing.
+ *
+ * @returns {{ stop: () => void, triggerNow: () => Promise<void> }}
+ */
+export function startRetentionSchedule({ config, deps = {} }) {
+  let timer = null;
+  let running = false;
+  let stopped = false;
+
+  async function tick() {
+    if (running || stopped) return;
+    running = true;
+    try {
+      await runRetentionCleanup({ config, now: new Date(), deps });
+    } catch (error) {
+      // A failed sweep must never take the host process down; the next tick
+      // retries, and expired rows simply persist until then.
+      console.error(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          level: 'error',
+          event: 'monitoring.cleanup_failed',
+          message: error.message,
+        })
+      );
+    } finally {
+      running = false;
+    }
+  }
+
+  // Deliberately not run immediately: boot is the busiest moment, and expired
+  // rows can wait one interval.
+  timer = setInterval(tick, config.cleanupIntervalSeconds * 1000);
+  if (typeof timer.unref === 'function') timer.unref();
+
+  return {
+    stop() {
+      stopped = true;
+      if (timer) clearInterval(timer);
+      timer = null;
+    },
+    triggerNow: tick,
+  };
+}
+
+/**
  * Run one cleanup pass.
  *
  * @returns {Promise<{ ran: boolean, reason?: string, samplesDeleted?: number,

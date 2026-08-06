@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { runRetentionCleanup, CLEANUP_LOCK_KEY } from './retention.js';
+import { runRetentionCleanup, startRetentionSchedule, CLEANUP_LOCK_KEY } from './retention.js';
 import { loadMonitoringConfig } from './config.js';
 
 const NOW = new Date('2026-08-05T12:00:00.000Z');
@@ -79,6 +79,30 @@ describe('runRetentionCleanup', () => {
     expect(deps.deleteOrphanedCurrentStateFn).toHaveBeenCalledWith();
   });
 
+  it('is idempotent when a scheduled and a cron sweep overlap', async () => {
+    // The lock is what makes an in-process schedule safe alongside a real cron
+    // service: whichever runs second does nothing.
+    let held = false;
+    const deps = makeDeps({
+      withLockFn: async (_key, fn) => {
+        if (held) return { acquired: false, result: undefined };
+        held = true;
+        try {
+          return { acquired: true, result: await fn() };
+        } finally {
+          held = false;
+        }
+      },
+    });
+    const [a, b] = await Promise.all([
+      runRetentionCleanup({ config: CONFIG, now: NOW, deps }),
+      runRetentionCleanup({ config: CONFIG, now: NOW, deps }),
+    ]);
+    const ran = [a, b].filter((r) => r.ran);
+    expect(ran).toHaveLength(1);
+    expect([a, b].find((r) => !r.ran).reason).toBe('locked');
+  });
+
   it('propagates a database failure rather than reporting a clean sweep', async () => {
     const deps = makeDeps({
       deleteExpiredSamplesFn: vi.fn(async () => {
@@ -88,5 +112,61 @@ describe('runRetentionCleanup', () => {
     await expect(runRetentionCleanup({ config: CONFIG, now: NOW, deps })).rejects.toThrow(
       /connection terminated/
     );
+  });
+});
+
+describe('startRetentionSchedule', () => {
+  it('does not sweep immediately on boot', async () => {
+    vi.useFakeTimers();
+    const deps = makeDeps();
+    const schedule = startRetentionSchedule({ config: CONFIG, deps });
+    await Promise.resolve();
+    expect(deps.deleteExpiredSamplesFn).not.toHaveBeenCalled();
+    schedule.stop();
+    vi.useRealTimers();
+  });
+
+  it('sweeps once per interval', async () => {
+    vi.useFakeTimers();
+    const deps = makeDeps();
+    const config = loadMonitoringConfig({
+      DATABASE_URL: 'postgres://localhost/aura',
+      MONITORING_CLEANUP_INTERVAL_SECONDS: '600',
+    });
+    const schedule = startRetentionSchedule({ config, deps });
+
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(deps.deleteExpiredSamplesFn).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(600_000);
+    expect(deps.deleteExpiredSamplesFn).toHaveBeenCalledTimes(2);
+
+    schedule.stop();
+    vi.useRealTimers();
+  });
+
+  it('stops sweeping after stop()', async () => {
+    vi.useFakeTimers();
+    const deps = makeDeps();
+    const config = loadMonitoringConfig({
+      DATABASE_URL: 'postgres://localhost/aura',
+      MONITORING_CLEANUP_INTERVAL_SECONDS: '600',
+    });
+    const schedule = startRetentionSchedule({ config, deps });
+    schedule.stop();
+    await vi.advanceTimersByTimeAsync(1_800_000);
+    expect(deps.deleteExpiredSamplesFn).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('survives a failing sweep and keeps the schedule alive', async () => {
+    const deps = makeDeps({
+      deleteExpiredSamplesFn: vi.fn(async () => {
+        throw new Error('connection terminated');
+      }),
+    });
+    const schedule = startRetentionSchedule({ config: CONFIG, deps });
+    // Must not reject — a failed sweep cannot take the host process down.
+    await expect(schedule.triggerNow()).resolves.toBeUndefined();
+    schedule.stop();
   });
 });
