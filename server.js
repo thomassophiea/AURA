@@ -48,6 +48,14 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Railway terminates TLS and forwards over exactly one proxy hop, so req.ip must
+// come from X-Forwarded-For. Without this, express-rate-limit (v8 validates for
+// precisely this mistake) keys every visitor to the proxy's address — one shared
+// bucket for the whole internet, which is both uselessly strict for a busy user
+// and useless as abuse protection. `1` rather than `true`: trusting the whole
+// chain would let a client spoof its own address by sending the header.
+app.set('trust proxy', 1);
+
 // Wire getDriftAlerts Cortex tool to the live drift monitor
 registerResolver('getDriftAlerts', () => ({
   alerts: driftMonitor.getAlerts(),
