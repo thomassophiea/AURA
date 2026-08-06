@@ -52,11 +52,26 @@ The browser **reads** history from the backend. It never maintains it.
 | Collector | `npm run collector` | Polls controllers 24/7. |
 | Cleanup (cron `17 * * * *`) | `npm run monitoring:cleanup` | Retention sweep. |
 
-A separate collector is preferred. For a single-service deployment set
-`MONITORING_COLLECTOR_IN_PROCESS=true` on the web service instead; both paths take the
-same advisory lock, so running them together is safe and splitting later needs no code
-change. The tradeoff: in-process collection competes with request handling for CPU and
-dies with the web service, which is why it is not the default.
+### Choosing the role
+
+Railway runs every service in a project from one repository with one start command, and
+that command cannot be overridden per service from the CLI. The role is therefore chosen by
+an environment variable, so the topology stays reproducible from the repo:
+
+| `MONITORING_ROLE` | Behaviour |
+|---|---|
+| unset or `web` | The HTTP server (default — unset behaves exactly as before) |
+| `collector` | The collector worker; opens no HTTP listener |
+| `cleanup` | One retention sweep, then exits 0 |
+
+To split the collector out: add a service from this repo and set `MONITORING_ROLE=collector`
+plus `DATABASE_URL` and the controller variables. Nothing else changes — the advisory lock
+makes it safe to run alongside an in-process collector during the switchover.
+
+For a single-service deployment, set `MONITORING_COLLECTOR_IN_PROCESS=true` and
+`MONITORING_CLEANUP_IN_PROCESS=true` on the web service instead. The tradeoff: in-process
+work competes with request handling for CPU and dies with the web service, which is why
+neither is the default.
 
 ## Commands
 
@@ -310,11 +325,27 @@ Deployed to the *EDGE Services* Railway project and collecting from the lab cont
   collector started, because the report endpoint serves a `3H` window.
 - Retention stamps sit exactly 7.00 days after each observation.
 
-**Not yet exercised:** the HTTP read API against the live database and the UI — both need a
-browser session holding a controller token, which the automated checks cannot produce. The
-`*.db.test.js` suites also still have not run under Vitest (no local PostgreSQL, and Railway
-exposes no TCP proxy), though the driver above covers the same ground through the same
-modules.
+### Read API and UI, verified in a browser
+
+Driven against the deployed app with a real controller login:
+
+- Service Levels defaults to **Last 7 Days**, all seven SLE metrics render.
+- The freshness badge reads **“Stored”**, tooltip *“Served from AURA's database. Last
+  successful collection …”*. Nothing in the UI calls stored data live.
+- `GET /api/monitoring/history?metricFamily=sle` → **200**, 9 series / 456 points,
+  `servingFrom: "database"`, `retentionDays: 7`, `neverCollected: false`,
+  `truncated: false`, and numerator/denominator present on every point (36/36).
+- `GET /api/monitoring/latest` → **200**, `state: "fresh"`, `dataAgeSeconds: 40`.
+- `GET /api/monitoring/sources/health` → **200**, `state: "fresh"`,
+  `consecutiveFailures: 0`, `servingFrom: "database"`.
+
+**Not yet exercised:** the outage path in the UI — a stale/offline badge and a rendered gap
+need the controller to actually go away for longer than `MONITORING_STALE_AFTER_SECONDS`.
+The gap-and-staleness logic is unit-tested, and the collector's outage behaviour was
+verified in production while the credential was wrong (8 failed runs, 0 samples written),
+but the two have not been observed together. The `*.db.test.js` suites also still have not
+run under Vitest (no local PostgreSQL, and Railway exposes no TCP proxy), though the driver
+above covers the same ground through the same modules.
 
 ## Volume and future work
 
