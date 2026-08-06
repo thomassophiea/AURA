@@ -90,16 +90,33 @@ const DEFAULT_CONTROLLER_URL = normalizeControllerUrl(process.env.CAMPUS_CONTROL
 // Map to track active controller URLs per session (could be enhanced with Redis for production)
 const controllerSessions = new Map();
 
+// ==================== Process role ====================
+// Determined BEFORE any environment validation, because the prerequisites differ
+// per role. The retention sweep only talks to PostgreSQL, so requiring a
+// controller URL of it is wrong — and it used to be fatal: Railway injects
+// NODE_ENV=production into every container, so the cleanup service exited 1 at
+// boot on a check that only the web server should care about.
+//
+//   unset | 'web'  -> HTTP server (default)
+//   'collector'    -> collector worker, no HTTP listener
+//   'cleanup'      -> one retention sweep, then exit
+const PROCESS_ROLE = (process.env.MONITORING_ROLE || 'web').trim().toLowerCase();
+const IS_WEB_ROLE = PROCESS_ROLE === 'web' || !['collector', 'cleanup'].includes(PROCESS_ROLE);
+
 console.log('[Proxy Server] Starting...');
+console.log('[Proxy Server] Role:', PROCESS_ROLE);
 console.log('[Proxy Server] Port:', PORT);
 console.log('[Proxy Server] Multi-controller support: ENABLED');
 
 // Runtime environment validation
 console.log('[Proxy Server] --- Runtime Environment ---');
 
-// Require CAMPUS_CONTROLLER_URL in production, optional in development
+// Require CAMPUS_CONTROLLER_URL in production, optional in development.
+// Only the web server proxies to a controller, so only the web role treats a
+// missing URL as fatal. The collector reports `not_configured` per source, and
+// the cleanup sweep never contacts a controller at all.
 if (!process.env.CAMPUS_CONTROLLER_URL) {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && IS_WEB_ROLE) {
     console.error(
       '[Proxy Server] ❌ CRITICAL: CAMPUS_CONTROLLER_URL environment variable is required in production'
     );
@@ -2219,9 +2236,8 @@ app.get('*', (req, res) => {
 //   MONITORING_ROLE=collector      -> the collector worker, no HTTP listener
 //   MONITORING_ROLE=cleanup        -> one retention sweep, then exit
 //
-// Defaulting to 'web' means an unset variable behaves exactly as before.
-const PROCESS_ROLE = (process.env.MONITORING_ROLE || 'web').trim().toLowerCase();
-
+// PROCESS_ROLE is resolved near the top of this file, before environment
+// validation, because the prerequisites differ per role.
 if (PROCESS_ROLE === 'collector') {
   console.log('[Proxy Server] MONITORING_ROLE=collector — starting the collector worker instead of the HTTP server');
   await import('./server/collectorWorker.js');
