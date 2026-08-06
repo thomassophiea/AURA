@@ -6,6 +6,7 @@ import {
   createRequireControllerScope,
   extractBearerToken,
   clearValidationCache,
+  validateTokenAgainstController,
 } from './requireControllerScope.js';
 
 const SOURCE_A = { id: 'src-a', baseUrl: 'https://ctrl-a.example.com', orgId: 'org-a' };
@@ -42,6 +43,87 @@ describe('extractBearerToken', () => {
   it('rejects an implausibly short token', () => {
     expect(extractBearerToken({ headers: { authorization: 'Bearer abc' } })).toBeNull();
   });
+});
+
+describe('validateTokenAgainstController cache', () => {
+  const controller = 'https://ctrl-a.example.com';
+  const ok = async () => ({ ok: true, status: 200, json: async () => [] });
+  const unauthorized = async () => ({
+    ok: false,
+    status: 401,
+    text: async () => 'Unauthorized',
+  });
+
+  it('caches a successful validation so charts do not re-hit the controller', async () => {
+    const fetchFn = vi.fn(ok);
+    const token = 'a'.repeat(40);
+
+    expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
+      valid: true,
+    });
+    expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
+      valid: true,
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not let a token sharing a prefix and length reuse a cached verdict', async () => {
+    // OAuth2 tokens from one issuer routinely share leading characters. Keying
+    // the cache on a prefix would let this second token authenticate for free.
+    const valid = `${'x'.repeat(12)}-valid-token-suffix`;
+    const forged = `${'x'.repeat(12)}-FORGED-tokn-suffix`;
+    expect(forged.length).toBe(valid.length);
+    expect(forged.slice(0, 12)).toBe(valid.slice(0, 12));
+
+    const fetchFn = vi.fn(async (_url, init) =>
+      init.headers.Authorization === `Bearer ${valid}` ? ok() : unauthorized()
+    );
+
+    expect(await validateTokenAgainstController(valid, controller, { fetchFn })).toEqual({
+      valid: true,
+    });
+    const result = await validateTokenAgainstController(forged, controller, { fetchFn });
+
+    expect(result.valid).toBe(false);
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('scopes the cache per controller, so a token valid on one is not valid on another', async () => {
+    const token = 'b'.repeat(40);
+    const fetchFn = vi.fn(async (url) => (url.startsWith(controller) ? ok() : unauthorized()));
+
+    expect(await validateTokenAgainstController(token, controller, { fetchFn })).toEqual({
+      valid: true,
+    });
+    const other = await validateTokenAgainstController(token, 'https://ctrl-b.example.com', {
+      fetchFn,
+    });
+    expect(other.valid).toBe(false);
+  });
+
+  it('never caches a failure, so a brief controller outage cannot lock an operator out', async () => {
+    const token = 'c'.repeat(40);
+    let healthy = false;
+    const fetchFn = vi.fn(async () => (healthy ? ok() : unauthorized()));
+
+    expect((await validateTokenAgainstController(token, controller, { fetchFn })).valid).toBe(false);
+    healthy = true;
+    expect((await validateTokenAgainstController(token, controller, { fetchFn })).valid).toBe(true);
+  });
+
+  it('expires a cached verdict rather than trusting it forever', async () => {
+    const token = 'd'.repeat(40);
+    const fetchFn = vi.fn(ok);
+    const start = 1_000_000;
+
+    await validateTokenAgainstController(token, controller, { fetchFn, now: start });
+    await validateTokenAgainstController(token, controller, { fetchFn, now: start + 30_000 });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+
+    await validateTokenAgainstController(token, controller, { fetchFn, now: start + 120_000 });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
 });
 
 describe('createRequireControllerScope', () => {

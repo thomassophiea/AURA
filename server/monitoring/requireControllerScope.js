@@ -13,6 +13,8 @@
  * never the trust boundary.
  */
 
+import crypto from 'node:crypto';
+
 import { requestXcc } from '../validationEngine/xccClient.js';
 import { listSources, normalizeBaseUrl } from './sourceRepository.js';
 import { sanitizeError } from './errorSanitizer.js';
@@ -24,9 +26,13 @@ const MAX_CACHE_ENTRIES = 1000;
 const validationCache = new Map();
 
 function cacheKey(token, baseUrl) {
-  // The token is the secret; key on a prefix + length rather than the whole
-  // value so a heap dump of the cache is less useful than the token itself.
-  return `${baseUrl}|${token.slice(0, 12)}|${token.length}`;
+  // SHA-256 of the whole token, not a prefix. A prefix key would let two
+  // different tokens that happen to share their leading characters collide, and
+  // an invalid token would then inherit a valid one's cached "valid" verdict —
+  // an authentication bypass. The digest is one-way, so a heap dump of the
+  // cache still does not reveal any token.
+  const digest = crypto.createHash('sha256').update(token).digest('hex');
+  return `${baseUrl}|${digest}`;
 }
 
 export function clearValidationCache() {
