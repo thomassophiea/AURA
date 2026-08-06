@@ -417,6 +417,16 @@ export interface APDetails extends AccessPoint {
   channel?: number;
   associatedClients?: number;
   radios?: APRadio[];
+  // Power-related configuration, consumed by powerAnalysis.derivePowerLevers().
+  // Verified against XCC 10.18.1.0-011R on AP5020-WW / AP5010U-WW / AP5050D-WW.
+  usbPower?: string; // 'Off' | 'On' | 'Auto'
+  psePower?: string; // 'Off' | 'On' | 'Auto' — PoE out to a downstream device
+  iotEnabled?: boolean; // BLE / IoT radio
+  ledStatus?: string; // 'NORMAL' | 'OFF' | ...
+  autoTxPowerMin?: boolean;
+  forcePoEPlus?: boolean;
+  pwrSource?: string; // negotiated PoE class, e.g. 'Bt', 'At'
+  ethPowerStatus?: string; // e.g. 'normal'
   [key: string]: any;
 }
 

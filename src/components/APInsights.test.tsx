@@ -4,20 +4,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { APInsightsFullScreen } from './APInsights';
 import * as apiService from '../services/api';
+import { AP5020_INSIGHTS_3H, SPIKE_TIMESTAMP } from '../test/fixtures/apInsights.fixture';
+import { AP5020_DETAILS } from '../test/fixtures/apDetails.fixture';
 
 // Mock the API service
 vi.mock('../services/api', () => ({
   apiService: {
     getAccessPointInsights: vi.fn(),
+    getAccessPointDetails: vi.fn(),
   },
 }));
 
-// Mock the hooks
+// Timeline state is driven per-test so the locked-state cases can exercise the
+// power context card, which only renders while the timeline is locked.
+const timelineState = {
+  currentTime: null as number | null,
+  isLocked: false,
+};
+
 vi.mock('../hooks/useTimelineNavigation', () => ({
   useTimelineNavigation: () => ({
-    currentTime: null,
+    currentTime: timelineState.currentTime,
     timeWindow: { start: null, end: null },
-    isLocked: false,
+    isLocked: timelineState.isLocked,
     setCurrentTime: vi.fn(),
     toggleLock: vi.fn(),
     startTimeWindow: vi.fn(),
@@ -37,6 +46,9 @@ describe('APInsightsFullScreen', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    timelineState.currentTime = null;
+    timelineState.isLocked = false;
+    vi.mocked(apiService.apiService.getAccessPointDetails).mockResolvedValue(AP5020_DETAILS);
   });
 
   it('should show loading spinner initially', () => {
@@ -185,6 +197,87 @@ describe('APInsightsFullScreen', () => {
     // The component should retry and succeed this time
     await waitFor(() => {
       expect(mockGetInsights).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('power context card', () => {
+    beforeEach(() => {
+      vi.mocked(apiService.apiService.getAccessPointInsights).mockResolvedValue(
+        AP5020_INSIGHTS_3H
+      );
+    });
+
+    const renderFullScreen = () =>
+      render(
+        <APInsightsFullScreen
+          serialNumber={mockSerialNumber}
+          apName={mockApName}
+          onClose={mockOnClose}
+        />
+      );
+
+    it('stays hidden while the timeline is unlocked', async () => {
+      renderFullScreen();
+
+      await waitFor(() => {
+        expect(screen.getByText('Power Consumption')).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Power at /)).not.toBeInTheDocument();
+    });
+
+    it('shows the measured spike in watts once locked', async () => {
+      timelineState.isLocked = true;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      await waitFor(() => {
+        expect(screen.getByText(/^Power at /)).toBeInTheDocument();
+      });
+
+      // 18670 mW rendered as watts, never as "18670 W". The value appears in the
+      // card header, the measured-power list, and the chart's locked badge.
+      expect(screen.getAllByText('18.67 W').length).toBeGreaterThan(0);
+      expect(screen.queryByText(/18670/)).not.toBeInTheDocument();
+    });
+
+    it('states plainly that the spike is unexplained', async () => {
+      timelineState.isLocked = true;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      await waitFor(() => {
+        expect(screen.getByText('Unexplained.')).toBeInTheDocument();
+      });
+      expect(screen.getByText(/no per-radio tx power/)).toBeInTheDocument();
+    });
+
+    it('lists the config levers read from the AP', async () => {
+      timelineState.isLocked = true;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      await waitFor(() => {
+        expect(screen.getByText('Power levers')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('5 GHz channel width')).toBeInTheDocument();
+      expect(screen.getByText(/Already optimal:/)).toBeInTheDocument();
+      expect(screen.getByText(/Savings are unverified/)).toBeInTheDocument();
+    });
+
+    it('degrades the levers column when the AP config read fails', async () => {
+      vi.mocked(apiService.apiService.getAccessPointDetails).mockRejectedValue(
+        new Error('config unavailable')
+      );
+      timelineState.isLocked = true;
+      timelineState.currentTime = SPIKE_TIMESTAMP;
+      renderFullScreen();
+
+      // Power analysis still renders — only the levers column is affected.
+      await waitFor(() => {
+        expect(screen.getByText(/AP configuration unavailable/)).toBeInTheDocument();
+      });
+      expect(screen.getAllByText('18.67 W').length).toBeGreaterThan(0);
     });
   });
 });

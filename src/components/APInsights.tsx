@@ -40,12 +40,16 @@ import {
 } from 'lucide-react';
 import {
   apiService,
+  APDetails,
   APInsightsResponse,
   APInsightsReport,
   APInsightsStatistic,
 } from '../services/api';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
 import { TimelineControls } from './timeline';
+import { PowerChart } from './insights/PowerChart';
+import { PowerContextCard } from './insights/PowerContextCard';
+import { buildPowerContext, derivePowerLevers } from '../services/powerAnalysis';
 
 interface APInsightsProps {
   serialNumber: string;
@@ -90,8 +94,22 @@ function formatValue(value: number, unit: string): string {
   }
   if (unit === 'dBm') return `${value.toFixed(0)} dBm`;
   if (unit === '%') return `${value.toFixed(0)}%`;
-  if (unit === 'W' || unit === 'mW') return `${value.toFixed(1)} W`;
+  // The controller reports AP power in mW. Treating it as W overstates draw by
+  // 1000x — an AP5020 pulling 18.67 W rendered as "18670 W".
+  if (unit === 'mW') return `${(value / 1000).toFixed(2)} W`;
+  if (unit === 'W') return `${value.toFixed(2)} W`;
   return value.toFixed(1);
+}
+
+/**
+ * Scale a raw statistic value to watts using the unit the controller declared.
+ * Unknown units pass through rather than being guessed at.
+ */
+function scaleToWatts(value: number, unit: string | undefined): number {
+  const normalized = (unit ?? '').trim().toLowerCase();
+  if (normalized === 'mw') return value / 1000;
+  if (normalized === 'kw') return value * 1000;
+  return value;
 }
 
 // Find value at a specific timestamp (for locked display)
@@ -235,10 +253,16 @@ export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: 
           avgThroughputValues.length
         : null;
 
+    const powerUnit = power?.statistics?.find((s) => s.statName === 'Power Consumption')?.unit;
+
+    // Converted to watts here so the tile below never renders raw milliwatts.
     const avgPower =
       avgPowerValues && avgPowerValues.length > 0
-        ? avgPowerValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) /
-          avgPowerValues.length
+        ? scaleToWatts(
+            avgPowerValues.reduce((sum, v) => sum + (parseFloat(v.value) || 0), 0) /
+              avgPowerValues.length,
+            powerUnit
+          )
         : null;
 
     const peakClients =
@@ -358,7 +382,7 @@ export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: 
               )}
               {stats.avgPower !== null && !isNaN(stats.avgPower) && stats.avgPower > 0 && (
                 <div className="text-center">
-                  <p className="text-xl font-semibold">{stats.avgPower.toFixed(1)}W</p>
+                  <p className="text-xl font-semibold">{stats.avgPower.toFixed(2)} W</p>
                   <p className="text-xs text-muted-foreground">Avg Power</p>
                 </div>
               )}
@@ -387,6 +411,8 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
   const [error, setError] = useState<string | null>(null);
   const [duration, setDuration] = useState('3H');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [apDetails, setApDetails] = useState<APDetails | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
   const handleRefresh = () => setRefreshKey((k) => k + 1);
 
@@ -436,11 +462,46 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     };
   }, [serialNumber, duration, refreshKey]);
 
+  // AP configuration backs the power levers. Independent of the insights fetch:
+  // a failure here degrades the levers column, it does not break the charts.
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDetails = async () => {
+      try {
+        setIsLoadingDetails(true);
+        const details = await apiService.getAccessPointDetails(serialNumber);
+        if (!cancelled) setApDetails(details);
+      } catch (err) {
+        console.error('Failed to load AP details for power levers:', err);
+        if (!cancelled) setApDetails(null);
+      } finally {
+        if (!cancelled) setIsLoadingDetails(false);
+      }
+    };
+
+    fetchDetails();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [serialNumber, refreshKey]);
+
   // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
     timeline.softReset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [duration, timeline.softReset]);
+
+  // Power context is computed from the raw response, not the transformed chart
+  // rows, so null readings stay distinguishable from real zeroes.
+  const powerContext = useMemo(
+    () =>
+      timeline.isLocked ? buildPowerContext(insights, timeline.currentTime) : null,
+    [insights, timeline.isLocked, timeline.currentTime]
+  );
+
+  const powerLevers = useMemo(() => derivePowerLevers(apDetails), [apDetails]);
 
   // Transform data for each chart
   const throughputData = useMemo(() => {
@@ -448,9 +509,15 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     return transformReportData(report, duration);
   }, [insights, duration]);
 
+  // Power arrives in mW; the chart and every readout downstream work in watts.
   const powerData = useMemo(() => {
     const report = insights?.apPowerConsumptionTimeseries?.[0];
-    return transformReportData(report, duration);
+    const unit = report?.statistics?.find((s) => s.statName === 'Power Consumption')?.unit;
+    return transformReportData(report, duration).map((row) =>
+      typeof row['Power Consumption'] === 'number'
+        ? { ...row, 'Power Consumption': scaleToWatts(row['Power Consumption'], unit) }
+        : row
+    );
   }, [insights, duration]);
 
   const clientData = useMemo(() => {
@@ -686,94 +753,18 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
         );
       }
 
-      case 'power': {
-        const lockedPowerValues =
-          timeline.isLocked && timeline.currentTime !== null
-            ? getValueAtTimestamp(powerData, timeline.currentTime, ['Power Consumption'])
-            : null;
+      case 'power':
         return (
-          <Card key={config.id}>
-            <CardHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">{config.title}</CardTitle>
-                {lockedPowerValues && lockedPowerValues['Power Consumption'] !== null && (
-                  <Badge variant="secondary" className="font-mono">
-                    <span className="text-amber-500 font-semibold mr-1">Power:</span>{' '}
-                    {lockedPowerValues['Power Consumption'].toFixed(1)} W
-                  </Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart
-                    data={powerData}
-                    margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
-                    syncId="ap-insights-charts"
-                    onClick={(e: any) => {
-                      // Click to toggle lock at current position
-                      if (e && e.activePayload && e.activePayload[0]) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.toggleLock();
-                      }
-                    }}
-                    onMouseDown={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && e.shiftKey) {
-                        timeline.startTimeWindow(e.activePayload[0].payload.timestamp);
-                      }
-                    }}
-                    onMouseMove={(e: any) => {
-                      if (e && e.activePayload && e.activePayload[0] && !timeline.isLocked) {
-                        const timestamp = e.activePayload[0].payload.timestamp;
-                        timeline.setCurrentTime(timestamp);
-                        timeline.updateTimeWindow(timestamp);
-                      }
-                    }}
-                    onMouseUp={() => timeline.endTimeWindow()}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis
-                      dataKey="timestamp"
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(ts) => formatXAxisTick(ts, duration)}
-                    />
-                    <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${v} W`} width={50} />
-                    <Tooltip labelFormatter={() => ''} contentStyle={COMPACT_TOOLTIP_STYLE} />
-                    <Legend />
-                    {timeline.currentTime !== null && (
-                      <ReferenceLine
-                        x={timeline.currentTime}
-                        stroke={timeline.isLocked ? TIMELINE_COLORS.cursorLocked : TIMELINE_COLORS.cursorUnlocked}
-                        strokeWidth={timeline.isLocked ? 2 : 1.5}
-                        strokeDasharray={timeline.isLocked ? TIMELINE_COLORS.cursorLockedDasharray : TIMELINE_COLORS.cursorUnlockedDasharray}
-                      />
-                    )}
-                    {timeline.timeWindow.start !== null && timeline.timeWindow.end !== null && (
-                      <ReferenceArea
-                        x1={Math.min(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        x2={Math.max(timeline.timeWindow.start, timeline.timeWindow.end)}
-                        fill="var(--primary)"
-                        fillOpacity={0.15}
-                        stroke="var(--primary)"
-                        strokeOpacity={0.3}
-                      />
-                    )}
-                    <Line
-                      type="monotone"
-                      dataKey="Power Consumption"
-                      stroke={CHART_COLORS.blue}
-                      dot={false}
-                      name="Power"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+          <PowerChart
+            key={config.id}
+            title={config.title}
+            data={powerData}
+            timeline={timeline}
+            formatXAxisTick={(ts) => formatXAxisTick(ts, duration)}
+            lockedPowerW={powerContext?.powerW ?? null}
+            tooltipStyle={COMPACT_TOOLTIP_STYLE}
+          />
         );
-      }
 
       case 'clients': {
         const lockedClientsValues =
@@ -1513,9 +1504,16 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                 </Button>
               </div>
             ) : chartConfigs.some((c) => c.hasData) ? (
-              <div className="grid grid-cols-2 gap-6">
-                {chartConfigs.map((config) => renderChart(config))}
-              </div>
+              <>
+                <PowerContextCard
+                  context={powerContext}
+                  levers={powerLevers}
+                  isLoadingLevers={isLoadingDetails}
+                />
+                <div className="grid grid-cols-2 gap-6">
+                  {chartConfigs.map((config) => renderChart(config))}
+                </div>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <BarChart3 className="h-16 w-16 text-muted-foreground/30 mb-4" />
