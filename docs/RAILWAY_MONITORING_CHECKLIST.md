@@ -3,8 +3,15 @@
 Repository-specific steps. Commands come from this repo's `package.json`; nothing here
 assumes a Railway UI layout beyond "a service has a start command and variables".
 
-Current project (from `railway.toml` / `Procfile`): one web service, NIXPACKS builder,
-start command previously `node server.js`.
+Current project: **EDGE Services** (`9251c5b9-d1db-462a-8dcc-ef7d913ec37e`), environment
+`production`. Relevant services: `Integration (AURA)` (public domain
+`integration.up.railway.app`) and `Postgres` (private domain
+`postgres-ab37.railway.internal`, PostgreSQL 18.4). NIXPACKS builder; the web start
+command was previously `node server.js`.
+
+Postgres has **no public TCP proxy**, so it is reachable only from inside the project's
+private network. That is the right default — enable a proxy only if you need external
+tooling, and prefer `railway ssh --service Postgres` with `psql` instead.
 
 ---
 
@@ -69,6 +76,11 @@ railway run npm run migrate
 
 - [ ] Deploy logs show `[migrate] applying 0001_monitoring.sql` (first deploy) or
       `0 applied, 1 already present` (subsequent).
+
+**Already done for the *EDGE Services* project.** `0001_monitoring.sql` is applied to the
+`railway` database and recorded in `schema_migrations`, so the first deploy of this branch
+will report it as already present. The database had no `public` tables beforehand; the
+eight now there are all from this migration.
 
 ## 5. Confirm the web service
 

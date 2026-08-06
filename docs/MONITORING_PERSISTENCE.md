@@ -271,6 +271,36 @@ npm test
 Without `TEST_DATABASE_URL` those suites **skip loudly** — they print a warning naming
 what was not exercised, so a green run never implies coverage that did not happen.
 
+## Verification status
+
+Verified against the live Railway PostgreSQL (**18.4**) in project *EDGE Services*, using
+throwaway databases so no production table was touched:
+
+- `migrations/0001_monitoring.sql` applies cleanly, and re-applies cleanly to a database
+  that already has it while preserving existing rows.
+- 15 SQL-contract assertions pass, including the load-bearing one: `ON CONFLICT` correctly
+  infers the unique index built over **generated** columns. Had that inference silently
+  failed, every upsert would have duplicated instead of updating.
+- 63 assertions against the **real repository modules** (`sampleRepository.js`,
+  `sourceRepository.js`, `credentialCrypto.js`, `pool.js`) pass — batched upserts,
+  insert-vs-update accounting via `xmax`, two concurrent writers producing one row set,
+  whole-batch rollback on an invalid row, the AES-256-GCM credential round-trip through
+  `bytea`, the older-backfill-does-not-overwrite guard, truncation keeping the newest
+  points, batched retention, cleanup concurrent with ingestion, and cursor monotonicity.
+- Cross-session advisory locking behaves as the duplicate-worker defence requires:
+  `hashtextextended` keys are stable across sessions, a second session is refused while a
+  lock is held, different keys proceed concurrently, and a lock releases when its holder
+  exits.
+
+The schema is applied to the production `railway` database and recorded in
+`schema_migrations`.
+
+**Not yet exercised:** the collector polling a real controller, the HTTP API against a
+live database, and the UI. Those need the branch deployed. The `*.db.test.js` suites also
+have not run under Vitest — there is no local PostgreSQL on the development machine and
+Railway exposes no TCP proxy — though the driver above covers the same ground through the
+same modules.
+
 ## Volume and future work
 
 At the shipped defaults (site + SLE always, AP reports off), roughly **0.8M rows / 250 MB**
