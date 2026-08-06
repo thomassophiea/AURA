@@ -9,14 +9,27 @@
 
 import { apiService, getDynamicControllerUrl } from './api';
 import type {
+  CoverageResponse,
   HistoryResponse,
   LatestResponse,
   SourceHealthResponse,
   MonitoringApiError,
 } from '../types/monitoring';
 import { MonitoringRequestError } from '../types/monitoring';
+import { localTimeZone, resolveTimeRange } from '../lib/timeRange';
 
 const BASE = '/api/monitoring';
+
+/**
+ * Auth headers for AURA's own persistence API.
+ *
+ * Exported because `/api/throughput/*` reads and writes the same store behind
+ * the same `requireControllerScope` middleware and needs identical headers.
+ * Duplicating this was how the throughput endpoints ended up unauthenticated.
+ */
+export function buildMonitoringHeaders(): Record<string, string> {
+  return buildHeaders();
+}
 
 function buildHeaders(): Record<string, string> {
   const headers: Record<string, string> = { Accept: 'application/json' };
@@ -103,7 +116,37 @@ export const monitoringHistory = {
   async getSourceHealth(signal?: AbortSignal): Promise<SourceHealthResponse> {
     return request<SourceHealthResponse>('/sources/health', signal);
   },
+
+  /**
+   * Which local calendar days hold data, and how much of each.
+   *
+   * The bounds are always sent explicitly and computed in the browser's own
+   * timezone: the days offered in the selector and the days counted here have to
+   * be the same days, and only the client knows where its midnights fall.
+   */
+  async getCoverage(query: CoverageQuery, signal?: AbortSignal): Promise<CoverageResponse> {
+    const path = `/coverage${buildQuery({
+      start: query.start,
+      end: query.end,
+      timeZone: query.timeZone ?? localTimeZone(),
+      siteId: query.siteId,
+      metricFamily: query.metricFamily,
+      metricName: query.metricNames?.join(','),
+    })}`;
+    return request<CoverageResponse>(path, signal);
+  },
 };
+
+export interface CoverageQuery {
+  /** UTC ISO-8601 bounds of the window to summarize. */
+  start: string;
+  end: string;
+  /** IANA zone the calendar-day grouping is expressed in. Defaults to the browser's. */
+  timeZone?: string;
+  siteId?: string;
+  metricFamily?: string;
+  metricNames?: string[];
+}
 
 /** Convenience: an ISO range covering the last `days` days, ending now. */
 export function lastNDays(days: number, now: Date = new Date()): { start: string; end: string } {
@@ -123,22 +166,16 @@ export function lastNHours(hours: number, now: Date = new Date()): { start: stri
 
 /**
  * Map an AURA time-range token to an ISO range.
- * Tokens match the existing `useTimeRangeFilter` presets.
+ *
+ * Delegates to `resolveTimeRange` rather than re-deriving the mapping, so a
+ * calendar-day token resolves to that day's local midnight boundaries here too.
+ * A private switch statement in this file was previously the second definition
+ * of what a token means; two definitions is one too many.
  */
 export function rangeFromPreset(
   preset: string,
   now: Date = new Date()
 ): { start: string; end: string } {
-  switch (preset) {
-    case '15m':
-      return lastNHours(0.25, now);
-    case '1h':
-      return lastNHours(1, now);
-    case '24h':
-      return lastNHours(24, now);
-    case '7d':
-      return lastNDays(7, now);
-    default:
-      return lastNDays(7, now);
-  }
+  const range = resolveTimeRange(preset, now);
+  return { start: range.startIso, end: range.endIso };
 }

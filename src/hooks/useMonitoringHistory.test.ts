@@ -86,6 +86,9 @@ const response = (overrides: Partial<HistoryResponse> = {}): HistoryResponse => 
   meta: {
     start: '2026-07-29T12:00:00.000Z',
     end: '2026-08-05T12:00:00.000Z',
+    requestedStart: '2026-07-29T12:00:00.000Z',
+    clampedToRetention: false,
+    retentionStart: '2026-07-29T12:00:00.000Z',
     retentionDays: 7,
     truncated: false,
     maxPoints: 5000,

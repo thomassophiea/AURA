@@ -8,6 +8,7 @@ import { getVendor, getVendorIcon } from '../services/oui-lookup';
 import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { useGlobalFilters } from './useGlobalFilters';
 import { useOperationalContext } from './useOperationalContext';
+import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
 
 export interface AccessPoint {
   serialNumber: string;
@@ -168,12 +169,38 @@ export interface DashboardData {
   avgSnr: number;
   avgRssi: number;
   activeSiteId: string | undefined;
+  /**
+   * True when the selected window is entirely in the past, so the controller
+   * cannot answer for it and the time-series below come from stored history.
+   *
+   * The device and client *lists* are unavoidably current state — the controller
+   * exposes no "who was connected last Tuesday" endpoint and AURA does not store
+   * per-client history by default. Consumers must label those sections rather
+   * than presenting today's roster as the selected day's.
+   */
+  isHistorical: boolean;
+  /**
+   * Metrics the controller cannot supply for the selected window, so they are
+   * withheld instead of being filled with a live reading under a past date.
+   */
+  unavailableForRange: string[];
   reload: (isRefresh?: boolean) => void;
 }
 
-export function useDashboardData(): DashboardData {
+export interface UseDashboardDataOptions {
+  /**
+   * The window every figure is computed over. Supplied rather than read from the
+   * global filter directly so the dashboard, its header and its charts are
+   * guaranteed to be describing the same window on the same render.
+   */
+  range: ResolvedTimeRange;
+}
+
+export function useDashboardData({ range }: UseDashboardDataOptions): DashboardData {
   const { filters } = useGlobalFilters();
   const { ctx: operationalCtx } = useOperationalContext();
+  const isHistorical = !range.isLive;
+  const [unavailableForRange, setUnavailableForRange] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -480,11 +507,31 @@ export function useDashboardData(): DashboardData {
     return count > 0 ? Math.round(totalScore / count) : 0;
   };
 
+  /**
+   * RF quality trend.
+   *
+   * The controller's report API takes a duration back from now, so it cannot
+   * answer for a past calendar day, and RF quality is not one of the families
+   * the collector persists. For a historical window the series is therefore
+   * withheld and named in `unavailableForRange` — showing the live 24-hour curve
+   * under a past date would be a fabrication, and a plausible-looking one.
+   */
   const fetchRFQIData = useCallback(async () => {
     const siteId = getActiveSiteFilter();
+    const duration = controllerDurationFor(range);
+
+    if (duration === null) {
+      setRfqiData([]);
+      setUnavailableForRange((prev) =>
+        prev.includes('RF quality trend') ? prev : [...prev, 'RF quality trend']
+      );
+      return;
+    }
+    setUnavailableForRange((prev) => prev.filter((entry) => entry !== 'RF quality trend'));
+
     try {
       if (siteId) {
-        const rfData = await apiService.fetchRFQualityData(siteId, '24H');
+        const rfData = await apiService.fetchRFQualityData(siteId, duration);
         if (rfData && Array.isArray(rfData)) {
           const processedData = rfData.flatMap((report: any) => {
             if (report.statistics && Array.isArray(report.statistics)) {
@@ -567,7 +614,7 @@ export function useDashboardData(): DashboardData {
       console.error('[Dashboard] Error fetching RFQI data:', error);
       setRfqiData([]);
     }
-  }, [getActiveSiteFilter]);
+  }, [getActiveSiteFilter, range]);
 
   const processAccessPoints = useCallback((aps: AccessPoint[]) => {
     setAccessPoints(aps);
@@ -690,34 +737,58 @@ export function useDashboardData(): DashboardData {
     []
   );
 
+  /**
+   * Throughput history for the selected window, read from PostgreSQL.
+   *
+   * Always queried with explicit bounds. It used to ask for "the last 60
+   * minutes" regardless of the selected range, which meant the chart showed the
+   * last hour whatever the header said — and could not show a past day at all.
+   *
+   * The controller is never consulted here: this series is entirely persisted, so
+   * it answers for a finished day with the gateway disconnected.
+   */
   const loadHistoricalThroughput = useCallback(async () => {
     try {
-      const snapshots = await throughputService.getSnapshotsForLastMinutes(60);
+      const snapshots = await throughputService.getSnapshotsForRange(range.start, range.end);
 
-      if (snapshots.length > 0) {
-        const trend = snapshots.map((snapshot) => {
-          const date = new Date(snapshot.timestamp);
-          const timeStr = date.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          });
-          return {
-            time: timeStr,
-            upload: Math.round(snapshot.totalUpload),
-            download: Math.round(snapshot.totalDownload),
-            total: Math.round(snapshot.totalTraffic),
-          };
-        });
-        setThroughputTrend(trend);
-      } else {
+      if (snapshots.length === 0) {
         setThroughputTrend([]);
+        return;
       }
+
+      // A multi-day window needs the date on the axis; within a single day the
+      // clock alone is unambiguous and much less cluttered.
+      const spansMultipleDays = range.durationMs > 24 * 60 * 60 * 1000;
+      const trend = snapshots.map((snapshot) => {
+        const date = new Date(snapshot.timestamp);
+        const time = spansMultipleDays
+          ? date.toLocaleString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            })
+          : date.toLocaleTimeString(undefined, {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false,
+            });
+        return {
+          time,
+          upload: Math.round(snapshot.totalUpload),
+          download: Math.round(snapshot.totalDownload),
+          total: Math.round(snapshot.totalTraffic),
+        };
+      });
+      setThroughputTrend(trend);
     } catch (error) {
       console.error('[Dashboard] ✗ Failed to load historical throughput:', error);
+      // Cleared rather than left showing another window's data under this
+      // window's label.
       setThroughputTrend([]);
     }
-  }, []);
+  }, [range.start, range.end, range.durationMs]);
 
   const performVendorLookups = useCallback(
     async (
@@ -1160,25 +1231,38 @@ export function useDashboardData(): DashboardData {
 
   useEffect(() => {
     loadDashboardData();
-    loadHistoricalThroughput();
 
     const onCommandRefresh = () => loadDashboardData(true);
     window.addEventListener('aura:dashboard-refresh', onCommandRefresh);
 
-    const interval = setInterval(() => {
-      loadDashboardData(true);
-    }, 60000);
+    // A finished calendar day does not change, so polling the controller for it
+    // is pure waste — and worse, it would keep replacing the view with fresh
+    // current-state data while the header says the range is historical. Manual
+    // refresh still works.
+    const interval = isHistorical
+      ? null
+      : setInterval(() => {
+          loadDashboardData(true);
+        }, 60000);
+
+    return () => {
+      if (interval) clearInterval(interval);
+      window.removeEventListener('aura:dashboard-refresh', onCommandRefresh);
+    };
+  }, [filters.site, operationalCtx.siteId, operationalCtx.mode, isHistorical]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Stored history is a separate concern from the controller fetch above: it is
+  // keyed on the selected window, so changing the range reloads it without
+  // re-pulling the whole dashboard, and it needs no gateway connection.
+  useEffect(() => {
+    loadHistoricalThroughput();
+    if (isHistorical) return undefined;
 
     const historyInterval = setInterval(() => {
       loadHistoricalThroughput();
     }, 300000);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(historyInterval);
-      window.removeEventListener('aura:dashboard-refresh', onCommandRefresh);
-    };
-  }, [filters.site, operationalCtx.siteId, operationalCtx.mode]); // eslint-disable-line react-hooks/exhaustive-deps
+    return () => clearInterval(historyInterval);
+  }, [loadHistoricalThroughput, isHistorical]);
 
   useEffect(() => {
     if (apStats.total > 0 && clientStats.total > 0 && rfqiData.length > 0) {
@@ -1218,6 +1302,8 @@ export function useDashboardData(): DashboardData {
     avgSnr,
     avgRssi,
     activeSiteId: getActiveSiteFilter(),
+    isHistorical,
+    unavailableForRange,
     reload: loadDashboardData,
   };
 }

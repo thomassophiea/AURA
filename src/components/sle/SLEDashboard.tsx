@@ -32,7 +32,6 @@ import { Slider } from '../ui/slider';
 import {
   RefreshCw,
   Building,
-  Clock,
   Target,
   Wifi,
   ShieldCheck,
@@ -43,6 +42,9 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useGlobalFilters } from '../../hooks/useGlobalFilters';
+import { useSelectedTimeRange } from '../../hooks/useSelectedTimeRange';
+import { TimeRangeSelector } from '../TimeRangeSelector';
+import { SelectedRangeLabel } from '../SelectedRangeLabel';
 import { useAppContext } from '@/contexts/AppContext';
 import { useDevModeUnlock } from '../../hooks/useDevModeUnlock';
 import { sleDataCollectionService } from '../../services/sleDataCollection';
@@ -217,12 +219,27 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  // Seven days by default: the backend retains a rolling week, and the trend
-  // now comes from PostgreSQL rather than from whatever this browser happened
-  // to accumulate while the tab was open.
-  const [timeRange, setTimeRange] = useState('7d');
   const selectedSite = filters.site || 'all';
   const setSelectedSite = (value: string) => updateFilter('site', value);
+
+  // The window comes from the global filter, not from local state. It used to be
+  // a `useState('7d')` here, which meant arriving from the dashboard silently
+  // changed the range out from under the user and going back changed it again.
+  // Coverage is scoped to the SLE family so a day is only flagged incomplete
+  // when *SLE* collection actually gapped.
+  const {
+    token: timeRange,
+    setToken: setTimeRange,
+    range: selectedRange,
+    optionGroups: timeRangeGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected: coverageNeverCollected,
+    selectedCoverage,
+  } = useSelectedTimeRange({
+    siteId: selectedSite !== 'all' ? selectedSite : undefined,
+    metricFamily: SLE_METRIC_FAMILY,
+  });
   const [activeTab, setActiveTab] = useState('wireless');
   const [viewMode, setViewMode] = useState<'radial' | 'octopus' | 'honeycomb' | 'waterfall'>(
     'honeycomb'
@@ -353,6 +370,9 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
         const provider = getSleProvider(context);
         const model = await provider.load(context, {
           timeRange,
+          // Explicit bounds, so the provider never re-derives the window from the
+          // token and cannot disagree with what the header says is displayed.
+          range: selectedRange,
           thresholds: siteThresholds,
           siteGroups,
         });
@@ -374,15 +394,26 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedSite, timeRange, siteThresholds, navigationScope, siteGroups, siteGroup, xiqSites]
+    [
+      selectedSite,
+      selectedRange,
+      siteThresholds,
+      navigationScope,
+      siteGroups,
+      siteGroup,
+      xiqSites,
+    ]
   );
 
-  // Initial load + auto-refresh
+  // Initial load, plus auto-refresh only while the window tracks the present. A
+  // finished calendar day does not change, so polling it would just re-fetch the
+  // same answer and churn the controller.
   useEffect(() => {
     loadData();
+    if (!selectedRange.isLive) return undefined;
     const interval = setInterval(() => loadData(true), 60000);
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, [loadData, selectedRange.isLive]);
 
   // Persisted SLE history from the AURA backend. This is the authoritative
   // trend: it survives reloads, redeploys, and a different browser, and it keeps
@@ -396,10 +427,15 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
     neverCollected: historyNeverCollected,
     error: historyError,
   } = useMonitoringHistory({
-    preset: timeRange,
+    // Explicit bounds rather than the token: a calendar-day selection has to hit
+    // that day's local midnights, which a duration token cannot express.
+    start: selectedRange.startIso,
+    end: selectedRange.endIso,
+    resolutionMinutes: selectedRange.bucketMinutes,
     siteId: selectedSite !== 'all' ? selectedSite : undefined,
     metricFamily: SLE_METRIC_FAMILY,
-    refreshIntervalMs: 60_000,
+    // A finished day is immutable, so it is fetched once.
+    refreshIntervalMs: selectedRange.isLive ? 60_000 : 0,
     // Only the controller path has a persisted collector; XIQ has no reachable
     // time-series API through the proxy.
     enabled: source === 'controller',
@@ -450,6 +486,12 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
               <span className="ml-2">- Updated {lastUpdate.toLocaleTimeString()}</span>
             )}
           </p>
+          {/* The resolved dates, so a screenshot of this page is unambiguous. */}
+          <SelectedRangeLabel
+            range={selectedRange}
+            coverage={selectedCoverage}
+            className="mt-2"
+          />
         </div>
         <div className="flex items-center gap-2">
           <Select value={selectedSite} onValueChange={setSelectedSite}>
@@ -495,17 +537,15 @@ export function SLEDashboard({ onClientClick }: SLEDashboardProps = {}) {
             </SelectContent>
           </Select>
 
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-44">
-              <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">Last Hour</SelectItem>
-              <SelectItem value="24h">Last 24 Hours</SelectItem>
-              <SelectItem value="7d">Last 7 Days</SelectItem>
-            </SelectContent>
-          </Select>
+          <TimeRangeSelector
+            value={timeRange}
+            onChange={setTimeRange}
+            optionGroups={timeRangeGroups}
+            dayStatuses={dayStatuses}
+            retentionDays={retentionDays}
+            neverCollected={coverageNeverCollected}
+            triggerClassName="w-52"
+          />
 
           <Button onClick={() => loadData(true)} variant="outline" disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />

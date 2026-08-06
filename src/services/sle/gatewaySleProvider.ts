@@ -19,15 +19,11 @@ import { markSLEDataPresence } from '../../types/sle';
 import type { SLESiteContext } from '../../types/sleContext';
 import type { SLELoadOptions, SLEPageModel, SLEProvider } from '../../types/slePageModel';
 
-function timeRangeToMs(timeRange: string): number {
-  return timeRange === '1h' ? 3600000 : timeRange === '7d' ? 604800000 : 86400000;
-}
-
 async function loadControllerData(
   context: SLESiteContext,
   options: SLELoadOptions
 ): Promise<SLEPageModel> {
-  const { timeRange, thresholds, siteGroups } = options;
+  const { range, thresholds, siteGroups } = options;
   const selectedSite = context.siteId || 'all';
   const siteFilter = selectedSite !== 'all' ? selectedSite : undefined;
   const isOrgScope = context.isOrgScope && siteGroups.length > 0;
@@ -83,11 +79,16 @@ async function loadControllerData(
     apsArr = Array.isArray(apsData) ? apsData : [];
   }
 
-  // Historical data from the SLE collection service
+  // Local trend buffer, bounded by the selected window's real timestamps. This is
+  // the browser's own short-lived collection; the authoritative trend for the
+  // window comes from PostgreSQL and is merged in by the page
+  // (`mergeSleHistory`). Bounding it on both ends matters: with only a start
+  // bound, selecting a past day would still fold in points collected since.
   const historicalData = sleDataCollectionService.getFilteredData({
     siteId: selectedSite,
     scope: 'wireless',
-    startTimestamp: Date.now() - timeRangeToMs(timeRange),
+    startTimestamp: range.start.getTime(),
+    endTimestamp: range.end.getTime(),
   });
 
   // Set active thresholds before computing SLEs

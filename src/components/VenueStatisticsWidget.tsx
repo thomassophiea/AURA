@@ -19,7 +19,18 @@ import { formatCompactNumber } from '../lib/units';
 
 interface VenueStatisticsWidgetProps {
   siteId: string;
-  duration?: string;
+  /**
+   * Controller report duration ('24H', '7D', …), or **null** when the selected
+   * window is a past calendar day.
+   *
+   * The venue report only accepts a duration back from now, so it cannot answer
+   * for a finished day. Null means "do not ask" — falling back to '24H' would
+   * render the last 24 hours under a past date, which is worse than showing
+   * nothing because it looks right.
+   */
+  duration?: string | null;
+  /** The selected window's label, used to explain an unavailable state. */
+  rangeLabel?: string;
 }
 
 interface VenueStats {
@@ -51,15 +62,28 @@ interface VenueStats {
  *
  * Uses Extreme Platform ONE API: GET /v3/sites/{siteId}/report/venue
  */
-export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatisticsWidgetProps) {
+export function VenueStatisticsWidget({
+  siteId,
+  duration = '24H',
+  rangeLabel,
+}: VenueStatisticsWidgetProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<VenueStats | null>(null);
 
+  const unavailableForRange = duration === null;
+
   useEffect(() => {
+    if (unavailableForRange) {
+      // Not even attempted: the controller has no way to answer for a past day.
+      setStats(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
     loadVenueStatistics();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [siteId, duration]);
+  }, [siteId, duration, unavailableForRange]);
 
   const loadVenueStatistics = async () => {
     if (!siteId) {
@@ -71,7 +95,8 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
     setError(null);
 
     try {
-      const data = await apiService.getVenueStatistics(siteId, duration);
+      // Non-null by construction: the effect returns early when duration is null.
+      const data = await apiService.getVenueStatistics(siteId, duration ?? undefined);
 
       if (!data) {
         setError('No venue statistics available');
@@ -122,6 +147,30 @@ export function VenueStatisticsWidget({ siteId, duration = '24H' }: VenueStatist
         <CardContent>
           <div className="flex items-center justify-center h-64">
             <div className="text-muted-foreground">Loading venue statistics...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (unavailableForRange) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Venue Statistics
+          </CardTitle>
+          <CardDescription>
+            Not available for {rangeLabel ? rangeLabel.toLowerCase() : 'a past date'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex h-64 items-center justify-center px-6 text-center">
+            <div className="max-w-sm text-sm text-muted-foreground">
+              The controller&apos;s venue report only covers a period ending now, so it cannot be
+              retrieved for a past day. Switch to a recent range to see venue statistics.
+            </div>
           </div>
         </CardContent>
       </Card>

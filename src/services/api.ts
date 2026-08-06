@@ -130,6 +130,22 @@ export type {
   QueryOptions,
 } from '../types/api';
 
+/**
+ * Read one key from localStorage without ever throwing.
+ *
+ * Used only on the import-time path in the constructor; the rest of this class
+ * touches localStorage from inside methods, where a throw is attributable and
+ * recoverable.
+ */
+function readStoredToken(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem?.(key) ?? null;
+  } catch {
+    // Private-browsing quota errors and disabled storage both land here.
+    return null;
+  }
+}
+
 class ApiService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -146,9 +162,18 @@ class ApiService {
   private maxLogs = 500; // Maximum number of logs to keep
 
   constructor() {
-    // Load tokens from localStorage on initialization
-    this.accessToken = localStorage.getItem('access_token');
-    this.refreshToken = localStorage.getItem('refresh_token');
+    // Load tokens from localStorage on initialization.
+    //
+    // Read defensively: this runs at module *import* time, because the singleton
+    // is constructed at the bottom of this file. Any environment where
+    // `localStorage` is absent or only partially implemented — a Node runtime
+    // with its own experimental `localStorage` global shadowing jsdom's, a test
+    // that stubs the global with a partial object, SSR — would otherwise throw
+    // during import and take down every module that transitively imports this
+    // one, with a stack trace pointing at an unrelated file. A missing token
+    // store is a recoverable "not signed in", never an import-time crash.
+    this.accessToken = readStoredToken('access_token');
+    this.refreshToken = readStoredToken('refresh_token');
   }
 
   /**

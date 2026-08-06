@@ -129,19 +129,30 @@ describe('monitoringHistory.getLatest / getSourceHealth', () => {
 describe('range helpers', () => {
   const NOW = new Date('2026-08-05T12:00:00.000Z');
 
-  it('defaults to seven days', () => {
+  it('resolves the seven-day window', () => {
     const range = rangeFromPreset('7d', NOW);
     expect(range.start).toBe('2026-07-29T12:00:00.000Z');
     expect(range.end).toBe('2026-08-05T12:00:00.000Z');
   });
 
-  it('falls back to seven days for an unknown preset', () => {
-    expect(rangeFromPreset('nonsense', NOW)).toEqual(rangeFromPreset('7d', NOW));
+  it('falls back to the app default for an unknown preset', () => {
+    // Not seven days: a typo'd token should not silently request the largest
+    // window the store holds.
+    expect(rangeFromPreset('nonsense', NOW)).toEqual(rangeFromPreset('24h', NOW));
   });
 
   it('supports shorter presets', () => {
     expect(rangeFromPreset('1h', NOW).start).toBe('2026-08-05T11:00:00.000Z');
     expect(rangeFromPreset('24h', NOW).start).toBe('2026-08-04T12:00:00.000Z');
+  });
+
+  it('resolves a calendar-day token to that local day, not a rolling window', () => {
+    const yesterday = rangeFromPreset('day-1', NOW);
+    const rolling = rangeFromPreset('24h', NOW);
+    expect(yesterday.start).not.toBe(rolling.start);
+    // Local midnight of the previous local day, expressed in UTC.
+    const expectedStart = new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate() - 1);
+    expect(yesterday.start).toBe(expectedStart.toISOString());
   });
 
   it('emits UTC ISO-8601', () => {

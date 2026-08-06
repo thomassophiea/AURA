@@ -1198,7 +1198,7 @@ app.get('/api/management/platformmanager/v1/packetcapture/status/:id', (req, res
 // from that. `requireAuth` (presence-only) would let anyone with an arbitrary
 // Bearer string poison stored throughput history for a registered controller.
 const throughputScope = monitoringConfig
-  ? createRequireControllerScope()
+  ? createRequireControllerScope({ graceMs: monitoringConfig.authGraceSeconds * 1000 })
   : (_req, res) => res.status(503).json({ error: 'Monitoring persistence is not configured' });
 
 // Snapshots are pushed by the browser rather than polled, so they are

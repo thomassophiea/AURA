@@ -108,6 +108,15 @@ export interface CollectionRunSummary {
 export interface HistoryMeta {
   start: string;
   end: string;
+  /**
+   * What the caller asked for, as opposed to `start`, which is what was served.
+   * They differ when the requested window reached past retention.
+   */
+  requestedStart: string;
+  /** True when `start` was moved forward to the retention boundary. */
+  clampedToRetention: boolean;
+  /** The oldest instant still retained. Nothing before this is selectable. */
+  retentionStart: string;
   retentionDays: number;
   truncated: boolean;
   maxPoints: number;
@@ -116,6 +125,8 @@ export interface HistoryMeta {
   earliestAvailable: string | null;
   /** True only when no sample has ever been stored for this scope. */
   neverCollected: boolean;
+  /** Present when the window was trimmed by the point cap. */
+  effectiveStart?: string | null;
   servingFrom: 'database';
   sources: SourceHealth[];
 }
@@ -151,6 +162,34 @@ export interface LatestResponse {
     staleAfterSeconds: number;
     servingFrom: 'database';
     neverCollected: boolean;
+    sources: SourceHealth[];
+  };
+}
+
+/** What the store holds for one local calendar day. */
+export interface CoverageDay {
+  /** Local `YYYY-MM-DD` in the requested timezone. */
+  localDate: string;
+  sampleCount: number;
+  firstObservedAt: string;
+  lastObservedAt: string;
+  /** Distinct local hours containing at least one sample. */
+  hoursPresent: number;
+}
+
+export interface CoverageResponse {
+  days: CoverageDay[];
+  meta: {
+    timeZone: string;
+    start: string;
+    end: string;
+    requestedStart: string;
+    clampedToRetention: boolean;
+    retentionStart: string;
+    retentionDays: number;
+    earliestAvailable: string | null;
+    neverCollected: boolean;
+    servingFrom: 'database';
     sources: SourceHealth[];
   };
 }

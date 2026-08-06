@@ -25,6 +25,7 @@ import {
   deleteOldCollectionRuns,
   countSamples,
   getEarliestObservedAt,
+  queryDailyCoverage,
 } from './sampleRepository.js';
 import { query } from '../db/pool.js';
 
@@ -508,6 +509,171 @@ describe.skipIf(!hasTestDatabase)('sampleRepository (PostgreSQL)', () => {
       );
       const result = await deleteOldCollectionRuns({ olderThan: new Date('2026-08-01T00:00:00Z') });
       expect(result.deleted).toBe(1);
+    });
+  });
+
+  describe('queryDailyCoverage', () => {
+    const WIDE = {
+      start: new Date('2026-01-01T00:00:00Z'),
+      end: new Date('2027-01-01T00:00:00Z'),
+    };
+
+    /** One sample at each given UTC instant. */
+    const seedAt = (instants, overrides = {}) =>
+      insertSamples(
+        instants.map((iso) =>
+          makeSample({
+            monitoredSourceId: source.id,
+            observedAt: new Date(iso),
+            collectedAt: new Date(iso),
+            ...overrides,
+          })
+        )
+      );
+
+    beforeEach(async () => {
+      await truncateMonitoringTables();
+      source = await seedSource({ baseUrl: 'https://ctrl-a.example.com', orgId: 'org-a' });
+      otherSource = await seedSource({ baseUrl: 'https://ctrl-b.example.com', orgId: 'org-b' });
+    });
+
+    it('groups samples by local calendar day in the requested zone', async () => {
+      // 02:00 UTC on Aug 5 is still Aug 4 at 22:00 in New York. Grouping on UTC
+      // would put this in the wrong day — which is the day the user picked.
+      await seedAt(['2026-08-05T02:00:00Z']);
+
+      const utc = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+      const newYork = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'America/New_York',
+      });
+
+      expect(utc.map((day) => day.localDate)).toEqual(['2026-08-05']);
+      expect(newYork.map((day) => day.localDate)).toEqual(['2026-08-04']);
+    });
+
+    it('counts samples and distinct local hours per day', async () => {
+      await seedAt([
+        '2026-08-04T01:00:00Z',
+        '2026-08-04T01:30:00Z', // same hour — one bucket, two samples
+        '2026-08-04T05:00:00Z',
+        '2026-08-05T09:00:00Z',
+      ]);
+
+      const days = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+
+      expect(days).toHaveLength(2);
+      expect(days[0]).toMatchObject({
+        localDate: '2026-08-04',
+        sampleCount: 3,
+        hoursPresent: 2,
+      });
+      expect(days[1]).toMatchObject({ localDate: '2026-08-05', sampleCount: 1, hoursPresent: 1 });
+    });
+
+    it('reports the first and last observation within each day', async () => {
+      await seedAt(['2026-08-04T03:00:00Z', '2026-08-04T21:00:00Z']);
+      const [day] = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+      expect(new Date(day.firstObservedAt).toISOString()).toBe('2026-08-04T03:00:00.000Z');
+      expect(new Date(day.lastObservedAt).toISOString()).toBe('2026-08-04T21:00:00.000Z');
+    });
+
+    it('omits days with no samples rather than reporting them as zero', async () => {
+      // A day absent from the result means "nothing stored", which the UI renders
+      // as unselectable. A zero row would read as a measured quiet day.
+      await seedAt(['2026-08-02T10:00:00Z', '2026-08-05T10:00:00Z']);
+      const days = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+      expect(days.map((day) => day.localDate)).toEqual(['2026-08-02', '2026-08-05']);
+    });
+
+    it('returns days in ascending order', async () => {
+      await seedAt(['2026-08-05T10:00:00Z', '2026-08-01T10:00:00Z', '2026-08-03T10:00:00Z']);
+      const days = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+      expect(days.map((day) => day.localDate)).toEqual([
+        '2026-08-01',
+        '2026-08-03',
+        '2026-08-05',
+      ]);
+    });
+
+    it('honours the requested window bounds', async () => {
+      await seedAt(['2026-08-01T10:00:00Z', '2026-08-05T10:00:00Z']);
+      const days = await queryDailyCoverage({
+        sourceIds: [source.id],
+        start: new Date('2026-08-03T00:00:00Z'),
+        end: new Date('2026-08-06T00:00:00Z'),
+        timeZone: 'UTC',
+      });
+      expect(days.map((day) => day.localDate)).toEqual(['2026-08-05']);
+    });
+
+    it('never reports another source\'s days', async () => {
+      await seedAt(['2026-08-04T10:00:00Z']);
+      await insertSamples([
+        makeSample({
+          monitoredSourceId: otherSource.id,
+          observedAt: new Date('2026-08-01T10:00:00Z'),
+          collectedAt: new Date('2026-08-01T10:00:00Z'),
+        }),
+      ]);
+
+      const days = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+      });
+      expect(days.map((day) => day.localDate)).toEqual(['2026-08-04']);
+    });
+
+    it('narrows to a site and a metric family', async () => {
+      await seedAt(['2026-08-04T10:00:00Z'], { siteId: 'site-1', metricFamily: 'sle' });
+      await seedAt(['2026-08-05T10:00:00Z'], { siteId: 'site-2', metricFamily: 'sle' });
+      await seedAt(['2026-08-06T10:00:00Z'], { siteId: 'site-1', metricFamily: 'throughput' });
+
+      const siteOnly = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+        siteId: 'site-1',
+      });
+      expect(siteOnly.map((day) => day.localDate)).toEqual(['2026-08-04', '2026-08-06']);
+
+      const siteAndFamily = await queryDailyCoverage({
+        sourceIds: [source.id],
+        ...WIDE,
+        timeZone: 'UTC',
+        siteId: 'site-1',
+        metricFamily: 'sle',
+      });
+      expect(siteAndFamily.map((day) => day.localDate)).toEqual(['2026-08-04']);
+    });
+
+    it('returns nothing for an empty scope instead of querying every source', async () => {
+      await seedAt(['2026-08-04T10:00:00Z']);
+      expect(
+        await queryDailyCoverage({ sourceIds: [], ...WIDE, timeZone: 'UTC' })
+      ).toEqual([]);
     });
   });
 });

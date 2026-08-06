@@ -15,7 +15,6 @@ import {
   Server,
   Users,
   Network,
-  Clock,
   AlertCircle,
   Signal,
   Download,
@@ -32,6 +31,9 @@ import {
 import { apiService, Site } from '../services/api';
 import { toast } from 'sonner';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
+import { TimeRangeSelector } from './TimeRangeSelector';
+import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { useContextScope } from '../hooks/useContextScope';
 import { useCortexContext } from '../contexts/CortexContext';
 import {
@@ -167,8 +169,20 @@ export function ServiceLevelsEnhanced() {
   const setSelectedSite = (value: string) => updateFilter('site', value);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
 
-  // Filters
-  const [timeRange, setTimeRange] = useState('24h');
+  // Time range comes from the global filter, not local state: arriving here from
+  // the dashboard must not silently change the window the operator selected.
+  const {
+    token: timeRange,
+    setToken: setTimeRange,
+    range: selectedRange,
+    optionGroups: timeRangeGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected: coverageNeverCollected,
+    selectedCoverage,
+  } = useSelectedTimeRange({
+    siteId: filters.site !== 'all' ? filters.site : undefined,
+  });
 
   // Client Detail Dialog
   const [selectedClient, setSelectedClient] = useState<Station | null>(null);
@@ -613,31 +627,45 @@ export function ServiceLevelsEnhanced() {
   // Use historical data if in rewind mode, otherwise use live data
   const displayMetrics = isLive ? serviceReport : historicalMetrics || serviceReport;
 
+  /**
+   * Bucket boundaries for the selected window.
+   *
+   * The series below carry the *current* service report's value across the axis —
+   * the service report API exposes no time series of its own. That is tolerable
+   * for a window ending now, where the value genuinely is the latest reading.
+   * It is not tolerable for a past day: it would paint today's numbers under
+   * yesterday's date. So a historical window yields no points and the charts show
+   * their empty state instead.
+   */
+  const seriesBuckets = (): number[] => {
+    if (!selectedRange.isLive) return [];
+    const intervalMs = selectedRange.bucketMinutes * 60_000;
+    const count = Math.max(1, Math.min(96, Math.round(selectedRange.durationMs / intervalMs)));
+    const end = selectedRange.end.getTime();
+    return Array.from({ length: count }, (_, index) => end - (count - 1 - index) * intervalMs);
+  };
+
+  const formatBucket = (timestamp: number): string =>
+    new Date(timestamp).toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      ...(selectedRange.durationMs > 24 * 60 * 60 * 1000
+        ? { month: 'short', day: 'numeric' }
+        : {}),
+    });
+
   // Historical time-series: only emit data for metrics available from the API.
   // clientCount and averageRssi come from real station data; no random variation applied.
   const generateTimeSeries = () => {
-    if (!displayMetrics?.metrics) return [];
+    const metrics = displayMetrics?.metrics;
+    if (!metrics) return [];
 
-    const points: Array<{ timestamp: number; time: string; clientCount: number }> = [];
-    const now = Date.now();
-    const interval = timeRange === '1h' ? 300000 : timeRange === '24h' ? 3600000 : 86400000;
-    const count = timeRange === '1h' ? 12 : timeRange === '24h' ? 24 : 30;
-
-    for (let i = count - 1; i >= 0; i--) {
-      const timestamp = now - i * interval;
-      points.push({
-        timestamp,
-        time: new Date(timestamp).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {}),
-        }),
-        clientCount: displayMetrics.metrics.clientCount || 0,
-        // latency and reliability omitted — no real time-series data available from API
-      });
-    }
-
-    return points;
+    return seriesBuckets().map((timestamp) => ({
+      timestamp,
+      time: formatBucket(timestamp),
+      clientCount: metrics.clientCount || 0,
+      // latency and reliability omitted — no real time-series data available from API
+    }));
   };
 
   const timeSeries = generateTimeSeries();
@@ -645,42 +673,23 @@ export function ServiceLevelsEnhanced() {
   // Experience time series: scored from real RSSI only; no random variation.
   // Metrics requiring connection-event data (reliability, successRate, packetLoss) are excluded.
   const generateExperienceTimeSeries = () => {
-    if (!displayMetrics?.metrics) return [];
-
-    const points: Array<{
-      timestamp: number;
-      time: string;
-      experienceScore: number;
-      clientCount: number;
-      latency: number;
-    }> = [];
-    const now = Date.now();
-    const interval = timeRange === '1h' ? 300000 : timeRange === '24h' ? 3600000 : 86400000;
-    const count = timeRange === '1h' ? 12 : timeRange === '24h' ? 24 : 30;
+    const metrics = displayMetrics?.metrics;
+    if (!metrics) return [];
 
     // Compute a signal-quality score from real RSSI if available
-    const rssi = displayMetrics.metrics.averageRssi;
+    const rssi = metrics.averageRssi;
     const signalScore =
       rssi !== undefined ? Math.max(0, Math.min(100, ((rssi + 100) / 50) * 100)) : 0;
 
-    const latencyValue = displayMetrics.metrics.latency ?? 0;
+    const latencyValue = metrics.latency ?? 0;
 
-    for (let i = count - 1; i >= 0; i--) {
-      const timestamp = now - i * interval;
-      points.push({
-        timestamp,
-        time: new Date(timestamp).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          ...(timeRange === '7d' ? { month: 'short', day: 'numeric' } : {}),
-        }),
-        experienceScore: signalScore,
-        clientCount: displayMetrics.metrics.clientCount || 0,
-        latency: latencyValue,
-      });
-    }
-
-    return points;
+    return seriesBuckets().map((timestamp) => ({
+      timestamp,
+      time: formatBucket(timestamp),
+      experienceScore: signalScore,
+      clientCount: metrics.clientCount || 0,
+      latency: latencyValue,
+    }));
   };
 
   // Prepare radar chart data
@@ -743,6 +752,11 @@ export function ServiceLevelsEnhanced() {
               <span className="ml-2">• Last updated {lastUpdate.toLocaleTimeString()}</span>
             )}
           </p>
+          <SelectedRangeLabel
+            range={selectedRange}
+            coverage={selectedCoverage}
+            className="mt-2"
+          />
         </div>
         <div className="flex items-center gap-2">
           <Select
@@ -775,17 +789,15 @@ export function ServiceLevelsEnhanced() {
             </SelectContent>
           </Select>
 
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <Clock className="h-4 w-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1h">Last Hour</SelectItem>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 Days</SelectItem>
-            </SelectContent>
-          </Select>
+          <TimeRangeSelector
+            value={timeRange}
+            onChange={setTimeRange}
+            optionGroups={timeRangeGroups}
+            dayStatuses={dayStatuses}
+            retentionDays={retentionDays}
+            neverCollected={coverageNeverCollected}
+            triggerClassName="w-52"
+          />
           <Button onClick={() => loadServices(true)} variant="outline" disabled={refreshing}>
             <RefreshCw className={`mr-2 h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -1174,7 +1186,7 @@ export function ServiceLevelsEnhanced() {
               <Card>
                 <CardHeader>
                   <CardTitle>Client Count Trend</CardTitle>
-                  <CardDescription>Historical client connections over {timeRange}</CardDescription>
+                  <CardDescription>Historical client connections — {selectedRange.rangeLabel}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -1208,7 +1220,7 @@ export function ServiceLevelsEnhanced() {
               <Card>
                 <CardHeader>
                   <CardTitle>Latency Trend</CardTitle>
-                  <CardDescription>Network latency over {timeRange}</CardDescription>
+                  <CardDescription>Network latency — {selectedRange.rangeLabel}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>
@@ -1243,7 +1255,7 @@ export function ServiceLevelsEnhanced() {
               <Card>
                 <CardHeader>
                   <CardTitle>Reliability Trend</CardTitle>
-                  <CardDescription>Service reliability over {timeRange}</CardDescription>
+                  <CardDescription>Service reliability — {selectedRange.rangeLabel}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={300}>

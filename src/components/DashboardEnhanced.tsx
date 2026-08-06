@@ -9,8 +9,11 @@ import { ServiceClientsDialog } from './dashboard/ServiceClientsDialog';
 import { NetworkDashboardView } from './dashboard/NetworkDashboardView';
 import { ClientProtocolWidget } from './dashboard/ClientProtocolWidget';
 import { UnifiedFilterBar, SelectorTab } from './UnifiedFilterBar';
+import { HistoricalScopeNotice } from './dashboard/HistoricalScopeNotice';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
+import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
+import { controllerDurationFor } from '../lib/timeRange';
 import { TimelineCursorControls } from './TimelineCursorControls';
 import { usePersonaContext } from '../contexts/PersonaContext';
 import {
@@ -29,6 +32,12 @@ function DashboardEnhancedComponent() {
     (section: DashboardSection) => isSectionVisible(activePersona, section),
     [activePersona]
   );
+
+  // The one window this whole page describes. Shared with the filter bar through
+  // the global filter, so navigating away and back keeps the selection.
+  const { range: timeRange, selectedCoverage } = useSelectedTimeRange({
+    siteId: filters.site !== 'all' ? filters.site : undefined,
+  });
 
   const {
     loading,
@@ -53,8 +62,10 @@ function DashboardEnhancedComponent() {
     avgSnr,
     avgRssi,
     activeSiteId,
+    isHistorical,
+    unavailableForRange,
     reload,
-  } = useDashboardData();
+  } = useDashboardData({ range: timeRange });
 
   // UI-only dialog state
   const [selectedClient, setSelectedClient] = useState<Station | null>(null);
@@ -275,6 +286,8 @@ function DashboardEnhancedComponent() {
         lastUpdate={lastUpdate}
         refreshing={refreshing}
         onRefresh={() => reload(true)}
+        timeRange={timeRange}
+        timeRangeCoverage={selectedCoverage}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -288,6 +301,16 @@ function DashboardEnhancedComponent() {
         />
         <TimelineCursorControls />
       </div>
+
+      {/* Names, once and plainly, which parts of the page a past window cannot
+          re-scope. Without this the inventory tiles would read as the selected
+          day's numbers. */}
+      {isHistorical && (
+        <HistoricalScopeNotice
+          range={timeRange}
+          unavailableMetrics={unavailableForRange}
+        />
+      )}
 
       {selectorTab === 'ai-insights' && (
         <>
@@ -382,17 +405,12 @@ function DashboardEnhancedComponent() {
           poorServices={poorServices}
           notifications={notifications}
           activeSiteId={activeSiteId ?? null}
-          venueDuration={
-            filters.timeRange === '15m'
-              ? '15M'
-              : filters.timeRange === '1h'
-                ? '1H'
-                : filters.timeRange === '7d'
-                  ? '7D'
-                  : filters.timeRange === '30d'
-                    ? '30D'
-                    : '24H'
-          }
+          // Null for a past day: the controller's venue report takes a duration
+          // back from now and cannot express "that Tuesday", so the widget must
+          // read from stored history or say it has nothing, never substitute the
+          // last 24 hours.
+          venueDuration={controllerDurationFor(timeRange)}
+          rangeLabel={timeRange.label}
         />
       )}
 

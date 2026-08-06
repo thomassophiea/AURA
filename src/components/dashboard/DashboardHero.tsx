@@ -9,8 +9,10 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '../ui/button';
 import { RelativeTime } from '../ui/RelativeTime';
 import { ConnectionState } from '../ui/ConnectionState';
+import { SelectedRangeLabel } from '../SelectedRangeLabel';
 import type { PersonaDashboardProfile } from '../../config/personaDashboardConfig';
 import type { PersonaId } from '../../config/personaDefinitions';
+import type { ResolvedTimeRange } from '../../lib/timeRange';
 
 interface DashboardHeroProps {
   activePersona: PersonaId;
@@ -18,6 +20,10 @@ interface DashboardHeroProps {
   lastUpdate: Date | null;
   refreshing: boolean;
   onRefresh: () => void;
+  /** The window every figure below is computed over. */
+  timeRange: ResolvedTimeRange;
+  /** Completeness note for the selected window, when there is one. */
+  timeRangeCoverage?: { severity: 'info' | 'warning'; message: string } | null;
 }
 
 function DashboardHeroComponent({
@@ -26,13 +32,22 @@ function DashboardHeroComponent({
   lastUpdate,
   refreshing,
   onRefresh,
+  timeRange,
+  timeRangeCoverage = null,
 }: DashboardHeroProps) {
+  const isHistorical = !timeRange.isLive;
+
   return (
     <div className="aura-hero">
       <div className="aura-hero-title-block">
         <div className="aura-eyebrow">
-          <span className="aura-live-dot" aria-hidden="true" />
-          <span>Network Intelligence — Live Telemetry</span>
+          {/* The live dot and the word "Live" are only honest for a window that
+              ends at now. A finished day is history, and saying otherwise is the
+              one claim this header must never make. */}
+          {!isHistorical && <span className="aura-live-dot" aria-hidden="true" />}
+          <span>
+            {isHistorical ? 'Network Intelligence — Historical' : 'Network Intelligence — Live Telemetry'}
+          </span>
           <span className="aura-eyebrow-rule" aria-hidden="true" />
         </div>
         <h2 className="aura-hero-title">
@@ -41,6 +56,11 @@ function DashboardHeroComponent({
         {activePersona !== 'super-user' && personaConfig && (
           <span className="aura-hero-coord">{personaConfig.dashboardLabel}</span>
         )}
+        <SelectedRangeLabel
+          range={timeRange}
+          coverage={timeRangeCoverage}
+          className="mt-2"
+        />
       </div>
       <div className="aura-hero-meta">
         <ConnectionState />

@@ -140,6 +140,25 @@ variable carries a secret; anything `VITE_`-prefixed is compiled into the browse
 nullable columns they mirror. This is what makes a retried, crashed, or duplicated
 collector safe: re-ingesting a window updates rows in place. A random UUID would not.
 
+### Read indexes
+
+`0002_timerange_indexes.sql`. Every read path resolves an authorized source set *first*, so
+the leading column of a useful index is always `monitored_source_id`:
+
+- `(monitored_source_id, metric_family, observed_at DESC)` — history, coverage, aggregate.
+- `(monitored_source_id, site_id, metric_family, observed_at DESC) WHERE site_id IS NOT NULL`
+  — a dashboard filtered to one site. Partial, because a site-scoped query never wants the
+  org-wide rows.
+
+0001's `idx_metric_samples_site_observed` and `idx_metric_samples_metric_observed` were
+**dropped**. Neither led with `monitored_source_id`, so neither could serve a source-scoped
+query; they only cost write throughput on a table the collector appends to continuously.
+
+`CREATE INDEX CONCURRENTLY` is not available here — the migration runner wraps each file in a
+transaction — so these take a brief write lock on `metric_samples`. Acceptable at a rolling
+7 days with a backing-off collector; a much larger table would need the index built outside
+the runner.
+
 ### Metric semantics
 
 `server/monitoring/metricRegistry.js` classifies every metric before storage:
@@ -229,6 +248,38 @@ The `/api/throughput/*` endpoints use the same scope middleware. They read and w
 history now, so presence-only auth would let anyone with an arbitrary Bearer string poison
 stored throughput for a registered controller.
 
+### Reading history while the controller is down
+
+Validating every read against the controller had a perverse consequence: a gateway outage
+locked operators out of the history collected *before* the outage — the one moment it is most
+wanted. `MONITORING_AUTH_GRACE_SECONDS` (default 900) fixes that. A token that has already
+validated successfully keeps working for that long when the controller **cannot be
+contacted**, and `req.monitoringScope.degradedAuth` records that it happened.
+
+The grace is narrow on purpose:
+
+- Only a *successful* validation writes to the grace cache, so an unknown token is never
+  admitted, outage or not.
+- A controller that **answers** `401`/`403` is definitive: the request is rejected
+  immediately and the token is evicted from the grace cache, so a later outage cannot
+  resurrect it.
+- Any other failure — transport error, timeout, `5xx`, a proxy error, a gateway mid-restart —
+  says nothing about the token and is treated as unreachable.
+- With no usable grace record the response is **503 "Controller unreachable"**, not 401. A
+  401 would send the operator to a login screen that cannot help them.
+- Grace is **not** extended by a grace-authorized request. Only a real success refreshes the
+  record, so the window is always measured from the last time the controller actually
+  confirmed the token — otherwise it would renew itself indefinitely.
+
+**Known limit, stated plainly.** AURA has no identity provider of its own; the controller is
+the only thing that can vouch for a token. So a gateway that stays down *longer than the grace
+window* does eventually block reads of stored history, even though the data is sitting in
+PostgreSQL. The default is deliberately conservative: controller tokens themselves live on the
+order of an hour, and a grace longer than the token's own lifetime would let an expired token
+keep reading. Deployments that would rather have availability during multi-hour outages can
+raise `MONITORING_AUTH_GRACE_SECONDS` — that is a security tradeoff to make consciously, not a
+default to inherit.
+
 Responses never carry stack traces, database errors, credentials, or raw controller
 bodies. `errorSanitizer.js` redacts bearer tokens, embedded credentials, and secret query
 parameters before anything is stored or logged.
@@ -240,6 +291,80 @@ is hit the response sets `truncated: true` and `effectiveStart` to the real begi
 what came back. Truncation drops the **oldest** points, never the newest — losing the
 present on a monitoring chart reads as "nothing has happened lately", which is the most
 misleading way to trim.
+
+### Ranges past the retention boundary
+
+`resolveRange` used to reject any window starting before `now - retentionDays`. That made the
+**oldest selectable day unselectable**: "7 days ago" as a local calendar date begins at that
+day's midnight, up to 24 hours older than `now - 7d`.
+
+It now trims instead of refusing, and reports the trim:
+
+| Requested window | Result |
+|---|---|
+| Fully retained | Served as asked. `clampedToRetention: false`. |
+| Starts up to a day before the boundary | `start` moved to the boundary. `clampedToRetention: true`, `requestedStart` reports the original. The UI labels the day incomplete. |
+| Ends before the boundary | `range_outside_retention`. Serving it would return an empty window that reads as an idle network. |
+| Spans much more than retention (e.g. 30 days) | `range_too_large`. Trimming to 7 would hand back a window three quarters empty. |
+
+Every response also carries `retentionStart`, which is the hard floor for what is selectable.
+
+## Time-range selection (the UI contract)
+
+The dashboard's window is one token in `useGlobalFilters` — so it survives navigation and
+reload — resolved by `src/lib/timeRange.ts`. Two kinds exist and the distinction drives real
+behaviour:
+
+- **`day-0` … `day-7`** — a local calendar day, midnight to 23:59:59.999 in the *browser's*
+  timezone. Boundaries come from the local `Date` constructor, so a DST transition yields a
+  correct 23- or 25-hour day. `day-0` (Today) ends at *now*, not at a midnight in the future.
+- **`15m` … `7d`** — a duration ending at now.
+
+`range.isLive` is derived (does the window end at now?) and is the flag everything gates on:
+
+- **Polling.** A finished day does not change, so the dashboard, the SLE page and
+  `useMonitoringHistory` all stop their refresh intervals for it.
+- **Gateway avoidance.** `controllerDurationFor(range)` returns `null` for a finished day.
+  The controller's report APIs only accept a duration back from now and cannot express "that
+  Tuesday", so callers must not ask. `VenueStatisticsWidget` and the RF-quality series render
+  an explicit "not available for this window" state rather than substituting the last 24 hours
+  under a past date.
+- **Labelling.** `DashboardHero` drops the "Live Telemetry" eyebrow and the live dot, and
+  `HistoricalScopeNotice` states which panels remain current state.
+
+**What a past day genuinely serves from PostgreSQL:** all seven SLEs, AP health and AP counts,
+client counts (all reconstructable from the `sle` family's stored `numerator`/`denominator`),
+and the throughput trend. None of it needs the controller.
+
+**What it cannot:** the AP, client and service *lists*. The controller exposes no "who was
+connected last Tuesday" endpoint and AURA does not persist per-client rosters by default (see
+Privacy). Those panels show current state and say so. They are not silently re-labelled.
+
+### `GET /api/monitoring/coverage`
+
+Backs the selector's disabled and "incomplete" states. Without it the UI would offer every
+day and let the user discover an empty chart.
+
+```
+GET /api/monitoring/coverage?start=…&end=…&timeZone=America/New_York[&siteId=…][&metricFamily=…]
+→ { days: [{ localDate, sampleCount, firstObservedAt, lastObservedAt, hoursPresent }],
+    meta: { retentionStart, retentionDays, neverCollected, clampedToRetention, … } }
+```
+
+Calendar semantics stay on the **client**: it sends bounds it computed in its own timezone,
+and `timeZone` only names the zone the `GROUP BY` key is expressed in. Re-deriving local
+midnights server-side for an arbitrary IANA zone would put that logic in a second place where
+it could disagree with the labels the user is reading. The zone is validated against `Intl`
+before it reaches an `AT TIME ZONE` expression, so a bad locale is a 400 rather than a 503.
+
+Completeness is measured in **local hour buckets**, not sample counts: the collector's
+interval is configurable and differs per family, so "how many samples should a day have" is
+unanswerable, while "did every hour report something" is. `src/lib/timeRangeAvailability.ts`
+turns that into `complete` / `partial` / `empty` / `outside-retention`, tolerating one missing
+hour before flagging a day. `empty` and `outside-retention` are unselectable; `partial` stays
+selectable with the reason attached — a partly-covered day is usually still what the operator
+wants. A day clipped by retention is **never** reported as complete, even at full coverage of
+its retained hours.
 
 ## Privacy
 

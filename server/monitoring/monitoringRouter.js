@@ -16,7 +16,12 @@ import { Router, json as expressJson } from 'express';
 
 import { loadMonitoringConfig } from './config.js';
 import { createRequireControllerScope } from './requireControllerScope.js';
-import { queryHistory, queryLatest, getEarliestObservedAt } from './sampleRepository.js';
+import {
+  queryHistory,
+  queryLatest,
+  getEarliestObservedAt,
+  queryDailyCoverage,
+} from './sampleRepository.js';
 import {
   listRecentRuns,
   upsertSource,
@@ -48,6 +53,23 @@ function parseDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/**
+ * Accept an IANA timezone only if this runtime can actually resolve it.
+ *
+ * Validated here rather than trusted, because the value reaches an `AT TIME
+ * ZONE` expression: an unknown zone would make PostgreSQL raise, turning a
+ * typo in a browser's reported locale into a 503 for the whole selector.
+ */
+export function validateTimeZone(value, fallback = 'UTC') {
+  if (!value || typeof value !== 'string') return fallback;
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value });
+    return value;
+  } catch {
+    return null;
+  }
+}
+
 function parseList(value) {
   if (!value) return null;
   const list = String(value)
@@ -58,41 +80,81 @@ function parseList(value) {
 }
 
 /**
+ * How far past retention a request may reach before it is refused rather than
+ * trimmed.
+ *
+ * A calendar day at the far edge of the window necessarily starts before the
+ * retention boundary — "7 days ago" as a local date begins at that day's
+ * midnight, which is up to 24 hours older than `now - 7d`. Refusing it would
+ * make the oldest day in the retention window unselectable, so a request that
+ * overshoots by no more than a day is clamped to the boundary and the clamp is
+ * reported. A request for thirty days is still refused outright: trimming that
+ * to seven would hand back a window three quarters empty and look like an
+ * outage rather than a shortened range.
+ */
+const RETENTION_OVERSHOOT_ALLOWANCE_MS = MS_PER_DAY;
+
+/**
  * Resolve and validate the requested range.
- * @returns {{ start: Date, end: Date } | { error: string, detail: string }}
+ *
+ * On success returns the window to query plus what the caller originally asked
+ * for, so a trimmed window is always reported as trimmed. Nothing here silently
+ * substitutes a different range.
+ *
+ * @returns {{ start: Date, end: Date, requestedStart: Date, requestedEnd: Date,
+ *             clampedToRetention: boolean, retentionStart: Date }
+ *          | { error: string, detail: string }}
  */
 export function resolveRange({ start, end, now, retentionDays }) {
-  const resolvedEnd = parseDate(end) ?? now;
-  const resolvedStart = parseDate(start) ?? new Date(resolvedEnd.getTime() - retentionDays * MS_PER_DAY);
-
   if (start && !parseDate(start)) {
     return { error: 'invalid_range', detail: '`start` is not a valid ISO-8601 timestamp.' };
   }
   if (end && !parseDate(end)) {
     return { error: 'invalid_range', detail: '`end` is not a valid ISO-8601 timestamp.' };
   }
-  if (resolvedStart >= resolvedEnd) {
+
+  const resolvedEnd = parseDate(end) ?? now;
+  const requestedStart =
+    parseDate(start) ?? new Date(resolvedEnd.getTime() - retentionDays * MS_PER_DAY);
+
+  if (requestedStart >= resolvedEnd) {
     return { error: 'invalid_range', detail: '`start` must be before `end`.' };
   }
 
   const retentionMs = retentionDays * MS_PER_DAY;
-  const span = resolvedEnd.getTime() - resolvedStart.getTime();
-  if (span > retentionMs + RETENTION_BOUNDARY_TOLERANCE_MS) {
+  const retentionStart = new Date(now.getTime() - retentionMs);
+
+  // The whole window predates what is stored. Answering with an empty series
+  // would read as "the network was idle then", so say why instead.
+  if (resolvedEnd.getTime() < retentionStart.getTime() - RETENTION_BOUNDARY_TOLERANCE_MS) {
+    return {
+      error: 'range_outside_retention',
+      detail: `Data before ${retentionStart.toISOString()} is no longer retained. Requesting it would return a misleadingly empty result.`,
+    };
+  }
+
+  const span = resolvedEnd.getTime() - requestedStart.getTime();
+  if (span > retentionMs + RETENTION_OVERSHOOT_ALLOWANCE_MS + RETENTION_BOUNDARY_TOLERANCE_MS) {
     return {
       error: 'range_too_large',
       detail: `Requested ${(span / MS_PER_DAY).toFixed(1)} days but only ${retentionDays} days are retained.`,
     };
   }
 
-  const oldestRetained = new Date(now.getTime() - retentionMs);
-  if (resolvedStart.getTime() < oldestRetained.getTime() - RETENTION_BOUNDARY_TOLERANCE_MS) {
-    return {
-      error: 'range_outside_retention',
-      detail: `Data before ${oldestRetained.toISOString()} is no longer retained. Requesting it would return a misleadingly empty result.`,
-    };
-  }
+  // Partially retained: query what exists and report the trim. `clampedToRetention`
+  // is what lets the UI label the window "partial" instead of implying the whole
+  // day was covered.
+  const clampedToRetention = requestedStart.getTime() < retentionStart.getTime();
+  const resolvedStart = clampedToRetention ? retentionStart : requestedStart;
 
-  return { start: resolvedStart, end: resolvedEnd };
+  return {
+    start: resolvedStart,
+    end: resolvedEnd,
+    requestedStart,
+    requestedEnd: resolvedEnd,
+    clampedToRetention,
+    retentionStart,
+  };
 }
 
 /** Aggregate source health for a scope. Never exposes credentials or raw errors. */
@@ -134,10 +196,13 @@ export function summarizeSourceHealth(sources, { now, staleAfterSeconds }) {
 export function createMonitoringRouter(options = {}) {
   const {
     config = loadMonitoringConfig(),
-    scopeMiddleware = createRequireControllerScope(),
+    scopeMiddleware = createRequireControllerScope({
+      graceMs: config.authGraceSeconds * 1000,
+    }),
     queryHistoryFn = queryHistory,
     queryLatestFn = queryLatest,
     getEarliestObservedAtFn = getEarliestObservedAt,
+    queryDailyCoverageFn = queryDailyCoverage,
     listRecentRunsFn = listRecentRuns,
     upsertSourceFn = upsertSource,
     setSourceCredentialsFn = setSourceCredentials,
@@ -201,6 +266,13 @@ export function createMonitoringRouter(options = {}) {
         meta: {
           start: range.start.toISOString(),
           end: range.end.toISOString(),
+          // What was asked for, next to what was served. A calendar day at the
+          // retention edge is answered with the part that still exists, and the
+          // difference is stated so the UI can label the day incomplete rather
+          // than presenting a partial day as a whole one.
+          requestedStart: range.requestedStart.toISOString(),
+          clampedToRetention: range.clampedToRetention,
+          retentionStart: range.retentionStart.toISOString(),
           retentionDays: config.retentionDays,
           truncated,
           // When truncated, the returned window starts later than requested.
@@ -211,6 +283,89 @@ export function createMonitoringRouter(options = {}) {
           pointCount: points.length,
           // Distinguishes "no data in this window" from "nothing has ever been
           // collected", which the UI renders very differently.
+          earliestAvailable: earliest ? new Date(earliest).toISOString() : null,
+          neverCollected: earliest === null,
+          servingFrom: 'database',
+          sources: summarizeSourceHealth(req.monitoringScope.sources, {
+            now,
+            staleAfterSeconds: config.staleAfterSeconds,
+          }),
+        },
+      });
+    } catch (error) {
+      return fail(res, error, 503);
+    }
+  });
+
+  // ---- Day coverage ------------------------------------------------------
+  /**
+   * Which local calendar days inside the window hold data, and how complete
+   * each one is. This is what lets the date selector disable days that were
+   * never collected and flag days that are only partly there, instead of
+   * offering every day and letting the user discover an empty chart.
+   *
+   * Calendar semantics stay on the client: it sends explicit `start`/`end`
+   * bounds it computed in its own timezone, and `timeZone` only names the zone
+   * the grouping key is expressed in. Re-deriving local midnights here for an
+   * arbitrary IANA zone would duplicate that logic in a second place, where it
+   * could disagree with the labels the user is reading.
+   */
+  router.get('/monitoring/coverage', async (req, res) => {
+    const now = nowFn();
+    const timeZone = validateTimeZone(req.query.timeZone);
+    if (timeZone === null) {
+      return res.status(400).json({
+        error: 'invalid_request',
+        detail: '`timeZone` must be an IANA timezone name, e.g. "America/New_York".',
+      });
+    }
+
+    const range = resolveRange({
+      start: req.query.start,
+      end: req.query.end,
+      now,
+      retentionDays: config.retentionDays,
+    });
+    if (range.error) {
+      return res.status(400).json({
+        error: range.error,
+        detail: range.detail,
+        retentionDays: config.retentionDays,
+      });
+    }
+
+    try {
+      const [days, earliest] = await Promise.all([
+        queryDailyCoverageFn({
+          sourceIds: req.monitoringScope.sourceIds,
+          start: range.start,
+          end: range.end,
+          timeZone,
+          siteId: req.query.siteId || null,
+          metricFamily: req.query.metricFamily || null,
+          metricNames: parseList(req.query.metricName),
+        }),
+        getEarliestObservedAtFn(req.monitoringScope.sourceIds),
+      ]);
+
+      return res.json({
+        days: days.map((day) => ({
+          localDate: day.localDate,
+          sampleCount: day.sampleCount,
+          firstObservedAt: new Date(day.firstObservedAt).toISOString(),
+          lastObservedAt: new Date(day.lastObservedAt).toISOString(),
+          hoursPresent: day.hoursPresent,
+        })),
+        meta: {
+          timeZone,
+          start: range.start.toISOString(),
+          end: range.end.toISOString(),
+          requestedStart: range.requestedStart.toISOString(),
+          clampedToRetention: range.clampedToRetention,
+          // The hard floor for selectable time. Days before this are gone, and
+          // a day straddling it is only partly available.
+          retentionStart: range.retentionStart.toISOString(),
+          retentionDays: config.retentionDays,
           earliestAvailable: earliest ? new Date(earliest).toISOString() : null,
           neverCollected: earliest === null,
           servingFrom: 'database',
@@ -359,6 +514,9 @@ export function createMonitoringRouter(options = {}) {
         meta: {
           start: range.start.toISOString(),
           end: range.end.toISOString(),
+          requestedStart: range.requestedStart.toISOString(),
+          clampedToRetention: range.clampedToRetention,
+          retentionStart: range.retentionStart.toISOString(),
           pointCount: points.length,
           // Explicit rather than implied: no aggregate is offered when the
           // parts needed to compute one correctly were not stored.

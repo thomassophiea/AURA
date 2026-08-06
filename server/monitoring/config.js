@@ -79,6 +79,15 @@ export function loadMonitoringConfig(env = process.env) {
       min: 30,
       max: 86_400,
     }),
+    // How long an already-validated session keeps reading stored history while
+    // the controller is unreachable. Stored history exists so a gateway outage
+    // does not blank the dashboard; validating every read against that same
+    // gateway would defeat the point. Only transport failures are covered — a
+    // controller answering 401/403 still rejects at once.
+    authGraceSeconds: readInt(env, 'MONITORING_AUTH_GRACE_SECONDS', 900, {
+      min: 0,
+      max: 86_400,
+    }),
 
     collectorEnabled: readBool(env, 'MONITORING_COLLECTOR_ENABLED', true),
     cleanupEnabled: readBool(env, 'MONITORING_CLEANUP_ENABLED', true),
@@ -162,6 +171,7 @@ export function describeMonitoringConfig(config) {
     requestTimeoutSeconds: config.requestTimeoutSeconds,
     maxConcurrency: config.maxConcurrency,
     staleAfterSeconds: config.staleAfterSeconds,
+    authGraceSeconds: config.authGraceSeconds,
     collectorEnabled: config.collectorEnabled,
     collectorInProcess: config.collectorInProcess,
     cleanupEnabled: config.cleanupEnabled,

@@ -49,7 +49,10 @@ interface NetworkDashboardViewProps {
   poorServices: AnyRecord[];
   notifications: AnyRecord[];
   activeSiteId: string | null;
-  venueDuration: string;
+  /** Controller report duration, or null when the window is a past calendar day. */
+  venueDuration: string | null;
+  /** Selected window label, so widgets can explain an unavailable state. */
+  rangeLabel?: string;
 }
 
 function NetworkDashboardViewComponent({
@@ -77,6 +80,7 @@ function NetworkDashboardViewComponent({
   notifications,
   activeSiteId,
   venueDuration,
+  rangeLabel,
 }: NetworkDashboardViewProps) {
   return (
     <>
@@ -171,7 +175,11 @@ function NetworkDashboardViewComponent({
       )}
 
       {showSection('venue-stats') && activeSiteId && (
-        <VenueStatisticsWidget siteId={activeSiteId} duration={venueDuration} />
+        <VenueStatisticsWidget
+          siteId={activeSiteId}
+          duration={venueDuration}
+          rangeLabel={rangeLabel}
+        />
       )}
 
       {(showSection('config-profiles') || showSection('audit-logs')) && (

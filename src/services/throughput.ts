@@ -1,5 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Use local Express server for throughput storage (replaces Supabase edge function)
+/**
+ * Client for AURA's persisted throughput history.
+ *
+ * These endpoints read and write `metric_samples` under the `throughput` family,
+ * behind the same `requireControllerScope` middleware as `/api/monitoring/*`.
+ * They therefore need the same Authorization and `X-Controller-URL` headers —
+ * without them every call returns 401 and the dashboard's throughput chart
+ * renders empty, which looks like "no traffic" rather than "not authorized".
+ */
+import { buildMonitoringHeaders } from './monitoringHistory';
+
 const SERVER_URL = '/api';
 
 export interface ThroughputSnapshot {
@@ -43,6 +53,7 @@ class ThroughputService {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...buildMonitoringHeaders(),
         ...options.headers,
       },
     });
@@ -152,6 +163,17 @@ class ThroughputService {
     const endTime = Date.now();
     const startTime = endTime - minutes * 60 * 1000;
     return this.getSnapshots(startTime, endTime);
+  }
+
+  /**
+   * Get snapshots for an explicit window.
+   *
+   * The preferred entry point: the dashboard's window is whatever the user
+   * selected, which for a past calendar day cannot be expressed as "the last N
+   * minutes". Bounds are always sent, never derived server-side.
+   */
+  async getSnapshotsForRange(start: Date, end: Date): Promise<ThroughputSnapshot[]> {
+    return this.getSnapshots(start.getTime(), end.getTime());
   }
 
   /**

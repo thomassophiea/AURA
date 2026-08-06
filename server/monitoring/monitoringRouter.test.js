@@ -168,6 +168,59 @@ describe('resolveRange', () => {
       'invalid_range'
     );
   });
+
+  it('reports the requested window untouched when it is fully retained', () => {
+    const range = resolveRange({
+      start: '2026-08-04T00:00:00Z',
+      end: '2026-08-05T00:00:00Z',
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(range.clampedToRetention).toBe(false);
+    expect(range.requestedStart.toISOString()).toBe('2026-08-04T00:00:00.000Z');
+    expect(range.start.toISOString()).toBe('2026-08-04T00:00:00.000Z');
+  });
+
+  it('serves the retained part of the oldest calendar day instead of refusing it', () => {
+    // "7 days ago" as a local date starts at that day's midnight, which is older
+    // than now-7d. Refusing it would make the oldest selectable day unusable.
+    const dayStart = new Date('2026-07-29T00:00:00Z');
+    const dayEnd = new Date('2026-07-29T23:59:59.999Z');
+    const range = resolveRange({
+      start: dayStart.toISOString(),
+      end: dayEnd.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+
+    expect(range.error).toBeUndefined();
+    expect(range.clampedToRetention).toBe(true);
+    // Queried from the retention boundary...
+    expect(range.start.toISOString()).toBe('2026-07-29T12:00:00.000Z');
+    // ...while still reporting what was asked for, so the day reads as partial.
+    expect(range.requestedStart.toISOString()).toBe(dayStart.toISOString());
+    expect(range.end.toISOString()).toBe(dayEnd.toISOString());
+    expect(range.retentionStart.toISOString()).toBe('2026-07-29T12:00:00.000Z');
+  });
+
+  it('clamps a modest overshoot but still refuses a grossly oversized window', () => {
+    const modest = resolveRange({
+      start: new Date(NOW.getTime() - 7.5 * MS_PER_DAY).toISOString(),
+      end: NOW.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(modest.error).toBeUndefined();
+    expect(modest.clampedToRetention).toBe(true);
+
+    const gross = resolveRange({
+      start: new Date(NOW.getTime() - 30 * MS_PER_DAY).toISOString(),
+      end: NOW.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(gross.error).toBe('range_too_large');
+  });
 });
 
 describe('summarizeSourceHealth', () => {
@@ -503,5 +556,101 @@ describe('source administration', () => {
       .put('/api/monitoring/sources/src-a/enabled')
       .send({ enabled: 'yes' })
       .expect(400);
+  });
+});
+
+describe('GET /api/monitoring/coverage', () => {
+  const coverageDay = (localDate, overrides = {}) => ({
+    localDate,
+    sampleCount: 288,
+    hoursPresent: 24,
+    firstObservedAt: new Date(`${localDate}T00:02:00Z`),
+    lastObservedAt: new Date(`${localDate}T23:57:00Z`),
+    ...overrides,
+  });
+
+  it('returns per-local-day coverage grouped in the requested zone', async () => {
+    const queryDailyCoverageFn = vi.fn(async () => [
+      coverageDay('2026-08-04'),
+      coverageDay('2026-08-05', { hoursPresent: 12, sampleCount: 144 }),
+    ]);
+    const res = await request(buildApp({ queryDailyCoverageFn }))
+      .get('/api/monitoring/coverage?timeZone=America/New_York')
+      .expect(200);
+
+    expect(queryDailyCoverageFn.mock.calls[0][0].timeZone).toBe('America/New_York');
+    expect(res.body.meta.timeZone).toBe('America/New_York');
+    expect(res.body.days).toHaveLength(2);
+    expect(res.body.days[1]).toMatchObject({ localDate: '2026-08-05', hoursPresent: 12 });
+  });
+
+  it('reports the retention floor so the client can disable older days', async () => {
+    const res = await request(buildApp({ queryDailyCoverageFn: async () => [] }))
+      .get('/api/monitoring/coverage')
+      .expect(200);
+    expect(res.body.meta.retentionStart).toBe(
+      new Date(NOW.getTime() - 7 * MS_PER_DAY).toISOString()
+    );
+    expect(res.body.meta.retentionDays).toBe(7);
+  });
+
+  it('distinguishes "no days in this window" from "never collected"', async () => {
+    const emptyButCollected = await request(
+      buildApp({ queryDailyCoverageFn: async () => [] })
+    )
+      .get('/api/monitoring/coverage')
+      .expect(200);
+    expect(emptyButCollected.body.days).toEqual([]);
+    expect(emptyButCollected.body.meta.neverCollected).toBe(false);
+
+    const neverCollected = await request(
+      buildApp({
+        queryDailyCoverageFn: async () => [],
+        getEarliestObservedAtFn: async () => null,
+      })
+    )
+      .get('/api/monitoring/coverage')
+      .expect(200);
+    expect(neverCollected.body.meta.neverCollected).toBe(true);
+  });
+
+  it('defaults to UTC when no zone is given but rejects a bogus one', async () => {
+    const utc = await request(buildApp({ queryDailyCoverageFn: async () => [] }))
+      .get('/api/monitoring/coverage')
+      .expect(200);
+    expect(utc.body.meta.timeZone).toBe('UTC');
+
+    const bogus = await request(buildApp({ queryDailyCoverageFn: async () => [] }))
+      .get('/api/monitoring/coverage?timeZone=Mars/Olympus_Mons')
+      .expect(400);
+    expect(bogus.body.error).toBe('invalid_request');
+  });
+
+  it('is scoped to the authorized sources and cannot be widened by query params', async () => {
+    const queryDailyCoverageFn = vi.fn(async () => []);
+    await request(buildApp({ queryDailyCoverageFn }))
+      .get('/api/monitoring/coverage?sourceId=src-b&siteId=site-1&metricFamily=sle')
+      .expect(200);
+
+    const call = queryDailyCoverageFn.mock.calls[0][0];
+    expect(call.sourceIds).toEqual(['src-a']);
+    expect(call.siteId).toBe('site-1');
+    expect(call.metricFamily).toBe('sle');
+  });
+
+  it('reports a clamped window rather than implying the full range was covered', async () => {
+    const res = await request(buildApp({ queryDailyCoverageFn: async () => [] }))
+      .get('/api/monitoring/coverage?start=2026-07-29T00:00:00Z&end=2026-07-29T23:59:59Z')
+      .expect(200);
+    expect(res.body.meta.clampedToRetention).toBe(true);
+    expect(res.body.meta.requestedStart).toBe('2026-07-29T00:00:00.000Z');
+    expect(res.body.meta.start).toBe('2026-07-29T12:00:00.000Z');
+  });
+
+  it('never presents coverage as live data', async () => {
+    const res = await request(buildApp({ queryDailyCoverageFn: async () => [] }))
+      .get('/api/monitoring/coverage')
+      .expect(200);
+    expect(res.body.meta.servingFrom).toBe('database');
   });
 });

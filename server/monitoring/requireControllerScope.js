@@ -23,7 +23,26 @@ import { sanitizeError } from './errorSanitizer.js';
 const VALIDATION_TTL_MS = 60_000;
 const MAX_CACHE_ENTRIES = 1000;
 
+/**
+ * How long a token that has already proven itself keeps working while the
+ * controller is *unreachable*.
+ *
+ * Stored history exists precisely so a gateway outage does not blank the
+ * dashboard, but validating every read against that same gateway made the
+ * outage lock operators out of the data collected before it — the one moment the
+ * history is most wanted. Within this window a token that previously validated
+ * is accepted when the controller cannot be contacted at all.
+ *
+ * This does not widen the trust boundary. An unknown token never reaches the
+ * grace cache, because only a successful validation writes to it. And a
+ * controller that *answers* with 401/403 still rejects immediately — grace
+ * covers transport failure, never a refusal.
+ */
+const DEFAULT_GRACE_MS = 15 * 60 * 1000;
+
 const validationCache = new Map();
+/** token+controller → epoch ms of the last successful validation. */
+const provenCache = new Map();
 
 function cacheKey(token, baseUrl) {
   // SHA-256 of the whole token, not a prefix. A prefix key would let two
@@ -37,6 +56,24 @@ function cacheKey(token, baseUrl) {
 
 export function clearValidationCache() {
   validationCache.clear();
+  provenCache.clear();
+}
+
+function rememberProven(key, now) {
+  if (provenCache.size >= MAX_CACHE_ENTRIES) {
+    provenCache.delete(provenCache.keys().next().value);
+  }
+  provenCache.set(key, now);
+}
+
+function wasProvenRecently(key, now, graceMs) {
+  const provenAt = provenCache.get(key);
+  if (provenAt === undefined) return false;
+  if (now - provenAt > graceMs) {
+    provenCache.delete(key);
+    return false;
+  }
+  return true;
 }
 
 function readCache(key, now) {
@@ -73,11 +110,22 @@ export function extractBearerToken(req) {
 export async function validateTokenAgainstController(
   token,
   baseUrl,
-  { fetchFn = null, timeoutMs = 10_000, now = Date.now() } = {}
+  { fetchFn = null, timeoutMs = 10_000, now = Date.now(), graceMs = DEFAULT_GRACE_MS } = {}
 ) {
   const key = cacheKey(token, baseUrl);
   const cached = readCache(key, now);
   if (cached) return cached;
+
+  /**
+   * The controller could not be asked. Fall back to a recent proof if there is
+   * one, and label the result so callers can tell the UI the check was skipped.
+   */
+  const unreachable = (detail) => {
+    if (wasProvenRecently(key, now, graceMs)) {
+      return { valid: true, degraded: true, reason: 'controller_unreachable', ...detail };
+    }
+    return { valid: false, unreachable: true, ...detail };
+  };
 
   try {
     const result = await requestXcc('/v3/sites', {
@@ -90,14 +138,25 @@ export async function validateTokenAgainstController(
     if (result.ok) {
       const value = { valid: true };
       writeCache(key, value, now);
+      rememberProven(key, now);
       return value;
     }
-    // Failures are not cached: a controller that is briefly down must not lock
-    // a valid operator out for a minute.
-    return { valid: false, status: result.status };
+
+    // A controller that *answers* 401/403 has refused this token. That is
+    // definitive and no amount of prior success overrides it.
+    if (result.status === 401 || result.status === 403) {
+      provenCache.delete(key);
+      return { valid: false, status: result.status };
+    }
+
+    // Any other status — 5xx, a proxy error, a gateway mid-restart — says
+    // nothing about the token. Treated as unreachable, not as a rejection.
+    // Failures are never written to the positive cache: a controller that is
+    // briefly down must not lock a valid operator out for a minute.
+    return unreachable({ status: result.status });
   } catch (error) {
     const { errorClass } = sanitizeError(error);
-    return { valid: false, errorClass };
+    return unreachable({ errorClass });
   }
 }
 
@@ -114,6 +173,7 @@ export function createRequireControllerScope(options = {}) {
     validateFn = validateTokenAgainstController,
     defaultControllerUrl = process.env.CAMPUS_CONTROLLER_URL,
     fetchFn = null,
+    graceMs = DEFAULT_GRACE_MS,
   } = options;
 
   return async function requireControllerScope(req, res, next) {
@@ -143,8 +203,18 @@ export function createRequireControllerScope(options = {}) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    const validation = await validateFn(token, baseUrl, { fetchFn });
+    const validation = await validateFn(token, baseUrl, { fetchFn, graceMs });
     if (!validation.valid) {
+      // Distinguished so the client can say "controller unreachable" rather
+      // than "your session expired" and prompt a pointless re-login.
+      if (validation.unreachable) {
+        return res.status(503).json({
+          error: 'Controller unreachable',
+          detail:
+            'The controller could not be contacted to validate this session, and it has not been validated recently enough to read stored history.',
+          errorClass: validation.errorClass ?? null,
+        });
+      }
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
@@ -152,6 +222,10 @@ export function createRequireControllerScope(options = {}) {
       baseUrl,
       sources: scoped,
       sourceIds: scoped.map((source) => source.id),
+      // True when the controller could not be reached and a recent successful
+      // validation was used instead. The data below is stored history either
+      // way; this only records how the caller was authorized.
+      degradedAuth: Boolean(validation.degraded),
     };
     return next();
   };

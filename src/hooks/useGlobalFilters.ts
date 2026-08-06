@@ -7,8 +7,16 @@
 
 import { useState, useEffect } from 'react';
 
+import { DEFAULT_TIME_RANGE_TOKEN, normalizeTimeRangeToken } from '../lib/timeRange';
+
 export interface GlobalFilters {
   site: string;
+  /**
+   * Time-range token from `src/lib/timeRange.ts` — a rolling window ('24h') or
+   * a local calendar day ('day-1'). This is the app's single time selection:
+   * because it lives here it survives navigation between views, and every page
+   * resolves it through `resolveTimeRange` rather than interpreting it locally.
+   */
   timeRange: string;
   environment: string; // 'all' | environment ID (e.g., 'lab', 'production')
   dateFrom?: Date;
@@ -19,7 +27,7 @@ const STORAGE_KEY = 'aura_global_filters';
 
 const defaultFilters: GlobalFilters = {
   site: 'all',
-  timeRange: '24h',
+  timeRange: DEFAULT_TIME_RANGE_TOKEN,
   environment: 'all'
 };
 
@@ -42,6 +50,11 @@ try {
     // Convert date strings back to Date objects
     if (parsed.dateFrom) globalState.dateFrom = new Date(parsed.dateFrom);
     if (parsed.dateTo) globalState.dateTo = new Date(parsed.dateTo);
+
+    // A token stored by an earlier build ('30d', 'custom') is migrated rather
+    // than trusted. An unresolvable token would leave the dashboard unable to
+    // compute a window at all on the very first render after an upgrade.
+    globalState.timeRange = normalizeTimeRangeToken(globalState.timeRange);
   }
 } catch (error) {
   console.warn('[GlobalFilters] Failed to load from localStorage:', error);
@@ -133,7 +146,10 @@ export function useGlobalFilters() {
     updateFilters,
     resetFilters,
     resetFilter,
-    hasActiveFilters: filters.site !== 'all' || filters.timeRange !== '24h' || filters.environment !== 'all'
+    hasActiveFilters:
+      filters.site !== 'all' ||
+      filters.timeRange !== DEFAULT_TIME_RANGE_TOKEN ||
+      filters.environment !== 'all'
   };
 }
 

@@ -13,6 +13,7 @@
 import type { SLEMetric, SLEThresholds } from './sle';
 import type { SLESiteContext, SLESourceSystem } from './sleContext';
 import type { SiteGroup } from './domain';
+import type { ResolvedTimeRange } from '../lib/timeRange';
 
 export interface SLEPageModel {
   /** Which system produced this data. */
@@ -34,8 +35,17 @@ export interface SLEPageModel {
 }
 
 export interface SLELoadOptions {
-  /** Page time range token: '1h' | '24h' | '7d'. */
+  /** Page time range token — see `src/lib/timeRange.ts`. */
   timeRange: string;
+  /**
+   * The resolved window, with explicit local-timezone bounds.
+   *
+   * Providers must use this rather than re-deriving a duration from `timeRange`:
+   * a calendar-day selection ('day-1') is a pair of local midnights, which no
+   * duration token can express, and a second interpretation of the token is a
+   * second chance to disagree with what the page header says is displayed.
+   */
+  range: ResolvedTimeRange;
   /** Active per-site thresholds to compute against. */
   thresholds: SLEThresholds;
   /** Site groups available for org-scope aggregation (controller path). */

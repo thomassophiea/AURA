@@ -37,8 +37,11 @@ import { cn } from './ui/utils';
 import { apiService, Site } from '../services/api';
 import { getSiteDisplayName } from '../contexts/SiteContext';
 import { ContextConfigModal } from './ContextConfigModal';
+import { TimeRangeSelector } from './TimeRangeSelector';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useOperationalContext } from '../hooks/useOperationalContext';
+import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
+import { DEFAULT_TIME_RANGE_TOKEN } from '../lib/timeRange';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -112,15 +115,6 @@ const TABS: {
   { id: 'client', label: 'Client', shortLabel: 'Client', icon: Users },
 ];
 
-const TIME_RANGE_OPTIONS = [
-  { value: '15m', label: 'Last 15 minutes' },
-  { value: '1h', label: 'Last hour' },
-  { value: '24h', label: 'Last 24 hours' },
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'custom', label: 'Custom range' },
-];
-
 const MODE_MAP: Record<SelectorTab, 'AI_INSIGHTS' | 'SITE' | 'AP' | 'CLIENT'> = {
   'ai-insights': 'AI_INSIGHTS',
   site: 'SITE',
@@ -184,6 +178,20 @@ export function UnifiedFilterBar({
   // Global state hooks
   const { filters, updateFilter, resetFilters, hasActiveFilters } = useGlobalFilters();
   const { setMode, selectSite, selectAP, selectClient } = useOperationalContext();
+  // The time selection is global, so it is read here rather than owned here —
+  // switching pages must not reset it. Coverage is scoped to the active site so
+  // a site with its own collection gap is reported accurately.
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+  } = useSelectedTimeRange({
+    siteId: filters.site !== 'all' ? filters.site : undefined,
+    withCoverage: showTimeRange,
+  });
 
   // Context selector state
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -444,7 +452,7 @@ export function UnifiedFilterBar({
     (hasActiveFilters
       ? (filters.site !== 'all' ? 1 : 0) +
         (filters.environment !== 'all' ? 1 : 0) +
-        (filters.timeRange !== '24h' ? 1 : 0)
+        (timeRangeToken !== DEFAULT_TIME_RANGE_TOKEN ? 1 : 0)
       : 0) +
     (searchValue ? 1 : 0) +
     activePageFilterCount;
@@ -739,26 +747,17 @@ export function UnifiedFilterBar({
         </div>
       )}
 
-      {/* Time Range Dropdown */}
+      {/* Time Range — rolling windows plus every named day inside retention.
+          One control, so the selection stays the same object on every page. */}
       {showTimeRange && (
-        <div className="shrink-0">
-          <Select
-            value={filters.timeRange}
-            onValueChange={(value) => updateFilter('timeRange', value)}
-          >
-            <SelectTrigger className="w-48 h-10">
-              <Clock className="mr-2 h-4 w-4 flex-shrink-0" />
-              <SelectValue placeholder="Time Range" />
-            </SelectTrigger>
-            <SelectContent>
-              {TIME_RANGE_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <TimeRangeSelector
+          value={timeRangeToken}
+          onChange={setTimeRangeToken}
+          optionGroups={optionGroups}
+          dayStatuses={dayStatuses}
+          retentionDays={retentionDays}
+          neverCollected={neverCollected}
+        />
       )}
 
       {/* Divider + Page-Specific Filters */}

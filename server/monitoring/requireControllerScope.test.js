@@ -126,6 +126,131 @@ describe('validateTokenAgainstController cache', () => {
 
 });
 
+/**
+ * Stored history exists so that a gateway outage does not blank the dashboard.
+ * Validating every read against that same gateway defeated the point: the outage
+ * locked operators out of the days collected before it. These cover the grace
+ * window that fixes that, and — more importantly — the cases it must NOT cover.
+ */
+describe('validateTokenAgainstController during a controller outage', () => {
+  const controller = 'https://ctrl-a.example.com';
+  const ok = async () => ({ ok: true, status: 200, json: async () => [] });
+  const unreachable = async () => {
+    throw new Error('ECONNREFUSED');
+  };
+  const serverError = async () => ({ ok: false, status: 503, text: async () => 'unavailable' });
+  const unauthorized = async () => ({ ok: false, status: 401, text: async () => 'Unauthorized' });
+  const start = 5_000_000;
+
+  it('keeps a recently proven token working while the controller cannot be reached', async () => {
+    const token = 'e'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start });
+
+    // Past the positive-cache TTL, so this is the grace path and not the cache.
+    const during = await validateTokenAgainstController(token, controller, {
+      fetchFn: unreachable,
+      now: start + 5 * 60_000,
+    });
+    expect(during.valid).toBe(true);
+    expect(during.degraded).toBe(true);
+    expect(during.reason).toBe('controller_unreachable');
+  });
+
+  it('treats a 5xx from the controller as unreachable, not as a rejection', async () => {
+    const token = 'f'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start });
+
+    const during = await validateTokenAgainstController(token, controller, {
+      fetchFn: serverError,
+      now: start + 5 * 60_000,
+    });
+    expect(during.valid).toBe(true);
+    expect(during.degraded).toBe(true);
+  });
+
+  it('never admits a token that has not proven itself, outage or not', async () => {
+    const stranger = 'g'.repeat(40);
+    const result = await validateTokenAgainstController(stranger, controller, {
+      fetchFn: unreachable,
+      now: start,
+    });
+    expect(result.valid).toBe(false);
+    expect(result.unreachable).toBe(true);
+  });
+
+  it('still rejects at once when the controller answers 401, however recently proven', async () => {
+    const token = 'h'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start });
+
+    const revoked = await validateTokenAgainstController(token, controller, {
+      fetchFn: unauthorized,
+      now: start + 5 * 60_000,
+    });
+    expect(revoked.valid).toBe(false);
+    expect(revoked.degraded).toBeUndefined();
+  });
+
+  it('forgets a token the controller revoked, so a later outage cannot resurrect it', async () => {
+    const token = 'i'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start });
+    await validateTokenAgainstController(token, controller, {
+      fetchFn: unauthorized,
+      now: start + 5 * 60_000,
+    });
+
+    const afterRevocation = await validateTokenAgainstController(token, controller, {
+      fetchFn: unreachable,
+      now: start + 6 * 60_000,
+    });
+    expect(afterRevocation.valid).toBe(false);
+  });
+
+  it('does not extend grace indefinitely', async () => {
+    const token = 'j'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start });
+
+    const expired = await validateTokenAgainstController(token, controller, {
+      fetchFn: unreachable,
+      now: start + 16 * 60_000, // past the 15-minute default
+    });
+    expect(expired.valid).toBe(false);
+  });
+
+  it('honours a configured grace window of zero', async () => {
+    const token = 'k'.repeat(40);
+    await validateTokenAgainstController(token, controller, { fetchFn: ok, now: start, graceMs: 0 });
+
+    const during = await validateTokenAgainstController(token, controller, {
+      fetchFn: unreachable,
+      now: start + 5 * 60_000,
+      graceMs: 0,
+    });
+    expect(during.valid).toBe(false);
+  });
+
+  it('answers 503 rather than 401 when the controller could not be asked', async () => {
+    // A 401 would prompt the UI to send the operator to a login screen, which
+    // cannot help: the token is fine, the controller is not answering.
+    const res = await request(
+      buildApp({ validateFn: async () => ({ valid: false, unreachable: true }) })
+    )
+      .get('/scoped')
+      .set('Authorization', `Bearer ${'l'.repeat(40)}`)
+      .expect(503);
+    expect(res.body.error).toMatch(/unreachable/i);
+  });
+
+  it('records on the scope that authorization was degraded', async () => {
+    const res = await request(
+      buildApp({ validateFn: async () => ({ valid: true, degraded: true }) })
+    )
+      .get('/scoped')
+      .set('Authorization', `Bearer ${'m'.repeat(40)}`)
+      .expect(200);
+    expect(res.body.scope.degradedAuth).toBe(true);
+  });
+});
+
 describe('createRequireControllerScope', () => {
   it('rejects a request with no token', async () => {
     await request(buildApp()).get('/scoped').expect(401);
