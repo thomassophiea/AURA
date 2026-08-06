@@ -30,6 +30,18 @@ import { sanitizeError, ERROR_CLASS_LABELS } from './errorSanitizer.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Grace margin on the retention boundary.
+ *
+ * A client asking for "the last 7 days" computes `start` from its own clock,
+ * then the server re-derives the boundary from its own clock a moment later.
+ * Request latency and clock skew make the client's `start` marginally older than
+ * the server's cutoff, so an exact-retention request — the default view — was
+ * rejected every time. The margin absorbs that. It cannot hide missing data:
+ * `earliestAvailable` and `effectiveStart` still report the real coverage.
+ */
+const RETENTION_BOUNDARY_TOLERANCE_MS = 10 * 60 * 1000;
+
 function parseDate(value) {
   if (!value) return null;
   const date = new Date(value);
@@ -63,16 +75,17 @@ export function resolveRange({ start, end, now, retentionDays }) {
     return { error: 'invalid_range', detail: '`start` must be before `end`.' };
   }
 
-  const spanDays = (resolvedEnd.getTime() - resolvedStart.getTime()) / MS_PER_DAY;
-  if (spanDays > retentionDays) {
+  const retentionMs = retentionDays * MS_PER_DAY;
+  const span = resolvedEnd.getTime() - resolvedStart.getTime();
+  if (span > retentionMs + RETENTION_BOUNDARY_TOLERANCE_MS) {
     return {
       error: 'range_too_large',
-      detail: `Requested ${spanDays.toFixed(1)} days but only ${retentionDays} days are retained.`,
+      detail: `Requested ${(span / MS_PER_DAY).toFixed(1)} days but only ${retentionDays} days are retained.`,
     };
   }
 
-  const oldestRetained = new Date(now.getTime() - retentionDays * MS_PER_DAY);
-  if (resolvedStart < oldestRetained) {
+  const oldestRetained = new Date(now.getTime() - retentionMs);
+  if (resolvedStart.getTime() < oldestRetained.getTime() - RETENTION_BOUNDARY_TOLERANCE_MS) {
     return {
       error: 'range_outside_retention',
       detail: `Data before ${oldestRetained.toISOString()} is no longer retained. Requesting it would return a misleadingly empty result.`,

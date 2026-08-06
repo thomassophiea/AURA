@@ -99,6 +99,40 @@ describe('resolveRange', () => {
     expect(range.error).toBeUndefined();
   });
 
+  it('accepts a request for exactly the retention window computed on a client clock', () => {
+    // The client computes start from its own clock; the server validates a
+    // moment later. Without a tolerance this — the default view — always 400s.
+    const clientNow = new Date(NOW.getTime() - 850); // client is slightly behind
+    const range = resolveRange({
+      start: new Date(clientNow.getTime() - 7 * MS_PER_DAY).toISOString(),
+      end: clientNow.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(range.error).toBeUndefined();
+  });
+
+  it('accepts an exact-retention range even with a minute of clock skew', () => {
+    const skewed = new Date(NOW.getTime() - 60_000);
+    const range = resolveRange({
+      start: new Date(skewed.getTime() - 7 * MS_PER_DAY).toISOString(),
+      end: skewed.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(range.error).toBeUndefined();
+  });
+
+  it('still rejects a range meaningfully beyond retention', () => {
+    const range = resolveRange({
+      start: new Date(NOW.getTime() - 9 * MS_PER_DAY).toISOString(),
+      end: NOW.toISOString(),
+      now: NOW,
+      retentionDays: 7,
+    });
+    expect(range.error).toBe('range_too_large');
+  });
+
   it('rejects a range wider than retention instead of clamping it', () => {
     const range = resolveRange({
       start: '2026-07-01T00:00:00Z',
