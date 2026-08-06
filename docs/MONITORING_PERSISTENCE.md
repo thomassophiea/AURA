@@ -295,11 +295,26 @@ throwaway databases so no production table was touched:
 The schema is applied to the production `railway` database and recorded in
 `schema_migrations`.
 
-**Not yet exercised:** the collector polling a real controller, the HTTP API against a
-live database, and the UI. Those need the branch deployed. The `*.db.test.js` suites also
-have not run under Vitest — there is no local PostgreSQL on the development machine and
-Railway exposes no TCP proxy — though the driver above covers the same ground through the
-same modules.
+### Live in production
+
+Deployed to the *EDGE Services* Railway project and collecting from the lab controller:
+
+- `sle` collector: **succeeded**, 9 samples/poll, all seven SLE metrics including the
+  AP-based `ap_health` and `capacity`.
+- `ap_report` collector: **succeeded**, 6 APs, ~14 series each — power in `mW`, RSS in
+  `dBm`, channel utilization in `%`, throughput in `bps`, unique users.
+- **Idempotency confirmed under real load:** a poll reporting `recv=6120 ins=0 upd=6120`,
+  i.e. re-fetching the same 3-hour window updated every row in place and duplicated none.
+  The following poll inserted only the 68 genuinely new buckets.
+- **Backfill confirmed:** the first poll recovered 3.0 hours of history from *before* the
+  collector started, because the report endpoint serves a `3H` window.
+- Retention stamps sit exactly 7.00 days after each observation.
+
+**Not yet exercised:** the HTTP read API against the live database and the UI — both need a
+browser session holding a controller token, which the automated checks cannot produce. The
+`*.db.test.js` suites also still have not run under Vitest (no local PostgreSQL, and Railway
+exposes no TCP proxy), though the driver above covers the same ground through the same
+modules.
 
 ## Volume and future work
 
@@ -308,6 +323,26 @@ over seven days for 10 sites; ~2.4M rows with AP reports at 15-minute resolution
 
 Plain PostgreSQL, no partitioning — appropriate at this scale. Revisit partitioning or
 longer-term rollups above a sustained ~20M live rows.
+
+## Controller quirks found on XCC 10.18.1.0-011R
+
+Measured against the live lab controller. All of these are controller-side; the collector
+handles each without fabricating data.
+
+| Endpoint | Behaviour | How the collector copes |
+|---|---|---|
+| `/v1/report/aps/{serial}?duration=3H` | **Works.** ~14 series per AP, 2-minute buckets, 90 points per 3H window | Primary source of persisted timeseries |
+| `/v1/report/aps/{serial}` at `24H`/`7D`/`30D` | HTTP 500 for every widget | Capability-probed per source; falls back to `3H` and preserves the gap |
+| `/v3/sites/{id}/report/venue` on a site with data | **HTTP 500 `"Exception: null"`** for *any* widget list — probed six variations including single-widget and no `statType` | Recorded as a partial failure; no samples written |
+| `/v3/sites/{id}/report/venue` on an empty site | HTTP 200, but the only statistic is named `NoData` with value `0` | Skipped as a no-data marker — storing it would have persisted an absence as a zero measurement |
+| `/v3/sites/{id}/aps`, `/v1/sites/{id}/aps`, `/v3/sites/{id}/accessPoints` | **All 404.** There is no per-site AP endpoint | APs come from `/v1/aps/query` once per poll, grouped by site via `hostSite` (the site *name* — AP rows carry no `siteId`) |
+| `/v3/sites/{id}/stations` | Works | Per-site client data for the SLE collector |
+| `/v1/oauth2/token` | Accepts **only** `{grantType, userId, password}`; `grant_type` and `username` variants return HTTP 422 | A 401 on the accepted shape therefore genuinely means bad credentials |
+
+Consequence: on this controller the `site_report` collector permanently reports `partial` and
+contributes nothing, because the one site with data 500s and the other two are empty. That
+status is accurate and is left visible rather than suppressed. The useful history comes from
+`ap_report` and the computed `sle` family.
 
 ## Known limitations
 
