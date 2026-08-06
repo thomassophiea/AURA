@@ -195,6 +195,27 @@ DATABASE_URL=$SCRATCH_URL MONITORING_RETENTION_DAYS=1 npm run monitoring:cleanup
 
 ---
 
+## Production hardening
+
+`NODE_ENV=production` is set on the *EDGE Services* web service. That is what makes the
+boot-time `DATABASE_URL` assertion real — without it a missing database degrades silently
+instead of failing visibly.
+
+It also enables the `/api/*` rate limiter, which is why `app.set('trust proxy', 1)` had to
+land first. Railway forwards over one proxy hop, so without it `req.ip` is the proxy's
+address for every visitor and the limiter keys the entire internet into one
+2000-per-15-minutes bucket. `1` rather than `true`, so a client cannot spoof its own address
+by sending `X-Forwarded-For` itself.
+
+**Still open:** `ALLOWED_ORIGINS` is unset, so CORS accepts any origin even in production.
+Setting it to the served origin (`https://integration.up.railway.app`) would enforce the
+whitelist — deliberately not done here, because it would also block any other access path,
+and which origins are legitimate is a deployment decision rather than a code one.
+
+`VITE_CAMPUS_CONTROLLER_USER` and `VITE_CAMPUS_CONTROLLER_PASSWORD` have been **deleted**.
+Anything `VITE_`-prefixed is compiled into the browser bundle, so those published the
+controller password to every visitor. The collector reads the unprefixed names.
+
 ## Rollback
 
 Set `MONITORING_COLLECTOR_ENABLED=false` and redeploy. Collection stops; the API keeps
