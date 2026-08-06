@@ -93,7 +93,7 @@ export function normalizeReportResponse(payload, context) {
     bucketSeconds = null,
   } = context;
 
-  const expiresAt = new Date(collectedAt.getTime() + retentionDays * MS_PER_DAY);
+  const retentionMs = retentionDays * MS_PER_DAY;
 
   for (const [reportKey, block] of Object.entries(payload)) {
     if (!isReportBlockArray(block)) continue;
@@ -161,7 +161,14 @@ export function normalizeReportResponse(payload, context) {
             dimensions,
             qualityState: hasSourceTimestamp ? 'observed' : 'collection_timestamped',
             collectedAt,
-            expiresAt,
+            // Anchored to the OBSERVATION, not to collection time. Anchoring to
+            // collection would make a backfilled point live `retentionDays`
+            // from when we happened to fetch it — so a 6-day-old sample would
+            // survive 13 days — and every re-ingest of an overlapping backfill
+            // window would extend it again. Keyed on observed_at, expiry is a
+            // pure function of the point itself and the window is a true
+            // rolling `retentionDays` of history.
+            expiresAt: new Date(observedAt.getTime() + retentionMs),
           });
         }
       }

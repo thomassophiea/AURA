@@ -33,10 +33,7 @@ import {
 import { describeReadiness, seedDefaultSource } from './server/monitoring/bootstrap.js';
 import { startCollector } from './server/monitoring/collectorRunner.js';
 import { checkDatabaseHealth, isDatabaseConfigured } from './server/db/pool.js';
-import {
-  getSourceByBaseUrl as getMonitoringSourceByBaseUrl,
-  normalizeBaseUrl as normalizeMonitoringBaseUrl,
-} from './server/monitoring/sourceRepository.js';
+import { createRequireControllerScope } from './server/monitoring/requireControllerScope.js';
 import { sanitizeError as sanitizeMonitoringError } from './server/monitoring/errorSanitizer.js';
 import {
   storeSnapshot,
@@ -1169,36 +1166,29 @@ app.get('/api/management/platformmanager/v1/packetcapture/status/:id', (req, res
 // under the `throughput` family and expire on the normal retention schedule.
 // Response shapes are unchanged, so src/services/throughput.ts is unaffected.
 
-// Resolve the source a throughput snapshot belongs to. Snapshots are pushed by
-// the browser rather than polled, so they are attributed to the controller the
-// caller is talking to.
-async function resolveThroughputScope(req, res) {
-  if (!monitoringConfig) {
-    res.status(503).json({ error: 'Monitoring persistence is not configured' });
+// These endpoints now read and write durable monitoring history, so they carry
+// the same authorization as the rest of /api/monitoring: the caller's token is
+// validated against the controller and the writable/readable source is derived
+// from that. `requireAuth` (presence-only) would let anyone with an arbitrary
+// Bearer string poison stored throughput history for a registered controller.
+const throughputScope = monitoringConfig
+  ? createRequireControllerScope()
+  : (_req, res) => res.status(503).json({ error: 'Monitoring persistence is not configured' });
+
+// Snapshots are pushed by the browser rather than polled, so they are
+// attributed to the single source backing the controller the caller
+// authenticated against.
+function scopedThroughputSource(req, res) {
+  const source = req.monitoringScope?.sources?.[0];
+  if (!source) {
+    res.status(404).json({ error: 'Controller is not registered for monitoring' });
     return null;
   }
-  const requested = req.headers['x-controller-url'] || DEFAULT_CONTROLLER_URL;
-  const baseUrl = normalizeMonitoringBaseUrl(requested);
-  if (!baseUrl) {
-    res.status(400).json({ error: 'No controller specified' });
-    return null;
-  }
-  try {
-    const source = await getMonitoringSourceByBaseUrl(baseUrl);
-    if (!source) {
-      res.status(404).json({ error: 'Controller is not registered for monitoring' });
-      return null;
-    }
-    return source;
-  } catch (error) {
-    const { errorClass } = sanitizeMonitoringError(error);
-    res.status(503).json({ error: 'Monitoring store unavailable', errorClass });
-    return null;
-  }
+  return source;
 }
 
-app.post('/api/throughput/snapshot', requireAuth, jsonParser, async (req, res) => {
-  const source = await resolveThroughputScope(req, res);
+app.post('/api/throughput/snapshot', throughputScope, jsonParser, async (req, res) => {
+  const source = scopedThroughputSource(req, res);
   if (!source) return;
   try {
     await storeSnapshot(req.body ?? {}, {
@@ -1213,8 +1203,8 @@ app.post('/api/throughput/snapshot', requireAuth, jsonParser, async (req, res) =
   }
 });
 
-app.get('/api/throughput/snapshots', requireAuth, async (req, res) => {
-  const source = await resolveThroughputScope(req, res);
+app.get('/api/throughput/snapshots', throughputScope, async (req, res) => {
+  const source = scopedThroughputSource(req, res);
   if (!source) return;
   try {
     const snapshots = await fetchSnapshots({
@@ -1232,8 +1222,8 @@ app.get('/api/throughput/snapshots', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/throughput/latest', requireAuth, async (req, res) => {
-  const source = await resolveThroughputScope(req, res);
+app.get('/api/throughput/latest', throughputScope, async (req, res) => {
+  const source = scopedThroughputSource(req, res);
   if (!source) return;
   try {
     const snapshots = await fetchSnapshots({
@@ -1248,8 +1238,8 @@ app.get('/api/throughput/latest', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/throughput/aggregated', requireAuth, async (req, res) => {
-  const source = await resolveThroughputScope(req, res);
+app.get('/api/throughput/aggregated', throughputScope, async (req, res) => {
+  const source = scopedThroughputSource(req, res);
   if (!source) return;
   try {
     const snapshots = await fetchSnapshots({
@@ -1266,8 +1256,8 @@ app.get('/api/throughput/aggregated', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/throughput/network/:name', requireAuth, async (req, res) => {
-  const source = await resolveThroughputScope(req, res);
+app.get('/api/throughput/network/:name', throughputScope, async (req, res) => {
+  const source = scopedThroughputSource(req, res);
   if (!source) return;
   try {
     const snapshots = await fetchSnapshots({
@@ -1287,7 +1277,7 @@ app.get('/api/throughput/network/:name', requireAuth, async (req, res) => {
 // Deliberately not implemented against PostgreSQL: this used to wipe a shared
 // in-memory array. Bulk deletion of persisted monitoring history is a retention
 // concern, handled by the cleanup command against expires_at.
-app.delete('/api/throughput/clear', requireAuth, (_req, res) => {
+app.delete('/api/throughput/clear', throughputScope, (_req, res) => {
   res.status(405).json({
     error: 'Not supported',
     detail:
@@ -2234,7 +2224,9 @@ httpServer.listen(PORT, '0.0.0.0', async () => {
   }
 
   if (monitoringConfig.collectorInProcess && monitoringConfig.collectorEnabled) {
-    inProcessCollector = startCollector({ config: monitoringConfig });
+    // unref: the HTTP listener already holds this process open, so the poll
+    // timer should not be what keeps it from shutting down.
+    inProcessCollector = startCollector({ config: monitoringConfig, unref: true });
     console.log('[Proxy Server] ✓ In-process monitoring collector started');
   } else {
     console.log(

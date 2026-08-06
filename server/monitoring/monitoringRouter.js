@@ -165,7 +165,7 @@ export function createMonitoringRouter(options = {}) {
     }
 
     try {
-      const { points, truncated } = await queryHistoryFn({
+      const { points, truncated, effectiveStart } = await queryHistoryFn({
         sourceIds: req.monitoringScope.sourceIds,
         start: range.start,
         end: range.end,
@@ -190,6 +190,10 @@ export function createMonitoringRouter(options = {}) {
           end: range.end.toISOString(),
           retentionDays: config.retentionDays,
           truncated,
+          // When truncated, the returned window starts later than requested.
+          // Stated explicitly so the UI can label the chart as trimmed instead
+          // of implying the whole range was covered.
+          effectiveStart: effectiveStart ? new Date(effectiveStart).toISOString() : null,
           maxPoints: config.maxQueryPoints,
           pointCount: points.length,
           // Distinguishes "no data in this window" from "nothing has ever been

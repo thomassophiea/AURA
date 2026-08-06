@@ -160,18 +160,65 @@ describe('normalizeReportResponse', () => {
     expect(samples[0].dimensions.band).toBe('5');
   });
 
-  it('sets expires_at from the retention window measured against collection time', () => {
+  it('measures the retention window from the observation, not from collection time', () => {
+    const observedAt = new Date('2026-08-04T00:00:00.000Z').getTime();
     const payload = {
       throughputReport: [
         {
           reportName: 'Throughput',
-          statistics: [{ statName: 'Total', unit: 'bps', values: [{ timestamp: 1, value: '5' }] }],
+          statistics: [
+            { statName: 'Total', unit: 'bps', values: [{ timestamp: observedAt, value: '5' }] },
+          ],
         },
       ],
     };
     const { samples } = normalizeReportResponse(payload, { ...BASE, retentionDays: 7 });
-    const expected = BASE.collectedAt.getTime() + 7 * 24 * 60 * 60 * 1000;
-    expect(samples[0].expiresAt.getTime()).toBe(expected);
+    expect(samples[0].expiresAt.toISOString()).toBe('2026-08-11T00:00:00.000Z');
+  });
+
+  it('does not extend a backfilled point\'s life just because it was fetched late', () => {
+    // Observed 6 days before this collection. Anchoring expiry to collection
+    // time would keep it for 13 days from observation.
+    const observedAt = BASE.collectedAt.getTime() - 6 * 24 * 60 * 60 * 1000;
+    const payload = {
+      throughputReport: [
+        {
+          reportName: 'Throughput',
+          statistics: [
+            { statName: 'Total', unit: 'bps', values: [{ timestamp: observedAt, value: '5' }] },
+          ],
+        },
+      ],
+    };
+    const { samples } = normalizeReportResponse(payload, { ...BASE, retentionDays: 7 });
+    const lifetimeDays =
+      (samples[0].expiresAt.getTime() - observedAt) / (24 * 60 * 60 * 1000);
+    expect(lifetimeDays).toBe(7);
+    // Only one day of life left, not seven.
+    const remainingDays =
+      (samples[0].expiresAt.getTime() - BASE.collectedAt.getTime()) / (24 * 60 * 60 * 1000);
+    expect(remainingDays).toBe(1);
+  });
+
+  it('gives a re-ingested point the same expiry every time, so overlap cannot extend it', () => {
+    const observedAt = BASE.collectedAt.getTime() - 3 * 24 * 60 * 60 * 1000;
+    const payload = {
+      throughputReport: [
+        {
+          reportName: 'Throughput',
+          statistics: [
+            { statName: 'Total', unit: 'bps', values: [{ timestamp: observedAt, value: '5' }] },
+          ],
+        },
+      ],
+    };
+    const first = normalizeReportResponse(payload, BASE).samples[0];
+    const later = normalizeReportResponse(payload, {
+      ...BASE,
+      collectedAt: new Date(BASE.collectedAt.getTime() + 60 * 60 * 1000),
+    }).samples[0];
+
+    expect(later.expiresAt.getTime()).toBe(first.expiresAt.getTime());
   });
 
   it('separates same-named stats from different report blocks', () => {

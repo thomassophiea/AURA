@@ -232,6 +232,24 @@ describe('GET /api/monitoring/history', () => {
     expect(res.body.meta.truncated).toBe(true);
   });
 
+  it('states the effective start when the window was trimmed', async () => {
+    const trimmedStart = new Date(NOW.getTime() - 2 * MS_PER_DAY);
+    const res = await request(
+      buildApp({
+        queryHistoryFn: async () => ({
+          points: [samplePoint()],
+          truncated: true,
+          effectiveStart: trimmedStart,
+        }),
+      })
+    )
+      .get('/api/monitoring/history')
+      .expect(200);
+    expect(res.body.meta.effectiveStart).toBe(trimmedStart.toISOString());
+    // The requested start is still reported, so the trim is visible as a delta.
+    expect(res.body.meta.start).not.toBe(res.body.meta.effectiveStart);
+  });
+
   it('distinguishes an empty window from never having collected', async () => {
     const emptyWindow = await request(
       buildApp({ queryHistoryFn: async () => ({ points: [], truncated: false }) })

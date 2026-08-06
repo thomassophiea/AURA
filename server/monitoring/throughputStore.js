@@ -56,7 +56,9 @@ export function snapshotToSamples(snapshot, { sourceId, siteId = null, retention
   const sourceTimestamp = toNumber(snapshot?.timestamp);
   const hasSourceTimestamp = sourceTimestamp !== null;
   const observedAt = hasSourceTimestamp ? new Date(sourceTimestamp) : now;
-  const expiresAt = new Date(now.getTime() + retentionDays * MS_PER_DAY);
+  // Anchored to the observation, not to collection time, so a late-pushed
+  // snapshot does not outlive the rolling window. See reportNormalizer.
+  const expiresAt = new Date(observedAt.getTime() + retentionDays * MS_PER_DAY);
 
   const base = {
     monitoredSourceId: sourceId,

@@ -55,9 +55,15 @@ describe('snapshotToSamples', () => {
     expect(samples[0].qualityState).toBe('collection_timestamped');
   });
 
-  it('stamps the retention expiry', () => {
+  it('stamps the retention expiry from the observation', () => {
     const samples = snapshotToSamples(snapshot(), OPTIONS);
     expect(samples[0].expiresAt.getTime()).toBe(NOW.getTime() + 7 * 24 * 60 * 60 * 1000);
+  });
+
+  it('does not extend a late-pushed snapshot past the rolling window', () => {
+    const observedAt = NOW.getTime() - 6 * 24 * 60 * 60 * 1000;
+    const samples = snapshotToSamples(snapshot({ timestamp: observedAt }), OPTIONS);
+    expect(samples[0].expiresAt.getTime()).toBe(observedAt + 7 * 24 * 60 * 60 * 1000);
   });
 
   it('drops non-numeric fields rather than storing them as zero', () => {

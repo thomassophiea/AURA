@@ -131,6 +131,17 @@ Default 7 days, via `MONITORING_RETENTION_DAYS`. Each row carries `expires_at`, 
 at write time — so changing the setting affects **newly collected data only** and a typo
 cannot retroactively destroy history.
 
+`expires_at` is anchored to `observed_at`, **not** to collection time. Anchoring to
+collection time would give a backfilled point a full `retentionDays` from whenever it
+happened to be fetched — a 6-day-old sample would survive 13 days — and every re-ingest of
+an overlapping backfill window would extend it again. Keyed on the observation, expiry is a
+pure function of the point itself, so the window is a true rolling `retentionDays` of
+history and re-ingesting is idempotent in lifetime as well as in value.
+
+A consequence worth knowing: on first contact the collector requests the largest supported
+window inside retention, so points at the far edge arrive already expired and the next
+sweep removes them. That is correct for a rolling window, not data loss.
+
 Cleanup deletes in bounded batches under an advisory lock. It is idempotent and safe to
 run during ingestion. `current_metric_state` is deliberately **not** expiry-pruned: "the
 last value we ever saw, and when" is what lets the UI say *offline since X* instead of
@@ -180,9 +191,25 @@ controller named by `X-Controller-URL` (60-second positive cache) and derives th
 readable source set from that. `orgId` / `siteId` from the browser are filters applied
 *within* that scope, never the trust boundary.
 
+The token-validation cache keys on SHA-256 of the **whole** token. A prefix-based key would
+let two tokens from the same issuer collide, and an invalid one would inherit a valid one's
+cached verdict.
+
+The `/api/throughput/*` endpoints use the same scope middleware. They read and write durable
+history now, so presence-only auth would let anyone with an arbitrary Bearer string poison
+stored throughput for a registered controller.
+
 Responses never carry stack traces, database errors, credentials, or raw controller
 bodies. `errorSanitizer.js` redacts bearer tokens, embedded credentials, and secret query
 parameters before anything is stored or logged.
+
+### Query bounds
+
+`MONITORING_MAX_QUERY_POINTS` (default 20 000) caps a single history response. When the cap
+is hit the response sets `truncated: true` and `effectiveStart` to the real beginning of
+what came back. Truncation drops the **oldest** points, never the newest — losing the
+present on a monitoring chart reads as "nothing has happened lately", which is the most
+misleading way to trim.
 
 ## Privacy
 

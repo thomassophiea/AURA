@@ -326,6 +326,28 @@ describe.skipIf(!hasTestDatabase)('sampleRepository (PostgreSQL)', () => {
       expect(truncated).toBe(true);
     });
 
+    it('keeps the most recent points when truncating, not the oldest', async () => {
+      const { points, effectiveStart } = await queryHistory({
+        sourceIds: [source.id],
+        start: new Date('2026-01-01T00:00:00Z'),
+        end: new Date('2027-01-01T00:00:00Z'),
+        maxPoints: 2,
+      });
+      // Dropping the newest points would read as "nothing happened lately".
+      expect(points.map((p) => p.numericValue)).toEqual([2, 3]);
+      expect(new Date(effectiveStart).toISOString()).toBe('2026-08-03T00:00:00.000Z');
+    });
+
+    it('still returns points in ascending order after truncation', async () => {
+      const { points } = await queryHistory({
+        sourceIds: [source.id],
+        start: new Date('2026-01-01T00:00:00Z'),
+        end: new Date('2027-01-01T00:00:00Z'),
+        maxPoints: 2,
+      });
+      expect(points[0].observedAt.getTime()).toBeLessThan(points[1].observedAt.getTime());
+    });
+
     it('filters by metric name', async () => {
       await insertSamples([
         makeSample({ monitoredSourceId: source.id, metricName: 'roaming', numericValue: 7 }),

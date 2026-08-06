@@ -436,7 +436,7 @@ export async function runCollectionTick({ config, now = new Date(), deps = {} })
  * Long-running collector loop. Used by worker.js and by the optional
  * in-process collector in server.js.
  */
-export function startCollector({ config, deps = {} }) {
+export function startCollector({ config, deps = {}, unref = false }) {
   let timer = null;
   let running = false;
   let stopped = false;
@@ -457,7 +457,12 @@ export function startCollector({ config, deps = {} }) {
 
   tick();
   timer = setInterval(tick, config.pollIntervalSeconds * 1000);
-  if (typeof timer.unref === 'function') timer.unref();
+  // The interval is deliberately NOT unref'd. worker.js runs no server, so this
+  // timer is the only thing holding its event loop open — unref'ing it made the
+  // worker exit 0 a few milliseconds after its first poll, which Railway's
+  // `on_failure` restart policy would not even retry. Callers that manage their
+  // own lifetime (server.js has an HTTP listener) can pass unref: true.
+  if (unref && typeof timer.unref === 'function') timer.unref();
 
   return {
     async stop() {

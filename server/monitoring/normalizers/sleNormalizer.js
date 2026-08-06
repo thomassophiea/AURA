@@ -176,6 +176,8 @@ export function normalizeSleSamples(stations, aps, context) {
     ['roaming', wireless.length, roamingAffected(wireless, thresholds)],
   ];
 
+  // Anchored to the observation, which for these snapshot APIs is collection
+  // time — see reportNormalizer for why observation is the right anchor.
   const expiresAt = new Date(collectedAt.getTime() + retentionDays * MS_PER_DAY);
   const samples = [];
 

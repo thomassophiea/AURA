@@ -102,7 +102,13 @@ export function loadMonitoringConfig(env = process.env) {
       readString(env, 'CAMPUS_CONTROLLER_PASSWORD'),
 
     // Read-side guard rails.
-    maxQueryPoints: readInt(env, 'MONITORING_MAX_QUERY_POINTS', 5000, { min: 100, max: 100_000 }),
+    // Headroom matters: a 7-day range at 15-minute buckets is 672 points per
+    // series, so seven SLE metrics alone reach ~4.7k. A 5k cap would truncate
+    // the default view.
+    maxQueryPoints: readInt(env, 'MONITORING_MAX_QUERY_POINTS', 20_000, {
+      min: 100,
+      max: 200_000,
+    }),
     cleanupBatchSize: readInt(env, 'MONITORING_CLEANUP_BATCH_SIZE', 10_000, {
       min: 100,
       max: 200_000,
