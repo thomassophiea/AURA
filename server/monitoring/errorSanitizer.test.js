@@ -148,4 +148,10 @@ describe('sanitizeError', () => {
       expect(ERROR_CLASS_LABELS[cls]).toBeTruthy();
     }
   });
+
+  it('labels not_configured, which the collector sets directly', () => {
+    // Surfaced with a blank explanation in production during outage testing —
+    // and it is the one failure an operator can fix immediately.
+    expect(ERROR_CLASS_LABELS.not_configured).toMatch(/credentials/i);
+  });
 });

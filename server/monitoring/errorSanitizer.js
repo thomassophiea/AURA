@@ -126,5 +126,10 @@ export const ERROR_CLASS_LABELS = Object.freeze({
   upstream_server_error: 'The source returned an error',
   malformed: 'The source returned an unreadable response',
   database: 'The monitoring database was unavailable',
+  // Not produced by classifyError — the collector sets it directly when a
+  // source has no usable credentials. It needs a label more than most: it is
+  // the one failure an operator can fix immediately, and it surfaced with a
+  // blank explanation during outage testing.
+  not_configured: 'No credentials are configured for this source',
   unknown: 'Collection failed',
 });

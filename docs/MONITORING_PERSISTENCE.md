@@ -354,13 +354,27 @@ Driven against the deployed app with a real controller login:
 - `GET /api/monitoring/sources/health` → **200**, `state: "fresh"`,
   `consecutiveFailures: 0`, `servingFrom: "database"`.
 
-**Not yet exercised:** the outage path in the UI — a stale/offline badge and a rendered gap
-need the controller to actually go away for longer than `MONITORING_STALE_AFTER_SECONDS`.
-The gap-and-staleness logic is unit-tested, and the collector's outage behaviour was
-verified in production while the credential was wrong (8 failed runs, 0 samples written),
-but the two have not been observed together. The `*.db.test.js` suites also still have not
-run under Vitest (no local PostgreSQL, and Railway exposes no TCP proxy), though the driver
-above covers the same ground through the same modules.
+### Outage lifecycle, observed in production
+
+A simulated outage was run end to end by pointing the collector's
+`CAMPUS_CONTROLLER_URL` away, so the registered source failed as `not_configured` with zero
+login attempts against the real controller:
+
+1. Failures recorded — `consecutive_failures` climbed to 4, `last_error_code=not_configured`
+   — and **the sample count froze**. Nothing was written, invented, or zeroed.
+2. `/latest` reported `state: "offline"` while **retaining the last value** (100, age 443s).
+3. `/history` kept serving throughout: 9 series, 843 points, and no point anywhere with
+   value `0`.
+4. The UI badge read exactly **“Gateway unavailable”**, tooltip *“Gateway unavailable.
+   Showing stored data through Aug 6, 02:16 PM.”*
+5. On restore the source **recovered by itself** — `consecutive_failures` back to 0, samples
+   resumed — with no intervention.
+6. The series kept a genuine **12.5-minute gap** (18:16:03 → 18:28:34) exactly matching the
+   outage window.
+
+**Still not run:** the `*.db.test.js` suites under Vitest — there is no local PostgreSQL and
+Railway exposes no TCP proxy — though the driver above covers the same ground through the
+same modules.
 
 ## Volume and future work
 
