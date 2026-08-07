@@ -62,6 +62,7 @@ function DashboardEnhancedComponent() {
     avgSnr,
     avgRssi,
     activeSiteId,
+    rangedStats,
     isHistorical,
     unavailableForRange,
     reload,
@@ -334,6 +335,8 @@ function DashboardEnhancedComponent() {
           setSelectedNetworkEvent={setSelectedNetworkEvent}
           onCloseDetailPanel={() => setAiInsightsDetailPanel(false)}
           setSelectorTab={setSelectorTab}
+          rangedStats={rangedStats}
+          timeRange={timeRange}
         />
         </>
       )}

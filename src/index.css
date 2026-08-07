@@ -2913,6 +2913,20 @@ body.mi5 {
   color: var(--aura-amber);
   opacity: 0.85;
 }
+/* States what the figure below actually measures — "avg · yesterday" versus
+   "now". A mean over a window and an instantaneous reading are different
+   quantities, and the tile must not let them be confused. */
+.aura-kpi-eyebrow-basis {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+}
 .aura-kpi-icon {
   width: 14px;
   height: 14px;

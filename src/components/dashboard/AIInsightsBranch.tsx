@@ -13,6 +13,8 @@ import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { AlertTriangle, Activity, Wifi, Users, Brain } from 'lucide-react';
 import { formatBitsPerSecond } from '../../lib/units';
+import type { RangedNetworkStats } from '../../lib/rangedNetworkStats';
+import type { ResolvedTimeRange } from '../../lib/timeRange';
 import { DriftStrip } from './DriftStrip';
 import { InsightCardsGrid } from './InsightCardsGrid';
 import { RecentEventsSummary } from './RecentEventsSummary';
@@ -103,6 +105,10 @@ interface AIInsightsBranchProps {
   setSelectedNetworkEvent: (e: NetworkEvent | null) => void;
   onCloseDetailPanel: () => void;
   setSelectorTab: (t: SelectorTab) => void;
+  /** Counts computed over the selected window; falls back to the live snapshot. */
+  rangedStats: RangedNetworkStats;
+  /** The selected window, for labelling what the tiles are measuring. */
+  timeRange: ResolvedTimeRange;
 }
 
 function AIInsightsBranchComponent({
@@ -124,8 +130,46 @@ function AIInsightsBranchComponent({
   setSelectedNetworkEvent,
   onCloseDetailPanel,
   setSelectorTab,
+  rangedStats,
+  timeRange,
 }: AIInsightsBranchProps) {
   const formatBps = formatBitsPerSecond;
+
+  /**
+   * Which basis each tile is on.
+   *
+   * These tiles used to read from the live controller snapshot only, so they
+   * showed identical numbers for every time selection — the control appeared
+   * inert. They now prefer the window figures derived from stored history, and
+   * fall back to the snapshot when nothing was stored for the window.
+   *
+   * The distinction is labelled rather than hidden: a mean over seven days and
+   * an instantaneous reading are different quantities, and a tile that silently
+   * switched between them would be worse than one that never moved.
+   */
+  const useWindow = rangedStats.available;
+  const windowLabel = timeRange.label.toLowerCase();
+
+  const apTotal = useWindow && rangedStats.apTotal !== null ? rangedStats.apTotal : apStats.total;
+  const apOnline =
+    useWindow && rangedStats.apOnline !== null ? rangedStats.apOnline : apStats.online;
+  const clientTotal =
+    useWindow && rangedStats.clientTotal !== null ? rangedStats.clientTotal : clientStats.total;
+  const clientAuth =
+    useWindow && rangedStats.clientAuthenticated !== null
+      ? rangedStats.clientAuthenticated
+      : clientStats.authenticated;
+  const tpUp =
+    useWindow && rangedStats.throughputUpload !== null
+      ? rangedStats.throughputUpload
+      : clientStats.throughputUpload;
+  const tpDown =
+    useWindow && rangedStats.throughputDownload !== null
+      ? rangedStats.throughputDownload
+      : clientStats.throughputDownload;
+
+  /** Eyebrow suffix telling the operator what they are reading. */
+  const basisFor = (fromWindow: boolean) => (fromWindow ? `avg · ${windowLabel}` : 'now');
 
   const goAccessPoint = useCallback(() => setSelectorTab('access-point'), [setSelectorTab]);
   const goClient = useCallback(() => setSelectorTab('client'), [setSelectorTab]);
@@ -137,7 +181,7 @@ function AIInsightsBranchComponent({
     }
   };
 
-  const totalTp = formatBps(clientStats.throughputUpload + clientStats.throughputDownload);
+  const totalTp = formatBps(tpUp + tpDown);
   const [tpNum, ...tpUnit] = totalTp.split(' ');
 
   return (
@@ -158,19 +202,22 @@ function AIInsightsBranchComponent({
           <div className="aura-kpi-eyebrow">
             <span>
               <span className="aura-kpi-eyebrow-channel">CH-01</span> · Access Points
+              <span className="aura-kpi-eyebrow-basis">
+                {basisFor(useWindow && rangedStats.apTotal !== null)}
+              </span>
             </span>
             <Wifi className="aura-kpi-icon" />
           </div>
           <div className="aura-kpi-figure">
-            {apStats.total}
+            {apTotal}
             <span className="aura-kpi-figure-unit">AP</span>
           </div>
           <div className="aura-kpi-foot">
             <span className="aura-kpi-foot-good">
               <span className="aura-kpi-foot-mark">●</span>
-              {apStats.online} online
+              {apOnline} online
             </span>
-            <span>{apStats.total - apStats.online} offline</span>
+            <span>{Math.max(0, apTotal - apOnline)} offline</span>
           </div>
           <span className="aura-kpi-corner-br" aria-hidden="true" />
         </div>
@@ -186,19 +233,28 @@ function AIInsightsBranchComponent({
           <div className="aura-kpi-eyebrow">
             <span>
               <span className="aura-kpi-eyebrow-channel">CH-02</span> · Clients
+              <span className="aura-kpi-eyebrow-basis">
+                {basisFor(useWindow && rangedStats.clientTotal !== null)}
+              </span>
             </span>
             <Users className="aura-kpi-icon" />
           </div>
           <div className="aura-kpi-figure">
-            {clientStats.total}
+            {clientTotal}
             <span className="aura-kpi-figure-unit">CLNT</span>
           </div>
           <div className="aura-kpi-foot">
             <span className="aura-kpi-foot-good">
               <span className="aura-kpi-foot-mark">●</span>
-              {clientStats.authenticated} authenticated
+              {clientAuth} authenticated
             </span>
-            <span>{Math.max(0, clientStats.total - clientStats.authenticated)} pending</span>
+            {/* Peak is the figure an operator actually plans capacity against;
+                a mean alone hides the busiest moment of the window. */}
+            {useWindow && rangedStats.clientPeak !== null ? (
+              <span>peak {rangedStats.clientPeak}</span>
+            ) : (
+              <span>{Math.max(0, clientTotal - clientAuth)} pending</span>
+            )}
           </div>
           <span className="aura-kpi-corner-br" aria-hidden="true" />
         </div>
@@ -207,6 +263,9 @@ function AIInsightsBranchComponent({
           <div className="aura-kpi-eyebrow">
             <span>
               <span className="aura-kpi-eyebrow-channel">CH-03</span> · Throughput
+              <span className="aura-kpi-eyebrow-basis">
+                {basisFor(useWindow && rangedStats.throughputUpload !== null)}
+              </span>
             </span>
             <Activity className="aura-kpi-icon" />
           </div>
@@ -215,8 +274,8 @@ function AIInsightsBranchComponent({
             <span className="aura-kpi-figure-unit">{tpUnit.join(' ')}</span>
           </div>
           <div className="aura-kpi-foot">
-            <span>↑ {formatBps(clientStats.throughputUpload)}</span>
-            <span>↓ {formatBps(clientStats.throughputDownload)}</span>
+            <span>↑ {formatBps(tpUp)}</span>
+            <span>↓ {formatBps(tpDown)}</span>
           </div>
           <span className="aura-kpi-corner-br" aria-hidden="true" />
         </div>
@@ -225,6 +284,9 @@ function AIInsightsBranchComponent({
           <div className="aura-kpi-eyebrow">
             <span>
               <span className="aura-kpi-eyebrow-channel">CH-04</span> · Alerts
+              {/* Alarms are not persisted, so this tile is always current state
+                  and must not imply otherwise. */}
+              <span className="aura-kpi-eyebrow-basis">now</span>
             </span>
             <AlertTriangle className="aura-kpi-icon" />
           </div>

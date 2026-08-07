@@ -9,6 +9,13 @@ import { recordNetworkMetrics } from '../services/aiBaselineService';
 import { useGlobalFilters } from './useGlobalFilters';
 import { useOperationalContext } from './useOperationalContext';
 import { controllerDurationFor, type ResolvedTimeRange } from '../lib/timeRange';
+import { monitoringHistory } from '../services/monitoringHistory';
+import {
+  deriveRangedNetworkStats,
+  EMPTY_RANGED_STATS,
+  RANGED_STAT_METRICS,
+  type RangedNetworkStats,
+} from '../lib/rangedNetworkStats';
 
 export interface AccessPoint {
   serialNumber: string;
@@ -170,6 +177,17 @@ export interface DashboardData {
   avgRssi: number;
   activeSiteId: string | undefined;
   /**
+   * Headline counts computed over the *selected window* from stored history,
+   * rather than from the instantaneous controller snapshot in `apStats` /
+   * `clientStats`.
+   *
+   * These are what make the KPI tiles respond to the time control at all: the
+   * live snapshot is identical for every selection, which made the selector look
+   * broken. `available: false` means nothing was stored for the window, and the
+   * tiles fall back to the snapshot.
+   */
+  rangedStats: RangedNetworkStats;
+  /**
    * True when the selected window is entirely in the past, so the controller
    * cannot answer for it and the time-series below come from stored history.
    *
@@ -201,6 +219,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
   const { ctx: operationalCtx } = useOperationalContext();
   const isHistorical = !range.isLive;
   const [unavailableForRange, setUnavailableForRange] = useState<string[]>([]);
+  const [rangedStats, setRangedStats] = useState<RangedNetworkStats>(EMPTY_RANGED_STATS);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1264,6 +1283,38 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     return () => clearInterval(historyInterval);
   }, [loadHistoricalThroughput, isHistorical]);
 
+  // Window-scoped headline counts. Without these the KPI tiles show the same
+  // instantaneous snapshot for every selection, which is what made the time
+  // control appear to do nothing.
+  useEffect(() => {
+    let active = true;
+    const siteId = getActiveSiteFilter();
+
+    (async () => {
+      try {
+        const response = await monitoringHistory.getHistory({
+          start: range.startIso,
+          end: range.endIso,
+          siteId,
+          metricNames: [...RANGED_STAT_METRICS],
+          resolutionMinutes: range.bucketMinutes,
+        });
+        if (!active) return;
+        setRangedStats(deriveRangedNetworkStats(response.series));
+      } catch (error) {
+        if (!active) return;
+        // Non-fatal: the tiles fall back to the live snapshot and say so. A
+        // monitoring outage must not blank the dashboard's headline numbers.
+        console.warn('[Dashboard] Window stats unavailable, using live snapshot:', error);
+        setRangedStats(EMPTY_RANGED_STATS);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [range.startIso, range.endIso, range.bucketMinutes, getActiveSiteFilter]);
+
   useEffect(() => {
     if (apStats.total > 0 && clientStats.total > 0 && rfqiData.length > 0) {
       const latestRfqi = rfqiData[rfqiData.length - 1];
@@ -1302,6 +1353,7 @@ export function useDashboardData({ range }: UseDashboardDataOptions): DashboardD
     avgSnr,
     avgRssi,
     activeSiteId: getActiveSiteFilter(),
+    rangedStats,
     isHistorical,
     unavailableForRange,
     reload: loadDashboardData,
