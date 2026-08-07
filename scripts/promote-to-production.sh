@@ -142,8 +142,30 @@ else
 fi
 
 git tag -a "$TAG" -m "Promoted $MAIN_SHORT from Integration on $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-git push origin production --quiet
 git push origin "$TAG" --quiet
+
+# Stamp the release tag on the service *before* pushing the branch.
+#
+# This script used not to set it at all, so Production kept advertising whatever
+# tag had last been applied by hand — at one point naming a commit three
+# releases old, which makes `/api/v1/system/version` actively misleading and
+# points rollback at the wrong build.
+#
+# --skip-deploys matters: a variable change normally triggers its own
+# deployment, and doing that here would build the same commit twice and race the
+# verification below. The branch push is the single deploy, and it picks the
+# variable up.
+if command -v railway >/dev/null 2>&1 && [ -n "${RAILWAY_TOKEN:-}" ]; then
+  if railway variables --service "Production Demo (AURA)" --set "AURA_RELEASE_TAG=$TAG" --skip-deploys >/dev/null 2>&1; then
+    ok "AURA_RELEASE_TAG=$TAG"
+  else
+    warn "could not set AURA_RELEASE_TAG — Production will report a stale release tag"
+  fi
+else
+  warn "railway CLI or RAILWAY_TOKEN unavailable — AURA_RELEASE_TAG not updated"
+fi
+
+git push origin production --quiet
 ok "production -> $MAIN_SHORT, tagged $TAG"
 
 # ------------------------------------------------------- 5. wait for the deploy

@@ -178,9 +178,17 @@ npm run type-check       # TypeScript type checking
 
 - **Framework:** Vitest + React Testing Library + jsdom
 - **Coverage provider:** v8
-- **Current coverage: <5% -- this is a critical gap**
+- ~1,800 unit tests across ~160 files. Real server baseline is 2 failing files
+  (`sentinel/checks/clientDhcpFailureCheck`, `radiusReachabilityCheck`)
+- `.claude/worktrees/**` is excluded in `vitest.config.ts` -- collecting it runs
+  every suite three or four extra times against stale branches
 - When adding features or fixing bugs, write tests
 - Prioritize testing services and hooks over pure UI components
+- **End-to-end validation lives outside this repo.** Real browser, API, schema,
+  collector, portal, gateway and environment-isolation tests run in AURA-QA
+  (`thomassophiea/AURA-Pipeline`) against the deployed Integration build. See
+  [docs/QA_AND_RELEASE.md](docs/QA_AND_RELEASE.md); add browser scenarios there,
+  not here
 
 ## Common Pitfalls
 

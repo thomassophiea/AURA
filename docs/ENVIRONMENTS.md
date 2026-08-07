@@ -25,6 +25,13 @@ databases, and separate secrets — and it is enforced in code, not by conventio
 | Portal database | `PostgresCWP` | `PostgresCWPProd` |
 | Guest WLAN | `AURA-CWP` | `AURA-PROD-CWP` |
 | ECP identity | `OS-ONE-CWP` | `PRODUCTION-CWP` |
+| Portal branch | `main` | `production` |
+
+The portal branch split is not cosmetic. Both portals build from
+`thomassophiea/OS-ONE-CWP`, and while both tracked `main`, every push to that
+repository was an ungated deploy straight to the production portal. `Production
+CWP` now tracks a `production` branch, and AURA-QA fails if the two ever share
+one again.
 
 Both environments talk to the same physical gateway. They are kept apart there by
 using different WLANs, different ECP identities, and different shared secrets.
@@ -58,7 +65,32 @@ deliberate: if the variable is ever lost, the safe failure is a Production
 process refusing to touch the Production database, not an Integration process
 claiming to be Production.
 
+## QA and Release
+
+Promotion now runs through two services that sit between the two environments —
+**AURA-QA** (aura-qa-production.up.railway.app) and **AURA-Release**
+(aura-release-production.up.railway.app), built from
+[`thomassophiea/AURA-Pipeline`](https://github.com/thomassophiea/AURA-Pipeline)
+and deployed alongside everything else in *EDGE Services*.
+
+QA validates the exact deployed commit — real browsers, APIs, schema and
+migration safety, collector, cleanup, portal, gateway, and environment isolation
+as a blocking gate — and reports READY or BLOCKED. It never promotes. Release
+compares the two environments, generates release notes, and promotes a
+QA-validated commit behind a typed-sha confirmation, then verifies Production and
+keeps a rollback path.
+
+Details, including why isolation blocks on its own and how to add a test, are in
+[QA_AND_RELEASE.md](QA_AND_RELEASE.md).
+
+QA/Release operational state lives in its own `PostgresQA` service. It never
+touches `Postgres`, `PostgresProd`, `PostgresCWP` or `PostgresCWPProd`.
+
 ## Promoting a build
+
+The pipeline is the normal path. The script below remains as the break-glass one
+— it runs the same fast-forward-and-tag model from a laptop, without the QA gate,
+release notes or history.
 
 ```bash
 scripts/promote-to-production.sh              # full run
