@@ -26,6 +26,8 @@ import { registerResolver } from './server/cortex/toolDispatcher.js';
 import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
+import { createGuestsRouter } from './server/guests/guestsRouter.js';
+import { loadCwpConfig } from './server/guests/cwpClient.js';
 import {
   loadMonitoringConfig,
   describeMonitoringConfig,
@@ -2026,6 +2028,22 @@ app.use('/api', createSentinelRouter());
 if (monitoringConfig) {
   app.use('/api', createMonitoringRouter({ config: monitoringConfig }));
   console.log('[Proxy Server] ✓ Monitoring history API mounted at /api/monitoring/*');
+}
+
+// ==================== Guest Management Routes ====================
+// Guest records live in the captive portal's own database and are reached
+// through its internal API; live connection state comes from the gateway. These
+// routes validate the caller's token against the gateway they name — the
+// presence-only requireAuth is not sufficient for endpoints that grant and
+// withdraw network access.
+app.use('/api', createGuestsRouter());
+{
+  const cwpConfig = loadCwpConfig();
+  console.log(
+    cwpConfig.configured
+      ? `[Proxy Server] ✓ Guest management API mounted at /api/v1/guests/* (portal: ${cwpConfig.baseUrl})`
+      : '[Proxy Server] ⚠ Guest management API mounted but inert — set CWP_INTERNAL_API_URL and CWP_INTERNAL_API_TOKEN'
+  );
 }
 
 // ==================== Cortex AI Copilot Routes ====================
