@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { getPool, assertDatabaseConfigured, closePool } from './pool.js';
+import { resolveEnvironmentName } from '../system/environment.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const MIGRATIONS_DIR = path.resolve(__dirname, 'migrations');
@@ -79,6 +80,15 @@ export async function runMigrations({ dir = MIGRATIONS_DIR, logger = console } =
     // migration to finish rather than start serving against a half-built schema.
     await client.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY.toString()]);
     await ensureMigrationsTable(client);
+
+    // Publish the declared environment as a session setting so migrations can
+    // read it (0003 stamps environment_identity from it). Session-scoped, not
+    // SET LOCAL: each migration runs in its own transaction.
+    await client.query('SELECT set_config($1, $2, false)', [
+      'aura.environment',
+      resolveEnvironmentName(),
+    ]);
+    await client.query('SELECT set_config($1, $2, false)', ['aura.stamped_by', 'migration']);
 
     const { rows } = await client.query('SELECT name FROM schema_migrations');
     const done = new Set(rows.map((row) => row.name));

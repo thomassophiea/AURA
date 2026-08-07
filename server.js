@@ -27,6 +27,9 @@ import { sentinelEngine } from './server/sentinel/sentinelEngine.js';
 import { createSentinelRouter } from './server/sentinel/sentinelRouter.js';
 import { createMonitoringRouter } from './server/monitoring/monitoringRouter.js';
 import { createGuestsRouter } from './server/guests/guestsRouter.js';
+import { createSystemRouter } from './server/system/systemRouter.js';
+import { describeEnvironment } from './server/system/environment.js';
+import { assertDatabaseEnvironment } from './server/db/environmentGuard.js';
 import { loadCwpConfig } from './server/guests/cwpClient.js';
 import {
   loadMonitoringConfig,
@@ -192,6 +195,27 @@ if (!isDatabaseConfigured()) {
   for (const problem of describeReadiness(monitoringConfig)) {
     console.warn(`[Proxy Server] ⚠  ${problem}`);
   }
+
+  // Confirm this database belongs to this environment. Integration and
+  // Production Demo run identical images, so a DATABASE_URL reference pointed
+  // at the wrong Postgres would otherwise serve the wrong environment's data
+  // while reporting perfect health. Fatal in production, warned in dev where a
+  // shared scratch database is normal.
+  assertDatabaseEnvironment().catch((error) => {
+    if (process.env.NODE_ENV === 'production') {
+      console.error(`[Proxy Server] ❌ CRITICAL: ${error.message}`);
+      process.exit(1);
+    }
+    console.warn(`[Proxy Server] ⚠  ${error.message}`);
+  });
+}
+
+{
+  const env = describeEnvironment();
+  console.log(
+    `[Proxy Server] Environment: ${env.label} (${env.environment}), role=${env.role}` +
+      (env.explicit ? '' : ' — AURA_ENVIRONMENT not set, defaulted to integration')
+  );
 }
 
 console.log('[Proxy Server] --------------------------');
@@ -2029,6 +2053,13 @@ if (monitoringConfig) {
   app.use('/api', createMonitoringRouter({ config: monitoringConfig }));
   console.log('[Proxy Server] ✓ Monitoring history API mounted at /api/monitoring/*');
 }
+
+// ==================== System Introspection Routes ====================
+// Version, health and dependency shape for the QA/validation application.
+// Deliberately unauthenticated and deliberately secret-free: configuration is
+// reported as variable names and presence only, never values.
+app.use('/api', createSystemRouter({ config: monitoringConfig, dirname: __dirname }));
+console.log('[Proxy Server] ✓ System API mounted at /api/v1/system/*');
 
 // ==================== Guest Management Routes ====================
 // Guest records live in the captive portal's own database and are reached

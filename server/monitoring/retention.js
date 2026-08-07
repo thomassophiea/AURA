@@ -12,6 +12,7 @@
  */
 
 import { withAdvisoryLock } from '../db/pool.js';
+import { assertDatabaseEnvironment } from '../db/environmentGuard.js';
 import {
   deleteExpiredSamples,
   deleteOldCollectionRuns,
@@ -89,12 +90,19 @@ export async function runRetentionCleanup({ config, now = new Date(), deps = {} 
     deleteExpiredSamplesFn = deleteExpiredSamples,
     deleteOldCollectionRunsFn = deleteOldCollectionRuns,
     deleteOrphanedCurrentStateFn = deleteOrphanedCurrentState,
+    assertEnvironmentFn = assertDatabaseEnvironment,
   } = deps;
 
   if (!config.cleanupEnabled) {
     log('monitoring.cleanup_disabled', {});
     return { ran: false, reason: 'disabled' };
   }
+
+  // Before any DELETE, confirm this database belongs to this environment. A
+  // DATABASE_URL pointed at the wrong Postgres is the one mistake that would
+  // otherwise destroy the other environment's history in complete silence, and
+  // this is the last point at which it can still be caught.
+  await assertEnvironmentFn();
 
   const started = Date.now();
   const outcome = await withLockFn(CLEANUP_LOCK_KEY, async () => {

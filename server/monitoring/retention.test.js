@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 
 import { runRetentionCleanup, startRetentionSchedule, CLEANUP_LOCK_KEY } from './retention.js';
 import { loadMonitoringConfig } from './config.js';
+import { EnvironmentMismatchError } from '../db/environmentGuard.js';
 
 const NOW = new Date('2026-08-05T12:00:00.000Z');
 const CONFIG = loadMonitoringConfig({ DATABASE_URL: 'postgres://localhost/aura' });
@@ -12,6 +13,7 @@ function makeDeps(overrides = {}) {
     deleteExpiredSamplesFn: vi.fn(async () => ({ deleted: 42, batches: 1 })),
     deleteOldCollectionRunsFn: vi.fn(async () => ({ deleted: 3 })),
     deleteOrphanedCurrentStateFn: vi.fn(async () => ({ deleted: 0 })),
+    assertEnvironmentFn: vi.fn(async () => ({ ok: true, environment: 'integration' })),
     ...overrides,
   };
 }
@@ -168,5 +170,42 @@ describe('startRetentionSchedule', () => {
     // Must not reject — a failed sweep cannot take the host process down.
     await expect(schedule.triggerNow()).resolves.toBeUndefined();
     schedule.stop();
+  });
+});
+
+describe('environment isolation', () => {
+  it('deletes nothing when the database belongs to another environment', async () => {
+    const deps = makeDeps({
+      withLockFn: vi.fn(async (_key, fn) => ({ acquired: true, result: await fn() })),
+      assertEnvironmentFn: vi.fn(async () => {
+        throw new EnvironmentMismatchError('production', 'integration');
+      }),
+    });
+
+    await expect(runRetentionCleanup({ config: CONFIG, now: NOW, deps })).rejects.toThrow(
+      EnvironmentMismatchError
+    );
+
+    // The point of the guard: not one DELETE reached the wrong database.
+    expect(deps.deleteExpiredSamplesFn).not.toHaveBeenCalled();
+    expect(deps.deleteOldCollectionRunsFn).not.toHaveBeenCalled();
+    expect(deps.deleteOrphanedCurrentStateFn).not.toHaveBeenCalled();
+    expect(deps.withLockFn).not.toHaveBeenCalled();
+  });
+
+  it('checks the environment before taking the lock', async () => {
+    const order = [];
+    const deps = makeDeps({
+      assertEnvironmentFn: vi.fn(async () => {
+        order.push('assert');
+        return { ok: true };
+      }),
+      withLockFn: async (_key, fn) => {
+        order.push('lock');
+        return { acquired: true, result: await fn() };
+      },
+    });
+    await runRetentionCleanup({ config: CONFIG, now: NOW, deps });
+    expect(order).toEqual(['assert', 'lock']);
   });
 });
