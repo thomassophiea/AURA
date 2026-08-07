@@ -32,7 +32,6 @@ import {
   assignRole,
   disassociate,
   canonicalMac,
-  GatewayUnavailableError,
 } from './gatewayStations.js';
 import {
   mergeGuest,

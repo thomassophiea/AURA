@@ -19,17 +19,15 @@ const DashboardEnhanced = lazy(() =>
 const AccessPoints = lazy(() =>
   import('./components/AccessPoints').then((m) => ({ default: m.AccessPoints }))
 );
-const TrafficStatsConnectedClients = lazy(() =>
-  import('./components/TrafficStatsConnectedClients').then((m) => ({
-    default: m.TrafficStatsConnectedClients,
-  }))
+const ClientsPage = lazy(() =>
+  import('./components/ClientsPage').then((m) => ({ default: m.ClientsPage }))
 );
 
 import { prefetchOnIdle } from './lib/prefetch';
 
 const prefetchCriticalComponents = () => {
   prefetchOnIdle(() => import('./components/AccessPoints'));
-  prefetchOnIdle(() => import('./components/TrafficStatsConnectedClients'));
+  prefetchOnIdle(() => import('./components/ClientsPage'));
   prefetchOnIdle(() => import('./components/ReportWidgets'));
   prefetchOnIdle(() => import('./components/configure/networks'));
 };
@@ -1191,7 +1189,7 @@ export default function App() {
           />
         );
       case 'connected-clients':
-        return <TrafficStatsConnectedClients onShowDetail={handleShowClientDetail} />;
+        return <ClientsPage onShowDetail={handleShowClientDetail} />;
       case 'performance-analytics':
         return <PerformanceAnalytics />;
       case 'audit-logs':

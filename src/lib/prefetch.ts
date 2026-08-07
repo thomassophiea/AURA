@@ -21,7 +21,7 @@ const componentImports: Record<string, () => Promise<unknown>> = {
   insights: () => import('../components/ServiceLevelsEnhanced'),
   'service-levels': () => import('../components/sle/SLEDashboard'),
   'app-insights': () => import('../components/AppInsights'),
-  'connected-clients': () => import('../components/TrafficStatsConnectedClients'),
+  'connected-clients': () => import('../components/ClientsPage'),
   'access-points': () => import('../components/AccessPoints'),
   'report-widgets': () => import('../components/ReportWidgets'),
   'configure-sites-groups': () => import('../components/SitesAndGroupsPage'),
