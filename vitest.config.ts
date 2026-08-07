@@ -10,13 +10,19 @@ export default defineConfig({
     setupFiles: './src/test/setup.ts',
     css: true,
     // Default Vitest excludes plus macOS resource-fork files (`._*`) that
-    // appear when the project lives on a network/macOS-formatted volume.
+    // appear when the project lives on a network/macOS-formatted volume, and
+    // `.claude/worktrees/**`, which holds throwaway agent checkouts of this same
+    // repository. Collecting those runs every suite three or four extra times
+    // against stale code, which triples the runtime and reports failures that
+    // belong to abandoned branches — enough noise to make the suite unusable as
+    // a release gate.
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
       '**/build/**',
       '**/cypress/**',
       '**/.{idea,git,cache,output,temp}/**',
+      '**/.claude/worktrees/**',
       '**/{karma,rollup,webpack,vite,vitest,jest,ava,babel,nyc,cypress,tsup,build,eslint,prettier}.config.*',
       '**/._*',
     ],
