@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import express from 'express';
 import request from 'supertest';
 
-import { createSystemRouter } from './systemRouter.js';
+import { createSystemRouter, __testables } from './systemRouter.js';
 import { loadMonitoringConfig } from '../monitoring/config.js';
 
 const CONFIG = loadMonitoringConfig({ DATABASE_URL: 'postgres://localhost/aura' });
@@ -172,5 +172,64 @@ describe('GET /api/v1/system/dependencies', () => {
     ).get('/api/v1/system/dependencies');
     expect(res.status).toBe(200);
     expect(res.body.dependencies.database.reason).toBe('unreachable');
+  });
+});
+
+describe('probeCwp', () => {
+  // Regression: Production Demo shipped with CWP_INTERNAL_API_URL ending in
+  // /api/internal, so every guest call hit /api/internal/api/internal/guests and
+  // 404'd — while the old probe, which fell back to the portal's public /health,
+  // reported "ok". The probe must fail the same way the dependency fails.
+  it('reports unreachable when the base URL doubles the API prefix', async () => {
+    process.env.CWP_INTERNAL_API_URL = 'http://portal.internal:8080/api/internal';
+    process.env.CWP_INTERNAL_API_TOKEN = 'tok';
+
+    const seen = [];
+    const fetchFn = async (url) => {
+      seen.push(url);
+      // The portal 404s the doubled path but still serves its public /health.
+      if (url.includes('/api/internal/api/internal')) {
+        return { ok: false, status: 404, json: async () => ({ error: 'not_found' }) };
+      }
+      return { ok: true, status: 200, json: async () => ({ status: 'ok', service: 'os-one-cwp' }) };
+    };
+
+    const result = await __testables.probeCwp(fetchFn);
+    expect(result.status).toBe('unreachable');
+    expect(result.httpStatus).toBe(404);
+    expect(result.baseUrl).toBe('http://portal.internal:8080/api/internal');
+    expect(seen.some((u) => u.includes('/api/internal/api/internal/guests'))).toBe(true);
+  });
+
+  it('reports ok when the base URL is the service root', async () => {
+    process.env.CWP_INTERNAL_API_URL = 'http://portal.internal:8080';
+    process.env.CWP_INTERNAL_API_TOKEN = 'tok';
+
+    const fetchFn = async (url) => {
+      if (url.endsWith('/api/internal/guests?limit=1')) {
+        return { ok: true, status: 200, json: async () => ({ guests: [], total: 4 }) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ status: 'ok', service: 'os-one-cwp', commit: 'abc1234' }),
+      };
+    };
+
+    const result = await __testables.probeCwp(fetchFn);
+    expect(result).toMatchObject({
+      status: 'ok',
+      internalApi: 'reachable',
+      guestsKnown: 4,
+      commit: 'abc1234',
+    });
+  });
+
+  it('reports not_configured rather than probing when the token is absent', async () => {
+    process.env.CWP_INTERNAL_API_URL = 'http://portal.internal:8080';
+    delete process.env.CWP_INTERNAL_API_TOKEN;
+    const fetchFn = vi.fn();
+    expect(await __testables.probeCwp(fetchFn)).toEqual({ status: 'not_configured' });
+    expect(fetchFn).not.toHaveBeenCalled();
   });
 });

@@ -116,37 +116,43 @@ async function probeSchema(queryFn = query) {
   }
 }
 
-/** The captive portal, reached over private networking via its own health route. */
+/**
+ * The captive portal, over private networking.
+ *
+ * This deliberately exercises the *internal guest API* — the path AURA actually
+ * depends on — rather than the portal's public `/health`. An earlier version
+ * probed `/health` with a fallback that stripped the API prefix, and it reported
+ * `ok` for a deployment whose `CWP_INTERNAL_API_URL` already contained
+ * `/api/internal`: every real guest call was 404ing on a doubled prefix while
+ * this endpoint showed green. A dependency probe that cannot fail the way the
+ * dependency actually fails is worse than no probe, because it is believed.
+ */
 async function probeCwp(fetchFn = fetch) {
   const config = loadCwpConfig();
   if (!config.configured) return { status: 'not_configured' };
   try {
-    const health = await cwpRequest('/health', {
-      config,
-      fetchFn,
-      // The portal's /health is public; the internal token is harmless here and
-      // keeps one code path for reaching the service.
-    }).catch(async () => {
-      // Older portal builds expose /health outside the internal API prefix.
-      const base = config.baseUrl.replace(/\/api\/internal$/, '');
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
-      try {
-        const res = await fetchFn(`${base}/health`, { signal: controller.signal });
-        return res.ok ? await res.json() : null;
-      } finally {
-        clearTimeout(timer);
-      }
-    });
-    if (!health) return { status: 'unreachable' };
+    // limit=1 keeps it cheap; the point is that the route resolves and
+    // authenticates, not the contents.
+    const listed = await cwpRequest('/api/internal/guests?limit=1', { config, fetchFn });
+    const health = await cwpRequest('/health', { config, fetchFn }).catch(() => null);
     return {
-      status: health.status === 'ok' ? 'ok' : 'degraded',
-      service: health.service ?? null,
-      commit: health.commit ?? null,
-      checks: health.checks ?? null,
+      status: 'ok',
+      internalApi: 'reachable',
+      guestsKnown: typeof listed?.total === 'number' ? listed.total : null,
+      service: health?.service ?? null,
+      commit: health?.commit ?? null,
+      checks: health?.checks ?? null,
     };
   } catch (error) {
-    return { status: 'unreachable', message: sanitizeMessage(error.message) };
+    return {
+      status: 'unreachable',
+      internalApi: 'failed',
+      // The base URL is not a secret and naming it is the fastest way to spot a
+      // doubled or missing path prefix.
+      baseUrl: config.baseUrl,
+      httpStatus: error.status ?? null,
+      message: sanitizeMessage(error.message),
+    };
   }
 }
 
@@ -306,4 +312,4 @@ export function createSystemRouter({ config = null, dirname = process.cwd(), dep
   return router;
 }
 
-export const __testables = { probeCollector, probeCleanup, probeSchema, probeGateway };
+export const __testables = { probeCollector, probeCleanup, probeSchema, probeGateway, probeCwp };
