@@ -340,6 +340,41 @@ and the throughput trend. None of it needs the controller.
 connected last Tuesday" endpoint and AURA does not persist per-client rosters by default (see
 Privacy). Those panels show current state and say so. They are not silently re-labelled.
 
+### One selection, four surfaces
+
+Insights (`DashboardEnhanced`), Operational Insights (`SLEDashboard`), Service Level Analytics,
+AP Insights and Client Insights all read the *same* token from `useGlobalFilters` and render the
+same `TimeRangeSelector`. They previously each kept their own `useState` with its own vocabulary
+— `'7d'` on the SLE page, `'24h'` on Service Levels, `'3H'` on both Insights panels — so moving
+between them silently changed the window out from under the operator.
+
+Each surface can serve a past day only as far as its data actually reaches:
+
+| Surface | Live window | Past calendar day |
+|---|---|---|
+| Insights | controller | SLEs, AP health, client counts, throughput from PostgreSQL |
+| Operational Insights | controller | SLE history from PostgreSQL |
+| AP Insights | `/v1/report/aps/{serial}` | **rebuilt from the `ap_report` family** — see below |
+| Client Insights | `/v1/report/clients/{mac}` | *nothing* — per-client history is not retained |
+
+**AP Insights.** `apInsightsHistory.ts` reassembles stored `ap_report` samples into the exact
+`APInsightsResponse` shape the controller returns, so every chart, tooltip and summary tile
+renders unchanged from either source and there is only one rendering path to keep correct. This
+requires `MONITORING_AP_REPORTS_ENABLED=true`; without it the family is never collected and a
+past day correctly reports no stored history.
+
+The one wrinkle is that `reportNormalizer.slugifyStatName` is lossy (`"Power Consumption"` →
+`power_consumption`) while the charts key on the original names (`dataKey="Power Consumption"`).
+`STAT_NAME_BY_SLUG` maps them back. It is a closed table, and every entry is a slug observed in
+`metric_samples` paired with a `dataKey` observed in `APInsights.tsx` — not a guess. An unmapped
+slug falls back to itself, which renders as an empty chart rather than as wrong data.
+
+**Client Insights.** Deliberately has no historical path. `client_external_id` is NULL unless
+`MONITORING_PERSIST_CLIENT_IDENTIFIERS` is set with a pseudonym salt, so there is nothing stored
+to serve. The panel says that, with the reason, and offers no "Try Again" — retrying cannot
+change the answer. It is framed as a limitation, not an error: no red alert, no destructive
+styling.
+
 ### `GET /api/monitoring/coverage`
 
 Backs the selector's disabled and "incomplete" states. Without it the UI would offer every

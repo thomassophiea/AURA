@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Skeleton } from './ui/skeleton';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   AreaChart,
   Area,
@@ -38,16 +37,19 @@ import {
   Maximize2,
   RefreshCw,
   ArrowLeft,
-  Clock,
   AlertTriangle,
+  History,
 } from 'lucide-react';
 import {
-  apiService,
-  ClientInsightsResponse,
   APInsightsReport,
   APInsightsStatistic,
 } from '../services/api';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
+import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
+import { useClientInsightsData } from '../hooks/useClientInsightsData';
+import { controllerDurationFor } from '../lib/timeRange';
+import { TimeRangeSelector } from './TimeRangeSelector';
+import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { TimelineControls } from './timeline';
 
 interface ClientInsightsProps {
@@ -56,13 +58,12 @@ interface ClientInsightsProps {
   onOpenFullScreen?: () => void;
 }
 
-// Duration options
-const DURATION_OPTIONS = [
-  { value: '3H', label: 'Last 3 Hours', resolution: 15 },
-  { value: '24H', label: 'Last 24 Hours', resolution: 60 },
-  { value: '7D', label: 'Last 7 Days', resolution: 360 },
-  { value: '30D', label: 'Last 30 Days', resolution: 1440 },
-];
+/**
+ * The per-panel duration dropdown that used to live here is gone — the window
+ * now comes from the shared selection in `useGlobalFilters`, the same one the
+ * Insights, Operational Insights and AP Insights pages read, so opening a client
+ * no longer resets the range you were looking at.
+ */
 
 // Compact tooltip styling for consistency
 const COMPACT_TOOLTIP_STYLE = {
@@ -192,50 +193,21 @@ export function ClientInsights({
   clientName: _clientName,
   onOpenFullScreen,
 }: ClientInsightsProps) {
-  const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    range,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+  } = useSelectedTimeRange();
 
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
-        const data = await apiService.getClientInsights(
-          macAddress,
-          duration,
-          resolution,
-          'default'
-        );
-        if (!cancelled) {
-          setInsights(data);
-          setError(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load Client insights';
-          console.error('Failed to load Client insights:', error);
-          setError(errorMessage);
-          setInsights(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [macAddress, duration]);
+  const { insights, isLoading, unavailableMessage } = useClientInsightsData(macAddress, range, {
+    scope: 'default',
+  });
 
   // Calculate summary stats - only return valid data
   const stats = useMemo(() => {
@@ -297,26 +269,21 @@ export function ClientInsights({
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Client Insights</span>
           </div>
-          <div className="flex items-center gap-1.5 ml-auto mr-1">
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger
-                className="w-[110px] h-7 text-xs"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div
+            className="flex items-center gap-1.5 ml-auto mr-1"
+            // The card opens full screen on click; the selector inside it is not
+            // a way to trigger that.
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TimeRangeSelector
+              value={timeRangeToken}
+              onChange={setTimeRangeToken}
+              optionGroups={optionGroups}
+              dayStatuses={dayStatuses}
+              retentionDays={retentionDays}
+              neverCollected={neverCollected}
+              triggerClassName="w-[150px] h-7 text-xs"
+            />
             {onOpenFullScreen && (
               <Button
                 variant="ghost"
@@ -387,6 +354,12 @@ export function ClientInsights({
                 </div>
               )}
             </div>
+          ) : unavailableMessage ? (
+            // A past day is a limitation, not an empty result — saying why beats
+            // an inviting "click to view" that leads to the same nothing.
+            <div className="py-3 text-center">
+              <p className="text-xs text-muted-foreground">{unavailableMessage}</p>
+            </div>
           ) : (
             <div className="text-center py-3">
               <p className="text-sm text-muted-foreground">Click to view detailed insights</p>
@@ -410,13 +383,32 @@ export function ClientInsightsFullScreen({
   clientName,
   onClose,
 }: ClientInsightsFullScreenProps) {
-  const [insights, setInsights] = useState<ClientInsightsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [duration, setDuration] = useState('3H');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    range,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+    selectedCoverage,
+  } = useSelectedTimeRange();
 
-  const handleRefresh = () => setRefreshKey((k) => k + 1);
+  const {
+    insights,
+    isLoading,
+    unavailableReason,
+    unavailableMessage,
+    reload: handleRefresh,
+  } = useClientInsightsData(macAddress, range, { scope: 'all' });
+
+  // A failed request and a window nothing can answer for are different states.
+  // Only the first is an error; the second is a limitation, and framing it with
+  // a red alert and a "Try Again" button would be misleading twice over.
+  const error = unavailableReason === 'error' ? unavailableMessage : null;
+  const notRetained = unavailableReason === 'historical_not_retained' ? unavailableMessage : null;
+  // Chart formatters below switch label granularity on this.
+  const duration = controllerDurationFor(range) ?? '24H';
 
   // Timeline navigation hook
   const timeline = useTimelineNavigation('client-insights');
@@ -429,40 +421,6 @@ export function ClientInsightsFullScreen({
     }
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
-        const data = await apiService.getClientInsights(macAddress, duration, resolution, 'all');
-        if (!cancelled) {
-          setInsights(data);
-          setError(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load Client insights';
-          console.error('Failed to load Client insights:', error);
-          setError(errorMessage);
-          setInsights(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [macAddress, duration, refreshKey]);
 
   // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
@@ -1999,24 +1957,31 @@ export function ClientInsightsFullScreen({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
-                <Clock className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TimeRangeSelector
+              value={timeRangeToken}
+              onChange={setTimeRangeToken}
+              optionGroups={optionGroups}
+              dayStatuses={dayStatuses}
+              retentionDays={retentionDays}
+              neverCollected={neverCollected}
+              triggerClassName="w-[180px] h-8 text-xs"
+            />
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
+        </div>
+
+        {/* The resolved dates, so the window on screen is unambiguous. */}
+        <div className="px-4 pb-2">
+          <SelectedRangeLabel
+            range={range}
+            coverage={selectedCoverage}
+            // Client history is never served from the store, so the "stored
+            // history" badge would be a false claim here.
+            showStoredBadge={false}
+          />
         </div>
 
         {/* Timeline Controls */}
@@ -2044,6 +2009,15 @@ export function ClientInsightsFullScreen({
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
+              </div>
+            ) : notRetained ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <History className="h-16 w-16 text-muted-foreground/30 mb-4" />
+                <h3 className="text-lg font-medium mb-2">
+                  Not available for {range.label.toLowerCase()}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-md">{notRetained}</p>
+                {/* No "Try Again": retrying cannot change the answer. */}
               </div>
             ) : error ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">

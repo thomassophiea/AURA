@@ -13,7 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import {
   AreaChart,
   Area,
@@ -35,17 +34,20 @@ import {
   Maximize2,
   RefreshCw,
   ArrowLeft,
-  Clock,
   AlertTriangle,
 } from 'lucide-react';
 import {
   apiService,
   APDetails,
-  APInsightsResponse,
   APInsightsReport,
   APInsightsStatistic,
 } from '../services/api';
+import { controllerDurationFor } from '../lib/timeRange';
 import { useTimelineNavigation } from '../hooks/useTimelineNavigation';
+import { useSelectedTimeRange } from '../hooks/useSelectedTimeRange';
+import { useApInsightsData } from '../hooks/useApInsightsData';
+import { TimeRangeSelector } from './TimeRangeSelector';
+import { SelectedRangeLabel } from './SelectedRangeLabel';
 import { TimelineControls } from './timeline';
 import { PowerChart } from './insights/PowerChart';
 import { PowerContextCard } from './insights/PowerContextCard';
@@ -57,13 +59,19 @@ interface APInsightsProps {
   onOpenFullScreen?: () => void;
 }
 
-// Duration options
-const DURATION_OPTIONS = [
-  { value: '3H', label: 'Last 3 Hours', resolution: 15 },
-  { value: '24H', label: 'Last 24 Hours', resolution: 60 },
-  { value: '7D', label: 'Last 7 Days', resolution: 360 },
-  { value: '30D', label: 'Last 30 Days', resolution: 1440 },
-];
+/**
+ * The per-panel duration dropdown that used to live here is gone.
+ *
+ * It kept its own `useState('3H')` with its own vocabulary (3H/24H/7D/30D), so
+ * opening an AP while the dashboard was showing "Yesterday" silently dropped you
+ * back to the last three hours. The window now comes from the shared selection
+ * in `useGlobalFilters`, the same one the Insights and Operational Insights
+ * pages use, and resolution comes from `range.bucketMinutes`.
+ *
+ * `30D` is not offered by the shared selector: only seven days are retained, and
+ * on XCC 10.18.1.0-011R the AP report widgets return HTTP 500 for anything wider
+ * than `3H` anyway.
+ */
 
 // Compact tooltip styling for consistency
 const COMPACT_TOOLTIP_STYLE = {
@@ -199,37 +207,23 @@ const CHART_COLORS = {
 };
 
 export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: APInsightsProps) {
-  const [insights, setInsights] = useState<APInsightsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [duration, setDuration] = useState('3H');
   const [expanded, setExpanded] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    range,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+  } = useSelectedTimeRange();
 
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
-        const data = await apiService.getAccessPointInsights(serialNumber, duration, resolution);
-        if (!cancelled) {
-          setInsights(data);
-        }
-      } catch (error) {
-        console.error('Failed to load AP insights:', error);
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [serialNumber, duration]);
+  // Live windows come from the controller; a finished day comes from stored
+  // ap_report history. Same response shape either way.
+  // The compact card shows summary tiles only — no charts, so no formatter
+  // granularity to derive here.
+  const { insights, isLoading, unavailableReason } = useApInsightsData(serialNumber, range);
 
   // Calculate summary stats - only return valid data
   const stats = useMemo(() => {
@@ -300,26 +294,21 @@ export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: 
             <BarChart3 className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">AP Insights</span>
           </div>
-          <div className="flex items-center gap-1.5 ml-auto mr-1">
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger
-                className="w-[110px] h-7 text-xs"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div
+            className="flex items-center gap-1.5 ml-auto mr-1"
+            // The card is clickable to open full screen; the selector inside it
+            // is not a way to trigger that.
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TimeRangeSelector
+              value={timeRangeToken}
+              onChange={setTimeRangeToken}
+              optionGroups={optionGroups}
+              dayStatuses={dayStatuses}
+              retentionDays={retentionDays}
+              neverCollected={neverCollected}
+              triggerClassName="w-[150px] h-7 text-xs"
+            />
             {onOpenFullScreen && (
               <Button
                 variant="ghost"
@@ -387,6 +376,13 @@ export function APInsights({ serialNumber, apName: _apName, onOpenFullScreen }: 
                 </div>
               )}
             </div>
+          ) : unavailableReason === 'no_stored_history' ? (
+            // Distinguished from "click to view": there is nothing to open.
+            <div className="py-3 text-center">
+              <p className="text-xs text-muted-foreground">
+                No stored access point history for {range.label.toLowerCase()}.
+              </p>
+            </div>
           ) : (
             <div className="text-center py-3">
               <p className="text-sm text-muted-foreground">Click to view detailed insights</p>
@@ -406,15 +402,34 @@ interface APInsightsFullScreenProps {
 }
 
 export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsightsFullScreenProps) {
-  const [insights, setInsights] = useState<APInsightsResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [duration, setDuration] = useState('3H');
-  const [refreshKey, setRefreshKey] = useState(0);
   const [apDetails, setApDetails] = useState<APDetails | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
 
-  const handleRefresh = () => setRefreshKey((k) => k + 1);
+  const {
+    token: timeRangeToken,
+    setToken: setTimeRangeToken,
+    range,
+    optionGroups,
+    dayStatuses,
+    retentionDays,
+    neverCollected,
+    selectedCoverage,
+  } = useSelectedTimeRange();
+
+  const {
+    insights,
+    isLoading,
+    servedFromHistory,
+    unavailableReason,
+    errorMessage,
+    reload: handleRefresh,
+  } = useApInsightsData(serialNumber, range);
+
+  // The real failure text, not a generic one — it is what tells an operator
+  // whether the controller 502'd or the token expired.
+  const error = unavailableReason === 'error' ? errorMessage : null;
+  // Chart formatters below switch label granularity on this.
+  const duration = servedFromHistory ? '24H' : controllerDurationFor(range) ?? '24H';
 
   // Timeline navigation hook
   const timeline = useTimelineNavigation('ap-insights');
@@ -427,40 +442,6 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     }
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const resolution = DURATION_OPTIONS.find((d) => d.value === duration)?.resolution || 15;
-        const data = await apiService.getAccessPointInsights(serialNumber, duration, resolution);
-        if (!cancelled) {
-          setInsights(data);
-          setError(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load AP insights';
-          console.error('Failed to load AP insights:', error);
-          setError(errorMessage);
-          setInsights(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [serialNumber, duration, refreshKey]);
 
   // AP configuration backs the power levers. Independent of the insights fetch:
   // a failure here degrades the levers column, it does not break the charts.
@@ -485,7 +466,7 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
     return () => {
       cancelled = true;
     };
-  }, [serialNumber, refreshKey]);
+  }, [serialNumber]);
 
   // Soft reset timeline when duration changes (preserve lock state and current time)
   useEffect(() => {
@@ -1447,24 +1428,25 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Select value={duration} onValueChange={setDuration}>
-              <SelectTrigger className="w-[150px] h-8 text-xs">
-                <Clock className="h-4 w-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <TimeRangeSelector
+              value={timeRangeToken}
+              onChange={setTimeRangeToken}
+              optionGroups={optionGroups}
+              dayStatuses={dayStatuses}
+              retentionDays={retentionDays}
+              neverCollected={neverCollected}
+              triggerClassName="w-[180px] h-8 text-xs"
+            />
             <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>
           </div>
+        </div>
+
+        {/* The resolved dates, and where the figures came from. */}
+        <div className="px-4 pb-2">
+          <SelectedRangeLabel range={range} coverage={selectedCoverage} />
         </div>
 
         {/* Timeline Controls */}
@@ -1519,8 +1501,11 @@ export function APInsightsFullScreen({ serialNumber, apName, onClose }: APInsigh
                 <BarChart3 className="h-16 w-16 text-muted-foreground/30 mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Insights Data Available</h3>
                 <p className="text-sm text-muted-foreground max-w-md mb-4">
-                  No performance data is available for this access point in the selected time
-                  period. Try selecting a different duration or check back later.
+                  {/* A past day and a live window fail for different reasons, and
+                      "try a different duration" is useless advice for the first. */}
+                  {servedFromHistory
+                    ? `AURA stored no access point history for ${range.label.toLowerCase()} (${range.rangeLabel}). Collection may not have been running, or this AP may not have been reporting.`
+                    : 'No performance data is available for this access point in the selected time period. Try a different range or check back later.'}
                 </p>
                 <Button onClick={handleRefresh} variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
