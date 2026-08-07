@@ -118,6 +118,60 @@ export async function fetchServices({
 }
 
 /**
+ * POST an action to the gateway and treat an empty 200 as success.
+ *
+ * `requestXcc` parses every successful response as JSON. The station action
+ * endpoints answer `200` with a zero-length body — measured against XCC
+ * 192.168.100.12 on 2026-08-07, `POST /v1/stations/assignrole` returns
+ * `[HTTP 200] [len 0]` — so parsing unconditionally turned a successful role
+ * change into a reported failure. An action that worked must not be reported
+ * as one that did not.
+ */
+async function postAction(
+  path,
+  body,
+  { authToken, controllerUrl, fetchFn = null, timeoutMs = DEFAULT_TIMEOUT_MS, label }
+) {
+  const fetchImpl = fetchFn ?? globalThis.fetch;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let response;
+  try {
+    response = await fetchImpl(`${controllerUrl}/management${path}`, {
+      method: 'POST',
+      headers: {
+        ...(authToken ? { Authorization: authToken } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    throw new GatewayUnavailableError(`${label} failed: ${sanitizeMessage(error.message)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  const text = await response.text().catch(() => '');
+  if (!response.ok) {
+    throw new GatewayUnavailableError(
+      `${label} failed (${response.status}): ${sanitizeMessage(text)}`,
+      { status: response.status }
+    );
+  }
+
+  if (!text.trim()) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    // A 200 with an unparseable body is still a 200. The gateway performed the
+    // action; only its reply is uninteresting.
+    return null;
+  }
+}
+
+/**
  * Move an associated station into a different role.
  *
  * This is the same end state the captive portal's approval produces — the
@@ -133,21 +187,11 @@ export async function assignRole({
   fetchFn = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
-  const result = await requestXcc('/v1/stations/assignrole', {
-    method: 'POST',
-    body: { mac, role: roleId },
-    authToken,
-    controllerUrl,
-    fetchFn,
-    timeoutMs,
-  });
-  if (!result.ok) {
-    throw new GatewayUnavailableError(
-      `Role assignment failed (${result.status}): ${sanitizeMessage(result.errorText)}`,
-      { status: result.status }
-    );
-  }
-  return result.data;
+  return postAction(
+    '/v1/stations/assignrole',
+    { mac, role: roleId },
+    { authToken, controllerUrl, fetchFn, timeoutMs, label: 'Role assignment' }
+  );
 }
 
 /** Force the station off the WLAN. It must re-authenticate to come back. */
@@ -158,19 +202,9 @@ export async function disassociate({
   fetchFn = null,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }) {
-  const result = await requestXcc('/v1/stations/disassociate', {
-    method: 'POST',
-    body: { macList: macs },
-    authToken,
-    controllerUrl,
-    fetchFn,
-    timeoutMs,
-  });
-  if (!result.ok) {
-    throw new GatewayUnavailableError(
-      `Disassociation failed (${result.status}): ${sanitizeMessage(result.errorText)}`,
-      { status: result.status }
-    );
-  }
-  return result.data;
+  return postAction(
+    '/v1/stations/disassociate',
+    { macList: macs },
+    { authToken, controllerUrl, fetchFn, timeoutMs, label: 'Disassociation' }
+  );
 }
