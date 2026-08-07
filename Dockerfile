@@ -26,8 +26,17 @@ COPY --from=builder /app/build ./build
 COPY server.js ./
 COPY --from=builder /app/server ./server
 
-# Non-root user for security
-RUN addgroup -S aura && adduser -S aura -G aura
+# Non-root user for security.
+#
+# Ownership and modes are normalised rather than inherited: a build context
+# uploaded from a workstation carries that workstation's permissions, and a
+# source tree checked out mode 700 produced an image whose own runtime user
+# could not read `server.js`. The image must not depend on the umask of
+# whoever built it.
+RUN addgroup -S aura && adduser -S aura -G aura \
+  && chown -R aura:aura /app \
+  && find /app -type d -exec chmod 755 {} + \
+  && find /app -type f -exec chmod 644 {} +
 USER aura
 
 EXPOSE 3000
