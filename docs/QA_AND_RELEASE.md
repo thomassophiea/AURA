@@ -35,7 +35,7 @@ something.
 | Database | Schema comparison, migration classification, and a real dry run |
 | Collector | Deployment status plus sample freshness |
 | Cleanup | Schedule, restart policy, retention, target database — never executes a sweep |
-| Guest / CWP | Integration in full; Production health, TLS and configuration only |
+| Guest / CWP | Integration in full — including the Secure Guest Access surface; Production health, TLS and configuration only |
 | Gateway | WLAN, ECP, AAA, roles, walled garden — every call a `GET` |
 | Regression | Always runs in full, whatever the diff says |
 | Security / Configuration | Required variable *names*, headers, rate limiting, secret-leak checks |
