@@ -13,7 +13,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Ban, Users } from 'lucide-react';
 import type { Guest } from '@/services/guestService';
-import { STATUS_PRESENTATION, guestLabel } from './guestPresentation';
+import { STATUS_PRESENTATION, guestLabel, secureOnboardingPresentation } from './guestPresentation';
 
 interface GuestTableProps {
   guests: Guest[];
@@ -30,6 +30,7 @@ const COLUMNS = [
   'IP Address',
   'Status',
   'WLAN',
+  'Secure Wi-Fi',
   'Connected Since',
   'Last Seen',
   'First Seen',
@@ -65,6 +66,41 @@ function TimeCell({ value, field }: { value: string | null; field: string }) {
     <span className="text-sm whitespace-nowrap">{formatted}</span>
   ) : (
     <NoData field={field} />
+  );
+}
+
+/**
+ * Secure Guest Access state for one row.
+ *
+ * The badge says what is known; the tooltip says how it is known, including
+ * which network the device was moved to and when — the two things an operator
+ * asks next.
+ */
+function SecureOnboardingCell({ guest }: { guest: Guest }) {
+  const onboarding = guest.secureOnboarding;
+  if (!onboarding) return <span className="text-xs text-muted-foreground">\u2014</span>;
+
+  const presentation = secureOnboardingPresentation(onboarding.status);
+  if (!presentation) return <span className="text-xs text-muted-foreground">\u2014</span>;
+
+  const when = formatTime(onboarding.completedAt ?? onboarding.startedAt);
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Badge variant={presentation.variant}>{presentation.label}</Badge>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{presentation.description}</p>
+        <p className="mt-1 text-xs opacity-80">
+          {onboarding.targetSsid}
+          {onboarding.platform ? ` \u00b7 ${onboarding.platform}` : ''}
+          {when ? ` \u00b7 ${when}` : ''}
+        </p>
+        {onboarding.failureReason && (
+          <p className="mt-1 text-xs opacity-80">{onboarding.failureReason}</p>
+        )}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -154,6 +190,13 @@ export function GuestTable({
 
                   <TableCell className="text-sm whitespace-nowrap">
                     {guest.ssid ?? <NoData field="ssid" />}
+                  </TableCell>
+
+                  {/* Blank, not "None": most guests take the open path and
+                      never ask for secure setup, which is the expected outcome
+                      rather than a missing value. */}
+                  <TableCell className="whitespace-nowrap">
+                    <SecureOnboardingCell guest={guest} />
                   </TableCell>
 
                   <TableCell>

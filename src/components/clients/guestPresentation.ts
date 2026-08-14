@@ -6,7 +6,7 @@
  * describing the same state two different ways.
  */
 
-import type { Guest, GuestStatus } from '@/services/guestService';
+import type { Guest, GuestStatus, SecureOnboardingStatus } from '@/services/guestService';
 
 export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' | 'info';
 
@@ -140,4 +140,64 @@ export function describeEnforcement(
     default:
       return 'Access withdrawn.';
   }
+}
+
+/**
+ * How a Secure Guest Access attempt reads in the table.
+ *
+ * The vocabulary is deliberately literal. Only `Completed` claims the device
+ * reached the secure WLAN, and it is the only one the gateway can corroborate —
+ * every other label describes what the portal did, not what the device did.
+ * Labelling a downloaded profile as "Connected" would be the single most
+ * misleading thing this table could say.
+ */
+const SECURE_ONBOARDING_PRESENTATION: Record<
+  SecureOnboardingStatus,
+  { label: string; variant: BadgeVariant; description: string }
+> = {
+  OFFERED: {
+    label: 'Offered',
+    variant: 'outline',
+    description: 'Secure setup was offered but not started.',
+  },
+  STARTED: {
+    label: 'Started',
+    variant: 'info',
+    description: 'The guest opened secure setup. Nothing has been handed over yet.',
+  },
+  PROFILE_DOWNLOADED: {
+    label: 'Profile sent',
+    variant: 'info',
+    description:
+      'A Wi-Fi configuration profile was downloaded. Whether it was installed is not observable from here.',
+  },
+  QR_DISPLAYED: {
+    label: 'QR shown',
+    variant: 'info',
+    description: 'A Wi-Fi QR code was displayed. Whether it was scanned is not observable from here.',
+  },
+  MANUAL_SETUP_VIEWED: {
+    label: 'Details shown',
+    variant: 'info',
+    description: 'The network name and password were revealed for manual entry.',
+  },
+  COMPLETED: {
+    label: 'On secure Wi-Fi',
+    variant: 'success',
+    description: 'The gateway reported this device associated with the secure WLAN.',
+  },
+  FAILED: {
+    label: 'Failed',
+    variant: 'destructive',
+    description: 'Secure setup could not be prepared for this device.',
+  },
+  EXPIRED: {
+    label: 'Expired',
+    variant: 'secondary',
+    description: 'The secure setup window closed without a confirmed join.',
+  },
+};
+
+export function secureOnboardingPresentation(status: SecureOnboardingStatus) {
+  return SECURE_ONBOARDING_PRESENTATION[status] ?? null;
 }

@@ -127,6 +127,14 @@ export function mergeGuest(guest, stations, services = new Map()) {
     lastSessionStatus: guest.lastSessionStatus,
     lastSessionAt: guest.lastSessionAt,
     lastSessionFailureReason: guest.lastSessionFailureReason,
+
+    // Secure-onboarding state, passed through from the portal unchanged and
+    // null for the guests who never asked for it — which is most of them, since
+    // it is opt-in. Deliberately not folded into `status`: whether a device
+    // moved to the encrypted WLAN is a different question from whether it may
+    // use the guest network, and collapsing the two would make one of them
+    // unanswerable.
+    secureOnboarding: guest.secureOnboarding ?? null,
   };
 }
 

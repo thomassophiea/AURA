@@ -273,3 +273,42 @@ describe('summarize', () => {
     expect(summarize(merged, { gatewayReachable: false, now }).connectedNow).toBeNull();
   });
 });
+
+describe('secure onboarding passthrough', () => {
+  it('is null for a guest who never chose Secure Guest Access', () => {
+    const merged = mergeGuest(guestDto(), new Map(), new Map());
+    expect(merged.secureOnboarding).toBeNull();
+  });
+
+  it('carries the portal record through unchanged', () => {
+    const onboarding = {
+      id: 'onb_1',
+      status: 'COMPLETED',
+      method: 'APPLE_PROFILE',
+      platform: 'IOS',
+      sourceSsid: 'AURA-CWP',
+      targetSsid: 'Skynet',
+      startedAt: '2026-08-14T12:00:00.000Z',
+      completedAt: '2026-08-14T12:01:00.000Z',
+      failureReason: null,
+    };
+    const merged = mergeGuest(guestDto({ secureOnboarding: onboarding }), new Map(), new Map());
+    expect(merged.secureOnboarding).toEqual(onboarding);
+  });
+
+  it('does not let a completed onboarding change the guest status', () => {
+    // Reaching the secure WLAN and being authorized on the guest WLAN are
+    // different questions; folding one into the other would make the second
+    // unanswerable.
+    const revoked = mergeGuest(
+      guestDto({
+        authorizationStatus: 'REVOKED',
+        secureOnboarding: { id: 'onb_2', status: 'COMPLETED', method: 'WIFI_QR', platform: 'ANDROID', sourceSsid: 'AURA-CWP', targetSsid: 'Skynet', startedAt: '2026-08-14T12:00:00.000Z', completedAt: '2026-08-14T12:01:00.000Z', failureReason: null },
+      }),
+      new Map(),
+      new Map()
+    );
+    expect(revoked.status).toBe('revoked');
+    expect(revoked.secureOnboarding.status).toBe('COMPLETED');
+  });
+});

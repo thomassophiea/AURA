@@ -64,6 +64,9 @@ const guest = (overrides: Partial<Guest> = {}): Guest => ({
   lastSessionStatus: 'AUTHORIZED',
   lastSessionAt: '2026-08-07T00:00:00.000Z',
   lastSessionFailureReason: null,
+  // Most guests take the open path, so the default fixture has never asked
+  // for secure onboarding.
+  secureOnboarding: null,
   ...overrides,
 });
 
@@ -297,5 +300,74 @@ describe('GuestUsers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add guest' }));
 
     expect(await screen.findByText(/already authorized/i)).toBeInTheDocument();
+  });
+  it('shows nothing in Secure Wi-Fi for a guest who took the open path', async () => {
+    list.mockResolvedValue({
+      guests: [guest()],
+      nextCursor: null,
+      ledgerTotal: 1,
+      gateway: { reachable: true },
+    });
+
+    render(<GuestUsers />);
+    await screen.findByText('aa:bb:cc:dd:ee:f1');
+
+    // Not "None" and not an error state — most guests never ask for secure
+    // setup, which is the expected outcome rather than a missing value.
+    expect(screen.queryByText('On secure Wi-Fi')).not.toBeInTheDocument();
+    expect(screen.queryByText('Profile sent')).not.toBeInTheDocument();
+  });
+
+  it('reports a gateway-confirmed secure join, and only that, as connected', async () => {
+    list.mockResolvedValue({
+      guests: [
+        guest({
+          secureOnboarding: {
+            id: 'onb_1',
+            status: 'COMPLETED',
+            method: 'APPLE_PROFILE',
+            platform: 'IOS',
+            sourceSsid: 'AURA-CWP',
+            targetSsid: 'Skynet',
+            startedAt: '2026-08-14T12:00:00.000Z',
+            completedAt: '2026-08-14T12:01:00.000Z',
+            failureReason: null,
+          },
+        }),
+      ],
+      nextCursor: null,
+      ledgerTotal: 1,
+      gateway: { reachable: true },
+    });
+
+    render(<GuestUsers />);
+    expect(await screen.findByText('On secure Wi-Fi')).toBeInTheDocument();
+  });
+
+  it('does not describe a downloaded profile as connected', async () => {
+    list.mockResolvedValue({
+      guests: [
+        guest({
+          secureOnboarding: {
+            id: 'onb_2',
+            status: 'PROFILE_DOWNLOADED',
+            method: 'APPLE_PROFILE',
+            platform: 'IOS',
+            sourceSsid: 'AURA-CWP',
+            targetSsid: 'Skynet',
+            startedAt: '2026-08-14T12:00:00.000Z',
+            completedAt: null,
+            failureReason: null,
+          },
+        }),
+      ],
+      nextCursor: null,
+      ledgerTotal: 1,
+      gateway: { reachable: true },
+    });
+
+    render(<GuestUsers />);
+    expect(await screen.findByText('Profile sent')).toBeInTheDocument();
+    expect(screen.queryByText('On secure Wi-Fi')).not.toBeInTheDocument();
   });
 });

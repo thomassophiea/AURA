@@ -64,7 +64,36 @@ export interface Guest {
   lastSessionStatus: string | null;
   lastSessionAt: string | null;
   lastSessionFailureReason: string | null;
+  /**
+   * Most recent Secure Guest Access attempt, or null when this guest never
+   * chose it — the normal case, since it is opt-in on the captive portal.
+   *
+   * `COMPLETED` means the gateway reported this device on the secure WLAN.
+   * `PROFILE_DOWNLOADED` / `QR_DISPLAYED` / `MANUAL_SETUP_VIEWED` mean the
+   * portal handed something over and nothing more is known.
+   */
+  secureOnboarding: {
+    id: string;
+    status: SecureOnboardingStatus;
+    method: string | null;
+    platform: string;
+    sourceSsid: string | null;
+    targetSsid: string;
+    startedAt: string;
+    completedAt: string | null;
+    failureReason: string | null;
+  } | null;
 }
+
+export type SecureOnboardingStatus =
+  | 'OFFERED'
+  | 'STARTED'
+  | 'PROFILE_DOWNLOADED'
+  | 'QR_DISPLAYED'
+  | 'MANUAL_SETUP_VIEWED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'EXPIRED';
 
 export interface GuestListResponse {
   guests: Guest[];
